@@ -26,7 +26,7 @@
   - Dependencies: Directory creation, filename sanitization
   - Priority: High
 
-- [ ] Enhance console output 
+- [x] Enhance console output 
   - Description: Revise console output to show detailed progress info without raw responses
   - Dependencies: Individual file writing
   - Priority: High

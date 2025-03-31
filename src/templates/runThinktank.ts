@@ -118,6 +118,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   // Track the output directory path for later use
   let outputDirectoryPath: string | undefined;
   
+  // For tracking model statuses
+  const modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }> = {};
+  
   try {
     // 1. Load configuration
     spinner.text = 'Loading configuration...';
@@ -206,7 +209,18 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // 5. Prepare API calls
-    spinner.text = `Sending prompt to ${models.length} model(s)...`;
+    spinner.text = `Preparing to query ${models.length} model${models.length === 1 ? '' : 's'}...`;
+    
+    // List models being used
+    const modelList = models.map(model => getModelConfigKey(model)).join(', ');
+    spinner.info(`Models: ${modelList}`);
+    
+    // Initialize status tracking
+    models.forEach(model => {
+      const configKey = getModelConfigKey(model);
+      modelStatuses[configKey] = { status: 'pending' };
+    });
+    
     const callPromises: Array<Promise<LLMResponse & { configKey: string }>> = [];
     
     // For each model, get provider and send prompt
@@ -216,30 +230,81 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       
       if (!provider) {
         spinner.warn(`Provider not found for ${configKey}`);
+        modelStatuses[configKey] = { 
+          status: 'error', 
+          message: 'Provider not found' 
+        };
         return;
       }
       
       // Create promise for this model
       const responsePromise = provider.generate(prompt, model.modelId, model.options)
-        .then(response => ({
-          ...response,
-          configKey,
-        }))
-        .catch(error => ({
-          provider: model.provider,
-          modelId: model.modelId,
-          text: '',
-          error: error instanceof Error ? error.message : String(error),
-          configKey,
-        }));
+        .then(response => {
+          // Update status
+          modelStatuses[configKey] = { status: 'success' };
+          
+          // Update spinner text with progress
+          const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
+          const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
+          const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
+          spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
+          
+          return {
+            ...response,
+            configKey,
+          };
+        })
+        .catch(error => {
+          // Update status
+          modelStatuses[configKey] = { 
+            status: 'error', 
+            message: error instanceof Error ? error.message : String(error)
+          };
+          
+          // Update spinner text with progress
+          const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
+          const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
+          const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
+          spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
+          
+          return {
+            provider: model.provider,
+            modelId: model.modelId,
+            text: '',
+            error: error instanceof Error ? error.message : String(error),
+            configKey,
+          };
+        });
       
       callPromises.push(responsePromise);
     });
     
+    // Initial status message
+    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}...`;
+    
     // 6. Execute calls concurrently
     const results = await Promise.all(callPromises);
     
-    // 7. Write individual files if output directory is specified
+    // 7. Show model completion summary
+    const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
+    const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
+    
+    if (errorCount > 0) {
+      // Log models with errors
+      spinner.warn(`${successCount} of ${successCount + errorCount} models completed successfully`);
+      
+      // Display error details
+      const errorModels = Object.entries(modelStatuses)
+        .filter(([_, status]) => status.status === 'error')
+        .map(([model, status]) => `  - ${model}: ${status.message || 'Unknown error'}`);
+      
+      console.log('\nModels with errors:');
+      console.log(errorModels.join('\n'));
+    } else {
+      spinner.succeed(`All ${successCount} models completed successfully`);
+    }
+    
+    // 8. Write individual files if output directory is specified
     if (outputDirectoryPath) {
       spinner.text = 'Writing model responses to individual files...';
       
@@ -247,6 +312,14 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       let succeededWrites = 0;
       let failedWrites = 0;
       const fileWritePromises: Promise<void>[] = [];
+      type FileDetail = {
+        model: string;
+        filename: string;
+        status: 'pending' | 'success' | 'error';
+        error?: string;
+      };
+      
+      const fileDetails: FileDetail[] = [];
       
       // Process each result
       results.forEach((result) => {
@@ -261,15 +334,30 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         // Format the response as Markdown
         const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
         
+        // Add to tracking array
+        const fileDetail: FileDetail = {
+          model: result.configKey,
+          filename,
+          status: 'pending'
+        };
+        fileDetails.push(fileDetail);
+        
         // Create file write promise with error handling
         const writePromise = fs.writeFile(filePath, markdownContent)
           .then(() => {
             succeededWrites++;
+            fileDetail.status = 'success';
+            // Update progress after each file
+            const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
+            spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
           })
           .catch((error) => {
             failedWrites++;
-            // Log error but continue with other files
-            console.error(`Error writing ${filename}: ${error instanceof Error ? error.message : String(error)}`);
+            fileDetail.status = 'error';
+            fileDetail.error = error instanceof Error ? error.message : String(error);
+            // Update progress after each file
+            const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
+            spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
           });
         
         fileWritePromises.push(writePromise);
@@ -281,13 +369,21 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Report results
       if (failedWrites === 0) {
         spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
+        console.log(`\nOutput directory: ${outputDirectoryPath}`);
       } else {
-        spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes in ${outputDirectoryPath}`);
+        spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`);
+        console.log(`\nOutput directory: ${outputDirectoryPath}`);
+        
+        // Show files with errors
+        const failedFiles = fileDetails.filter(file => file.status === 'error');
+        console.log('\nFiles with errors:');
+        failedFiles.forEach(file => {
+          console.log(`  - ${file.filename}: ${file.error || 'Unknown error'}`);
+        });
       }
     } else {
-      // Format results for console output only if no output directory
-      spinner.text = 'Formatting results...';
-      spinner.succeed('Processing completed.');
+      // No output directory specified, so just show completion message
+      spinner.succeed('Processing completed. Run with --output to save responses to files.');
     }
     
     // Always return formatted results for potential console display by CLI

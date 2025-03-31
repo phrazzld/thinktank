@@ -79,7 +79,7 @@ export async function main(): Promise<void> {
       useColors: !argv['no-color'],
     });
     
-    // Print result to console if not writing to file
+    // Print model responses to console if not using output directory
     if (!argv.output) {
       // eslint-disable-next-line no-console
       console.log(result);
