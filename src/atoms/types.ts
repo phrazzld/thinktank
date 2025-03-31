@@ -8,7 +8,8 @@
 export interface ModelOptions {
   temperature?: number;
   maxTokens?: number;
-  [key: string]: any; // Additional provider-specific options
+  // Allow additional properties with unknown type
+  [key: string]: unknown;
 }
 
 /**
@@ -37,7 +38,7 @@ export interface LLMResponse {
   modelId: string;
   text: string;
   error?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 /**
@@ -45,5 +46,9 @@ export interface LLMResponse {
  */
 export interface LLMProvider {
   providerId: string;
-  generate(prompt: string, modelId: string, options?: ModelOptions): Promise<LLMResponse>;
+  generate(
+    prompt: string,
+    modelId: string,
+    options?: ModelOptions
+  ): Promise<LLMResponse>;
 }
