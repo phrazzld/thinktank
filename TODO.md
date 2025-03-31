@@ -1,116 +1,119 @@
 # TODO
 
-## Test Suite Enhancement
-
-### Configure Test Coverage Reporting
-- [x] Update Jest configuration
-  - Description: Add coverage settings to jest.config.js (coverageDirectory, reporters, thresholds)
-  - Dependencies: None
-  - Priority: High
-  - Status: Completed - Added coverageDirectory, reporters, and initial thresholds
-
-- [x] Add coverage script to package.json
-  - Description: Create a dedicated test:cov script for running tests with coverage
-  - Dependencies: Updated Jest configuration
-  - Priority: High
-  - Status: Completed - Added test:cov script that runs jest with --coverage flag
-
-- [x] Verify coverage directory is in .gitignore
-  - Description: Ensure 'coverage/' is listed in .gitignore
-  - Dependencies: None
-  - Priority: High
-  - Status: Completed - coverage/ was already in .gitignore
-
-### Fix CLI Tests
-- [x] Add E2E testing dependencies
-  - Description: Install execa or similar library for subprocess execution
-  - Dependencies: None
-  - Priority: High
-  - Status: Completed - Installed execa@5.1.1 and created basic test to verify it works
-
-- [ ] Create cli.e2e.test.ts
-  - Description: Implement E2E tests that run the CLI as a subprocess
-  - Dependencies: E2E testing dependencies
-  - Priority: High
-
-- [ ] Implement test input/output handling
-  - Description: Setup temporary directories and files for E2E test scenarios
-  - Dependencies: E2E testing dependencies
-  - Priority: High
-
-- [ ] Write basic CLI execution tests
-  - Description: Test success and error scenarios for CLI options
-  - Dependencies: E2E test implementation
-  - Priority: Medium
-
-- [ ] Deprecate or refactor existing CLI tests
-  - Description: Update or remove the existing heavily-mocked CLI tests
-  - Dependencies: Working E2E tests
-  - Priority: Medium
-
-### Improve Date/Time Dependent Tests
-- [ ] Refactor generateRunDirectoryName tests
-  - Description: Replace complex Date mocking with Jest's fake timers
+## Core Interface Updates
+- [x] Update LLMProvider Interface
+  - Description: Add optional listModels method to LLMProvider in atoms/types.ts
   - Dependencies: None
   - Priority: High
 
-- [ ] Test reliability verification
-  - Description: Run tests repeatedly to ensure consistent results
-  - Dependencies: Refactored date/time tests
+- [x] Create LLMAvailableModel Interface
+  - Description: Define interface for model information returned by providers
+  - Dependencies: None
+  - Priority: High
+
+## Model Listing Output Formatter
+- [ ] Implement formatModelList Function
+  - Description: Add function to format model lists from providers in outputFormatter.ts
+  - Dependencies: LLMAvailableModel interface
+  - Priority: High
+
+## Anthropic Provider Integration
+- [ ] Install Anthropic SDK
+  - Description: Add @anthropic-ai/sdk as a dependency with npm install
+  - Dependencies: None
+  - Priority: High
+
+- [ ] Create Anthropic Provider File
+  - Description: Create anthropic.ts in molecules/llmProviders directory
+  - Dependencies: Anthropic SDK
+  - Priority: High
+
+- [ ] Implement generate Method
+  - Description: Implement generate method in anthropic provider using Anthropic SDK
+  - Dependencies: Anthropic Provider File
+  - Priority: High
+
+- [ ] Implement listModels Method
+  - Description: Implement listModels method to fetch available models from Anthropic API
+  - Dependencies: Anthropic Provider File, LLMAvailableModel Interface
+  - Priority: High
+
+- [ ] Register Anthropic Provider
+  - Description: Ensure anthropic provider is registered in llmRegistry
+  - Dependencies: Anthropic Provider Implementation
+  - Priority: High
+
+## Model Listing Workflow
+- [ ] Create listModelsWorkflow Template
+  - Description: Create new template file for listing models functionality
+  - Dependencies: LLMProvider Interface Update
   - Priority: Medium
 
-### Standardize Mocking Approach
-- [ ] Create TESTING.md document
-  - Description: Document standard patterns for different mocking scenarios
+- [ ] Implement listAvailableModels Function
+  - Description: Create main function to list models across providers
+  - Dependencies: Updated LLMProvider Interface, formatModelList Function
+  - Priority: Medium
+
+## CLI Update
+- [ ] Add list-models Command
+  - Description: Update CLI to add the new list-models command with provider flag
+  - Dependencies: listModelsWorkflow template
+  - Priority: Medium
+
+## Configuration Updates
+- [ ] Update Default Config
+  - Description: Add Anthropic examples to templates/thinktank.config.default.json
   - Dependencies: None
   - Priority: Medium
 
-- [ ] Review and refactor unit test mocking
-  - Description: Apply consistent patterns to unit tests based on guidelines
-  - Dependencies: Mocking guidelines document
-  - Priority: Medium
-
-- [ ] Improve integration test mocking
-  - Description: Reduce excessive mocking in integration tests where appropriate
-  - Dependencies: Mocking guidelines document
-  - Priority: Medium
-
-### Improve Test Coverage
-- [ ] Run initial coverage analysis
-  - Description: Generate a baseline coverage report to identify gaps
-  - Dependencies: Coverage configuration
-  - Priority: Medium
-
-- [ ] Add tests for critical uncovered paths
-  - Description: Write new tests targeting important uncovered code
-  - Dependencies: Coverage analysis
-  - Priority: Medium
-
-## Feature Enhancements (Future)
-
-- [ ] Add option to disable file writing
-  - Description: Allow running without writing output files (for performance)
+- [ ] Update Environment Example
+  - Description: Add ANTHROPIC_API_KEY to .env.example if it exists
   - Dependencies: None
+  - Priority: Medium
+
+## Testing
+- [ ] Unit Test Anthropic Provider
+  - Description: Create tests for both generate and listModels methods 
+  - Dependencies: Anthropic Provider Implementation
+  - Priority: High
+  - TDD: Implement these tests first before implementation
+
+- [ ] Unit Test formatModelList
+  - Description: Test function with various inputs (successful, errors, empty)
+  - Dependencies: formatModelList Implementation
+  - Priority: High
+  - TDD: Implement these tests first before implementation
+
+- [ ] Integration Test listModelsWorkflow
+  - Description: Test the listing workflow with mocked components
+  - Dependencies: listModelsWorkflow Implementation
+  - Priority: Medium
+  - TDD: Implement these tests first before implementation
+
+- [ ] Integration Test CLI list-models Command
+  - Description: Test the CLI command parsing and execution
+  - Dependencies: CLI Update
+  - Priority: Medium
+  - TDD: Implement these tests first before implementation
+
+- [ ] Manual E2E Testing
+  - Description: Test all features with real API calls once implemented
+  - Dependencies: All implementation complete
   - Priority: Low
 
-- [ ] Add customizable output filename format
-  - Description: Allow users to specify output filename patterns
-  - Dependencies: None
+## Documentation
+- [ ] Update README.md
+  - Description: Document new list-models command, Anthropic provider, and configuration
+  - Dependencies: All implementation complete
+  - Priority: Medium
+
+## Optional Follow-up
+- [ ] Implement listModels for OpenAI
+  - Description: Add listModels method to OpenAI provider
+  - Dependencies: Core Interface Updates
   - Priority: Low
 
-- [ ] Add option to disable timestamped subdirectories
-  - Description: Allow writing directly to the output directory
-  - Dependencies: None
+- [ ] Refine Error Handling
+  - Description: Improve handling of missing API keys and unsupported methods
+  - Dependencies: listModelsWorkflow Implementation
   - Priority: Low
-
-- [ ] Add console display option
-  - Description: Add a flag to display model responses in console
-  - Dependencies: None
-  - Priority: Low
-
-## Assumptions/Questions
-
-1. We're prioritizing the test infrastructure improvements over new features
-2. The current thresholds (50% branches, 60% functions/lines/statements) are appropriate starting points
-3. E2E testing is preferred over heavily mocked unit tests for CLI testing
-4. The team agrees with the standardized mocking approach outlined in the plan

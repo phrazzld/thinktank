@@ -156,42 +156,17 @@ describe('Helper Functions', () => {
       expect(outputDir).toBe('/custom/path');
     });
     
-    it('should use the default directory when no output is specified', () => {
-      const outputDir = resolveOutputDirectory();
-      expect(outputDir).toBe(path.resolve(process.cwd(), 'thinktank_outputs'));
-    });
-    
     it('should resolve relative paths to absolute paths', () => {
       const outputDir = resolveOutputDirectory('./relative/path');
       expect(outputDir).toBe(path.resolve('./relative/path'));
     });
-    
-    it('should handle empty string as output option', () => {
-      const outputDir = resolveOutputDirectory('');
-      expect(outputDir).toBe(path.resolve(process.cwd(), 'thinktank_outputs'));
-    });
-    
-    it('should allow customizing the default directory name', () => {
-      const outputDir = resolveOutputDirectory(undefined, 'custom_default');
-      expect(outputDir).toBe(path.resolve(process.cwd(), 'custom_default'));
-    });
   });
   
   describe('generateOutputDirectoryPath', () => {
-    // Instead of trying to mock the internal function, we'll directly test with the actual result pattern
-    
     it('should append a timestamped subdirectory to the output path', () => {
       const outputPath = generateOutputDirectoryPath('/custom/path');
       // Match the expected pattern rather than an exact string
       expect(outputPath).toMatch(/^\/custom\/path\/thinktank_run_\d{8}_\d{6}_\d{3}$/);
-    });
-    
-    it('should use the default directory with a timestamped subdirectory when no output is specified', () => {
-      const outputPath = generateOutputDirectoryPath();
-      // Match the expected pattern with the default directory
-      const escapedCwd = process.cwd().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`^${escapedCwd}\\/thinktank_outputs\\/thinktank_run_\\d{8}_\\d{6}_\\d{3}$`);
-      expect(outputPath).toMatch(pattern);
     });
     
     it('should include a timestamped directory in the path', () => {

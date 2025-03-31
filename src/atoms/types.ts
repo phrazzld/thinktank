@@ -42,6 +42,14 @@ export interface LLMResponse {
 }
 
 /**
+ * Information about an available model from a provider
+ */
+export interface LLMAvailableModel {
+  id: string; // The model ID (e.g., "claude-3-sonnet-20240229")
+  description?: string; // Optional description of the model
+}
+
+/**
  * Interface contract for LLM providers
  */
 export interface LLMProvider {
@@ -51,4 +59,11 @@ export interface LLMProvider {
     modelId: string,
     options?: ModelOptions
   ): Promise<LLMResponse>;
+  
+  /**
+   * Optional method to list available models from the provider
+   * @param apiKey The API key to use for authentication
+   * @returns Promise resolving to array of available models
+   */
+  listModels?(apiKey: string): Promise<LLMAvailableModel[]>;
 }
