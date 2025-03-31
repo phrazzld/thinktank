@@ -6,6 +6,10 @@ import { getProvider } from '../organisms/llmRegistry';
 import { formatModelList } from '../molecules/outputFormatter';
 import { LLMAvailableModel } from '../atoms/types';
 
+// Import provider modules to ensure they're registered
+import '../molecules/llmProviders/openai';
+import '../molecules/llmProviders/anthropic';
+
 /**
  * Options for listing models
  */
