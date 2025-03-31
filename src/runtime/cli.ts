@@ -32,7 +32,7 @@ export async function main(): Promise<void> {
     })
     .option('output', {
       alias: 'o',
-      describe: 'Path to output directory for model responses',
+      describe: 'Custom path for output directory (default: ./thinktank_outputs/)',
       type: 'string',
     })
     .option('model', {
@@ -54,10 +54,10 @@ export async function main(): Promise<void> {
     .alias('help', 'h')
     .version()
     .alias('version', 'v')
-    .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models')
+    .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models (output to ./thinktank_outputs/)')
     .example('$0 -i prompt.txt -m openai:gpt-4o', 'Send prompt to specific model')
     .example('$0 -i prompt.txt -c custom-config.json', 'Use custom config file')
-    .example('$0 -i prompt.txt -o ./outputs', 'Save model responses to output directory')
+    .example('$0 -i prompt.txt -o ./custom-outputs', 'Use custom directory for output files')
     .epilogue('For more information, visit https://github.com/phrazzld/thinktank')
     .parseAsync();
   
@@ -69,8 +69,10 @@ export async function main(): Promise<void> {
       throw new ThinktankError(`Input file not found: ${argv.input}`);
     }
     
-    // Run Thinktank
-    const result = await runThinktank({
+    // Run Thinktank - all model responses are written to the output directory
+    // We're running thinktank but not using the returned results
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    await runThinktank({
       input: argv.input,
       configPath: argv.config,
       output: argv.output,
@@ -78,12 +80,6 @@ export async function main(): Promise<void> {
       includeMetadata: argv.metadata,
       useColors: !argv['no-color'],
     });
-    
-    // Print model responses to console if not using output directory
-    if (!argv.output) {
-      // eslint-disable-next-line no-console
-      console.log(result);
-    }
     
     process.exit(0);
   } catch (error) {
