@@ -18,6 +18,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "jest",
+    "test:cov": "jest --coverage",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
     "test:install": "npm pack && npm install -g thinktank-*.tgz && thinktank --version"
