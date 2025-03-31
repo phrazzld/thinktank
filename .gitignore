@@ -21,3 +21,7 @@ build/
 
 # Testing
 coverage/
+
+# Output directories
+thinktank-reports/
+thinktank_outputs/
