@@ -72,6 +72,7 @@ describe('CLI List-Models Command', () => {
     (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
       _: ['list-models'],
       '$0': 'thinktank',
+      command: 'list-models', // Command identifier
     });
     
     // Import and execute the module
@@ -91,6 +92,7 @@ describe('CLI List-Models Command', () => {
       _: ['list-models'],
       '$0': 'thinktank',
       provider: 'anthropic',
+      command: 'list-models', // Command identifier
     });
     
     // Import and execute the module
@@ -111,6 +113,7 @@ describe('CLI List-Models Command', () => {
       _: ['list-models'],
       '$0': 'thinktank',
       config: 'custom-config.json',
+      command: 'list-models', // Command identifier
     });
     
     // Import and execute the module
@@ -133,6 +136,7 @@ describe('CLI List-Models Command', () => {
     (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
       _: ['list-models'],
       '$0': 'thinktank',
+      command: 'list-models', // Command identifier
     });
     
     // Import and execute the module
