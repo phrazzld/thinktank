@@ -76,17 +76,34 @@ export function generateRunDirectoryName(): string {
 
 /**
  * Resolves the output directory path based on the provided output option
- * If output is specified, it's used as the parent directory
+ * If output is specified, it's used as the output directory
  * Otherwise, a default directory in the current working directory is used
+ * 
+ * @param outputOption - The output option from CLI/config, if provided
+ * @param defaultDirName - The default directory name to use if outputOption is not provided
+ * @returns The resolved path to the output directory
+ */
+export function resolveOutputDirectory(
+  outputOption?: string,
+  defaultDirName: string = 'thinktank_outputs'
+): string {
+  // Use provided path or default to 'thinktank_outputs' in current working directory
+  const targetPath = outputOption
+    ? path.resolve(outputOption) 
+    : path.resolve(process.cwd(), defaultDirName);
+  
+  return targetPath;
+}
+
+/**
+ * Generates a complete output directory path including a timestamped run subdirectory
  * 
  * @param outputOption - The output option from CLI/config, if provided
  * @returns The resolved path to the run-specific output directory
  */
-export function resolveOutputDirectory(outputOption?: string): string {
-  // Default base output directory is 'thinktank_outputs' in current working directory
-  const baseOutputPath = outputOption 
-    ? path.resolve(outputOption) 
-    : path.resolve(process.cwd(), 'thinktank_outputs');
+export function generateOutputDirectoryPath(outputOption?: string): string {
+  // Get the base output directory
+  const baseOutputPath = resolveOutputDirectory(outputOption);
   
   // Generate the unique run directory name
   const runDirectoryName = generateRunDirectoryName();

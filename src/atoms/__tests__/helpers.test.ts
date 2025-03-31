@@ -8,6 +8,7 @@ import {
   getApiKey,
   generateRunDirectoryName,
   resolveOutputDirectory,
+  generateOutputDirectoryPath,
   sanitizeFilename
 } from '../helpers';
 import { ModelConfig } from '../types';
@@ -128,7 +129,9 @@ describe('Helper Functions', () => {
       const mockDate = new Date('2023-04-15T12:34:56.789Z');
       const originalDate = global.Date;
       
-      // @ts-expect-error: Mocking global Date
+      // Mocking global Date constructor
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
       global.Date = jest.fn(() => mockDate) as any;
       global.Date.UTC = originalDate.UTC;
       global.Date.parse = originalDate.parse;
@@ -148,56 +151,59 @@ describe('Helper Functions', () => {
   });
   
   describe('resolveOutputDirectory', () => {
-    // Create a simpler approach using a module import mock
-    const testDirName = 'thinktank_run_20230101_123456_789';
-    
-    // Create a simplified version that uses a fixed directory name for testing
-    function resolveOutputDirectoryTest(outputOption?: string): string {
-      // Use the same logic as the real function but with a fixed directory name
-      const baseOutputPath = outputOption 
-        ? path.resolve(outputOption) 
-        : path.resolve(process.cwd(), 'thinktank_outputs');
-      
-      return path.join(baseOutputPath, testDirName);
-    }
-    
     it('should use the provided output directory when specified', () => {
-      const outputDir = resolveOutputDirectoryTest('/custom/path');
-      expect(outputDir).toBe(path.join('/custom/path', testDirName));
+      const outputDir = resolveOutputDirectory('/custom/path');
+      expect(outputDir).toBe('/custom/path');
     });
     
     it('should use the default directory when no output is specified', () => {
-      const outputDir = resolveOutputDirectoryTest();
-      expect(outputDir).toBe(path.join(process.cwd(), 'thinktank_outputs', testDirName));
+      const outputDir = resolveOutputDirectory();
+      expect(outputDir).toBe(path.resolve(process.cwd(), 'thinktank_outputs'));
     });
     
     it('should resolve relative paths to absolute paths', () => {
-      const outputDir = resolveOutputDirectoryTest('./relative/path');
-      const expectedPath = path.resolve('./relative/path');
-      expect(outputDir).toBe(path.join(expectedPath, testDirName));
+      const outputDir = resolveOutputDirectory('./relative/path');
+      expect(outputDir).toBe(path.resolve('./relative/path'));
     });
     
     it('should handle empty string as output option', () => {
-      const outputDir = resolveOutputDirectoryTest('');
-      // An empty string resolves to the current directory, but the function adds 'thinktank_outputs'
-      const expectedPath = path.resolve(process.cwd(), 'thinktank_outputs');
-      expect(outputDir).toBe(path.join(expectedPath, testDirName));
+      const outputDir = resolveOutputDirectory('');
+      expect(outputDir).toBe(path.resolve(process.cwd(), 'thinktank_outputs'));
     });
     
-    it('should join paths correctly using path module', () => {
-      // Test the actual function's path joining logic
-      // This verifies the implementation uses path.join correctly
-      jest.spyOn(path, 'join').mockImplementationOnce((...args) => {
-        // Verify the last argument is the directory name from generateRunDirectoryName
-        expect(args[args.length - 1]).toMatch(/^thinktank_run_\d{8}_\d{6}_\d{3}$/);
-        return '/mocked/path/thinktank_run_date';
-      });
+    it('should allow customizing the default directory name', () => {
+      const outputDir = resolveOutputDirectory(undefined, 'custom_default');
+      expect(outputDir).toBe(path.resolve(process.cwd(), 'custom_default'));
+    });
+  });
+  
+  describe('generateOutputDirectoryPath', () => {
+    // Instead of trying to mock the internal function, we'll directly test with the actual result pattern
+    
+    it('should append a timestamped subdirectory to the output path', () => {
+      const outputPath = generateOutputDirectoryPath('/custom/path');
+      // Match the expected pattern rather than an exact string
+      expect(outputPath).toMatch(/^\/custom\/path\/thinktank_run_\d{8}_\d{6}_\d{3}$/);
+    });
+    
+    it('should use the default directory with a timestamped subdirectory when no output is specified', () => {
+      const outputPath = generateOutputDirectoryPath();
+      // Match the expected pattern with the default directory
+      const escapedCwd = process.cwd().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`^${escapedCwd}\\/thinktank_outputs\\/thinktank_run_\\d{8}_\\d{6}_\\d{3}$`);
+      expect(outputPath).toMatch(pattern);
+    });
+    
+    it('should include a timestamped directory in the path', () => {
+      // Capture the timestamp part from the run directory
+      const path1 = generateOutputDirectoryPath('/test/option');
+      const timestampMatch = path1.match(/thinktank_run_(\d{8}_\d{6}_\d{3})$/);
       
-      const result = resolveOutputDirectory('/test/path');
-      expect(result).toBe('/mocked/path/thinktank_run_date');
-      
-      // Restore original implementation
-      jest.restoreAllMocks();
+      expect(timestampMatch).not.toBeNull();
+      if (timestampMatch) {
+        const timestamp = timestampMatch[1];
+        expect(timestamp).toMatch(/^\d{8}_\d{6}_\d{3}$/);
+      }
     });
   });
   

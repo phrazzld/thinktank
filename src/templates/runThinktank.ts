@@ -8,7 +8,7 @@ import { loadConfig, filterModels, getEnabledModels, validateModelApiKeys } from
 import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig } from '../atoms/types';
-import { getModelConfigKey, resolveOutputDirectory, sanitizeFilename } from '../atoms/helpers';
+import { getModelConfigKey, generateOutputDirectoryPath, sanitizeFilename } from '../atoms/helpers';
 import ora from 'ora';
 import fs from 'fs/promises';
 import path from 'path';
@@ -34,7 +34,8 @@ export interface RunOptions {
   /**
    * Path to the output directory (optional)
    * If provided, this will be used as the parent directory for the run-specific output folder
-   * If not provided, a default directory in the current working directory will be used
+   * If not provided, './thinktank_outputs/' in the current working directory will be used
+   * Note: Model responses are always written to files in a timestamped subdirectory
    */
   output?: string;
   
@@ -130,23 +131,21 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     spinner.text = 'Reading input file...';
     const prompt = await readFileContent(options.input);
     
-    // 2.5 Create output directory if needed
-    if (options.output) {
-      // Resolve the output directory path
-      outputDirectoryPath = resolveOutputDirectory(options.output);
-      
-      spinner.text = `Creating output directory: ${outputDirectoryPath}`;
-      try {
-        // Create the directory with recursive option to ensure parent directories exist
-        await fs.mkdir(outputDirectoryPath, { recursive: true });
-        spinner.info(`Output directory created: ${outputDirectoryPath}`);
-      } catch (error) {
-        spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
-        throw new ThinktankError(
-          `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
-          error instanceof Error ? error : undefined
-        );
-      }
+    // 2.5 Create output directory - this is now always done
+    // Generate the output directory path with timestamped subdirectory
+    outputDirectoryPath = generateOutputDirectoryPath(options.output);
+    
+    spinner.text = `Creating output directory: ${outputDirectoryPath}`;
+    try {
+      // Create the directory with recursive option to ensure parent directories exist
+      await fs.mkdir(outputDirectoryPath, { recursive: true });
+      spinner.info(`Output directory created: ${outputDirectoryPath}`);
+    } catch (error) {
+      spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
+      throw new ThinktankError(
+        `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
+      );
     }
     
     // 3. Filter models based on CLI args
@@ -304,86 +303,81 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       spinner.succeed(`All ${successCount} models completed successfully`);
     }
     
-    // 8. Write individual files if output directory is specified
-    if (outputDirectoryPath) {
-      spinner.text = 'Writing model responses to individual files...';
+    // 8. Write individual files (now always done)
+    spinner.text = 'Writing model responses to individual files...';
+    
+    // Track stats for reporting
+    let succeededWrites = 0;
+    let failedWrites = 0;
+    const fileWritePromises: Promise<void>[] = [];
+    type FileDetail = {
+      model: string;
+      filename: string;
+      status: 'pending' | 'success' | 'error';
+      error?: string;
+    };
+    
+    const fileDetails: FileDetail[] = [];
+    
+    // Process each result
+    results.forEach((result) => {
+      // Create sanitized filename from provider and model
+      const sanitizedProvider = sanitizeFilename(result.provider);
+      const sanitizedModelId = sanitizeFilename(result.modelId);
+      const filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
       
-      // Track stats for reporting
-      let succeededWrites = 0;
-      let failedWrites = 0;
-      const fileWritePromises: Promise<void>[] = [];
-      type FileDetail = {
-        model: string;
-        filename: string;
-        status: 'pending' | 'success' | 'error';
-        error?: string;
+      // Full path to output file
+      const filePath = path.join(outputDirectoryPath!, filename);
+      
+      // Format the response as Markdown
+      const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
+      
+      // Add to tracking array
+      const fileDetail: FileDetail = {
+        model: result.configKey,
+        filename,
+        status: 'pending'
       };
+      fileDetails.push(fileDetail);
       
-      const fileDetails: FileDetail[] = [];
-      
-      // Process each result
-      results.forEach((result) => {
-        // Create sanitized filename from provider and model
-        const sanitizedProvider = sanitizeFilename(result.provider);
-        const sanitizedModelId = sanitizeFilename(result.modelId);
-        const filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
-        
-        // Full path to output file
-        const filePath = path.join(outputDirectoryPath!, filename);
-        
-        // Format the response as Markdown
-        const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
-        
-        // Add to tracking array
-        const fileDetail: FileDetail = {
-          model: result.configKey,
-          filename,
-          status: 'pending'
-        };
-        fileDetails.push(fileDetail);
-        
-        // Create file write promise with error handling
-        const writePromise = fs.writeFile(filePath, markdownContent)
-          .then(() => {
-            succeededWrites++;
-            fileDetail.status = 'success';
-            // Update progress after each file
-            const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
-            spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
-          })
-          .catch((error) => {
-            failedWrites++;
-            fileDetail.status = 'error';
-            fileDetail.error = error instanceof Error ? error.message : String(error);
-            // Update progress after each file
-            const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
-            spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
-          });
-        
-        fileWritePromises.push(writePromise);
-      });
-      
-      // Wait for all file writes to complete
-      await Promise.all(fileWritePromises);
-      
-      // Report results
-      if (failedWrites === 0) {
-        spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
-        console.log(`\nOutput directory: ${outputDirectoryPath}`);
-      } else {
-        spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`);
-        console.log(`\nOutput directory: ${outputDirectoryPath}`);
-        
-        // Show files with errors
-        const failedFiles = fileDetails.filter(file => file.status === 'error');
-        console.log('\nFiles with errors:');
-        failedFiles.forEach(file => {
-          console.log(`  - ${file.filename}: ${file.error || 'Unknown error'}`);
+      // Create file write promise with error handling
+      const writePromise = fs.writeFile(filePath, markdownContent)
+        .then(() => {
+          succeededWrites++;
+          fileDetail.status = 'success';
+          // Update progress after each file
+          const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
+          spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
+        })
+        .catch((error) => {
+          failedWrites++;
+          fileDetail.status = 'error';
+          fileDetail.error = error instanceof Error ? error.message : String(error);
+          // Update progress after each file
+          const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
+          spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
         });
-      }
+      
+      fileWritePromises.push(writePromise);
+    });
+    
+    // Wait for all file writes to complete
+    await Promise.all(fileWritePromises);
+    
+    // Report results
+    if (failedWrites === 0) {
+      spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
+      console.log(`\nOutput directory: ${outputDirectoryPath}`);
     } else {
-      // No output directory specified, so just show completion message
-      spinner.succeed('Processing completed. Run with --output to save responses to files.');
+      spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`);
+      console.log(`\nOutput directory: ${outputDirectoryPath}`);
+      
+      // Show files with errors
+      const failedFiles = fileDetails.filter(file => file.status === 'error');
+      console.log('\nFiles with errors:');
+      failedFiles.forEach(file => {
+        console.log(`  - ${file.filename}: ${file.error || 'Unknown error'}`);
+      });
     }
     
     // Always return formatted results for potential console display by CLI

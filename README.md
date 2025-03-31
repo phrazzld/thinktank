@@ -52,7 +52,7 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 ### Basic Usage
 
 ```bash
-# Send a prompt file to all enabled models
+# Send a prompt file to all enabled models (saves responses to ./thinktank_outputs/)
 thinktank -i prompt.txt
 
 # Send to a specific model
@@ -61,8 +61,8 @@ thinktank -i prompt.txt -m openai:gpt-4o
 # Use a custom config file
 thinktank -i prompt.txt -c custom-config.json
 
-# Save model responses to an output directory
-thinktank -i prompt.txt -o ./outputs
+# Specify a custom output directory
+thinktank -i prompt.txt -o ./custom-outputs
 
 # Include metadata in the output
 thinktank -i prompt.txt --metadata
@@ -77,7 +77,7 @@ thinktank -i prompt.txt --no-color
 |--------|-------|-------------|------|----------|
 | `--input` | `-i` | Path to input prompt file | string | Yes |
 | `--config` | `-c` | Path to configuration file | string | No |
-| `--output` | `-o` | Path to output directory for model responses | string | No |
+| `--output` | `-o` | Path to custom output directory (default: './thinktank_outputs/') | string | No |
 | `--model` | `-m` | Models to use (provider:model, provider, or model) | array | No |
 | `--metadata` | | Include metadata in output | boolean | No |
 | `--no-color` | | Disable colored output | boolean | No |
@@ -146,20 +146,24 @@ Provider-specific options can also be included and will be passed directly to th
 
 ## Output Directory Feature
 
-Thinktank can save individual model responses to separate files in a dedicated output directory.
+Thinktank automatically saves individual model responses to separate files in a dedicated output directory.
 
 ### Usage
 
 ```bash
-# Save model responses to an output directory
-thinktank -i prompt.txt -o ./outputs
+# Run with default output directory (./thinktank_outputs/)
+thinktank -i prompt.txt
+
+# Specify a custom output directory
+thinktank -i prompt.txt -o ./custom-outputs
 ```
 
 ### How It Works
 
-1. When the `-o/--output` option is provided, Thinktank creates a timestamped directory within the specified path (e.g., `./outputs/thinktank_run_20250331_123456_789/`).
-2. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
-3. Console output will show progress information and the location of the output directory, but won't display the actual model responses.
+1. Thinktank always creates a timestamped directory for each run (e.g., `./thinktank_outputs/thinktank_run_20250331_123456_789/` by default).
+2. The `-o/--output` option allows you to specify a custom base directory instead of the default `./thinktank_outputs/`.
+3. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
+4. Console output will show progress information and the location of the output directory.
 
 ### Output File Format
 
