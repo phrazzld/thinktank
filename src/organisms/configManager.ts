@@ -5,8 +5,11 @@ import { z } from 'zod';
 import { fileExists, readFileContent } from '../molecules/fileReader';
 import { AppConfig, ModelConfig } from '../atoms/types';
 import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from '../atoms/constants';
-import { getApiKey } from '../atoms/helpers';
+import { getApiKey as getApiKeyHelper } from '../atoms/helpers';
 import dotenv from 'dotenv';
+
+// Re-export getApiKey for use in other modules
+export const getApiKey = getApiKeyHelper;
 
 // Load environment variables early
 dotenv.config();
@@ -254,7 +257,7 @@ export function validateModelApiKeys(config: AppConfig): {
   const missingKeyModels: ModelConfig[] = [];
   
   for (const model of enabledModels) {
-    const apiKey = getApiKey(model);
+    const apiKey = getApiKeyHelper(model);
     
     if (apiKey) {
       validModels.push(model);

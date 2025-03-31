@@ -44,12 +44,12 @@
   - Priority: High
 
 ## Model Listing Workflow
-- [ ] Create listModelsWorkflow Template
+- [x] Create listModelsWorkflow Template
   - Description: Create new template file for listing models functionality
   - Dependencies: LLMProvider Interface Update
   - Priority: Medium
 
-- [ ] Implement listAvailableModels Function
+- [x] Implement listAvailableModels Function
   - Description: Create main function to list models across providers
   - Dependencies: Updated LLMProvider Interface, formatModelList Function
   - Priority: Medium
