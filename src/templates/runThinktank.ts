@@ -16,6 +16,7 @@ import path from 'path';
 // Import provider modules to ensure they're registered
 import '../molecules/llmProviders/openai';
 import '../molecules/llmProviders/anthropic';
+import '../molecules/llmProviders/google';
 // Future providers will be imported here
 
 /**

@@ -9,6 +9,7 @@ import { LLMAvailableModel } from '../atoms/types';
 // Import provider modules to ensure they're registered
 import '../molecules/llmProviders/openai';
 import '../molecules/llmProviders/anthropic';
+import '../molecules/llmProviders/google';
 
 /**
  * Options for listing models

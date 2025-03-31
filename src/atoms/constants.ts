@@ -64,6 +64,36 @@ export const DEFAULT_CONFIG: AppConfig = {
         maxTokens: 1000,
       },
     },
+    {
+      provider: 'google',
+      modelId: 'gemini-1.5-flash',
+      enabled: false,
+      apiKeyEnvVar: 'GEMINI_API_KEY',
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
+    {
+      provider: 'google',
+      modelId: 'gemini-1.5-pro',
+      enabled: false,
+      apiKeyEnvVar: 'GEMINI_API_KEY',
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
+    {
+      provider: 'google',
+      modelId: 'gemini-pro',
+      enabled: false,
+      apiKeyEnvVar: 'GEMINI_API_KEY',
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
   ],
 };
 
