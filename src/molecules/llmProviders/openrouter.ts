@@ -2,6 +2,7 @@
  * OpenRouter provider implementation for thinktank
  */
 import OpenAI from 'openai';
+import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
@@ -176,16 +177,113 @@ export class OpenRouterProvider implements LLMProvider {
 
   /**
    * Lists available models from the OpenRouter API
-   * This will be implemented in a future task
    * 
    * @param apiKey - The API key to use for authentication
    * @returns Promise resolving to array of available models
    * @throws {OpenRouterProviderError} If the API call fails
    */
-  public listModels(_apiKey: string): Promise<LLMAvailableModel[]> {
-    // Placeholder implementation to satisfy the interface
-    // Will be properly implemented in a future task
-    return Promise.reject(new OpenRouterProviderError('OpenRouter listModels method not implemented yet'));
+  public async listModels(apiKey: string): Promise<LLMAvailableModel[]> {
+    // Define interface for OpenRouter models response
+    interface OpenRouterModelData {
+      id: string;
+      name?: string;
+      context_length?: number;
+      pricing?: {
+        prompt?: number;
+        completion?: number;
+      };
+    }
+    
+    interface OpenRouterModelsResponse {
+      data: OpenRouterModelData[];
+    }
+  
+    try {
+      // OpenRouter's models endpoint URL
+      const url = 'https://openrouter.ai/api/v1/models';
+      
+      // Make the request with axios
+      const response = await axios.get<OpenRouterModelsResponse>(url, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'https://github.com/phrazzld/thinktank',
+          'X-Title': 'thinktank CLI',
+        },
+      });
+      
+      // Validate response structure
+      if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
+        throw new OpenRouterProviderError('Invalid response format received from OpenRouter list models API');
+      }
+      
+      // Map the response to LLMAvailableModel format
+      return response.data.data.map((model) => {
+        const id = model.id || 'unknown';
+        
+        // Build description from available fields
+        let description = '';
+        
+        if (model.name) {
+          description += model.name;
+        }
+        
+        if (model.context_length) {
+          description += description ? ` (${model.context_length} tokens)` : `Context: ${model.context_length} tokens`;
+        }
+        
+        if (model.pricing) {
+          const prompt = model.pricing.prompt;
+          const completion = model.pricing.completion;
+          
+          if (prompt && completion) {
+            description += description ? 
+              ` • $${prompt}/1M prompt, $${completion}/1M completion` : 
+              `Pricing: $${prompt}/1M prompt, $${completion}/1M completion`;
+          }
+        }
+        
+        return {
+          id,
+          description: description || `Model ID: ${id}`,
+        };
+      });
+    } catch (error) {
+      // Handle axios errors
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        // Use a simpler approach to get error message that's type-safe
+        let message = error.message;
+        
+        // Extract API error message if available
+        try {
+          if (error.response?.data && 
+              typeof error.response.data === 'object' && 
+              error.response.data !== null) {
+            
+            // Try to access common error message patterns
+            const data = error.response.data as { error?: { message?: string } };
+            if (data.error?.message) {
+              message = data.error.message;
+            }
+          }
+        } catch (extractError) {
+          // If we can't extract the message, just use the original error message
+        }
+        
+        throw new OpenRouterProviderError(`OpenRouter API error listing models (Status: ${status}): ${message}`, error);
+      }
+      
+      // Handle other errors
+      if (error instanceof Error) {
+        if (error instanceof OpenRouterProviderError) {
+          throw error; // Re-throw our own errors
+        }
+        throw new OpenRouterProviderError(`Error listing OpenRouter models: ${error.message}`, error);
+      }
+      
+      // Handle unknown errors
+      throw new OpenRouterProviderError('Unknown error occurred while listing models from OpenRouter');
+    }
   }
 }
 
