@@ -36,7 +36,7 @@
   - Dependencies: All implementation tasks
   - Priority: Medium
 
-- [ ] Add integration tests 
+- [x] Add integration tests 
   - Description: Test end-to-end functionality of directory creation and file output
   - Dependencies: All implementation tasks
   - Priority: Medium
