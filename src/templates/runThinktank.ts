@@ -8,9 +8,10 @@ import { loadConfig, filterModels, getEnabledModels, validateModelApiKeys } from
 import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig } from '../atoms/types';
-import { getModelConfigKey, resolveOutputDirectory } from '../atoms/helpers';
+import { getModelConfigKey, resolveOutputDirectory, sanitizeFilename } from '../atoms/helpers';
 import ora from 'ora';
 import fs from 'fs/promises';
+import path from 'path';
 
 // Import provider modules to ensure they're registered
 import '../molecules/llmProviders/openai';
@@ -62,6 +63,46 @@ export class ThinktankError extends Error {
     super(message);
     this.name = 'ThinktankError';
   }
+}
+
+/**
+ * Formats an LLM response as Markdown
+ * 
+ * @param response - The LLM response to format
+ * @param includeMetadata - Whether to include metadata in the output
+ * @returns The formatted Markdown
+ */
+function formatResponseAsMarkdown(
+  response: LLMResponse & { configKey: string },
+  includeMetadata = false
+): string {
+  const { text, error, metadata, configKey } = response;
+  
+  // Start with a header
+  let markdown = `# ${configKey}\n\n`;
+  
+  // Add timestamp
+  const timestamp = new Date().toISOString();
+  markdown += `Generated: ${timestamp}\n\n`;
+  
+  // Add error if present
+  if (error) {
+    markdown += `## Error\n\n\`\`\`\n${error}\n\`\`\`\n\n`;
+  }
+  
+  // Add the response text (if available)
+  if (text) {
+    markdown += `## Response\n\n${text}\n\n`;
+  }
+  
+  // Include metadata if requested
+  if (includeMetadata && metadata) {
+    markdown += '## Metadata\n\n```json\n';
+    markdown += JSON.stringify(metadata, null, 2);
+    markdown += '\n```\n';
+  }
+  
+  return markdown;
 }
 
 /**
@@ -198,20 +239,62 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 6. Execute calls concurrently
     const results = await Promise.all(callPromises);
     
-    // 7. Format results for console output only
-    spinner.text = 'Formatting results...';
+    // 7. Write individual files if output directory is specified
+    if (outputDirectoryPath) {
+      spinner.text = 'Writing model responses to individual files...';
+      
+      // Track stats for reporting
+      let succeededWrites = 0;
+      let failedWrites = 0;
+      const fileWritePromises: Promise<void>[] = [];
+      
+      // Process each result
+      results.forEach((result) => {
+        // Create sanitized filename from provider and model
+        const sanitizedProvider = sanitizeFilename(result.provider);
+        const sanitizedModelId = sanitizeFilename(result.modelId);
+        const filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
+        
+        // Full path to output file
+        const filePath = path.join(outputDirectoryPath!, filename);
+        
+        // Format the response as Markdown
+        const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
+        
+        // Create file write promise with error handling
+        const writePromise = fs.writeFile(filePath, markdownContent)
+          .then(() => {
+            succeededWrites++;
+          })
+          .catch((error) => {
+            failedWrites++;
+            // Log error but continue with other files
+            console.error(`Error writing ${filename}: ${error instanceof Error ? error.message : String(error)}`);
+          });
+        
+        fileWritePromises.push(writePromise);
+      });
+      
+      // Wait for all file writes to complete
+      await Promise.all(fileWritePromises);
+      
+      // Report results
+      if (failedWrites === 0) {
+        spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
+      } else {
+        spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes in ${outputDirectoryPath}`);
+      }
+    } else {
+      // Format results for console output only if no output directory
+      spinner.text = 'Formatting results...';
+      spinner.succeed('Processing completed.');
+    }
+    
+    // Always return formatted results for potential console display by CLI
     const formattedResults = formatResults(results, {
       includeMetadata: options.includeMetadata,
       useColors: options.useColors,
     });
-    
-    // 8. Handle output
-    if (outputDirectoryPath) {
-      spinner.succeed(`Processing completed. Results saved to ${outputDirectoryPath}`);
-    } else {
-      spinner.succeed('Done!');
-    }
-    
     return formattedResults;
   } catch (error) {
     spinner.fail('An error occurred');

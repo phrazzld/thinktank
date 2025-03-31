@@ -21,7 +21,7 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Implement individual file writing 
+- [x] Implement individual file writing 
   - Description: Add logic to write each model response to its own Markdown (.md) file in the output directory
   - Dependencies: Directory creation, filename sanitization
   - Priority: High

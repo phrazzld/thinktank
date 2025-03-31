@@ -84,6 +84,7 @@ describe('runThinktank', () => {
 
     // Mock fs
     (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
+    (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
   });
 
   it('should run successfully with valid inputs', async () => {
@@ -118,9 +119,10 @@ describe('runThinktank', () => {
     );
   });
 
-  it('should create output directory when output path is provided', async () => {
-    // Mock fs.mkdir to test directory creation
-    (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+  it('should create output directory and write files when output path is provided', async () => {
+    // Reset mocks to track calls
+    (fs.mkdir as jest.Mock).mockClear();
+    (fs.writeFile as jest.Mock).mockClear();
     
     const options: RunOptions = {
       input: 'test-prompt.txt',
@@ -133,6 +135,19 @@ describe('runThinktank', () => {
     
     // Verify directory creation was attempted
     expect(fs.mkdir).toHaveBeenCalled();
+    
+    // Verify file write was attempted for the model
+    expect(fs.writeFile).toHaveBeenCalled();
+    
+    // Verify content format and path
+    const writeFileCalls = (fs.writeFile as jest.Mock).mock.calls;
+    expect(writeFileCalls.length).toBeGreaterThan(0);
+    
+    // Check that the content has Markdown format
+    const [_, content] = writeFileCalls[0];
+    expect(typeof content).toBe('string');
+    expect(content).toContain('# mock:mock-model');
+    expect(content).toContain('## Response');
   });
 
   it('should handle missing API keys gracefully', async () => {
