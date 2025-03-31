@@ -34,7 +34,7 @@ export interface RunOptions {
   /**
    * Path to the output directory (optional)
    * If provided, this will be used as the parent directory for the run-specific output folder
-   * If not provided, './thinktank_outputs/' in the current working directory will be used
+   * If not provided, './thinktank-reports/' in the current working directory will be used
    * Note: Model responses are always written to files in a timestamped subdirectory
    */
   output?: string;

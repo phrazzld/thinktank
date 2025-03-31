@@ -32,7 +32,7 @@ export async function main(): Promise<void> {
     })
     .option('output', {
       alias: 'o',
-      describe: 'Custom path for output directory (default: ./thinktank_outputs/)',
+      describe: 'Custom path for output directory (default: ./thinktank-reports/)',
       type: 'string',
     })
     .option('model', {

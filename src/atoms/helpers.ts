@@ -85,9 +85,9 @@ export function generateRunDirectoryName(): string {
  */
 export function resolveOutputDirectory(
   outputOption?: string,
-  defaultDirName: string = 'thinktank_outputs'
+  defaultDirName: string = 'thinktank-reports'
 ): string {
-  // Use provided path or default to 'thinktank_outputs' in current working directory
+  // Use provided path or default to 'thinktank-reports' in current working directory
   const targetPath = outputOption
     ? path.resolve(outputOption) 
     : path.resolve(process.cwd(), defaultDirName);

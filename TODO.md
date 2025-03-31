@@ -38,7 +38,7 @@
   - Status: Completed in commit 6841202
 
 ## Implementation Details
-- Default output directory is './thinktank_outputs/' in the current working directory
+- Default output directory is './thinktank-reports/' in the current working directory
 - Each run creates a timestamped subdirectory for organization (e.g., thinktank_run_YYYYMMDD_HHMMSS_MSS)
 - The --output flag is now optional and only specifies a custom base directory
 - If directory creation fails, application throws an error and stops
