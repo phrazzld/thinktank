@@ -4,7 +4,7 @@
  * Note: We import the provider first to trigger its auto-registration
  */
 import { OpenAIProvider, OpenAIProviderError, openaiProvider } from '../openai';
-import { ModelOptions } from '../../../atoms/types';
+import { ModelOptions, LLMAvailableModel } from '../../../atoms/types';
 import { clearRegistry, getProvider } from '../../../organisms/llmRegistry';
 import OpenAI from 'openai';
 
@@ -240,6 +240,107 @@ describe('OpenAI Provider', () => {
       
       // But should make two API calls
       expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('listModels', () => {
+    let provider: OpenAIProvider;
+    let mockList: jest.Mock;
+    
+    beforeEach(() => {
+      provider = new OpenAIProvider('test-api-key');
+      
+      // Set up mock for models.list
+      mockList = jest.fn();
+      
+      // Mock the OpenAI client creation to include models.list
+      MockedOpenAI.mockImplementation(() => {
+        return {
+          models: {
+            list: mockList
+          }
+        } as unknown as OpenAI;
+      });
+    });
+    
+    it('should fetch models from the OpenAI API', async () => {
+      // Mock models.list response to return an AsyncIterable
+      const mockModelsList = [
+        { 
+          id: 'gpt-4o',
+          object: "model",
+          created: 1686935002,
+          owned_by: "openai"
+        },
+        { 
+          id: 'gpt-4-turbo',
+          object: "model",
+          created: 1686935002,
+          owned_by: "organization-owner",
+        }
+      ];
+      
+      // Set up the mock to behave like an async iterator
+      mockList.mockReturnValue({
+        [Symbol.asyncIterator]: async function* () {
+          for (const model of mockModelsList) {
+            yield model;
+          }
+        }
+      });
+      
+      const models: LLMAvailableModel[] = await provider.listModels('test-api-key');
+      
+      // Verify SDK was initialized with correct API key
+      expect(MockedOpenAI).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
+      
+      // Verify models.list was called
+      expect(mockList).toHaveBeenCalled();
+      
+      // Verify models are correctly mapped
+      expect(models).toHaveLength(2);
+      expect(models[0]).toEqual({
+        id: 'gpt-4o',
+        description: 'Owned by: openai'
+      });
+      expect(models[1]).toEqual({
+        id: 'gpt-4-turbo',
+        description: 'Owned by: organization-owner'
+      });
+    });
+    
+    it('should handle empty model list', async () => {
+      // Mock empty list
+      mockList.mockReturnValue({
+        [Symbol.asyncIterator]: async function* () {
+          // Empty array so the generator completes without yielding
+          const emptyArray: any[] = [];
+          for (const item of emptyArray) {
+            yield item;
+          }
+        }
+      });
+      
+      const models = await provider.listModels('test-api-key');
+      
+      expect(models).toEqual([]);
+    });
+
+    it('should handle API errors gracefully', async () => {
+      // Mock API error by making the asyncIterator throw
+      mockList.mockReturnValue({
+        [Symbol.asyncIterator]: async function* () {
+          const errorCondition = true;
+          if (errorCondition) {
+            throw new Error('Invalid API key');
+          }
+          yield null; // This line is unreachable but satisfies the linter
+        }
+      });
+      
+      // The method should throw OpenAIProviderError
+      await expect(provider.listModels('invalid-key')).rejects.toThrow(OpenAIProviderError);
+      await expect(provider.listModels('invalid-key')).rejects.toThrow('OpenAI API error when listing models');
     });
   });
 });

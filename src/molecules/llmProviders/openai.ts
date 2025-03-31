@@ -2,7 +2,7 @@
  * OpenAI provider implementation for Thinktank
  */
 import OpenAI from 'openai';
-import { LLMProvider, LLMResponse, ModelOptions } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -147,6 +147,45 @@ export class OpenAIProvider implements LLMProvider {
       
       // Handle unknown errors
       throw new OpenAIProviderError('Unknown error occurred while generating text from OpenAI');
+    }
+  }
+
+  /**
+   * Lists available models from the OpenAI API
+   * 
+   * @param apiKey - The API key to use for authentication
+   * @returns Promise resolving to array of available models
+   * @throws {OpenAIProviderError} If the API call fails
+   */
+  public async listModels(apiKey: string): Promise<LLMAvailableModel[]> {
+    try {
+      // Use the provided API key directly instead of the one from the constructor
+      // This allows fetching models with a different key
+      const client = new OpenAI({ apiKey });
+      
+      // Fetch models using the SDK - this returns an AsyncIterable
+      const modelsList = client.models.list();
+      
+      // Convert AsyncIterable to array of LLMAvailableModel
+      const models: LLMAvailableModel[] = [];
+      
+      // Iterate through the AsyncIterable
+      for await (const model of modelsList) {
+        models.push({
+          id: model.id,
+          description: `Owned by: ${model.owned_by}`
+        });
+      }
+      
+      return models;
+    } catch (error) {
+      // Handle specific error cases
+      if (error instanceof Error) {
+        throw new OpenAIProviderError(`OpenAI API error when listing models: ${error.message}`, error);
+      }
+      
+      // Handle unknown errors
+      throw new OpenAIProviderError('Unknown error occurred while listing models from OpenAI');
     }
   }
 }
