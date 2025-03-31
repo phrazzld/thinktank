@@ -69,9 +69,17 @@ thinktank -i prompt.txt --metadata
 
 # Disable colored output
 thinktank -i prompt.txt --no-color
+
+# List all available models from configured providers
+thinktank list-models
+
+# List models from a specific provider
+thinktank list-models -p anthropic
 ```
 
 ### Command Line Options
+
+#### Default Command Options (for prompt querying)
 
 | Option | Alias | Description | Type | Required |
 |--------|-------|-------------|------|----------|
@@ -83,6 +91,14 @@ thinktank -i prompt.txt --no-color
 | `--no-color` | | Disable colored output | boolean | No |
 | `--help` | `-h` | Show help | | |
 | `--version` | `-v` | Show version number | | |
+
+#### List-Models Command Options
+
+| Option | Alias | Description | Type | Required |
+|--------|-------|-------------|------|----------|
+| `--provider` | `-p` | Filter models by provider ID | string | No |
+| `--config` | `-c` | Path to configuration file | string | No |
+| `--help` | `-h` | Show help | | |
 
 ## Configuration
 
@@ -143,6 +159,51 @@ The `options` object can include:
 | `maxTokens` | number | Maximum number of tokens to generate |
 
 Provider-specific options can also be included and will be passed directly to the underlying API.
+
+## List Models Feature
+
+Thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
+
+### Usage
+
+```bash
+# List all available models from all providers
+thinktank list-models
+
+# List models from a specific provider
+thinktank list-models -p anthropic
+
+# List models using a custom config file
+thinktank list-models -c custom-config.json
+```
+
+### How It Works
+
+1. The command queries each provider in your configuration for their available models
+2. For providers that support the `listModels` API (like Anthropic and OpenAI), it retrieves the list of models dynamically
+3. Results are displayed grouped by provider, with descriptions when available
+4. Errors (like missing API keys) are clearly shown for troubleshooting
+
+### Example Output
+
+```
+Available Models:
+
+--- openai ---
+  - gpt-4o
+  - gpt-4-turbo (Legacy GPT-4 Turbo)
+  - gpt-3.5-turbo
+
+--- anthropic ---
+  - claude-3-opus-20240229 (Most powerful model)
+  - claude-3-sonnet-20240229 (Balanced model)
+  - claude-3-haiku-20240307 (Fast, efficient model)
+  - claude-3-5-sonnet-20240620 (Latest Sonnet model)
+  - claude-3-7-sonnet-20250219 (Latest advanced model)
+
+--- legacy-provider ---
+  Error fetching models: Provider 'legacy-provider' does not support listing models
+```
 
 ## Output Directory Feature
 
@@ -236,7 +297,7 @@ src/
 Here's an example implementation for a new provider:
 
 ```typescript
-import { LLMProvider, LLMResponse, ModelOptions } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 export class NewProvider implements LLMProvider {
@@ -276,6 +337,24 @@ export class NewProvider implements LLMProvider {
         throw new Error(`${this.providerId} API error: ${error.message}`);
       }
       throw new Error(`Unknown error occurred with ${this.providerId}`);
+    }
+  }
+  
+  // Optional method to list available models from this provider
+  public async listModels(apiKey: string): Promise<LLMAvailableModel[]> {
+    try {
+      // Implementation to fetch available models from the provider's API
+      // ...
+      
+      return [
+        { id: 'model-1', description: 'First model' },
+        { id: 'model-2', description: 'Second model' },
+      ];
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new Error(`${this.providerId} API error when listing models: ${error.message}`);
+      }
+      throw new Error(`Unknown error occurred when listing ${this.providerId} models`);
     }
   }
 }
