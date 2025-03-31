@@ -55,7 +55,7 @@
   - Priority: Medium
 
 ## CLI Update
-- [ ] Add list-models Command
+- [x] Add list-models Command
   - Description: Update CLI to add the new list-models command with provider flag
   - Dependencies: listModelsWorkflow template
   - Priority: Medium
@@ -90,7 +90,7 @@
   - Priority: Medium
   - TDD: Implement these tests first before implementation
 
-- [ ] Integration Test CLI list-models Command
+- [x] Integration Test CLI list-models Command
   - Description: Test the CLI command parsing and execution
   - Dependencies: CLI Update
   - Priority: Medium
