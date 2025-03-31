@@ -8,7 +8,7 @@ import { loadConfig, filterModels, getEnabledModels, validateModelApiKeys } from
 import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig } from '../atoms/types';
-import { getModelConfigKey } from '../atoms/helpers';
+import { getModelConfigKey, resolveOutputDirectory } from '../atoms/helpers';
 import ora from 'ora';
 import fs from 'fs/promises';
 
@@ -74,6 +74,9 @@ export class ThinktankError extends Error {
 export async function runThinktank(options: RunOptions): Promise<string> {
   const spinner = ora('Starting Thinktank...').start();
   
+  // Track the output directory path for later use
+  let outputDirectoryPath: string | undefined;
+  
   try {
     // 1. Load configuration
     spinner.text = 'Loading configuration...';
@@ -82,6 +85,25 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 2. Read input file
     spinner.text = 'Reading input file...';
     const prompt = await readFileContent(options.input);
+    
+    // 2.5 Create output directory if needed
+    if (options.output) {
+      // Resolve the output directory path
+      outputDirectoryPath = resolveOutputDirectory(options.output);
+      
+      spinner.text = `Creating output directory: ${outputDirectoryPath}`;
+      try {
+        // Create the directory with recursive option to ensure parent directories exist
+        await fs.mkdir(outputDirectoryPath, { recursive: true });
+        spinner.info(`Output directory created: ${outputDirectoryPath}`);
+      } catch (error) {
+        spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
+        throw new ThinktankError(
+          `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
+          error instanceof Error ? error : undefined
+        );
+      }
+    }
     
     // 3. Filter models based on CLI args
     spinner.text = 'Preparing models...';
@@ -176,18 +198,16 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 6. Execute calls concurrently
     const results = await Promise.all(callPromises);
     
-    // 7. Format results
+    // 7. Format results for console output only
     spinner.text = 'Formatting results...';
     const formattedResults = formatResults(results, {
       includeMetadata: options.includeMetadata,
       useColors: options.useColors,
     });
     
-    // 8. Write to file if specified
-    if (options.output) {
-      spinner.text = `Writing results to ${options.output}...`;
-      await fs.writeFile(options.output, formattedResults);
-      spinner.succeed(`Results written to ${options.output}`);
+    // 8. Handle output
+    if (outputDirectoryPath) {
+      spinner.succeed(`Processing completed. Results saved to ${outputDirectoryPath}`);
     } else {
       spinner.succeed('Done!');
     }

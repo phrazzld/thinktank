@@ -118,17 +118,21 @@ describe('runThinktank', () => {
     );
   });
 
-  it('should write results to file when output path is provided', async () => {
+  it('should create output directory when output path is provided', async () => {
+    // Mock fs.mkdir to test directory creation
+    (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+    
     const options: RunOptions = {
       input: 'test-prompt.txt',
-      output: 'output.txt',
+      output: 'output-dir',
       includeMetadata: false,
       useColors: false,
     };
 
-    const result = await runThinktank(options);
+    await runThinktank(options);
     
-    expect(fs.writeFile).toHaveBeenCalledWith('output.txt', result);
+    // Verify directory creation was attempted
+    expect(fs.mkdir).toHaveBeenCalled();
   });
 
   it('should handle missing API keys gracefully', async () => {
