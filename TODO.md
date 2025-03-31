@@ -48,12 +48,12 @@
   - Priority: Medium
 
 ## Integration
-- [ ] Register Provider
+- [x] Register Provider
   - Description: Import OpenRouter provider in runThinktank.ts
   - Dependencies: Working OpenRouterProvider implementation
   - Priority: High
 
-- [ ] Verify ListModels Integration
+- [x] Verify ListModels Integration
   - Description: Ensure OpenRouter works with listModelsWorkflow.ts
   - Dependencies: Working OpenRouterProvider with listModels
   - Priority: Medium

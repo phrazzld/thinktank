@@ -10,6 +10,7 @@ import { LLMAvailableModel } from '../atoms/types';
 import '../molecules/llmProviders/openai';
 import '../molecules/llmProviders/anthropic';
 import '../molecules/llmProviders/google';
+import '../molecules/llmProviders/openrouter';
 
 /**
  * Options for listing models

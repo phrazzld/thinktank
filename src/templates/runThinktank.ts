@@ -17,6 +17,7 @@ import path from 'path';
 import '../molecules/llmProviders/openai';
 import '../molecules/llmProviders/anthropic';
 import '../molecules/llmProviders/google';
+import '../molecules/llmProviders/openrouter';
 // Future providers will be imported here
 
 /**
