@@ -1,7 +1,7 @@
 /**
- * Integration tests for runthinktank.ts
+ * Integration tests for runThinktank.ts
  */
-import { runthinktank, thinktankError, RunOptions } from '../runthinktank';
+import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
 import * as fileReader from '../../molecules/fileReader';
 import * as configManager from '../../organisms/configManager';
 import * as llmRegistry from '../../organisms/llmRegistry';
@@ -45,7 +45,7 @@ class MockProvider implements LLMProvider {
   }
 }
 
-describe('runthinktank', () => {
+describe('runThinktank', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
@@ -94,7 +94,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    const result = await runthinktank(options);
+    const result = await runThinktank(options);
     
     // Verify outputs
     expect(fileReader.readFileContent).toHaveBeenCalledWith('test-prompt.txt');
@@ -111,7 +111,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    await runthinktank(options);
+    await runThinktank(options);
     
     expect(configManager.filterModels).toHaveBeenCalledWith(
       expect.anything(),
@@ -131,7 +131,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    await runthinktank(options);
+    await runThinktank(options);
     
     // Verify directory creation was attempted
     expect(fs.mkdir).toHaveBeenCalled();
@@ -167,7 +167,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    const result = await runthinktank(options);
+    const result = await runThinktank(options);
     
     expect(result).toContain('No models with valid API keys available');
   });
@@ -181,7 +181,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    const result = await runthinktank(options);
+    const result = await runThinktank(options);
     
     expect(result).toContain('No enabled models found in configuration');
   });
@@ -195,7 +195,7 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    await runthinktank(options);
+    await runThinktank(options);
     
     // Test passes if no exception is thrown
   });
@@ -215,12 +215,12 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    const result = await runthinktank(options);
+    const result = await runThinktank(options);
     
     expect(result).toContain('API error');
   });
 
-  it('should throw thinktankError for file read errors', async () => {
+  it('should throw ThinktankError for file read errors', async () => {
     (fileReader.readFileContent as jest.Mock).mockRejectedValue(
       new Error('File not found')
     );
@@ -231,6 +231,6 @@ describe('runthinktank', () => {
       useColors: false,
     };
 
-    await expect(runthinktank(options)).rejects.toThrow(thinktankError);
+    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
   });
 });

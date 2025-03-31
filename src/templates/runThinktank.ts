@@ -60,10 +60,10 @@ export interface RunOptions {
 /**
  * Error class for thinktank runtime errors
  */
-export class thinktankError extends Error {
+export class ThinktankError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
-    this.name = 'thinktankError';
+    this.name = 'ThinktankError';
   }
 }
 
@@ -112,9 +112,9 @@ function formatResponseAsMarkdown(
  * 
  * @param options - Options for running thinktank
  * @returns The formatted results
- * @throws {thinktankError} If an error occurs during execution
+ * @throws {ThinktankError} If an error occurs during execution
  */
-export async function runthinktank(options: RunOptions): Promise<string> {
+export async function runThinktank(options: RunOptions): Promise<string> {
   const spinner = ora('Starting thinktank...').start();
   
   // Track the output directory path for later use
@@ -143,7 +143,7 @@ export async function runthinktank(options: RunOptions): Promise<string> {
       spinner.info(`Output directory created: ${outputDirectoryPath}`);
     } catch (error) {
       spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
-      throw new thinktankError(
+      throw new ThinktankError(
         `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
       );
@@ -391,9 +391,9 @@ export async function runthinktank(options: RunOptions): Promise<string> {
     spinner.fail('An error occurred');
     
     if (error instanceof Error) {
-      throw new thinktankError(`Error running thinktank: ${error.message}`, error);
+      throw new ThinktankError(`Error running thinktank: ${error.message}`, error);
     }
     
-    throw new thinktankError('Unknown error running thinktank');
+    throw new ThinktankError('Unknown error running thinktank');
   }
 }

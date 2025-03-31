@@ -4,7 +4,7 @@
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { runthinktank, thinktankError } from '../templates/runthinktank';
+import { runThinktank, ThinktankError } from '../templates/runThinktank';
 import { listAvailableModels } from '../templates/listModelsWorkflow';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
@@ -100,19 +100,19 @@ export async function main(): Promise<void> {
       
       // Verify input file exists
       if (!argv.input) {
-        throw new thinktankError('Input file is required. Use --input or -i to specify the input file.');
+        throw new ThinktankError('Input file is required. Use --input or -i to specify the input file.');
       }
       
       try {
         await fs.access(argv.input as string);
       } catch (error) {
-        throw new thinktankError(`Input file not found: ${argv.input as string}`);
+        throw new ThinktankError(`Input file not found: ${argv.input as string}`);
       }
       
       // Run thinktank - all model responses are written to the output directory
       // We're running thinktank but not using the returned results
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      await runthinktank({
+      await runThinktank({
         input: argv.input as string,
         configPath: argv.config,
         output: argv.output as string | undefined,
@@ -125,7 +125,7 @@ export async function main(): Promise<void> {
     }
   } catch (error) {
     // Handle errors
-    if (error instanceof thinktankError) {
+    if (error instanceof ThinktankError) {
       // eslint-disable-next-line no-console
       console.error(`Error: ${error.message}`);
       

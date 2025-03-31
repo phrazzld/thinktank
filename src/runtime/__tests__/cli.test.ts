@@ -1,19 +1,19 @@
 /**
  * Integration tests for CLI interface
  */
-import * as runthinktankModule from '../../templates/runthinktank';
+import * as runThinktankModule from '../../templates/runThinktank';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
 import yargs from 'yargs';
 
 // Mock dependencies
-jest.mock('../../templates/runthinktank');
+jest.mock('../../templates/runThinktank');
 jest.mock('fs/promises');
 jest.mock('dotenv');
 jest.mock('yargs');
 
 // Access the mock
-const runthinktank = runthinktankModule.runthinktank as jest.MockedFunction<typeof runthinktankModule.runthinktank>;
+const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
 
 describe('CLI Interface', () => {
   // Store original implementations
@@ -33,7 +33,7 @@ describe('CLI Interface', () => {
     // Reset mocked implementations
     (dotenv.config as jest.Mock).mockReturnValue({});
     (fs.access as jest.Mock).mockResolvedValue(undefined);
-    runthinktank.mockResolvedValue('Mock result');
+    runThinktank.mockResolvedValue('Mock result');
     
     // Setup yargs mock with command
     const mockYargs = {
@@ -86,7 +86,7 @@ describe('CLI Interface', () => {
     await main();
     
     // Verify execution - note that command structure means it won't call fs.access directly
-    expect(runthinktank).toHaveBeenCalledWith({
+    expect(runThinktank).toHaveBeenCalledWith({
       input: 'test-prompt.txt',
       configPath: undefined,
       output: undefined,
@@ -117,7 +117,7 @@ describe('CLI Interface', () => {
     await main();
     
     // Verify execution
-    expect(runthinktank).toHaveBeenCalledWith(expect.objectContaining({
+    expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
       input: 'test-prompt.txt',
       output: 'result.txt',
     }));
@@ -149,10 +149,10 @@ describe('CLI Interface', () => {
   });
   
   it('should handle errors correctly', async () => {
-    // Setup runthinktank to throw an error
-    runthinktank.mockRejectedValue(new Error('Some error'));
+    // Setup runThinktank to throw an error
+    runThinktank.mockRejectedValue(new Error('Some error'));
     
-    // Setup yargs parsing result for default command with error in runthinktank
+    // Setup yargs parsing result for default command with error in runThinktank
     const yargsInstance = yargs([] as any);
     (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
       _: [],
@@ -191,7 +191,7 @@ describe('CLI Interface', () => {
     await main();
     
     // Verify models are passed correctly
-    expect(runthinktank).toHaveBeenCalledWith(
+    expect(runThinktank).toHaveBeenCalledWith(
       expect.objectContaining({
         models: ['openai:gpt-4o'],
       })
