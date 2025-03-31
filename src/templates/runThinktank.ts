@@ -1,5 +1,5 @@
 /**
- * Main orchestration for the Thinktank application
+ * Main orchestration for the thinktank application
  * 
  * This template connects all the components and orchestrates the workflow.
  */
@@ -19,7 +19,7 @@ import '../molecules/llmProviders/anthropic';
 // Future providers will be imported here
 
 /**
- * Options for running Thinktank
+ * Options for running thinktank
  */
 export interface RunOptions {
   /**
@@ -58,12 +58,12 @@ export interface RunOptions {
 }
 
 /**
- * Error class for Thinktank runtime errors
+ * Error class for thinktank runtime errors
  */
-export class ThinktankError extends Error {
+export class thinktankError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
-    this.name = 'ThinktankError';
+    this.name = 'thinktankError';
   }
 }
 
@@ -108,14 +108,14 @@ function formatResponseAsMarkdown(
 }
 
 /**
- * Main function to run Thinktank
+ * Main function to run thinktank
  * 
- * @param options - Options for running Thinktank
+ * @param options - Options for running thinktank
  * @returns The formatted results
- * @throws {ThinktankError} If an error occurs during execution
+ * @throws {thinktankError} If an error occurs during execution
  */
-export async function runThinktank(options: RunOptions): Promise<string> {
-  const spinner = ora('Starting Thinktank...').start();
+export async function runthinktank(options: RunOptions): Promise<string> {
+  const spinner = ora('Starting thinktank...').start();
   
   // Track the output directory path for later use
   let outputDirectoryPath: string | undefined;
@@ -143,7 +143,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       spinner.info(`Output directory created: ${outputDirectoryPath}`);
     } catch (error) {
       spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
-      throw new ThinktankError(
+      throw new thinktankError(
         `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
         error instanceof Error ? error : undefined
       );
@@ -391,9 +391,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     spinner.fail('An error occurred');
     
     if (error instanceof Error) {
-      throw new ThinktankError(`Error running Thinktank: ${error.message}`, error);
+      throw new thinktankError(`Error running thinktank: ${error.message}`, error);
     }
     
-    throw new ThinktankError('Unknown error running Thinktank');
+    throw new thinktankError('Unknown error running thinktank');
   }
 }

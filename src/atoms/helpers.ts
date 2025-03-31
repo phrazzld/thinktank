@@ -1,5 +1,5 @@
 /**
- * Helper functions for the Thinktank application
+ * Helper functions for the thinktank application
  */
 import { ModelConfig } from './types';
 import path from 'path';

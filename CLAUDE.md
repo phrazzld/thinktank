@@ -1,4 +1,4 @@
-# Thinktank Development Guidelines
+# thinktank Development Guidelines
 
 ## Commands
 - Build: `npm run build`

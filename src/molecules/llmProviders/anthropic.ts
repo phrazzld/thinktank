@@ -1,5 +1,5 @@
 /**
- * Anthropic provider implementation for Thinktank
+ * Anthropic provider implementation for thinktank
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';

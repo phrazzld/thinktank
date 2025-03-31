@@ -1,17 +1,17 @@
-# Thinktank
+# thinktank
 
 A powerful CLI tool for querying multiple Large Language Models (LLMs) with the same prompt and comparing their responses.
 
 ## Overview
 
-Thinktank allows you to send the same text prompt to multiple LLM providers (like OpenAI, Anthropic, etc.) simultaneously and view their responses side-by-side. This is useful for:
+thinktank allows you to send the same text prompt to multiple LLM providers (like OpenAI, Anthropic, etc.) simultaneously and view their responses side-by-side. This is useful for:
 
 - Comparing how different models interpret and respond to the same prompt
 - Finding the best model for specific types of queries
 - Testing prompts across different providers before committing to one
 - Educational purposes to understand model differences
 
-Built with TypeScript and designed with extensibility in mind, Thinktank follows Atomic Design principles to provide a robust, maintainable architecture that makes it easy to add new LLM providers.
+Built with TypeScript and designed with extensibility in mind, thinktank follows Atomic Design principles to provide a robust, maintainable architecture that makes it easy to add new LLM providers.
 
 ## Installation
 
@@ -102,11 +102,11 @@ thinktank list-models -p anthropic
 
 ## Configuration
 
-Thinktank uses a JSON configuration file to define which LLM providers and models to use.
+thinktank uses a JSON configuration file to define which LLM providers and models to use.
 
 ### Default Configuration
 
-By default, Thinktank will look for a `thinktank.config.json` file in the current directory. If not found, it will use a default configuration with common models (disabled by default).
+By default, thinktank will look for a `thinktank.config.json` file in the current directory. If not found, it will use a default configuration with common models (disabled by default).
 
 ### Configuration File Format
 
@@ -162,7 +162,7 @@ Provider-specific options can also be included and will be passed directly to th
 
 ## List Models Feature
 
-Thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
+thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
 
 ### Usage
 
@@ -190,9 +190,9 @@ thinktank list-models -c custom-config.json
 Available Models:
 
 --- openai ---
-  - gpt-4o
-  - gpt-4-turbo (Legacy GPT-4 Turbo)
-  - gpt-3.5-turbo
+  - gpt-4o (Owned by: system)
+  - gpt-4-turbo (Owned by: system)
+  - gpt-3.5-turbo (Owned by: openai)
 
 --- anthropic ---
   - claude-3-opus-20240229 (Most powerful model)
@@ -207,7 +207,7 @@ Available Models:
 
 ## Output Directory Feature
 
-Thinktank automatically saves individual model responses to separate files in a dedicated output directory.
+thinktank automatically saves individual model responses to separate files in a dedicated output directory.
 
 ### Usage
 
@@ -221,7 +221,7 @@ thinktank -i prompt.txt -o ./custom-outputs
 
 ### How It Works
 
-1. Thinktank always creates a timestamped directory for each run (e.g., `./thinktank-reports/thinktank_run_20250331_123456_789/` by default).
+1. thinktank always creates a timestamped directory for each run (e.g., `./thinktank-reports/thinktank_run_20250331_123456_789/` by default).
 2. The `-o/--output` option allows you to specify a custom base directory instead of the default `./thinktank-reports/`.
 3. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
 4. Console output will show progress information and the location of the output directory.
@@ -267,7 +267,7 @@ Error message from the API
 
 ## Architecture
 
-Thinktank follows the Atomic Design methodology with a clear separation of concerns:
+thinktank follows the Atomic Design methodology with a clear separation of concerns:
 
 ```
 src/
@@ -283,10 +283,10 @@ src/
 - **ConfigManager**: Handles loading and validating configuration
 - **LLMRegistry**: Manages provider registration and retrieval
 - **LLMProviders**: Implementation of various LLM APIs
-- **RunThinktank**: Orchestrates the main workflow
+- **Runthinktank**: Orchestrates the main workflow
 - **CLI**: Provides the command-line interface
 
-## Extending Thinktank
+## Extending thinktank
 
 ### Adding a New LLM Provider
 
@@ -363,7 +363,7 @@ export class NewProvider implements LLMProvider {
 export const newProvider = new NewProvider();
 ```
 
-4. Import and use the provider in `src/templates/runThinktank.ts`:
+4. Import and use the provider in `src/templates/runthinktank.ts`:
 
 ```typescript
 // Import provider modules to ensure they're registered
@@ -392,7 +392,7 @@ import '../molecules/llmProviders/new-provider';
 
 4. **"Provider not found"**
    - Make sure the provider ID in your config matches the registered provider
-   - Check that the provider module is properly imported in `runThinktank.ts`
+   - Check that the provider module is properly imported in `runthinktank.ts`
 
 5. **"Failed to create output directory"**
    - Check if you have write permissions for the specified output directory

@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Command-line interface for Thinktank
+ * Command-line interface for thinktank
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
-import { runThinktank, ThinktankError } from '../templates/runThinktank';
+import { runthinktank, thinktankError } from '../templates/runthinktank';
 import { listAvailableModels } from '../templates/listModelsWorkflow';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
@@ -100,19 +100,19 @@ export async function main(): Promise<void> {
       
       // Verify input file exists
       if (!argv.input) {
-        throw new ThinktankError('Input file is required. Use --input or -i to specify the input file.');
+        throw new thinktankError('Input file is required. Use --input or -i to specify the input file.');
       }
       
       try {
         await fs.access(argv.input as string);
       } catch (error) {
-        throw new ThinktankError(`Input file not found: ${argv.input as string}`);
+        throw new thinktankError(`Input file not found: ${argv.input as string}`);
       }
       
-      // Run Thinktank - all model responses are written to the output directory
+      // Run thinktank - all model responses are written to the output directory
       // We're running thinktank but not using the returned results
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      await runThinktank({
+      await runthinktank({
         input: argv.input as string,
         configPath: argv.config,
         output: argv.output as string | undefined,
@@ -125,7 +125,7 @@ export async function main(): Promise<void> {
     }
   } catch (error) {
     // Handle errors
-    if (error instanceof ThinktankError) {
+    if (error instanceof thinktankError) {
       // eslint-disable-next-line no-console
       console.error(`Error: ${error.message}`);
       

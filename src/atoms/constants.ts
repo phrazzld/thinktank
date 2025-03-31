@@ -1,5 +1,5 @@
 /**
- * Core constants for the Thinktank application
+ * Core constants for the thinktank application
  */
 import path from 'path';
 import { AppConfig } from './types';

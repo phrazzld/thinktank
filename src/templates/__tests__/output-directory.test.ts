@@ -4,7 +4,7 @@
  * These tests verify that the output directory functionality works correctly
  * including directory creation, file writing, and error handling.
  */
-import { runThinktank, RunOptions } from '../runThinktank';
+import { runthinktank, RunOptions } from '../runthinktank';
 import * as fileReader from '../../molecules/fileReader';
 import * as configManager from '../../organisms/configManager';
 import * as llmRegistry from '../../organisms/llmRegistry';
@@ -140,7 +140,7 @@ describe('Output Directory Feature', () => {
       useColors: false,
     };
     
-    await runThinktank(options);
+    await runthinktank(options);
     
     // Verify mkdir was called
     expect(mockFs.mkdir).toHaveBeenCalled();
@@ -159,7 +159,7 @@ describe('Output Directory Feature', () => {
       useColors: false,
     };
     
-    await runThinktank(options);
+    await runthinktank(options);
     
     // Verify writeFile was called
     expect(mockFs.writeFile).toHaveBeenCalled();
@@ -197,7 +197,7 @@ describe('Output Directory Feature', () => {
       useColors: false,
     };
     
-    await runThinktank(options);
+    await runthinktank(options);
     
     // Verify writeFile was still called
     expect(mockFs.writeFile).toHaveBeenCalled();
@@ -221,7 +221,7 @@ describe('Output Directory Feature', () => {
       useColors: false,
     };
     
-    await expect(runThinktank(options)).rejects.toThrow('Failed to create output directory');
+    await expect(runthinktank(options)).rejects.toThrow('Failed to create output directory');
   });
   
   it('should handle errors during file writing without crashing', async () => {
@@ -236,7 +236,7 @@ describe('Output Directory Feature', () => {
     };
     
     // Should not throw
-    await runThinktank(options);
+    await runthinktank(options);
     
     // Test passes if no exception
     expect(true).toBe(true);

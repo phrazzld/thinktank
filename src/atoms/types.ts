@@ -1,5 +1,5 @@
 /**
- * Core types for the Thinktank application
+ * Core types for the thinktank application
  */
 
 /**

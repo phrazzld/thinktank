@@ -1,5 +1,5 @@
 /**
- * OpenAI provider implementation for Thinktank
+ * OpenAI provider implementation for thinktank
  */
 import OpenAI from 'openai';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';

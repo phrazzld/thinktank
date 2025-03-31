@@ -1,5 +1,5 @@
 /**
- * Registry for LLM providers in the Thinktank application
+ * Registry for LLM providers in the thinktank application
  * 
  * The registry is responsible for managing the registration and lookup of LLM providers.
  * It allows the application to dynamically register and use different LLM providers.
