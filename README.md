@@ -44,6 +44,8 @@ Create a `.env` file in your project root with API keys for the LLM providers yo
 ```
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 # Add other provider API keys as needed
 ```
 
@@ -160,6 +162,55 @@ The `options` object can include:
 
 Provider-specific options can also be included and will be passed directly to the underlying API.
 
+#### Provider-Specific Configuration
+
+##### OpenRouter Configuration
+
+OpenRouter provides access to models from multiple providers through a unified API. To use OpenRouter:
+
+1. Sign up at [openrouter.ai](https://openrouter.ai) and get your API key
+2. Set the `OPENROUTER_API_KEY` environment variable or use the `apiKeyEnvVar` property in your config
+3. Configure models in your config using the format `provider/model-id` for the `modelId` property
+
+Example configuration:
+
+```json
+{
+  "models": [
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    }
+  ]
+}
+```
+
+Additional options supported by OpenRouter:
+- `top_p`: Controls diversity of generated output (0-1)
+- `top_k`: Limits tokens considered to the top k most likely
+- `stop`: Array of sequences that stop generation when encountered
+- `presence_penalty`: Decreases repetition of tokens (>0 = less repetition)
+- `frequency_penalty`: Decreases repetition of phrases (>0 = less repetition)
+
+To see the full list of available models, run:
+```bash
+thinktank list-models -p openrouter
+```
+
 ## List Models Feature
 
 thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
@@ -172,6 +223,7 @@ thinktank list-models
 
 # List models from a specific provider
 thinktank list-models -p anthropic
+thinktank list-models -p openrouter
 
 # List models using a custom config file
 thinktank list-models -c custom-config.json
@@ -374,6 +426,54 @@ import '../molecules/llmProviders/new-provider';
 
 5. Add an example configuration in `templates/thinktank.config.default.json`
 
+### Example: OpenRouter Provider Implementation
+
+OpenRouter is included as an example implementation that demonstrates how to add a new provider. It leverages the OpenAI SDK since OpenRouter's API is compatible with OpenAI's interface but gives access to many different models from various providers.
+
+#### Key Features of the OpenRouter Implementation:
+
+- **API Compatibility**: Uses the OpenAI SDK with a custom base URL to communicate with OpenRouter
+- **Model Access**: Provides access to models from OpenAI, Anthropic, Google, and many other providers through a single API
+- **Custom Headers**: Includes required HTTP headers for OpenRouter API attribution
+- **Detailed Model Information**: When listing models, includes context length and pricing information when available
+
+#### Configuration Example:
+
+```json
+{
+  "provider": "openrouter",
+  "modelId": "openai/gpt-4o",
+  "enabled": true,
+  "apiKeyEnvVar": "OPENROUTER_API_KEY",
+  "options": {
+    "temperature": 0.7,
+    "maxTokens": 1000
+  }
+}
+```
+
+#### Usage:
+
+```bash
+# List all models available through OpenRouter
+thinktank list-models -p openrouter
+
+# Query a specific model via OpenRouter
+thinktank -i prompt.txt -m openrouter:anthropic/claude-3-opus-20240229
+
+# Query multiple OpenRouter models
+thinktank -i prompt.txt -m openrouter:openai/gpt-4o -m openrouter:anthropic/claude-3-haiku
+```
+
+#### OpenRouter Model IDs:
+
+OpenRouter uses a `provider/model-id` format for model names, for example:
+- `openai/gpt-4o` (OpenAI's GPT-4o model)
+- `anthropic/claude-3-opus-20240229` (Anthropic's Claude 3 Opus)
+- `google/gemini-pro` (Google's Gemini Pro)
+
+When configuring models in your config file or when using the `-m` option, use this format to specify which model you want to use through OpenRouter.
+
 ## Troubleshooting
 
 ### Common Issues
@@ -407,6 +507,8 @@ If you're having issues with API keys:
 2. Verify that the environment variables match what the providers expect:
    - OpenAI: `OPENAI_API_KEY`
    - Anthropic: `ANTHROPIC_API_KEY`
+   - Google: `GEMINI_API_KEY`
+   - OpenRouter: `OPENROUTER_API_KEY`
 3. You can override the environment variable name in the config using `apiKeyEnvVar`
 
 ## License
