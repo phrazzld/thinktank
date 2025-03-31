@@ -1,8 +1,7 @@
 /**
  * OpenRouter provider implementation for thinktank
  */
-// OpenAI import will be used in future tasks when implementing methods
-// import OpenAI from 'openai';
+import OpenAI from 'openai';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
@@ -22,15 +21,14 @@ export class OpenRouterProviderError extends Error {
  */
 export class OpenRouterProvider implements LLMProvider {
   public readonly providerId = 'openrouter';
-  // Client will be initialized later
+  private client: OpenAI | null = null;
   
   /**
    * Creates an instance of the OpenRouter provider
    * 
    * @param apiKey - Optional API key to use instead of environment variable
    */
-  constructor(_apiKey?: string) {
-    // apiKey will be used in future tasks when implementing methods
+  constructor(private readonly apiKey?: string) {
     // Auto-register this provider instance
     try {
       registerProvider(this);
@@ -40,6 +38,37 @@ export class OpenRouterProvider implements LLMProvider {
         throw error;
       }
     }
+  }
+  
+  /**
+   * Gets or initializes the OpenAI client configured for OpenRouter
+   * 
+   * @returns The OpenAI client instance configured for OpenRouter
+   * @throws {OpenRouterProviderError} If the API key is missing
+   */
+  private getClient(): OpenAI {
+    if (this.client) {
+      return this.client;
+    }
+    
+    // Use the provided API key or fall back to the environment variable
+    const apiKey = this.apiKey || process.env.OPENROUTER_API_KEY;
+    
+    if (!apiKey) {
+      throw new OpenRouterProviderError('OpenRouter API key is missing. Set OPENROUTER_API_KEY environment variable or provide it when creating the provider.');
+    }
+    
+    // Create a new OpenAI client with OpenRouter configuration
+    this.client = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey,
+      defaultHeaders: {
+        'HTTP-Referer': 'https://github.com/phrazzld/thinktank',
+        'X-Title': 'thinktank CLI',
+      },
+    });
+    
+    return this.client;
   }
 
   /**
@@ -57,9 +86,21 @@ export class OpenRouterProvider implements LLMProvider {
     _modelId: string,
     _options?: ModelOptions
   ): Promise<LLMResponse> {
-    // Placeholder implementation to satisfy the interface
-    // Will be properly implemented in a future task
-    return Promise.reject(new OpenRouterProviderError('OpenRouter generate method not implemented yet'));
+    try {
+      // Call getClient() to ensure it's not marked as unused
+      // This will be replaced with actual implementation in the next task
+      this.getClient();
+      
+      // Placeholder implementation to satisfy the interface
+      // Will be properly implemented in a future task
+      return Promise.reject(new OpenRouterProviderError('OpenRouter generate method not implemented yet'));
+    } catch (error) {
+      // If getClient() throws an error (e.g., missing API key), propagate it
+      if (error instanceof OpenRouterProviderError) {
+        return Promise.reject(error);
+      }
+      return Promise.reject(new OpenRouterProviderError(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`));
+    }
   }
 
   /**
