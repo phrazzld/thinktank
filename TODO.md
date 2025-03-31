@@ -1,53 +1,52 @@
 # TODO
 
-## Output Directory Implementation
-- [x] Define output directory strategy 
-  - Description: Modify existing `--output` option to specify parent directory for run-specific output folder
-  - Dependencies: None
-  - Priority: High
+## Always Create Output Directory - COMPLETED ✅
+- [x] Refactor resolveOutputDirectory function
+  - Description: Modified to return the target path without creating a subdirectory
+  - Status: Completed in commit a5f956c
 
-- [x] Create output directory generator 
-  - Description: Implement utility for timestamp-based directory name generation
-  - Dependencies: None
-  - Priority: High
+- [x] Add new generateOutputDirectoryPath function
+  - Description: Added to create a complete path with timestamped subdirectory
+  - Status: Completed in commit a5f956c
 
-- [x] Implement directory creation 
-  - Description: Add logic in runThinktank.ts to create unique output directory with error handling
-  - Dependencies: Output directory strategy
-  - Priority: High
+- [x] Update output path resolution in runThinktank
+  - Description: Always resolve output directory path (use default or user-specified)
+  - Status: Completed in commit a5f956c
 
-- [x] Create filename sanitization utility 
-  - Description: Implement function to sanitize provider and model IDs for safe filenames
-  - Dependencies: None
-  - Priority: High
+- [x] Make directory creation unconditional 
+  - Description: Always create output directory regardless of --output flag
+  - Status: Completed in commit a5f956c
 
-- [x] Implement individual file writing 
-  - Description: Add logic to write each model response to its own Markdown (.md) file in the output directory
-  - Dependencies: Directory creation, filename sanitization
-  - Priority: High
+- [x] Make file writing unconditional
+  - Description: Always write model responses to files in output directory
+  - Status: Completed in commit a5f956c
 
-- [x] Enhance console output 
-  - Description: Revise console output to show detailed progress info without raw responses
-  - Dependencies: Individual file writing
-  - Priority: High
+- [x] Update spinner and console messages
+  - Description: Revised output messages to reflect always-on behavior
+  - Status: Completed in commit a5f956c
 
-- [x] Add unit tests 
-  - Description: Test filename sanitization and directory name generation utilities
-  - Dependencies: All implementation tasks
-  - Priority: Medium
+- [x] Update unit tests for helpers
+  - Description: Added tests for resolveOutputDirectory and generateOutputDirectoryPath
+  - Status: Completed in commit a5f956c
 
-- [x] Add integration tests 
-  - Description: Test end-to-end functionality of directory creation and file output
-  - Dependencies: All implementation tasks
-  - Priority: Medium
+- [x] Update README.md
+  - Description: Documented the new always-on behavior and updated --output flag purpose
+  - Status: Completed in commit a5f956c
+  
+- [x] Remove console output of model responses
+  - Description: Updated CLI to never print model responses to console
+  - Status: Completed in commit 6841202
 
-- [x] Update documentation 
-  - Description: Update README and CLI help with new output directory feature
-  - Dependencies: All implementation tasks
-  - Priority: Medium
+## Implementation Details
+- Default output directory is './thinktank_outputs/' in the current working directory
+- Each run creates a timestamped subdirectory for organization (e.g., thinktank_run_YYYYMMDD_HHMMSS_MSS)
+- The --output flag is now optional and only specifies a custom base directory
+- If directory creation fails, application throws an error and stops
+- Files with the same model name won't conflict due to the timestamped subdirectory
 
-## Assumptions/Questions
-- We're modifying the existing `--output` option rather than creating a new `--output-dir` option
-- The feature will always be active (no separate flag to enable/disable)
-- We will NOT output raw model responses to console, only status/progress information
-- Markdown (.md) will be used as the file format for all model outputs
+## Next Potential Enhancements
+- Add option to disable file writing (for performance on low-resource systems)
+- Add support for customizing the output filename format
+- Consider adding an option to disable the timestamped subdirectory behavior
+- Fix CLI tests to match new behavior
+- Add cli option to optionally display results in console (--display)
