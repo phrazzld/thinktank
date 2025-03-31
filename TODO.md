@@ -22,10 +22,11 @@
   - Status: Completed - coverage/ was already in .gitignore
 
 ### Fix CLI Tests
-- [ ] Add E2E testing dependencies
+- [x] Add E2E testing dependencies
   - Description: Install execa or similar library for subprocess execution
   - Dependencies: None
   - Priority: High
+  - Status: Completed - Installed execa@5.1.1 and created basic test to verify it works
 
 - [ ] Create cli.e2e.test.ts
   - Description: Implement E2E tests that run the CLI as a subprocess
