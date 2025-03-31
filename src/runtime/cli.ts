@@ -86,7 +86,7 @@ export async function main(): Promise<void> {
     if (command === 'list-models') {
       // Run the list-models command
       const result = await listAvailableModels({
-        config: argv.config as string | undefined,
+        config: argv.config,
         provider: argv.provider as string | undefined,
       });
       
@@ -114,7 +114,7 @@ export async function main(): Promise<void> {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       await runThinktank({
         input: argv.input as string,
-        configPath: argv.config as string | undefined,
+        configPath: argv.config,
         output: argv.output as string | undefined,
         models: argv.model as string[] | undefined,
         includeMetadata: argv.metadata as boolean | undefined,
