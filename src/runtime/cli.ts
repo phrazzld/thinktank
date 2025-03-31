@@ -32,7 +32,7 @@ export async function main(): Promise<void> {
     })
     .option('output', {
       alias: 'o',
-      describe: 'Path to output file',
+      describe: 'Path to output directory for model responses',
       type: 'string',
     })
     .option('model', {
@@ -57,7 +57,7 @@ export async function main(): Promise<void> {
     .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models')
     .example('$0 -i prompt.txt -m openai:gpt-4o', 'Send prompt to specific model')
     .example('$0 -i prompt.txt -c custom-config.json', 'Use custom config file')
-    .example('$0 -i prompt.txt -o results.txt', 'Write results to file')
+    .example('$0 -i prompt.txt -o ./outputs', 'Save model responses to output directory')
     .epilogue('For more information, visit https://github.com/phrazzld/thinktank')
     .parseAsync();
   

@@ -31,7 +31,9 @@ export interface RunOptions {
   configPath?: string;
   
   /**
-   * Path to the output file (optional)
+   * Path to the output directory (optional)
+   * If provided, this will be used as the parent directory for the run-specific output folder
+   * If not provided, a default directory in the current working directory will be used
    */
   output?: string;
   

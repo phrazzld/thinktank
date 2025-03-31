@@ -1,123 +1,53 @@
 # TODO
 
-## Project Setup
-- [x] Initialize Project
-  - Description: Set up git repository and npm/yarn project
+## Output Directory Implementation
+- [x] Define output directory strategy 
+  - Description: Modify existing `--output` option to specify parent directory for run-specific output folder
   - Dependencies: None
   - Priority: High
 
-- [x] Configure TypeScript
-  - Description: Create tsconfig.json with strict mode and resolveJsonModule
-  - Dependencies: Initialize Project
+- [x] Create output directory generator 
+  - Description: Implement utility for timestamp-based directory name generation
+  - Dependencies: None
   - Priority: High
 
-- [x] Setup ESLint and Prettier
-  - Description: Configure linting and formatting rules
-  - Dependencies: Initialize Project
+- [ ] Implement directory creation 
+  - Description: Add logic in runThinktank.ts to create unique output directory with error handling
+  - Dependencies: Output directory strategy
   - Priority: High
 
-## Core Types and Helpers
-- [x] Define Core Types
-  - Description: Create atoms/types.ts with ModelConfig, LLMResponse, LLMProvider interfaces
-  - Dependencies: Project Setup
+- [x] Create filename sanitization utility 
+  - Description: Implement function to sanitize provider and model IDs for safe filenames
+  - Dependencies: None
   - Priority: High
 
-- [x] Define Constants
-  - Description: Create atoms/constants.ts with DEFAULT_CONFIG and CONFIG_SEARCH_PATHS
-  - Dependencies: Define Core Types
+- [ ] Implement individual file writing 
+  - Description: Add logic to write each model response to its own Markdown (.md) file in the output directory
+  - Dependencies: Directory creation, filename sanitization
   - Priority: High
 
-- [x] Implement Helper Functions
-  - Description: Create atoms/helpers.ts with getModelConfigKey and getDefaultApiKeyEnvVar
-  - Dependencies: Define Core Types
+- [ ] Enhance console output 
+  - Description: Revise console output to show detailed progress info without raw responses
+  - Dependencies: Individual file writing
   - Priority: High
 
-## Configuration and IO
-- [x] Implement Config Manager
-  - Description: Create configManager.ts to handle loading and validation
-  - Dependencies: Core Types and Helpers
-  - Priority: High
-
-- [x] Implement File Reader
-  - Description: Create fileReader.ts for reading prompt files
-  - Dependencies: Project Setup
-  - Priority: High
-
-- [x] Implement LLM Registry
-  - Description: Create llmRegistry.ts for provider management
-  - Dependencies: Core Types and Helpers
-  - Priority: High
-
-- [x] Implement Output Formatter
-  - Description: Create outputFormatter.ts for displaying results
-  - Dependencies: Core Types and Helpers
+- [ ] Add unit tests 
+  - Description: Test filename sanitization and directory name generation utilities
+  - Dependencies: All implementation tasks
   - Priority: Medium
 
-## Provider Implementation
-- [x] Implement OpenAI Provider
-  - Description: Create openai.ts implementing the LLMProvider interface
-  - Dependencies: LLM Registry, Config Manager
-  - Priority: High
-
-## Orchestration and CLI
-- [x] Implement Main Workflow
-  - Description: Create runThinktank.ts to orchestrate the application flow
-  - Dependencies: All core components
-  - Priority: High
-
-- [x] Implement CLI Interface
-  - Description: Create cli.ts with yargs for command line parsing
-  - Dependencies: Main Workflow
-  - Priority: High
-
-## Testing
-- [x] Unit Tests for Atoms
-  - Description: Test helper functions
-  - Dependencies: Core Types and Helpers
+- [ ] Add integration tests 
+  - Description: Test end-to-end functionality of directory creation and file output
+  - Dependencies: All implementation tasks
   - Priority: Medium
 
-- [x] Unit Tests for Molecules (File Reader)
-  - Description: Test fileReader functionality
-  - Dependencies: Implement File Reader
+- [ ] Update documentation 
+  - Description: Update README and CLI help with new output directory feature
+  - Dependencies: All implementation tasks
   - Priority: Medium
 
-- [x] Unit Tests for Organisms (Config Manager)
-  - Description: Test configManager functionality
-  - Dependencies: Implement Config Manager
-  - Priority: Medium
-
-- [x] Unit Tests for Organisms (LLM Registry)
-  - Description: Test llmRegistry functionality
-  - Dependencies: Implement LLM Registry
-  - Priority: Medium
-
-- [x] Unit Tests for Provider Molecules (OpenAI)
-  - Description: Test OpenAI provider functionality
-  - Dependencies: Implement OpenAI Provider
-  - Priority: Medium
-
-- [x] Unit Tests for Molecules (Output Formatter)
-  - Description: Test outputFormatter functionality
-  - Dependencies: Implement Output Formatter
-  - Priority: Medium
-
-- [x] Integration Tests
-  - Description: Test runThinktank.ts and cli.ts
-  - Dependencies: Orchestration and CLI
-  - Priority: Medium
-
-## Documentation and Packaging
-- [x] Write README.md
-  - Description: Create comprehensive documentation
-  - Dependencies: All implementation
-  - Priority: Medium
-
-- [x] Add Code Comments
-  - Description: Add JSDoc comments to public interfaces
-  - Dependencies: All implementation
-  - Priority: Low
-
-- [x] Verify Package Configuration
-  - Description: Check package.json for bin, main, files entries
-  - Dependencies: All implementation
-  - Priority: Low
+## Assumptions/Questions
+- We're modifying the existing `--output` option rather than creating a new `--output-dir` option
+- The feature will always be active (no separate flag to enable/disable)
+- We will NOT output raw model responses to console, only status/progress information
+- Markdown (.md) will be used as the file format for all model outputs

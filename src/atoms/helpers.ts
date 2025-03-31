@@ -2,6 +2,7 @@
  * Helper functions for the Thinktank application
  */
 import { ModelConfig } from './types';
+import path from 'path';
 
 /**
  * Generates a unique key for a model configuration in the format "provider:modelId"
@@ -54,4 +55,69 @@ export function getApiKey(config: ModelConfig): string | undefined {
 export function normalizeText(text: string): string {
   // Remove leading/trailing whitespace and normalize internal whitespace
   return text.trim().replace(/\s+/g, ' ');
+}
+
+/**
+ * Generates a timestamped directory name for model outputs
+ * Format: thinktank_run_YYYYMMDD_HHmmss_SSS
+ * 
+ * @returns The generated directory name
+ */
+export function generateRunDirectoryName(): string {
+  const now = new Date();
+  
+  // Format: YYYYMMDD_HHmmss_SSS
+  const timestamp = now.toISOString()
+    .replace(/[-:T.Z]/g, match => match === 'T' ? '_' : match === '.' ? '_' : '')
+    .replace(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_(\d{3}).*$/, '$1$2$3_$4$5$6_$7');
+  
+  return `thinktank_run_${timestamp}`;
+}
+
+/**
+ * Resolves the output directory path based on the provided output option
+ * If output is specified, it's used as the parent directory
+ * Otherwise, a default directory in the current working directory is used
+ * 
+ * @param outputOption - The output option from CLI/config, if provided
+ * @returns The resolved path to the run-specific output directory
+ */
+export function resolveOutputDirectory(outputOption?: string): string {
+  // Default base output directory is 'thinktank_outputs' in current working directory
+  const baseOutputPath = outputOption 
+    ? path.resolve(outputOption) 
+    : path.resolve(process.cwd(), 'thinktank_outputs');
+  
+  // Generate the unique run directory name
+  const runDirectoryName = generateRunDirectoryName();
+  
+  // Return the full path to the run-specific directory
+  return path.join(baseOutputPath, runDirectoryName);
+}
+
+/**
+ * Sanitizes a string for safe use as a filename
+ * Replaces invalid characters with underscores
+ * 
+ * @param input - The input string to sanitize
+ * @returns A sanitized string safe for use as a filename
+ */
+export function sanitizeFilename(input: string): string {
+  if (!input) {
+    return 'unnamed';
+  }
+  
+  // Replace characters that are invalid in filenames across common operating systems
+  // This includes: / \ : * ? " < > | and control characters
+  
+  // Temporarily disable eslint for the next line as we need to match control characters
+  // eslint-disable-next-line no-control-regex
+  const sanitized = input.replace(/[\x00-\x1F]/g, '');
+  
+  return sanitized
+    .replace(/[/\\:*?"<>|]/g, '_')      // Replace invalid chars with underscore
+    .replace(/\s+/g, '_')                   // Replace whitespace with underscore
+    .replace(/__+/g, '_')                   // Replace multiple underscores with one
+    .replace(/^[.-]+|[.-]+$/g, '')          // Remove leading/trailing dots and hyphens
+    .substring(0, 255);                     // Limit length to 255 characters
 }
