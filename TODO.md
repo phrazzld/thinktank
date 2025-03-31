@@ -64,12 +64,12 @@
   - Dependencies: OpenRouterProvider implementation
   - Priority: Medium
 
-- [ ] Add RunThinktank Tests
+- [x] Add RunThinktank Tests
   - Description: Add test cases for OpenRouter in runThinktank.test.ts
   - Dependencies: Provider registration
   - Priority: Medium
 
-- [ ] Add ListModels Tests
+- [x] Add ListModels Tests
   - Description: Add test cases for OpenRouter in listModelsWorkflow.test.ts
   - Dependencies: Provider registration
   - Priority: Medium
