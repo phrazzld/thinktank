@@ -41,7 +41,7 @@
   - Dependencies: All implementation tasks
   - Priority: Medium
 
-- [ ] Update documentation 
+- [x] Update documentation 
   - Description: Update README and CLI help with new output directory feature
   - Dependencies: All implementation tasks
   - Priority: Medium

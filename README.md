@@ -61,8 +61,8 @@ thinktank -i prompt.txt -m openai:gpt-4o
 # Use a custom config file
 thinktank -i prompt.txt -c custom-config.json
 
-# Write results to a file
-thinktank -i prompt.txt -o results.txt
+# Save model responses to an output directory
+thinktank -i prompt.txt -o ./outputs
 
 # Include metadata in the output
 thinktank -i prompt.txt --metadata
@@ -77,7 +77,7 @@ thinktank -i prompt.txt --no-color
 |--------|-------|-------------|------|----------|
 | `--input` | `-i` | Path to input prompt file | string | Yes |
 | `--config` | `-c` | Path to configuration file | string | No |
-| `--output` | `-o` | Path to output file | string | No |
+| `--output` | `-o` | Path to output directory for model responses | string | No |
 | `--model` | `-m` | Models to use (provider:model, provider, or model) | array | No |
 | `--metadata` | | Include metadata in output | boolean | No |
 | `--no-color` | | Disable colored output | boolean | No |
@@ -143,6 +143,62 @@ The `options` object can include:
 | `maxTokens` | number | Maximum number of tokens to generate |
 
 Provider-specific options can also be included and will be passed directly to the underlying API.
+
+## Output Directory Feature
+
+Thinktank can save individual model responses to separate files in a dedicated output directory.
+
+### Usage
+
+```bash
+# Save model responses to an output directory
+thinktank -i prompt.txt -o ./outputs
+```
+
+### How It Works
+
+1. When the `-o/--output` option is provided, Thinktank creates a timestamped directory within the specified path (e.g., `./outputs/thinktank_run_20250331_123456_789/`).
+2. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
+3. Console output will show progress information and the location of the output directory, but won't display the actual model responses.
+
+### Output File Format
+
+Each output file is formatted as Markdown with the following sections:
+
+```markdown
+# provider:model-id
+
+Generated: YYYY-MM-DDThh:mm:ss.sssZ
+
+## Response
+
+The text response from the model goes here...
+
+## Metadata (Optional, if --metadata is specified)
+
+```json
+{
+  "usage": { "total_tokens": 123 },
+  // Other provider-specific metadata
+}
+```
+```
+
+### Error Handling
+
+If a model returns an error, the output file will include the error details:
+
+```markdown
+# provider:model-id
+
+Generated: YYYY-MM-DDThh:mm:ss.sssZ
+
+## Error
+
+```
+Error message from the API
+```
+```
 
 ## Architecture
 
@@ -254,6 +310,11 @@ import '../molecules/llmProviders/new-provider';
 4. **"Provider not found"**
    - Make sure the provider ID in your config matches the registered provider
    - Check that the provider module is properly imported in `runThinktank.ts`
+
+5. **"Failed to create output directory"**
+   - Check if you have write permissions for the specified output directory
+   - Ensure the path exists or can be created
+   - Try providing an absolute path instead of a relative one
 
 ### API Key Issues
 
