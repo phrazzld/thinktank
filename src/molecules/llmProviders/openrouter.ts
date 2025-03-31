@@ -70,10 +70,43 @@ export class OpenRouterProvider implements LLMProvider {
     
     return this.client;
   }
+  
+  /**
+   * Translates generic model options to OpenRouter-specific parameters
+   * 
+   * @param options - Generic model options
+   * @returns OpenRouter-specific parameters
+   */
+  private mapOptions(options?: ModelOptions): Record<string, unknown> {
+    if (!options) {
+      return {};
+    }
+    
+    const params: Record<string, unknown> = {};
+    
+    // Map temperature (0-1 scale)
+    if (options.temperature !== undefined) {
+      params.temperature = options.temperature;
+    }
+    
+    // Map maxTokens to max_tokens
+    if (options.maxTokens !== undefined) {
+      params.max_tokens = options.maxTokens;
+    }
+    
+    // Add any other options directly
+    // This allows passing OpenRouter-specific options from the config
+    Object.entries(options).forEach(([key, value]) => {
+      if (key !== 'temperature' && key !== 'maxTokens') {
+        params[key] = value;
+      }
+    });
+    
+    return params;
+  }
 
   /**
    * Generates text using the OpenRouter API
-   * This will be implemented in the next task
    * 
    * @param prompt - The prompt to send to the API
    * @param modelId - The ID of the model to use
@@ -81,25 +114,63 @@ export class OpenRouterProvider implements LLMProvider {
    * @returns The API response as an LLMResponse
    * @throws {OpenRouterProviderError} If the API call fails
    */
-  public generate(
-    _prompt: string,
-    _modelId: string,
-    _options?: ModelOptions
+  public async generate(
+    prompt: string,
+    modelId: string,
+    options?: ModelOptions
   ): Promise<LLMResponse> {
     try {
-      // Call getClient() to ensure it's not marked as unused
-      // This will be replaced with actual implementation in the next task
-      this.getClient();
+      const client = this.getClient();
+      const params = this.mapOptions(options);
       
-      // Placeholder implementation to satisfy the interface
-      // Will be properly implemented in a future task
-      return Promise.reject(new OpenRouterProviderError('OpenRouter generate method not implemented yet'));
-    } catch (error) {
-      // If getClient() throws an error (e.g., missing API key), propagate it
-      if (error instanceof OpenRouterProviderError) {
-        return Promise.reject(error);
+      const response = await client.chat.completions.create({
+        model: modelId,
+        messages: [{ role: 'user', content: prompt }],
+        ...params,
+      });
+      
+      // Extract the response text
+      const responseText = response.choices[0]?.message?.content || '';
+      
+      // Extract standard metadata
+      const metadata: Record<string, unknown> = {
+        usage: response.usage,
+        model: response.model,
+        id: response.id,
+        created: response.created,
+      };
+      
+      // Check for OpenRouter-specific fields, if any
+      // Using type assertions with Object.prototype.hasOwnProperty to safely check for additional properties
+      // Note: In a more complete implementation, we'd have definitive types from OpenRouter's API docs
+      const responseObj = response as unknown;
+      if (responseObj !== null && typeof responseObj === 'object') {
+        // Check for the route property that OpenRouter might add
+        if (Object.prototype.hasOwnProperty.call(responseObj, 'route')) {
+          metadata.route = (responseObj as { route: unknown }).route;
+        }
       }
-      return Promise.reject(new OpenRouterProviderError(`Unexpected error: ${error instanceof Error ? error.message : String(error)}`));
+      
+      // Return formatted response
+      return {
+        provider: this.providerId,
+        modelId,
+        text: responseText,
+        metadata,
+      };
+    } catch (error) {
+      // Handle specific error cases
+      if (error instanceof Error) {
+        if (error instanceof OpenRouterProviderError) {
+          throw error; // Re-throw our own errors
+        }
+        
+        // Handle OpenAI/OpenRouter API errors
+        throw new OpenRouterProviderError(`OpenRouter API error: ${error.message}`, error);
+      }
+      
+      // Handle unknown errors
+      throw new OpenRouterProviderError('Unknown error occurred while generating text from OpenRouter');
     }
   }
 
