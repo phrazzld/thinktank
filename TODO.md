@@ -37,12 +37,12 @@
   - Priority: Medium
 
 ## Configuration Updates
-- [ ] Update Default Configuration
+- [x] Update Default Configuration
   - Description: Add OpenRouter example model to thinktank.config.default.json
   - Dependencies: None
   - Priority: Medium
 
-- [ ] Update Environment Example
+- [x] Update Environment Example
   - Description: Add OPENROUTER_API_KEY to .env.example
   - Dependencies: None
   - Priority: Medium

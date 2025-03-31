@@ -83,6 +83,36 @@
         "temperature": 0.7,
         "maxTokens": 1000
       }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "meta-llama/llama-3-70b-instruct",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
     }
   ]
 }
