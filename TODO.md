@@ -6,7 +6,7 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Verify HTTP Client
+- [x] Verify HTTP Client
   - Description: Ensure axios is available for the listModels HTTP request
   - Dependencies: None
   - Priority: High
