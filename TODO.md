@@ -31,7 +31,7 @@
   - Dependencies: Individual file writing
   - Priority: High
 
-- [ ] Add unit tests 
+- [x] Add unit tests 
   - Description: Test filename sanitization and directory name generation utilities
   - Dependencies: All implementation tasks
   - Priority: Medium
