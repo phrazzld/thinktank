@@ -28,17 +28,17 @@
   - Dependencies: Anthropic SDK
   - Priority: High
 
-- [ ] Implement generate Method
+- [x] Implement generate Method
   - Description: Implement generate method in anthropic provider using Anthropic SDK
   - Dependencies: Anthropic Provider File
   - Priority: High
 
-- [ ] Implement listModels Method
+- [x] Implement listModels Method
   - Description: Implement listModels method to fetch available models from Anthropic API
   - Dependencies: Anthropic Provider File, LLMAvailableModel Interface
   - Priority: High
 
-- [ ] Register Anthropic Provider
+- [x] Register Anthropic Provider
   - Description: Ensure anthropic provider is registered in llmRegistry
   - Dependencies: Anthropic Provider Implementation
   - Priority: High

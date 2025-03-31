@@ -4,13 +4,15 @@
  * Note: We import the provider first to trigger its auto-registration
  */
 import { AnthropicProvider, AnthropicProviderError, anthropicProvider } from '../anthropic';
-import { ModelOptions } from '../../../atoms/types';
+import { ModelOptions, LLMAvailableModel } from '../../../atoms/types';
 import { clearRegistry, getProvider } from '../../../organisms/llmRegistry';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Mock Anthropic library
 jest.mock('@anthropic-ai/sdk');
 const MockedAnthropic = jest.mocked(Anthropic);
+
+// No need to mock axios, we'll use the SDK
 
 describe('Anthropic Provider', () => {
   const originalEnv = process.env;
@@ -221,6 +223,110 @@ describe('Anthropic Provider', () => {
       
       // But should make two API calls
       expect(mockCreate).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('listModels', () => {
+    let provider: AnthropicProvider;
+    let mockList: jest.Mock;
+    
+    beforeEach(() => {
+      provider = new AnthropicProvider('test-api-key');
+      
+      // Set up mock for models.list
+      mockList = jest.fn();
+      
+      // Mock the Anthropic client creation to include models.list
+      MockedAnthropic.mockImplementation(() => {
+        return {
+          models: {
+            list: mockList
+          }
+        } as unknown as Anthropic;
+      });
+    });
+    
+    it('should fetch models from the Anthropic API', async () => {
+      // Mock models.list response
+      mockList.mockResolvedValue({
+        data: [
+          { 
+            type: "model",
+            id: 'claude-3-opus-20240229',
+            display_name: 'Claude 3 Opus',
+            created_at: '2024-02-29T00:00:00Z'
+          },
+          { 
+            type: "model",
+            id: 'claude-3-sonnet-20240229',
+            display_name: 'Claude 3 Sonnet',
+            created_at: '2024-02-29T00:00:00Z'
+          },
+          { 
+            type: "model",
+            id: 'claude-3-haiku-20240307',
+            display_name: 'Claude 3 Haiku',
+            created_at: '2024-03-07T00:00:00Z'
+          }
+        ],
+        has_more: false,
+        first_id: 'claude-3-opus-20240229',
+        last_id: 'claude-3-haiku-20240307'
+      });
+      
+      const models: LLMAvailableModel[] = await provider.listModels('test-api-key');
+      
+      // Verify SDK was initialized with correct API key
+      expect(MockedAnthropic).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
+      
+      // Verify models.list was called
+      expect(mockList).toHaveBeenCalled();
+      
+      // Verify models are correctly mapped
+      expect(models).toHaveLength(3);
+      expect(models[0]).toEqual({
+        id: 'claude-3-opus-20240229',
+        description: 'Claude 3 Opus'
+      });
+    });
+    
+    it('should handle missing display names in model data', async () => {
+      // Mock models.list response with a model missing display_name
+      mockList.mockResolvedValue({
+        data: [
+          { 
+            type: "model",
+            id: 'claude-3-opus-20240229',
+            // No display_name
+            created_at: '2024-02-29T00:00:00Z'
+          },
+          { 
+            type: "model",
+            id: 'claude-3-sonnet-20240229',
+            display_name: 'Claude 3 Sonnet',
+            created_at: '2024-02-29T00:00:00Z'
+          }
+        ],
+        has_more: false,
+        first_id: 'claude-3-opus-20240229',
+        last_id: 'claude-3-sonnet-20240229'
+      });
+      
+      const models: LLMAvailableModel[] = await provider.listModels('test-api-key');
+      
+      expect(models).toHaveLength(2);
+      expect(models[0].description).toBeUndefined();
+      expect(models[1].description).toBe('Claude 3 Sonnet');
+    });
+    
+    it('should handle API errors gracefully', async () => {
+      // Mock API error
+      const apiError = new Error('Invalid API key');
+      mockList.mockRejectedValue(apiError);
+      
+      // The method should throw AnthropicProviderError
+      await expect(provider.listModels('invalid-key')).rejects.toThrow(AnthropicProviderError);
+      await expect(provider.listModels('invalid-key')).rejects.toThrow('Anthropic API error when listing models');
     });
   });
 });

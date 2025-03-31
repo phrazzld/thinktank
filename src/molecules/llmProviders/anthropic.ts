@@ -2,7 +2,7 @@
  * Anthropic provider implementation for Thinktank
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { LLMProvider, LLMResponse, ModelOptions } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -158,6 +158,38 @@ export class AnthropicProvider implements LLMProvider {
       
       // Handle unknown errors
       throw new AnthropicProviderError('Unknown error occurred while generating text from Anthropic');
+    }
+  }
+
+  /**
+   * Lists available models from the Anthropic API
+   * 
+   * @param apiKey - The API key to use for authentication
+   * @returns Promise resolving to array of available models
+   * @throws {AnthropicProviderError} If the API call fails
+   */
+  public async listModels(apiKey: string): Promise<LLMAvailableModel[]> {
+    try {
+      // Use the provided API key directly instead of the one from the constructor
+      // This allows fetching models with a different key
+      const client = new Anthropic({ apiKey });
+      
+      // Fetch models using the SDK
+      const response = await client.models.list();
+      
+      // Map the response to LLMAvailableModel format
+      return response.data.map(model => ({
+        id: model.id,
+        description: model.display_name
+      }));
+    } catch (error) {
+      // Handle specific error cases
+      if (error instanceof Error) {
+        throw new AnthropicProviderError(`Anthropic API error when listing models: ${error.message}`, error);
+      }
+      
+      // Handle unknown errors
+      throw new AnthropicProviderError('Unknown error occurred while listing models from Anthropic');
     }
   }
 }
