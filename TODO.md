@@ -12,7 +12,7 @@
   - Priority: High
 
 ## Model Listing Output Formatter
-- [ ] Implement formatModelList Function
+- [x] Implement formatModelList Function
   - Description: Add function to format model lists from providers in outputFormatter.ts
   - Dependencies: LLMAvailableModel interface
   - Priority: High

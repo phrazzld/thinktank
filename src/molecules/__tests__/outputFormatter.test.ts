@@ -5,9 +5,10 @@ import {
   formatResponse, 
   formatResponses, 
   formatResults,
+  formatModelList,
   FormatOptions,
 } from '../outputFormatter';
-import { LLMResponse } from '../../atoms/types';
+import { LLMResponse, LLMAvailableModel } from '../../atoms/types';
 
 // Mock chalk to prevent color output in tests
 jest.mock('chalk', () => ({
@@ -146,6 +147,83 @@ describe('Output Formatter', () => {
       const result = formatResults([]);
       
       expect(result).toBe('No results to display.');
+    });
+  });
+
+  describe('formatModelList', () => {
+    // Sample models for tests
+    const openaiModels: LLMAvailableModel[] = [
+      { id: 'gpt-4o' },
+      { id: 'gpt-4-turbo', description: 'Legacy GPT-4 Turbo' }
+    ];
+    
+    const anthropicModels: LLMAvailableModel[] = [
+      { id: 'claude-3-opus-20240229', description: 'Most powerful model' },
+      { id: 'claude-3-sonnet-20240229', description: 'Balanced model' }
+    ];
+
+    it('should format models grouped by provider with colors', () => {
+      const modelsByProvider = {
+        'openai': openaiModels,
+        'anthropic': anthropicModels
+      };
+      
+      const result = formatModelList(modelsByProvider);
+      
+      expect(result).toContain('BOLD_BLUE(Available Models:)');
+      expect(result).toContain('BOLD_BLUE(--- openai ---)');
+      expect(result).toContain('  - gpt-4o');
+      expect(result).toContain('  - gpt-4-turbo (Legacy GPT-4 Turbo)');
+      expect(result).toContain('BOLD_BLUE(--- anthropic ---)');
+      expect(result).toContain('  - claude-3-opus-20240229 (Most powerful model)');
+      expect(result).toContain('  - claude-3-sonnet-20240229 (Balanced model)');
+    });
+    
+    it('should handle providers with error messages', () => {
+      const modelsByProvider = {
+        'openai': openaiModels,
+        'anthropic': { error: 'API key not found' }
+      };
+      
+      const result = formatModelList(modelsByProvider);
+      
+      expect(result).toContain('BOLD_BLUE(Available Models:)');
+      expect(result).toContain('BOLD_BLUE(--- openai ---)');
+      expect(result).toContain('RED(  Error fetching models: API key not found)');
+    });
+
+    it('should handle empty model lists', () => {
+      const modelsByProvider = {
+        'openai': [],
+        'anthropic': anthropicModels
+      };
+      
+      const result = formatModelList(modelsByProvider);
+      
+      expect(result).toContain('BOLD_BLUE(--- openai ---)');
+      expect(result).toContain('GRAY(  (No models available))');
+    });
+    
+    it('should handle no providers', () => {
+      const modelsByProvider = {};
+      
+      const result = formatModelList(modelsByProvider);
+      
+      expect(result).toContain('BOLD_BLUE(Available Models:)');
+      expect(result).toContain('GRAY(No providers configured.)');
+    });
+
+    it('should format without colors when disabled', () => {
+      const modelsByProvider = {
+        'openai': openaiModels
+      };
+      
+      const options: FormatOptions = { useColors: false };
+      const result = formatModelList(modelsByProvider, options);
+      
+      expect(result).toContain('Available Models:');
+      expect(result).toContain('--- openai ---');
+      expect(result).not.toContain('BOLD_BLUE');
     });
   });
 });

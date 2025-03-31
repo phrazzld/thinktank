@@ -2,7 +2,7 @@
  * Output formatter for displaying LLM responses in a readable format
  */
 import chalk from 'chalk';
-import { LLMResponse } from '../atoms/types';
+import { LLMResponse, LLMAvailableModel } from '../atoms/types';
 
 /**
  * Format options for the output
@@ -157,4 +157,74 @@ export function formatResults(
   
   // Join with separator
   return formattedResults.join(opts.separator);
+}
+
+/**
+ * Formats a list of available models grouped by provider
+ * 
+ * @param modelsByProvider - Record mapping provider ID to array of models or error
+ * @param options - Format options
+ * @returns The formatted model list as a string
+ */
+export function formatModelList(
+  modelsByProvider: Record<string, LLMAvailableModel[] | { error: string }>,
+  options: FormatOptions = {}
+): string {
+  // Merge with default options
+  const opts = { ...DEFAULT_FORMAT_OPTIONS, ...options };
+  const { useColors } = opts;
+  
+  const lines: string[] = [];
+  
+  // Header
+  const header = 'Available Models:';
+  lines.push(useColors ? chalk.bold.blue(header) : header);
+  lines.push('');
+  
+  // Check if there are any providers
+  if (Object.keys(modelsByProvider).length === 0) {
+    const noProvidersMessage = 'No providers configured.';
+    lines.push(useColors ? chalk.gray(noProvidersMessage) : noProvidersMessage);
+    return lines.join('\n');
+  }
+  
+  // Format each provider's models
+  for (const providerId in modelsByProvider) {
+    // Provider header
+    const providerHeader = `--- ${providerId} ---`;
+    lines.push(useColors ? chalk.bold.blue(providerHeader) : providerHeader);
+    
+    const result = modelsByProvider[providerId];
+    
+    // Check if this provider returned an error
+    if ('error' in result) {
+      const errorLine = `  Error fetching models: ${result.error}`;
+      lines.push(useColors ? chalk.red(errorLine) : errorLine);
+    } else {
+      // Check if the provider returned any models
+      if (result.length === 0) {
+        const noModelsLine = '  (No models available)';
+        lines.push(useColors ? chalk.gray(noModelsLine) : noModelsLine);
+      } else {
+        // Format each model
+        result.forEach(model => {
+          let modelLine = `  - ${model.id}`;
+          if (model.description) {
+            modelLine += ` (${model.description})`;
+          }
+          lines.push(modelLine);
+        });
+      }
+    }
+    
+    // Add a blank line between providers
+    lines.push('');
+  }
+  
+  // Remove the last empty line if present
+  if (lines[lines.length - 1] === '') {
+    lines.pop();
+  }
+  
+  return lines.join('\n');
 }
