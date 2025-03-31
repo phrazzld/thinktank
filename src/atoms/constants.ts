@@ -28,6 +28,42 @@ export const DEFAULT_CONFIG: AppConfig = {
         maxTokens: 1000,
       },
     },
+    {
+      provider: 'anthropic',
+      modelId: 'claude-3-sonnet-20240229',
+      enabled: false,
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
+    {
+      provider: 'anthropic',
+      modelId: 'claude-3-haiku-20240307',
+      enabled: false,
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
+    {
+      provider: 'anthropic',
+      modelId: 'claude-3-5-sonnet-20240620',
+      enabled: false,
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
+    {
+      provider: 'anthropic',
+      modelId: 'claude-3-7-sonnet-20250219',
+      enabled: false,
+      options: {
+        temperature: 0.7,
+        maxTokens: 1000,
+      },
+    },
   ],
 };
 
