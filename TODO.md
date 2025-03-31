@@ -18,7 +18,7 @@
   - Priority: High
 
 ## Anthropic Provider Integration
-- [ ] Install Anthropic SDK
+- [x] Install Anthropic SDK
   - Description: Add @anthropic-ai/sdk as a dependency with npm install
   - Dependencies: None
   - Priority: High
