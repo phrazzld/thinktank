@@ -33,7 +33,7 @@
   - Dependencies: ConfigManager implementation
   - Priority: High
 
-- [ ] Update LLMRegistry
+- [x] Update LLMRegistry
   - Description: Adapt LLMRegistry to work with the new structure and ConfigManager
   - Dependencies: ConfigManager implementation
   - Priority: Medium

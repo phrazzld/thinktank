@@ -8,9 +8,11 @@ import {
   getProviderIds, 
   getAllProviders, 
   clearRegistry,
+  callProvider,
   ProviderRegistryError,
 } from '../llmRegistry';
-import { LLMProvider, LLMResponse, ModelOptions } from '../types';
+import { LLMProvider, LLMResponse, ModelConfig, ModelOptions, SystemPrompt } from '../types';
+import * as configManager from '../configManager';
 
 describe('LLM Registry', () => {
   // Sample provider implementations for testing
@@ -169,6 +171,78 @@ describe('LLM Registry', () => {
       expect(getProviderIds()).toHaveLength(0);
       expect(hasProvider('test1')).toBe(false);
       expect(hasProvider('test2')).toBe(false);
+    });
+  });
+  
+  describe('callProvider', () => {
+    // Mock the resolveModelOptions function
+    beforeEach(() => {
+      jest.spyOn(configManager, 'resolveModelOptions').mockImplementation(
+        (_provider, _modelId, userOpts, groupOpts, cliOpts) => {
+          return { mockResolved: true, ...userOpts, ...groupOpts, ...cliOpts };
+        }
+      );
+    });
+    
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+    
+    it('should call the provider with resolved options', async () => {
+      const provider = new TestProvider1();
+      const generateSpy = jest.spyOn(provider, 'generate');
+      
+      registerProvider(provider);
+      
+      const modelConfig: ModelConfig = {
+        provider: 'test1',
+        modelId: 'model1',
+        enabled: true,
+        options: { temperature: 0.5 }
+      };
+      
+      const groupOptions: ModelOptions = { maxTokens: 2000 };
+      const cliOptions: ModelOptions = { temperature: 0.8 };
+      const systemPrompt: SystemPrompt = { text: 'Test system prompt' };
+      
+      await callProvider(
+        'test1',
+        'model1',
+        'Test prompt',
+        modelConfig,
+        groupOptions,
+        cliOptions,
+        systemPrompt
+      );
+      
+      // Check that resolveModelOptions was called with the right arguments
+      expect(configManager.resolveModelOptions).toHaveBeenCalledWith(
+        'test1',
+        'model1',
+        modelConfig.options,
+        groupOptions,
+        cliOptions
+      );
+      
+      // Check that generate was called with the right arguments
+      expect(generateSpy).toHaveBeenCalledWith(
+        'Test prompt',
+        'model1',
+        expect.objectContaining({
+          mockResolved: true,
+          temperature: 0.8, // CLI option should override model config
+          maxTokens: 2000    // From group options
+        }),
+        systemPrompt
+      );
+    });
+    
+    it('should throw an error when the provider is not found', async () => {
+      await expect(callProvider('nonexistent', 'model1', 'Test prompt'))
+        .rejects.toThrow(ProviderRegistryError);
+      
+      await expect(callProvider('nonexistent', 'model1', 'Test prompt'))
+        .rejects.toThrow("Provider 'nonexistent' not found for model nonexistent:model1");
     });
   });
 });
