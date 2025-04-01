@@ -916,6 +916,34 @@ export function removeModelFromGroup(
   return updatedConfig;
 }
 
+/**
+ * Get the default configuration file path
+ * 
+ * @returns The path to the default configuration file
+ */
+export function getDefaultConfigPath(): string {
+  // Return the first path in the search paths (highest priority)
+  return CONFIG_SEARCH_PATHS[0];
+}
+
+/**
+ * Get the currently used configuration file path
+ * 
+ * This checks each path in the search paths and returns the first one that exists
+ * 
+ * @returns The path to the active configuration file
+ */
+export async function getActiveConfigPath(): Promise<string> {
+  for (const path of CONFIG_SEARCH_PATHS) {
+    if (await fileExists(path)) {
+      return path;
+    }
+  }
+  
+  // If no config file exists, return the default path
+  return getDefaultConfigPath();
+}
+
 // Base default options that apply to all models
 const baseDefaultOptions: ModelOptions = {
   temperature: 0.7,
