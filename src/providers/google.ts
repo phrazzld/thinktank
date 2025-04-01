@@ -63,19 +63,18 @@ export class GoogleProvider implements LLMProvider {
   }
   
   /**
-   * Translates generic model options to Google Gemini-specific parameters
+   * Translates standard options format to Google Gemini-specific parameters
    * 
-   * @param options - Generic model options
+   * @param options - Model options from the cascading configuration system
    * @returns Gemini-specific generation config
    */
-  private mapOptions(options?: ModelOptions): GenerationConfig {
+  private mapOptions(options: ModelOptions): GenerationConfig {
     const generationConfig: GenerationConfig = {};
     
-    if (!options) {
-      return generationConfig;
-    }
+    // Map standard parameters to Gemini-specific format
+    // Note: The options should already have appropriate defaults from resolveModelOptions
     
-    // Map temperature (0-1 scale)
+    // Map temperature directly (same scale for Gemini)
     if (options.temperature !== undefined) {
       generationConfig.temperature = options.temperature;
     }
@@ -85,7 +84,7 @@ export class GoogleProvider implements LLMProvider {
       generationConfig.maxOutputTokens = options.maxTokens;
     }
     
-    // Map other known Gemini-specific parameters if provided
+    // Map Gemini-specific parameters
     if (options.topP !== undefined) {
       generationConfig.topP = options.topP as number;
     }
@@ -94,8 +93,7 @@ export class GoogleProvider implements LLMProvider {
       generationConfig.topK = options.topK as number;
     }
     
-    // Add any other options directly
-    // This allows passing Gemini-specific options from the config
+    // Add all other options directly, excluding ones we've already processed
     Object.entries(options).forEach(([key, value]) => {
       if (!['temperature', 'maxTokens', 'topP', 'topK'].includes(key)) {
         // Type assertion for additional config properties
@@ -119,7 +117,7 @@ export class GoogleProvider implements LLMProvider {
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions,
+    options: ModelOptions = {}, // Default to empty object if not provided
     systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {

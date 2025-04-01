@@ -73,19 +73,18 @@ export class OpenRouterProvider implements LLMProvider {
   }
   
   /**
-   * Translates generic model options to OpenRouter-specific parameters
+   * Translates standard options format to OpenRouter-specific parameters
    * 
-   * @param options - Generic model options
+   * @param options - Model options from the cascading configuration system
    * @returns OpenRouter-specific parameters
    */
-  private mapOptions(options?: ModelOptions): Record<string, unknown> {
-    if (!options) {
-      return {};
-    }
-    
+  private mapOptions(options: ModelOptions): Record<string, unknown> {
     const params: Record<string, unknown> = {};
     
-    // Map temperature (0-1 scale)
+    // Map standard parameters to OpenRouter-specific format
+    // Note: The options should already have appropriate defaults from resolveModelOptions
+    
+    // Map temperature directly (same scale)
     if (options.temperature !== undefined) {
       params.temperature = options.temperature;
     }
@@ -95,8 +94,7 @@ export class OpenRouterProvider implements LLMProvider {
       params.max_tokens = options.maxTokens;
     }
     
-    // Add any other options directly
-    // This allows passing OpenRouter-specific options from the config
+    // Add all other options directly, excluding ones we've already processed
     Object.entries(options).forEach(([key, value]) => {
       if (key !== 'temperature' && key !== 'maxTokens') {
         params[key] = value;
@@ -119,7 +117,7 @@ export class OpenRouterProvider implements LLMProvider {
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions,
+    options: ModelOptions = {}, // Default to empty object if not provided
     systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {

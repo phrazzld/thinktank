@@ -152,8 +152,7 @@ describe('Anthropic Provider', () => {
       expect(mockCreate).toHaveBeenCalledWith({
         model: 'claude-3-opus-20240229',
         messages: [{ role: 'user' as const, content: 'Test prompt' }],
-        max_tokens: 1024, // Default value
-        temperature: undefined,
+        max_tokens: 1000, // Default value now from cascading config
       });
     });
     

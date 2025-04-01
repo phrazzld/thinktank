@@ -62,24 +62,24 @@ export class OpenAIProvider implements LLMProvider {
   }
   
   /**
-   * Translates generic model options to OpenAI-specific parameters
+   * Translates standard options format to OpenAI-specific parameters
    * 
-   * @param options - Generic model options
+   * @param options - Model options from the cascading configuration system
+   * @param modelId - The model ID being used
    * @returns OpenAI-specific parameters
    */
-  private mapOptions(options?: ModelOptions, modelId?: string): Record<string, unknown> {
-    if (!options) {
-      return {};
-    }
-    
+  private mapOptions(options: ModelOptions, modelId: string): Record<string, unknown> {
     const params: Record<string, unknown> = {};
     
-    // Map temperature (0-1 scale) for all models except o3-mini
+    // Map standard parameters to OpenAI-specific format
+    // Note: The options should already have appropriate defaults from resolveModelOptions
+    
+    // Handle temperature for all models except o3-mini (which doesn't accept it)
     if (options.temperature !== undefined && modelId !== 'o3-mini') {
       params.temperature = options.temperature;
     }
     
-    // Map maxTokens to the appropriate parameter based on model
+    // Map maxTokens based on the model-specific parameter name
     if (options.maxTokens !== undefined) {
       // Handle o3-mini model specially - it requires max_completion_tokens instead of max_tokens
       if (modelId === 'o3-mini') {
@@ -89,8 +89,7 @@ export class OpenAIProvider implements LLMProvider {
       }
     }
     
-    // Add any other options directly
-    // This allows passing OpenAI-specific options from the config
+    // Add all other options directly, excluding ones we've already processed
     Object.entries(options).forEach(([key, value]) => {
       if (key !== 'temperature' && key !== 'maxTokens') {
         params[key] = value;
@@ -113,7 +112,7 @@ export class OpenAIProvider implements LLMProvider {
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions,
+    options: ModelOptions = {},  // Default to empty object if not provided
     systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {
