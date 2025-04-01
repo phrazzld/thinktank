@@ -3,6 +3,14 @@
  */
 
 /**
+ * System prompt for LLM models
+ */
+export interface SystemPrompt {
+  text: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Standard options for LLM parameters
  */
 export interface ModelOptions {

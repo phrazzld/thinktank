@@ -1,101 +1,189 @@
 # TODO
 
-## Provider Implementation
-- [x] Create OpenRouterProvider Error Class
-  - Description: Define an OpenRouterProviderError class extending Error
+## Core Types Implementation
+- [x] Define `SystemPrompt` interface
+  - Description: Create interface for system prompts with text and metadata fields
   - Dependencies: None
   - Priority: High
 
-- [x] Create Base OpenRouterProvider Class
-  - Description: Define the OpenRouterProvider class implementing LLMProvider interface
-  - Dependencies: None
-  - Priority: High
-  
-- [x] Implement Provider Constructor
-  - Description: Create constructor with API key parameter and auto-registration
-  - Dependencies: Base OpenRouterProvider class
+- [ ] Define `ModelGroup` interface
+  - Description: Create interface for model groups with system prompts and model lists
+  - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [x] Configure OpenAI Client
-  - Description: Set up OpenAI client with OpenRouter's baseURL and headers
-  - Dependencies: Provider constructor
+- [ ] Update `AppConfig` interface
+  - Description: Expand to support both legacy models array and groups object
+  - Dependencies: ModelGroup interface
   - Priority: High
 
-- [x] Implement Generate Method
-  - Description: Implement generate method using OpenAI SDK with OpenRouter endpoints
-  - Dependencies: OpenAI client configuration
+- [ ] Update `ModelConfig` interface
+  - Description: Add optional systemPrompt property for per-model prompts
+  - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [x] Implement ListModels Method
-  - Description: Add listModels method to fetch available models from OpenRouter
-  - Dependencies: OpenAI client configuration
-  - Priority: High
-
-- [x] Add Error Handling
-  - Description: Implement comprehensive error handling for all API operations
-  - Dependencies: Generate and ListModels methods
+- [ ] Update `LLMResponse` interface
+  - Description: Include group information in response objects
+  - Dependencies: ModelGroup interface
   - Priority: Medium
 
-## Configuration Updates
-- [x] Update Default Configuration
-  - Description: Add OpenRouter example model to thinktank.config.default.json
+- [ ] Update `ModelOptions` interface
+  - Description: Add support for system prompt related options
   - Dependencies: None
   - Priority: Medium
 
-- [x] Update Environment Example
-  - Description: Add OPENROUTER_API_KEY to .env.example
-  - Dependencies: None
-  - Priority: Medium
-
-## Integration
-- [x] Register Provider
-  - Description: Import OpenRouter provider in runThinktank.ts
-  - Dependencies: Working OpenRouterProvider implementation
+## Configuration Management
+- [ ] Create Zod schema for `SystemPrompt`
+  - Description: Define validation schema for system prompts
+  - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [x] Verify ListModels Integration
-  - Description: Ensure OpenRouter works with listModelsWorkflow.ts
-  - Dependencies: Working OpenRouterProvider with listModels
+- [ ] Create Zod schema for `ModelGroup`
+  - Description: Define validation schema for model groups
+  - Dependencies: ModelGroup interface, SystemPrompt schema
+  - Priority: High
+
+- [ ] Update `appConfigSchema`
+  - Description: Modify to support both models array and groups
+  - Dependencies: ModelGroup schema
+  - Priority: High
+
+- [ ] Implement `getGroup` function
+  - Description: Create utility to get models from a specific group
+  - Dependencies: Updated AppConfig interface
+  - Priority: High
+
+- [ ] Implement `getEnabledGroupModels` function
+  - Description: Create utility to get enabled models from a group
+  - Dependencies: getGroup function
+  - Priority: High
+
+- [ ] Implement `filterGroupModels` function
+  - Description: Create utility to filter models within a group
+  - Dependencies: getGroup function
   - Priority: Medium
+
+- [ ] Refactor `mergeConfigs` function
+  - Description: Update to handle groups alongside models
+  - Dependencies: Updated AppConfig interface
+  - Priority: High
+
+- [ ] Update `loadConfig` function
+  - Description: Normalize legacy configs to include a default group
+  - Dependencies: Updated AppConfig schema
+  - Priority: High
+
+## Run Workflow Updates
+- [ ] Update `RunOptions` interface
+  - Description: Add groups parameter and systemPrompt parameter
+  - Dependencies: None
+  - Priority: High
+
+- [ ] Refactor main workflow to handle multiple groups
+  - Description: Modify runThinktank to process models across groups
+  - Dependencies: Updated RunOptions interface
+  - Priority: High
+
+- [ ] Implement system prompt application
+  - Description: Apply appropriate prompts to each query
+  - Dependencies: Updated ModelConfig interface
+  - Priority: High
+
+- [ ] Add group-based result tracking
+  - Description: Track and report results organized by group
+  - Dependencies: Updated LLMResponse interface
+  - Priority: Medium
+
+- [ ] Implement group-based output organization
+  - Description: Ensure output files are organized by group
+  - Dependencies: Group-based result tracking
+  - Priority: Medium
+
+## CLI Interface Updates
+- [ ] Add `--group/-g` parameter
+  - Description: Implement CLI option to specify groups to run
+  - Dependencies: Updated RunOptions interface
+  - Priority: High
+
+- [ ] Add `--system-prompt/-s` parameter
+  - Description: Implement CLI option for system prompt override
+  - Dependencies: Updated RunOptions interface
+  - Priority: High
+
+- [ ] Update CLI help documentation
+  - Description: Add information about new parameters and examples
+  - Dependencies: New CLI parameters
+  - Priority: Medium
+
+- [ ] Update default command handler
+  - Description: Modify to handle group-based execution
+  - Dependencies: New CLI parameters
+  - Priority: High
+
+- [ ] Update list-models command
+  - Description: Modify to show group organization
+  - Dependencies: Updated configuration manager
+  - Priority: Medium
+
+## Output Formatter Updates
+- [ ] Add group information to output
+  - Description: Update formatter to include group details
+  - Dependencies: Updated LLMResponse interface
+  - Priority: Medium
+
+- [ ] Implement group-based result aggregation
+  - Description: Support grouping results by group in output
+  - Dependencies: Group information in output
+  - Priority: Medium
+
+- [ ] Ensure backward compatibility
+  - Description: Maintain support for non-grouped results
+  - Dependencies: None
+  - Priority: High
+
+## Provider Integration
+- [ ] Update provider interfaces
+  - Description: Modify to support system prompts
+  - Dependencies: SystemPrompt interface
+  - Priority: High
+
+- [ ] Update provider generate methods
+  - Description: Modify to accept and apply system prompts
+  - Dependencies: Updated provider interfaces
+  - Priority: High
 
 ## Testing
-- [x] Create Provider Unit Tests
-  - Description: Create unit tests for OpenRouter provider functionality
-  - Dependencies: OpenRouterProvider implementation
+- [ ] Unit tests for new types and schemas
+  - Description: Test validation of new interfaces and schemas
+  - Dependencies: Core type implementations
+  - Priority: High
+
+- [ ] Unit tests for configuration handling
+  - Description: Test group configuration loading and validation
+  - Dependencies: Updated configuration manager
+  - Priority: High
+
+- [ ] Unit tests for CLI parameters
+  - Description: Test handling of new CLI options
+  - Dependencies: CLI interface updates
   - Priority: Medium
 
-- [x] Add RunThinktank Tests
-  - Description: Add test cases for OpenRouter in runThinktank.test.ts
-  - Dependencies: Provider registration
+- [ ] Integration tests for group functionality
+  - Description: Test end-to-end workflow with groups
+  - Dependencies: All major updates
   - Priority: Medium
 
-- [x] Add ListModels Tests
-  - Description: Add test cases for OpenRouter in listModelsWorkflow.test.ts
-  - Dependencies: Provider registration
-  - Priority: Medium
-
-- [x] Perform Manual Testing
-  - Description: Test with real API key to verify end-to-end functionality
-  - Dependencies: All implementation tasks
-  - Priority: Low
+- [ ] Backward compatibility tests
+  - Description: Verify legacy configs and commands still work
+  - Dependencies: All major updates
+  - Priority: High
 
 ## Documentation
-- [x] Update README
-  - Description: Add OpenRouter configuration instructions to README.md
-  - Dependencies: Working implementation
+- [ ] Update README with group examples
+  - Description: Add documentation for using model groups
+  - Dependencies: Implementation completion
   - Priority: Medium
 
-- [x] Document Extension Example
-  - Description: Add OpenRouter as an example in extending thinktank section
-  - Dependencies: Working implementation
+- [ ] Create example configuration files
+  - Description: Provide sample configs with groups for reference
+  - Dependencies: None
   - Priority: Low
-
-## Assumptions and Questions
-
-1. OpenRouter API is fully compatible with OpenAI SDK as stated in PLAN.md.
-2. OpenAI SDK is already installed and properly configured in the project.
-3. The OpenRouter API key follows the same pattern as other providers in the system.
-4. The OpenRouter models follow the format `provider/model-id` (e.g., `openai/gpt-4o`).
-5. The listModels endpoint returns data in a format similar to OpenAI's model listing, with possible minor differences.
-6. No schema migrations or database changes are needed for this feature.
-7. The implementation follows the Atomic Design pattern already established in the codebase.
