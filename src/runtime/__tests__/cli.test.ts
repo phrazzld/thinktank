@@ -4,13 +4,11 @@
 import * as runThinktankModule from '../../templates/runThinktank';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
-import yargs from 'yargs';
 
 // Mock dependencies
 jest.mock('../../templates/runThinktank');
 jest.mock('fs/promises');
 jest.mock('dotenv');
-jest.mock('yargs');
 
 // Access the mock
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
@@ -34,30 +32,6 @@ describe('CLI Interface', () => {
     (dotenv.config as jest.Mock).mockReturnValue({});
     (fs.access as jest.Mock).mockResolvedValue(undefined);
     runThinktank.mockResolvedValue('Mock result');
-    
-    // Setup yargs mock with command
-    const mockYargs = {
-      usage: jest.fn().mockReturnThis(),
-      option: jest.fn().mockReturnThis(),
-      command: jest.fn().mockImplementation((_cmd, _desc, builder, _handler) => {
-        // Call the builder with a mock yargs instance that returns itself
-        if (builder) {
-          const mockBuilder = {
-            option: jest.fn().mockReturnThis(),
-            example: jest.fn().mockReturnThis(),
-          };
-          builder(mockBuilder as any);
-        }
-        return mockYargs;
-      }),
-      help: jest.fn().mockReturnThis(),
-      alias: jest.fn().mockReturnThis(),
-      version: jest.fn().mockReturnThis(),
-      example: jest.fn().mockReturnThis(),
-      epilogue: jest.fn().mockReturnThis(),
-      parseAsync: jest.fn(),
-    };
-    (yargs as unknown as jest.Mock).mockReturnValue(mockYargs);
   });
   
   afterEach(() => {
@@ -68,133 +42,122 @@ describe('CLI Interface', () => {
     process.argv = originalProcessArgv;
   });
   
-  it('should handle successful execution', async () => {
-    // Setup yargs parsing result for default command
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: [], // Default command (empty array)
-      '$0': 'thinktank',
-      input: 'test-prompt.txt',
-      metadata: false,
-      'no-color': false,
-      // These need to be included to match the structure expected by the CLI
-      command: '$0', // Default command identifier
-    });
+  function setMockArgs(args: string[]): void {
+    process.argv = ['node', 'thinktank', ...args];
+  }
+  
+  it('should handle prompt file with no group specified (default group)', async () => {
+    // Set up test arguments
+    setMockArgs(['test-prompt.txt']);
     
     // Import and execute the module
     const { main } = await import('../cli');
     await main();
     
-    // Verify execution - note that command structure means it won't call fs.access directly
+    // Verify file was checked
+    expect(fs.access).toHaveBeenCalledWith('test-prompt.txt');
+    
+    // Verify runThinktank was called with correct parameters
     expect(runThinktank).toHaveBeenCalledWith({
       input: 'test-prompt.txt',
-      configPath: undefined,
-      output: undefined,
-      models: undefined,
-      includeMetadata: false,
-      useColors: true,
     });
     
-    // Only check that process.exit was called with success code
+    // Check that process.exit was called with success code
     expect(process.exit).toHaveBeenCalledWith(0);
-  });
-  
-  it('should handle output file correctly', async () => {
-    // Setup yargs parsing result for default command with output
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: [],
-      '$0': 'thinktank',
-      input: 'test-prompt.txt',
-      output: 'result.txt',
-      metadata: false,
-      'no-color': false,
-      command: '$0', // Default command identifier
-    });
-    
-    // Import and execute the module
-    const { main } = await import('../cli');
-    await main();
-    
-    // Verify execution
-    expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
-      input: 'test-prompt.txt',
-      output: 'result.txt',
-    }));
-    expect(console.log).not.toHaveBeenCalled();
   });
   
   it('should handle file not found error correctly', async () => {
     // Setup mock to throw file not found
     (fs.access as jest.Mock).mockRejectedValue(new Error('File not found'));
     
-    // Setup yargs parsing result for default command with nonexistent file
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: [],
-      '$0': 'thinktank',
-      input: 'nonexistent.txt',
-      metadata: false,
-      'no-color': false,
-      command: '$0', // Default command identifier
-    });
+    // Set up test arguments
+    setMockArgs(['nonexistent.txt']);
     
     // Import and execute the module
     const { main } = await import('../cli');
     await main();
     
-    // Verify error handling - just check that an error was shown and exit was called
+    // Just verify that error handling occurred
     expect(console.error).toHaveBeenCalled();
     expect(process.exit).toHaveBeenCalledWith(1);
   });
   
-  it('should handle errors correctly', async () => {
+  it('should handle errors from runThinktank correctly', async () => {
     // Setup runThinktank to throw an error
     runThinktank.mockRejectedValue(new Error('Some error'));
     
-    // Setup yargs parsing result for default command with error in runThinktank
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: [],
-      '$0': 'thinktank',
-      input: 'test-prompt.txt',
-      metadata: false,
-      'no-color': false,
-      command: '$0', // Default command identifier
-    });
+    // Set up test arguments
+    setMockArgs(['test-prompt.txt']);
     
     // Import and execute the module
     const { main } = await import('../cli');
     await main();
     
-    // Just verify that error handling was invoked
-    expect(console.error).toHaveBeenCalled();
+    // Verify error handling was invoked
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Unexpected error: Some error'));
     expect(process.exit).toHaveBeenCalledWith(1);
   });
   
-  
-  it('should handle models filter correctly', async () => {
-    // Setup yargs parsing result for default command with model filter
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: [],
-      '$0': 'thinktank',
-      input: 'test-prompt.txt',
-      model: ['openai:gpt-4o'],
-      metadata: false,
-      'no-color': false,
-      command: '$0', // Default command identifier
-    });
+  it('should handle prompt file with specific group', async () => {
+    // Set up test arguments - run with 'coding' group
+    setMockArgs(['test-prompt.txt', 'coding']);
     
     // Import and execute the module
     const { main } = await import('../cli');
     await main();
     
-    // Verify models are passed correctly
-    expect(runThinktank).toHaveBeenCalledWith(
-      expect.objectContaining({
-        models: ['openai:gpt-4o'],
-      })
-    );
+    // Verify runThinktank was called with correct parameters
+    expect(runThinktank).toHaveBeenCalledWith({
+      input: 'test-prompt.txt',
+      groupName: 'coding'
+    });
+    
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+  
+  it('should handle prompt file with specific model', async () => {
+    // Set up test arguments - run with specific model
+    setMockArgs(['test-prompt.txt', 'openai:gpt-4o']);
+    
+    // Import and execute the module
+    const { main } = await import('../cli');
+    await main();
+    
+    // Verify runThinktank was called with correct parameters
+    expect(runThinktank).toHaveBeenCalledWith({
+      input: 'test-prompt.txt',
+      specificModel: 'openai:gpt-4o'
+    });
+    
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
+  
+  it('should validate the provider:model format', async () => {
+    // Set up test arguments - invalid model format (missing model ID)
+    setMockArgs(['test-prompt.txt', 'openai:']);
+    
+    // Import and execute the module
+    const { main } = await import('../cli');
+    await main();
+    
+    // Just verify that error handling occurred
+    expect(console.error).toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalledWith(1);
+    
+    // Verify runThinktank was not called
+    expect(runThinktank).not.toHaveBeenCalled();
+  });
+  
+  it('should handle no arguments by showing help', async () => {
+    // Set up test arguments - no arguments
+    setMockArgs([]);
+    
+    // Import and execute the module
+    const { main } = await import('../cli');
+    await main();
+    
+    // Verify help was shown
+    expect(console.error).toHaveBeenCalledWith('Usage:');
+    expect(process.exit).toHaveBeenCalledWith(1);
   });
 });

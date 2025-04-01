@@ -95,12 +95,12 @@
 
 ## Testing
 
-- [ ] Test Group Use Case
+- [x] Test Group Use Case
   - Description: Create tests for running prompts through model groups
   - Dependencies: RunOptions Interface Update, Model Selection Logic
   - Priority: High
 
-- [ ] Test Specific Model Use Case
+- [x] Test Specific Model Use Case
   - Description: Create tests for running prompts through specific models
   - Dependencies: Specific Model Parsing, Model Selection Logic
   - Priority: High

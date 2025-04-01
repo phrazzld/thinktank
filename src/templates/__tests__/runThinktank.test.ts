@@ -59,7 +59,33 @@ describe('runThinktank', () => {
           enabled: true,
           options: { temperature: 0.7 }
         }
-      ]
+      ],
+      groups: {
+        default: {
+          name: 'default',
+          systemPrompt: { text: 'You are a helpful assistant.' },
+          models: [
+            {
+              provider: 'mock',
+              modelId: 'mock-model',
+              enabled: true,
+              options: { temperature: 0.7 }
+            }
+          ]
+        },
+        coding: {
+          name: 'coding',
+          systemPrompt: { text: 'You are a coding assistant.' },
+          models: [
+            {
+              provider: 'mock',
+              modelId: 'mock-model',
+              enabled: true,
+              options: { temperature: 0.7 }
+            }
+          ]
+        }
+      }
     });
     (configManager.getEnabledModels as jest.Mock).mockImplementation((config) => {
       return config.models.filter((model: ModelConfig) => model.enabled);
@@ -116,6 +142,51 @@ describe('runThinktank', () => {
     expect(configManager.filterModels).toHaveBeenCalledWith(
       expect.anything(),
       'mock:mock-model'
+    );
+  });
+  
+  it('should handle specific model parameter correctly', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      specificModel: 'mock:mock-model',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify we're handling specificModel correctly
+    expect(configManager.loadConfig).toHaveBeenCalled();
+  });
+  
+  it('should handle specific group name parameter correctly', async () => {
+    // Mock group-related functions
+    (configManager.getEnabledModelsFromGroups as jest.Mock).mockImplementation(
+      (_config, groupNames) => {
+        if (groupNames.includes('coding')) {
+          return [{
+            provider: 'mock',
+            modelId: 'mock-model',
+            enabled: true
+          }];
+        }
+        return [];
+      }
+    );
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      groupName: 'coding',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify getEnabledModelsFromGroups was called with the group name
+    expect(configManager.getEnabledModelsFromGroups).toHaveBeenCalledWith(
+      expect.anything(),
+      ['coding']
     );
   });
 
@@ -184,6 +255,64 @@ describe('runThinktank', () => {
     const result = await runThinktank(options);
     
     expect(result).toContain('No enabled models found in configuration');
+  });
+  
+  it('should throw error for invalid group name', async () => {
+    // Set up a custom mock for this test to simulate group not found
+    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true
+        }
+      ],
+      groups: {
+        // Only has default group, not the nonexistent-group we'll request
+        default: {
+          name: 'default',
+          systemPrompt: { text: 'You are a helpful assistant.' },
+          models: []
+        }
+      }
+    });
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      groupName: 'nonexistent-group',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should throw an error
+    await expect(runThinktank(options)).rejects.toThrow(
+      'Group "nonexistent-group" not found in configuration'
+    );
+  });
+  
+  it('should throw error for invalid specific model', async () => {
+    // Set up a custom mock for this test to simulate model not found
+    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true
+        }
+      ]
+    });
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      specificModel: 'invalid:model',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should throw an error
+    await expect(runThinktank(options)).rejects.toThrow(
+      'Model "invalid:model" not found in configuration'
+    );
   });
 
   it('should handle provider not found gracefully', async () => {

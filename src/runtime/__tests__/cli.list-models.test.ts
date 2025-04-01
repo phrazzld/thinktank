@@ -1,20 +1,17 @@
 /**
- * Tests for the list-models CLI command
+ * Tests for the models listing command
  */
 import * as listModelsWorkflowModule from '../../templates/listModelsWorkflow';
-// fs is not needed for list-models tests
 import dotenv from 'dotenv';
-import yargs from 'yargs';
 
 // Mock dependencies
 jest.mock('../../templates/listModelsWorkflow');
 jest.mock('dotenv');
-jest.mock('yargs');
 
 // Access the mock
 const listAvailableModels = listModelsWorkflowModule.listAvailableModels as jest.MockedFunction<typeof listModelsWorkflowModule.listAvailableModels>;
 
-describe('CLI List-Models Command', () => {
+describe('CLI Models Command', () => {
   // Store original implementations
   const originalConsoleLog = console.log;
   const originalConsoleError = console.error;
@@ -32,30 +29,6 @@ describe('CLI List-Models Command', () => {
     // Reset mocked implementations
     (dotenv.config as jest.Mock).mockReturnValue({});
     listAvailableModels.mockResolvedValue('Mock models list');
-    
-    // Setup yargs mock with command
-    const mockYargs = {
-      usage: jest.fn().mockReturnThis(),
-      option: jest.fn().mockReturnThis(),
-      command: jest.fn().mockImplementation((_cmd, _desc, builder, _handler) => {
-        // Call the builder with a mock yargs instance that returns itself
-        if (builder) {
-          const mockBuilder = {
-            option: jest.fn().mockReturnThis(),
-            example: jest.fn().mockReturnThis(),
-          };
-          builder(mockBuilder as any);
-        }
-        return mockYargs;
-      }),
-      help: jest.fn().mockReturnThis(),
-      alias: jest.fn().mockReturnThis(),
-      version: jest.fn().mockReturnThis(),
-      example: jest.fn().mockReturnThis(),
-      epilogue: jest.fn().mockReturnThis(),
-      parseAsync: jest.fn(),
-    };
-    (yargs as unknown as jest.Mock).mockReturnValue(mockYargs);
   });
   
   afterEach(() => {
@@ -66,14 +39,13 @@ describe('CLI List-Models Command', () => {
     process.argv = originalProcessArgv;
   });
   
-  it('should handle list-models command with no options', async () => {
-    // Setup yargs parsing result for list-models command
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: ['list-models'],
-      '$0': 'thinktank',
-      command: 'list-models', // Command identifier
-    });
+  function setMockArgs(args: string[]): void {
+    process.argv = ['node', 'thinktank', ...args];
+  }
+  
+  it('should handle "models" command', async () => {
+    // Set up test arguments
+    setMockArgs(['models']);
     
     // Import and execute the module
     const { main } = await import('../cli');
@@ -85,59 +57,12 @@ describe('CLI List-Models Command', () => {
     expect(process.exit).toHaveBeenCalledWith(0);
   });
   
-  it('should handle provider filter option correctly', async () => {
-    // Setup yargs parsing result with provider filter
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: ['list-models'],
-      '$0': 'thinktank',
-      provider: 'anthropic',
-      command: 'list-models', // Command identifier
-    });
-    
-    // Import and execute the module
-    const { main } = await import('../cli');
-    await main();
-    
-    // Verify provider is passed correctly
-    expect(listAvailableModels).toHaveBeenCalledWith({
-      provider: 'anthropic',
-    });
-    expect(console.log).toHaveBeenCalledWith('Mock models list');
-  });
-  
-  it('should handle config option correctly', async () => {
-    // Setup yargs parsing result with config path
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: ['list-models'],
-      '$0': 'thinktank',
-      config: 'custom-config.json',
-      command: 'list-models', // Command identifier
-    });
-    
-    // Import and execute the module
-    const { main } = await import('../cli');
-    await main();
-    
-    // Verify config path is passed correctly
-    expect(listAvailableModels).toHaveBeenCalledWith({
-      config: 'custom-config.json',
-    });
-    expect(console.log).toHaveBeenCalledWith('Mock models list');
-  });
-  
-  it('should handle errors correctly', async () => {
+  it('should handle errors from listAvailableModels', async () => {
     // Setup listAvailableModels to throw an error
     listAvailableModels.mockRejectedValue(new Error('List models error'));
     
-    // Setup yargs parsing result
-    const yargsInstance = yargs([] as any);
-    (yargsInstance.parseAsync as jest.Mock).mockResolvedValue({
-      _: ['list-models'],
-      '$0': 'thinktank',
-      command: 'list-models', // Command identifier
-    });
+    // Set up test arguments
+    setMockArgs(['models']);
     
     // Import and execute the module
     const { main } = await import('../cli');
