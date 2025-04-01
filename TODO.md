@@ -23,12 +23,12 @@
   - Note: Main code files updated and build is successful; some test files still have failures
 
 ## Core Components
-- [ ] Refine ConfigManager
+- [x] Refine ConfigManager
   - Description: Implement/update ConfigManager with load, save, add, remove, update methods for models/groups
   - Dependencies: New directory structure
   - Priority: High
 
-- [ ] Implement Cascading Configuration System
+- [x] Implement Cascading Configuration System
   - Description: Create resolveModelOptions function with proper hierarchy (base defaults → provider defaults → model defaults → user config → group overrides → CLI overrides)
   - Dependencies: ConfigManager implementation
   - Priority: High

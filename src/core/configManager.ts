@@ -2,8 +2,8 @@
  * Configuration manager for loading and validating application config
  */
 import { z } from 'zod';
-import { fileExists, readFileContent } from '../utils/fileReader';
-import { AppConfig, ModelConfig, SystemPrompt } from './types';
+import { fileExists, readFileContent, writeFile } from '../utils/fileReader';
+import { AppConfig, ModelConfig, ModelGroup, ModelOptions, SystemPrompt } from './types';
 import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from './constants';
 import { getApiKey as getApiKeyHelper } from '../utils/helpers';
 import dotenv from 'dotenv';
@@ -529,4 +529,495 @@ export function findModelGroup(
   
   // Model not found in any group
   return undefined;
+}
+
+/**
+ * Save configuration to a file
+ * 
+ * @param config - The configuration to save
+ * @param configPath - Path to the configuration file
+ * @throws {ConfigError} If the configuration cannot be saved
+ */
+export async function saveConfig(config: AppConfig, configPath: string): Promise<void> {
+  try {
+    // Validate configuration before saving
+    const validationResult = appConfigSchema.safeParse(config);
+    if (!validationResult.success) {
+      throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
+    }
+    
+    // Convert configuration to pretty-printed JSON
+    const configJson = JSON.stringify(config, null, 2);
+    
+    // Write the configuration to the file
+    await writeFile(configPath, configJson);
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    
+    if (error instanceof Error) {
+      throw new ConfigError(`Failed to save configuration: ${error.message}`, error);
+    }
+    
+    throw new ConfigError('Unknown error saving configuration');
+  }
+}
+
+/**
+ * Find a model in the configuration
+ * 
+ * @param config - The application configuration
+ * @param provider - The provider ID
+ * @param modelId - The model ID
+ * @returns The model configuration if found, undefined otherwise
+ */
+export function findModel(
+  config: AppConfig,
+  provider: string,
+  modelId: string
+): ModelConfig | undefined {
+  return config.models.find(model => 
+    model.provider === provider && model.modelId === modelId
+  );
+}
+
+/**
+ * Add or update a model in the configuration
+ * 
+ * @param config - The application configuration to modify
+ * @param model - The model configuration to add or update
+ * @returns The updated configuration
+ * @throws {ConfigError} If the model configuration is invalid
+ */
+export function addOrUpdateModel(config: AppConfig, model: ModelConfig): AppConfig {
+  try {
+    // Validate the model configuration
+    const modelValidation = modelConfigSchema.safeParse(model);
+    if (!modelValidation.success) {
+      throw new ConfigError(`Invalid model configuration: ${modelValidation.error.message}`);
+    }
+    
+    // Make a deep copy of the config
+    const updatedConfig = structuredClone(config);
+    
+    // Check if the model already exists
+    const existingIndex = updatedConfig.models.findIndex(
+      existing => existing.provider === model.provider && existing.modelId === model.modelId
+    );
+    
+    if (existingIndex !== -1) {
+      // Update existing model
+      updatedConfig.models[existingIndex] = {
+        ...updatedConfig.models[existingIndex],
+        ...model,
+        options: model.options 
+          ? { ...updatedConfig.models[existingIndex].options, ...model.options }
+          : updatedConfig.models[existingIndex].options,
+      };
+    } else {
+      // Add new model
+      updatedConfig.models.push(structuredClone(model));
+    }
+    
+    return updatedConfig;
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    
+    if (error instanceof Error) {
+      throw new ConfigError(`Failed to add or update model: ${error.message}`, error);
+    }
+    
+    throw new ConfigError('Unknown error adding or updating model');
+  }
+}
+
+/**
+ * Remove a model from the configuration
+ * 
+ * @param config - The application configuration to modify
+ * @param provider - The provider ID
+ * @param modelId - The model ID
+ * @returns The updated configuration
+ * @throws {ConfigError} If the model is not found
+ */
+export function removeModel(
+  config: AppConfig,
+  provider: string,
+  modelId: string
+): AppConfig {
+  // Make a deep copy of the config
+  const updatedConfig = structuredClone(config);
+  
+  // Find the model
+  const index = updatedConfig.models.findIndex(
+    model => model.provider === provider && model.modelId === modelId
+  );
+  
+  if (index === -1) {
+    throw new ConfigError(`Model ${provider}:${modelId} not found in configuration`);
+  }
+  
+  // Remove the model from the top-level models array
+  updatedConfig.models.splice(index, 1);
+  
+  // Also remove the model from any groups it's part of
+  if (updatedConfig.groups) {
+    for (const group of Object.values(updatedConfig.groups)) {
+      const groupIndex = group.models.findIndex(
+        model => model.provider === provider && model.modelId === modelId
+      );
+      
+      if (groupIndex !== -1) {
+        group.models.splice(groupIndex, 1);
+      }
+    }
+  }
+  
+  return updatedConfig;
+}
+
+/**
+ * Get all groups in the configuration
+ * 
+ * @param config - The application configuration
+ * @returns Array of group names
+ */
+export function getGroupNames(config: AppConfig): string[] {
+  if (!config.groups) {
+    return ['default'];
+  }
+  
+  return Object.keys(config.groups);
+}
+
+/**
+ * Add or update a group in the configuration
+ * 
+ * @param config - The application configuration to modify
+ * @param groupName - The name of the group
+ * @param groupDetails - The group details (system prompt, models, etc.)
+ * @returns The updated configuration
+ * @throws {ConfigError} If the group configuration is invalid
+ */
+export function addOrUpdateGroup(
+  config: AppConfig,
+  groupName: string,
+  groupDetails: Partial<Omit<ModelGroup, 'name'>>
+): AppConfig {
+  try {
+    // Validate the inputs
+    if (!groupName || groupName.trim() === '') {
+      throw new ConfigError('Group name cannot be empty');
+    }
+    
+    // Make a deep copy of the config
+    const updatedConfig = structuredClone(config);
+    
+    // Initialize groups object if it doesn't exist
+    if (!updatedConfig.groups) {
+      updatedConfig.groups = {};
+    }
+    
+    // Create a complete group object by merging with existing data or defaults
+    const existingGroup = updatedConfig.groups[groupName];
+    
+    // Default system prompt if none is provided
+    const defaultSystemPrompt: SystemPrompt = {
+      text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
+    };
+    
+    // Use provided system prompt, or existing, or default (in that order)
+    const systemPrompt: SystemPrompt = groupDetails.systemPrompt || 
+      existingGroup?.systemPrompt || 
+      defaultSystemPrompt;
+    
+    // Use provided models, or existing, or empty array (in that order)
+    const models: ModelConfig[] = groupDetails.models || 
+      existingGroup?.models || 
+      [];
+    
+    // Use provided description, or existing, or default (in that order)
+    const description: string = groupDetails.description || 
+      existingGroup?.description || 
+      `Model group: ${groupName}`;
+    
+    const group: ModelGroup = {
+      name: groupName,
+      systemPrompt,
+      models,
+      description
+    };
+    
+    // Validate the group with the schema
+    const groupValidation = modelGroupSchema.safeParse(group);
+    if (!groupValidation.success) {
+      throw new ConfigError(`Invalid group configuration: ${groupValidation.error.message}`);
+    }
+    
+    // Add or update the group
+    updatedConfig.groups[groupName] = group;
+    
+    return updatedConfig;
+  } catch (error) {
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    
+    if (error instanceof Error) {
+      throw new ConfigError(`Failed to add or update group: ${error.message}`, error);
+    }
+    
+    throw new ConfigError('Unknown error adding or updating group');
+  }
+}
+
+/**
+ * Remove a group from the configuration
+ * 
+ * @param config - The application configuration to modify
+ * @param groupName - The name of the group to remove
+ * @returns The updated configuration
+ * @throws {ConfigError} If the group is not found
+ */
+export function removeGroup(config: AppConfig, groupName: string): AppConfig {
+  // Make a deep copy of the config
+  const updatedConfig = structuredClone(config);
+  
+  // Validate that groups exists
+  if (!updatedConfig.groups) {
+    throw new ConfigError(`No groups defined in configuration`);
+  }
+  
+  // Check if the group exists
+  if (!updatedConfig.groups[groupName]) {
+    throw new ConfigError(`Group ${groupName} not found in configuration`);
+  }
+  
+  // Cannot remove default group if it's the only one
+  if (groupName === 'default' && Object.keys(updatedConfig.groups).length === 1) {
+    throw new ConfigError('Cannot remove the default group as it is required');
+  }
+  
+  // Remove the group
+  delete updatedConfig.groups[groupName];
+  
+  return updatedConfig;
+}
+
+/**
+ * Add a model to a group
+ * 
+ * @param config - The application configuration to modify
+ * @param groupName - The name of the group
+ * @param provider - The provider ID
+ * @param modelId - The model ID
+ * @returns The updated configuration
+ * @throws {ConfigError} If the group or model is not found
+ */
+export function addModelToGroup(
+  config: AppConfig,
+  groupName: string,
+  provider: string,
+  modelId: string
+): AppConfig {
+  // Make a deep copy of the config
+  const updatedConfig = structuredClone(config);
+  
+  // Ensure groups object exists
+  if (!updatedConfig.groups) {
+    updatedConfig.groups = {
+      default: {
+        name: 'default',
+        systemPrompt: {
+          text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
+        },
+        models: [],
+        description: 'Default model group'
+      }
+    };
+  }
+  
+  // Check if the group exists, create if it's the default group
+  if (!updatedConfig.groups[groupName]) {
+    if (groupName === 'default') {
+      updatedConfig.groups.default = {
+        name: 'default',
+        systemPrompt: {
+          text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
+        },
+        models: [],
+        description: 'Default model group'
+      };
+    } else {
+      throw new ConfigError(`Group ${groupName} not found in configuration`);
+    }
+  }
+  
+  // Find the model in the top-level models array
+  const model = findModel(updatedConfig, provider, modelId);
+  if (!model) {
+    throw new ConfigError(`Model ${provider}:${modelId} not found in configuration`);
+  }
+  
+  // Check if the model already exists in the group
+  const group = updatedConfig.groups[groupName];
+  const modelExists = group.models.some(
+    m => m.provider === provider && m.modelId === modelId
+  );
+  
+  if (!modelExists) {
+    // Add the model to the group
+    group.models.push(structuredClone(model));
+  }
+  
+  return updatedConfig;
+}
+
+/**
+ * Remove a model from a group
+ * 
+ * @param config - The application configuration to modify
+ * @param groupName - The name of the group
+ * @param provider - The provider ID
+ * @param modelId - The model ID
+ * @returns The updated configuration
+ * @throws {ConfigError} If the group or model is not found
+ */
+export function removeModelFromGroup(
+  config: AppConfig,
+  groupName: string,
+  provider: string,
+  modelId: string
+): AppConfig {
+  // Make a deep copy of the config
+  const updatedConfig = structuredClone(config);
+  
+  // Check if the group exists
+  if (!updatedConfig.groups || !updatedConfig.groups[groupName]) {
+    throw new ConfigError(`Group ${groupName} not found in configuration`);
+  }
+  
+  // Find the model in the group
+  const group = updatedConfig.groups[groupName];
+  const modelIndex = group.models.findIndex(
+    model => model.provider === provider && model.modelId === modelId
+  );
+  
+  if (modelIndex === -1) {
+    throw new ConfigError(`Model ${provider}:${modelId} not found in group ${groupName}`);
+  }
+  
+  // Remove the model from the group
+  group.models.splice(modelIndex, 1);
+  
+  return updatedConfig;
+}
+
+// Base default options that apply to all models
+const baseDefaultOptions: ModelOptions = {
+  temperature: 0.7,
+  maxTokens: 1000,
+};
+
+// Provider-specific default options
+const providerDefaultOptions: Record<string, ModelOptions> = {
+  anthropic: {
+    thinking: {
+      type: 'enabled',
+      budget_tokens: 10000,
+    },
+  },
+  openai: {
+    temperature: 0.7,
+  },
+  google: {
+    temperature: 0.7,
+  },
+  openrouter: {
+    temperature: 0.7,
+  },
+};
+
+// Model-specific default options
+const modelDefaultOptions: Record<string, ModelOptions> = {
+  'anthropic:claude-3-opus-20240229': {
+    temperature: 0.7,
+    maxTokens: 4000,
+  },
+  'anthropic:claude-3-sonnet-20240229': {
+    temperature: 0.7,
+    maxTokens: 4000,
+  },
+  'anthropic:claude-3-haiku-20240307': {
+    temperature: 0.8,
+    maxTokens: 2000,
+  },
+  'openai:gpt-4o': {
+    temperature: 0.7,
+    maxTokens: 4000,
+  },
+  'openai:gpt-3.5-turbo': {
+    temperature: 0.8,
+    maxTokens: 2000,
+  },
+};
+
+/**
+ * Resolves model options using the cascading configuration system
+ * 
+ * Merges options from multiple sources in the following order (lowest to highest priority):
+ * 1. Base defaults
+ * 2. Provider defaults
+ * 3. Model-specific defaults
+ * 4. User config defaults
+ * 5. Group-specific overrides
+ * 6. CLI invocation overrides
+ * 
+ * @param provider - Provider ID
+ * @param modelId - Model ID
+ * @param userConfigOptions - Options defined in user config
+ * @param groupOptions - Options defined in a group config
+ * @param cliOptions - Options provided via CLI
+ * @returns Merged options with the correct priority
+ */
+export function resolveModelOptions(
+  provider: string,
+  modelId: string,
+  userConfigOptions?: ModelOptions,
+  groupOptions?: ModelOptions,
+  cliOptions?: ModelOptions
+): ModelOptions {
+  // Start with base defaults (lowest priority)
+  const resolvedOptions: ModelOptions = { ...baseDefaultOptions };
+  
+  // Apply provider defaults if available
+  if (providerDefaultOptions[provider]) {
+    Object.assign(resolvedOptions, providerDefaultOptions[provider]);
+  }
+  
+  // Apply model-specific defaults if available
+  const modelKey = `${provider}:${modelId}`;
+  if (modelDefaultOptions[modelKey]) {
+    Object.assign(resolvedOptions, modelDefaultOptions[modelKey]);
+  }
+  
+  // Apply user configuration options if available
+  if (userConfigOptions) {
+    Object.assign(resolvedOptions, userConfigOptions);
+  }
+  
+  // Apply group-specific overrides if available
+  if (groupOptions) {
+    Object.assign(resolvedOptions, groupOptions);
+  }
+  
+  // Apply CLI options (highest priority)
+  if (cliOptions) {
+    Object.assign(resolvedOptions, cliOptions);
+  }
+  
+  return resolvedOptions;
 }

@@ -80,3 +80,27 @@ export async function fileExists(filePath: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Writes content to a file
+ * 
+ * @param filePath - Path to the file to write
+ * @param content - Content to write to the file
+ * @throws {FileReadError} If writing fails
+ */
+export async function writeFile(filePath: string, content: string): Promise<void> {
+  try {
+    // Ensure the directory exists
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    
+    // Write the file
+    await fs.writeFile(filePath, content, { encoding: 'utf-8' });
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new FileReadError(`Failed to write file at ${filePath}: ${error.message}`, error);
+    }
+    
+    throw new FileReadError(`Unknown error writing file at ${filePath}`);
+  }
+}
