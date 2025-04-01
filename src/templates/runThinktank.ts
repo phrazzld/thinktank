@@ -7,7 +7,7 @@ import { readFileContent } from '../molecules/fileReader';
 import { loadConfig, filterModels, getEnabledModels, validateModelApiKeys } from '../organisms/configManager';
 import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
-import { LLMResponse, ModelConfig } from '../atoms/types';
+import { LLMResponse, ModelConfig, SystemPrompt } from '../atoms/types';
 import { getModelConfigKey, generateOutputDirectoryPath, sanitizeFilename } from '../atoms/helpers';
 import ora from 'ora';
 import fs from 'fs/promises';
@@ -253,8 +253,43 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         return;
       }
       
+      // Determine which system prompt to use, with the following precedence:
+      // 1. CLI override (options.systemPrompt)
+      // 2. Model-specific system prompt (model.systemPrompt)
+      // 3. Group system prompt (from the group the model belongs to)
+      let systemPrompt: SystemPrompt | undefined;
+      let groupName: string | undefined;
+      
+      if (options.systemPrompt) {
+        // Use CLI override
+        systemPrompt = {
+          text: options.systemPrompt,
+          metadata: { source: 'cli-override' }
+        };
+      } else if (model.systemPrompt) {
+        // Use model-specific system prompt
+        systemPrompt = model.systemPrompt;
+      } else {
+        // Try to find a group that contains this model
+        if (config.groups) {
+          for (const [name, group] of Object.entries(config.groups)) {
+            const isInGroup = group.models.some(
+              groupModel => 
+                groupModel.provider === model.provider && 
+                groupModel.modelId === model.modelId
+            );
+            
+            if (isInGroup) {
+              groupName = name;
+              systemPrompt = group.systemPrompt;
+              break;
+            }
+          }
+        }
+      }
+      
       // Create promise for this model
-      const responsePromise = provider.generate(prompt, model.modelId, model.options)
+      const responsePromise = provider.generate(prompt, model.modelId, model.options, systemPrompt)
         .then(response => {
           // Update status
           modelStatuses[configKey] = { status: 'success' };
@@ -265,10 +300,20 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
           spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
           
-          return {
+          // Add group information to the response if applicable
+          const responseWithGroup = {
             ...response,
             configKey,
           };
+          
+          if (groupName && systemPrompt) {
+            responseWithGroup.groupInfo = {
+              name: groupName,
+              systemPrompt
+            };
+          }
+          
+          return responseWithGroup;
         })
         .catch(error => {
           // Update status

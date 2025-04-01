@@ -83,7 +83,7 @@
   - Dependencies: Updated RunOptions interface
   - Priority: High
 
-- [ ] Implement system prompt application
+- [x] Implement system prompt application
   - Description: Apply appropriate prompts to each query
   - Dependencies: Updated ModelConfig interface
   - Priority: High
