@@ -16,6 +16,7 @@ import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig, SystemPrompt } from '../atoms/types';
 import { getModelConfigKey, generateOutputDirectoryPath, sanitizeFilename } from '../atoms/helpers';
+import { styleHeader, styleDim, divider } from '../atoms/consoleUtils';
 import ora from 'ora';
 import fs from 'fs/promises';
 import path from 'path';
@@ -176,6 +177,45 @@ function getElapsedTime(startTime: number): number {
  * @param currentModel - Current model being processed (optional)
  * @returns Formatted status string
  */
+/**
+ * Formats a group header for display in the console
+ * 
+ * @param groupName - The name of the group
+ * @param models - The models in the group
+ * @param description - Optional group description
+ * @returns Formatted header string for console output
+ */
+function formatGroupHeader(
+  groupName: string,
+  models: ModelConfig[],
+  description?: string
+): string {
+  // Use styling functions imported at the top of the file
+  
+  const enabledModels = models.filter(m => m.enabled);
+  
+  // Create header lines
+  const lines: string[] = [];
+  
+  // Add a blank line for separation
+  lines.push('');
+  
+  // Format the main header with group name and model count
+  const header = `Group: ${groupName} (${enabledModels.length} model${enabledModels.length === 1 ? '' : 's'})`;
+  lines.push(styleHeader(header));
+  
+  // Add description if available
+  if (description) {
+    lines.push(styleDim(description));
+  }
+  
+  // Add divider
+  lines.push(divider(80));
+  
+  // Return the formatted header
+  return lines.join('\n');
+}
+
 /**
  * Formats a string for the file writing status
  * 
@@ -421,92 +461,133 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       modelStatuses[configKey] = { status: 'pending' };
     });
     
+    // Group models by their group for display and processing
+    const modelsByGroup = new Map<string, { models: ModelConfig[], description?: string }>();
+    
+    // Function to add a model to its group
+    const addModelToGroup = (model: ModelConfig): void => {
+      // Find which group this model belongs to
+      const groupInfo = findModelGroup(config, model);
+      const groupName = groupInfo?.groupName || 'default';
+      
+      // Get group description if available
+      let description: string | undefined;
+      if (groupName !== 'default' && config.groups && config.groups[groupName]) {
+        description = config.groups[groupName].description;
+      }
+      
+      // Initialize group if not already in the map
+      if (!modelsByGroup.has(groupName)) {
+        modelsByGroup.set(groupName, { models: [], description });
+      }
+      
+      // Add model to its group
+      modelsByGroup.get(groupName)!.models.push(model);
+    };
+    
+    // Organize models by group
+    models.forEach(addModelToGroup);
+    
+    // Print headers and organize models by group
     const callPromises: Array<Promise<LLMResponse & { configKey: string }>> = [];
     
-    // For each model, get provider and send prompt
-    models.forEach(model => {
-      const provider = getProvider(model.provider);
-      const configKey = getModelConfigKey(model);
-      
-      if (!provider) {
-        spinner.warn(`Provider not found for ${configKey}`);
-        modelStatuses[configKey] = { 
-          status: 'error', 
-          message: 'Provider not found' 
-        };
-        return;
+    // Process each group
+    for (const [groupName, groupData] of modelsByGroup.entries()) {
+      // Display group header
+      if (modelsByGroup.size > 1 || groupName !== 'default') {
+        // Log the group header to the console
+        // eslint-disable-next-line no-console
+        console.log(formatGroupHeader(groupName, groupData.models, groupData.description));
+        
+        // Update spinner with group info
+        spinner.text = `Processing group: ${groupName} (${groupData.models.length} models)`;
       }
       
-      // Determine which system prompt to use, with the following precedence:
-      // 1. CLI override (options.systemPrompt)
-      // 2. Model-specific system prompt (model.systemPrompt)
-      // 3. Group system prompt (from the group the model belongs to)
-      let systemPrompt: SystemPrompt | undefined;
-      let groupName: string | undefined;
-      
-      if (options.systemPrompt) {
-        // Use CLI override
-        systemPrompt = {
-          text: options.systemPrompt,
-          metadata: { source: 'cli-override' }
-        };
-      } else if (model.systemPrompt) {
-        // Use model-specific system prompt
-        systemPrompt = model.systemPrompt;
-      } else {
-        // Find which group this model belongs to
-        const groupInfo = findModelGroup(config, model);
-        if (groupInfo) {
-          groupName = groupInfo.groupName;
-          systemPrompt = groupInfo.systemPrompt;
-        }
-      }
-      
-      // Create promise for this model
-      const responsePromise = provider.generate(prompt, model.modelId, model.options, systemPrompt)
-        .then(response => {
-          // Update status
-          modelStatuses[configKey] = { status: 'success' };
-          
-          // Update spinner text with detailed progress
-          spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
-          
-          // Add group information to the response if applicable
-          const responseWithGroup: LLMResponse & { configKey: string } = {
-            ...response,
-            configKey,
-          };
-          
-          if (groupName && systemPrompt) {
-            responseWithGroup.groupInfo = {
-              name: groupName,
-              systemPrompt
-            };
-          }
-          
-          return responseWithGroup;
-        })
-        .catch(error => {
-          // Update status
+      // Process each model in this group
+      groupData.models.forEach(model => {
+        const provider = getProvider(model.provider);
+        const configKey = getModelConfigKey(model);
+        
+        if (!provider) {
+          spinner.warn(`Provider not found for ${configKey}`);
           modelStatuses[configKey] = { 
             status: 'error', 
-            message: error instanceof Error ? error.message : String(error)
+            message: 'Provider not found' 
           };
-          
-          // Update spinner text with detailed progress
-          spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
-          
-          return {
-            provider: model.provider,
-            modelId: model.modelId,
-            text: '',
-            error: error instanceof Error ? error.message : String(error),
-            configKey,
+          return;
+        }
+        
+        // Determine which system prompt to use, with the following precedence:
+        // 1. CLI override (options.systemPrompt)
+        // 2. Model-specific system prompt (model.systemPrompt)
+        // 3. Group system prompt (from the group the model belongs to)
+        let systemPrompt: SystemPrompt | undefined;
+        let modelGroupName: string | undefined;
+        
+        if (options.systemPrompt) {
+          // Use CLI override
+          systemPrompt = {
+            text: options.systemPrompt,
+            metadata: { source: 'cli-override' }
           };
-        });
-      
-      callPromises.push(responsePromise);
-    });
+        } else if (model.systemPrompt) {
+          // Use model-specific system prompt
+          systemPrompt = model.systemPrompt;
+        } else {
+          // Find which group this model belongs to
+          const groupInfo = findModelGroup(config, model);
+          if (groupInfo) {
+            modelGroupName = groupInfo.groupName;
+            systemPrompt = groupInfo.systemPrompt;
+          }
+        }
+        
+        // Create promise for this model
+        const responsePromise = provider.generate(prompt, model.modelId, model.options, systemPrompt)
+          .then(response => {
+            // Update status
+            modelStatuses[configKey] = { status: 'success' };
+            
+            // Update spinner text with detailed progress
+            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
+            
+            // Add group information to the response if applicable
+            const responseWithGroup: LLMResponse & { configKey: string } = {
+              ...response,
+              configKey,
+            };
+            
+            if (modelGroupName && systemPrompt) {
+              responseWithGroup.groupInfo = {
+                name: modelGroupName,
+                systemPrompt
+              };
+            }
+            
+            return responseWithGroup;
+          })
+          .catch(error => {
+            // Update status
+            modelStatuses[configKey] = { 
+              status: 'error', 
+              message: error instanceof Error ? error.message : String(error)
+            };
+            
+            // Update spinner text with detailed progress
+            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
+            
+            return {
+              provider: model.provider,
+              modelId: model.modelId,
+              text: '',
+              error: error instanceof Error ? error.message : String(error),
+              configKey,
+            };
+          });
+        
+        callPromises.push(responsePromise);
+      });
+    }
     
     // Complete model preparation timing
     timings.modelPreparation = getElapsedTime(startTimePreparation);
