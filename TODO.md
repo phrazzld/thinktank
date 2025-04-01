@@ -67,7 +67,7 @@
   - Dependencies: Updated AppConfig interface
   - Priority: High
 
-- [ ] Update `loadConfig` function
+- [x] Update `loadConfig` function
   - Description: Normalize legacy configs to include a default group
   - Dependencies: Updated AppConfig schema
   - Priority: High

@@ -109,7 +109,10 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
       throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
     }
     
-    return validationResult.data;
+    // Normalize the configuration to include default group if needed
+    const normalizedConfig = normalizeConfig(validationResult.data);
+    
+    return normalizedConfig;
   } catch (error) {
     if (error instanceof ConfigError) {
       throw error;
@@ -356,6 +359,40 @@ export function validateModelApiKeys(config: AppConfig): {
   }
   
   return { validModels, missingKeyModels };
+}
+
+/**
+ * Normalizes a configuration to include a default group if not present
+ * 
+ * This ensures configurations have a consistent structure for the rest of the
+ * application to work with, while maintaining backward compatibility.
+ * 
+ * @param config - The validated configuration to normalize
+ * @returns Normalized configuration with a default group
+ */
+function normalizeConfig(config: AppConfig): AppConfig {
+  // If the config already has groups, no normalization needed
+  if (config.groups && Object.keys(config.groups).length > 0) {
+    return config;
+  }
+  
+  // Create a deep copy to avoid modifying the original
+  const normalizedConfig = structuredClone(config);
+  
+  // Initialize groups object if it doesn't exist
+  normalizedConfig.groups = normalizedConfig.groups || {};
+  
+  // Create a default group using the models array
+  normalizedConfig.groups.default = {
+    name: 'default',
+    systemPrompt: {
+      text: 'You are a helpful assistant.',
+    },
+    models: structuredClone(normalizedConfig.models),
+    description: 'Default model group',
+  };
+  
+  return normalizedConfig;
 }
 
 /**
