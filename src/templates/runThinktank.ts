@@ -28,7 +28,8 @@ import {
   errorCategories,
   categorizeError,
   getTroubleshootingTip,
-  createMissingApiKeyError
+  createMissingApiKeyError,
+  colors
 } from '../atoms/consoleUtils';
 import ora from 'ora';
 import fs from 'fs/promises';
@@ -350,7 +351,54 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   // Start timing the full execution
   const startTimeTotal = getCurrentTime();
   
+  // Initialize the ora spinner for basic loading states
   const spinner = ora('Starting thinktank...').start();
+  
+  // Custom spinner for more detailed progress indication
+  const customSpinner = {
+    frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+    interval: 80,
+    currentFrame: 0
+  };
+  
+  let spinnerInterval: NodeJS.Timeout | null = null;
+  let currentModelName: string = '';
+  
+  // Start the spinner for a specific model
+  function startSpinner(modelName: string) {
+    // Make sure any existing spinner is stopped first
+    stopSpinner();
+    
+    // Hide the ora spinner when using our custom one
+    spinner.stop();
+    
+    currentModelName = modelName;
+    spinnerInterval = setInterval(() => {
+      process.stdout.write(`\r${customSpinner.frames[customSpinner.currentFrame]} Processing ${modelName}...`);
+      customSpinner.currentFrame = (customSpinner.currentFrame + 1) % customSpinner.frames.length;
+    }, customSpinner.interval);
+  }
+  
+  // Stop the spinner and show completion status
+  function stopSpinner(status?: 'success' | 'error') {
+    if (spinnerInterval) {
+      clearInterval(spinnerInterval);
+      
+      if (status && currentModelName) {
+        const icon = status === 'success' ? '✅' : '❌';
+        process.stdout.write(`\r${icon} Completed ${currentModelName}    \n`);
+      } else {
+        // Just clear the line if no status or model name
+        process.stdout.write('\r\x1b[K');
+      }
+      
+      spinnerInterval = null;
+      currentModelName = '';
+      
+      // Restart the ora spinner for other operations
+      spinner.start();
+    }
+  }
   
   // Track the output directory path for later use
   let outputDirectoryPath: string | undefined;
@@ -1053,8 +1101,22 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         }
         
         // Create promise for this model
-        const responsePromise = provider.generate(prompt, model.modelId, modelOptions, systemPrompt)
+        // Start the spinner for this model
+        startSpinner(configKey);
+        
+        const responsePromise = Promise.race([
+          provider.generate(prompt, model.modelId, modelOptions, systemPrompt),
+          new Promise<never>((_, reject) => {
+            // Set a timeout to prevent getting stuck on a model that's taking too long
+            setTimeout(() => {
+              reject(new Error(`Model ${configKey} timed out after 120 seconds. The API might be unresponsive.`));
+            }, 120000); // 2 minute timeout
+          })
+        ])
           .then(response => {
+            // Stop spinner with success status
+            stopSpinner('success');
+            
             // Update status
             modelStatuses[configKey] = { status: 'success' };
             
@@ -1077,6 +1139,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             return responseWithGroup;
           })
           .catch(error => {
+            // Stop spinner with error status
+            stopSpinner('error');
+            
             // Get error message and categorize it
             const errorMessage = error instanceof Error ? error.message : String(error);
             const errorObj = error instanceof Error ? error : new Error(String(error));
@@ -1097,6 +1162,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             
             // Log the error with additional model context
             console.error(styleError(`Error in model ${configKey}: ${formattedError}`));
+            console.log(`${colors.dim('→')} Continuing with remaining models...\n`);
             
             return {
               provider: model.provider,
@@ -1156,9 +1222,18 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       completionMessage = `${successCount + errorCount} model${successCount + errorCount === 1 ? '' : 's'}`;
     }
     
+    // Stop any active spinners
+    stopSpinner();
+    
+    // Show completion message
+    const completionTimeText = timings.apiCalls > 1000 
+      ? `${(timings.apiCalls / 1000).toFixed(2)}s` 
+      : `${timings.apiCalls}ms`;
+      
+    const percentage = successCount > 0 ? Math.round((successCount / (successCount + errorCount)) * 100) : 0;
+    
     if (errorCount > 0) {
       // Log models with errors
-      const percentage = Math.round((successCount / (successCount + errorCount)) * 100);
       spinner.warn(styleWarning(
         `Processing complete for ${completionMessage} - ${successCount} of ${successCount + errorCount} models completed successfully (${percentage}%)`
       ));
@@ -1189,28 +1264,73 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           });
         });
       
-      // eslint-disable-next-line no-console
-      console.log('\n' + styleHeader('Models with errors:'));
+      // Display a nice tree-style summary using ASCII
+      console.log('\n');
+      console.log(`${colors.blue('📊')} Results Summary:`);
+      console.log(`${colors.dim('│')}`);
+      
+      // First show successful models
+      if (successCount > 0) {
+        console.log(`${colors.dim('├')} ${colors.green('✓')} Successful Models (${successCount}):`);
+        const successModels = Object.entries(modelStatuses)
+          .filter(([_, status]) => status.status === 'success')
+          .map(([model]) => model);
+          
+        successModels.forEach((model, i) => {
+          const isLast = i === successModels.length - 1;
+          const prefix = isLast ? `${colors.dim('│  └')}` : `${colors.dim('│  ├')}`;
+          console.log(`${prefix} ${model}`);
+        });
+      }
+      
+      // Then show failed models by category
+      console.log(`${colors.dim('├')} ${colors.red('✖')} Failed Models (${errorCount}):`);
       
       // Display errors by category
-      Object.entries(errorsByCategory).forEach(([category, errors]) => {
-        // eslint-disable-next-line no-console
-        console.log(styleWarning(`\n${category} errors (${errors.length}):`));
+      Object.entries(errorsByCategory).forEach(([category, errors], categoryIndex, categories) => {
+        const isLastCategory = categoryIndex === categories.length - 1;
+        const categoryPrefix = isLastCategory ? `${colors.dim('│  └')}` : `${colors.dim('│  ├')}`;
         
-        errors.forEach(({ model, message }) => {
-          // eslint-disable-next-line no-console
-          console.log(styleError(`  - ${model}: ${message}`));
+        console.log(`${categoryPrefix} ${colors.yellow(category)} errors (${errors.length}):`);
+        
+        errors.forEach(({ model, message }, errorIndex) => {
+          const isLastError = errorIndex === errors.length - 1;
+          const errorPrefix = isLastCategory 
+            ? (isLastError ? `${colors.dim('│     └')}` : `${colors.dim('│     ├')}`)
+            : (isLastError ? `${colors.dim('│  │  └')}` : `${colors.dim('│  │  ├')}`);
+            
+          console.log(`${errorPrefix} ${colors.red(model)}`);
+          
+          // Add indented error message
+          const messagePrefix = isLastCategory
+            ? (isLastError ? `${colors.dim('│      ')}` : `${colors.dim('│     │')}`)
+            : (isLastError ? `${colors.dim('│  │   ')}` : `${colors.dim('│  │  │')}`);
+            
+          console.log(`${messagePrefix} ${colors.dim('→')} ${message}`);
         });
       });
+      
+      console.log(`${colors.dim('└')} Completed in ${completionTimeText}`);
+      
     } else {
       // Show success message with completion time
-      const completionTimeText = timings.apiCalls > 1000 
-        ? `${(timings.apiCalls / 1000).toFixed(2)}s` 
-        : `${timings.apiCalls}ms`;
-      
       spinner.succeed(styleSuccess(
         `Successfully completed ${completionMessage} in ${completionTimeText}`
       ));
+      
+      // Display a nice tree-style summary for successful models
+      console.log('\n');
+      console.log(`${colors.blue('📊')} Results Summary:`);
+      console.log(`${colors.dim('│')}`);
+      
+      const successModels = Object.keys(modelStatuses);
+      successModels.forEach((model, i) => {
+        const isLast = i === successModels.length - 1;
+        const prefix = isLast ? `${colors.dim('├')}` : `${colors.dim('├')}`;
+        console.log(`${prefix} ${i+1}. ${model} - ${colors.green('✓')} Success`);
+      });
+      
+      console.log(`${colors.dim('└')} Complete.`);
     }
     
     // 8. Write individual files (now always done)

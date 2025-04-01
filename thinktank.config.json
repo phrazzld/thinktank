@@ -6,7 +6,7 @@
       "enabled": true,
       "options": {
         "temperature": 0.7,
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     },
     {
@@ -14,7 +14,7 @@
       "modelId": "o3-mini",
       "enabled": true,
       "options": {
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     },
     {
@@ -22,8 +22,21 @@
       "modelId": "claude-3-7-sonnet-20250219",
       "enabled": true,
       "options": {
+        "temperature": 1,
+        "maxTokens": 20000,
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 16000
+        }
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro-exp-03-25",
+      "enabled": true,
+      "options": {
         "temperature": 0.7,
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     }
   ],
@@ -36,35 +49,21 @@
       "models": [
         {
           "provider": "openai",
-          "modelId": "gpt-4o",
+          "modelId": "o3-mini",
           "enabled": true
         },
         {
           "provider": "anthropic",
           "modelId": "claude-3-7-sonnet-20250219",
+          "enabled": true
+        },
+        {
+          "provider": "google",
+          "modelId": "gemini-2.5-pro-exp-03-25",
           "enabled": true
         }
       ],
       "description": "Default model group"
-    },
-    "coding": {
-      "name": "coding",
-      "systemPrompt": {
-        "text": "You are a coding assistant specialized in software development. Prioritize correct, efficient code and comprehensive explanations of programming concepts."
-      },
-      "models": [
-        {
-          "provider": "openai",
-          "modelId": "gpt-4o",
-          "enabled": true
-        },
-        {
-          "provider": "anthropic",
-          "modelId": "claude-3-7-sonnet-20250219",
-          "enabled": true
-        }
-      ],
-      "description": "Models optimized for programming tasks"
     },
     "fast": {
       "name": "fast",
@@ -91,8 +90,8 @@
           "modelId": "claude-3-7-sonnet-20250219",
           "enabled": true,
           "options": {
-            "temperature": 0.7,
-            "maxTokens": 4000,
+            "temperature": 1,
+            "maxTokens": 20000,
             "thinking": {
               "type": "enabled",
               "budget_tokens": 16000
