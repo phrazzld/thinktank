@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 /**
  * Command-line interface for thinktank
+ * 
+ * Simplified CLI that supports three core use cases:
+ * 1. Running a prompt through a group of models (or default group)
+ * 2. Running a prompt through one specific model
+ * 3. Listing all available models
  */
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 import { runThinktank, ThinktankError } from '../templates/runThinktank';
 import { listAvailableModels } from '../templates/listModelsWorkflow';
 import fs from 'fs/promises';
@@ -13,131 +16,80 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 /**
+ * Display usage help message
+ */
+function showHelp(): void {
+  // eslint-disable-next-line no-console
+  console.error('Usage:');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt [group]              # Run prompt through a group (or default group)');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt provider:model       # Run prompt through one specific model');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank models                          # List all available models');
+  // eslint-disable-next-line no-console
+  console.error('');
+  // eslint-disable-next-line no-console
+  console.error('Examples:');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt                      # Run prompt through default group');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt coding               # Run prompt through "coding" group');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt openai:gpt-4o        # Run prompt through specific model');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank models                          # List all available models');
+}
+
+/**
  * Main CLI entry point
  * @export For testing purposes
  */
 export async function main(): Promise<void> {
-  // Define CLI arguments
-  const yargsInstance = yargs(hideBin(process.argv))
-    .usage('Usage: $0 [command] [options]')
-    .option('config', {
-      alias: 'c',
-      describe: 'Path to configuration file',
-      type: 'string',
-    })
-    // Command for querying LLMs
-    .command('$0', 'Send a prompt to LLMs and compare responses', (yargs) => {
-      return yargs
-        .option('input', {
-          alias: 'i',
-          describe: 'Path to input prompt file',
-          type: 'string',
-          demandOption: true,
-        })
-        .option('output', {
-          alias: 'o',
-          describe: 'Custom path for output directory (default: ./thinktank-reports/)',
-          type: 'string',
-        })
-        .option('model', {
-          alias: 'm',
-          describe: 'Models to use (provider:model, provider, or model)',
-          type: 'array',
-        })
-        .option('group', {
-          alias: 'g',
-          describe: 'Model groups to use (can specify multiple)',
-          type: 'array',
-        })
-        .option('system-prompt', {
-          alias: 's',
-          describe: 'System prompt override for all models',
-          type: 'string',
-        })
-        .option('metadata', {
-          describe: 'Include metadata in output',
-          type: 'boolean',
-          default: false,
-        })
-        .option('no-color', {
-          describe: 'Disable colored output',
-          type: 'boolean',
-          default: false,
-        })
-        .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models')
-        .example('$0 -i prompt.txt -m openai:gpt-4o', 'Send prompt to specific model')
-        .example('$0 -i prompt.txt -g coding', 'Send prompt to all models in the coding group')
-        .example('$0 -i prompt.txt -g coding -g creative', 'Send prompt to models in multiple groups')
-        .example('$0 -i prompt.txt -s "You are a helpful assistant."', 'Use a custom system prompt for all models')
-        .example('$0 -i prompt.txt -c custom-config.json', 'Use custom config file')
-        .example('$0 -i prompt.txt -o ./custom-outputs', 'Use custom directory for output files');
-    })
-    // Command for listing available models
-    .command('list-models', 'List available models from providers', (yargs) => {
-      return yargs
-        .option('provider', {
-          alias: 'p',
-          describe: 'Filter models by provider ID',
-          type: 'string',
-        })
-        .example('$0 list-models', 'List all available models')
-        .example('$0 list-models -p anthropic', 'List only Anthropic models')
-        .example('$0 list-models -c custom-config.json', 'Use custom config file');
-    })
-    .help()
-    .alias('help', 'h')
-    .version()
-    .alias('version', 'v')
-    .epilogue('For more information, visit https://github.com/phrazzld/thinktank');
-    
-  const argv = await yargsInstance.parseAsync();
-  
   try {
-    // Determine the command to run based on argv._
-    const command = argv._[0];
+    // Get command-line arguments (excluding node and script path)
+    const args = process.argv.slice(2);
     
-    if (command === 'list-models') {
-      // Run the list-models command
-      const result = await listAvailableModels({
-        config: argv.config,
-        provider: argv.provider as string | undefined,
-      });
-      
-      // Display the results
+    // No arguments provided - show help
+    if (args.length === 0) {
+      showHelp();
+      process.exit(1);
+    }
+    
+    // Check for "models" command
+    if (args[0] === 'models') {
+      const result = await listAvailableModels({});
       // eslint-disable-next-line no-console
       console.log(result);
-      
-      process.exit(0);
-    } else {
-      // Default command (thinktank with input file)
-      
-      // Verify input file exists
-      if (!argv.input) {
-        throw new ThinktankError('Input file is required. Use --input or -i to specify the input file.');
-      }
-      
-      try {
-        await fs.access(argv.input as string);
-      } catch (error) {
-        throw new ThinktankError(`Input file not found: ${argv.input as string}`);
-      }
-      
-      // Run thinktank - all model responses are written to the output directory
-      // We're running thinktank but not using the returned results
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      await runThinktank({
-        input: argv.input as string,
-        configPath: argv.config,
-        output: argv.output as string | undefined,
-        models: argv.model as string[] | undefined,
-        groups: argv.group as string[] | undefined,
-        systemPrompt: argv['system-prompt'] as string | undefined,
-        includeMetadata: argv.metadata as boolean | undefined,
-        useColors: !(argv['no-color'] as boolean | undefined),
-      });
-      
       process.exit(0);
     }
+    
+    // All other commands require a prompt file as first argument
+    const promptFile = args[0];
+    
+    // Validate prompt file exists
+    try {
+      await fs.access(promptFile);
+    } catch (error) {
+      throw new ThinktankError(`Input file not found: ${promptFile}`);
+    }
+    
+    // The second argument can be either a group name or a specific model
+    // We'll implement this in the next task
+    // Uncomment when we implement the parsing logic:
+    // const secondArg = args[1];
+    
+    // We'll implement the actual parsing logic for the group vs model
+    // in the next task, but set up the structure here
+    
+    // For now, we'll pass through the input file and handle other options
+    // in future implementations
+    await runThinktank({
+      input: promptFile,
+      // Other options to be determined based on second argument
+    });
+    
+    process.exit(0);
   } catch (error) {
     // Handle errors
     if (error instanceof ThinktankError) {
