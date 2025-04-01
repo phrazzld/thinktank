@@ -11,7 +11,7 @@
   - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [ ] Update `AppConfig` interface
+- [x] Update `AppConfig` interface
   - Description: Expand to support both legacy models array and groups object
   - Dependencies: ModelGroup interface
   - Priority: High

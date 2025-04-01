@@ -44,9 +44,14 @@ export interface ModelConfig {
 
 /**
  * Overall application configuration
+ * 
+ * Supports both legacy models array and groups object:
+ * - The `models` array is treated as the default group when groups are used
+ * - The `groups` object allows for defining named sets of models with specific system prompts
  */
 export interface AppConfig {
   models: ModelConfig[];
+  groups?: Record<string, ModelGroup>;
 }
 
 /**
