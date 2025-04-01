@@ -268,23 +268,25 @@ function formatFileWritingStatus(
   
   // Calculate estimated time remaining (if we have at least 10% progress)
   let etaString = '';
-  if (percentComplete >= 10 && elapsedTime > 0) {
+  if (percentComplete >= 10 && elapsedTime > 0 && completedWrites > 0) {
     const totalTimeEstimate = (elapsedTime * totalFiles) / completedWrites;
     const remainingTime = Math.round(totalTimeEstimate - elapsedTime);
-    etaString = ` - ETA: ~${remainingTime}s remaining`;
+    etaString = ` (ETA: ~${remainingTime}s remaining)`;
   }
   
-  // Build status message
-  let statusMsg = `Writing files [${completedWrites}/${totalFiles}] ${percentComplete}% complete - `;
-  statusMsg += `${succeededWrites} succeeded, ${failedWrites} failed`;
+  // Build status message with multiple lines for better readability
+  let statusMsg = `Saving model responses [${completedWrites}/${totalFiles}] ${percentComplete}% complete${etaString}\n`;
+  
+  // Stats with colored output
+  statusMsg += `  ${styleSuccess(`${succeededWrites} succeeded`)}, ${styleError(`${failedWrites} failed`)}`;
   
   // Add current file if provided
   if (currentFile) {
-    statusMsg += ` - Current: ${currentFile}`;
+    statusMsg += `\n  Current: ${styleInfo(currentFile)}`;
   }
   
-  // Add elapsed time and ETA
-  statusMsg += ` - Elapsed: ${elapsedTime}s${etaString}`;
+  // Add elapsed time
+  statusMsg += `\n  Elapsed: ${elapsedTime}s`;
   
   return statusMsg;
 }
@@ -293,7 +295,8 @@ function formatModelProcessingStatus(
   models: ModelConfig[], 
   modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }>,
   startTime: number,
-  currentModel?: string
+  currentModel?: string,
+  options?: RunOptions
 ): string {
   const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
   const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
@@ -305,17 +308,37 @@ function formatModelProcessingStatus(
   // Format elapsed time in seconds
   const elapsedTime = Math.round((getCurrentTime() - startTime) / 1000);
   
+  // Calculate estimated time remaining (if we have at least 10% progress)
+  let etaString = '';
+  if (percentComplete >= 10 && completedCount > 0 && elapsedTime > 0) {
+    const totalTimeEstimate = (elapsedTime * totalCount) / completedCount;
+    const remainingTime = Math.round(totalTimeEstimate - elapsedTime);
+    etaString = ` (ETA: ~${remainingTime}s remaining)`;
+  }
+  
+  // Build mode-specific prefix
+  let modePrefix = 'Processing models';
+  if (options?.specificModel) {
+    modePrefix = `Running with model ${options.specificModel}`;
+  } else if (options?.groupName) {
+    modePrefix = `Running with group "${options.groupName}"`;
+  } else if (options?.groups && options.groups.length > 0) {
+    modePrefix = `Running with groups [${options.groups.join(', ')}]`;
+  }
+  
   // Build status message
-  let statusMsg = `Processing models [${completedCount}/${totalCount}] ${percentComplete}% complete - `;
-  statusMsg += `${successCount} succeeded, ${errorCount} failed, ${pendingCount} pending`;
+  let statusMsg = `${modePrefix} [${completedCount}/${totalCount}] ${percentComplete}% complete${etaString}\n`;
+  
+  // Stats line
+  statusMsg += `  ${styleSuccess(`${successCount} succeeded`)}, ${styleError(`${errorCount} failed`)}, ${styleDim(`${pendingCount} pending`)}`;
   
   // Add current model if provided
   if (currentModel) {
-    statusMsg += ` - Current: ${currentModel}`;
+    statusMsg += `\n  Current: ${styleInfo(currentModel)}`;
   }
   
   // Add elapsed time
-  statusMsg += ` - Elapsed: ${elapsedTime}s`;
+  statusMsg += `\n  Elapsed: ${elapsedTime}s`;
   
   return statusMsg;
 }
@@ -710,7 +733,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             modelStatuses[configKey] = { status: 'success' };
             
             // Update spinner text with detailed progress
-            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
+            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey, options);
             
             // Add group information to the response if applicable
             const responseWithGroup: LLMResponse & { configKey: string } = {
@@ -744,7 +767,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             };
             
             // Update spinner text with detailed progress
-            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
+            spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey, options);
             
             // Log the error with additional model context
             console.error(styleError(`Error in model ${configKey}: ${formattedError}`));
@@ -774,8 +797,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       uniqueGroups.add(groupInfo?.groupName || 'default');
     });
     
-    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}... ` +
-      `(Preparation: ${timings.modelPreparation}ms, Groups: ${uniqueGroups.size})`;
+    // Create mode-specific message
+    let modeMessage = '';
+    if (options.specificModel) {
+      modeMessage = `Running prompt through model ${styleInfo(options.specificModel)}`;
+    } else if (options.groupName) {
+      modeMessage = `Running prompt through group ${styleInfo(options.groupName)} (${models.length} model${models.length === 1 ? '' : 's'})`;
+    } else if (options.groups && options.groups.length > 0) {
+      modeMessage = `Running prompt through groups [${options.groups.map(g => styleInfo(g)).join(', ')}] (${models.length} model${models.length === 1 ? '' : 's'})`;
+    } else {
+      modeMessage = `Running prompt through ${models.length} model${models.length === 1 ? '' : 's'} in ${uniqueGroups.size} group${uniqueGroups.size === 1 ? '' : 's'}`;
+    }
+    
+    spinner.text = `${modeMessage}\n  Preparation: ${timings.modelPreparation}ms`;
     
     // 6. Execute calls concurrently
     const startTimeApiCalls = getCurrentTime();
@@ -786,9 +820,22 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
     const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
     
+    // Create mode-specific completion message
+    let completionMessage = '';
+    if (options.specificModel) {
+      completionMessage = options.specificModel;
+    } else if (options.groupName) {
+      completionMessage = `${options.groupName} group (${successCount + errorCount} model${successCount + errorCount === 1 ? '' : 's'})`;
+    } else {
+      completionMessage = `${successCount + errorCount} model${successCount + errorCount === 1 ? '' : 's'}`;
+    }
+    
     if (errorCount > 0) {
       // Log models with errors
-      spinner.warn(styleWarning(`${successCount} of ${successCount + errorCount} models completed successfully`));
+      const percentage = Math.round((successCount / (successCount + errorCount)) * 100);
+      spinner.warn(styleWarning(
+        `Processing complete for ${completionMessage} - ${successCount} of ${successCount + errorCount} models completed successfully (${percentage}%)`
+      ));
       
       // Group errors by category
       const errorsByCategory: Record<string, Array<{ model: string, message: string }>> = {};
@@ -830,11 +877,26 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         });
       });
     } else {
-      spinner.succeed(styleSuccess(`All ${successCount} models completed successfully`));
+      // Show success message with completion time
+      const completionTimeText = timings.apiCalls > 1000 
+        ? `${(timings.apiCalls / 1000).toFixed(2)}s` 
+        : `${timings.apiCalls}ms`;
+      
+      spinner.succeed(styleSuccess(
+        `Successfully completed ${completionMessage} in ${completionTimeText}`
+      ));
     }
     
     // 8. Write individual files (now always done)
-    spinner.text = `Writing model responses to individual files... (API calls completed in ${timings.apiCalls}ms, Success rate: ${Math.round((results.filter(r => !r.error).length / results.length) * 100)}%)`;
+    const successRate = Math.round((results.filter(r => !r.error).length / results.length) * 100);
+    const apiCallsTime = timings.apiCalls > 1000 
+      ? `${(timings.apiCalls / 1000).toFixed(2)}s` 
+      : `${timings.apiCalls}ms`;
+    
+    spinner.text = `Saving ${results.length} model response${results.length === 1 ? '' : 's'} to files...\n` +
+      `  API calls completed in ${apiCallsTime}\n` +
+      `  Success rate: ${styleInfo(`${successRate}%`)}`;
+    
     const startTimeFileWrites = getCurrentTime();
     
     // Track stats for reporting
@@ -966,31 +1028,47 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       groupedResults.set(groupName, (groupedResults.get(groupName) || 0) + 1);
     });
     
-    // Report results
+    // Get the file writing time in a readable format
+    const fileWriteTime = timings.fileWrites > 1000 
+      ? `${(timings.fileWrites / 1000).toFixed(2)}s` 
+      : `${timings.fileWrites}ms`;
+    
+    // Report results based on CLI mode and success/failure status
     if (failedWrites === 0) {
-      spinner.succeed(styleSuccess(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`));
+      const directoryDisplay = styleInfo(outputDirectoryPath || '');
+      
+      if (options.specificModel) {
+        spinner.succeed(styleSuccess(`Model response saved to ${directoryDisplay} (${fileWriteTime})`));
+      } else if (options.groupName) {
+        spinner.succeed(styleSuccess(`${succeededWrites} model responses from group "${options.groupName}" saved to ${directoryDisplay} (${fileWriteTime})`));
+      } else {
+        spinner.succeed(styleSuccess(`All ${succeededWrites} model responses saved to ${directoryDisplay} (${fileWriteTime})`));
+      }
+      
       // eslint-disable-next-line no-console
-      console.log(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
+      console.log(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
       
       // If using groups, show group summary
       if (groupedResults.size > 1 || !groupedResults.has('default')) {
         // eslint-disable-next-line no-console
-        console.log('\n' + styleHeader('Group summary:'));
+        console.log('\n' + styleHeader('📊 Group summary:'));
         
         for (const [group, count] of groupedResults.entries()) {
+          const groupIcon = group === 'default' ? '⚪' : '🔶';
           if (group === 'default') {
             // eslint-disable-next-line no-console
-            console.log(styleDim(`  - Default group: ${count} models`));
+            console.log(styleDim(`  ${groupIcon} Default group: ${count} model${count === 1 ? '' : 's'}`));
           } else {
             // eslint-disable-next-line no-console
-            console.log(styleInfo(`  - ${group} group: ${count} models`));
+            console.log(styleInfo(`  ${groupIcon} ${group} group: ${count} model${count === 1 ? '' : 's'}`));
           }
         }
       }
     } else {
-      spinner.warn(styleWarning(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`));
+      // Some files failed to write
+      spinner.warn(styleWarning(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes (${fileWriteTime})`));
       // eslint-disable-next-line no-console
-      console.log(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
+      console.log(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
       
       // Show files with errors
       const failedFiles = fileDetails.filter(file => file.status === 'error');
@@ -1013,7 +1091,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       });
       
       // eslint-disable-next-line no-console
-      console.log('\n' + styleHeader('Files with errors:'));
+      console.log('\n' + styleHeader('❌ Files with errors:'));
       
       // Display file errors by category
       Object.entries(fileErrorsByCategory).forEach(([category, errors]) => {
@@ -1027,7 +1105,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           
           if (tip) {
             // eslint-disable-next-line no-console
-            console.log(styleInfo(`    Tip: ${tip}`));
+            console.log(styleInfo(`    💡 Tip: ${tip}`));
           }
         });
       });

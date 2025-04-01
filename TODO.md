@@ -61,7 +61,7 @@
   - Dependencies: Model Selection Logic
   - Priority: Medium
 
-- [ ] Improve Progress Display
+- [x] Improve Progress Display
   - Description: Update spinner and progress messages to show per-model status
   - Dependencies: Model Selection Logic
   - Priority: Medium
