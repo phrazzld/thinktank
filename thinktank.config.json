@@ -130,6 +130,7 @@
       "provider": "google",
       "modelId": "gemini-2.5-pro-exp-03-25",
       "enabled": true,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
       "options": {
         "temperature": 0.7,
         "maxTokens": 5000
@@ -187,7 +188,8 @@
         {
           "provider": "google",
           "modelId": "gemini-2.5-pro-exp-03-25",
-          "enabled": true
+          "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY"
         },
         {
           "provider": "openrouter",
