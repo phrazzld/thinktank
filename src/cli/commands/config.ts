@@ -108,8 +108,8 @@ showCommand
             
             models.forEach(model => {
               const status = model.enabled 
-                ? colors.green('✅ Enabled') 
-                : colors.red('❌ Disabled');
+                ? colors.green('Enabled') 
+                : colors.red('Disabled');
               
               // eslint-disable-next-line no-console
               console.log(`    - ${colors.yellow(model.modelId)} [${status}]`);
@@ -266,8 +266,8 @@ listModelsCommand
         
         models.forEach((model, index) => {
           const status = model.enabled 
-            ? colors.green('✅ Enabled') 
-            : colors.red('❌ Disabled');
+            ? colors.green('Enabled') 
+            : colors.red('Disabled');
           
           // eslint-disable-next-line no-console
           console.log(`    ${index + 1}. ${colors.yellow(model.modelId)} [${status}]`);
@@ -379,7 +379,7 @@ addModelCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully ${operation} model ${colors.cyan(`${provider}:${modelId}`)}`)
+        colors.green(`Successfully ${operation} model ${colors.cyan(`${provider}:${modelId}`)}`)
       );
       
       // Show model details
@@ -481,7 +481,7 @@ removeModelCommand
         // eslint-disable-next-line no-console
         console.log(
           colors.yellow(
-            `⚠️ Model ${colors.cyan(`${provider}:${modelId}`)} is used in the following groups: ` +
+            `Warning: Model ${colors.cyan(`${provider}:${modelId}`)} is used in the following groups: ` +
             `${groupsContainingModel.join(', ')}`
           )
         );
@@ -503,7 +503,7 @@ removeModelCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully removed model ${colors.cyan(`${provider}:${modelId}`)}`)
+        colors.green(`Successfully removed model ${colors.cyan(`${provider}:${modelId}`)}`)
       );
       
       // Show additional details if relevant
@@ -575,7 +575,7 @@ enableModelCommand
         // eslint-disable-next-line no-console
         console.log(
           colors.yellow(
-            `ℹ️ Model ${colors.cyan(`${provider}:${modelId}`)} is already enabled`
+            `Info: Model ${colors.cyan(`${provider}:${modelId}`)} is already enabled`
           )
         );
         return;
@@ -593,7 +593,7 @@ enableModelCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully enabled model ${colors.cyan(`${provider}:${modelId}`)}`)
+        colors.green(`Successfully enabled model ${colors.cyan(`${provider}:${modelId}`)}`)
       );
       
       // Show configuration file path
@@ -655,7 +655,7 @@ disableModelCommand
         // eslint-disable-next-line no-console
         console.log(
           colors.yellow(
-            `ℹ️ Model ${colors.cyan(`${provider}:${modelId}`)} is already disabled`
+            `Info: Model ${colors.cyan(`${provider}:${modelId}`)} is already disabled`
           )
         );
         return;
@@ -673,7 +673,7 @@ disableModelCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully disabled model ${colors.cyan(`${provider}:${modelId}`)}`)
+        colors.green(`Successfully disabled model ${colors.cyan(`${provider}:${modelId}`)}`)
       );
       
       // Show configuration file path
@@ -873,7 +873,7 @@ createGroupCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully created group "${colors.cyan(groupName)}"`)
+        colors.green(`Successfully created group "${colors.cyan(groupName)}"`)
       );
       
       // Show group details
@@ -974,7 +974,7 @@ addModelToGroupCommand
         // eslint-disable-next-line no-console
         console.log(
           colors.yellow(
-            `ℹ️ Model ${colors.cyan(`${provider}:${modelId}`)} is already in group "${colors.cyan(groupName)}"`
+            `Info: Model ${colors.cyan(`${provider}:${modelId}`)} is already in group "${colors.cyan(groupName)}"`
           )
         );
         return;
@@ -989,7 +989,7 @@ addModelToGroupCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully added model ${colors.cyan(`${provider}:${modelId}`)} to group "${colors.cyan(groupName)}"`)      
+        colors.green(`Successfully added model ${colors.cyan(`${provider}:${modelId}`)} to group "${colors.cyan(groupName)}"`)      
       );
       
       // Show updated group information
@@ -1071,7 +1071,7 @@ removeModelFromGroupCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully removed model ${colors.cyan(`${provider}:${modelId}`)} from group "${colors.cyan(groupName)}"`)      
+        colors.green(`Successfully removed model ${colors.cyan(`${provider}:${modelId}`)} from group "${colors.cyan(groupName)}"`)      
       );
       
       // Show updated group information
@@ -1148,7 +1148,7 @@ setGroupPromptCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully updated system prompt for group "${colors.cyan(groupName)}"`)      
+        colors.green(`Successfully updated system prompt for group "${colors.cyan(groupName)}"`)      
       );
       
       // Show the new prompt
@@ -1205,7 +1205,7 @@ removeGroupCommand
       // Display success message
       // eslint-disable-next-line no-console
       console.log(
-        colors.green(`✓ Successfully removed group "${colors.cyan(groupName)}"`)      
+        colors.green(`Successfully removed group "${colors.cyan(groupName)}"`)      
       );
       
       // Show additional details if relevant

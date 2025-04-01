@@ -23,13 +23,13 @@ jest.mock('chalk', () => {
 
 jest.mock('figures', () => {
   return {
-    tick: '✓',
-    cross: '✖',
-    warning: '⚠',
-    info: 'ℹ',
-    pointer: '❯',
-    line: '─',
-    bullet: '●',
+    tick: '+',
+    cross: 'x',
+    warning: '!',
+    info: 'i',
+    pointer: '>',
+    line: '-',
+    bullet: '*',
   };
 });
 
@@ -37,22 +37,22 @@ describe('consoleUtils', () => {
   describe('styling functions', () => {
     test('styleSuccess should format text with green tick', () => {
       const result = consoleUtils.styleSuccess('Success message');
-      expect(result).toBe('green(✓) Success message');
+      expect(result).toBe('green(+) Success message');
     });
 
     test('styleError should format text with red cross', () => {
       const result = consoleUtils.styleError('Error message');
-      expect(result).toBe('red(✖) Error message');
+      expect(result).toBe('red(x) Error message');
     });
 
     test('styleWarning should format text with yellow warning', () => {
       const result = consoleUtils.styleWarning('Warning message');
-      expect(result).toBe('yellow(⚠) Warning message');
+      expect(result).toBe('yellow(!) Warning message');
     });
 
     test('styleInfo should format text with blue info', () => {
       const result = consoleUtils.styleInfo('Info message');
-      expect(result).toBe('blue(ℹ) Info message');
+      expect(result).toBe('blue(i) Info message');
     });
 
     test('styleHeader should format text as bold blue', () => {
@@ -67,7 +67,7 @@ describe('consoleUtils', () => {
 
     test('divider should create a styled horizontal line', () => {
       const result = consoleUtils.divider(5);
-      expect(result).toBe('dim(─────)');
+      expect(result).toBe('dim(-----)');
     });
   });
 
@@ -81,7 +81,7 @@ describe('consoleUtils', () => {
       expect(result).toContain('red.bold(Error)');
       expect(result).toContain('yellow(API)');
       expect(result).toContain('Something went wrong');
-      expect(result).toContain('cyan(ℹ)');
+      expect(result).toContain('cyan(i)');
       expect(result).toContain('Tip: Check your API key');
     });
 

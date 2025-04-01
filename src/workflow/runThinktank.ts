@@ -223,12 +223,12 @@ function formatResultsSummary(
       });
     
     // Create a nice tree-style summary
-    summaryOutput += `\n${colors.blue('📊')} Results Summary:\n`;
+    summaryOutput += `\n${colors.blue('Results Summary:')}\n`;
     summaryOutput += `${colors.dim('│')}\n`;
     
     // First show successful models
     if (successCount > 0) {
-      summaryOutput += `${colors.dim('├')} ${colors.green('✓')} Successful Models (${successCount}):\n`;
+      summaryOutput += `${colors.dim('├')} ${colors.green('+')} Successful Models (${successCount}):\n`;
       const successModels = Object.entries(statuses)
         .filter(([_, status]) => status.status === 'success')
         .map(([model]) => model);
@@ -241,7 +241,7 @@ function formatResultsSummary(
     }
     
     // Then show failed models by category
-    summaryOutput += `${colors.dim('├')} ${colors.red('✖')} Failed Models (${errorCount}):\n`;
+    summaryOutput += `${colors.dim('├')} ${colors.red('x')} Failed Models (${errorCount}):\n`;
     
     // Display errors by category
     Object.entries(errorsByCategory).forEach(([category, errors], categoryIndex, categories) => {
@@ -273,14 +273,14 @@ function formatResultsSummary(
     summaryOutput += styleSuccess(`Successfully completed ${completionMessage} in ${completionTimeText}\n`);
     
     // Display a nice tree-style summary for successful models
-    summaryOutput += `\n${colors.blue('📊')} Results Summary:\n`;
+    summaryOutput += `\n${colors.blue('Results Summary:')}\n`;
     summaryOutput += `${colors.dim('│')}\n`;
     
     const successModels = Object.keys(statuses);
     successModels.forEach((model, i) => {
       const isLast = i === successModels.length - 1;
       const prefix = isLast ? `${colors.dim('├')}` : `${colors.dim('├')}`;
-      summaryOutput += `${prefix} ${i+1}. ${model} - ${colors.green('✓')} Success\n`;
+      summaryOutput += `${prefix} ${i+1}. ${model} - ${colors.green('+')} Success\n`;
     });
     
     summaryOutput += `${colors.dim('└')} Complete.\n`;
@@ -481,7 +481,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       
       // Show files with errors
       const failedFiles = fileOutputResult.files.filter(file => file.status === 'error');
-      logger.plain('\n' + styleHeader('❌ Files with errors:'));
+      logger.plain('\n' + styleHeader('Files with errors:'));
       
       failedFiles.forEach(file => {
         logger.plain(styleError(`  - ${file.filename}: ${file.error || 'Unknown error'}`));
@@ -489,7 +489,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // Show output directory
-    logger.plain(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
+    logger.plain(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
     
     // 8. Format model responses for console output
     const consoleOutput = formatForConsole(queryResults.responses, {
@@ -517,7 +517,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         .sort((a, b) => (a[1].durationMs || 0) - (b[1].durationMs || 0))
         .forEach(([model, status]) => {
           if (status.durationMs) {
-            const statusIcon = status.status === 'success' ? '✅' : '❌';
+            const statusIcon = status.status === 'success' ? '+' : 'x';
             logger.plain(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
           }
         });
