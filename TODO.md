@@ -1,189 +1,122 @@
 # TODO
 
-## Core Types Implementation
-- [x] Define `SystemPrompt` interface
-  - Description: Create interface for system prompts with text and metadata fields
+## Setup & Core Primitives
+
+- [ ] Install Dependencies
+  - Description: Verify cli-table3 and figures are properly installed (already in package.json)
   - Dependencies: None
   - Priority: High
 
-- [x] Define `ModelGroup` interface
-  - Description: Create interface for model groups with system prompts and model lists
-  - Dependencies: SystemPrompt interface
+- [x] Create Console Utility Module
+  - Description: Create `src/atoms/consoleUtils.ts` to centralize chalk, figures, and common formatting helpers
+  - Dependencies: Installed dependencies
   - Priority: High
 
-- [x] Update `AppConfig` interface
-  - Description: Expand to support both legacy models array and groups object
-  - Dependencies: ModelGroup interface
-  - Priority: High
+## Enhanced Progress Indicators
 
-- [x] Update `ModelConfig` interface
-  - Description: Add optional systemPrompt property for per-model prompts
-  - Dependencies: SystemPrompt interface
-  - Priority: High
-
-- [x] Update `LLMResponse` interface
-  - Description: Include group information in response objects
-  - Dependencies: ModelGroup interface
-  - Priority: Medium
-
-- [ ] Update `ModelOptions` interface
-  - Description: Add support for system prompt related options
+- [ ] Implement Stage Timing
+  - Description: Add start/end timestamps for major stages (config load, model processing, file writing) in runThinktank
   - Dependencies: None
   - Priority: Medium
 
-## Configuration Management
-- [x] Create Zod schema for `SystemPrompt`
-  - Description: Define validation schema for system prompts
-  - Dependencies: SystemPrompt interface
+- [ ] Refine Spinner Messages
+  - Description: Update ora spinner text in runThinktank to show counts, percentages, and stage timing
+  - Dependencies: Stage Timing
   - Priority: High
 
-- [x] Create Zod schema for `ModelGroup`
-  - Description: Define validation schema for model groups
-  - Dependencies: ModelGroup interface, SystemPrompt schema
-  - Priority: High
+## Group-Based Output Organization
 
-- [x] Update `appConfigSchema`
-  - Description: Modify to support both models array and groups
-  - Dependencies: ModelGroup schema
-  - Priority: High
-
-- [x] Implement `getGroup` function
-  - Description: Create utility to get models from a specific group
-  - Dependencies: Updated AppConfig interface
-  - Priority: High
-
-- [x] Implement `getEnabledGroupModels` function
-  - Description: Create utility to get enabled models from a group
-  - Dependencies: getGroup function
-  - Priority: High
-
-- [x] Implement `filterGroupModels` function
-  - Description: Create utility to filter models within a group
-  - Dependencies: getGroup function
+- [ ] Add In-Progress Group Headers
+  - Description: Add formatted headers (name, count, description) for groups in runThinktank
+  - Dependencies: Console Utils
   - Priority: Medium
 
-- [x] Refactor `mergeConfigs` function
-  - Description: Update to handle groups alongside models
-  - Dependencies: Updated AppConfig interface
+## Structured Results Display
+
+- [ ] Implement Tabular Results Formatter
+  - Description: Create function in outputFormatter using cli-table3 for the final summary table
+  - Dependencies: Console Utils
   - Priority: High
 
-- [x] Update `loadConfig` function
-  - Description: Normalize legacy configs to include a default group
-  - Dependencies: Updated AppConfig schema
-  - Priority: High
-
-## Run Workflow Updates
-- [x] Update `RunOptions` interface
-  - Description: Add groups parameter and systemPrompt parameter
-  - Dependencies: None
-  - Priority: High
-
-- [x] Refactor main workflow to handle multiple groups
-  - Description: Modify runThinktank to process models across groups
-  - Dependencies: Updated RunOptions interface
-  - Priority: High
-
-- [x] Implement system prompt application
-  - Description: Apply appropriate prompts to each query
-  - Dependencies: Updated ModelConfig interface
-  - Priority: High
-
-- [x] Add group-based result tracking
-  - Description: Track and report results organized by group
-  - Dependencies: Updated LLMResponse interface
+- [ ] Integrate Performance Metrics
+  - Description: Include response time and token counts in the results table
+  - Dependencies: Tabular Results Formatter
   - Priority: Medium
 
-- [x] Implement group-based output organization
-  - Description: Ensure output files are organized by group
-  - Dependencies: Group-based result tracking
+- [ ] Calculate Group Summary Stats
+  - Description: Compute success/error counts and avg. response time per group for display
+  - Dependencies: Tabular Results Formatter, Group Headers
   - Priority: Medium
 
-## CLI Interface Updates
-- [x] Add `--group/-g` parameter
-  - Description: Implement CLI option to specify groups to run
-  - Dependencies: Updated RunOptions interface
+## Error Handling Display
+
+- [ ] Create Error Formatting Helper
+  - Description: Develop a function in consoleUtils to format errors consistently with categories and tips
+  - Dependencies: Console Utils
   - Priority: High
 
-- [x] Add `--system-prompt/-s` parameter
-  - Description: Implement CLI option for system prompt override
-  - Dependencies: Updated RunOptions interface
-  - Priority: High
-
-- [x] Update CLI help documentation
-  - Description: Add information about new parameters and examples
-  - Dependencies: New CLI parameters
+- [ ] Categorize & Color-Code Errors
+  - Description: Enhance error messages in runThinktank using the error formatter
+  - Dependencies: Error Formatter
   - Priority: Medium
 
-- [x] Update default command handler
-  - Description: Modify to handle group-based execution
-  - Dependencies: New CLI parameters
-  - Priority: High
-
-- [ ] Update list-models command
-  - Description: Modify to show group organization
-  - Dependencies: Updated configuration manager
+- [ ] Add Troubleshooting Tips
+  - Description: Implement logic to detect common error patterns and suggest fixes
+  - Dependencies: Error Formatter
   - Priority: Medium
 
-## Output Formatter Updates
-- [x] Add group information to output
-  - Description: Update formatter to include group details
-  - Dependencies: Updated LLMResponse interface
+## Integration & Refinement
+
+- [ ] Integrate Formatting into runThinktank
+  - Description: Replace existing console.log calls with new utilities and formatters
+  - Dependencies: All previous tasks
+  - Priority: High
+
+- [ ] Refactor outputFormatter.ts
+  - Description: Adapt existing functions to use the new table formatter and console utils
+  - Dependencies: Tabular Results Formatter
   - Priority: Medium
 
-- [x] Implement group-based result aggregation
-  - Description: Support grouping results by group in output
-  - Dependencies: Group information in output
-  - Priority: Medium
-
-- [x] Ensure backward compatibility
-  - Description: Maintain support for non-grouped results
-  - Dependencies: None
-  - Priority: High
-
-## Provider Integration
-- [x] Update provider interfaces
-  - Description: Modify to support system prompts
-  - Dependencies: SystemPrompt interface
-  - Priority: High
-
-- [x] Update provider generate methods
-  - Description: Modify to accept and apply system prompts
-  - Dependencies: Updated provider interfaces
-  - Priority: High
-
-## Testing
-- [x] Unit tests for new types and schemas
-  - Description: Test validation of new interfaces and schemas
-  - Dependencies: Core type implementations
-  - Priority: High
-
-- [x] Unit tests for configuration handling
-  - Description: Test group configuration loading and validation
-  - Dependencies: Updated configuration manager
-  - Priority: High
-
-- [x] Unit tests for CLI parameters
-  - Description: Test handling of new CLI options
-  - Dependencies: CLI interface updates
-  - Priority: Medium
-
-- [ ] Integration tests for group functionality
-  - Description: Test end-to-end workflow with groups
-  - Dependencies: All major updates
-  - Priority: Medium
-
-- [ ] Backward compatibility tests
-  - Description: Verify legacy configs and commands still work
-  - Dependencies: All major updates
-  - Priority: High
-
-## Documentation
-- [ ] Update README with group examples
-  - Description: Add documentation for using model groups
-  - Dependencies: Implementation completion
-  - Priority: Medium
-
-- [ ] Create example configuration files
-  - Description: Provide sample configs with groups for reference
+- [ ] Implement --verbose Flag
+  - Description: Add flag handling in cli.ts and conditional detailed logging in runThinktank
   - Dependencies: None
   - Priority: Low
+
+## Documentation & Polish
+
+- [ ] Add First-Run Usage Hints
+  - Description: Implement mechanism to display tips on first execution
+  - Dependencies: None
+  - Priority: Low
+
+- [ ] Add Documentation Links
+  - Description: Include relevant documentation links in error messages or help output
+  - Dependencies: Error Formatter
+  - Priority: Low
+
+- [ ] Implement Terminal Compatibility (Optional)
+  - Description: Add detection for limited terminals with non-color/non-Unicode fallback
+  - Dependencies: Console Utils
+  - Priority: Low
+
+## Testing
+
+- [ ] Unit Test Console Utils
+  - Description: Write tests for all helper functions in consoleUtils
+  - Dependencies: Console Utils implementation
+  - Priority: Medium
+
+- [ ] Unit Test Table Formatter
+  - Description: Test the tabular results formatter with various input scenarios
+  - Dependencies: Table Formatter implementation
+  - Priority: Medium
+
+- [ ] Integration Test runThinktank
+  - Description: Test the enhanced console output in the main workflow
+  - Dependencies: All core implementations
+  - Priority: Medium
+
+- [ ] Manual Terminal Testing
+  - Description: Test in various terminal emulators to verify formatting
+  - Dependencies: All implementations complete
+  - Priority: Medium
