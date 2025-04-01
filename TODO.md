@@ -6,7 +6,7 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Define `ModelGroup` interface
+- [x] Define `ModelGroup` interface
   - Description: Create interface for model groups with system prompts and model lists
   - Dependencies: SystemPrompt interface
   - Priority: High

@@ -11,6 +11,16 @@ export interface SystemPrompt {
 }
 
 /**
+ * Group of models with a common system prompt
+ */
+export interface ModelGroup {
+  name: string;
+  systemPrompt: SystemPrompt;
+  models: ModelConfig[];
+  description?: string;
+}
+
+/**
  * Standard options for LLM parameters
  */
 export interface ModelOptions {
