@@ -85,7 +85,7 @@
   - Dependencies: R1
   - Priority: Medium
 
-- [ ] Create Integration Tests (T3)
+- [x] Create Integration Tests (T3)
   - Description: Add tests simulating CLI runs with mocked Gemini API client
   - Dependencies: F3, T1, T2
   - Priority: Low
