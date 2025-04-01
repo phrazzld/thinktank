@@ -226,7 +226,80 @@ export function mergeConfigs(defaultConfig: AppConfig, userConfig: Partial<AppCo
     });
   }
   
+  // If user config has groups, merge them
+  if (userConfig.groups) {
+    // Initialize groups in merged config if it doesn't exist
+    if (!mergedConfig.groups) {
+      mergedConfig.groups = {};
+    }
+    
+    // Merge each group from user config
+    Object.entries(userConfig.groups).forEach(([groupName, userGroup]) => {
+      const existingGroup = mergedConfig.groups?.[groupName];
+      
+      if (existingGroup) {
+        // Merge existing group
+        mergedConfig.groups![groupName] = {
+          ...existingGroup,
+          ...userGroup,
+          // Merge system prompt if both exist
+          systemPrompt: userGroup.systemPrompt 
+            ? { 
+                ...existingGroup.systemPrompt,
+                ...userGroup.systemPrompt,
+              }
+            : existingGroup.systemPrompt,
+          // Merge models array
+          models: mergeModelArrays(existingGroup.models, userGroup.models),
+        };
+      } else {
+        // Add new group
+        mergedConfig.groups![groupName] = structuredClone(userGroup);
+      }
+    });
+  }
+  
   return mergedConfig;
+}
+
+/**
+ * Merges two arrays of model configurations
+ * 
+ * @param baseModels - Base array of model configurations
+ * @param overrideModels - Override array of model configurations
+ * @returns Merged array of model configurations
+ */
+function mergeModelArrays(baseModels: ModelConfig[], overrideModels: ModelConfig[]): ModelConfig[] {
+  const result = structuredClone(baseModels);
+  const modelMap = new Map<string, number>();
+  
+  // Create a map of existing models for faster lookup
+  result.forEach((model, index) => {
+    const key = `${model.provider}:${model.modelId}`;
+    modelMap.set(key, index);
+  });
+  
+  // Update existing models or add new ones
+  overrideModels.forEach(overrideModel => {
+    const key = `${overrideModel.provider}:${overrideModel.modelId}`;
+    const existingIndex = modelMap.get(key);
+    
+    if (existingIndex !== undefined) {
+      // Update existing model
+      result[existingIndex] = {
+        ...result[existingIndex],
+        ...overrideModel,
+        options: overrideModel.options 
+          ? { ...result[existingIndex].options, ...overrideModel.options }
+          : result[existingIndex].options,
+      };
+    } else {
+      // Add new model
+      result.push(structuredClone(overrideModel));
+    }
+  });
+  
+  return result;
 }
 
 /**

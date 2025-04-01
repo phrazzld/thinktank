@@ -62,7 +62,7 @@
   - Dependencies: getGroup function
   - Priority: Medium
 
-- [ ] Refactor `mergeConfigs` function
+- [x] Refactor `mergeConfigs` function
   - Description: Update to handle groups alongside models
   - Dependencies: Updated AppConfig interface
   - Priority: High
