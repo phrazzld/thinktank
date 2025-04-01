@@ -4,7 +4,14 @@
  * This template connects all the components and orchestrates the workflow.
  */
 import { readFileContent } from '../molecules/fileReader';
-import { loadConfig, filterModels, getEnabledModels, validateModelApiKeys } from '../organisms/configManager';
+import { 
+  loadConfig, 
+  filterModels, 
+  getEnabledModels, 
+  validateModelApiKeys,
+  getEnabledModelsFromGroups,
+  findModelGroup 
+} from '../organisms/configManager';
 import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig, SystemPrompt } from '../atoms/types';
@@ -94,14 +101,27 @@ function formatResponseAsMarkdown(
   response: LLMResponse & { configKey: string },
   includeMetadata = false
 ): string {
-  const { text, error, metadata, configKey } = response;
+  const { text, error, metadata, configKey, groupInfo } = response;
   
-  // Start with a header
-  let markdown = `# ${configKey}\n\n`;
+  // Start with a header including group information if available
+  let markdown = `# ${configKey}`;
+  if (groupInfo && groupInfo.name !== 'default') {
+    markdown += ` (${groupInfo.name} group)`;
+  }
+  markdown += '\n\n';
   
   // Add timestamp
   const timestamp = new Date().toISOString();
   markdown += `Generated: ${timestamp}\n\n`;
+  
+  // Add group information if available and not default
+  if (groupInfo && groupInfo.name !== 'default') {
+    markdown += `Group: ${groupInfo.name}\n`;
+    if (groupInfo.systemPrompt && includeMetadata) {
+      markdown += `System Prompt: "${groupInfo.systemPrompt.text}"\n`;
+    }
+    markdown += '\n';
+  }
   
   // Add error if present
   if (error) {
@@ -165,13 +185,43 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       );
     }
     
-    // 3. Filter models based on CLI args
+    // 3. Select models based on groups and/or model filters
     spinner.text = 'Preparing models...';
     let models: ModelConfig[];
     
-    if (options.models && options.models.length > 0) {
+    // Track which approach we're using for user feedback
+    const useGroupsSelection = options.groups && options.groups.length > 0;
+    const useModelSelection = options.models && options.models.length > 0;
+    
+    if (useGroupsSelection) {
+      // Get models from specified groups
+      spinner.text = `Selecting models from groups: ${options.groups!.join(', ')}...`;
+      models = getEnabledModelsFromGroups(config, options.groups!);
+      
+      // If models filter is also specified, further filter the group models
+      if (useModelSelection) {
+        spinner.text = 'Applying model filters to group models...';
+        
+        // Get all models matching the filters
+        const filteredModels = options.models!.flatMap(modelFilter => 
+          filterModels(config, modelFilter)
+        );
+        
+        // Create a set of model keys for efficient filtering
+        const filteredModelKeys = new Set(
+          filteredModels.map(model => `${model.provider}:${model.modelId}`)
+        );
+        
+        // Keep only models that are both in groups and match filters
+        models = models.filter(model => {
+          const key = `${model.provider}:${model.modelId}`;
+          return filteredModelKeys.has(key);
+        });
+      }
+    } else if (useModelSelection) {
       // Filter models by CLI args
-      models = options.models.flatMap(modelFilter => 
+      spinner.text = 'Selecting models by filter...';
+      models = options.models!.flatMap(modelFilter => 
         filterModels(config, modelFilter)
       );
       
@@ -188,16 +238,24 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       
       // Filter to only enabled models
       models = models.filter(model => model.enabled);
-      
-      if (models.length === 0) {
-        spinner.warn('No enabled models matched the specified filters.');
-        return 'No enabled models matched the specified filters.';
-      }
     } else {
       // Use all enabled models
+      spinner.text = 'Using all enabled models...';
       models = getEnabledModels(config);
-      
-      if (models.length === 0) {
+    }
+    
+    // Check if we have any models after all filtering
+    if (models.length === 0) {
+      if (useGroupsSelection && useModelSelection) {
+        spinner.warn('No enabled models found matching both group and model filters.');
+        return 'No enabled models found matching both group and model filters.';
+      } else if (useGroupsSelection) {
+        spinner.warn(`No enabled models found in the specified groups: ${options.groups!.join(', ')}`);
+        return `No enabled models found in the specified groups: ${options.groups!.join(', ')}`;
+      } else if (useModelSelection) {
+        spinner.warn('No enabled models matched the specified filters.');
+        return 'No enabled models matched the specified filters.';
+      } else {
         spinner.warn('No enabled models found in configuration.');
         return 'No enabled models found in configuration.';
       }
@@ -270,21 +328,11 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         // Use model-specific system prompt
         systemPrompt = model.systemPrompt;
       } else {
-        // Try to find a group that contains this model
-        if (config.groups) {
-          for (const [name, group] of Object.entries(config.groups)) {
-            const isInGroup = group.models.some(
-              groupModel => 
-                groupModel.provider === model.provider && 
-                groupModel.modelId === model.modelId
-            );
-            
-            if (isInGroup) {
-              groupName = name;
-              systemPrompt = group.systemPrompt;
-              break;
-            }
-          }
+        // Find which group this model belongs to
+        const groupInfo = findModelGroup(config, model);
+        if (groupInfo) {
+          groupName = groupInfo.groupName;
+          systemPrompt = groupInfo.systemPrompt as SystemPrompt;
         }
       }
       
@@ -301,7 +349,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
           
           // Add group information to the response if applicable
-          const responseWithGroup = {
+          const responseWithGroup: LLMResponse & { configKey: string } = {
             ...response,
             configKey,
           };
@@ -359,7 +407,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         .filter(([_, status]) => status.status === 'error')
         .map(([model, status]) => `  - ${model}: ${status.message || 'Unknown error'}`);
       
+      // eslint-disable-next-line no-console
       console.log('\nModels with errors:');
+      // eslint-disable-next-line no-console
       console.log(errorModels.join('\n'));
     } else {
       spinner.succeed(`All ${successCount} models completed successfully`);
@@ -381,15 +431,49 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     const fileDetails: FileDetail[] = [];
     
+    // First, create all needed group directories
+    const groupDirs = new Set<string>();
+    
+    results.forEach(result => {
+      if (result.groupInfo?.name && result.groupInfo.name !== 'default') {
+        groupDirs.add(sanitizeFilename(result.groupInfo.name));
+      }
+    });
+    
+    // Create all group directories concurrently
+    if (groupDirs.size > 0) {
+      spinner.text = `Creating group directories: ${Array.from(groupDirs).join(', ')}...`;
+      const createDirPromises = Array.from(groupDirs).map(async (groupName) => {
+        const groupDir = path.join(outputDirectoryPath!, groupName);
+        try {
+          await fs.mkdir(groupDir, { recursive: true });
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.warn(`Could not create group directory ${groupDir}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      });
+      
+      await Promise.all(createDirPromises);
+    }
+    
     // Process each result
     results.forEach((result) => {
       // Create sanitized filename from provider and model
       const sanitizedProvider = sanitizeFilename(result.provider);
       const sanitizedModelId = sanitizeFilename(result.modelId);
-      const filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
+      let filename: string;
+      let filePath: string;
       
-      // Full path to output file
-      const filePath = path.join(outputDirectoryPath!, filename);
+      // Format the filename based on whether it belongs to a group
+      if (result.groupInfo?.name && result.groupInfo.name !== 'default') {
+        const sanitizedGroupName = sanitizeFilename(result.groupInfo.name);
+        // When in group subdirectory, no need to prefix filename with group
+        filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
+        filePath = path.join(outputDirectoryPath!, sanitizedGroupName, filename);
+      } else {
+        filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
+        filePath = path.join(outputDirectoryPath!, filename);
+      }
       
       // Format the response as Markdown
       const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
@@ -397,7 +481,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Add to tracking array
       const fileDetail: FileDetail = {
         model: result.configKey,
-        filename,
+        filename: result.groupInfo?.name && result.groupInfo.name !== 'default' 
+          ? `${result.groupInfo.name}/${filename}` // Include group in display path
+          : filename,
         status: 'pending'
       };
       fileDetails.push(fileDetail);
@@ -426,18 +512,45 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Wait for all file writes to complete
     await Promise.all(fileWritePromises);
     
+    // Group results by group for reporting
+    const groupedResults = new Map<string, number>();
+    results.forEach(result => {
+      const groupName = result.groupInfo?.name || 'default';
+      groupedResults.set(groupName, (groupedResults.get(groupName) || 0) + 1);
+    });
+    
     // Report results
     if (failedWrites === 0) {
       spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
+      // eslint-disable-next-line no-console
       console.log(`\nOutput directory: ${outputDirectoryPath}`);
+      
+      // If using groups, show group summary
+      if (groupedResults.size > 1 || !groupedResults.has('default')) {
+        // eslint-disable-next-line no-console
+        console.log('\nGroup summary:');
+        
+        for (const [group, count] of groupedResults.entries()) {
+          if (group === 'default') {
+            // eslint-disable-next-line no-console
+            console.log(`  - Default group: ${count} models`);
+          } else {
+            // eslint-disable-next-line no-console
+            console.log(`  - ${group} group: ${count} models`);
+          }
+        }
+      }
     } else {
       spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`);
+      // eslint-disable-next-line no-console
       console.log(`\nOutput directory: ${outputDirectoryPath}`);
       
       // Show files with errors
       const failedFiles = fileDetails.filter(file => file.status === 'error');
+      // eslint-disable-next-line no-console
       console.log('\nFiles with errors:');
       failedFiles.forEach(file => {
+        // eslint-disable-next-line no-console
         console.log(`  - ${file.filename}: ${file.error || 'Unknown error'}`);
       });
     }

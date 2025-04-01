@@ -3,7 +3,7 @@
  */
 import { z } from 'zod';
 import { fileExists, readFileContent } from '../molecules/fileReader';
-import { AppConfig, ModelConfig } from '../atoms/types';
+import { AppConfig, ModelConfig, SystemPrompt } from '../atoms/types';
 import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from '../atoms/constants';
 import { getApiKey as getApiKeyHelper } from '../atoms/helpers';
 import dotenv from 'dotenv';
@@ -429,4 +429,91 @@ export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
 export function getEnabledGroupModels(config: AppConfig, groupName: string): ModelConfig[] {
   const groupModels = getGroup(config, groupName);
   return groupModels.filter(model => model.enabled);
+}
+
+/**
+ * Gets enabled models from multiple groups
+ * 
+ * @param config - The application configuration
+ * @param groupNames - Array of group names to get models from
+ * @returns Array of unique enabled model configurations from all specified groups
+ */
+export function getEnabledModelsFromGroups(config: AppConfig, groupNames: string[]): ModelConfig[] {
+  // If no groups specified, return all enabled models
+  if (!groupNames || groupNames.length === 0) {
+    return getEnabledModels(config);
+  }
+
+  // Use a Map to ensure unique models by provider:modelId key
+  const modelMap = new Map<string, ModelConfig>();
+  
+  // Process each group and add its enabled models to the map
+  groupNames.forEach(groupName => {
+    const groupModels = getEnabledGroupModels(config, groupName);
+    
+    groupModels.forEach(model => {
+      const key = `${model.provider}:${model.modelId}`;
+      
+      // Only add if not already in the map
+      if (!modelMap.has(key)) {
+        modelMap.set(key, { ...model });
+      }
+    });
+  });
+  
+  // Return all unique models as an array
+  return Array.from(modelMap.values());
+}
+
+/**
+ * Finds the group a model belongs to
+ * 
+ * @param config - The application configuration
+ * @param model - The model configuration to find
+ * @returns Object containing the group name and system prompt, or undefined if not found
+ */
+export function findModelGroup(
+  config: AppConfig, 
+  model: ModelConfig
+): { groupName: string; systemPrompt: SystemPrompt } | undefined {
+  if (!config.groups) {
+    return {
+      groupName: 'default',
+      systemPrompt: { text: 'You are a helpful assistant.' }
+    };
+  }
+  
+  // Check each group
+  for (const [groupName, group] of Object.entries(config.groups)) {
+    const isInGroup = group.models.some(
+      groupModel => 
+        groupModel.provider === model.provider && 
+        groupModel.modelId === model.modelId
+    );
+    
+    if (isInGroup) {
+      return {
+        groupName,
+        systemPrompt: group.systemPrompt
+      };
+    }
+  }
+  
+  // If the model is not in any group but is in the top-level models array,
+  // consider it part of the default group
+  const isInDefaultModels = config.models.some(
+    defaultModel => 
+      defaultModel.provider === model.provider && 
+      defaultModel.modelId === model.modelId
+  );
+  
+  if (isInDefaultModels) {
+    return {
+      groupName: 'default',
+      systemPrompt: config.groups.default?.systemPrompt || { text: 'You are a helpful assistant.' }
+    };
+  }
+  
+  // Model not found in any group
+  return undefined;
 }

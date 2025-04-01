@@ -57,7 +57,7 @@
   - Dependencies: getGroup function
   - Priority: High
 
-- [ ] Implement `filterGroupModels` function
+- [x] Implement `filterGroupModels` function
   - Description: Create utility to filter models within a group
   - Dependencies: getGroup function
   - Priority: Medium
@@ -78,7 +78,7 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Refactor main workflow to handle multiple groups
+- [x] Refactor main workflow to handle multiple groups
   - Description: Modify runThinktank to process models across groups
   - Dependencies: Updated RunOptions interface
   - Priority: High
@@ -88,12 +88,12 @@
   - Dependencies: Updated ModelConfig interface
   - Priority: High
 
-- [ ] Add group-based result tracking
+- [x] Add group-based result tracking
   - Description: Track and report results organized by group
   - Dependencies: Updated LLMResponse interface
   - Priority: Medium
 
-- [ ] Implement group-based output organization
+- [x] Implement group-based output organization
   - Description: Ensure output files are organized by group
   - Dependencies: Group-based result tracking
   - Priority: Medium
@@ -114,7 +114,7 @@
   - Dependencies: New CLI parameters
   - Priority: Medium
 
-- [ ] Update default command handler
+- [x] Update default command handler
   - Description: Modify to handle group-based execution
   - Dependencies: New CLI parameters
   - Priority: High
@@ -125,17 +125,17 @@
   - Priority: Medium
 
 ## Output Formatter Updates
-- [ ] Add group information to output
+- [x] Add group information to output
   - Description: Update formatter to include group details
   - Dependencies: Updated LLMResponse interface
   - Priority: Medium
 
-- [ ] Implement group-based result aggregation
+- [x] Implement group-based result aggregation
   - Description: Support grouping results by group in output
   - Dependencies: Group information in output
   - Priority: Medium
 
-- [ ] Ensure backward compatibility
+- [x] Ensure backward compatibility
   - Description: Maintain support for non-grouped results
   - Dependencies: None
   - Priority: High
@@ -152,17 +152,17 @@
   - Priority: High
 
 ## Testing
-- [ ] Unit tests for new types and schemas
+- [x] Unit tests for new types and schemas
   - Description: Test validation of new interfaces and schemas
   - Dependencies: Core type implementations
   - Priority: High
 
-- [ ] Unit tests for configuration handling
+- [x] Unit tests for configuration handling
   - Description: Test group configuration loading and validation
   - Dependencies: Updated configuration manager
   - Priority: High
 
-- [ ] Unit tests for CLI parameters
+- [x] Unit tests for CLI parameters
   - Description: Test handling of new CLI options
   - Dependencies: CLI interface updates
   - Priority: Medium

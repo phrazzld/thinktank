@@ -7,6 +7,9 @@ import {
   getEnabledModels,
   filterModels,
   validateModelApiKeys,
+  getEnabledGroupModels,
+  getEnabledModelsFromGroups,
+  findModelGroup,
   ConfigError,
 } from '../configManager';
 import { fileExists, readFileContent } from '../../molecules/fileReader';
@@ -319,6 +322,257 @@ describe('Config Manager', () => {
       
       expect(missingKeyModels).toHaveLength(1);
       expect(missingKeyModels[0].provider).toBe('p2');
+    });
+  });
+
+  describe('getEnabledGroupModels', () => {
+    it('should return enabled models from a specific group', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+              { provider: 'p4', modelId: 'm4', enabled: false },
+              { provider: 'p5', modelId: 'm5', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledGroupModels(config, 'coding');
+      
+      expect(groupModels).toHaveLength(2);
+      expect(groupModels[0].provider).toBe('p3');
+      expect(groupModels[1].provider).toBe('p5');
+    });
+    
+    it('should return enabled models from default group when group name is default', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+          { provider: 'p3', modelId: 'm3', enabled: true },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p4', modelId: 'm4', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledGroupModels(config, 'default');
+      
+      expect(groupModels).toHaveLength(2);
+      expect(groupModels[0].provider).toBe('p1');
+      expect(groupModels[1].provider).toBe('p3');
+    });
+    
+    it('should return models from default group when group does not exist', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledGroupModels(config, 'nonexistent');
+      
+      expect(groupModels).toHaveLength(1);
+      expect(groupModels[0].provider).toBe('p1');
+    });
+  });
+
+  describe('getEnabledModelsFromGroups', () => {
+    it('should return models from multiple groups without duplicates', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+              { provider: 'p4', modelId: 'm4', enabled: false },
+            ]
+          },
+          creative: {
+            name: 'creative',
+            systemPrompt: { text: 'You are a creative assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true }, // Duplicate
+              { provider: 'p5', modelId: 'm5', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledModelsFromGroups(config, ['coding', 'creative']);
+      
+      expect(groupModels).toHaveLength(2); // No duplicates
+      expect(groupModels.some(m => m.provider === 'p3' && m.modelId === 'm3')).toBe(true);
+      expect(groupModels.some(m => m.provider === 'p5' && m.modelId === 'm5')).toBe(true);
+    });
+    
+    it('should return all enabled models when no groups are specified', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledModelsFromGroups(config, []);
+      
+      expect(groupModels).toHaveLength(1);
+      expect(groupModels[0].provider).toBe('p1');
+    });
+    
+    it('should handle nonexistent groups gracefully', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+          { provider: 'p2', modelId: 'm2', enabled: false },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const groupModels = getEnabledModelsFromGroups(config, ['nonexistent', 'coding']);
+      
+      expect(groupModels).toHaveLength(2);
+      expect(groupModels.some(m => m.provider === 'p1')).toBe(true);
+      expect(groupModels.some(m => m.provider === 'p3')).toBe(true);
+    });
+  });
+
+  describe('findModelGroup', () => {
+    it('should find the group a model belongs to', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p2', modelId: 'm2', enabled: true },
+            ]
+          },
+          creative: {
+            name: 'creative',
+            systemPrompt: { text: 'You are a creative assistant.' },
+            models: [
+              { provider: 'p3', modelId: 'm3', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const model = { provider: 'p2', modelId: 'm2', enabled: true };
+      const groupInfo = findModelGroup(config, model);
+      
+      expect(groupInfo).toBeDefined();
+      expect(groupInfo?.groupName).toBe('coding');
+      expect(groupInfo?.systemPrompt.text).toBe('You are a coding assistant.');
+    });
+    
+    it('should return default group for models in the models array', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+        ],
+        groups: {
+          default: {
+            name: 'default',
+            systemPrompt: { text: 'You are a helpful assistant.' },
+            models: [
+              { provider: 'p2', modelId: 'm2', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const model = { provider: 'p1', modelId: 'm1', enabled: true };
+      const groupInfo = findModelGroup(config, model);
+      
+      expect(groupInfo).toBeDefined();
+      expect(groupInfo?.groupName).toBe('default');
+    });
+    
+    it('should return undefined for models not in any group or the default array', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+        ],
+        groups: {
+          coding: {
+            name: 'coding',
+            systemPrompt: { text: 'You are a coding assistant.' },
+            models: [
+              { provider: 'p2', modelId: 'm2', enabled: true },
+            ]
+          }
+        }
+      };
+      
+      const model = { provider: 'unknown', modelId: 'unknown', enabled: true };
+      const groupInfo = findModelGroup(config, model);
+      
+      expect(groupInfo).toBeUndefined();
+    });
+    
+    it('should handle configs without groups', () => {
+      const config: AppConfig = {
+        models: [
+          { provider: 'p1', modelId: 'm1', enabled: true },
+        ]
+      };
+      
+      const model = { provider: 'p1', modelId: 'm1', enabled: true };
+      const groupInfo = findModelGroup(config, model);
+      
+      expect(groupInfo).toBeDefined();
+      expect(groupInfo?.groupName).toBe('default');
+      expect(groupInfo?.systemPrompt.text).toBe('You are a helpful assistant.');
     });
   });
 });
