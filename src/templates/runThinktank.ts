@@ -109,8 +109,24 @@ export interface RunOptions {
 
 /**
  * Error class for thinktank runtime errors
+ * Provides additional context like category and helpful suggestions
  */
 export class ThinktankError extends Error {
+  /**
+   * The category of error (e.g., "File System", "API", etc.)
+   */
+  category?: string;
+  
+  /**
+   * List of suggestions to help resolve the error
+   */
+  suggestions?: string[];
+  
+  /**
+   * Examples of valid commands related to this error context
+   */
+  examples?: string[];
+  
   constructor(message: string, public readonly cause?: Error) {
     super(message);
     this.name = 'ThinktankError';

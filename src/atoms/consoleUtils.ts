@@ -194,6 +194,9 @@ export function getTroubleshootingTip(error: Error | string, category: string): 
       if (lowerMsg.includes('permission') || lowerMsg.includes('eacces')) {
         return 'Check file permissions or run with elevated privileges';
       }
+      if (lowerMsg.includes('file not found') || lowerMsg.includes('enoent') || lowerMsg.includes('no such file')) {
+        return 'Check that the file exists at the specified path and you have permission to read it';
+      }
       return 'Verify the file path and ensure it exists';
       
     default:
@@ -210,4 +213,85 @@ export function formatErrorWithTip(error: Error | string): string {
   const category = categorizeError(error);
   const tip = getTroubleshootingTip(error, category);
   return formatError(error, category, tip);
+}
+
+/**
+ * Creates a detailed file not found error with helpful suggestions
+ * 
+ * @param filePath - The path to the file that wasn't found
+ * @param errorMessage - Optional custom error message
+ * @returns A ThinktankError with suggestions
+ */
+export function createFileNotFoundError(filePath: string, errorMessage?: string): Error {
+  // Import path if available, otherwise use a simpler approach
+  let path: any;
+  try {
+    path = require('path');
+  } catch {
+    // No path module, use simpler approach
+    path = {
+      isAbsolute: (p: string) => p.startsWith('/'),
+      dirname: (p: string) => {
+        const parts = p.split('/');
+        return parts.slice(0, -1).join('/') || '.';
+      },
+      basename: (p: string) => {
+        const parts = p.split('/');
+        return parts[parts.length - 1];
+      },
+      join: (...parts: string[]) => parts.join('/')
+    };
+  }
+
+  // Get current working directory
+  const currentDir = process.cwd();
+
+  // Create the error with a default message if none provided
+  const message = errorMessage || `File not found: ${filePath}`;
+  
+  // This requires the ThinktankError class which we can't import here
+  // to avoid circular dependencies, so we'll create a regular Error
+  // and add the properties the consumer can convert it if needed
+  const error = new Error(message);
+  
+  // Add metadata
+  (error as any).category = errorCategories.FILESYSTEM;
+  
+  // Extract path components
+  const isAbsolutePath = path.isAbsolute(filePath);
+  const dirname = path.dirname(filePath);
+  const basename = path.basename(filePath);
+  
+  // Build suggestions
+  const suggestions = [
+    `Check that the file exists at the specified path: ${isAbsolutePath ? filePath : path.join(currentDir, filePath)}`,
+    `Current working directory: ${currentDir}`
+  ];
+  
+  // Add path-specific suggestions
+  if (!isAbsolutePath && dirname !== '.') {
+    suggestions.push(`Ensure the directory exists: ${path.join(currentDir, dirname)}`);
+  }
+  
+  // Add common filename pattern suggestions
+  if (!basename.includes('.')) {
+    suggestions.push(`The file may need an extension (e.g., ${basename}.txt, ${basename}.md)`);
+  }
+  
+  // Add general suggestions
+  suggestions.push(
+    `Use a relative path (./path/to/file.txt) or absolute path (/full/path/to/file.txt)`,
+    `Make sure the file has read permissions`
+  );
+  
+  (error as any).suggestions = suggestions;
+  
+  // Add examples
+  (error as any).examples = [
+    `path/to/${basename}.txt`,
+    `./path/to/${basename}.txt`,
+    `${path.join(currentDir, basename)}.txt`
+  ];
+  
+  return error;
 }

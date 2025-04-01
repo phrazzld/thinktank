@@ -66,7 +66,7 @@ describe('CLI Interface', () => {
     expect(process.exit).toHaveBeenCalledWith(0);
   });
   
-  it('should handle file not found error correctly', async () => {
+  it('should handle file not found error correctly with enhanced messages', async () => {
     // Setup mock to throw file not found
     (fs.access as jest.Mock).mockRejectedValue(new Error('File not found'));
     
@@ -77,8 +77,28 @@ describe('CLI Interface', () => {
     const { main } = await import('../cli');
     await main();
     
-    // Just verify that error handling occurred
-    expect(console.error).toHaveBeenCalled();
+    // Verify that error handling occurred with the enhanced error message
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('File System'));
+    
+    // Verify suggestions were displayed
+    const calls = (console.error as jest.Mock).mock.calls;
+    let suggestionsHeaderShown = false;
+    let examplesHeaderShown = false;
+    let correctUsageShown = false;
+    
+    for (const call of calls) {
+      const message = call[0];
+      if (typeof message === 'string') {
+        if (message.includes('Suggestions:')) suggestionsHeaderShown = true;
+        if (message.includes('Example commands:')) examplesHeaderShown = true;
+        if (message.includes('Correct usage:')) correctUsageShown = true;
+      }
+    }
+    
+    expect(suggestionsHeaderShown).toBe(true);
+    expect(examplesHeaderShown).toBe(true);
+    expect(correctUsageShown).toBe(true);
     expect(process.exit).toHaveBeenCalledWith(1);
   });
   

@@ -124,5 +124,37 @@ describe('consoleUtils', () => {
       expect(result).toContain('API');
       expect(result).toContain('Check your API key');
     });
+
+    test('createFileNotFoundError should generate helpful error with suggestions', () => {
+      // Mock process.cwd to return a predictable value
+      const originalCwd = process.cwd;
+      process.cwd = jest.fn().mockReturnValue('/home/user/project');
+      
+      try {
+        const error = consoleUtils.createFileNotFoundError('nonexistent.txt');
+        
+        // Verify error has the expected properties
+        expect(error.message).toBe('File not found: nonexistent.txt');
+        expect((error as any).category).toBe(consoleUtils.errorCategories.FILESYSTEM);
+        
+        // Suggestions should be an array with useful tips
+        expect(Array.isArray((error as any).suggestions)).toBe(true);
+        expect((error as any).suggestions.length).toBeGreaterThan(0);
+        
+        // Examples should provide command examples
+        expect(Array.isArray((error as any).examples)).toBe(true);
+        expect((error as any).examples.length).toBeGreaterThan(0);
+        
+        // Examples should mention the basename (nonexistent)
+        expect((error as any).examples.some((ex: string) => ex.includes('nonexistent'))).toBe(true);
+        
+        // Should mention working directory
+        const suggestions = (error as any).suggestions.join(' ');
+        expect(suggestions).toContain('/home/user/project');
+      } finally {
+        // Restore original method
+        process.cwd = originalCwd;
+      }
+    });
   });
 });

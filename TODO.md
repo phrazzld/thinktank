@@ -78,7 +78,7 @@
 
 ## Error Handling Improvements
 
-- [ ] Enhance File Not Found Errors
+- [x] Enhance File Not Found Errors
   - Description: Provide clear error messages when prompt file is not found
   - Dependencies: None
   - Priority: Medium
