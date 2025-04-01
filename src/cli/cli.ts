@@ -298,7 +298,11 @@ export async function main(): Promise<void> {
       });
     }
     
-    process.exit(0);
+    // Clean up any lingering connections by explicitly exiting
+    // This ensures we don't have hanging HTTP connections from axios/openai/anthropic libraries
+    process.nextTick(() => {
+      process.exit(0);
+    });
   } catch (error) {
     // Handle errors with enhanced formatting
     if (error instanceof ThinktankError) {
@@ -350,7 +354,10 @@ export async function main(): Promise<void> {
       console.error(`${colors.red('An unknown error occurred')}`);
     }
     
-    process.exit(1);
+    // Clean up any lingering connections on error
+    process.nextTick(() => {
+      process.exit(1);
+    });
   }
 }
 
@@ -358,5 +365,7 @@ export async function main(): Promise<void> {
 main().catch(error => {
   // eslint-disable-next-line no-console
   console.error('Fatal error:', error);
-  process.exit(1);
+  process.nextTick(() => {
+    process.exit(1);
+  });
 });

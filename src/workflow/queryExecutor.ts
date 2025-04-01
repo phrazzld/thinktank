@@ -277,14 +277,22 @@ export async function executeQueries(
       options.onStatusUpdate(modelKey, statuses[modelKey], statuses);
     }
     
+    // Create a controller for the fetch abort
+    const controller = new AbortController();
+    
     // Create the promise for this model
     const queryPromise = Promise.race([
       provider.generate(options.prompt, model.modelId, modelOptions, systemPrompt),
       new Promise<never>((_, reject) => {
         // Set a timeout to prevent getting stuck on a model that's taking too long
-        setTimeout(() => {
+        const timeoutId = setTimeout(() => {
+          // Abort any ongoing fetch requests
+          controller.abort();
           reject(new Error(`Model ${modelKey} timed out after ${options.timeoutMs || 120000}ms. The API might be unresponsive.`));
         }, options.timeoutMs || 120000); // Default to 2 minute timeout if not specified
+        
+        // Clean up the timeout if the main promise resolves or rejects
+        setTimeout(() => clearTimeout(timeoutId), options.timeoutMs || 120000);
       })
     ])
       .then(response => {

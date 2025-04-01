@@ -64,7 +64,10 @@ export class AnthropicProvider implements LLMProvider {
       throw new AnthropicProviderError('Anthropic API key is missing. Set ANTHROPIC_API_KEY environment variable or provide it when creating the provider.');
     }
     
-    this.client = new Anthropic({ apiKey });
+    this.client = new Anthropic({ 
+      apiKey,
+      maxRetries: 0 // Disable automatic retries to avoid hanging connections 
+    });
     return this.client;
   }
   

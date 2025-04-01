@@ -63,6 +63,8 @@ export class OpenRouterProvider implements LLMProvider {
     this.client = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',
       apiKey,
+      dangerouslyAllowBrowser: false,
+      maxRetries: 0, // Disable automatic retries to avoid hanging
       defaultHeaders: {
         'HTTP-Referer': 'https://github.com/phrazzld/thinktank',
         'X-Title': 'thinktank CLI',
