@@ -14,15 +14,24 @@ import chalk from 'chalk';
 // Re-export our configured chalk instance
 export const colors = chalk;
 
-// Define commonly used Unicode symbols
+/**
+ * Extended Error interface with additional metadata for better error handling and display
+ */
+export interface DetailedError extends Error {
+  category?: string;
+  suggestions?: string[];
+  examples?: string[];
+}
+
+// Define commonly used Unicode symbols (no emojis)
 export const symbols = {
-  tick: '✓',
-  cross: '✖',
-  warning: '⚠',
-  info: 'ℹ',
-  pointer: '❯',
-  line: '─',
-  bullet: '•',
+  tick: '+',
+  cross: 'x',
+  warning: '!',
+  info: 'i',
+  pointer: '>',
+  line: '-',
+  bullet: '*',
 };
 
 /**
@@ -85,7 +94,7 @@ export function styleDim(text: string): string {
  * @returns A styled divider line
  */
 export function divider(length = 80): string {
-  return styleDim('─'.repeat(length));
+  return styleDim(symbols.line.repeat(length));
 }
 
 /**
@@ -224,10 +233,26 @@ export function formatErrorWithTip(error: Error | string): string {
  * @returns A ThinktankError with suggestions
  */
 export function createFileNotFoundError(filePath: string, errorMessage?: string): Error {
+  // Define a path util interface for consistency
+  interface PathUtils {
+    isAbsolute: (path: string) => boolean;
+    dirname: (path: string) => string;
+    basename: (path: string) => string;
+    join: (...paths: string[]) => string;
+  }
+
   // Import path if available, otherwise use a simpler approach
-  let path: any;
+  let path: PathUtils;
   try {
-    path = require('path');
+    // We know path will have these methods
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const nodePath = require('path');
+    path = {
+      isAbsolute: nodePath.isAbsolute,
+      dirname: nodePath.dirname,
+      basename: nodePath.basename,
+      join: nodePath.join
+    };
   } catch {
     // No path module, use simpler approach
     path = {
@@ -255,8 +280,13 @@ export function createFileNotFoundError(filePath: string, errorMessage?: string)
   // and add the properties the consumer can convert it if needed
   const error = new Error(message);
   
+  // Use the DetailedError interface defined at the top of the file
+
+  // Cast the error to our custom type
+  const detailedError = error as DetailedError;
+  
   // Add metadata
-  (error as any).category = errorCategories.FILESYSTEM;
+  detailedError.category = errorCategories.FILESYSTEM;
   
   // Extract path components
   const isAbsolutePath = path.isAbsolute(filePath);
@@ -285,10 +315,10 @@ export function createFileNotFoundError(filePath: string, errorMessage?: string)
     `Make sure the file has read permissions`
   );
   
-  (error as any).suggestions = suggestions;
+  detailedError.suggestions = suggestions;
   
   // Add examples
-  (error as any).examples = [
+  detailedError.examples = [
     `path/to/${basename}.txt`,
     `./path/to/${basename}.txt`,
     `${path.join(currentDir, basename)}.txt`
@@ -330,7 +360,8 @@ export function createModelFormatError(
   const error = new Error(message);
   
   // Add metadata
-  (error as any).category = errorCategories.CONFIG;
+  const detailedError = error as DetailedError;
+  detailedError.category = errorCategories.CONFIG;
   
   // Parse the model specification
   const [provider] = modelSpecification.split(':');
@@ -379,10 +410,10 @@ export function createModelFormatError(
     suggestions.push(`Example models: ${exampleList}`);
   }
   
-  (error as any).suggestions = suggestions;
+  detailedError.suggestions = suggestions;
   
   // Add examples
-  (error as any).examples = [
+  detailedError.examples = [
     'openai:gpt-4o',
     'anthropic:claude-3-7-sonnet-20250219',
     'google:gemini-pro'
@@ -418,7 +449,8 @@ export function createMissingApiKeyError(
   const error = new Error(message);
   
   // Add metadata
-  (error as any).category = errorCategories.API;
+  const detailedError = error as DetailedError;
+  detailedError.category = errorCategories.API;
   
   // Group models by provider for better suggestions
   const providerModels: Record<string, string[]> = {};
@@ -486,7 +518,7 @@ export function createMissingApiKeyError(
     '• For a local project: Create a .env file with `PROVIDER_API_KEY=your_key_here`'
   );
   
-  (error as any).suggestions = suggestions;
+  detailedError.suggestions = suggestions;
   
   // Add example commands
   const examples = Object.keys(providerModels).map(provider => {
@@ -494,7 +526,7 @@ export function createMissingApiKeyError(
     return `export ${envVarName}=your_${provider}_key_here`;
   });
   
-  (error as any).examples = examples;
+  detailedError.examples = examples;
   
   return error;
 }
@@ -521,7 +553,8 @@ export function createModelNotFoundError(
   const error = new Error(message);
   
   // Add metadata
-  (error as any).category = errorCategories.CONFIG;
+  const detailedError = error as DetailedError;
+  detailedError.category = errorCategories.CONFIG;
   
   // Build suggestions
   const suggestions: string[] = [];
@@ -584,10 +617,10 @@ export function createModelNotFoundError(
     suggestions.push(`Ensure the model is included in the "${groupName}" group configuration`);
   }
   
-  (error as any).suggestions = suggestions;
+  detailedError.suggestions = suggestions;
   
   // Add examples
-  (error as any).examples = availableModels.length > 0 
+  detailedError.examples = availableModels.length > 0 
     ? availableModels.slice(0, 3) 
     : [
         'openai:gpt-4o',
