@@ -18,46 +18,8 @@
       }
     },
     {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro-exp-03-25",
-      "enabled": true,
-      "apiKeyEnvVar": "GEMINI_API_KEY",
-      "options": {
-        "temperature": 0.7,
-        "maxTokens": 1000
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash",
-      "enabled": true,
-      "apiKeyEnvVar": "GEMINI_API_KEY",
-      "options": {
-        "temperature": 0.7,
-        "maxTokens": 1000
-      }
-    },
-    {
       "provider": "anthropic",
       "modelId": "claude-3-7-sonnet-20250219",
-      "enabled": true,
-      "options": {
-        "temperature": 0.7,
-        "maxTokens": 1000
-      }
-    },
-    {
-      "provider": "openrouter",
-      "modelId": "deepseek/deepseek-r1",
-      "enabled": true,
-      "options": {
-        "temperature": 0.7,
-        "maxTokens": 1000
-      }
-    },
-    {
-      "provider": "openrouter",
-      "modelId": "deepseek/deepseek-chat-v3-0324",
       "enabled": true,
       "options": {
         "temperature": 0.7,
@@ -74,30 +36,16 @@
       "models": [
         {
           "provider": "openai",
-          "modelId": "o3-mini",
-          "enabled": true,
-          "options": {
-            "maxTokens": 1000
-          }
-        },
-        {
-          "provider": "google",
-          "modelId": "gemini-2.5-pro-exp-03-25",
-          "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
+          "modelId": "gpt-4o",
+          "enabled": true
         },
         {
           "provider": "anthropic",
           "modelId": "claude-3-7-sonnet-20250219",
           "enabled": true
-        },
-        {
-          "provider": "openrouter",
-          "modelId": "deepseek/deepseek-r1",
-          "enabled": true
         }
       ],
-      "description": "Collection of primary models across providers"
+      "description": "Default model group"
     },
     "coding": {
       "name": "coding",
@@ -114,11 +62,6 @@
           "provider": "anthropic",
           "modelId": "claude-3-7-sonnet-20250219",
           "enabled": true
-        },
-        {
-          "provider": "openrouter",
-          "modelId": "deepseek/deepseek-chat-v3-0324",
-          "enabled": true
         }
       ],
       "description": "Models optimized for programming tasks"
@@ -132,19 +75,32 @@
         {
           "provider": "openai",
           "modelId": "o3-mini",
-          "enabled": true,
-          "options": {
-            "maxTokens": 1000
-          }
-        },
-        {
-          "provider": "google",
-          "modelId": "gemini-2.0-flash",
-          "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
+          "enabled": true
         }
       ],
       "description": "Fastest models for quick responses"
+    },
+    "thinking": {
+      "name": "thinking",
+      "systemPrompt": {
+        "text": "You are a careful, methodical assistant that thinks through problems step-by-step. Provide your thinking process in a structured, logical manner."
+      },
+      "models": [
+        {
+          "provider": "anthropic",
+          "modelId": "claude-3-7-sonnet-20250219",
+          "enabled": true,
+          "options": {
+            "temperature": 0.7,
+            "maxTokens": 4000,
+            "thinking": {
+              "type": "enabled",
+              "budget_tokens": 16000
+            }
+          }
+        }
+      ],
+      "description": "Claude with thinking capability enabled"
     }
   }
 }

@@ -120,6 +120,8 @@ thinktank models openrouter
 | `--help`, `-h` | Show help information |
 | `--version`, `-v` | Show version number |
 | `--no-color` | Disable colored output |
+| `--thinking` | Enable Claude's thinking capability (for supported models) |
+| `--show-thinking` | Display thinking output in the results |
 
 ## Configuration
 
@@ -502,6 +504,55 @@ This configuration uses OpenRouter to access multiple providers through a single
   ]
 }
 ```
+
+## Claude's Thinking Capability
+
+Claude 3.7 Sonnet supports a "thinking" feature that allows the model to show its reasoning process before providing a final answer. This is especially helpful for complex tasks or when you want to understand how Claude arrived at its conclusion.
+
+### Using Claude's Thinking
+
+There are three ways to enable Claude's thinking:
+
+1. **Use the `thinking` group:**
+   ```bash
+   thinktank prompt.txt thinking
+   ```
+   This uses a group specifically configured for Claude with thinking enabled.
+
+2. **Add the `--thinking` flag:**
+   ```bash
+   thinktank prompt.txt --thinking
+   ```
+   This enables thinking for any Claude 3.x models in the group.
+
+3. **Configure it directly in your config file:**
+   ```json
+   {
+     "options": {
+       "thinking": {
+         "type": "enabled",
+         "budget_tokens": 16000
+       }
+     }
+   }
+   ```
+
+To display the thinking output, use the `--show-thinking` flag:
+```bash
+thinktank prompt.txt thinking --show-thinking
+```
+
+### When to Use Thinking
+
+Claude's thinking capability is most valuable for:
+
+- Complex reasoning tasks
+- Mathematical problem-solving
+- Multi-step decisions
+- Tasks requiring careful analysis
+- Understanding model reasoning
+
+Note that using thinking may increase token usage, as the model generates additional content for its reasoning process.
 
 ## Output Directory
 

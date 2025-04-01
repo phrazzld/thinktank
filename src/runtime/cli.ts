@@ -37,6 +37,14 @@ function showHelp(): void {
   // eslint-disable-next-line no-console
   console.error('');
   // eslint-disable-next-line no-console
+  console.error('Options:');
+  // eslint-disable-next-line no-console
+  console.error('  --thinking                                # Enable Claude\'s thinking capability (for supported models)');
+  // eslint-disable-next-line no-console
+  console.error('  --show-thinking                           # Display thinking output in the results');
+  // eslint-disable-next-line no-console
+  console.error('');
+  // eslint-disable-next-line no-console
   console.error('Examples:');
   // eslint-disable-next-line no-console
   console.error('  thinktank prompt.txt                      # Run prompt through default group');
@@ -44,6 +52,8 @@ function showHelp(): void {
   console.error('  thinktank prompt.txt coding               # Run prompt through "coding" group');
   // eslint-disable-next-line no-console
   console.error('  thinktank prompt.txt openai:gpt-4o        # Run prompt through specific model');
+  // eslint-disable-next-line no-console
+  console.error('  thinktank prompt.txt anthropic:claude-3.7-sonnet-20250219 --thinking --show-thinking');
   // eslint-disable-next-line no-console
   console.error('  thinktank models                          # List all available models');
 }
@@ -121,6 +131,26 @@ export async function main(): Promise<void> {
   try {
     // Get command-line arguments (excluding node and script path)
     const args = process.argv.slice(2);
+    
+    // Parse options
+    const options: {
+      thinking?: boolean;
+      showThinking?: boolean;
+    } = {};
+    
+    // Check for --thinking flag (to enable thinking capability)
+    const thinkingFlagIndex = args.indexOf('--thinking');
+    if (thinkingFlagIndex !== -1) {
+      options.thinking = true;
+      args.splice(thinkingFlagIndex, 1); // Remove the flag from args
+    }
+    
+    // Check for --show-thinking flag (to display thinking outputs)
+    const showThinkingFlagIndex = args.indexOf('--show-thinking');
+    if (showThinkingFlagIndex !== -1) {
+      options.showThinking = true;
+      args.splice(showThinkingFlagIndex, 1); // Remove the flag from args
+    }
     
     // No arguments provided - show help
     if (args.length === 0) {
@@ -230,13 +260,17 @@ export async function main(): Promise<void> {
         // Call runThinktank with the specific model
         await runThinktank({
           input: promptFile,
-          specificModel: secondArg
+          specificModel: secondArg,
+          enableThinking: options.thinking,
+          includeThinking: options.showThinking
         });
       } else {
         // Running with a group name
         await runThinktank({
           input: promptFile,
-          groupName: secondArg
+          groupName: secondArg,
+          enableThinking: options.thinking,
+          includeThinking: options.showThinking
         });
       }
     } else {
@@ -244,6 +278,8 @@ export async function main(): Promise<void> {
       await runThinktank({
         input: promptFile,
         // Leave groupName undefined to use default group
+        enableThinking: options.thinking,
+        includeThinking: options.showThinking
       });
     }
     

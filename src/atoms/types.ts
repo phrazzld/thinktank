@@ -21,11 +21,20 @@ export interface ModelGroup {
 }
 
 /**
+ * Thinking capability configuration for Claude models
+ */
+export interface ThinkingOptions {
+  type: 'enabled'; 
+  budget_tokens: number;
+}
+
+/**
  * Standard options for LLM parameters
  */
 export interface ModelOptions {
   temperature?: number;
   maxTokens?: number;
+  thinking?: ThinkingOptions;
   // Allow additional properties with unknown type
   [key: string]: unknown;
 }

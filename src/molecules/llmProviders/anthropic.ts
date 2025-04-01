@@ -2,7 +2,14 @@
  * Anthropic provider implementation for thinktank
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../../atoms/types';
+import { 
+  LLMProvider, 
+  LLMResponse, 
+  ModelOptions, 
+  LLMAvailableModel, 
+  SystemPrompt,
+  ThinkingOptions 
+} from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -115,9 +122,8 @@ export class AnthropicProvider implements LLMProvider {
       const client = this.getClient();
       const params = this.mapOptions(options);
       
-      // max_tokens is required in Anthropic API
-      // Note: The role must be explicitly typed as "user" or "assistant"
-      const requestParams = {
+      // Prepare base parameters that are always required
+      const baseParams = {
         model: modelId,
         messages: [{ role: 'user' as const, content: prompt }],
         max_tokens: 1024, // Default value if not provided
@@ -125,7 +131,20 @@ export class AnthropicProvider implements LLMProvider {
         ...params,
       };
       
-      const response = await client.messages.create(requestParams);
+      // Get the response based on whether thinking is enabled
+      let response;
+      if (options?.thinking) {
+        const thinkingOpt = options.thinking as ThinkingOptions;
+        response = await client.messages.create({
+          ...baseParams,
+          thinking: {
+            type: 'enabled' as const,
+            budget_tokens: thinkingOpt.budget_tokens
+          }
+        });
+      } else {
+        response = await client.messages.create(baseParams);
+      }
       
       // Extract the response text - handle the ContentBlock type
       let responseText = '';
@@ -135,6 +154,9 @@ export class AnthropicProvider implements LLMProvider {
           responseText = firstContent.text;
         }
       }
+      
+      // Extract thinking output if available
+      const responseObj = response as any; // Use any to handle the thinking property
       
       // Return formatted response
       return {
@@ -146,6 +168,7 @@ export class AnthropicProvider implements LLMProvider {
           model: response.model,
           id: response.id,
           type: response.type,
+          thinking: responseObj.thinking,
         },
       };
     } catch (error) {

@@ -40,6 +40,11 @@ export interface FormatOptions {
   includeErrors?: boolean;
   
   /**
+   * Whether to include thinking output when available
+   */
+  includeThinking?: boolean;
+  
+  /**
    * Custom separator between model outputs
    */
   separator?: string;
@@ -58,6 +63,7 @@ const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
   useColors: true,
   includeText: true,
   includeErrors: true,
+  includeThinking: false,
   separator: '\n\n' + '-'.repeat(80) + '\n\n',
   useTable: false,
 };
@@ -75,7 +81,7 @@ export function formatResponse(
 ): string {
   // Merge with default options
   const opts = { ...DEFAULT_FORMAT_OPTIONS, ...options };
-  const { useColors, includeMetadata, includeText, includeErrors } = opts;
+  const { useColors, includeMetadata, includeText, includeErrors, includeThinking } = opts;
   
   const configKey = `${response.provider}:${response.modelId}`;
   const lines: string[] = [];
@@ -96,6 +102,20 @@ export function formatResponse(
     lines.push(response.text);
   }
   
+  // Include thinking output if requested and available
+  if (includeThinking && response.metadata?.thinking) {
+    lines.push('');
+    const thinkingHeader = 'Thinking:';
+    lines.push(useColors ? styleHeader(thinkingHeader) : thinkingHeader);
+    
+    const thinking = response.metadata.thinking as { process?: string };
+    if (thinking.process) {
+      lines.push(thinking.process);
+    } else {
+      lines.push(JSON.stringify(thinking, null, 2));
+    }
+  }
+  
   // Include metadata if requested and available
   if (includeMetadata && response.metadata) {
     lines.push('');
@@ -104,6 +124,9 @@ export function formatResponse(
     
     // Format each metadata entry
     Object.entries(response.metadata).forEach(([key, value]) => {
+      // Skip thinking in metadata if we've already displayed it separately
+      if (key === 'thinking' && includeThinking) return;
+      
       const metadataLine = `  ${key}: ${JSON.stringify(value)}`;
       lines.push(useColors ? styleDim(metadataLine) : metadataLine);
     });

@@ -106,6 +106,16 @@ export interface RunOptions {
    * Whether to use colors in the output
    */
   useColors?: boolean;
+  
+  /**
+   * Whether to include thinking output (for Claude models that support it)
+   */
+  includeThinking?: boolean;
+  
+  /**
+   * Whether to enable Claude's thinking capability
+   */
+  enableThinking?: boolean;
 }
 
 /**
@@ -1031,8 +1041,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           };
         }
         
+        // Prepare model options with thinking capability if applicable
+        const modelOptions = { ...model.options };
+        
+        // Enable thinking capability for Claude models if requested
+        if (options.enableThinking && model.provider === 'anthropic' && model.modelId.includes('claude-3')) {
+          modelOptions.thinking = {
+            type: 'enabled',
+            budget_tokens: 16000 // Default budget
+          };
+        }
+        
         // Create promise for this model
-        const responsePromise = provider.generate(prompt, model.modelId, model.options, systemPrompt)
+        const responsePromise = provider.generate(prompt, model.modelId, modelOptions, systemPrompt)
           .then(response => {
             // Update status
             modelStatuses[configKey] = { status: 'success' };
@@ -1416,6 +1437,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const formattedResults = formatResults(resultsWithTimings, {
       includeMetadata: options.includeMetadata,
       useColors: options.useColors,
+      includeThinking: options.includeThinking,
       // Only use table format in real CLI usage, not in tests
       useTable: process.env.NODE_ENV !== 'test',
     });
