@@ -284,3 +284,27 @@ export function validateModelApiKeys(config: AppConfig): {
   
   return { validModels, missingKeyModels };
 }
+
+/**
+ * Gets models from a specific group in the configuration
+ * 
+ * @param config - The application configuration
+ * @param groupName - The name of the group to get models from
+ * @returns Array of model configurations from the specified group
+ */
+export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
+  // If looking for the default group or the config doesn't have groups,
+  // return the top-level models array
+  if (groupName === 'default' || !config.groups) {
+    return config.models;
+  }
+  
+  // If the group exists, return its models
+  const group = config.groups[groupName];
+  if (group) {
+    return group.models;
+  }
+  
+  // If the group doesn't exist, fall back to the default models array
+  return config.models;
+}

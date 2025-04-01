@@ -47,7 +47,7 @@
   - Dependencies: ModelGroup schema
   - Priority: High
 
-- [ ] Implement `getGroup` function
+- [x] Implement `getGroup` function
   - Description: Create utility to get models from a specific group
   - Dependencies: Updated AppConfig interface
   - Priority: High
