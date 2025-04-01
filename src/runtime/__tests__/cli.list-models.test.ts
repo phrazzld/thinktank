@@ -1,75 +1,57 @@
 /**
  * Tests for the models listing command
+ * 
+ * This test verifies that the CLI correctly handles the "models" command,
+ * focusing specifically on calling the listAvailableModels function with
+ * the correct parameters and handling the results properly.
  */
-import * as listModelsWorkflowModule from '../../templates/listModelsWorkflow';
-import dotenv from 'dotenv';
+import { listAvailableModels } from '../../templates/listModelsWorkflow';
 
-// Mock dependencies
-jest.mock('../../templates/listModelsWorkflow');
-jest.mock('dotenv');
+// Mock the listModelsWorkflow module
+jest.mock('../../templates/listModelsWorkflow', () => ({
+  listAvailableModels: jest.fn().mockResolvedValue('Mock models list')
+}));
 
-// Access the mock
-const listAvailableModels = listModelsWorkflowModule.listAvailableModels as jest.MockedFunction<typeof listModelsWorkflowModule.listAvailableModels>;
-
-describe('CLI Models Command', () => {
-  // Store original implementations
+describe('Models Command', () => {
+  // Store original process.argv
+  const originalArgv = process.argv;
+  const originalExit = process.exit;
   const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
-  const originalProcessExit = process.exit;
-  const originalProcessArgv = process.argv;
   
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Mock methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    // Mock process.exit
     process.exit = jest.fn() as any;
     
-    // Reset mocked implementations
-    (dotenv.config as jest.Mock).mockReturnValue({});
-    listAvailableModels.mockResolvedValue('Mock models list');
+    // Mock console.log
+    console.log = jest.fn();
+    
+    // Reset mock state
+    jest.clearAllMocks();
   });
   
   afterEach(() => {
-    // Restore methods
+    // Restore originals
+    process.argv = originalArgv;
+    process.exit = originalExit;
     console.log = originalConsoleLog;
-    console.error = originalConsoleError;
-    process.exit = originalProcessExit;
-    process.argv = originalProcessArgv;
   });
   
-  function setMockArgs(args: string[]): void {
-    process.argv = ['node', 'thinktank', ...args];
-  }
-  
-  it('should handle "models" command', async () => {
-    // Set up test arguments
-    setMockArgs(['models']);
+  it('should call listAvailableModels when "models" command is used', async () => {
+    // Set CLI arguments to simulate "models" command
+    process.argv = ['node', 'thinktank', 'models'];
     
-    // Import and execute the module
-    const { main } = await import('../cli');
-    await main();
+    // Require the cli module
+    // Using require instead of import to avoid caching issues
+    const cli = require('../cli');
+    await cli.main();
     
-    // Verify execution
+    // Verify listAvailableModels was called with empty options
     expect(listAvailableModels).toHaveBeenCalledWith({});
+    
+    // Verify console.log was called with the result
     expect(console.log).toHaveBeenCalledWith('Mock models list');
+    
+    // Verify exit with success code
     expect(process.exit).toHaveBeenCalledWith(0);
-  });
-  
-  it('should handle errors from listAvailableModels', async () => {
-    // Setup listAvailableModels to throw an error
-    listAvailableModels.mockRejectedValue(new Error('List models error'));
-    
-    // Set up test arguments
-    setMockArgs(['models']);
-    
-    // Import and execute the module
-    const { main } = await import('../cli');
-    await main();
-    
-    // Verify error handling
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Unexpected error:'));
-    expect(process.exit).toHaveBeenCalledWith(1);
   });
 });

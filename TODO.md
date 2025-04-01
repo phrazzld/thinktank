@@ -105,7 +105,7 @@
   - Dependencies: Specific Model Parsing, Model Selection Logic
   - Priority: High
 
-- [ ] Test Models Listing
+- [x] Test Models Listing
   - Description: Create tests for the models listing command
   - Dependencies: Smart Command Detection
   - Priority: Medium
