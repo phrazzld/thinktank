@@ -308,3 +308,15 @@ export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
   // If the group doesn't exist, fall back to the default models array
   return config.models;
 }
+
+/**
+ * Gets enabled models from a specific group in the configuration
+ * 
+ * @param config - The application configuration
+ * @param groupName - The name of the group to get enabled models from
+ * @returns Array of enabled model configurations from the specified group
+ */
+export function getEnabledGroupModels(config: AppConfig, groupName: string): ModelConfig[] {
+  const groupModels = getGroup(config, groupName);
+  return groupModels.filter(model => model.enabled);
+}

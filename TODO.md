@@ -52,7 +52,7 @@
   - Dependencies: Updated AppConfig interface
   - Priority: High
 
-- [ ] Implement `getEnabledGroupModels` function
+- [x] Implement `getEnabledGroupModels` function
   - Description: Create utility to get enabled models from a group
   - Dependencies: getGroup function
   - Priority: High
