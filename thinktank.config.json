@@ -74,11 +74,6 @@
       "models": [
         {
           "provider": "openai",
-          "modelId": "gpt-4o",
-          "enabled": true
-        },
-        {
-          "provider": "openai",
           "modelId": "o3-mini",
           "enabled": true,
           "options": {
@@ -92,12 +87,6 @@
           "apiKeyEnvVar": "GEMINI_API_KEY"
         },
         {
-          "provider": "google",
-          "modelId": "gemini-2.0-flash",
-          "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
-        },
-        {
           "provider": "anthropic",
           "modelId": "claude-3-7-sonnet-20250219",
           "enabled": true
@@ -105,11 +94,6 @@
         {
           "provider": "openrouter",
           "modelId": "deepseek/deepseek-r1",
-          "enabled": true
-        },
-        {
-          "provider": "openrouter",
-          "modelId": "deepseek/deepseek-chat-v3-0324",
           "enabled": true
         }
       ],
