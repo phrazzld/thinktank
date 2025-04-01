@@ -311,7 +311,7 @@ describe('Config Manager', () => {
       mockedGetApiKey.mockImplementation((model) => {
         return model.provider === 'p1' || model.provider === 'p3' 
           ? 'api-key' 
-          : undefined;
+          : null;
       });
       
       const { validModels, missingKeyModels } = validateModelApiKeys(config);

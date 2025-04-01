@@ -53,8 +53,8 @@ describe('Helper Functions', () => {
     const originalEnv = process.env;
     
     beforeEach(() => {
-      // Reset process.env for each test
-      process.env = { ...originalEnv };
+      // Reset process.env for each test - use a completely clean object to avoid real env vars
+      process.env = {};
     });
     
     afterAll(() => {
@@ -87,14 +87,38 @@ describe('Helper Functions', () => {
       expect(getApiKey(config)).toBe('default-key');
     });
     
-    it('should return undefined if no API key is found', () => {
+    it('should return null if no API key is found', () => {
       const config: ModelConfig = {
         provider: 'unknown',
         modelId: 'model',
         enabled: true,
       };
       
-      expect(getApiKey(config)).toBeUndefined();
+      expect(getApiKey(config)).toBeNull();
+    });
+    
+    it('should handle case-insensitive provider matching', () => {
+      process.env.GOOGLE_API_KEY = 'google-key';
+      
+      const config: ModelConfig = {
+        provider: 'Google', // Uppercase
+        modelId: 'gemini-pro',
+        enabled: true,
+      };
+      
+      expect(getApiKey(config)).toBe('google-key');
+    });
+    
+    it('should try multiple possible environment variable names', () => {
+      process.env.GEMINI_API_KEY = 'gemini-key';
+      
+      const config: ModelConfig = {
+        provider: 'google',
+        modelId: 'gemini-pro',
+        enabled: true,
+      };
+      
+      expect(getApiKey(config)).toBe('gemini-key');
     });
   });
   

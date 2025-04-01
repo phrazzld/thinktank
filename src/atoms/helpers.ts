@@ -29,20 +29,42 @@ export function getDefaultApiKeyEnvVar(provider: string): string {
 
 /**
  * Safely extracts a model's API key from environment variables
- * First checks the custom apiKeyEnvVar if specified, then falls back to default naming
+ * First checks the custom apiKeyEnvVar if specified, then tries standard mappings,
+ * then falls back to default naming pattern
  * 
  * @param config - The model configuration
- * @returns The API key if found, undefined otherwise
+ * @returns The API key if found, null otherwise
  */
-export function getApiKey(config: ModelConfig): string | undefined {
+export function getApiKey(config: ModelConfig): string | null {
   // First try the custom environment variable if specified
-  if (config.apiKeyEnvVar && process.env[config.apiKeyEnvVar]) {
-    return process.env[config.apiKeyEnvVar];
+  if (config.apiKeyEnvVar) {
+    const key = process.env[config.apiKeyEnvVar];
+    if (key) {
+      return key;
+    }
   }
   
-  // Fall back to the default environment variable pattern
-  const defaultEnvVar = getDefaultApiKeyEnvVar(config.provider);
-  return process.env[defaultEnvVar];
+  // Standard environment variable mappings by provider
+  const envVarMappings: Record<string, string[]> = {
+    'openai': ['OPENAI_API_KEY'],
+    'anthropic': ['ANTHROPIC_API_KEY'],
+    'google': ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], // Check multiple possible names
+    'openrouter': ['OPENROUTER_API_KEY']
+  };
+  
+  // Handle case-insensitive provider matching
+  const provider = config.provider.toLowerCase();
+  const possibleVars = envVarMappings[provider] || [`${provider.toUpperCase()}_API_KEY`];
+  
+  // Try each possible environment variable
+  for (const envVar of possibleVars) {
+    const key = process.env[envVar];
+    if (key) {
+      return key;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -154,4 +176,29 @@ export function sanitizeFilename(input: string): string {
     .replace(/__+/g, '_')                   // Replace multiple underscores with one
     .replace(/^[.-]+|[.-]+$/g, '')          // Remove leading/trailing dots and hyphens
     .substring(0, 255);                     // Limit length to 255 characters
+}
+
+/**
+ * Helper function to debug API key availability
+ * Returns status of common API key environment variables
+ * Only provides information in development mode to avoid leaking sensitive information
+ */
+export function debugApiKeyAvailability(): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  
+  if (process.env.NODE_ENV === 'development') {
+    const keys = [
+      'OPENAI_API_KEY', 
+      'ANTHROPIC_API_KEY', 
+      'GEMINI_API_KEY', 
+      'GOOGLE_API_KEY', 
+      'OPENROUTER_API_KEY'
+    ];
+    
+    keys.forEach(key => {
+      result[key] = !!process.env[key];
+    });
+  }
+  
+  return result;
 }

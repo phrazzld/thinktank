@@ -27,24 +27,27 @@ This ensures that:
 2. For the default group or non-existent groups, we return the top-level models array
 3. This maintains backward compatibility with existing tests and behavior
 
-## Issue 2: Missing API key error for Google models despite environment variable being set
+## ✅ Issue 2: Missing API key error for Google models despite environment variable being set (FIXED)
 **Problem:** Thinktank shows "Missing API keys" error for Google models even when GEMINI_API_KEY is set in the environment.
 
 **Root Cause:**  
-The error message indicates a mismatch in how the Google API key is being detected or matched to models. This could be caused by:
-1. The environment variable name used in the code doesn't match what's expected
-2. The API key retrieval logic isn't correctly detecting the variable
-3. There's a casing issue or typo in how the provider name is referenced
+The error message was caused by the API key detection logic only checking a single environment variable name pattern based on the provider name. The implementation had three key issues:
+1. It didn't check alternate environment variable names (e.g., both GEMINI_API_KEY and GOOGLE_API_KEY)
+2. It didn't handle case-insensitive provider matching (e.g., 'Google' vs 'google')
+3. The return type was inconsistent (undefined vs null)
 
 **Solution:**
-1. Check and fix the API key mapping in `src/atoms/helpers.ts`:
+1. Added robust API key mapping in `src/atoms/helpers.ts`:
 ```typescript
-export function getApiKey(model: { provider: string; modelId: string; apiKeyEnvVar?: string }): string | null {
-  // If the model specifies a custom environment variable name, use that
-  if (model.apiKeyEnvVar) {
-    return process.env[model.apiKeyEnvVar] || null;
+export function getApiKey(config: ModelConfig): string | null {
+  // First try the custom environment variable if specified
+  if (config.apiKeyEnvVar) {
+    const key = process.env[config.apiKeyEnvVar];
+    if (key) {
+      return key;
+    }
   }
-
+  
   // Standard environment variable mappings by provider
   const envVarMappings: Record<string, string[]> = {
     'openai': ['OPENAI_API_KEY'],
@@ -52,9 +55,9 @@ export function getApiKey(model: { provider: string; modelId: string; apiKeyEnvV
     'google': ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], // Check multiple possible names
     'openrouter': ['OPENROUTER_API_KEY']
   };
-
+  
   // Handle case-insensitive provider matching
-  const provider = model.provider.toLowerCase();
+  const provider = config.provider.toLowerCase();
   const possibleVars = envVarMappings[provider] || [`${provider.toUpperCase()}_API_KEY`];
   
   // Try each possible environment variable
@@ -69,17 +72,30 @@ export function getApiKey(model: { provider: string; modelId: string; apiKeyEnvV
 }
 ```
 
-2. Add debug logging to help diagnose API key issues (in development mode):
+2. Added a diagnostic function to help troubleshoot API key issues:
 ```typescript
-// Add to src/atoms/helpers.ts
-export function debugApiKeyAvailability(): void {
+export function debugApiKeyAvailability(): Record<string, boolean> {
+  const result: Record<string, boolean> = {};
+  
   if (process.env.NODE_ENV === 'development') {
-    console.log('API Key Environment Variables:');
-    ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'OPENROUTER_API_KEY'].forEach(key => {
-      console.log(`${key}: ${process.env[key] ? 'Set' : 'Not set'}`);
+    const keys = [
+      'OPENAI_API_KEY', 
+      'ANTHROPIC_API_KEY', 
+      'GEMINI_API_KEY', 
+      'GOOGLE_API_KEY', 
+      'OPENROUTER_API_KEY'
+    ];
+    
+    keys.forEach(key => {
+      result[key] = !!process.env[key];
     });
   }
+  
+  return result;
 }
+```
+
+These changes make the API key detection more robust and user-friendly, while also providing better tools for debugging issues.
 ```
 
 ## Issue 3: Output formatting issues
