@@ -54,6 +54,14 @@ const modelConfigSchema = z.object({
   systemPrompt: systemPromptSchema.optional(),
 });
 
+// Zod schema for model groups
+export const modelGroupSchema = z.object({
+  name: z.string().min(1),
+  systemPrompt: systemPromptSchema,
+  models: z.array(modelConfigSchema).min(1),
+  description: z.string().optional(),
+});
+
 // Zod schema for application configuration
 export const appConfigSchema = z.object({
   models: z.array(modelConfigSchema),

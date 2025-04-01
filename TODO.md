@@ -37,7 +37,7 @@
   - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [ ] Create Zod schema for `ModelGroup`
+- [x] Create Zod schema for `ModelGroup`
   - Description: Define validation schema for model groups
   - Dependencies: ModelGroup interface, SystemPrompt schema
   - Priority: High
