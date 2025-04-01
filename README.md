@@ -13,6 +13,13 @@ Architect analyzes your codebase and uses Gemini AI to create comprehensive tech
 - **Gemini AI Integration**: Leverages Google's powerful Gemini models for intelligent planning
 - **Customizable Output**: Configure the format of the generated plan
 - **Git-Aware**: Respects .gitignore patterns when scanning your codebase
+- **Token Management**: Smart token counting with limit checking to prevent API errors
+- **Dry Run Mode**: Preview which files would be included and see token statistics before API calls
+- **Task File Input**: Load task descriptions from external files
+- **Custom Prompts**: Use your own prompt templates for specialized plan generation
+- **Structured Logging**: Clear, color-coded logs with configurable verbosity levels
+- **Interactive Progress**: Visual spinner indicates progress during API calls
+- **User Confirmation**: Optional confirmation for large token counts
 
 ## Installation
 
@@ -32,6 +39,9 @@ architect --task "Your task description" path/to/your/project
 # Example: Create a plan for implementing user authentication
 architect --task "Implement JWT-based user authentication and authorization" ./
 
+# Load task from a file
+architect --task-file task_description.txt ./
+
 # Specify output file (default is PLAN.md)
 architect --task "..." --output auth_plan.md ./
 
@@ -39,7 +49,16 @@ architect --task "..." --output auth_plan.md ./
 architect --task "..." --include .go,.md ./
 
 # Use a different Gemini model
-architect --task "..." --model gemini-1.5-flash ./
+architect --task "..." --model gemini-1.5-pro ./
+
+# Dry run to see which files would be included
+architect --dry-run --task "..." ./
+
+# Request confirmation before proceeding if token count exceeds threshold
+architect --task "..." --confirm-tokens 25000 ./
+
+# Use a custom prompt template
+architect --task "..." --prompt-template custom_template.tmpl ./
 ```
 
 ### Required Environment Variable
@@ -53,14 +72,36 @@ export GEMINI_API_KEY="your-api-key-here"
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--task` | Description of the task or goal for the plan | (Required) |
+| `--task` | Description of the task or goal for the plan | (Required unless using --task-file in non-dry-run mode) |
+| `--task-file` | Path to a file containing the task description | "" |
 | `--output` | Output file path for the generated plan | `PLAN.md` |
 | `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
-| `--verbose` | Enable verbose logging output | `false` |
+| `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
+| `--log-level` | Set logging level (debug, info, warn, error) | `info` |
+| `--color` | Enable/disable colored log output | `true` |
 | `--include` | Comma-separated list of file extensions to include | (All files) |
 | `--exclude` | Comma-separated list of file extensions to exclude | (Common binary and media files) |
 | `--exclude-names` | Comma-separated list of file/dir names to exclude | (Common directories like .git, node_modules) |
 | `--format` | Format string for each file. Use {path} and {content} | `<{path}>\n```\n{content}\n```\n</{path}>\n\n` |
+| `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
+| `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
+| `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
+| `--no-spinner` | Disable spinner animation during API calls | `false` |
+
+## Token Management
+
+Architect implements intelligent token management to prevent API errors and optimize context:
+
+- **Accurate Token Counting**: Uses Gemini's API to get precise token counts for your content
+- **Pre-API Validation**: Checks token count against model limits before making API calls
+- **Fail-Fast Strategy**: Provides clear error messages when token limits would be exceeded
+- **Token Statistics**: Shows token usage as a percentage of the model's limit
+- **Optional Confirmation**: Can prompt for confirmation when token count exceeds a threshold
+
+When token limits are exceeded, try:
+1. Limiting file scope with `--include` or additional filtering flags
+2. Using a model with a higher token limit
+3. Splitting your task into smaller, more focused requests
 
 ## Generated Plan Structure
 
@@ -72,6 +113,32 @@ The generated PLAN.md includes:
 4. **Potential Challenges**: Identified risks, edge cases, and dependencies
 5. **Testing Strategy**: Approach for verifying the implementation
 6. **Open Questions**: Ambiguities needing clarification
+
+## Custom Prompt Templates
+
+Architect supports custom prompt templates for specialized plan generation:
+
+1. Create a .tmpl file using Go's text/template syntax
+2. Reference the following variables in your template:
+   - `{{.Task}}`: The task description
+   - `{{.Context}}`: The codebase context
+3. Pass your template file with `--prompt-template`
+
+## Troubleshooting
+
+### API Key Issues
+- Ensure `GEMINI_API_KEY` is set correctly in your environment
+- Check that your API key has appropriate permissions for the model you're using
+
+### Token Limit Errors
+- Use `--dry-run` to see token statistics without making API calls
+- Reduce the number of files analyzed with `--include` or other filtering flags
+- Try a model with a higher token limit
+
+### Performance Tips
+- Start with small, focused parts of your codebase and gradually include more
+- Use `--include` to target only relevant file types for your task
+- Set `--log-level=debug` for detailed information about the analysis process
 
 ## Contributing
 
