@@ -63,6 +63,13 @@ export interface LLMResponse {
   text: string;
   error?: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Optional group information if the model is part of a group
+   */
+  groupInfo?: {
+    name: string;
+    systemPrompt?: SystemPrompt;
+  };
 }
 
 /**

@@ -21,7 +21,7 @@
   - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [ ] Update `LLMResponse` interface
+- [x] Update `LLMResponse` interface
   - Description: Include group information in response objects
   - Dependencies: ModelGroup interface
   - Priority: Medium
@@ -146,7 +146,7 @@
   - Dependencies: SystemPrompt interface
   - Priority: High
 
-- [ ] Update provider generate methods
+- [x] Update provider generate methods
   - Description: Modify to accept and apply system prompts
   - Dependencies: Updated provider interfaces
   - Priority: High
