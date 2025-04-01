@@ -99,17 +99,17 @@
   - Priority: Medium
 
 ## CLI Interface Updates
-- [ ] Add `--group/-g` parameter
+- [x] Add `--group/-g` parameter
   - Description: Implement CLI option to specify groups to run
   - Dependencies: Updated RunOptions interface
   - Priority: High
 
-- [ ] Add `--system-prompt/-s` parameter
+- [x] Add `--system-prompt/-s` parameter
   - Description: Implement CLI option for system prompt override
   - Dependencies: Updated RunOptions interface
   - Priority: High
 
-- [ ] Update CLI help documentation
+- [x] Update CLI help documentation
   - Description: Add information about new parameters and examples
   - Dependencies: New CLI parameters
   - Priority: Medium

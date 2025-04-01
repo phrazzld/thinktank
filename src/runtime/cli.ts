@@ -44,6 +44,16 @@ export async function main(): Promise<void> {
           describe: 'Models to use (provider:model, provider, or model)',
           type: 'array',
         })
+        .option('group', {
+          alias: 'g',
+          describe: 'Model groups to use (can specify multiple)',
+          type: 'array',
+        })
+        .option('system-prompt', {
+          alias: 's',
+          describe: 'System prompt override for all models',
+          type: 'string',
+        })
         .option('metadata', {
           describe: 'Include metadata in output',
           type: 'boolean',
@@ -54,8 +64,11 @@ export async function main(): Promise<void> {
           type: 'boolean',
           default: false,
         })
-        .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models (output to ./thinktank_outputs/)')
+        .example('$0 -i prompt.txt', 'Send prompt.txt to all enabled models')
         .example('$0 -i prompt.txt -m openai:gpt-4o', 'Send prompt to specific model')
+        .example('$0 -i prompt.txt -g coding', 'Send prompt to all models in the coding group')
+        .example('$0 -i prompt.txt -g coding -g creative', 'Send prompt to models in multiple groups')
+        .example('$0 -i prompt.txt -s "You are a helpful assistant."', 'Use a custom system prompt for all models')
         .example('$0 -i prompt.txt -c custom-config.json', 'Use custom config file')
         .example('$0 -i prompt.txt -o ./custom-outputs', 'Use custom directory for output files');
     })
@@ -117,6 +130,8 @@ export async function main(): Promise<void> {
         configPath: argv.config,
         output: argv.output as string | undefined,
         models: argv.model as string[] | undefined,
+        groups: argv.group as string[] | undefined,
+        systemPrompt: argv['system-prompt'] as string | undefined,
         includeMetadata: argv.metadata as boolean | undefined,
         useColors: !(argv['no-color'] as boolean | undefined),
       });
