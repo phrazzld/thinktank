@@ -233,5 +233,56 @@ describe('consoleUtils', () => {
       const groupSuggestions = (errorWithGroup as any).suggestions.join(' ');
       expect(groupSuggestions).toContain('in the "coding" group configuration');
     });
+    
+    test('createMissingApiKeyError should generate helpful error with provider-specific instructions', () => {
+      // Test with multiple providers
+      const missingModels = [
+        { provider: 'openai', modelId: 'gpt-4o' },
+        { provider: 'anthropic', modelId: 'claude-3-7-sonnet-20250219' },
+        { provider: 'google', modelId: 'gemini-pro' }
+      ];
+      
+      const error = consoleUtils.createMissingApiKeyError(missingModels);
+      
+      // Verify basic properties
+      expect(error.message).toContain('Missing API keys for 3 models');
+      expect((error as any).category).toBe(consoleUtils.errorCategories.API);
+      
+      // Should have suggestions
+      expect(Array.isArray((error as any).suggestions)).toBe(true);
+      
+      // Should group by provider
+      const suggestions = (error as any).suggestions.join(' ');
+      expect(suggestions).toContain('Missing API key for openai');
+      expect(suggestions).toContain('Missing API key for anthropic');
+      expect(suggestions).toContain('Missing API key for google');
+      
+      // Should contain provider-specific instructions
+      expect(suggestions).toContain('platform.openai.com/api-keys');
+      expect(suggestions).toContain('console.anthropic.com/keys');
+      expect(suggestions).toContain('aistudio.google.com/app/apikey');
+      
+      // Should have environment variable setup instructions
+      expect(suggestions).toContain('export PROVIDER_API_KEY=your_key_here');
+      expect(suggestions).toContain('set PROVIDER_API_KEY=your_key_here');
+      expect(suggestions).toContain('$env:PROVIDER_API_KEY');
+      
+      // Should have examples
+      expect(Array.isArray((error as any).examples)).toBe(true);
+      expect((error as any).examples.length).toBe(3); // One per provider
+      
+      // Examples should include provider-specific environment variables
+      const examplesString = (error as any).examples.join(' ');
+      expect(examplesString).toContain('OPENAI_API_KEY');
+      expect(examplesString).toContain('ANTHROPIC_API_KEY');
+      expect(examplesString).toContain('GOOGLE_API_KEY');
+      
+      // Test with single provider (singular message)
+      const singleModel = [{ provider: 'openai', modelId: 'gpt-4o' }];
+      const singleError = consoleUtils.createMissingApiKeyError(singleModel);
+      
+      expect(singleError.message).toContain('Missing API key for 1 model');
+      expect(singleError.message).not.toContain('keys');
+    });
   });
 });

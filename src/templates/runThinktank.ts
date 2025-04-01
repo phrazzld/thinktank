@@ -27,7 +27,8 @@ import {
   formatErrorWithTip,
   errorCategories,
   categorizeError,
-  getTroubleshootingTip
+  getTroubleshootingTip,
+  createMissingApiKeyError
 } from '../atoms/consoleUtils';
 import ora from 'ora';
 import fs from 'fs/promises';
@@ -665,7 +666,13 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Log warnings for models with missing API keys
     if (missingKeyModels.length > 0) {
+      // Create a detailed error with provider-specific instructions
+      const apiKeyError = createMissingApiKeyError(missingKeyModels);
+      
+      // Get the raw model names for display
       const modelNames = missingKeyModels.map(getModelConfigKey).join(', ');
+      
+      // Show warning with basic information (will expand on this if all models are missing keys)
       spinner.warn(styleWarning(`Missing API keys for models: ${modelNames}`));
       
       // Filter out models with missing keys
@@ -676,11 +683,50 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       );
       
       if (models.length === 0) {
+        // No models with valid API keys - show detailed error
+        // Convert apiKeyError to ThinktankError for more details
+        const thinktankError = new ThinktankError(apiKeyError.message);
+        thinktankError.category = (apiKeyError as any).category;
+        thinktankError.suggestions = (apiKeyError as any).suggestions;
+        thinktankError.examples = (apiKeyError as any).examples;
+        
+        // Display comprehensive error with spinner
         spinner.fail(formatError(
           'No models with valid API keys available.', 
           errorCategories.API,
-          'Check your environment variables or config file for API keys'
+          'See below for instructions on obtaining and setting API keys'
         ));
+        
+        // Display the detailed suggestions
+        if (thinktankError.suggestions && thinktankError.suggestions.length > 0) {
+          // eslint-disable-next-line no-console
+          console.log('\n' + styleHeader('Missing API Keys:'));
+          
+          thinktankError.suggestions.forEach(suggestion => {
+            if (suggestion.trim().startsWith('•')) {
+              // eslint-disable-next-line no-console
+              console.log(styleInfo(`  ${suggestion}`));
+            } else if (suggestion.trim() === '') {
+              // eslint-disable-next-line no-console
+              console.log('');
+            } else {
+              // eslint-disable-next-line no-console
+              console.log(styleInfo(`  ${suggestion}`));
+            }
+          });
+        }
+        
+        // Show examples if available
+        if (thinktankError.examples && thinktankError.examples.length > 0) {
+          // eslint-disable-next-line no-console
+          console.log('\n' + styleHeader('Example commands:'));
+          
+          thinktankError.examples.forEach(example => {
+            // eslint-disable-next-line no-console
+            console.log(styleSuccess(`  $ ${example}`));
+          });
+        }
+        
         return 'No models with valid API keys available.';
       }
     }
