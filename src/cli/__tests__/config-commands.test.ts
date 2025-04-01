@@ -96,7 +96,11 @@ describe('Config Command Basic Tests', () => {
     
     // Try to call the mock action, which should eventually call handleError
     try {
-      await pathCommand.parseOptions([]);
+      // We can't directly await parseOptions as it's not a Promise
+      pathCommand.parseOptions([]);
+      
+      // Instead, just mock that we're executing the action
+      // which would happen if this were a real CLI invocation
       mockAction();
     } catch (error) {
       // Just ensure we got here without error
