@@ -3,7 +3,7 @@
  */
 import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import axios from 'axios';
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -112,13 +112,15 @@ export class GoogleProvider implements LLMProvider {
    * @param prompt - The prompt to send to the API
    * @param modelId - The ID of the model to use
    * @param options - Optional parameters for the request
+   * @param systemPrompt - Optional system prompt to control model behavior
    * @returns The API response as an LLMResponse
    * @throws {GoogleProviderError} If the API call fails
    */
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions
+    options?: ModelOptions,
+    systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {
       const client = this.getClient();
@@ -135,8 +137,15 @@ export class GoogleProvider implements LLMProvider {
         ],
       });
       
+      // Prepare contents array, including system prompt if provided
+      const contents = [];
+      if (systemPrompt) {
+        contents.push({ role: "system", parts: [{ text: systemPrompt.text }] });
+      }
+      contents.push({ role: "user", parts: [{ text: prompt }] });
+      
       const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents,
         generationConfig,
       });
       

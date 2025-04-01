@@ -141,7 +141,7 @@
   - Priority: High
 
 ## Provider Integration
-- [ ] Update provider interfaces
+- [x] Update provider interfaces
   - Description: Modify to support system prompts
   - Dependencies: SystemPrompt interface
   - Priority: High

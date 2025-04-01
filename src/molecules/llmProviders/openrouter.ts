@@ -3,7 +3,7 @@
  */
 import OpenAI from 'openai';
 import axios from 'axios';
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -112,21 +112,30 @@ export class OpenRouterProvider implements LLMProvider {
    * @param prompt - The prompt to send to the API
    * @param modelId - The ID of the model to use
    * @param options - Optional parameters for the request
+   * @param systemPrompt - Optional system prompt to control model behavior
    * @returns The API response as an LLMResponse
    * @throws {OpenRouterProviderError} If the API call fails
    */
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions
+    options?: ModelOptions,
+    systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {
       const client = this.getClient();
       const params = this.mapOptions(options);
       
+      // Prepare messages array, including system prompt if provided
+      const messages = [];
+      if (systemPrompt) {
+        messages.push({ role: 'system' as const, content: systemPrompt.text });
+      }
+      messages.push({ role: 'user' as const, content: prompt });
+      
       const response = await client.chat.completions.create({
         model: modelId,
-        messages: [{ role: 'user', content: prompt }],
+        messages,
         ...params,
       });
       

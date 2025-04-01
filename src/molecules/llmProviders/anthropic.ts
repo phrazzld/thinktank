@@ -2,7 +2,7 @@
  * Anthropic provider implementation for thinktank
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../../atoms/types';
 import { registerProvider } from '../../organisms/llmRegistry';
 
 /**
@@ -101,13 +101,15 @@ export class AnthropicProvider implements LLMProvider {
    * @param prompt - The prompt to send to the API
    * @param modelId - The ID of the model to use
    * @param options - Optional parameters for the request
+   * @param systemPrompt - Optional system prompt to control model behavior
    * @returns The API response as an LLMResponse
    * @throws {AnthropicProviderError} If the API call fails
    */
   public async generate(
     prompt: string,
     modelId: string,
-    options?: ModelOptions
+    options?: ModelOptions,
+    systemPrompt?: SystemPrompt
   ): Promise<LLMResponse> {
     try {
       const client = this.getClient();
@@ -119,6 +121,7 @@ export class AnthropicProvider implements LLMProvider {
         model: modelId,
         messages: [{ role: 'user' as const, content: prompt }],
         max_tokens: 1024, // Default value if not provided
+        ...(systemPrompt && { system: systemPrompt.text }),
         ...params,
       };
       
