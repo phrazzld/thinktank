@@ -67,21 +67,26 @@ export class OpenAIProvider implements LLMProvider {
    * @param options - Generic model options
    * @returns OpenAI-specific parameters
    */
-  private mapOptions(options?: ModelOptions): Record<string, unknown> {
+  private mapOptions(options?: ModelOptions, modelId?: string): Record<string, unknown> {
     if (!options) {
       return {};
     }
     
     const params: Record<string, unknown> = {};
     
-    // Map temperature (0-1 scale)
-    if (options.temperature !== undefined) {
+    // Map temperature (0-1 scale) for all models except o3-mini
+    if (options.temperature !== undefined && modelId !== 'o3-mini') {
       params.temperature = options.temperature;
     }
     
-    // Map maxTokens to max_tokens
+    // Map maxTokens to the appropriate parameter based on model
     if (options.maxTokens !== undefined) {
-      params.max_tokens = options.maxTokens;
+      // Handle o3-mini model specially - it requires max_completion_tokens instead of max_tokens
+      if (modelId === 'o3-mini') {
+        params.max_completion_tokens = options.maxTokens;
+      } else {
+        params.max_tokens = options.maxTokens;
+      }
     }
     
     // Add any other options directly
@@ -113,7 +118,7 @@ export class OpenAIProvider implements LLMProvider {
   ): Promise<LLMResponse> {
     try {
       const client = this.getClient();
-      const params = this.mapOptions(options);
+      const params = this.mapOptions(options, modelId);
       
       // Prepare messages array, including system prompt if provided
       const messages = [];

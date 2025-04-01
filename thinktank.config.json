@@ -10,6 +10,34 @@
       }
     },
     {
+      "provider": "openai",
+      "modelId": "o3-mini",
+      "enabled": true,
+      "options": {
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro-exp-03-25",
+      "enabled": true,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.0-flash",
+      "enabled": true,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
       "provider": "anthropic",
       "modelId": "claude-3-7-sonnet-20250219",
       "enabled": true,
@@ -17,6 +45,122 @@
         "temperature": 0.7,
         "maxTokens": 1000
       }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "deepseek/deepseek-r1",
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "deepseek/deepseek-chat-v3-0324",
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
     }
-  ]
+  ],
+  "groups": {
+    "default": {
+      "name": "default",
+      "systemPrompt": {
+        "text": "You are a helpful, concise, and accurate assistant."
+      },
+      "models": [
+        {
+          "provider": "openai",
+          "modelId": "gpt-4o",
+          "enabled": true
+        },
+        {
+          "provider": "openai",
+          "modelId": "o3-mini",
+          "enabled": true,
+          "options": {
+            "maxTokens": 1000
+          }
+        },
+        {
+          "provider": "google",
+          "modelId": "gemini-2.5-pro-exp-03-25",
+          "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY"
+        },
+        {
+          "provider": "google",
+          "modelId": "gemini-2.0-flash",
+          "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY"
+        },
+        {
+          "provider": "anthropic",
+          "modelId": "claude-3-7-sonnet-20250219",
+          "enabled": true
+        },
+        {
+          "provider": "openrouter",
+          "modelId": "deepseek/deepseek-r1",
+          "enabled": true
+        },
+        {
+          "provider": "openrouter",
+          "modelId": "deepseek/deepseek-chat-v3-0324",
+          "enabled": true
+        }
+      ],
+      "description": "Collection of primary models across providers"
+    },
+    "coding": {
+      "name": "coding",
+      "systemPrompt": {
+        "text": "You are a coding assistant specialized in software development. Prioritize correct, efficient code and comprehensive explanations of programming concepts."
+      },
+      "models": [
+        {
+          "provider": "openai",
+          "modelId": "gpt-4o",
+          "enabled": true
+        },
+        {
+          "provider": "anthropic",
+          "modelId": "claude-3-7-sonnet-20250219",
+          "enabled": true
+        },
+        {
+          "provider": "openrouter",
+          "modelId": "deepseek/deepseek-chat-v3-0324",
+          "enabled": true
+        }
+      ],
+      "description": "Models optimized for programming tasks"
+    },
+    "fast": {
+      "name": "fast",
+      "systemPrompt": {
+        "text": "You are an assistant that provides quick, concise responses. Prioritize brevity and efficiency in your answers."
+      },
+      "models": [
+        {
+          "provider": "openai",
+          "modelId": "o3-mini",
+          "enabled": true,
+          "options": {
+            "maxTokens": 1000
+          }
+        },
+        {
+          "provider": "google",
+          "modelId": "gemini-2.0-flash",
+          "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY"
+        }
+      ],
+      "description": "Fastest models for quick responses"
+    }
+  }
 }

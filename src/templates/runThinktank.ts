@@ -332,7 +332,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         const groupInfo = findModelGroup(config, model);
         if (groupInfo) {
           groupName = groupInfo.groupName;
-          systemPrompt = groupInfo.systemPrompt as SystemPrompt;
+          systemPrompt = groupInfo.systemPrompt;
         }
       }
       

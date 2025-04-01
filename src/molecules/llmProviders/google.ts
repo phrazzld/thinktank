@@ -137,12 +137,38 @@ export class GoogleProvider implements LLMProvider {
         ],
       });
       
-      // Prepare contents array, including system prompt if provided
+      // Prepare contents array, including system prompt if compatible
       const contents = [];
+      
+      // Handle system prompts based on model compatibility
       if (systemPrompt) {
-        contents.push({ role: "system", parts: [{ text: systemPrompt.text }] });
+        // For gemini-2.0-flash, system prompts are not supported at all
+        if (modelId === "gemini-2.0-flash") {
+          // Add system prompt text as a prefix to user prompt for backward compatibility
+          const combinedPrompt = `${systemPrompt.text}\n\n${prompt}`;
+          contents.push({ role: "user", parts: [{ text: combinedPrompt }] });
+        } 
+        // For gemini-2.5 models, use "model" role instead of "system"
+        else if (modelId.startsWith("gemini-2.5")) {
+          contents.push({ role: "model", parts: [{ text: systemPrompt.text }] });
+          contents.push({ role: "user", parts: [{ text: prompt }] });
+        }
+        // For other models, attempt standard system prompt
+        else {
+          try {
+            contents.push({ role: "system", parts: [{ text: systemPrompt.text }] });
+            contents.push({ role: "user", parts: [{ text: prompt }] });
+          } catch (error) {
+            // Fallback: if system role fails, use model role
+            contents.length = 0; // Clear array
+            contents.push({ role: "model", parts: [{ text: systemPrompt.text }] });
+            contents.push({ role: "user", parts: [{ text: prompt }] });
+          }
+        }
+      } else {
+        // No system prompt, just add the user prompt
+        contents.push({ role: "user", parts: [{ text: prompt }] });
       }
-      contents.push({ role: "user", parts: [{ text: prompt }] });
       
       const result = await model.generateContent({
         contents,
