@@ -140,10 +140,11 @@
   - Priority: Medium
   - Note: Updated README to reflect domain-oriented architecture, new CLI command structure, and updated examples for the new interfaces.
 
-- [ ] Create User Guides/Examples
+- [x] Create User Guides/Examples
   - Description: Document the cascading configuration hierarchy and usage examples
   - Dependencies: All implementations complete
   - Priority: Low
+  - Note: Created comprehensive CASCADING-CONFIG-GUIDE.md document explaining the six-layer configuration system with detailed examples for different use cases and best practices.
 
 ## Final Steps
 - [x] Perform Code Review
