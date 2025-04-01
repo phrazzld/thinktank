@@ -1,6 +1,9 @@
 /**
  * Output formatter for displaying LLM responses in a readable format
  */
+
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import Table from 'cli-table3';
 import type { Cell } from 'cli-table3';
 import { 

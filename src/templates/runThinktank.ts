@@ -16,7 +16,20 @@ import { getProvider } from '../organisms/llmRegistry';
 import { formatResults } from '../molecules/outputFormatter';
 import { LLMResponse, ModelConfig, SystemPrompt } from '../atoms/types';
 import { getModelConfigKey, generateOutputDirectoryPath, sanitizeFilename } from '../atoms/helpers';
-import { styleHeader, styleDim, divider } from '../atoms/consoleUtils';
+import { 
+  styleHeader, 
+  styleDim, 
+  styleSuccess, 
+  styleError, 
+  styleWarning, 
+  styleInfo,
+  divider, 
+  formatError, 
+  formatErrorWithTip,
+  errorCategories,
+  categorizeError,
+  getTroubleshootingTip
+} from '../atoms/consoleUtils';
 import ora from 'ora';
 import fs from 'fs/promises';
 import path from 'path';
@@ -341,11 +354,16 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Create the directory with recursive option to ensure parent directories exist
       await fs.mkdir(outputDirectoryPath, { recursive: true });
       timings.directoryCreation = getElapsedTime(startTimeDirectory);
-      spinner.info(`Output directory created: ${outputDirectoryPath} (${timings.directoryCreation}ms)`);
+      spinner.info(styleInfo(`Output directory created: ${outputDirectoryPath} (${timings.directoryCreation}ms)`));
     } catch (error) {
-      spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      spinner.fail(formatError(
+        `Failed to create output directory: ${errorMessage}`, 
+        errorCategories.FILESYSTEM, 
+        'Check your write permissions and ensure the path is valid'
+      ));
       throw new ThinktankError(
-        `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to create output directory: ${errorMessage}`,
         error instanceof Error ? error : undefined
       );
     }
@@ -413,17 +431,22 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Check if we have any models after all filtering
     if (models.length === 0) {
       if (useGroupsSelection && useModelSelection) {
-        spinner.warn('No enabled models found matching both group and model filters.');
-        return 'No enabled models found matching both group and model filters.';
+        const message = 'No enabled models found matching both group and model filters.';
+        spinner.warn(styleWarning(message));
+        return message;
       } else if (useGroupsSelection) {
-        spinner.warn(`No enabled models found in the specified groups: ${options.groups!.join(', ')}`);
+        const groupList = options.groups!.join(', ');
+        const message = `No enabled models found in the specified groups: ${groupList}`;
+        spinner.warn(styleWarning(message));
         return `No enabled models found in the specified groups: ${options.groups!.join(', ')}`;
       } else if (useModelSelection) {
-        spinner.warn('No enabled models matched the specified filters.');
-        return 'No enabled models matched the specified filters.';
+        const message = 'No enabled models matched the specified filters.';
+        spinner.warn(styleWarning(message));
+        return message;
       } else {
-        spinner.warn('No enabled models found in configuration.');
-        return 'No enabled models found in configuration.';
+        const message = 'No enabled models found in configuration.';
+        spinner.warn(styleWarning(message));
+        return message;
       }
     }
     
@@ -433,7 +456,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Log warnings for models with missing API keys
     if (missingKeyModels.length > 0) {
       const modelNames = missingKeyModels.map(getModelConfigKey).join(', ');
-      spinner.warn(`Missing API keys for models: ${modelNames}`);
+      spinner.warn(styleWarning(`Missing API keys for models: ${modelNames}`));
       
       // Filter out models with missing keys
       models = models.filter(model => 
@@ -443,7 +466,11 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       );
       
       if (models.length === 0) {
-        spinner.fail('No models with valid API keys available.');
+        spinner.fail(formatError(
+          'No models with valid API keys available.', 
+          errorCategories.API,
+          'Check your environment variables or config file for API keys'
+        ));
         return 'No models with valid API keys available.';
       }
     }
@@ -452,8 +479,21 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     spinner.text = `Preparing to query ${models.length} model${models.length === 1 ? '' : 's'}...`;
     
     // List models being used
-    const modelList = models.map(model => getModelConfigKey(model)).join(', ');
-    spinner.info(`Models: ${modelList}`);
+    const modelsHeader = styleInfo(`Models to be queried (${models.length}):`);
+    spinner.info(modelsHeader);
+    
+    // Display each model on its own line
+    const formattedModelList = models.map((model, index) => {
+      const configKey = getModelConfigKey(model);
+      const groupInfo = findModelGroup(config, model);
+      const groupName = groupInfo?.groupName || 'default';
+      
+      // Format with bullet points and group information
+      return `  ${index + 1}. ${configKey}${groupName !== 'default' ? ` (${groupName} group)` : ''}`;
+    }).join('\n');
+    
+    // eslint-disable-next-line no-console
+    console.log(formattedModelList);
     
     // Initialize status tracking
     models.forEach(model => {
@@ -509,10 +549,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         const configKey = getModelConfigKey(model);
         
         if (!provider) {
-          spinner.warn(`Provider not found for ${configKey}`);
+          const errorMessage = `Provider '${model.provider}' not found for model ${configKey}`;
+          const formattedError = formatError(
+            errorMessage, 
+            errorCategories.CONFIG, 
+            'Check your configuration and ensure the provider module is correctly imported'
+          );
+          
+          // Show as warning but track as error
+          spinner.warn(formattedError);
+          
           modelStatuses[configKey] = { 
             status: 'error', 
-            message: 'Provider not found' 
+            message: formattedError
           };
           return;
         }
@@ -567,20 +616,34 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             return responseWithGroup;
           })
           .catch(error => {
-            // Update status
+            // Get error message and categorize it
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorObj = error instanceof Error ? error : new Error(String(error));
+            const category = categorizeError(errorObj);
+            const tip = getTroubleshootingTip(errorObj, category);
+            
+            // Format error message with category and tip
+            const formattedError = formatError(errorMessage, category, tip);
+            
+            // Update status with formatted message
             modelStatuses[configKey] = { 
               status: 'error', 
-              message: error instanceof Error ? error.message : String(error)
+              message: formattedError
             };
             
             // Update spinner text with detailed progress
             spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
             
+            // Log the error with additional model context
+            console.error(styleError(`Error in model ${configKey}: ${formattedError}`));
+            
             return {
               provider: model.provider,
               modelId: model.modelId,
               text: '',
-              error: error instanceof Error ? error.message : String(error),
+              error: errorMessage,
+              errorCategory: category,
+              errorTip: tip,
               configKey,
             };
           });
@@ -613,19 +676,49 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     if (errorCount > 0) {
       // Log models with errors
-      spinner.warn(`${successCount} of ${successCount + errorCount} models completed successfully`);
+      spinner.warn(styleWarning(`${successCount} of ${successCount + errorCount} models completed successfully`));
       
-      // Display error details
-      const errorModels = Object.entries(modelStatuses)
+      // Group errors by category
+      const errorsByCategory: Record<string, Array<{ model: string, message: string }>> = {};
+      
+      Object.entries(modelStatuses)
         .filter(([_, status]) => status.status === 'error')
-        .map(([model, status]) => `  - ${model}: ${status.message || 'Unknown error'}`);
+        .forEach(([model, status]) => {
+          let category = errorCategories.UNKNOWN;
+          const message = status.message || 'Unknown error';
+          
+          // Try to extract category from the error message
+          Object.values(errorCategories).forEach(cat => {
+            if (message.includes(cat)) {
+              category = cat;
+            }
+          });
+          
+          if (!errorsByCategory[category]) {
+            errorsByCategory[category] = [];
+          }
+          
+          errorsByCategory[category].push({ 
+            model, 
+            message: status.message || 'Unknown error'
+          });
+        });
       
       // eslint-disable-next-line no-console
-      console.log('\nModels with errors:');
-      // eslint-disable-next-line no-console
-      console.log(errorModels.join('\n'));
+      console.log('\n' + styleHeader('Models with errors:'));
+      
+      // Display errors by category
+      Object.entries(errorsByCategory).forEach(([category, errors]) => {
+        // eslint-disable-next-line no-console
+        console.log(styleWarning(`\n${category} errors (${errors.length}):`));
+        
+        errors.forEach(({ model, message }) => {
+          // eslint-disable-next-line no-console
+          console.log(styleError(`  - ${model}: ${message}`));
+        });
+      });
     } else {
-      spinner.succeed(`All ${successCount} models completed successfully`);
+      spinner.succeed(styleSuccess(`All ${successCount} models completed successfully`));
     }
     
     // 8. Write individual files (now always done)
@@ -662,8 +755,18 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         try {
           await fs.mkdir(groupDir, { recursive: true });
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorObj = error instanceof Error ? error : new Error(String(error));
+          const category = categorizeError(errorObj);
+          const tip = getTroubleshootingTip(errorObj, category) || 
+            'Check permissions and ensure parent directories exist';
+          
           // eslint-disable-next-line no-console
-          console.warn(`Could not create group directory ${groupDir}: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn(formatError(
+            `Could not create group directory ${groupDir}: ${errorMessage}`, 
+            category, 
+            tip
+          ));
         }
       });
       
@@ -719,7 +822,14 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         .catch((error) => {
           failedWrites++;
           fileDetail.status = 'error';
-          fileDetail.error = error instanceof Error ? error.message : String(error);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          fileDetail.error = errorMessage;
+          // Also log the error for immediate feedback
+          console.error(formatError(
+            `Failed to write file ${fileDetail.filename}: ${errorMessage}`,
+            errorCategories.FILESYSTEM,
+            'Check your write permissions and available disk space'
+          ));
           // Update progress with detailed information
           spinner.text = formatFileWritingStatus(
             results.length, 
@@ -746,37 +856,68 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Report results
     if (failedWrites === 0) {
-      spinner.succeed(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`);
+      spinner.succeed(styleSuccess(`All ${succeededWrites} model responses written to ${outputDirectoryPath}`));
       // eslint-disable-next-line no-console
-      console.log(`\nOutput directory: ${outputDirectoryPath}`);
+      console.log(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
       
       // If using groups, show group summary
       if (groupedResults.size > 1 || !groupedResults.has('default')) {
         // eslint-disable-next-line no-console
-        console.log('\nGroup summary:');
+        console.log('\n' + styleHeader('Group summary:'));
         
         for (const [group, count] of groupedResults.entries()) {
           if (group === 'default') {
             // eslint-disable-next-line no-console
-            console.log(`  - Default group: ${count} models`);
+            console.log(styleDim(`  - Default group: ${count} models`));
           } else {
             // eslint-disable-next-line no-console
-            console.log(`  - ${group} group: ${count} models`);
+            console.log(styleInfo(`  - ${group} group: ${count} models`));
           }
         }
       }
     } else {
-      spinner.warn(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`);
+      spinner.warn(styleWarning(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes`));
       // eslint-disable-next-line no-console
-      console.log(`\nOutput directory: ${outputDirectoryPath}`);
+      console.log(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
       
       // Show files with errors
       const failedFiles = fileDetails.filter(file => file.status === 'error');
-      // eslint-disable-next-line no-console
-      console.log('\nFiles with errors:');
+      
+      // Group file errors by category
+      const fileErrorsByCategory: Record<string, Array<{ filename: string, error: string }>> = {};
+      
       failedFiles.forEach(file => {
+        const errorMessage = file.error || 'Unknown error';
+        const category = categorizeError(errorMessage);
+        
+        if (!fileErrorsByCategory[category]) {
+          fileErrorsByCategory[category] = [];
+        }
+        
+        fileErrorsByCategory[category].push({
+          filename: file.filename,
+          error: errorMessage
+        });
+      });
+      
+      // eslint-disable-next-line no-console
+      console.log('\n' + styleHeader('Files with errors:'));
+      
+      // Display file errors by category
+      Object.entries(fileErrorsByCategory).forEach(([category, errors]) => {
         // eslint-disable-next-line no-console
-        console.log(`  - ${file.filename}: ${file.error || 'Unknown error'}`);
+        console.log(styleWarning(`\n${category} errors (${errors.length}):`));
+        
+        errors.forEach(({ filename, error }) => {
+          const tip = getTroubleshootingTip(error, category);
+          // eslint-disable-next-line no-console
+          console.log(styleError(`  - ${filename}: ${error}`));
+          
+          if (tip) {
+            // eslint-disable-next-line no-console
+            console.log(styleInfo(`    Tip: ${tip}`));
+          }
+        });
       });
     }
     
@@ -786,21 +927,21 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Log timing summary if requested
     if (options.includeMetadata) {
       // eslint-disable-next-line no-console
-      console.log('\nExecution timing:')
+      console.log('\n' + styleHeader('Execution timing:'));
       // eslint-disable-next-line no-console
-      console.log(`  Total:            ${timings.total}ms`);
+      console.log(styleDim(`  Total:            ${timings.total}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  Config loading:   ${timings.configLoad}ms`);
+      console.log(styleDim(`  Config loading:   ${timings.configLoad}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  Input reading:    ${timings.inputRead}ms`);
+      console.log(styleDim(`  Input reading:    ${timings.inputRead}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  Dir creation:     ${timings.directoryCreation}ms`);
+      console.log(styleDim(`  Dir creation:     ${timings.directoryCreation}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  Model preparation:${timings.modelPreparation}ms`);
+      console.log(styleDim(`  Model preparation:${timings.modelPreparation}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  API calls:        ${timings.apiCalls}ms`);
+      console.log(styleDim(`  API calls:        ${timings.apiCalls}ms`));
       // eslint-disable-next-line no-console
-      console.log(`  File writing:     ${timings.fileWrites}ms`);
+      console.log(styleDim(`  File writing:     ${timings.fileWrites}ms`));
     }
     
     // Add timing information to results metadata
@@ -817,10 +958,12 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const formattedResults = formatResults(resultsWithTimings, {
       includeMetadata: options.includeMetadata,
       useColors: options.useColors,
+      // Only use table format in real CLI usage, not in tests
+      useTable: process.env.NODE_ENV !== 'test',
     });
     return formattedResults;
   } catch (error) {
-    spinner.fail('An error occurred');
+    spinner.fail(formatErrorWithTip(error instanceof Error ? error : 'An unknown error occurred'));
     
     if (error instanceof Error) {
       throw new ThinktankError(`Error running thinktank: ${error.message}`, error);

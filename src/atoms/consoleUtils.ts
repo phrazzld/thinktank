@@ -4,6 +4,11 @@
  * Centralizes all terminal styling logic to maintain consistency
  * and provide reusable formatting helpers across the application.
  */
+
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import chalk from 'chalk';
 
 // Re-export our configured chalk instance
@@ -12,7 +17,7 @@ export const colors = chalk;
 // Define commonly used Unicode symbols
 export const symbols = {
   tick: '✓',
-  cross: '✗',
+  cross: '✖',
   warning: '⚠',
   info: 'ℹ',
   pointer: '❯',
