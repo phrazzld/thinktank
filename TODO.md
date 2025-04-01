@@ -42,7 +42,7 @@
   - Dependencies: ModelGroup interface, SystemPrompt schema
   - Priority: High
 
-- [ ] Update `appConfigSchema`
+- [x] Update `appConfigSchema`
   - Description: Modify to support both models array and groups
   - Dependencies: ModelGroup schema
   - Priority: High

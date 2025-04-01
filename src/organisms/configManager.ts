@@ -65,6 +65,7 @@ export const modelGroupSchema = z.object({
 // Zod schema for application configuration
 export const appConfigSchema = z.object({
   models: z.array(modelConfigSchema),
+  groups: z.record(z.string(), modelGroupSchema).optional(),
 });
 
 // Type definition from zod schema
