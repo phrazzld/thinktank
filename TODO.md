@@ -90,7 +90,7 @@
   - Dependencies: F3, T1, T2
   - Priority: Low
 
-- [ ] Run Dependency Check (R2)
+- [x] Run Dependency Check (R2)
   - Description: Run go mod tidy and review dependencies
   - Dependencies: None
   - Priority: Low
