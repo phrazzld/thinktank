@@ -58,13 +58,13 @@ const modelConfigSchema = z.object({
 export const modelGroupSchema = z.object({
   name: z.string().min(1),
   systemPrompt: systemPromptSchema,
-  models: z.array(modelConfigSchema).min(1),
+  models: z.array(modelConfigSchema).default([]), // No minimum required - empty array is valid
   description: z.string().optional(),
 });
 
 // Zod schema for application configuration
 export const appConfigSchema = z.object({
-  models: z.array(modelConfigSchema),
+  models: z.array(modelConfigSchema).default([]), // Default to empty array if not provided
   groups: z.record(z.string(), modelGroupSchema).optional(),
 });
 
@@ -422,19 +422,13 @@ function normalizeConfig(config: AppConfig): AppConfig {
  * @returns Array of model configurations from the specified group
  */
 export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
-  // If looking for the default group or the config doesn't have groups,
-  // return the top-level models array
-  if (groupName === 'default' || !config.groups) {
-    return config.models;
-  }
-  
   // If the group exists, return its models
-  const group = config.groups[groupName];
-  if (group) {
-    return group.models;
+  if (config.groups && config.groups[groupName]) {
+    return config.groups[groupName].models;
   }
   
-  // If the group doesn't exist, fall back to the default models array
+  // If looking for the default group or if the group doesn't exist,
+  // return the top-level models array
   return config.models;
 }
 
