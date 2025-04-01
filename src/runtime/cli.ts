@@ -132,6 +132,13 @@ export async function main(): Promise<void> {
     // Get command-line arguments (excluding node and script path)
     const args = process.argv.slice(2);
     
+    // Check for --help flag before processing other arguments
+    const helpFlagIndex = args.indexOf('--help');
+    if (helpFlagIndex !== -1) {
+      showHelp();
+      process.exit(0); // Exit successfully after showing help
+    }
+    
     // Parse options
     const options: {
       thinking?: boolean;
@@ -155,7 +162,7 @@ export async function main(): Promise<void> {
     // No arguments provided - show help
     if (args.length === 0) {
       showHelp();
-      process.exit(1);
+      process.exit(1); // Error code for missing required arguments
     }
     
     // Handle "models" command (list all available models)

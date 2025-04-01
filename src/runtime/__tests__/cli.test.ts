@@ -180,4 +180,41 @@ describe('CLI Interface', () => {
     expect(console.error).toHaveBeenCalledWith('Usage:');
     expect(process.exit).toHaveBeenCalledWith(1);
   });
+
+  it('should display help with --help flag and exit with success code', async () => {
+    // Clear all mocks before this test 
+    jest.resetModules();
+    runThinktank.mockClear();
+    
+    // Set up test arguments - just the help flag
+    setMockArgs(['--help']);
+    
+    // Import and execute the module
+    const { main } = await import('../cli');
+    await main();
+    
+    // Verify help was shown and runThinktank not called
+    expect(console.error).toHaveBeenCalledWith('Usage:');
+    expect(runThinktank).not.toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalledWith(0); // Success code when help is explicitly requested
+  });
+
+  it('should prioritize --help flag over other arguments', async () => {
+    // Clear all mocks before this test
+    jest.resetModules();
+    runThinktank.mockClear();
+    
+    // Set up test arguments - help with other valid arguments
+    // Test with --help not at the beginning
+    setMockArgs(['test-prompt.txt', 'openai:gpt-4o', '--help']);
+    
+    // Import a fresh copy of the module
+    const { main } = await import('../cli');
+    await main();
+    
+    // Verify help was shown and other operations weren't performed
+    expect(console.error).toHaveBeenCalledWith('Usage:');
+    expect(runThinktank).not.toHaveBeenCalled();
+    expect(process.exit).toHaveBeenCalledWith(0);
+  });
 });
