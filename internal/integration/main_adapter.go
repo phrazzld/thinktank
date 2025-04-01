@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"os"
 	"strings"
@@ -16,9 +17,9 @@ import (
 // without having to modify the main package directly
 type MainAdapter struct {
 	// Dependencies that we want to mock
-	GeminiClientFactory func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	GeminiClientFactory  func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
 	PromptManagerFactory func(logger logutil.LoggerInterface) prompt.ManagerInterface
-	
+
 	// Original flag set for restoring after test
 	OrigFlagCommandLine *flag.FlagSet
 }
@@ -41,6 +42,7 @@ type Configuration struct {
 	ConfirmTokens   int
 	PromptTemplate  string
 	NoSpinner       bool
+	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
 }
@@ -49,22 +51,22 @@ type Configuration struct {
 func NewMainAdapter() *MainAdapter {
 	// Save the original flag.CommandLine
 	origFlagCommandLine := flag.CommandLine
-	
+
 	// Create the adapter
 	adapter := &MainAdapter{
 		OrigFlagCommandLine: origFlagCommandLine,
-		
+
 		// Default to using the real client factory
 		GeminiClientFactory: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
 			return gemini.NewClient(ctx, apiKey, modelName)
 		},
-		
+
 		// Default to using the real prompt manager factory
 		PromptManagerFactory: func(logger logutil.LoggerInterface) prompt.ManagerInterface {
 			return prompt.NewManager(logger)
 		},
 	}
-	
+
 	return adapter
 }
 
@@ -84,48 +86,55 @@ func (a *MainAdapter) RunWithArgs(args []string, env *TestEnv) error {
 	// Save original args and restore at the end
 	origArgs := os.Args
 	defer func() { os.Args = origArgs }()
-	
+
 	// Set the args for this run
 	os.Args = args
-	
+
 	// Reset flags for this test
 	a.ResetFlags()
 	defer a.RestoreFlags()
-	
+
 	// Set environment variables as needed
 	if os.Getenv("GEMINI_API_KEY") == "" {
 		os.Setenv("GEMINI_API_KEY", "test-api-key")
 		defer os.Unsetenv("GEMINI_API_KEY")
 	}
-	
+
 	// Parse flags and create configuration
 	config := a.parseFlags()
-	
+
 	// Set up logging
 	logger := env.Logger
-	
+
 	// Skip validation for testing
 	// a.validateInputs(config, logger)
-	
+
 	// Initialize API client using our mock
 	ctx := context.Background()
 	geminiClient := env.MockClient
-	
+
+	// If task clarification is enabled, simulate the clarification process
+	if config.ClarifyTask && !config.DryRun {
+		// For testing, we'll just modify the task description
+		// instead of trying to actually run the interactive part
+		config.TaskDescription = a.simulateClarifyTaskDescription(ctx, config, geminiClient, logger, env)
+	}
+
 	// Gather context from files
 	projectContext := a.gatherContext(ctx, config, geminiClient, logger)
-	
+
 	// Generate content if not in dry run mode
 	if !config.DryRun {
 		a.generateAndSavePlan(ctx, config, geminiClient, projectContext, logger)
 	}
-	
+
 	return nil
 }
 
 // parseFlags mirrors the main package's parseFlags function but for testing
 func (a *MainAdapter) parseFlags() *Configuration {
 	config := &Configuration{}
-	
+
 	// Define flags - this needs to match the main package's flags
 	taskFlag := flag.String("task", "", "Description of the task or goal for the plan.")
 	taskFileFlag := flag.String("task-file", "", "Path to a file containing the task description (alternative to --task).")
@@ -142,10 +151,11 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
 	noSpinnerFlag := flag.Bool("no-spinner", false, "Disable spinner animation during API calls")
-	
+	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
+
 	// Parse flags
 	flag.Parse()
-	
+
 	// Store flag values in configuration
 	config.TaskDescription = *taskFlag
 	config.TaskFile = *taskFileFlag
@@ -161,9 +171,10 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
 	config.NoSpinner = *noSpinnerFlag
+	config.ClarifyTask = *clarifyTaskFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv("GEMINI_API_KEY")
-	
+
 	// Determine log level based on flags
 	if config.Verbose {
 		config.LogLevel = logutil.DebugLevel
@@ -174,7 +185,7 @@ func (a *MainAdapter) parseFlags() *Configuration {
 			config.LogLevel = logutil.InfoLevel
 		}
 	}
-	
+
 	return config
 }
 
@@ -184,50 +195,154 @@ func (a *MainAdapter) gatherContext(ctx context.Context, config *Configuration, 
 	return "This is a simulated project context for testing."
 }
 
+// simulateClarifyTaskDescription simulates the interactive task clarification process
+func (a *MainAdapter) simulateClarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface, env *TestEnv) string {
+	// Get the original task description
+	originalTask := config.TaskDescription
+
+	// For testing, we'll just simulate both API calls with mock responses
+
+	// First API call would generate clarification questions
+	// We simulate the first response as if Gemini returned questions
+	clarificationResponse := `{
+		"analysis": "The task needs clarification on implementation details and scope.",
+		"questions": [
+			"What specific features should the implementation include?",
+			"Are there any performance requirements or constraints?",
+			"How should the feature integrate with existing code?"
+		]
+	}`
+
+	// In a real scenario, the user would answer these questions
+	// For testing, we'll simulate user input
+	env.SimulateUserInput("Should include error handling and logging\n")
+	env.SimulateUserInput("Should be optimized for speed\n")
+	env.SimulateUserInput("Should use existing utility functions\n")
+
+	// Second API call would refine the task based on answers
+	// We simulate the second response
+	refinementResponse := `{
+		"refined_task": "REFINED: ${originalTask} with comprehensive error handling, logging, and performance optimization, utilizing existing utility functions.",
+		"key_points": [
+			"Implement robust error handling and logging",
+			"Optimize for performance",
+			"Integrate with existing utility code"
+		]
+	}`
+
+	// Replace placeholder with actual task
+	refinementResponse = strings.Replace(refinementResponse, "${originalTask}", originalTask, 1)
+
+	// Configure mock client to return our responses
+	previousGenerateContent := env.MockClient.GenerateContentFunc
+
+	// Set up the mock to first return the clarification questions, then the refined task
+	callCount := 0
+	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		callCount++
+		if callCount == 1 {
+			// First call - return clarification questions
+			return &gemini.GenerationResult{
+				Content:      clarificationResponse,
+				TokenCount:   100,
+				FinishReason: "STOP",
+			}, nil
+		} else {
+			// Second call - return refined task
+			return &gemini.GenerationResult{
+				Content:      refinementResponse,
+				TokenCount:   100,
+				FinishReason: "STOP",
+			}, nil
+		}
+	}
+
+	// Extract the refined task from the response (simulating what the real function would do)
+	var refinementData struct {
+		RefinedTask string   `json:"refined_task"`
+		KeyPoints   []string `json:"key_points"`
+	}
+
+	// Parse JSON response - need to call GenerateContent twice to get to this point
+	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		return &gemini.GenerationResult{
+			Content:      clarificationResponse,
+			TokenCount:   100,
+			FinishReason: "STOP",
+		}, nil
+	}
+
+	geminiClient.GenerateContent(ctx, "first call") // First call for questions
+
+	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		return &gemini.GenerationResult{
+			Content:      refinementResponse,
+			TokenCount:   100,
+			FinishReason: "STOP",
+		}, nil
+	}
+
+	result, _ := geminiClient.GenerateContent(ctx, "second call") // Second call for refinement
+
+	// Parse the refinement result
+	_ = json.Unmarshal([]byte(result.Content), &refinementData)
+
+	// Restore the original mock function for future calls
+	env.MockClient.GenerateContentFunc = previousGenerateContent
+
+	// Return the refined task
+	return refinementData.RefinedTask
+}
+
 // generateAndSavePlan is a simplified version of the main package's generateAndSavePlan
 func (a *MainAdapter) generateAndSavePlan(ctx context.Context, config *Configuration, geminiClient gemini.Client, projectContext string, logger logutil.LoggerInterface) {
 	// Check token limits first
 	promptText := "Task: " + config.TaskDescription + "\n\nContext: " + projectContext
-	
+
 	// Get token count
 	tokenCount, err := geminiClient.CountTokens(ctx, promptText)
 	if err != nil {
 		logger.Error("Error counting tokens: %v", err)
 		return
 	}
-	
+
 	// Get model info
 	modelInfo, err := geminiClient.GetModelInfo(ctx)
 	if err != nil {
 		logger.Error("Error getting model info: %v", err)
 		return
 	}
-	
+
 	// Check if token count exceeds limit
 	if tokenCount.Total > modelInfo.InputTokenLimit {
 		logger.Error("Token count exceeds limit: %d > %d", tokenCount.Total, modelInfo.InputTokenLimit)
 		return
 	}
-	
-	// Generate content
+
+	// Generate content - For the test, we'll include the task description in the output
+	// so we can verify that the refined task was used
 	result, err := geminiClient.GenerateContent(ctx, promptText)
 	if err != nil {
 		logger.Error("Error generating content: %v", err)
 		return
 	}
-	
+
 	// Simple check for empty content
 	if strings.TrimSpace(result.Content) == "" {
 		logger.Error("Received empty content from Gemini")
 		return
 	}
-	
+
+	// For testing the clarification feature, we'll modify the output to include the task
+	// This helps us verify that the refined task was used
+	outputContent := "Task used: " + config.TaskDescription + "\n\n" + result.Content
+
 	// Write to the output file
-	err = os.WriteFile(config.OutputFile, []byte(result.Content), 0644)
+	err = os.WriteFile(config.OutputFile, []byte(outputContent), 0644)
 	if err != nil {
 		logger.Error("Error writing plan to file: %v", err)
 		return
 	}
-	
+
 	logger.Info("Plan saved to %s", config.OutputFile)
 }

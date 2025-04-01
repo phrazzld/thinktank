@@ -16,10 +16,10 @@ func TestBasicPlanGeneration(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
-	
+
 	// Create some test files
 	env.CreateTestFile(t, "src/main.go", `package main
 
@@ -28,22 +28,22 @@ import "fmt"
 func main() {
 	fmt.Println("Hello, world!")
 }`)
-	
+
 	env.CreateTestFile(t, "src/utils.go", `package main
 
 func add(a, b int) int {
 	return a + b
 }`)
-	
+
 	// Create a task file
 	_ = env.CreateTestFile(t, "task.txt", "Implement a new feature to multiply two numbers")
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application with basic arguments
 	err := adapter.RunWithArgs(
 		[]string{
@@ -54,22 +54,22 @@ func add(a, b int) int {
 		},
 		env,
 	)
-	
+
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// Check that the output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
 		t.Errorf("Output file was not created at %s", outputFile)
 	}
-	
+
 	// Verify content
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
 		t.Fatalf("Failed to read output file: %v", err)
 	}
-	
+
 	// Check that content includes expected text (from our mock response)
 	if !strings.Contains(string(content), "Test Generated Plan") {
 		t.Errorf("Output file does not contain expected content")
@@ -81,10 +81,10 @@ func TestDryRunMode(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
-	
+
 	// Create some test files
 	env.CreateTestFile(t, "src/main.go", `package main
 
@@ -93,13 +93,13 @@ import "fmt"
 func main() {
 	fmt.Println("Hello, world!")
 }`)
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application in dry run mode
 	err := adapter.RunWithArgs(
 		[]string{
@@ -111,11 +111,11 @@ func main() {
 		},
 		env,
 	)
-	
+
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// Check that the output file was NOT created in dry run mode
 	if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
 		t.Errorf("Output file was created in dry run mode at %s", outputFile)
@@ -127,10 +127,10 @@ func TestTaskFileInput(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
-	
+
 	// Create some test files
 	env.CreateTestFile(t, "src/main.go", `package main
 
@@ -139,16 +139,16 @@ import "fmt"
 func main() {
 	fmt.Println("Hello, world!")
 }`)
-	
+
 	// Create a task file
 	taskFile := env.CreateTestFile(t, "task.txt", "Implement a new feature to multiply two numbers")
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application with task file
 	err := adapter.RunWithArgs(
 		[]string{
@@ -159,11 +159,11 @@ func main() {
 		},
 		env,
 	)
-	
+
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// Check that the output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
 		t.Errorf("Output file was not created at %s", outputFile)
@@ -175,7 +175,7 @@ func TestFilteredFileInclusion(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Set up the mock client with a custom implementation that verifies the context content
 	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 		// In a real implementation, we would check the actual context
@@ -185,22 +185,22 @@ func TestFilteredFileInclusion(t *testing.T) {
 			FinishReason: "STOP",
 		}, nil
 	}
-	
+
 	// Create test files of different types
 	env.CreateTestFile(t, "src/main.go", `package main
 
 func main() {}`)
-	
+
 	env.CreateTestFile(t, "src/README.md", "# Test Project")
-	
+
 	env.CreateTestFile(t, "src/config.json", `{"key": "value"}`)
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application with file filters
 	err := adapter.RunWithArgs(
 		[]string{
@@ -212,11 +212,11 @@ func main() {}`)
 		},
 		env,
 	)
-	
+
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// Check that the output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
 		t.Errorf("Output file was not created at %s", outputFile)
@@ -228,7 +228,7 @@ func TestErrorHandling(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Mock an error from the Gemini API
 	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 		// Create a simple API error
@@ -239,18 +239,18 @@ func TestErrorHandling(t *testing.T) {
 		}
 		return nil, apiError
 	}
-	
+
 	// Create a test file
 	env.CreateTestFile(t, "src/main.go", `package main
 
 func main() {}`)
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application
 	err := adapter.RunWithArgs(
 		[]string{
@@ -261,12 +261,12 @@ func main() {}`)
 		},
 		env,
 	)
-	
+
 	// The application should continue despite the error
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// But the output file should not be created due to the error
 	if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
 		t.Errorf("Output file was created despite API error")
@@ -278,12 +278,12 @@ func TestTokenCountExceeded(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Mock a token count that exceeds limits
 	env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
 		return &gemini.TokenCount{Total: 1000000}, nil // Very large count
 	}
-	
+
 	env.MockClient.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) {
 		return &gemini.ModelInfo{
 			Name:             "test-model",
@@ -291,18 +291,18 @@ func TestTokenCountExceeded(t *testing.T) {
 			OutputTokenLimit: 8192,
 		}, nil
 	}
-	
+
 	// Create a test file
 	env.CreateTestFile(t, "src/main.go", `package main
 
 func main() {}`)
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application
 	err := adapter.RunWithArgs(
 		[]string{
@@ -313,12 +313,12 @@ func main() {}`)
 		},
 		env,
 	)
-	
+
 	// The application should continue despite the error
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// The output file should not be created due to the token limit error
 	if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
 		t.Errorf("Output file was created despite token limit error")
@@ -330,29 +330,29 @@ func TestUserConfirmation(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-	
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
-	
+
 	// Mock token count
 	env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
 		return &gemini.TokenCount{Total: 5000}, nil
 	}
-	
+
 	// Create a test file
 	env.CreateTestFile(t, "src/main.go", `package main
 
 func main() {}`)
-	
+
 	// Simulate user input (say "yes" to confirmation)
 	env.SimulateUserInput("y\n")
-	
+
 	// Set up the adapter
 	adapter := NewMainAdapter()
-	
+
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
-	
+
 	// Run the application with confirmation threshold
 	err := adapter.RunWithArgs(
 		[]string{
@@ -364,11 +364,71 @@ func main() {}`)
 		},
 		env,
 	)
-	
+
 	if err != nil {
 		t.Fatalf("RunWithArgs failed: %v", err)
 	}
-	
+
 	// In a real implementation, we'd check if the confirmation was presented
 	// and if the output file was created based on the user's response
+}
+
+// TestTaskClarification tests the interactive task clarification feature
+func TestTaskClarification(t *testing.T) {
+	// Set up the test environment
+	env := NewTestEnv(t)
+	defer env.Cleanup()
+
+	// Set up the mock client with default responses
+	env.SetupMockGeminiClient()
+
+	// Create a test file
+	env.CreateTestFile(t, "src/main.go", `package main
+
+func main() {}`)
+
+	// Set up the output file path
+	outputFile := filepath.Join(env.TestDir, "output.md")
+
+	// Set up the adapter
+	adapter := NewMainAdapter()
+
+	// Original task description
+	originalTask := "Implement a new feature"
+
+	// Run the application with the clarify flag
+	err := adapter.RunWithArgs(
+		[]string{
+			"architect",
+			"--task", originalTask,
+			"--output", outputFile,
+			"--clarify", // Enable task clarification
+			env.TestDir + "/src",
+		},
+		env,
+	)
+
+	if err != nil {
+		t.Fatalf("RunWithArgs failed: %v", err)
+	}
+
+	// Check that the output file exists
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		t.Errorf("Output file was not created at %s", outputFile)
+	}
+
+	// Verify that the refined task was used
+	content, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+	}
+
+	// The task clarification test depends on the mock implementation
+	// We expect to see the refined task in the output content
+	// The refined task should be in the "Task used:" header we added for testing
+	expectedRefinedTaskPrefix := "Task used: REFINED: " + originalTask
+	if !strings.Contains(string(content), expectedRefinedTaskPrefix) {
+		t.Errorf("Output file does not reflect the refined task. Expected it to contain %q but got:\n%s",
+			expectedRefinedTaskPrefix, string(content))
+	}
 }
