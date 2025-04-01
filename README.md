@@ -275,6 +275,234 @@ To see the full list of available models, run:
 thinktank models openrouter
 ```
 
+### Configuration Examples
+
+Below are example configurations for different use cases to help you get started.
+
+#### Minimal Configuration
+
+This is a minimal configuration with a default group and two models:
+
+```json
+{
+  "defaultGroup": "basic",
+  "groups": {
+    "basic": [
+      "openai:gpt-3.5-turbo",
+      "anthropic:claude-3-haiku-20240307"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-haiku-20240307",
+      "enabled": true
+    }
+  ]
+}
+```
+
+#### Development-Focused Configuration
+
+This configuration is optimized for software development tasks:
+
+```json
+{
+  "defaultGroup": "coding",
+  "groups": {
+    "coding": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "review": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-sonnet-20240229"
+    ],
+    "quick": [
+      "openai:gpt-3.5-turbo"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.1,
+        "maxTokens": 8000
+      }
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true,
+      "options": {
+        "temperature": 0.2,
+        "maxTokens": 2000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.1,
+        "maxTokens": 8000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.2,
+        "maxTokens": 4000
+      }
+    }
+  ]
+}
+```
+
+#### Creative Writing Configuration
+
+This configuration is tailored for creative writing tasks:
+
+```json
+{
+  "defaultGroup": "creative",
+  "groups": {
+    "creative": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4o"
+    ],
+    "brainstorm": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4o",
+      "openai:gpt-3.5-turbo"
+    ],
+    "draft": [
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "edit": [
+      "openai:gpt-4o"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.8,
+        "maxTokens": 4000,
+        "top_p": 0.9
+      }
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true,
+      "options": {
+        "temperature": 0.9,
+        "maxTokens": 2000,
+        "top_p": 0.95
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.8,
+        "maxTokens": 4000
+      }
+    }
+  ]
+}
+```
+
+#### Mixed-Provider Configuration with OpenRouter
+
+This configuration uses OpenRouter to access multiple providers through a single API:
+
+```json
+{
+  "defaultGroup": "mixed",
+  "groups": {
+    "mixed": [
+      "openrouter:anthropic/claude-3-opus-20240229",
+      "openrouter:openai/gpt-4o",
+      "openrouter:google/gemini-pro"
+    ],
+    "anthropic-only": [
+      "openrouter:anthropic/claude-3-opus-20240229",
+      "openrouter:anthropic/claude-3-sonnet-20240229"
+    ],
+    "openai-only": [
+      "openrouter:openai/gpt-4o",
+      "openrouter:openai/gpt-3.5-turbo"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-sonnet-20240229",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-3.5-turbo",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "google/gemini-pro",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    }
+  ]
+}
+```
+
 ## Output Directory
 
 thinktank automatically saves individual model responses to separate files in a dedicated output directory.
