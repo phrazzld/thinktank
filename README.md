@@ -168,7 +168,121 @@ thinktank config models disable openai:gpt-4o
 
 ## Configuration
 
-thinktank uses a JSON configuration file to define which LLM providers and models to use. For detailed information about the powerful cascading configuration system, see [CASCADING-CONFIG-GUIDE.md](CASCADING-CONFIG-GUIDE.md).
+thinktank uses a JSON configuration file to define which LLM providers and models to use.
+
+### Cascading Configuration System
+
+thinktank implements a powerful cascading configuration system that intelligently resolves model options from multiple sources, ensuring sensible defaults while giving you fine-grained control over model behavior.
+
+#### Configuration Hierarchy
+
+Options for each model are resolved through a six-layer hierarchy, with each subsequent layer overriding settings from previous layers:
+
+1. **Base Defaults** - Global options for all models
+2. **Provider Defaults** - Defaults specific to a provider (e.g., Anthropic, OpenAI)
+3. **Model-Specific Defaults** - Defaults for a specific model (e.g., Claude 3 Opus, GPT-4o)
+4. **User Config Options** - Options set in your `thinktank.config.json` file
+5. **Group-Specific Options** - Options set for a model group
+6. **CLI Options** - Options provided via command-line flags
+
+This layered approach means you don't need to specify every option for every model. Instead, the system automatically applies appropriate defaults and only overrides what you explicitly specify.
+
+#### Option Resolution Example
+
+Let's trace how the system resolves options for `openai:gpt-4o` when used with the `coding` group:
+
+1. **Start with base defaults**:
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 1000
+   }
+   ```
+
+2. **Apply provider defaults** (OpenAI):
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 1000
+   }
+   ```
+
+3. **Apply model-specific defaults** (GPT-4o):
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 4000  // Updated from 1000
+   }
+   ```
+
+4. **Apply user config options**:
+   ```json
+   {
+     "temperature": 0.6,  // Updated from 0.7
+     "maxTokens": 2000    // Updated from 4000
+   }
+   ```
+
+5. **Apply group-specific options** (coding group):
+   ```json
+   {
+     "temperature": 0.3,  // Updated from 0.6
+     "maxTokens": 2000
+   }
+   ```
+
+6. **Apply CLI options** (if provided):
+   ```json
+   {
+     "temperature": 0.9,  // Updated from 0.3
+     "maxTokens": 3000    // Updated from 2000
+   }
+   ```
+
+The final resolved options would be:
+```json
+{
+  "temperature": 0.9,
+  "maxTokens": 3000
+}
+```
+
+#### Using the Cascading Configuration System
+
+You can customize model behavior in three main ways:
+
+1. **Via Configuration File**
+   - Define options at the model level in `thinktank.config.json`
+   - Set provider-specific and model-specific options
+
+2. **Via Groups**
+   - Create specialized groups for different tasks
+   - Override options on a per-group basis
+
+3. **Via CLI**
+   - Override any option when running thinktank:
+   ```bash
+   # Set temperature for all models in this run
+   thinktank run prompt.txt --temperature 0.4
+
+   # Use a specific group and override its options
+   thinktank run prompt.txt --group coding --temperature 0.5
+   
+   # Use a specific model with overridden options
+   thinktank run prompt.txt --model openai:gpt-4o --temperature 0.8
+   ```
+
+#### Best Practices
+
+- **Task-Specific Configurations**
+  - Use lower temperatures (0.1-0.3) for factual, precise tasks
+  - Use medium temperatures (0.4-0.7) for balanced responses
+  - Use higher temperatures (0.8-1.0) for creative, exploratory tasks
+
+- **Layered Approach**
+  - Define sensible defaults at the user config level
+  - Create specialized groups for different tasks
+  - Use CLI overrides for one-off adjustments
 
 ### Default Configuration
 
@@ -270,6 +384,48 @@ The `options` object can include:
 | `maxTokens` | number | Maximum number of tokens to generate |
 
 Provider-specific options can also be included and will be passed directly to the underlying API.
+
+#### Provider-Specific Options
+
+Different providers support different options. Here are the most common ones for each:
+
+##### Anthropic (Claude)
+
+```json
+{
+  "temperature": 0.7,          // 0.0-1.0, controls randomness
+  "maxTokens": 4000,           // Maximum output tokens
+  "thinking": {                // Claude's thinking capability
+    "type": "enabled",
+    "budget_tokens": 10000
+  }
+}
+```
+
+##### OpenAI (GPT)
+
+```json
+{
+  "temperature": 0.7,         // 0.0-2.0, controls randomness
+  "maxTokens": 4000,          // Maximum output tokens
+  "top_p": 0.95,              // Alternative to temperature
+  "presence_penalty": 0.0,    // -2.0 to 2.0, penalizes repeated tokens
+  "frequency_penalty": 0.0,   // -2.0 to 2.0, penalizes frequent tokens
+  "seed": 12345,              // For reproducible outputs (if supported)
+  "stop": ["###"]             // Stop sequences
+}
+```
+
+##### Google (Gemini)
+
+```json
+{
+  "temperature": 0.7,         // 0.0-1.0, controls randomness
+  "maxTokens": 2048,          // Maximum output tokens
+  "topK": 40,                 // Limits token selection pool
+  "topP": 0.95                // Alternative to temperature
+}
+```
 
 #### Provider-Specific Configuration
 
@@ -550,7 +706,7 @@ This configuration uses OpenRouter to access multiple providers through a single
 
 ## Claude's Thinking Capability
 
-Claude 3.7 Sonnet supports a "thinking" feature that allows the model to show its reasoning process before providing a final answer. This is especially helpful for complex tasks or when you want to understand how Claude arrived at its conclusion.
+Claude supports a "thinking" feature that allows the model to show its reasoning process before providing a final answer. This is especially helpful for complex tasks or when you want to understand how Claude arrived at its conclusion.
 
 ### Using Claude's Thinking
 
@@ -558,7 +714,7 @@ There are three ways to enable Claude's thinking:
 
 1. **Use the `thinking` group:**
    ```bash
-   thinktank prompt.txt thinking
+   thinktank prompt.txt --group thinking
    ```
    This uses a group specifically configured for Claude with thinking enabled.
 
@@ -566,11 +722,13 @@ There are three ways to enable Claude's thinking:
    ```bash
    thinktank prompt.txt --thinking
    ```
-   This enables thinking for any Claude 3.x models in the group.
+   This enables thinking for any Claude models in the group.
 
 3. **Configure it directly in your config file:**
    ```json
    {
+     "provider": "anthropic",
+     "modelId": "claude-3-opus-20240229",
      "options": {
        "thinking": {
          "type": "enabled",
@@ -582,7 +740,7 @@ There are three ways to enable Claude's thinking:
 
 To display the thinking output, use the `--show-thinking` flag:
 ```bash
-thinktank prompt.txt thinking --show-thinking
+thinktank prompt.txt --thinking --show-thinking
 ```
 
 ### Important Temperature Limitation
