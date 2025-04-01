@@ -7,7 +7,15 @@
  * 2. Running a prompt through one specific model
  * 3. Listing all available models
  */
-import { runThinktank, ThinktankError, ErrorWithMetadata } from '../workflow/runThinktank';
+import { runThinktank, ThinktankError } from '../workflow/runThinktank';
+
+// Interface for error objects with metadata
+interface ErrorWithMetadata {
+  message: string;
+  category?: string;
+  suggestions?: string[];
+  examples?: string[];
+}
 import { listAvailableModels } from '../workflow/listModelsWorkflow';
 import { 
   colors, 

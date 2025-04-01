@@ -95,10 +95,12 @@
   - Note: Updated all providers to use standardized option handling with defaults from the cascading configuration system
 
 ## User Experience
-- [ ] Implement Preset Feature
-  - Description: Add --preset flag for predefined model sets
-  - Dependencies: ModelSelector module
-  - Priority: Low
+
+- [x] Aggressively Refactor runThinktank.ts
+  - Description: Decompose the monolithic logic in runThinktank.ts into smaller, focused modules according to PLAN.md section 3.5
+  - Dependencies: ModelSelector, QueryExecutor, and OutputHandler modules
+  - Priority: High
+  - Note: Implemented with support for ad-hoc model invocations (--models flag) and group definitions. Tests need to be updated.
 
 - [ ] Refine Logging System
   - Description: Create logger utility with verbosity control
