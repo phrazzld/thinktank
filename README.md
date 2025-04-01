@@ -51,56 +51,75 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 ## Usage
 
-### Basic Usage
+thinktank uses a simple, intuitive command line interface with positional arguments:
 
 ```bash
-# Send a prompt file to all enabled models (saves responses to ./thinktank_outputs/)
-thinktank -i prompt.txt
+# Send a prompt to all models in the default group
+thinktank prompt.txt
 
-# Send to a specific model
-thinktank -i prompt.txt -m openai:gpt-4o
+# Send a prompt to models in a specific group
+thinktank prompt.txt coding
 
-# Use a custom config file
-thinktank -i prompt.txt -c custom-config.json
+# Send a prompt to one specific model
+thinktank prompt.txt openai:gpt-4o
 
-# Specify a custom output directory
-thinktank -i prompt.txt -o ./custom-outputs
-
-# Include metadata in the output
-thinktank -i prompt.txt --metadata
-
-# Disable colored output
-thinktank -i prompt.txt --no-color
-
-# List all available models from configured providers
-thinktank list-models
-
-# List models from a specific provider
-thinktank list-models -p anthropic
+# List all available models
+thinktank models
 ```
 
-### Command Line Options
+### Command Examples
 
-#### Default Command Options (for prompt querying)
+#### Running with a Prompt File
 
-| Option | Alias | Description | Type | Required |
-|--------|-------|-------------|------|----------|
-| `--input` | `-i` | Path to input prompt file | string | Yes |
-| `--config` | `-c` | Path to configuration file | string | No |
-| `--output` | `-o` | Path to custom output directory (default: './thinktank-reports/') | string | No |
-| `--model` | `-m` | Models to use (provider:model, provider, or model) | array | No |
-| `--metadata` | | Include metadata in output | boolean | No |
-| `--no-color` | | Disable colored output | boolean | No |
-| `--help` | `-h` | Show help | | |
-| `--version` | `-v` | Show version number | | |
+Send your prompt to all enabled models in the default group:
 
-#### List-Models Command Options
+```bash
+thinktank path/to/prompt.txt
+```
 
-| Option | Alias | Description | Type | Required |
-|--------|-------|-------------|------|----------|
-| `--provider` | `-p` | Filter models by provider ID | string | No |
-| `--config` | `-c` | Path to configuration file | string | No |
-| `--help` | `-h` | Show help | | |
+#### Running with a Specific Group
+
+Send your prompt to all models in a named group (as defined in your config file):
+
+```bash
+thinktank path/to/prompt.txt coding
+thinktank path/to/prompt.txt creative
+thinktank path/to/prompt.txt analysis
+```
+
+#### Running with a Specific Model
+
+Send your prompt to a single model using the provider:model format:
+
+```bash
+thinktank path/to/prompt.txt openai:gpt-4o
+thinktank path/to/prompt.txt anthropic:claude-3-opus-20240229
+thinktank path/to/prompt.txt openrouter:anthropic/claude-3-5-sonnet-20240620
+```
+
+#### Listing Available Models
+
+List all available models from all configured providers:
+
+```bash
+thinktank models
+```
+
+List models from a specific provider:
+
+```bash
+thinktank models openai
+thinktank models anthropic
+thinktank models openrouter
+```
+
+### Additional Options
+
+| Option | Description |
+|--------|-------------|
+| `--help`, `-h` | Show help information |
+| `--version`, `-v` | Show version number |
+| `--no-color` | Disable colored output |
 
 ## Configuration
 
@@ -114,6 +133,22 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
 
 ```json
 {
+  "defaultGroup": "general",
+  "groups": {
+    "general": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "coding": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-sonnet-20240229",
+      "gemini:gemini-1.5-pro"
+    ],
+    "creative": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4-turbo"
+    ]
+  },
   "models": [
     {
       "provider": "openai",
@@ -127,7 +162,25 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
     {
       "provider": "anthropic",
       "modelId": "claude-3-opus-20240229",
-      "enabled": false,
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229", 
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "gemini",
+      "modelId": "gemini-1.5-pro", 
+      "enabled": true,
       "options": {
         "temperature": 0.7,
         "maxTokens": 1000
@@ -138,6 +191,17 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
 ```
 
 ### Configuration Options
+
+#### Group Configuration
+
+The `groups` object allows you to define named collections of models that can be activated with a single command:
+
+| Property | Type | Description | Required |
+|----------|------|-------------|----------|
+| `defaultGroup` | string | The name of the default group to use when no group is specified | Yes |
+| `groups` | object | An object where keys are group names and values are arrays of model identifiers | Yes |
+
+Each group is an array of model identifiers in the format `provider:modelId`. When you run thinktank with a group name, all models in that group will be used for the query.
 
 #### Model Configuration
 
@@ -208,75 +272,18 @@ Additional options supported by OpenRouter:
 
 To see the full list of available models, run:
 ```bash
-thinktank list-models -p openrouter
+thinktank models openrouter
 ```
 
-## List Models Feature
-
-thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
-
-### Usage
-
-```bash
-# List all available models from all providers
-thinktank list-models
-
-# List models from a specific provider
-thinktank list-models -p anthropic
-thinktank list-models -p openrouter
-
-# List models using a custom config file
-thinktank list-models -c custom-config.json
-```
-
-### How It Works
-
-1. The command queries each provider in your configuration for their available models
-2. For providers that support the `listModels` API (like Anthropic and OpenAI), it retrieves the list of models dynamically
-3. Results are displayed grouped by provider, with descriptions when available
-4. Errors (like missing API keys) are clearly shown for troubleshooting
-
-### Example Output
-
-```
-Available Models:
-
---- openai ---
-  - gpt-4o (Owned by: system)
-  - gpt-4-turbo (Owned by: system)
-  - gpt-3.5-turbo (Owned by: openai)
-
---- anthropic ---
-  - claude-3-opus-20240229 (Most powerful model)
-  - claude-3-sonnet-20240229 (Balanced model)
-  - claude-3-haiku-20240307 (Fast, efficient model)
-  - claude-3-5-sonnet-20240620 (Latest Sonnet model)
-  - claude-3-7-sonnet-20250219 (Latest advanced model)
-
---- legacy-provider ---
-  Error fetching models: Provider 'legacy-provider' does not support listing models
-```
-
-## Output Directory Feature
+## Output Directory
 
 thinktank automatically saves individual model responses to separate files in a dedicated output directory.
 
-### Usage
-
-```bash
-# Run with default output directory (./thinktank-reports/)
-thinktank -i prompt.txt
-
-# Specify a custom output directory
-thinktank -i prompt.txt -o ./custom-outputs
-```
-
 ### How It Works
 
-1. thinktank always creates a timestamped directory for each run (e.g., `./thinktank-reports/thinktank_run_20250331_123456_789/` by default).
-2. The `-o/--output` option allows you to specify a custom base directory instead of the default `./thinktank-reports/`.
-3. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
-4. Console output will show progress information and the location of the output directory.
+1. For each run, thinktank creates a directory under `./thinktank-reports/` based on the group or model name.
+2. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
+3. Console output will show progress information and the location of the output directory.
 
 ### Output File Format
 
@@ -291,7 +298,7 @@ Generated: YYYY-MM-DDThh:mm:ss.sssZ
 
 The text response from the model goes here...
 
-## Metadata (Optional, if --metadata is specified)
+## Metadata
 
 ```json
 {
@@ -456,13 +463,12 @@ OpenRouter is included as an example implementation that demonstrates how to add
 
 ```bash
 # List all models available through OpenRouter
-thinktank list-models -p openrouter
+thinktank models openrouter
 
 # Query a specific model via OpenRouter
-thinktank -i prompt.txt -m openrouter:anthropic/claude-3-opus-20240229
+thinktank prompt.txt openrouter:anthropic/claude-3-opus-20240229
 
-# Query multiple OpenRouter models
-thinktank -i prompt.txt -m openrouter:openai/gpt-4o -m openrouter:anthropic/claude-3-haiku
+# Include OpenRouter models in a group config
 ```
 
 #### OpenRouter Model IDs:
@@ -480,24 +486,27 @@ When configuring models in your config file or when using the `-m` option, use t
 
 1. **"Input file not found"**
    - Ensure the file path is correct and the file exists
-   - Try using an absolute path
+   - Check if you're in the right working directory
+   - Try using an absolute path instead of a relative one
 
-2. **"No enabled models found in configuration"**
-   - Check your config file to ensure at least one model has `"enabled": true`
-   - Alternatively, specify models directly with the `-m` option
+2. **"No models found in group"**
+   - Verify that the group name exists in your configuration
+   - Check that models in the group are properly configured and enabled
+   - Try using a specific model identifier instead
 
-3. **"Missing API keys for models"**
+3. **"Invalid model format"**
+   - Ensure you're using the correct format: `provider:modelId`
+   - For OpenRouter models, use: `openrouter:provider/modelId`
+   - Check for typos in provider or model names
+
+4. **"Missing API keys for models"**
    - Ensure you have set the correct environment variables in your `.env` file
    - Check that the API keys are valid
-
-4. **"Provider not found"**
-   - Make sure the provider ID in your config matches the registered provider
-   - Check that the provider module is properly imported in `runthinktank.ts`
+   - Follow the provider-specific instructions for obtaining API keys
 
 5. **"Failed to create output directory"**
    - Check if you have write permissions for the specified output directory
    - Ensure the path exists or can be created
-   - Try providing an absolute path instead of a relative one
 
 ### API Key Issues
 

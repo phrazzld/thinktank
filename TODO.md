@@ -117,7 +117,7 @@
 
 ## Documentation
 
-- [ ] Update Usage Documentation
+- [x] Update Usage Documentation
   - Description: Update README with new command structure and examples
   - Dependencies: All implementation tasks
   - Priority: Low
