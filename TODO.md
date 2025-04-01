@@ -14,7 +14,7 @@
 
 ## Enhanced Progress Indicators
 
-- [ ] Implement Stage Timing
+- [x] Implement Stage Timing
   - Description: Add start/end timestamps for major stages (config load, model processing, file writing) in runThinktank
   - Dependencies: None
   - Priority: Medium

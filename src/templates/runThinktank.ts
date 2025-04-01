@@ -150,7 +150,27 @@ function formatResponseAsMarkdown(
  * @returns The formatted results
  * @throws {ThinktankError} If an error occurs during execution
  */
+/**
+ * Helper function to get the current time in milliseconds
+ * Uses performance.now() when available, otherwise falls back to Date.now()
+ */
+function getCurrentTime(): number {
+  return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
+/**
+ * Helper function to calculate elapsed time between a start time and now
+ * @param startTime - The starting time in milliseconds
+ * @returns Elapsed time in milliseconds
+ */
+function getElapsedTime(startTime: number): number {
+  return Math.round(getCurrentTime() - startTime);
+}
+
 export async function runThinktank(options: RunOptions): Promise<string> {
+  // Start timing the full execution
+  const startTimeTotal = getCurrentTime();
+  
   const spinner = ora('Starting thinktank...').start();
   
   // Track the output directory path for later use
@@ -159,24 +179,43 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   // For tracking model statuses
   const modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }> = {};
   
+  // Store timing metadata for different stages
+  const timings = {
+    configLoad: 0,
+    inputRead: 0,
+    directoryCreation: 0,
+    modelPreparation: 0,
+    apiCalls: 0,
+    fileWrites: 0,
+    total: 0
+  };
+  
   try {
     // 1. Load configuration
     spinner.text = 'Loading configuration...';
+    const startTimeConfig = getCurrentTime();
     const config = await loadConfig({ configPath: options.configPath });
+    timings.configLoad = getElapsedTime(startTimeConfig);
+    spinner.text = `Loading configuration... (${timings.configLoad}ms)`;
     
     // 2. Read input file
     spinner.text = 'Reading input file...';
+    const startTimeInput = getCurrentTime();
     const prompt = await readFileContent(options.input);
+    timings.inputRead = getElapsedTime(startTimeInput);
+    spinner.text = `Reading input file... (${timings.inputRead}ms)`;
     
     // 2.5 Create output directory - this is now always done
     // Generate the output directory path with timestamped subdirectory
     outputDirectoryPath = generateOutputDirectoryPath(options.output);
     
     spinner.text = `Creating output directory: ${outputDirectoryPath}`;
+    const startTimeDirectory = getCurrentTime();
     try {
       // Create the directory with recursive option to ensure parent directories exist
       await fs.mkdir(outputDirectoryPath, { recursive: true });
-      spinner.info(`Output directory created: ${outputDirectoryPath}`);
+      timings.directoryCreation = getElapsedTime(startTimeDirectory);
+      spinner.info(`Output directory created: ${outputDirectoryPath} (${timings.directoryCreation}ms)`);
     } catch (error) {
       spinner.fail(`Failed to create output directory: ${outputDirectoryPath}`);
       throw new ThinktankError(
@@ -187,6 +226,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // 3. Select models based on groups and/or model filters
     spinner.text = 'Preparing models...';
+    const startTimePreparation = getCurrentTime();
     let models: ModelConfig[];
     
     // Track which approach we're using for user feedback
@@ -388,11 +428,16 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       callPromises.push(responsePromise);
     });
     
+    // Complete model preparation timing
+    timings.modelPreparation = getElapsedTime(startTimePreparation);
+    
     // Initial status message
-    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}...`;
+    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}... (Preparation: ${timings.modelPreparation}ms)`;
     
     // 6. Execute calls concurrently
+    const startTimeApiCalls = getCurrentTime();
     const results = await Promise.all(callPromises);
+    timings.apiCalls = getElapsedTime(startTimeApiCalls);
     
     // 7. Show model completion summary
     const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
@@ -416,7 +461,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // 8. Write individual files (now always done)
-    spinner.text = 'Writing model responses to individual files...';
+    spinner.text = `Writing model responses to individual files... (API calls completed in ${timings.apiCalls}ms)`;
+    const startTimeFileWrites = getCurrentTime();
     
     // Track stats for reporting
     let succeededWrites = 0;
@@ -511,6 +557,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Wait for all file writes to complete
     await Promise.all(fileWritePromises);
+    timings.fileWrites = getElapsedTime(startTimeFileWrites);
     
     // Group results by group for reporting
     const groupedResults = new Map<string, number>();
@@ -555,8 +602,41 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       });
     }
     
+    // Calculate total execution time
+    timings.total = getElapsedTime(startTimeTotal);
+    
+    // Log timing summary if requested
+    if (options.includeMetadata) {
+      // eslint-disable-next-line no-console
+      console.log('\nExecution timing:')
+      // eslint-disable-next-line no-console
+      console.log(`  Total:            ${timings.total}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  Config loading:   ${timings.configLoad}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  Input reading:    ${timings.inputRead}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  Dir creation:     ${timings.directoryCreation}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  Model preparation:${timings.modelPreparation}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  API calls:        ${timings.apiCalls}ms`);
+      // eslint-disable-next-line no-console
+      console.log(`  File writing:     ${timings.fileWrites}ms`);
+    }
+    
+    // Add timing information to results metadata
+    const resultsWithTimings = results.map(result => {
+      if (!result.metadata) {
+        result.metadata = {};
+      }
+      
+      result.metadata.executionTimings = { ...timings };
+      return result;
+    });
+    
     // Always return formatted results for potential console display by CLI
-    const formattedResults = formatResults(results, {
+    const formattedResults = formatResults(resultsWithTimings, {
       includeMetadata: options.includeMetadata,
       useColors: options.useColors,
     });

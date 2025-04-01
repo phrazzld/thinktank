@@ -5,20 +5,19 @@
  * and provide reusable formatting helpers across the application.
  */
 import chalk from 'chalk';
-import figures from 'figures';
 
 // Re-export our configured chalk instance
 export const colors = chalk;
 
-// Re-export commonly used figures
+// Define commonly used Unicode symbols
 export const symbols = {
-  tick: figures.tick,
-  cross: figures.cross,
-  warning: figures.warning,
-  info: figures.info,
-  pointer: figures.pointer,
-  line: figures.line,
-  bullet: figures.bullet,
+  tick: '✓',
+  cross: '✗',
+  warning: '⚠',
+  info: 'ℹ',
+  pointer: '❯',
+  line: '─',
+  bullet: '•',
 };
 
 /**
