@@ -125,6 +125,30 @@ export const DEFAULT_CONFIG: AppConfig = {
       },
     },
   ],
+  groups: {
+    default: {
+      name: 'default',
+      description: 'Default model group with general-purpose system prompt',
+      systemPrompt: {
+        text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information. If you are unsure about something, admit it rather than making up an answer.',
+        metadata: {
+          source: 'default-configuration'
+        }
+      },
+      models: [] // Will be populated with all enabled models during config normalization
+    },
+    coding: {
+      name: 'coding',
+      description: 'Models optimized for code generation and programming tasks',
+      systemPrompt: {
+        text: 'You are an expert software engineer with deep knowledge of programming languages, algorithms, design patterns, and software architecture. Provide accurate, efficient, and well-documented code. Always consider edge cases, performance implications, and security best practices.',
+        metadata: {
+          source: 'default-configuration'
+        }
+      },
+      models: [] // Will be populated during configuration
+    }
+  }
 };
 
 /**

@@ -78,6 +78,20 @@ export interface RunOptions {
   groups?: string[];
   
   /**
+   * A specific model to use in provider:modelId format (e.g., "openai:gpt-4o")
+   * If provided, only this model will be used
+   * Takes precedence over models and groups parameters
+   */
+  specificModel?: string;
+  
+  /**
+   * A single group name to use
+   * If provided, only models in this group will be used
+   * Takes precedence over groups parameter (array)
+   */
+  groupName?: string;
+  
+  /**
    * System prompt override (optional)
    * If provided, this system prompt will be used for all models, regardless of their group's system prompt
    */
@@ -368,26 +382,62 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       );
     }
     
-    // 3. Select models based on groups and/or model filters
+    // 3. Select models based on specificModel, groupName, groups and/or model filters
     spinner.text = 'Preparing models...';
     const startTimePreparation = getCurrentTime();
     let models: ModelConfig[];
     
-    // Track which approach we're using for user feedback
-    const useGroupsSelection = options.groups && options.groups.length > 0;
-    const useModelSelection = options.models && options.models.length > 0;
-    
-    if (useGroupsSelection) {
-      // Get models from specified groups
-      spinner.text = `Selecting models from groups: ${options.groups!.join(', ')}...`;
-      models = getEnabledModelsFromGroups(config, options.groups!);
+    // Prioritize specificModel over all other selection options
+    if (options.specificModel) {
+      // Handle a single model specification in provider:modelId format
+      spinner.text = `Using specific model: ${options.specificModel}...`;
       
-      // If models filter is also specified, further filter the group models
-      if (useModelSelection) {
+      // Split the specificModel string to get provider and modelId
+      const [provider, modelId] = options.specificModel.split(':');
+      
+      if (!provider || !modelId) {
+        const message = `Invalid model format: "${options.specificModel}". Use "provider:modelId" format (e.g., "openai:gpt-4o").`;
+        spinner.fail(formatError(message, errorCategories.CONFIG, 'Check the model format and try again'));
+        throw new ThinktankError(message);
+      }
+      
+      // Find the model config for this specific model
+      const specificModelConfig = config.models.find(model => 
+        model.provider === provider && model.modelId === modelId
+      );
+      
+      if (!specificModelConfig) {
+        const message = `Model "${options.specificModel}" not found in configuration.`;
+        spinner.fail(formatError(message, errorCategories.CONFIG, 'Check your configuration file and make sure the model is defined'));
+        throw new ThinktankError(message);
+      }
+      
+      if (!specificModelConfig.enabled) {
+        const message = `Model "${options.specificModel}" is disabled in configuration.`;
+        spinner.warn(styleWarning(message));
+      }
+      
+      models = [specificModelConfig];
+    }
+    // Next priority is groupName (single group)
+    else if (options.groupName) {
+      // Handle a single group name
+      spinner.text = `Selecting models from group: ${options.groupName}...`;
+      
+      if (!config.groups || !config.groups[options.groupName]) {
+        const message = `Group "${options.groupName}" not found in configuration.`;
+        spinner.fail(formatError(message, errorCategories.CONFIG, 'Check your configuration file and make sure the group is defined'));
+        throw new ThinktankError(message);
+      }
+      
+      models = getEnabledModelsFromGroups(config, [options.groupName]);
+      
+      // Apply model filters if specified
+      if (options.models && options.models.length > 0) {
         spinner.text = 'Applying model filters to group models...';
         
         // Get all models matching the filters
-        const filteredModels = options.models!.flatMap(modelFilter => 
+        const filteredModels = options.models.flatMap(modelFilter => 
           filterModels(config, modelFilter)
         );
         
@@ -396,50 +446,91 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           filteredModels.map(model => `${model.provider}:${model.modelId}`)
         );
         
-        // Keep only models that are both in groups and match filters
+        // Keep only models that are both in the group and match filters
         models = models.filter(model => {
           const key = `${model.provider}:${model.modelId}`;
           return filteredModelKeys.has(key);
         });
       }
-    } else if (useModelSelection) {
-      // Filter models by CLI args
-      spinner.text = 'Selecting models by filter...';
-      models = options.models!.flatMap(modelFilter => 
-        filterModels(config, modelFilter)
-      );
+    }
+    // Then fall back to the array versions
+    else {
+      // Track which approach we're using for user feedback
+      const useGroupsSelection = options.groups && options.groups.length > 0;
+      const useModelSelection = options.models && options.models.length > 0;
       
-      // Remove duplicates
-      const modelKeys = new Set<string>();
-      models = models.filter(model => {
-        const key = getModelConfigKey(model);
-        if (modelKeys.has(key)) {
-          return false;
+      if (useGroupsSelection) {
+        // Get models from specified groups
+        spinner.text = `Selecting models from groups: ${options.groups!.join(', ')}...`;
+        models = getEnabledModelsFromGroups(config, options.groups!);
+        
+        // If models filter is also specified, further filter the group models
+        if (useModelSelection) {
+          spinner.text = 'Applying model filters to group models...';
+          
+          // Get all models matching the filters
+          const filteredModels = options.models!.flatMap(modelFilter => 
+            filterModels(config, modelFilter)
+          );
+          
+          // Create a set of model keys for efficient filtering
+          const filteredModelKeys = new Set(
+            filteredModels.map(model => `${model.provider}:${model.modelId}`)
+          );
+          
+          // Keep only models that are both in groups and match filters
+          models = models.filter(model => {
+            const key = `${model.provider}:${model.modelId}`;
+            return filteredModelKeys.has(key);
+          });
         }
-        modelKeys.add(key);
-        return true;
-      });
-      
-      // Filter to only enabled models
-      models = models.filter(model => model.enabled);
-    } else {
-      // Use all enabled models
-      spinner.text = 'Using all enabled models...';
-      models = getEnabledModels(config);
+      } else if (useModelSelection) {
+        // Filter models by CLI args
+        spinner.text = 'Selecting models by filter...';
+        models = options.models!.flatMap(modelFilter => 
+          filterModels(config, modelFilter)
+        );
+        
+        // Remove duplicates
+        const modelKeys = new Set<string>();
+        models = models.filter(model => {
+          const key = getModelConfigKey(model);
+          if (modelKeys.has(key)) {
+            return false;
+          }
+          modelKeys.add(key);
+          return true;
+        });
+        
+        // Filter to only enabled models
+        models = models.filter(model => model.enabled);
+      } else {
+        // Use all enabled models
+        spinner.text = 'Using all enabled models...';
+        models = getEnabledModels(config);
+      }
     }
     
     // Check if we have any models after all filtering
     if (models.length === 0) {
-      if (useGroupsSelection && useModelSelection) {
+      if (options.specificModel) {
+        const message = `Specific model "${options.specificModel}" is not available or not enabled.`;
+        spinner.warn(styleWarning(message));
+        return message;
+      } else if (options.groupName) {
+        const message = `No enabled models found in the specified group: ${options.groupName}`;
+        spinner.warn(styleWarning(message));
+        return message;
+      } else if (options.groups && options.groups.length > 0 && options.models && options.models.length > 0) {
         const message = 'No enabled models found matching both group and model filters.';
         spinner.warn(styleWarning(message));
         return message;
-      } else if (useGroupsSelection) {
-        const groupList = options.groups!.join(', ');
+      } else if (options.groups && options.groups.length > 0) {
+        const groupList = options.groups.join(', ');
         const message = `No enabled models found in the specified groups: ${groupList}`;
         spinner.warn(styleWarning(message));
-        return `No enabled models found in the specified groups: ${options.groups!.join(', ')}`;
-      } else if (useModelSelection) {
+        return message;
+      } else if (options.models && options.models.length > 0) {
         const message = 'No enabled models matched the specified filters.';
         spinner.warn(styleWarning(message));
         return message;

@@ -56,7 +56,7 @@ export async function main(): Promise<void> {
       process.exit(1);
     }
     
-    // Check for "models" command
+    // Handle "models" command (list all available models)
     if (args[0] === 'models') {
       const result = await listAvailableModels({});
       // eslint-disable-next-line no-console
@@ -75,19 +75,40 @@ export async function main(): Promise<void> {
     }
     
     // The second argument can be either a group name or a specific model
-    // We'll implement this in the next task
-    // Uncomment when we implement the parsing logic:
-    // const secondArg = args[1];
+    const secondArg = args[1];
     
-    // We'll implement the actual parsing logic for the group vs model
-    // in the next task, but set up the structure here
-    
-    // For now, we'll pass through the input file and handle other options
-    // in future implementations
-    await runThinktank({
-      input: promptFile,
-      // Other options to be determined based on second argument
-    });
+    if (secondArg) {
+      // Check if the second argument contains a colon, indicating a provider:model format
+      if (secondArg.includes(':')) {
+        // Running with a specific model
+        const [provider, modelId] = secondArg.split(':');
+        
+        // Validate provider and modelId are present
+        if (!provider || !modelId) {
+          throw new ThinktankError(
+            `Invalid model format: "${secondArg}". Use "provider:modelId" format (e.g., "openai:gpt-4o").`
+          );
+        }
+        
+        // Call runThinktank with the specific model
+        await runThinktank({
+          input: promptFile,
+          specificModel: secondArg
+        });
+      } else {
+        // Running with a group name
+        await runThinktank({
+          input: promptFile,
+          groupName: secondArg
+        });
+      }
+    } else {
+      // No second argument, use default group
+      await runThinktank({
+        input: promptFile,
+        // Leave groupName undefined to use default group
+      });
+    }
     
     process.exit(0);
   } catch (error) {

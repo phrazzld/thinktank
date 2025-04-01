@@ -7,17 +7,17 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Implement Smart Command Detection
+- [x] Implement Smart Command Detection
   - Description: Add logic to detect and handle the three command patterns (models, prompt+group, prompt+model)
   - Dependencies: Simplified CLI Argument Parsing
   - Priority: High
   
-- [ ] Add Group Validation
+- [x] Add Group Validation
   - Description: Check if specified group exists in config and show available groups if not
   - Dependencies: Simplified CLI Argument Parsing
   - Priority: High
 
-- [ ] Add Specific Model Parsing
+- [x] Add Specific Model Parsing
   - Description: Add logic to detect provider:model format and extract provider/model values
   - Dependencies: Simplified CLI Argument Parsing
   - Priority: High
@@ -29,29 +29,29 @@
 
 ## Configuration Updates
 
-- [ ] Add Default Group to Config Schema
+- [x] Add Default Group to Config Schema
   - Description: Update config schema to include defaultGroup property
   - Dependencies: None
   - Priority: High
 
-- [ ] Create Default Configuration
+- [x] Create Default Configuration
   - Description: Update the default config template with sensible groups and default group
   - Dependencies: Config Schema Update
   - Priority: Medium
 
-- [ ] Add Default Group Selection Logic
+- [x] Add Default Group Selection Logic
   - Description: Implement logic to select default group if none is specified
   - Dependencies: Config Schema Update
   - Priority: High
 
 ## runThinktank Simplification
 
-- [ ] Update RunOptions Interface
+- [x] Update RunOptions Interface
   - Description: Simplify the options interface to support both group and specific model use cases
   - Dependencies: None
   - Priority: High
 
-- [ ] Implement Model Selection Logic
+- [x] Implement Model Selection Logic
   - Description: Add logic to select models based on group name or specific model identifier
   - Dependencies: RunOptions Interface Update
   - Priority: High

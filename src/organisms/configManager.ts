@@ -363,6 +363,7 @@ export function validateModelApiKeys(config: AppConfig): {
 
 /**
  * Normalizes a configuration to include a default group if not present
+ * and ensures the default group contains all enabled models
  * 
  * This ensures configurations have a consistent structure for the rest of the
  * application to work with, while maintaining backward compatibility.
@@ -371,26 +372,44 @@ export function validateModelApiKeys(config: AppConfig): {
  * @returns Normalized configuration with a default group
  */
 function normalizeConfig(config: AppConfig): AppConfig {
-  // If the config already has groups, no normalization needed
-  if (config.groups && Object.keys(config.groups).length > 0) {
-    return config;
-  }
-  
   // Create a deep copy to avoid modifying the original
   const normalizedConfig = structuredClone(config);
   
   // Initialize groups object if it doesn't exist
   normalizedConfig.groups = normalizedConfig.groups || {};
   
-  // Create a default group using the models array
-  normalizedConfig.groups.default = {
-    name: 'default',
-    systemPrompt: {
-      text: 'You are a helpful assistant.',
-    },
-    models: structuredClone(normalizedConfig.models),
-    description: 'Default model group',
-  };
+  // If the default group doesn't exist, create it with standard system prompt
+  if (!normalizedConfig.groups.default) {
+    normalizedConfig.groups.default = {
+      name: 'default',
+      systemPrompt: {
+        text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information. If you are unsure about something, admit it rather than making up an answer.',
+        metadata: {
+          source: 'default-config-normalization'
+        }
+      },
+      models: [],
+      description: 'Default model group',
+    };
+  }
+  
+  // Ensure the default group has all enabled models
+  // First, create a map of models already in the default group
+  const modelsInDefaultGroup = new Map<string, boolean>();
+  normalizedConfig.groups.default.models.forEach(model => {
+    const key = `${model.provider}:${model.modelId}`;
+    modelsInDefaultGroup.set(key, true);
+  });
+  
+  // Add any enabled models that are not already in the default group
+  normalizedConfig.models
+    .filter(model => model.enabled)
+    .forEach(model => {
+      const key = `${model.provider}:${model.modelId}`;
+      if (!modelsInDefaultGroup.has(key)) {
+        normalizedConfig.groups!.default.models.push(structuredClone(model));
+      }
+    });
   
   return normalizedConfig;
 }
