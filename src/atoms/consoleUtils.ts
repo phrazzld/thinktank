@@ -295,3 +295,205 @@ export function createFileNotFoundError(filePath: string, errorMessage?: string)
   
   return error;
 }
+
+/**
+ * Handles common types of model format errors
+ * 
+ * @param modelSpecification - The problematic model specification
+ * @param availableProviders - Optional array of available provider IDs
+ * @param availableModels - Optional array of available model specifications
+ * @param errorMessage - Optional custom error message
+ * @returns An Error object with helpful suggestions
+ */
+export function createModelFormatError(
+  modelSpecification: string,
+  availableProviders: string[] = [],
+  availableModels: string[] = [],
+  errorMessage?: string
+): Error {
+  // Create the error with a default message if none provided
+  let message = errorMessage;
+  
+  if (!message) {
+    if (!modelSpecification.includes(':')) {
+      message = `Invalid model format: "${modelSpecification}". Model must be specified as "provider:modelId".`;
+    } else if (modelSpecification.endsWith(':')) {
+      message = `Invalid model format: "${modelSpecification}". Missing model ID after provider.`;
+    } else if (modelSpecification.startsWith(':')) {
+      message = `Invalid model format: "${modelSpecification}". Missing provider name before model ID.`;
+    } else {
+      message = `Model not found: "${modelSpecification}". Use "provider:modelId" format.`;
+    }
+  }
+  
+  const error = new Error(message);
+  
+  // Add metadata
+  (error as any).category = errorCategories.CONFIG;
+  
+  // Parse the model specification
+  const [provider] = modelSpecification.split(':');
+  
+  // Build suggestions
+  const suggestions: string[] = [
+    `Model specifications must use the format "provider:modelId" (e.g., "openai:gpt-4o")`
+  ];
+  
+  // Specific error cases
+  if (!modelSpecification.includes(':')) {
+    suggestions.push(`Add a colon between provider and model ID: "${modelSpecification}" → "provider:${modelSpecification}"`);
+  } else if (modelSpecification.endsWith(':')) {
+    suggestions.push(`Specify a model ID after the provider: "${modelSpecification}modelId"`);
+    
+    // If we have models from this provider, suggest some
+    if (availableModels.length > 0) {
+      const matchingModels = availableModels.filter(m => m.startsWith(`${provider}:`));
+      if (matchingModels.length > 0) {
+        const models = matchingModels.slice(0, 3).join(', ') + 
+          (matchingModels.length > 3 ? ', ...' : '');
+        suggestions.push(`Available models for ${provider}: ${models}`);
+      }
+    }
+  } else if (modelSpecification.startsWith(':')) {
+    suggestions.push(`Specify a provider before the model ID: "provider${modelSpecification}"`);
+    
+    // If we have providers, suggest some
+    if (availableProviders.length > 0) {
+      const providersList = availableProviders.slice(0, 5).join(', ') + 
+        (availableProviders.length > 5 ? ', ...' : '');
+      suggestions.push(`Available providers: ${providersList}`);
+    }
+  }
+  
+  // Add general provider/model suggestions
+  if (availableProviders.length > 0) {
+    suggestions.push(`Available providers: ${availableProviders.join(', ')}`);
+  }
+  
+  if (availableModels.length > 0) {
+    // Limit to a reasonable number of examples
+    const modelExamples = availableModels.slice(0, 5);
+    const exampleList = modelExamples.join(', ') + 
+      (availableModels.length > 5 ? ', ...' : '');
+    suggestions.push(`Example models: ${exampleList}`);
+  }
+  
+  (error as any).suggestions = suggestions;
+  
+  // Add examples
+  (error as any).examples = [
+    'openai:gpt-4o',
+    'anthropic:claude-3-7-sonnet-20250219',
+    'google:gemini-pro'
+  ];
+  
+  return error;
+}
+
+/**
+ * Handles errors when a specific model is not found or unavailable
+ * 
+ * @param modelSpecification - The model specification that wasn't found
+ * @param availableModels - Optional array of available model specifications
+ * @param groupName - Optional group name if relevant to the context
+ * @param errorMessage - Optional custom error message
+ * @returns An Error object with helpful suggestions
+ */
+export function createModelNotFoundError(
+  modelSpecification: string,
+  availableModels: string[] = [],
+  groupName?: string,
+  errorMessage?: string
+): Error {
+  const [provider, modelId] = modelSpecification.split(':');
+  
+  // Create the error with a default message if none provided
+  let message = errorMessage;
+  
+  if (!message) {
+    if (groupName) {
+      message = `Model "${modelSpecification}" not found in group "${groupName}".`;
+    } else {
+      message = `Model "${modelSpecification}" not found in configuration.`;
+    }
+  }
+  
+  const error = new Error(message);
+  
+  // Add metadata
+  (error as any).category = errorCategories.CONFIG;
+  
+  // Build suggestions
+  const suggestions: string[] = [];
+  
+  // Suggest similar models by partial matching
+  if (availableModels.length > 0) {
+    // Find models with the same provider
+    const sameProviderModels = availableModels.filter(m => m.startsWith(`${provider}:`));
+    
+    if (sameProviderModels.length > 0) {
+      const providerModelList = sameProviderModels.slice(0, 5).join(', ') + 
+        (sameProviderModels.length > 5 ? ', ...' : '');
+      suggestions.push(`Available models from ${provider}: ${providerModelList}`);
+    } else {
+      // Provider not found
+      suggestions.push(`Provider "${provider}" not found.`);
+      
+      // Find all available providers
+      const availableProviders = new Set<string>();
+      availableModels.forEach(m => {
+        const parts = m.split(':');
+        if (parts.length === 2) {
+          availableProviders.add(parts[0]);
+        }
+      });
+      
+      if (availableProviders.size > 0) {
+        suggestions.push(`Available providers: ${Array.from(availableProviders).join(', ')}`);
+      }
+    }
+    
+    // For specific model ID matching
+    if (modelId) {
+      // Find models with similar model IDs
+      const similarModelIds = availableModels.filter(m => {
+        const parts = m.split(':');
+        return parts.length === 2 && parts[1].includes(modelId);
+      });
+      
+      if (similarModelIds.length > 0) {
+        const similarList = similarModelIds.slice(0, 3).join(', ') + 
+          (similarModelIds.length > 3 ? ', ...' : '');
+        suggestions.push(`Models with similar IDs: ${similarList}`);
+      }
+    }
+    
+    // Add a list of example models regardless
+    const exampleList = availableModels.slice(0, 5).join(', ') + 
+      (availableModels.length > 5 ? ', ...' : '');
+    suggestions.push(`Available models: ${exampleList}`);
+  }
+  
+  // Add configuration suggestions
+  suggestions.push(
+    'Check your thinktank.config.json file to ensure the model is properly defined',
+    'Models must be enabled in the configuration to be usable'
+  );
+  
+  if (groupName) {
+    suggestions.push(`Ensure the model is included in the "${groupName}" group configuration`);
+  }
+  
+  (error as any).suggestions = suggestions;
+  
+  // Add examples
+  (error as any).examples = availableModels.length > 0 
+    ? availableModels.slice(0, 3) 
+    : [
+        'openai:gpt-4o',
+        'anthropic:claude-3-7-sonnet-20250219',
+        'google:gemini-pro'
+      ];
+  
+  return error;
+}

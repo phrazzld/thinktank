@@ -156,5 +156,82 @@ describe('consoleUtils', () => {
         process.cwd = originalCwd;
       }
     });
+    
+    test('createModelFormatError should generate helpful error with suggestions', () => {
+      // Different invalid model format scenarios
+      const testCases = [
+        { input: 'invalidformat', expectText: 'must be specified as' },
+        { input: 'openai:', expectText: 'Missing model ID' },
+        { input: ':gpt4', expectText: 'Missing provider' }
+      ];
+      
+      testCases.forEach(testCase => {
+        const error = consoleUtils.createModelFormatError(testCase.input);
+        
+        // Verify error has the expected properties
+        expect(error.message).toContain(testCase.expectText);
+        expect((error as any).category).toBe(consoleUtils.errorCategories.CONFIG);
+        
+        // Suggestions should be an array with useful tips
+        expect(Array.isArray((error as any).suggestions)).toBe(true);
+        expect((error as any).suggestions.length).toBeGreaterThan(0);
+        
+        // Should contain format guidance
+        const suggestions = (error as any).suggestions.join(' ');
+        expect(suggestions).toContain('provider:modelId');
+        
+        // Examples should be provided
+        expect(Array.isArray((error as any).examples)).toBe(true);
+        expect((error as any).examples.length).toBeGreaterThan(0);
+      });
+      
+      // Test with available providers
+      const errorWithProviders = consoleUtils.createModelFormatError(
+        'invalidformat', 
+        ['openai', 'anthropic'], 
+        ['openai:gpt-4o', 'anthropic:claude-3']
+      );
+      
+      // Should include available providers in suggestions
+      const suggestions = (errorWithProviders as any).suggestions.join(' ');
+      expect(suggestions).toContain('Available providers: openai, anthropic');
+      expect(suggestions).toContain('Example models');
+    });
+    
+    test('createModelNotFoundError should generate helpful error with suggestions', () => {
+      // Test basic model not found error
+      const error = consoleUtils.createModelNotFoundError('openai:nonexistent-model');
+      
+      // Verify basic properties
+      expect(error.message).toContain('not found in configuration');
+      expect((error as any).category).toBe(consoleUtils.errorCategories.CONFIG);
+      
+      // Should have suggestions
+      expect(Array.isArray((error as any).suggestions)).toBe(true);
+      expect((error as any).suggestions.length).toBeGreaterThan(0);
+      
+      // Test with available models
+      const errorWithModels = consoleUtils.createModelNotFoundError(
+        'openai:nonexistent-model',
+        ['openai:gpt-4o', 'openai:gpt-3.5-turbo', 'anthropic:claude-3']
+      );
+      
+      // Should list available models from same provider
+      const suggestions = (errorWithModels as any).suggestions.join(' ');
+      expect(suggestions).toContain('Available models from openai');
+      expect(suggestions).toContain('gpt-4o');
+      
+      // Test with group context
+      const errorWithGroup = consoleUtils.createModelNotFoundError(
+        'openai:nonexistent-model',
+        ['openai:gpt-4o', 'anthropic:claude-3'],
+        'coding'
+      );
+      
+      // Should mention the group
+      expect(errorWithGroup.message).toContain('not found in group "coding"');
+      const groupSuggestions = (errorWithGroup as any).suggestions.join(' ');
+      expect(groupSuggestions).toContain('in the "coding" group configuration');
+    });
   });
 });

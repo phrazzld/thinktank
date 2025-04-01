@@ -271,7 +271,11 @@ function formatFileWritingStatus(
 
 function formatModelProcessingStatus(
   models: ModelConfig[], 
-  modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }>,
+  modelStatuses: Record<string, { 
+    status: 'pending' | 'success' | 'error';
+    message?: string;
+    detailedError?: Error;
+  }>,
   startTime: number,
   currentModel?: string,
   options?: RunOptions
@@ -330,8 +334,15 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   // Track the output directory path for later use
   let outputDirectoryPath: string | undefined;
   
+  // Define a type for model status
+  type ModelStatus = {
+    status: 'pending' | 'success' | 'error';
+    message?: string;
+    detailedError?: Error;
+  };
+  
   // For tracking model statuses
-  const modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }> = {};
+  const modelStatuses: Record<string, ModelStatus> = {};
   
   // Store timing metadata for different stages
   const timings = {
@@ -408,9 +419,36 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       const [provider, modelId] = options.specificModel.split(':');
       
       if (!provider || !modelId) {
-        const message = `Invalid model format: "${options.specificModel}". Use "provider:modelId" format (e.g., "openai:gpt-4o").`;
-        spinner.fail(formatError(message, errorCategories.CONFIG, 'Check the model format and try again'));
-        throw new ThinktankError(message);
+        // Create a detailed error with suggestions
+        const { createModelFormatError } = await import('../atoms/consoleUtils');
+        const { getProviderIds } = await import('../organisms/llmRegistry');
+        
+        // Get available providers and models for better error messages
+        const availableProviders = getProviderIds();
+        const enabledModels = getEnabledModels(config);
+        const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
+        
+        // Create detailed error
+        const modelError = createModelFormatError(
+          options.specificModel,
+          availableProviders,
+          availableModels
+        );
+        
+        // Display error with spinner
+        spinner.fail(formatError(
+          modelError.message, 
+          errorCategories.CONFIG, 
+          'Check the model format and ensure it follows the provider:modelId convention'
+        ));
+        
+        // Convert to ThinktankError
+        const modelFormatError = new ThinktankError(modelError.message);
+        modelFormatError.category = (modelError as any).category;
+        modelFormatError.suggestions = (modelError as any).suggestions;
+        modelFormatError.examples = (modelError as any).examples;
+        
+        throw modelFormatError;
       }
       
       // Find the model config for this specific model
@@ -419,9 +457,33 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       );
       
       if (!specificModelConfig) {
-        const message = `Model "${options.specificModel}" not found in configuration.`;
-        spinner.fail(formatError(message, errorCategories.CONFIG, 'Check your configuration file and make sure the model is defined'));
-        throw new ThinktankError(message);
+        // Create a detailed error with suggestions about model not found
+        const { createModelNotFoundError } = await import('../atoms/consoleUtils');
+        
+        // Get all available models for better suggestions
+        const enabledModels = getEnabledModels(config);
+        const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
+        
+        // Create detailed error
+        const modelError = createModelNotFoundError(
+          options.specificModel,
+          availableModels
+        );
+        
+        // Display error with spinner
+        spinner.fail(formatError(
+          modelError.message, 
+          errorCategories.CONFIG, 
+          'Check your configuration file and make sure the model is defined'
+        ));
+        
+        // Convert to ThinktankError
+        const modelNotFoundError = new ThinktankError(modelError.message);
+        modelNotFoundError.category = (modelError as any).category;
+        modelNotFoundError.suggestions = (modelError as any).suggestions;
+        modelNotFoundError.examples = (modelError as any).examples;
+        
+        throw modelNotFoundError;
       }
       
       if (!specificModelConfig.enabled) {
@@ -437,9 +499,54 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       spinner.text = `Selecting models from group: ${options.groupName}...`;
       
       if (!config.groups || !config.groups[options.groupName]) {
+        // Create more helpful group not found error
         const message = `Group "${options.groupName}" not found in configuration.`;
+        
+        // Get available groups for better suggestions
+        const availableGroups = config.groups ? Object.keys(config.groups) : [];
+        
+        // Create ThinktankError with detailed suggestions
+        const groupError = new ThinktankError(message);
+        groupError.category = errorCategories.CONFIG;
+        
+        // Add helpful suggestions
+        const suggestions = [
+          'Check your configuration file and make sure the group is defined'
+        ];
+        
+        // List available groups if any
+        if (availableGroups.length > 0) {
+          suggestions.push(`Available groups: ${availableGroups.join(', ')}`);
+        } else {
+          suggestions.push('No groups defined in the configuration');
+        }
+        
+        // Add configuration hint
+        suggestions.push(
+          'Groups must be defined in your thinktank.config.json file',
+          'Use "thinktank models" to list all available models and their groups'
+        );
+        
+        groupError.suggestions = suggestions;
+        
+        // Add examples based on available groups or defaults
+        // Extract filename from input path for examples
+        const inputFilename = options.input.split('/').pop() || 'prompt.txt';
+        
+        if (availableGroups.length > 0) {
+          groupError.examples = availableGroups.map(group => `thinktank ${inputFilename} ${group}`);
+        } else {
+          groupError.examples = [
+            `thinktank ${inputFilename} default`,
+            `thinktank ${inputFilename} coding`,
+            `thinktank ${inputFilename} fast`
+          ];
+        }
+        
+        // Display error with spinner
         spinner.fail(formatError(message, errorCategories.CONFIG, 'Check your configuration file and make sure the group is defined'));
-        throw new ThinktankError(message);
+        
+        throw groupError;
       }
       
       models = getEnabledModelsFromGroups(config, [options.groupName]);
@@ -715,26 +822,79 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       }
       
       // Process each model in this group
-      groupData.models.forEach(model => {
+      // We need to use a regular for loop instead of forEach to support async operations
+      for (const model of groupData.models) {
         const provider = getProvider(model.provider);
         const configKey = getModelConfigKey(model);
         
         if (!provider) {
-          const errorMessage = `Provider '${model.provider}' not found for model ${configKey}`;
-          const formattedError = formatError(
-            errorMessage, 
-            errorCategories.CONFIG, 
-            'Check your configuration and ensure the provider module is correctly imported'
-          );
+          // Handle provider not found error - create a resolved promise with an error response
+          const errorPromise = (async () => {
+            // Create more helpful provider not found error
+            const { getProviderIds } = await import('../organisms/llmRegistry');
+            const availableProviders = getProviderIds();
+            
+            // Basic error message
+            const errorMessage = `Provider '${model.provider}' not found for model ${configKey}`;
+            
+            // Create ThinktankError with detailed suggestions
+            const providerError = new ThinktankError(errorMessage);
+            providerError.category = errorCategories.CONFIG;
+            
+            // Add specific provider suggestions
+            const suggestions = [
+              `Provider "${model.provider}" is not registered in the system`,
+              'Providers must be imported and registered before use'
+            ];
+            
+            // List available providers (handle undefined/null for tests)
+            if (availableProviders && availableProviders.length > 0) {
+              suggestions.push(`Available providers: ${availableProviders.join(', ')}`);
+            } else {
+              suggestions.push('No providers are currently registered');
+            }
+            
+            // Add technical suggestions
+            suggestions.push(
+              'Ensure the provider module is correctly imported in the application',
+              'Check src/templates/runThinktank.ts for provider imports',
+              'Provider modules should be in src/molecules/llmProviders/'
+            );
+            
+            providerError.suggestions = suggestions;
+            
+            // Format the error for display
+            const formattedError = formatError(
+              errorMessage, 
+              errorCategories.CONFIG, 
+              'Check your configuration and ensure the provider module is correctly imported'
+            );
+            
+            // Show as warning but track as error
+            spinner.warn(formattedError);
+            
+            // Store error in model status with detailed info
+            modelStatuses[configKey] = { 
+              status: 'error', 
+              message: formattedError,
+              detailedError: providerError
+            };
+            
+            // Return error response
+            return {
+              provider: model.provider,
+              modelId: model.modelId,
+              text: '',
+              error: errorMessage,
+              configKey,
+            };
+          })();
           
-          // Show as warning but track as error
-          spinner.warn(formattedError);
+          // Add the promise to our collection
+          callPromises.push(errorPromise);
           
-          modelStatuses[configKey] = { 
-            status: 'error', 
-            message: formattedError
-          };
-          return;
+          // Skip to the next iteration in the loop
+          continue;
         }
         
         // Determine which system prompt to use, with the following precedence:
@@ -841,7 +1001,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           });
         
         callPromises.push(responsePromise);
-      });
+      }
     }
     
     // Complete model preparation timing

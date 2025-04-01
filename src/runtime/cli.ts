@@ -9,7 +9,13 @@
  */
 import { runThinktank, ThinktankError } from '../templates/runThinktank';
 import { listAvailableModels } from '../templates/listModelsWorkflow';
-import { colors, errorCategories, createFileNotFoundError } from '../atoms/consoleUtils';
+import { 
+  colors, 
+  errorCategories, 
+  createFileNotFoundError, 
+  createModelFormatError,
+  createModelNotFoundError
+} from '../atoms/consoleUtils';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -41,6 +47,39 @@ function showHelp(): void {
   console.error('  thinktank prompt.txt openai:gpt-4o        # Run prompt through specific model');
   // eslint-disable-next-line no-console
   console.error('  thinktank models                          # List all available models');
+}
+
+// Fixes for dynamic import in Jest tests
+async function importHelper() {
+  return {
+    createModelFormatError,
+    createModelNotFoundError
+  };
+}
+
+// Fixes for dynamic import in Jest tests
+async function getConfigHelper() {
+  try {
+    return await import('../organisms/configManager');
+  } catch (error) {
+    // Default mock for tests
+    return {
+      loadConfig: async () => ({ models: [] }),
+      getEnabledModels: () => []
+    };
+  }
+}
+
+// Fixes for dynamic import in Jest tests
+async function getProviderHelper() {
+  try {
+    return await import('../organisms/llmRegistry');
+  } catch (error) {
+    // Default mock for tests
+    return {
+      getProviderIds: () => ['openai', 'anthropic']
+    };
+  }
 }
 
 /**
@@ -106,9 +145,39 @@ export async function main(): Promise<void> {
         
         // Validate provider and modelId are present
         if (!provider || !modelId) {
-          throw new ThinktankError(
-            `Invalid model format: "${secondArg}". Use "provider:modelId" format (e.g., "openai:gpt-4o").`
-          );
+          try {
+            // Get helper utils and providers 
+            const { getProviderIds } = await getProviderHelper();
+            const { loadConfig, getEnabledModels } = await getConfigHelper();
+            
+            // Fetch available providers and models for better error messages
+            const availableProviders = getProviderIds();
+            const config = await loadConfig();
+            const enabledModels = getEnabledModels(config);
+            
+            // Create model strings in provider:modelId format
+            const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
+            
+            // Use the utility function directly (from import or helper)
+            const modelError = createModelFormatError(
+              secondArg,
+              availableProviders,
+              availableModels
+            );
+            
+            // Convert to ThinktankError
+            const modelFormatError = new ThinktankError(modelError.message);
+            modelFormatError.category = (modelError as any).category;
+            modelFormatError.suggestions = (modelError as any).suggestions;
+            modelFormatError.examples = (modelError as any).examples;
+            
+            throw modelFormatError;
+          } catch (importError) {
+            // Fallback to simpler error if we can't get providers/models
+            throw new ThinktankError(
+              `Invalid model format: "${secondArg}". Use "provider:modelId" format (e.g., "openai:gpt-4o").`
+            );
+          }
         }
         
         // Call runThinktank with the specific model

@@ -542,8 +542,15 @@ describe('runThinktank', () => {
   });
 
   it('should handle provider not found gracefully', async () => {
+    // Mock getProvider to return null for missing provider
     (llmRegistry.getProvider as jest.Mock).mockReturnValue(null);
-
+    
+    // Mock getProviderIds for the dynamic import in error handling
+    jest.mock('../../organisms/llmRegistry', () => ({
+      getProvider: jest.fn().mockReturnValue(null),
+      getProviderIds: jest.fn().mockReturnValue(['openai', 'anthropic'])
+    }), { virtual: true });
+    
     const options: RunOptions = {
       input: 'test-prompt.txt',
       includeMetadata: false,

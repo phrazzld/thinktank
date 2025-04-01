@@ -152,7 +152,7 @@ describe('CLI Interface', () => {
     expect(process.exit).toHaveBeenCalledWith(0);
   });
   
-  it('should validate the provider:model format', async () => {
+  it('should validate the provider:model format with helpful errors', async () => {
     // Set up test arguments - invalid model format (missing model ID)
     setMockArgs(['test-prompt.txt', 'openai:']);
     
@@ -160,8 +160,8 @@ describe('CLI Interface', () => {
     const { main } = await import('../cli');
     await main();
     
-    // Just verify that error handling occurred
-    expect(console.error).toHaveBeenCalled();
+    // Verify that enhanced error handling occurred
+    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
     expect(process.exit).toHaveBeenCalledWith(1);
     
     // Verify runThinktank was not called
