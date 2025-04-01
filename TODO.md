@@ -33,24 +33,24 @@
 
 ## Structured Results Display
 
-- [ ] Implement Tabular Results Formatter
+- [x] Implement Tabular Results Formatter
   - Description: Create function in outputFormatter using cli-table3 for the final summary table
   - Dependencies: Console Utils
   - Priority: High
 
-- [ ] Integrate Performance Metrics
+- [x] Integrate Performance Metrics
   - Description: Include response time and token counts in the results table
   - Dependencies: Tabular Results Formatter
   - Priority: Medium
 
-- [ ] Calculate Group Summary Stats
+- [x] Calculate Group Summary Stats
   - Description: Compute success/error counts and avg. response time per group for display
   - Dependencies: Tabular Results Formatter, Group Headers
   - Priority: Medium
 
 ## Error Handling Display
 
-- [ ] Create Error Formatting Helper
+- [x] Create Error Formatting Helper
   - Description: Develop a function in consoleUtils to format errors consistently with categories and tips
   - Dependencies: Console Utils
   - Priority: High
