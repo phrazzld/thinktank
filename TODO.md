@@ -109,6 +109,12 @@
   - Priority: Medium
   - Note: Implemented a robust logger module with verbosity levels (ERROR, WARN, INFO, DEBUG, VERBOSE), configurable via CLI flags (--verbose, --quiet, --debug, --no-color), and consistent formatting. Updated all console.log/warn/error calls throughout the codebase to use the new logger.
 
+- [x] Replace Emojis with ASCII Characters
+  - Description: Remove all emoji characters from the application
+  - Dependencies: None
+  - Priority: Medium
+  - Note: Replaced all emoji symbols with ASCII alternatives (✓→+, ✖→x, ⚠→!, ℹ→i, etc.) throughout the codebase, including symbols definitions, console output, and tests.
+
 - [x] Enhance Error Handling
   - Description: Improve error messages throughout the workflow
   - Dependencies: Workflow modules
@@ -121,10 +127,11 @@
   - Dependencies: Implementation of respective components
   - Priority: High
 
-- [ ] Add Integration Tests
+- [x] Add Integration Tests
   - Description: Write tests for config commands and main run command workflow
   - Dependencies: Implementation of CLI commands
   - Priority: Medium
+  - Note: Created integration tests for the config commands and main run command workflow. The tests verify the correct functioning of the CLI interfaces and their interactions with the core modules.
 
 ## Documentation
 - [x] Update README.md
