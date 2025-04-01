@@ -1,266 +1,131 @@
-# Thinktank Issues and Solutions
+# TODO
 
-## ✅ Issue 1: All top-level models are run instead of just models in the specified group (FIXED)
-**Problem:** When specifying a group (e.g., "default"), thinktank runs all enabled models from the top-level `models` array instead of just the models in the specified group.
+## Setup & Structure
+- [x] Create Feature Branch
+  - Description: Create `refactor/simplify-architecture` branch (using simplify-cli)
+  - Dependencies: None
+  - Priority: High
 
-**Root Cause:**  
-The issue was in the `getGroup` function in `src/organisms/configManager.ts`. It was returning an empty array for non-default groups that don't exist, and returning top-level models for the default group only when no groups at all were defined. This caused inconsistent behavior.
+- [x] Establish New Directory Structure
+  - Description: Create src/core, src/providers, src/cli, src/utils, src/workflow directories
+  - Dependencies: Feature branch created
+  - Priority: High
 
-**Solution:**
-Fixed the `getGroup` function to properly return models from the specified group, with a fallback to top-level models:
-```typescript
-// src/organisms/configManager.ts
-export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
-  // If the group exists, return its models
-  if (config.groups && config.groups[groupName]) {
-    return config.groups[groupName].models;
-  }
-  
-  // If looking for the default group or if the group doesn't exist,
-  // return the top-level models array
-  return config.models;
-}
-```
+- [x] Move Existing Files to New Structure
+  - Description: Relocate files from atomic design structure to new locations
+  - Dependencies: New directory structure created
+  - Priority: High
 
-This ensures that:
-1. For existing groups, we return the models from that group
-2. For the default group or non-existent groups, we return the top-level models array
-3. This maintains backward compatibility with existing tests and behavior
+- [x] Update Import Paths
+  - Description: Fix all import paths throughout the project to match new structure
+  - Dependencies: Files moved to new structure
+  - Priority: High
+  - Note: Main code files updated and build is successful; some test files still have failures
 
-## ✅ Issue 2: Missing API key error for Google models despite environment variable being set (FIXED)
-**Problem:** Thinktank shows "Missing API keys" error for Google models even when GEMINI_API_KEY is set in the environment.
+## Core Components
+- [ ] Refine ConfigManager
+  - Description: Implement/update ConfigManager with load, save, add, remove, update methods for models/groups
+  - Dependencies: New directory structure
+  - Priority: High
 
-**Root Cause:**  
-The error message was caused by the API key detection logic only checking a single environment variable name pattern based on the provider name. The implementation had three key issues:
-1. It didn't check alternate environment variable names (e.g., both GEMINI_API_KEY and GOOGLE_API_KEY)
-2. It didn't handle case-insensitive provider matching (e.g., 'Google' vs 'google')
-3. The return type was inconsistent (undefined vs null)
+- [ ] Implement Cascading Configuration System
+  - Description: Create resolveModelOptions function with proper hierarchy (base defaults → provider defaults → model defaults → user config → group overrides → CLI overrides)
+  - Dependencies: ConfigManager implementation
+  - Priority: High
 
-**Solution:**
-1. Added robust API key mapping in `src/atoms/helpers.ts`:
-```typescript
-export function getApiKey(config: ModelConfig): string | null {
-  // First try the custom environment variable if specified
-  if (config.apiKeyEnvVar) {
-    const key = process.env[config.apiKeyEnvVar];
-    if (key) {
-      return key;
-    }
-  }
-  
-  // Standard environment variable mappings by provider
-  const envVarMappings: Record<string, string[]> = {
-    'openai': ['OPENAI_API_KEY'],
-    'anthropic': ['ANTHROPIC_API_KEY'],
-    'google': ['GEMINI_API_KEY', 'GOOGLE_API_KEY'], // Check multiple possible names
-    'openrouter': ['OPENROUTER_API_KEY']
-  };
-  
-  // Handle case-insensitive provider matching
-  const provider = config.provider.toLowerCase();
-  const possibleVars = envVarMappings[provider] || [`${provider.toUpperCase()}_API_KEY`];
-  
-  // Try each possible environment variable
-  for (const envVar of possibleVars) {
-    const key = process.env[envVar];
-    if (key) {
-      return key;
-    }
-  }
-  
-  return null;
-}
-```
+- [ ] Update LLMRegistry
+  - Description: Adapt LLMRegistry to work with the new structure and ConfigManager
+  - Dependencies: ConfigManager implementation
+  - Priority: Medium
 
-2. Added a diagnostic function to help troubleshoot API key issues:
-```typescript
-export function debugApiKeyAvailability(): Record<string, boolean> {
-  const result: Record<string, boolean> = {};
-  
-  if (process.env.NODE_ENV === 'development') {
-    const keys = [
-      'OPENAI_API_KEY', 
-      'ANTHROPIC_API_KEY', 
-      'GEMINI_API_KEY', 
-      'GOOGLE_API_KEY', 
-      'OPENROUTER_API_KEY'
-    ];
-    
-    keys.forEach(key => {
-      result[key] = !!process.env[key];
-    });
-  }
-  
-  return result;
-}
-```
+## CLI Commands
+- [ ] Update Commander.js Setup
+  - Description: Install/update commander.js and set up basic CLI structure
+  - Dependencies: New directory structure
+  - Priority: High
 
-These changes make the API key detection more robust and user-friendly, while also providing better tools for debugging issues.
-```
+- [ ] Implement Config Commands
+  - Description: Create thinktank config command suite (path, show, models/groups management)
+  - Dependencies: ConfigManager, Commander.js setup
+  - Priority: High
 
-## Issue 3: Output formatting issues
-**Problem:** Output has several formatting issues: 
-- Duplicated symbols and emojis
-- No progress indicator during processing
-- Poor visibility when errors occur
+- [ ] Implement Run Command with Model Selection
+  - Description: Add --models flag for direct model specification in run command
+  - Dependencies: ConfigManager, Commander.js setup
+  - Priority: High
 
-**Root Cause:**  
-The issue is in the output formatting logic in `src/molecules/outputFormatter.ts` and possibly in progress reporting in `src/templates/runThinktank.ts`.
+## Workflow Refactoring
+- [ ] Create InputHandler Module
+  - Description: Implement module to load prompt from file/stdin and config
+  - Dependencies: New directory structure
+  - Priority: Medium
 
-**Solution:**
-1. Fix the duplicated emoji/symbols issue in `src/molecules/outputFormatter.ts`:
-```typescript
-// Replace this pattern throughout the file:
-console.log(`ℹ ℹ ${message}`);
-// With:
-console.log(`ℹ ${message}`);
+- [ ] Create ModelSelector Module
+  - Description: Implement logic to determine models to query based on CLI flags and config
+  - Dependencies: ConfigManager
+  - Priority: Medium
 
-// Similarly for warnings, errors, and other symbols
-```
+- [ ] Create QueryExecutor Module
+  - Description: Implement parallel API call handling with proper error management
+  - Dependencies: LLMRegistry updates
+  - Priority: Medium
 
-2. Add a progress indicator during processing in `src/templates/runThinktank.ts`:
-```typescript
-// Before starting model processing:
-const spinner = {
-  frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
-  interval: 80,
-  currentFrame: 0
-};
+- [ ] Create OutputHandler Module
+  - Description: Implement result formatting and writing to files/console
+  - Dependencies: QueryExecutor module
+  - Priority: Medium
 
-let spinnerInterval: NodeJS.Timeout | null = null;
-let currentModelName: string = '';
+## Provider Updates
+- [ ] Update Provider Implementations
+  - Description: Modify providers to accept resolved ModelOptions and remove internal defaulting
+  - Dependencies: Cascading configuration system
+  - Priority: Medium
 
-// Start the spinner
-function startSpinner(modelName: string) {
-  currentModelName = modelName;
-  spinnerInterval = setInterval(() => {
-    process.stdout.write(`\r${spinner.frames[spinner.currentFrame]} Processing ${modelName}...`);
-    spinner.currentFrame = (spinner.currentFrame + 1) % spinner.frames.length;
-  }, spinner.interval);
-}
+## User Experience
+- [ ] Implement Preset Feature
+  - Description: Add --preset flag for predefined model sets
+  - Dependencies: ModelSelector module
+  - Priority: Low
 
-// Stop the spinner
-function stopSpinner(status: 'success' | 'error') {
-  if (spinnerInterval) {
-    clearInterval(spinnerInterval);
-    const icon = status === 'success' ? '✅' : '❌';
-    process.stdout.write(`\r${icon} Completed ${currentModelName}    \n`);
-    spinnerInterval = null;
-  }
-}
+- [ ] Refine Logging System
+  - Description: Create logger utility with verbosity control
+  - Dependencies: None
+  - Priority: Medium
 
-// Use these functions when processing each model
-```
+- [ ] Enhance Error Handling
+  - Description: Improve error messages throughout the workflow
+  - Dependencies: Workflow modules
+  - Priority: Medium
 
-3. Improve error handling and status reporting:
-```typescript
-// In runThinktank.ts
-// When a model fails:
-stopSpinner('error');
-console.error(`${colors.red('✖')} Error in model ${model.provider}:${model.modelId}: ${formattedError}`);
-console.log(`${colors.dim('→')} Continuing with remaining models...\n`);
+## Testing
+- [ ] Update Unit Tests
+  - Description: Write/update unit tests for ConfigManager, resolveModelOptions, modelSelector, and utility functions
+  - Dependencies: Implementation of respective components
+  - Priority: High
 
-// When processing completes, show a clear summary:
-console.log('\n');
-console.log(`${colors.blue('📊')} Results Summary:`);
-console.log(`${colors.dim('│')}`);
-models.forEach((model, i) => {
-  const prefix = `${colors.dim('├')} ${i+1}. `;
-  const status = model.error ? `${colors.red('✖')} Failed` : `${colors.green('✓')} Success`;
-  console.log(`${prefix}${model.provider}:${model.modelId} - ${status}`);
-  if (model.error) {
-    console.log(`${colors.dim('│  ')} ${colors.red('→')} ${model.error.message}`);
-  }
-});
-console.log(`${colors.dim('└')} Complete.`);
-```
+- [ ] Add Integration Tests
+  - Description: Write tests for config commands and main run command workflow
+  - Dependencies: Implementation of CLI commands
+  - Priority: Medium
 
-## ✅ Issue 4: Temperature validation error with Claude's thinking capability (FIXED)
-**Problem:** Claude returned an error about temperature validation when thinking is enabled.
+## Documentation
+- [ ] Update README.md
+  - Description: Reflect new structure, CLI commands, and configuration approach
+  - Dependencies: All implementations complete
+  - Priority: Medium
 
-**Root Cause:**  
-Anthropic's API requires that the temperature parameter must be set to exactly 1 when using Claude's thinking capability. Our implementation was passing along the user-configured temperature value, which caused an API error when thinking was enabled.
+- [ ] Create User Guides/Examples
+  - Description: Document the cascading configuration hierarchy and usage examples
+  - Dependencies: All implementations complete
+  - Priority: Low
 
-**Solution:**
-1. Fixed the anthropic.ts provider to force temperature to 1 when thinking is enabled:
-```typescript
-// In src/molecules/llmProviders/anthropic.ts
-// When thinking is enabled:
-if (options?.thinking) {
-  const thinkingOpt = options.thinking as unknown as ThinkingOptions;
-  
-  // Force temperature to 1 when thinking is enabled - Anthropic API requirement
-  const params = {
-    ...baseParams,
-    temperature: 1, // Override any other temperature value
-    thinking: {
-      type: 'enabled' as const,
-      budget_tokens: thinkingOpt.budget_tokens
-    }
-  };
-  
-  response = await client.messages.create(params);
-} else {
-  // Regular call without thinking
-  response = await client.messages.create(baseParams);
-}
-```
+## Final Steps
+- [ ] Perform Code Review
+  - Description: Review all components for quality, consistency, and completeness
+  - Dependencies: All implementations complete
+  - Priority: High
 
-2. Added documentation about this limitation in the README.md:
-```markdown
-### Important Temperature Limitation
-
-**When using Claude's thinking capability, the temperature will automatically be set to 1, regardless of what value you configured.** This is a technical requirement from Anthropic's API.
-
-For example, if you have:
-```json
-{
-  "provider": "anthropic",
-  "modelId": "claude-3-7-sonnet-20250219",
-  "enabled": true,
-  "options": {
-    "temperature": 0.7,
-    "thinking": {
-      "type": "enabled",
-      "budget_tokens": 16000
-    }
-  }
-}
-```
-
-The temperature will be forced to 1 when making the API request, regardless of the 0.7 value specified.
-```
-
-3. Added a test to ensure the behavior works correctly:
-```typescript
-it('should force temperature to 1 when thinking is enabled', async () => {
-  const options: ModelOptions = {
-    temperature: 0.5, // This should be overridden
-    maxTokens: 500,
-    thinking: {
-      type: 'enabled',
-      budget_tokens: 16000
-    }
-  };
-  
-  await provider.generate('Test prompt', 'claude-3-opus-20240229', options);
-  
-  // Verify temperature is set to exactly 1 regardless of user's setting
-  expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
-    temperature: 1, // Should be exactly 1 as required by Anthropic API
-    thinking: {
-      type: 'enabled',
-      budget_tokens: 16000
-    }
-  }));
-})
-```
-
-## Implementation Plan
-
-1. Fix the group selection logic first (Issue 1) - highest priority
-2. Fix the API key detection for Google models (Issue 2)
-3. Implement the fix for Claude's temperature with thinking (Issue 4)
-4. Improve the output formatting (Issue 3)
-
-Each fix should be implemented separately and tested before moving to the next one to ensure we don't introduce new issues.
+- [ ] Merge to Main
+  - Description: Merge the feature branch after successful testing and review
+  - Dependencies: All tasks completed, tests passing
+  - Priority: High
