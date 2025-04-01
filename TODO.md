@@ -56,7 +56,7 @@
   - Dependencies: RunOptions Interface Update
   - Priority: High
 
-- [ ] Implement System Prompt Selection Logic
+- [x] Implement System Prompt Selection Logic
   - Description: Select appropriate system prompt based on group or find the group a specific model belongs to
   - Dependencies: Model Selection Logic
   - Priority: Medium

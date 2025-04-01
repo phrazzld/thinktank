@@ -5,7 +5,7 @@ import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
 import * as fileReader from '../../molecules/fileReader';
 import * as configManager from '../../organisms/configManager';
 import * as llmRegistry from '../../organisms/llmRegistry';
-import { LLMProvider, LLMResponse, ModelConfig } from '../../atoms/types';
+import { LLMProvider, LLMResponse, ModelConfig, SystemPrompt } from '../../atoms/types';
 import fs from 'fs/promises';
 
 // Mock dependencies
@@ -188,6 +188,232 @@ describe('runThinktank', () => {
       expect.anything(),
       ['coding']
     );
+  });
+  
+  it('should select system prompt from CLI override when provided', async () => {
+    // Save the original implementation
+    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider).generate;
+    
+    // Replace with a mock that captures the system prompt
+    let capturedSystemPrompt: SystemPrompt | undefined;
+    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
+      providerId: 'mock',
+      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
+        capturedSystemPrompt = systemPrompt;
+        return Promise.resolve({
+          provider: 'mock',
+          modelId,
+          text: 'Mock response',
+          metadata: {}
+        });
+      }
+    }));
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      systemPrompt: 'Custom CLI system prompt override',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify system prompt from CLI was used
+    expect(capturedSystemPrompt).toBeDefined();
+    expect(capturedSystemPrompt?.text).toBe('Custom CLI system prompt override');
+    expect(capturedSystemPrompt?.metadata?.source).toBe('cli-override');
+    
+    // Restore the original implementation if needed
+    if (originalGenerate) {
+      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
+    }
+  });
+  
+  it('should select system prompt from model when available', async () => {
+    // Set up config with a model that has a system prompt
+    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true,
+          systemPrompt: {
+            text: 'Model-specific system prompt',
+            metadata: { source: 'model-config' }
+          }
+        }
+      ]
+    });
+    
+    // Save the original implementation
+    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
+    
+    // Replace with a mock that captures the system prompt
+    let capturedSystemPrompt: SystemPrompt | undefined;
+    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
+      providerId: 'mock',
+      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
+        capturedSystemPrompt = systemPrompt;
+        return Promise.resolve({
+          provider: 'mock',
+          modelId,
+          text: 'Mock response',
+          metadata: {}
+        });
+      }
+    }));
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify model-specific system prompt was used
+    expect(capturedSystemPrompt).toBeDefined();
+    expect(capturedSystemPrompt?.text).toBe('Model-specific system prompt');
+    
+    // Restore the original implementation if needed
+    if (originalGenerate) {
+      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
+    }
+  });
+  
+  it('should select system prompt from specified group', async () => {
+    // Set up config with groups
+    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true
+        }
+      ],
+      groups: {
+        coding: {
+          name: 'coding',
+          systemPrompt: {
+            text: 'You are a coding assistant.',
+            metadata: { source: 'group-config' }
+          },
+          models: [
+            {
+              provider: 'mock',
+              modelId: 'mock-model',
+              enabled: true
+            }
+          ]
+        }
+      }
+    });
+    
+    // Mock group-related functions
+    (configManager.getEnabledModelsFromGroups as jest.Mock).mockImplementation(
+      (_config, groupNames) => {
+        if (groupNames.includes('coding')) {
+          return [{
+            provider: 'mock',
+            modelId: 'mock-model',
+            enabled: true
+          }];
+        }
+        return [];
+      }
+    );
+    
+    // Save the original implementation
+    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
+    
+    // Replace with a mock that captures the system prompt
+    let capturedSystemPrompt: SystemPrompt | undefined;
+    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
+      providerId: 'mock',
+      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
+        capturedSystemPrompt = systemPrompt;
+        return Promise.resolve({
+          provider: 'mock',
+          modelId,
+          text: 'Mock response',
+          metadata: {}
+        });
+      }
+    }));
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      groupName: 'coding',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify group-specific system prompt was used
+    expect(capturedSystemPrompt).toBeDefined();
+    expect(capturedSystemPrompt?.text).toBe('You are a coding assistant.');
+    
+    // Restore the original implementation if needed
+    if (originalGenerate) {
+      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
+    }
+  });
+  
+  it('should use default system prompt when no others are available', async () => {
+    // Set up config with no system prompts
+    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true
+          // No systemPrompt property
+        }
+      ],
+      groups: {
+        // No groups defined
+      }
+    });
+    
+    // Mock findModelGroup to return undefined (no group found)
+    (configManager.findModelGroup as jest.Mock).mockReturnValue(undefined);
+    
+    // Save the original implementation
+    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
+    
+    // Replace with a mock that captures the system prompt
+    let capturedSystemPrompt: SystemPrompt | undefined;
+    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
+      providerId: 'mock',
+      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
+        capturedSystemPrompt = systemPrompt;
+        return Promise.resolve({
+          provider: 'mock',
+          modelId,
+          text: 'Mock response',
+          metadata: {}
+        });
+      }
+    }));
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify default system prompt was used
+    expect(capturedSystemPrompt).toBeDefined();
+    expect(capturedSystemPrompt?.text).toContain('You are a helpful, accurate');
+    expect(capturedSystemPrompt?.metadata?.source).toBe('default-fallback');
+    
+    // Restore the original implementation if needed
+    if (originalGenerate) {
+      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
+    }
   });
 
   it('should create output directory and write files when output path is provided', async () => {

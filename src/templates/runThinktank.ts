@@ -660,7 +660,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         // Determine which system prompt to use, with the following precedence:
         // 1. CLI override (options.systemPrompt)
         // 2. Model-specific system prompt (model.systemPrompt)
-        // 3. Group system prompt (from the group the model belongs to)
+        // 3. Explicitly requested group's system prompt (options.groupName)
+        // 4. Group system prompt (from the group the model belongs to)
+        // 5. Default system prompt
         let systemPrompt: SystemPrompt | undefined;
         let modelGroupName: string | undefined;
         
@@ -673,13 +675,32 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         } else if (model.systemPrompt) {
           // Use model-specific system prompt
           systemPrompt = model.systemPrompt;
-        } else {
-          // Find which group this model belongs to
+        } else if (options.groupName && config.groups && config.groups[options.groupName]) {
+          // If a specific group was requested and exists, use its system prompt
+          modelGroupName = options.groupName;
+          systemPrompt = config.groups[options.groupName].systemPrompt;
+        } else if (options.specificModel) {
+          // If a specific model was requested, find which group it belongs to
           const groupInfo = findModelGroup(config, model);
           if (groupInfo) {
             modelGroupName = groupInfo.groupName;
             systemPrompt = groupInfo.systemPrompt;
           }
+        } else {
+          // For regular (non-specificModel, non-groupName) cases, find the group
+          const groupInfo = findModelGroup(config, model);
+          if (groupInfo) {
+            modelGroupName = groupInfo.groupName;
+            systemPrompt = groupInfo.systemPrompt;
+          }
+        }
+        
+        // If no system prompt was found, use a default
+        if (!systemPrompt) {
+          systemPrompt = {
+            text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.',
+            metadata: { source: 'default-fallback' }
+          };
         }
         
         // Create promise for this model
