@@ -168,7 +168,7 @@ thinktank config models disable openai:gpt-4o
 
 ## Configuration
 
-thinktank uses a JSON configuration file to define which LLM providers and models to use.
+thinktank uses a JSON configuration file to define which LLM providers and models to use. For detailed information about the powerful cascading configuration system, see [CASCADING-CONFIG-GUIDE.md](CASCADING-CONFIG-GUIDE.md).
 
 ### Default Configuration
 
