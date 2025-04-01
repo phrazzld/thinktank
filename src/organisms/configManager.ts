@@ -38,6 +38,12 @@ const modelOptionsSchema = z.object({
   maxTokens: z.number().positive().int().optional(),
 }).passthrough();
 
+// Zod schema for system prompts
+export const systemPromptSchema = z.object({
+  text: z.string().min(1),
+  metadata: z.record(z.unknown()).optional(),
+});
+
 // Zod schema for model configuration
 const modelConfigSchema = z.object({
   provider: z.string().min(1),
@@ -45,6 +51,7 @@ const modelConfigSchema = z.object({
   enabled: z.boolean(),
   apiKeyEnvVar: z.string().optional(),
   options: modelOptionsSchema.optional(),
+  systemPrompt: systemPromptSchema.optional(),
 });
 
 // Zod schema for application configuration

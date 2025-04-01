@@ -32,7 +32,7 @@
   - Priority: Medium
 
 ## Configuration Management
-- [ ] Create Zod schema for `SystemPrompt`
+- [x] Create Zod schema for `SystemPrompt`
   - Description: Define validation schema for system prompts
   - Dependencies: SystemPrompt interface
   - Priority: High
