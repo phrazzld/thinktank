@@ -16,7 +16,7 @@
   - Dependencies: ModelGroup interface
   - Priority: High
 
-- [ ] Update `ModelConfig` interface
+- [x] Update `ModelConfig` interface
   - Description: Add optional systemPrompt property for per-model prompts
   - Dependencies: SystemPrompt interface
   - Priority: High

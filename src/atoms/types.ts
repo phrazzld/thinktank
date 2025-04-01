@@ -39,6 +39,7 @@ export interface ModelConfig {
   enabled: boolean;
   apiKeyEnvVar?: string;
   options?: ModelOptions;
+  systemPrompt?: SystemPrompt;
 }
 
 /**
