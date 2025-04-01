@@ -80,7 +80,7 @@
   - Dependencies: None
   - Priority: Medium
 
-- [ ] Add Unit Tests for Core Logic (T2)
+- [x] Add Unit Tests for Core Logic (T2)
   - Description: Test argument parsing, prompt building, and token counting
   - Dependencies: R1
   - Priority: Medium
