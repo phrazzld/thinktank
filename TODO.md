@@ -101,7 +101,7 @@
   - Dependencies: All implemented features
   - Priority: Medium
 
-- [ ] Update Development Guide (D2)
+- [x] Update Development Guide (D2)
   - Description: Add testing info, prompt file locations, logging levels
   - Dependencies: All implemented features
   - Priority: Low
