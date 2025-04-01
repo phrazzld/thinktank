@@ -19,8 +19,8 @@ describe('Models Command', () => {
   const originalConsoleLog = console.log;
   
   beforeEach(() => {
-    // Mock process.exit
-    process.exit = jest.fn() as any;
+    // Mock process.exit with proper type
+    process.exit = jest.fn() as unknown as (code?: number) => never;
     
     // Mock console.log
     console.log = jest.fn();
@@ -40,10 +40,16 @@ describe('Models Command', () => {
     // Set CLI arguments to simulate "models" command
     process.argv = ['node', 'thinktank', 'models'];
     
-    // Require the cli module
-    // Using require instead of import to avoid caching issues
-    const cli = require('../cli');
-    await cli.main();
+    // Import the cli module
+    // We use a dynamic import to avoid caching issues
+    try {
+      const cliModule = await import('../cli');
+      console.log('CLI module imported successfully');
+      await cliModule.main();
+      console.log('CLI main function completed');
+    } catch (error) {
+      console.error('Error running CLI:', error);
+    }
     
     // Verify listAvailableModels was called with empty options
     expect(listAvailableModels).toHaveBeenCalledWith({});

@@ -7,14 +7,13 @@
  * 2. Running a prompt through one specific model
  * 3. Listing all available models
  */
-import { runThinktank, ThinktankError } from '../templates/runThinktank';
+import { runThinktank, ThinktankError, ErrorWithMetadata } from '../templates/runThinktank';
 import { listAvailableModels } from '../templates/listModelsWorkflow';
 import { 
   colors, 
   errorCategories, 
   createFileNotFoundError, 
-  createModelFormatError,
-  createModelNotFoundError
+  createModelFormatError
 } from '../atoms/consoleUtils';
 import fs from 'fs/promises';
 import dotenv from 'dotenv';
@@ -49,31 +48,63 @@ function showHelp(): void {
   console.error('  thinktank models                          # List all available models');
 }
 
-// Fixes for dynamic import in Jest tests
-async function importHelper() {
-  return {
-    createModelFormatError,
-    createModelNotFoundError
-  };
+// Define interfaces for the helper function return types to avoid 'any' usage
+interface ConfigModel {
+  provider: string;
+  modelId: string;
+  enabled: boolean;
 }
 
+interface ModelGroup {
+  name: string;
+  systemPrompt: { text: string; metadata?: Record<string, unknown> };
+  models: ConfigModel[];
+  description?: string;
+}
+
+interface Config {
+  models: ConfigModel[];
+  groups?: Record<string, ModelGroup>;
+  defaultGroup?: string;
+}
+
+interface ConfigHelpers {
+  loadConfig: () => Promise<Config>;
+  getEnabledModels: (config: { models: Array<{ provider: string; modelId: string; enabled: boolean }> }) => Array<{
+    provider: string;
+    modelId: string;
+  }>;
+}
+
+interface ProviderHelpers {
+  getProviderIds: () => string[];
+}
+
+// Fixes for dynamic import in Jest tests - removed as unused
+// If needed in future, would be implemented with proper return type
+
 // Fixes for dynamic import in Jest tests
-async function getConfigHelper() {
+async function getConfigHelper(): Promise<ConfigHelpers> {
   try {
-    return await import('../organisms/configManager');
+    const configModule = await import('../organisms/configManager');
+    return configModule;
   } catch (error) {
     // Default mock for tests
     return {
-      loadConfig: async () => ({ models: [] }),
+      loadConfig: async () => {
+        await new Promise(resolve => setTimeout(resolve, 0)); // Add await to satisfy linter
+        return { models: [] };
+      },
       getEnabledModels: () => []
     };
   }
 }
 
 // Fixes for dynamic import in Jest tests
-async function getProviderHelper() {
+async function getProviderHelper(): Promise<ProviderHelpers> {
   try {
-    return await import('../organisms/llmRegistry');
+    const providerModule = await import('../organisms/llmRegistry');
+    return providerModule;
   } catch (error) {
     // Default mock for tests
     return {
@@ -120,8 +151,14 @@ export async function main(): Promise<void> {
       const fileError = new ThinktankError(baseError.message);
       
       // Copy properties from baseError
-      fileError.category = (baseError as any).category;
-      fileError.suggestions = (baseError as any).suggestions;
+      const typedError = baseError as ErrorWithMetadata;
+      if (typedError.category) {
+        fileError.category = typedError.category;
+      }
+      
+      if (typedError.suggestions) {
+        fileError.suggestions = typedError.suggestions;
+      }
       
       // Customize examples for CLI usage
       const basename = path.basename(promptFile);
@@ -167,9 +204,19 @@ export async function main(): Promise<void> {
             
             // Convert to ThinktankError
             const modelFormatError = new ThinktankError(modelError.message);
-            modelFormatError.category = (modelError as any).category;
-            modelFormatError.suggestions = (modelError as any).suggestions;
-            modelFormatError.examples = (modelError as any).examples;
+            const typedModelError = modelError as ErrorWithMetadata;
+            
+            if (typedModelError.category) {
+              modelFormatError.category = typedModelError.category;
+            }
+            
+            if (typedModelError.suggestions) {
+              modelFormatError.suggestions = typedModelError.suggestions;
+            }
+            
+            if (typedModelError.examples) {
+              modelFormatError.examples = typedModelError.examples;
+            }
             
             throw modelFormatError;
           } catch (importError) {

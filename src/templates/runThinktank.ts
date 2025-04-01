@@ -109,6 +109,16 @@ export interface RunOptions {
 }
 
 /**
+ * Interface for error objects with metadata
+ */
+export interface ErrorWithMetadata {
+  message: string;
+  category?: string;
+  suggestions?: string[];
+  examples?: string[];
+}
+
+/**
  * Error class for thinktank runtime errors
  * Provides additional context like category and helpful suggestions
  */
@@ -443,11 +453,23 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           'Check the model format and ensure it follows the provider:modelId convention'
         ));
         
+        // Use the ErrorWithMetadata interface defined at the top of the file
+
         // Convert to ThinktankError
         const modelFormatError = new ThinktankError(modelError.message);
-        modelFormatError.category = (modelError as any).category;
-        modelFormatError.suggestions = (modelError as any).suggestions;
-        modelFormatError.examples = (modelError as any).examples;
+        const typedError = modelError as ErrorWithMetadata;
+        
+        if (typedError.category) {
+          modelFormatError.category = typedError.category;
+        }
+        
+        if (typedError.suggestions) {
+          modelFormatError.suggestions = typedError.suggestions;
+        }
+        
+        if (typedError.examples) {
+          modelFormatError.examples = typedError.examples;
+        }
         
         throw modelFormatError;
       }
@@ -480,9 +502,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         
         // Convert to ThinktankError
         const modelNotFoundError = new ThinktankError(modelError.message);
-        modelNotFoundError.category = (modelError as any).category;
-        modelNotFoundError.suggestions = (modelError as any).suggestions;
-        modelNotFoundError.examples = (modelError as any).examples;
+        const typedError = modelError as ErrorWithMetadata;
+        
+        if (typedError.category) {
+          modelNotFoundError.category = typedError.category;
+        }
+        
+        if (typedError.suggestions) {
+          modelNotFoundError.suggestions = typedError.suggestions;
+        }
+        
+        if (typedError.examples) {
+          modelNotFoundError.examples = typedError.examples;
+        }
         
         throw modelNotFoundError;
       }
@@ -686,9 +718,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         // No models with valid API keys - show detailed error
         // Convert apiKeyError to ThinktankError for more details
         const thinktankError = new ThinktankError(apiKeyError.message);
-        thinktankError.category = (apiKeyError as any).category;
-        thinktankError.suggestions = (apiKeyError as any).suggestions;
-        thinktankError.examples = (apiKeyError as any).examples;
+        const typedError = apiKeyError as ErrorWithMetadata;
+        
+        if (typedError.category) {
+          thinktankError.category = typedError.category;
+        }
+        
+        if (typedError.suggestions) {
+          thinktankError.suggestions = typedError.suggestions;
+        }
+        
+        if (typedError.examples) {
+          thinktankError.examples = typedError.examples;
+        }
         
         // Display comprehensive error with spinner
         spinner.fail(formatError(
@@ -1184,7 +1226,6 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       const sanitizedProvider = sanitizeFilename(result.provider);
       const sanitizedModelId = sanitizeFilename(result.modelId);
       let filename: string;
-      let filePath: string;
       
       // Format the filename to include group information when relevant
       if (result.groupInfo?.name && result.groupInfo.name !== 'default' && !options.specificModel) {
@@ -1196,7 +1237,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       }
       
       // All files go directly in the output directory
-      filePath = path.join(outputDirectoryPath!, filename);
+      const filePath = path.join(outputDirectoryPath!, filename);
       
       // Format the response as Markdown
       const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
