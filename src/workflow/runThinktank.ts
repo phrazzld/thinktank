@@ -23,6 +23,7 @@ import {
   colors
 } from '../utils/consoleUtils';
 import ora from 'ora';
+import { logger } from '../utils/logger';
 
 // Import provider modules to ensure they're registered
 import '../providers/openai';
@@ -411,8 +412,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       .map((model, index) => `  ${index + 1}. ${model.provider}:${model.modelId}${!model.enabled ? ' (disabled)' : ''}`)
       .join('\n');
     
-    // eslint-disable-next-line no-console
-    console.log(modelList);
+    logger.plain(modelList);
     
     // 6. Execute queries using QueryExecutor
     spinner.text = `Querying ${modelSelectionResult.models.length} model(s)...`;
@@ -441,8 +441,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Display execution summary
     spinner.stop(); // Stop any active spinner
-    // eslint-disable-next-line no-console
-    console.log(formatResultsSummary(queryResults, options));
+    logger.plain(formatResultsSummary(queryResults, options));
     
     // 7. Write responses to files
     spinner.start();
@@ -482,18 +481,15 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       
       // Show files with errors
       const failedFiles = fileOutputResult.files.filter(file => file.status === 'error');
-      // eslint-disable-next-line no-console
-      console.log('\n' + styleHeader('❌ Files with errors:'));
+      logger.plain('\n' + styleHeader('❌ Files with errors:'));
       
       failedFiles.forEach(file => {
-        // eslint-disable-next-line no-console
-        console.log(styleError(`  - ${file.filename}: ${file.error || 'Unknown error'}`));
+        logger.plain(styleError(`  - ${file.filename}: ${file.error || 'Unknown error'}`));
       });
     }
     
     // Show output directory
-    // eslint-disable-next-line no-console
-    console.log(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
+    logger.plain(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
     
     // 8. Format model responses for console output
     const consoleOutput = formatForConsole(queryResults.responses, {
@@ -506,29 +502,23 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Show execution metadata if requested
     if (options.includeMetadata) {
       // Display timing information
-      // eslint-disable-next-line no-console
-      console.log('\n' + styleHeader('Execution timing:'));
+      logger.plain('\n' + styleHeader('Execution timing:'));
       
       const totalTime = queryResults.timing.durationMs + fileOutputResult.timing.durationMs;
       
-      // eslint-disable-next-line no-console
-      console.log(styleDim(`  Total API calls:    ${queryResults.timing.durationMs}ms`));
-      // eslint-disable-next-line no-console
-      console.log(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
-      // eslint-disable-next-line no-console
-      console.log(styleDim(`  Total execution:    ${totalTime}ms`));
+      logger.plain(styleDim(`  Total API calls:    ${queryResults.timing.durationMs}ms`));
+      logger.plain(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
+      logger.plain(styleDim(`  Total execution:    ${totalTime}ms`));
       
       // Additional model-specific timing information
-      // eslint-disable-next-line no-console
-      console.log('\n' + styleHeader('Model timing:'));
+      logger.plain('\n' + styleHeader('Model timing:'));
       
       Object.entries(queryResults.statuses)
         .sort((a, b) => (a[1].durationMs || 0) - (b[1].durationMs || 0))
         .forEach(([model, status]) => {
           if (status.durationMs) {
             const statusIcon = status.status === 'success' ? '✅' : '❌';
-            // eslint-disable-next-line no-console
-            console.log(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
+            logger.plain(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
           }
         });
     }

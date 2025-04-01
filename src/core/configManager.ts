@@ -7,6 +7,7 @@ import { AppConfig, ModelConfig, ModelGroup, ModelOptions, SystemPrompt } from '
 import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from './constants';
 import { getApiKey as getApiKeyHelper } from '../utils/helpers';
 import dotenv from 'dotenv';
+import { logger } from '../utils/logger';
 
 // Re-export getApiKey for use in other modules
 export const getApiKey = getApiKeyHelper;
@@ -179,7 +180,7 @@ async function tryLoadConfigFromPaths(paths: string[]): Promise<AppConfig> {
         return parseJsonSafely(configContent);
       } catch (error) {
         // Log and try next path
-        console.warn(`Failed to load config from ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.warn(`Failed to load config from ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
   }

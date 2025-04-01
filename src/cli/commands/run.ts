@@ -18,6 +18,7 @@ interface ErrorWithMetadata {
 import { createFileNotFoundError, colors } from '../../utils/consoleUtils';
 import { handleError } from '../index';
 import * as configManager from '../../core/configManager';
+import { logger } from '../../utils/logger';
 
 // Create the command
 const runCommand = new Command('run');
@@ -101,35 +102,24 @@ runCommand
         }
         
         // Give user feedback about the selected models
-        if (options.verbose) {
-          // eslint-disable-next-line no-console
-          console.log(
-            colors.cyan(`Running prompt against ${specificModels.length} model${specificModels.length === 1 ? '' : 's'}:`)
-          );
-          specificModels.forEach((model, index) => {
-            // eslint-disable-next-line no-console
-            console.log(`  ${index + 1}. ${colors.yellow(model)}`);
-          });
-          // eslint-disable-next-line no-console
-          console.log('');
-        }
+        logger.info(
+          colors.cyan(`Running prompt against ${specificModels.length} model${specificModels.length === 1 ? '' : 's'}:`)
+        );
+        specificModels.forEach((model, index) => {
+          logger.info(`  ${index + 1}. ${colors.yellow(model)}`);
+        });
+        logger.info('');
       }
       
       // Check for invalid combinations
       if (options.group && specificModels && specificModels.length > 1) {
-        // eslint-disable-next-line no-console
-        console.log(
-          colors.yellow('Warning: Both --group and --models (multiple) options were provided. ' +
-                     'The --models option will filter models within the specified group.')
-        );
+        logger.warn('Both --group and --models (multiple) options were provided. ' +
+                   'The --models option will filter models within the specified group.');
       }
       
       // Display thinking capability info
-      if (options.thinking && options.verbose) {
-        // eslint-disable-next-line no-console
-        console.log(
-          colors.cyan('Thinking capability enabled for models that support it (Claude models)')
-        );
+      if (options.thinking) {
+        logger.info('Thinking capability enabled for models that support it (Claude models)');
       }
       
       // If a specific model is requested but not yet in the config, consider adding it
@@ -140,14 +130,10 @@ runCommand
         const config = await configManager.loadConfig({ configPath: options.config });
         const modelExists = configManager.findModel(config, provider, modelId);
         
-        if (!modelExists && options.verbose) {
-          // eslint-disable-next-line no-console
-          console.log(
-            colors.yellow(`Model ${specificModels[0]} not found in configuration. ` +
-                        `Will attempt to use it anyway. If this fails, add it with:`)
-          );
-          // eslint-disable-next-line no-console
-          console.log(
+        if (!modelExists) {
+          logger.warn(`Model ${specificModels[0]} not found in configuration. ` +
+                    `Will attempt to use it anyway. If this fails, add it with:`);
+          logger.info(
             colors.dim(`  thinktank config models add ${provider} ${modelId} --enable`)
           );
         }

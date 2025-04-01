@@ -10,6 +10,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { ThinktankError } from '../workflow/runThinktank';
 import { colors, errorCategories } from '../utils/consoleUtils';
+import { configureLogger, logger } from '../utils/logger';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -21,7 +22,28 @@ const program = new Command();
 program
   .name('thinktank')
   .description('A CLI tool for querying multiple LLMs with the same prompt')
-  .version('0.1.0'); // This should be loaded from package.json in the future
+  .version('0.1.0') // This should be loaded from package.json in the future
+  .option('-v, --verbose', 'Enable verbose output with detailed information')
+  .option('-q, --quiet', 'Suppress all output except errors')
+  .option('-d, --debug', 'Enable debug mode with extra information')
+  .option('--no-color', 'Disable colored output')
+  .hook('preAction', (thisCommand) => {
+    // Get options and safely cast them to the expected types
+    const options = thisCommand.opts();
+    
+    // Configure the logger based on command-line options
+    configureLogger({
+      verbose: Boolean(options.verbose),
+      quiet: Boolean(options.quiet),
+      debug: Boolean(options.debug),
+      noColor: !options.color
+    });
+    
+    // Log debug info about the environment
+    logger.debug(`Node.js version: ${process.version}`);
+    logger.debug(`Platform: ${process.platform}`);
+    logger.debug(`Command: ${process.argv.join(' ')}`);
+  });
 
 /**
  * Handle errors consistently across all commands
@@ -33,50 +55,42 @@ export function handleError(error: unknown): void {
   if (error instanceof ThinktankError) {
     // Display the main error message with appropriate category if available
     const category = error.category ? ` (${error.category})` : '';
-    // eslint-disable-next-line no-console
-    console.error(`${colors.red('Error')}${colors.yellow(category)}: ${error.message}`);
+    const message = `${colors.red('Error')}${colors.yellow(category)}: ${error.message}`;
+    
+    // Use the logger but directly with console.error to ensure it's shown
+    logger.error(message);
     
     // Display cause if available
     if (error.cause) {
-      // eslint-disable-next-line no-console
-      console.error(`${colors.dim('Cause:')} ${error.cause.message}`);
+      logger.error(`${colors.dim('Cause:')} ${error.cause.message}`);
     }
     
     // Show suggestions if available
     if (error.suggestions && error.suggestions.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error('\nSuggestions:');
+      logger.error('\nSuggestions:');
       error.suggestions.forEach(suggestion => {
-        // eslint-disable-next-line no-console
-        console.error(`  ${colors.cyan('•')} ${suggestion}`);
+        logger.error(`  ${colors.cyan('•')} ${suggestion}`);
       });
     }
     
     // Show examples if available
     if (error.examples && error.examples.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error('\nExample commands:');
+      logger.error('\nExample commands:');
       error.examples.forEach(example => {
-        // eslint-disable-next-line no-console
-        console.error(`  ${colors.green('>')} ${example}`);
+        logger.error(`  ${colors.green('>')} ${example}`);
       });
     }
     
     // Show general help for common errors
     if (error.category === errorCategories.FILESYSTEM) {
-      // eslint-disable-next-line no-console
-      console.error('\nCorrect usage:');
-      // eslint-disable-next-line no-console
-      console.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
-      // eslint-disable-next-line no-console
-      console.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);
+      logger.error('\nCorrect usage:');
+      logger.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
+      logger.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);
     }
   } else if (error instanceof Error) {
-    // eslint-disable-next-line no-console
-    console.error(`${colors.red('Unexpected error:')} ${error.message}`);
+    logger.error(`Unexpected error: ${error.message}`, error);
   } else {
-    // eslint-disable-next-line no-console
-    console.error(`${colors.red('An unknown error occurred')}`);
+    logger.error('An unknown error occurred');
   }
   
   process.exit(1);

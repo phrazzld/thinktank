@@ -103,10 +103,11 @@
   - Priority: High
   - Note: Implemented with support for ad-hoc model invocations (--models flag) and group definitions. Tests need to be updated.
 
-- [ ] Refine Logging System
+- [x] Refine Logging System
   - Description: Create logger utility with verbosity control
   - Dependencies: None
   - Priority: Medium
+  - Note: Implemented a robust logger module with verbosity levels (ERROR, WARN, INFO, DEBUG, VERBOSE), configurable via CLI flags (--verbose, --quiet, --debug, --no-color), and consistent formatting. Updated all console.log/warn/error calls throughout the codebase to use the new logger.
 
 - [x] Enhance Error Handling
   - Description: Improve error messages throughout the workflow
