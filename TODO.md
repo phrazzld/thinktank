@@ -22,6 +22,11 @@
   - Priority: High
   - Note: Main code files updated and build is successful; some test files still have failures
 
+- [ ] Remove Old Atomic Design Structure
+  - Description: Delete the old atoms/molecules/organisms/templates directories after ensuring all functionality is migrated
+  - Dependencies: All components migrated to new structure, all tests passing with new structure
+  - Priority: Medium
+
 ## Core Components
 - [x] Refine ConfigManager
   - Description: Implement/update ConfigManager with load, save, add, remove, update methods for models/groups
@@ -39,26 +44,30 @@
   - Priority: Medium
 
 ## CLI Commands
-- [ ] Update Commander.js Setup
+- [x] Update Commander.js Setup
   - Description: Install/update commander.js and set up basic CLI structure
   - Dependencies: New directory structure
   - Priority: High
+  - Note: Implemented main CLI structure with commander.js, created commands for run, models, and config with subcommands
 
-- [ ] Implement Config Commands
+- [x] Implement Config Commands
   - Description: Create thinktank config command suite (path, show, models/groups management)
   - Dependencies: ConfigManager, Commander.js setup
   - Priority: High
+  - Note: Implemented full config command suite with path, show, and models/groups management commands
 
-- [ ] Implement Run Command with Model Selection
+- [x] Implement Run Command with Model Selection
   - Description: Add --models flag for direct model specification in run command
   - Dependencies: ConfigManager, Commander.js setup
   - Priority: High
+  - Note: Flag implemented with robust validation, error handling, and compatibility with group filtering
 
 ## Workflow Refactoring
-- [ ] Create InputHandler Module
+- [x] Create InputHandler Module
   - Description: Implement module to load prompt from file/stdin and config
   - Dependencies: New directory structure
   - Priority: Medium
+  - Note: Implemented robust input handling with support for files, stdin, and direct text
 
 - [ ] Create ModelSelector Module
   - Description: Implement logic to determine models to query based on CLI flags and config

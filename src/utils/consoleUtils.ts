@@ -98,6 +98,7 @@ export const errorCategories = {
   FILESYSTEM: 'File System',
   PERMISSION: 'Permission',
   VALIDATION: 'Validation',
+  INPUT: 'Input',
   UNKNOWN: 'Unknown',
 };
 
