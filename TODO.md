@@ -73,7 +73,7 @@
   - Priority: High
 
 ## Run Workflow Updates
-- [ ] Update `RunOptions` interface
+- [x] Update `RunOptions` interface
   - Description: Add groups parameter and systemPrompt parameter
   - Dependencies: None
   - Priority: High

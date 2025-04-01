@@ -45,8 +45,22 @@ export interface RunOptions {
   /**
    * Array of model identifiers to use (optional)
    * If not provided, all enabled models will be used
+   * Note: When groups parameter is used, this filters models within those groups
    */
   models?: string[];
+  
+  /**
+   * Array of group names to use (optional)
+   * If not provided, all groups will be used
+   * If provided, only models in the specified groups will be used
+   */
+  groups?: string[];
+  
+  /**
+   * System prompt override (optional)
+   * If provided, this system prompt will be used for all models, regardless of their group's system prompt
+   */
+  systemPrompt?: string;
   
   /**
    * Whether to include metadata in the output
