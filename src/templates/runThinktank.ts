@@ -167,6 +167,92 @@ function getElapsedTime(startTime: number): number {
   return Math.round(getCurrentTime() - startTime);
 }
 
+/**
+ * Formats a string for the model processing status
+ * 
+ * @param models - All models being processed
+ * @param modelStatuses - Current status of each model
+ * @param startTime - Start time of API calls
+ * @param currentModel - Current model being processed (optional)
+ * @returns Formatted status string
+ */
+/**
+ * Formats a string for the file writing status
+ * 
+ * @param totalFiles - Total number of files to write
+ * @param succeededWrites - Number of successful writes
+ * @param failedWrites - Number of failed writes
+ * @param startTime - Start time of file writing
+ * @param currentFile - Current file being written (optional)
+ * @returns Formatted status string
+ */
+function formatFileWritingStatus(
+  totalFiles: number,
+  succeededWrites: number,
+  failedWrites: number,
+  startTime: number,
+  currentFile?: string
+): string {
+  const completedWrites = succeededWrites + failedWrites;
+  const percentComplete = Math.round((completedWrites / totalFiles) * 100);
+  
+  // Format elapsed time in seconds
+  const elapsedTime = Math.round((getCurrentTime() - startTime) / 1000);
+  
+  // Calculate estimated time remaining (if we have at least 10% progress)
+  let etaString = '';
+  if (percentComplete >= 10 && elapsedTime > 0) {
+    const totalTimeEstimate = (elapsedTime * totalFiles) / completedWrites;
+    const remainingTime = Math.round(totalTimeEstimate - elapsedTime);
+    etaString = ` - ETA: ~${remainingTime}s remaining`;
+  }
+  
+  // Build status message
+  let statusMsg = `Writing files [${completedWrites}/${totalFiles}] ${percentComplete}% complete - `;
+  statusMsg += `${succeededWrites} succeeded, ${failedWrites} failed`;
+  
+  // Add current file if provided
+  if (currentFile) {
+    statusMsg += ` - Current: ${currentFile}`;
+  }
+  
+  // Add elapsed time and ETA
+  statusMsg += ` - Elapsed: ${elapsedTime}s${etaString}`;
+  
+  return statusMsg;
+}
+
+function formatModelProcessingStatus(
+  models: ModelConfig[], 
+  modelStatuses: Record<string, { status: 'pending' | 'success' | 'error', message?: string }>,
+  startTime: number,
+  currentModel?: string
+): string {
+  const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
+  const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
+  const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
+  const totalCount = models.length;
+  const completedCount = successCount + errorCount;
+  const percentComplete = Math.round((completedCount / totalCount) * 100);
+  
+  // Format elapsed time in seconds
+  const elapsedTime = Math.round((getCurrentTime() - startTime) / 1000);
+  
+  // Build status message
+  let statusMsg = `Processing models [${completedCount}/${totalCount}] ${percentComplete}% complete - `;
+  statusMsg += `${successCount} succeeded, ${errorCount} failed, ${pendingCount} pending`;
+  
+  // Add current model if provided
+  if (currentModel) {
+    statusMsg += ` - Current: ${currentModel}`;
+  }
+  
+  // Add elapsed time
+  statusMsg += ` - Elapsed: ${elapsedTime}s`;
+  
+  return statusMsg;
+}
+
 export async function runThinktank(options: RunOptions): Promise<string> {
   // Start timing the full execution
   const startTimeTotal = getCurrentTime();
@@ -382,11 +468,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
           // Update status
           modelStatuses[configKey] = { status: 'success' };
           
-          // Update spinner text with progress
-          const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
-          const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
-          const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
-          spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
+          // Update spinner text with detailed progress
+          spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
           
           // Add group information to the response if applicable
           const responseWithGroup: LLMResponse & { configKey: string } = {
@@ -410,11 +493,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
             message: error instanceof Error ? error.message : String(error)
           };
           
-          // Update spinner text with progress
-          const pendingCount = Object.values(modelStatuses).filter(s => s.status === 'pending').length;
-          const successCount = Object.values(modelStatuses).filter(s => s.status === 'success').length;
-          const errorCount = Object.values(modelStatuses).filter(s => s.status === 'error').length;
-          spinner.text = `Processing models: ${successCount} complete, ${pendingCount} pending, ${errorCount} failed`;
+          // Update spinner text with detailed progress
+          spinner.text = formatModelProcessingStatus(models, modelStatuses, startTimeApiCalls, configKey);
           
           return {
             provider: model.provider,
@@ -431,8 +511,15 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Complete model preparation timing
     timings.modelPreparation = getElapsedTime(startTimePreparation);
     
-    // Initial status message
-    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}... (Preparation: ${timings.modelPreparation}ms)`;
+    // Initial status message with preparation timing
+    const uniqueGroups = new Set<string>();
+    models.forEach(model => {
+      const groupInfo = findModelGroup(config, model);
+      uniqueGroups.add(groupInfo?.groupName || 'default');
+    });
+    
+    spinner.text = `Sending prompt to ${models.length} model${models.length === 1 ? '' : 's'}... ` +
+      `(Preparation: ${timings.modelPreparation}ms, Groups: ${uniqueGroups.size})`;
     
     // 6. Execute calls concurrently
     const startTimeApiCalls = getCurrentTime();
@@ -461,7 +548,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // 8. Write individual files (now always done)
-    spinner.text = `Writing model responses to individual files... (API calls completed in ${timings.apiCalls}ms)`;
+    spinner.text = `Writing model responses to individual files... (API calls completed in ${timings.apiCalls}ms, Success rate: ${Math.round((results.filter(r => !r.error).length / results.length) * 100)}%)`;
     const startTimeFileWrites = getCurrentTime();
     
     // Track stats for reporting
@@ -488,7 +575,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Create all group directories concurrently
     if (groupDirs.size > 0) {
-      spinner.text = `Creating group directories: ${Array.from(groupDirs).join(', ')}...`;
+      spinner.text = `Creating group directories (${groupDirs.size}): ${Array.from(groupDirs).join(', ')}...`;
       const createDirPromises = Array.from(groupDirs).map(async (groupName) => {
         const groupDir = path.join(outputDirectoryPath!, groupName);
         try {
@@ -539,17 +626,27 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         .then(() => {
           succeededWrites++;
           fileDetail.status = 'success';
-          // Update progress after each file
-          const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
-          spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
+          // Update progress with detailed information
+          spinner.text = formatFileWritingStatus(
+            results.length, 
+            succeededWrites, 
+            failedWrites, 
+            startTimeFileWrites, 
+            fileDetail.filename
+          );
         })
         .catch((error) => {
           failedWrites++;
           fileDetail.status = 'error';
           fileDetail.error = error instanceof Error ? error.message : String(error);
-          // Update progress after each file
-          const progressPercent = Math.round((succeededWrites + failedWrites) / results.length * 100);
-          spinner.text = `Writing files: ${progressPercent}% complete (${succeededWrites + failedWrites}/${results.length})`;
+          // Update progress with detailed information
+          spinner.text = formatFileWritingStatus(
+            results.length, 
+            succeededWrites, 
+            failedWrites, 
+            startTimeFileWrites, 
+            fileDetail.filename
+          );
         });
       
       fileWritePromises.push(writePromise);
