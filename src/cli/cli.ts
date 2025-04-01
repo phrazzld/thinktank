@@ -104,7 +104,7 @@ interface ProviderHelpers {
 // Fixes for dynamic import in Jest tests
 async function getConfigHelper(): Promise<ConfigHelpers> {
   try {
-    const configModule = await import('../organisms/configManager');
+    const configModule = await import('../core/configManager');
     return configModule;
   } catch (error) {
     // Default mock for tests
@@ -121,7 +121,7 @@ async function getConfigHelper(): Promise<ConfigHelpers> {
 // Fixes for dynamic import in Jest tests
 async function getProviderHelper(): Promise<ProviderHelpers> {
   try {
-    const providerModule = await import('../organisms/llmRegistry');
+    const providerModule = await import('../core/llmRegistry');
     return providerModule;
   } catch (error) {
     // Default mock for tests

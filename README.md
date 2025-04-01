@@ -11,7 +11,7 @@ thinktank allows you to send the same text prompt to multiple LLM providers (lik
 - Testing prompts across different providers before committing to one
 - Educational purposes to understand model differences
 
-Built with TypeScript and designed with extensibility in mind, thinktank follows Atomic Design principles to provide a robust, maintainable architecture that makes it easy to add new LLM providers.
+Built with TypeScript and designed with extensibility in mind, thinktank provides a domain-oriented architecture that makes it easy to add new LLM providers and configure your experience via a convenient CLI interface.
 
 ## Installation
 
@@ -51,20 +51,32 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 ## Usage
 
-thinktank uses a simple, intuitive command line interface with positional arguments:
+thinktank uses a powerful command line interface built with commander.js:
 
 ```bash
 # Send a prompt to all models in the default group
-thinktank prompt.txt
+thinktank run prompt.txt
 
 # Send a prompt to models in a specific group
-thinktank prompt.txt coding
+thinktank run prompt.txt --group coding
 
 # Send a prompt to one specific model
-thinktank prompt.txt openai:gpt-4o
+thinktank run prompt.txt --model openai:gpt-4o
+
+# Send a prompt to multiple specific models
+thinktank run prompt.txt --models openai:gpt-4o,anthropic:claude-3-opus
 
 # List all available models
-thinktank models
+thinktank models list
+
+# Configure models and groups
+thinktank config models add openai gpt-4o --options '{"temperature": 0.7}' 
+thinktank config groups create coding --models openai:gpt-4o,anthropic:claude-3-opus
+
+# Get help
+thinktank --help
+thinktank run --help
+thinktank config --help
 ```
 
 ### Command Examples
@@ -74,7 +86,7 @@ thinktank models
 Send your prompt to all enabled models in the default group:
 
 ```bash
-thinktank path/to/prompt.txt
+thinktank run path/to/prompt.txt
 ```
 
 #### Running with a Specific Group
@@ -82,19 +94,23 @@ thinktank path/to/prompt.txt
 Send your prompt to all models in a named group (as defined in your config file):
 
 ```bash
-thinktank path/to/prompt.txt coding
-thinktank path/to/prompt.txt creative
-thinktank path/to/prompt.txt analysis
+thinktank run path/to/prompt.txt --group coding
+thinktank run path/to/prompt.txt --group creative
+thinktank run path/to/prompt.txt --group analysis
 ```
 
-#### Running with a Specific Model
+#### Running with Specific Models
 
-Send your prompt to a single model using the provider:model format:
+Send your prompt to a single model:
 
 ```bash
-thinktank path/to/prompt.txt openai:gpt-4o
-thinktank path/to/prompt.txt anthropic:claude-3-opus-20240229
-thinktank path/to/prompt.txt openrouter:anthropic/claude-3-5-sonnet-20240620
+thinktank run path/to/prompt.txt --model openai:gpt-4o
+```
+
+Send your prompt to multiple models at once:
+
+```bash
+thinktank run path/to/prompt.txt --models openai:gpt-4o,anthropic:claude-3-opus-20240229,openrouter:anthropic/claude-3-5-sonnet-20240620
 ```
 
 #### Listing Available Models
@@ -102,15 +118,42 @@ thinktank path/to/prompt.txt openrouter:anthropic/claude-3-5-sonnet-20240620
 List all available models from all configured providers:
 
 ```bash
-thinktank models
+thinktank models list
 ```
 
 List models from a specific provider:
 
 ```bash
-thinktank models openai
-thinktank models anthropic
-thinktank models openrouter
+thinktank models list --provider openai
+thinktank models list --provider anthropic
+thinktank models list --provider openrouter
+```
+
+#### Configuring thinktank
+
+Show the current configuration:
+
+```bash
+thinktank config show
+```
+
+Add a new model to your configuration:
+
+```bash
+thinktank config models add openai gpt-4o --options '{"temperature": 0.7, "maxTokens": 4000}'
+```
+
+Create a new group of models:
+
+```bash
+thinktank config groups create coding --models openai:gpt-4o,anthropic:claude-3-opus
+```
+
+Enable or disable a model:
+
+```bash
+thinktank config models enable openai:gpt-4o
+thinktank config models disable openai:gpt-4o
 ```
 
 ### Additional Options
@@ -627,38 +670,42 @@ Error message from the API
 
 ## Architecture
 
-thinktank follows the Atomic Design methodology with a clear separation of concerns:
+thinktank follows a domain-oriented architecture with a clear separation of concerns:
 
 ```
 src/
-├── atoms/       # Core types, constants, and helpers
-├── molecules/   # Basic functionality (file reading, providers)
-├── organisms/   # Complex components (config, registry)
-├── templates/   # Main workflow orchestration
-└── runtime/     # CLI entry point
+├── core/        # Core types, interfaces, config management, and registry
+├── providers/   # LLM provider implementations
+├── cli/         # Command-line interface with commander.js
+├── utils/       # Common utility functions
+└── workflow/    # Main workflow orchestration modules
 ```
 
 ### Key Components
 
-- **ConfigManager**: Handles loading and validating configuration
-- **LLMRegistry**: Manages provider registration and retrieval
-- **LLMProviders**: Implementation of various LLM APIs
-- **Runthinktank**: Orchestrates the main workflow
-- **CLI**: Provides the command-line interface
+- **ConfigManager**: Handles loading, validating, and modifying configuration with full CLI management
+- **LLMRegistry**: Manages provider registration and retrieval with cascading configuration support
+- **Providers**: Implementation of various LLM APIs (OpenAI, Anthropic, Google, OpenRouter)
+- **CLI**: Provides a comprehensive command-line interface with commander.js
+- **Workflow Modules**:
+  - **InputHandler**: Processes prompts from files or direct input
+  - **ModelSelector**: Determines which models to use based on configuration and CLI flags
+  - **QueryExecutor**: Manages parallel API calls with proper error handling
+  - **OutputHandler**: Formats and writes results to files and console
 
 ## Extending thinktank
 
 ### Adding a New LLM Provider
 
-1. Create a new file in `src/molecules/llmProviders/<provider-name>.ts`
+1. Create a new file in `src/providers/<provider-name>.ts`
 2. Implement the `LLMProvider` interface
 3. Register the provider in the LLM registry
 
 Here's an example implementation for a new provider:
 
 ```typescript
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
-import { registerProvider } from '../../organisms/llmRegistry';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../core/types';
+import { registerProvider } from '../core/llmRegistry';
 
 export class NewProvider implements LLMProvider {
   public readonly providerId = 'new-provider';
@@ -723,16 +770,23 @@ export class NewProvider implements LLMProvider {
 export const newProvider = new NewProvider();
 ```
 
-4. Import and use the provider in `src/templates/runthinktank.ts`:
+4. Import the provider in `src/workflow/runThinktank.ts`:
 
 ```typescript
 // Import provider modules to ensure they're registered
-import '../molecules/llmProviders/openai';
-import '../molecules/llmProviders/new-provider';
+import '../providers/openai';
+import '../providers/anthropic';
+import '../providers/google';
+import '../providers/openrouter';
+import '../providers/new-provider';
 // Future providers will be imported here
 ```
 
-5. Add an example configuration in `templates/thinktank.config.default.json`
+5. Add an example configuration using the CLI:
+
+```bash
+thinktank config models add new-provider model-1 --options '{"temperature": 0.7}'
+```
 
 ### Example: OpenRouter Provider Implementation
 

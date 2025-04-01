@@ -162,7 +162,7 @@ export const CONFIG_SEARCH_PATHS: string[] = [
   path.resolve(getUserConfigDir(), 'thinktank/config.json'),
   
   // Application directory
-  path.resolve(__dirname, '../../templates/thinktank.config.default.json'),
+  path.resolve(__dirname, '../../config/thinktank.config.default.json'),
 ];
 
 /**

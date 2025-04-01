@@ -411,13 +411,14 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       .map((model, index) => `  ${index + 1}. ${model.provider}:${model.modelId}${!model.enabled ? ' (disabled)' : ''}`)
       .join('\n');
     
+    // eslint-disable-next-line no-console
     console.log(modelList);
     
     // 6. Execute queries using QueryExecutor
     spinner.text = `Querying ${modelSelectionResult.models.length} model(s)...`;
     
     // Set up status update callback to update spinner
-    const onStatusUpdate = (modelKey: string, status: any) => {
+    const onStatusUpdate = (modelKey: string, status: { status: string; message?: string }): void => {
       if (status.status === 'running') {
         spinner.text = `Querying ${modelKey}...`;
       } else if (status.status === 'success') {
@@ -440,6 +441,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Display execution summary
     spinner.stop(); // Stop any active spinner
+    // eslint-disable-next-line no-console
     console.log(formatResultsSummary(queryResults, options));
     
     // 7. Write responses to files
@@ -447,7 +449,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     spinner.text = `Writing ${queryResults.responses.length} model responses to files...`;
     
     // Set up status update callback for file writing
-    const onFileWriteStatusUpdate = (fileDetail: any) => {
+    const onFileWriteStatusUpdate = (fileDetail: { status: string; filename: string; error?: string }): void => {
       if (fileDetail.status === 'success') {
         spinner.succeed(`Wrote file: ${fileDetail.filename}`);
         spinner.start(); // Restart spinner for next file
@@ -480,14 +482,17 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       
       // Show files with errors
       const failedFiles = fileOutputResult.files.filter(file => file.status === 'error');
+      // eslint-disable-next-line no-console
       console.log('\n' + styleHeader('❌ Files with errors:'));
       
       failedFiles.forEach(file => {
+        // eslint-disable-next-line no-console
         console.log(styleError(`  - ${file.filename}: ${file.error || 'Unknown error'}`));
       });
     }
     
     // Show output directory
+    // eslint-disable-next-line no-console
     console.log(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
     
     // 8. Format model responses for console output
@@ -501,15 +506,20 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Show execution metadata if requested
     if (options.includeMetadata) {
       // Display timing information
+      // eslint-disable-next-line no-console
       console.log('\n' + styleHeader('Execution timing:'));
       
       const totalTime = queryResults.timing.durationMs + fileOutputResult.timing.durationMs;
       
+      // eslint-disable-next-line no-console
       console.log(styleDim(`  Total API calls:    ${queryResults.timing.durationMs}ms`));
+      // eslint-disable-next-line no-console
       console.log(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
+      // eslint-disable-next-line no-console
       console.log(styleDim(`  Total execution:    ${totalTime}ms`));
       
       // Additional model-specific timing information
+      // eslint-disable-next-line no-console
       console.log('\n' + styleHeader('Model timing:'));
       
       Object.entries(queryResults.statuses)
@@ -517,6 +527,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
         .forEach(([model, status]) => {
           if (status.durationMs) {
             const statusIcon = status.status === 'success' ? '✅' : '❌';
+            // eslint-disable-next-line no-console
             console.log(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
           }
         });

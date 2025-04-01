@@ -344,10 +344,10 @@ addModelCommand
       const config = await loadConfig.loadConfig({ configPath });
       
       // Parse the options JSON if provided
-      let modelOptions;
+      let modelOptions: Record<string, unknown> | undefined;
       if (options.options) {
         try {
-          modelOptions = JSON.parse(options.options);
+          modelOptions = JSON.parse(options.options) as Record<string, unknown>;
         } catch (error) {
           throw new loadConfig.ConfigError(`Invalid options JSON: ${options.options}`);
         }
@@ -711,6 +711,7 @@ listGroupsCommand
           models: config.models,
           groups: config.groups || {}
         };
+        // eslint-disable-next-line no-console
         console.log(JSON.stringify(result, null, 2));
         return;
       }

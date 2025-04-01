@@ -236,9 +236,8 @@ describe('Output Formatter', () => {
       
       expect(result).toBe('TABLE_OUTPUT');
       
-      // Verify the Table constructor was called
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Table = require('cli-table3');
+      // Get the mocked Table constructor
+      const Table = jest.mocked(jest.requireMock('cli-table3'));
       expect(Table).toHaveBeenCalled();
     });
     
@@ -252,16 +251,14 @@ describe('Output Formatter', () => {
     it('should handle results with group information', () => {
       formatResultsTable(sampleResults);
       // Verify Table.push was called at least once
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Table = require('cli-table3');
+      const Table = jest.mocked(jest.requireMock('cli-table3'));
       const mockTable = Table.mock.results[0].value;
       expect(mockTable.push).toHaveBeenCalled();
     });
     
     it('should include group statistics when includeMetadata is true', () => {
       const options: FormatOptions = { includeMetadata: true };
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const Table = require('cli-table3');
+      const Table = jest.mocked(jest.requireMock('cli-table3'));
       
       // Mock toString to return just the table part
       Table.mockImplementation(() => ({

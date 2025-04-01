@@ -5,13 +5,21 @@ import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
 import * as llmRegistry from '../../core/llmRegistry';
-import { LLMProvider, LLMResponse, ModelConfig, SystemPrompt } from '../../core/types';
+import * as inputHandler from '../inputHandler';
+import * as modelSelector from '../modelSelector';
+import * as queryExecutor from '../queryExecutor';
+import * as outputHandler from '../outputHandler';
+import { LLMProvider, LLMResponse, ModelConfig } from '../../core/types';
 import fs from 'fs/promises';
 
 // Mock dependencies
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
 jest.mock('../../core/llmRegistry');
+jest.mock('../inputHandler');
+jest.mock('../modelSelector');
+jest.mock('../queryExecutor');
+jest.mock('../outputHandler');
 jest.mock('fs/promises');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
@@ -51,6 +59,75 @@ describe('runThinktank', () => {
     
     // Default mock implementations
     (fileReader.readFileContent as jest.Mock).mockResolvedValue('Test prompt');
+    
+    // Mock inputHandler
+    (inputHandler.processInput as jest.Mock).mockResolvedValue({
+      content: 'Test prompt',
+      sourceType: inputHandler.InputSourceType.FILE,
+      sourcePath: 'test-prompt.txt',
+      metadata: {
+        processingTimeMs: 5,
+        originalLength: 11,
+        finalLength: 11,
+        normalized: true
+      }
+    });
+    
+    // Mock outputHandler
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir');
+    (outputHandler.writeResponsesToFiles as jest.Mock).mockResolvedValue({
+      outputDirectory: '/fake/output/dir',
+      files: [{ status: 'success', filename: 'mock-mock-model.md' }],
+      succeededWrites: 1,
+      failedWrites: 0,
+      timing: { startTime: 1, endTime: 2, durationMs: 1 }
+    });
+    (outputHandler.formatForConsole as jest.Mock).mockReturnValue('Mock console output');
+    
+    // Mock modelSelector
+    (modelSelector.selectModels as jest.Mock).mockReturnValue({
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true,
+          options: { temperature: 0.7 }
+        }
+      ],
+      missingApiKeyModels: [],
+      disabledModels: [],
+      warnings: []
+    });
+    
+    // Mock queryExecutor
+    (queryExecutor.executeQueries as jest.Mock).mockResolvedValue({
+      responses: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          text: 'Mock response for prompt: Test prompt',
+          configKey: 'mock:mock-model',
+          metadata: {
+            usage: { total_tokens: 10 },
+            model: 'mock-model',
+            id: 'mock-response-id',
+          }
+        }
+      ],
+      statuses: {
+        'mock:mock-model': { 
+          status: 'success',
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        }
+      },
+      timing: {
+        startTime: 1,
+        endTime: 2,
+        durationMs: 1
+      }
+    });
     (configManager.loadConfig as jest.Mock).mockResolvedValue({
       models: [
         {
@@ -122,11 +199,17 @@ describe('runThinktank', () => {
 
     const result = await runThinktank(options);
     
-    // Verify outputs
-    expect(fileReader.readFileContent).toHaveBeenCalledWith('test-prompt.txt');
+    // Verify our component modules were called with correct parameters
+    expect(inputHandler.processInput).toHaveBeenCalledWith({ input: 'test-prompt.txt' });
     expect(configManager.loadConfig).toHaveBeenCalled();
-    expect(llmRegistry.getProvider).toHaveBeenCalledWith('mock');
-    expect(result).toContain('Mock response for prompt: Test prompt');
+    expect(modelSelector.selectModels).toHaveBeenCalled();
+    expect(queryExecutor.executeQueries).toHaveBeenCalled();
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalled();
+    expect(outputHandler.writeResponsesToFiles).toHaveBeenCalled();
+    expect(outputHandler.formatForConsole).toHaveBeenCalled();
+    
+    // Verify the result is the formatted output
+    expect(result).toBe('Mock console output');
   });
 
   it('should handle specified models correctly', async () => {
@@ -139,9 +222,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    expect(configManager.filterModels).toHaveBeenCalledWith(
+    // Verify we pass the models list to modelSelector
+    expect(modelSelector.selectModels).toHaveBeenCalledWith(
       expect.anything(),
-      'mock:mock-model'
+      expect.objectContaining({
+        models: ['mock:mock-model']
+      })
     );
   });
   
@@ -155,25 +241,16 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify we're handling specificModel correctly
-    expect(configManager.loadConfig).toHaveBeenCalled();
+    // Verify we pass the specificModel to modelSelector
+    expect(modelSelector.selectModels).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        specificModel: 'mock:mock-model'
+      })
+    );
   });
   
   it('should handle specific group name parameter correctly', async () => {
-    // Mock group-related functions
-    (configManager.getEnabledModelsFromGroups as jest.Mock).mockImplementation(
-      (_config, groupNames) => {
-        if (groupNames.includes('coding')) {
-          return [{
-            provider: 'mock',
-            modelId: 'mock-model',
-            enabled: true
-          }];
-        }
-        return [];
-      }
-    );
-    
     const options: RunOptions = {
       input: 'test-prompt.txt',
       groupName: 'coding',
@@ -183,32 +260,16 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify getEnabledModelsFromGroups was called with the group name
-    expect(configManager.getEnabledModelsFromGroups).toHaveBeenCalledWith(
+    // Verify we pass the groupName to modelSelector
+    expect(modelSelector.selectModels).toHaveBeenCalledWith(
       expect.anything(),
-      ['coding']
+      expect.objectContaining({
+        groupName: 'coding'
+      })
     );
   });
   
   it('should select system prompt from CLI override when provided', async () => {
-    // Save the original implementation
-    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider).generate;
-    
-    // Replace with a mock that captures the system prompt
-    let capturedSystemPrompt: SystemPrompt | undefined;
-    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
-      providerId: 'mock',
-      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
-        capturedSystemPrompt = systemPrompt;
-        return Promise.resolve({
-          provider: 'mock',
-          modelId,
-          text: 'Mock response',
-          metadata: {}
-        });
-      }
-    }));
-    
     const options: RunOptions = {
       input: 'test-prompt.txt',
       systemPrompt: 'Custom CLI system prompt override',
@@ -218,72 +279,103 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify system prompt from CLI was used
-    expect(capturedSystemPrompt).toBeDefined();
-    expect(capturedSystemPrompt?.text).toBe('Custom CLI system prompt override');
-    expect(capturedSystemPrompt?.metadata?.source).toBe('cli-override');
-    
-    // Restore the original implementation if needed
-    if (originalGenerate) {
-      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
-    }
+    // Verify system prompt from CLI was passed to QueryExecutor
+    expect(queryExecutor.executeQueries).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        systemPrompt: 'Custom CLI system prompt override'
+      })
+    );
   });
   
-  it('should select system prompt from model when available', async () => {
-    // Set up config with a model that has a system prompt
-    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
-      models: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true,
-          systemPrompt: {
-            text: 'Model-specific system prompt',
-            metadata: { source: 'model-config' }
-          }
-        }
-      ]
-    });
-    
-    // Save the original implementation
-    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
-    
-    // Replace with a mock that captures the system prompt
-    let capturedSystemPrompt: SystemPrompt | undefined;
-    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
-      providerId: 'mock',
-      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
-        capturedSystemPrompt = systemPrompt;
-        return Promise.resolve({
-          provider: 'mock',
-          modelId,
-          text: 'Mock response',
-          metadata: {}
-        });
-      }
-    }));
-    
+  it('should enable thinking for Claude models when requested', async () => {
     const options: RunOptions = {
       input: 'test-prompt.txt',
+      enableThinking: true,
       includeMetadata: false,
       useColors: false,
     };
 
     await runThinktank(options);
     
-    // Verify model-specific system prompt was used
-    expect(capturedSystemPrompt).toBeDefined();
-    expect(capturedSystemPrompt?.text).toBe('Model-specific system prompt');
-    
-    // Restore the original implementation if needed
-    if (originalGenerate) {
-      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
-    }
+    // Verify enableThinking was passed to QueryExecutor
+    expect(queryExecutor.executeQueries).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        enableThinking: true
+      })
+    );
   });
   
-  it('should select system prompt from specified group', async () => {
-    // Set up config with groups
-    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
+  it('should include metadata when specified', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: true,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify includeMetadata was passed to OutputHandler
+    expect(outputHandler.writeResponsesToFiles).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({
+        includeMetadata: true
+      })
+    );
+    
+    // Verify includeMetadata was passed to formatForConsole
+    expect(outputHandler.formatForConsole).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        includeMetadata: true
+      })
+    );
+  });
+  
+  it('should create output directory with custom path when provided', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      output: '/custom/output/path',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify output path was passed to createOutputDirectory
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        outputDirectory: '/custom/output/path'
+      })
+    );
+  });
+
+  it('should include thinking output when specified', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeThinking: true,
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify includeThinking was passed to formatForConsole
+    expect(outputHandler.formatForConsole).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        includeThinking: true
+      })
+    );
+  });
+
+  it('should handle missing API keys warning from ModelSelector', async () => {
+    // Set modelSelector to return some missing API key models
+    (modelSelector.selectModels as jest.Mock).mockReturnValueOnce({
       models: [
         {
           provider: 'mock',
@@ -291,266 +383,17 @@ describe('runThinktank', () => {
           enabled: true
         }
       ],
-      groups: {
-        coding: {
-          name: 'coding',
-          systemPrompt: {
-            text: 'You are a coding assistant.',
-            metadata: { source: 'group-config' }
-          },
-          models: [
-            {
-              provider: 'mock',
-              modelId: 'mock-model',
-              enabled: true
-            }
-          ]
-        }
-      }
-    });
-    
-    // Mock group-related functions
-    (configManager.getEnabledModelsFromGroups as jest.Mock).mockImplementation(
-      (_config, groupNames) => {
-        if (groupNames.includes('coding')) {
-          return [{
-            provider: 'mock',
-            modelId: 'mock-model',
-            enabled: true
-          }];
-        }
-        return [];
-      }
-    );
-    
-    // Save the original implementation
-    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
-    
-    // Replace with a mock that captures the system prompt
-    let capturedSystemPrompt: SystemPrompt | undefined;
-    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
-      providerId: 'mock',
-      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
-        capturedSystemPrompt = systemPrompt;
-        return Promise.resolve({
-          provider: 'mock',
-          modelId,
-          text: 'Mock response',
-          metadata: {}
-        });
-      }
-    }));
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      groupName: 'coding',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    await runThinktank(options);
-    
-    // Verify group-specific system prompt was used
-    expect(capturedSystemPrompt).toBeDefined();
-    expect(capturedSystemPrompt?.text).toBe('You are a coding assistant.');
-    
-    // Restore the original implementation if needed
-    if (originalGenerate) {
-      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
-    }
-  });
-  
-  it('should use default system prompt when no others are available', async () => {
-    // Set up config with no system prompts
-    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
-      models: [
+      missingApiKeyModels: [
         {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true
-          // No systemPrompt property
-        }
-      ],
-      groups: {
-        // No groups defined
-      }
-    });
-    
-    // Mock findModelGroup to return undefined (no group found)
-    (configManager.findModelGroup as jest.Mock).mockReturnValue(undefined);
-    
-    // Save the original implementation
-    const originalGenerate = (llmRegistry.getProvider('mock') as LLMProvider)?.generate;
-    
-    // Replace with a mock that captures the system prompt
-    let capturedSystemPrompt: SystemPrompt | undefined;
-    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => ({
-      providerId: 'mock',
-      generate: (_prompt: string, modelId: string, _options: unknown, systemPrompt?: SystemPrompt) => {
-        capturedSystemPrompt = systemPrompt;
-        return Promise.resolve({
-          provider: 'mock',
-          modelId,
-          text: 'Mock response',
-          metadata: {}
-        });
-      }
-    }));
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    await runThinktank(options);
-    
-    // Verify default system prompt was used
-    expect(capturedSystemPrompt).toBeDefined();
-    expect(capturedSystemPrompt?.text).toContain('You are a helpful, accurate');
-    expect(capturedSystemPrompt?.metadata?.source).toBe('default-fallback');
-    
-    // Restore the original implementation if needed
-    if (originalGenerate) {
-      (llmRegistry.getProvider('mock') as LLMProvider).generate = originalGenerate;
-    }
-  });
-
-  it('should create output directory and write files when output path is provided', async () => {
-    // Reset mocks to track calls
-    (fs.mkdir as jest.Mock).mockClear();
-    (fs.writeFile as jest.Mock).mockClear();
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      output: 'output-dir',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    await runThinktank(options);
-    
-    // Verify directory creation was attempted
-    expect(fs.mkdir).toHaveBeenCalled();
-    
-    // Verify file write was attempted for the model
-    expect(fs.writeFile).toHaveBeenCalled();
-    
-    // Verify content format and path
-    const writeFileCalls = (fs.writeFile as jest.Mock).mock.calls;
-    expect(writeFileCalls.length).toBeGreaterThan(0);
-    
-    // Check that the content has Markdown format
-    const [_, content] = writeFileCalls[0];
-    expect(typeof content).toBe('string');
-    expect(content).toContain('# mock:mock-model');
-    expect(content).toContain('## Response');
-  });
-
-  it('should handle missing API keys gracefully', async () => {
-    (configManager.validateModelApiKeys as jest.Mock).mockReturnValue({
-      missingKeyModels: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true,
-        }
-      ]
-    });
-
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    const result = await runThinktank(options);
-    
-    expect(result).toContain('No models with valid API keys available');
-  });
-
-  it('should handle no enabled models gracefully', async () => {
-    (configManager.getEnabledModels as jest.Mock).mockReturnValue([]);
-
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    const result = await runThinktank(options);
-    
-    expect(result).toContain('No enabled models found in configuration');
-  });
-  
-  it('should throw error for invalid group name', async () => {
-    // Set up a custom mock for this test to simulate group not found
-    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
-      models: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
+          provider: 'missing',
+          modelId: 'missing-model',
           enabled: true
         }
       ],
-      groups: {
-        // Only has default group, not the nonexistent-group we'll request
-        default: {
-          name: 'default',
-          systemPrompt: { text: 'You are a helpful assistant.' },
-          models: []
-        }
-      }
+      disabledModels: [],
+      warnings: ['Missing API keys for models: missing:missing-model']
     });
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      groupName: 'nonexistent-group',
-      includeMetadata: false,
-      useColors: false,
-    };
 
-    // Should throw an error
-    await expect(runThinktank(options)).rejects.toThrow(
-      'Group "nonexistent-group" not found in configuration'
-    );
-  });
-  
-  it('should throw error for invalid specific model', async () => {
-    // Set up a custom mock for this test to simulate model not found
-    (configManager.loadConfig as jest.Mock).mockResolvedValueOnce({
-      models: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true
-        }
-      ]
-    });
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      specificModel: 'invalid:model',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    // Should throw an error
-    await expect(runThinktank(options)).rejects.toThrow(
-      'Model "invalid:model" not found in configuration'
-    );
-  });
-
-  it('should handle provider not found gracefully', async () => {
-    // Mock getProvider to return null for missing provider
-    (llmRegistry.getProvider as jest.Mock).mockReturnValue(null);
-    
-    // Mock getProviderIds for the dynamic import in error handling
-    jest.mock('../../organisms/llmRegistry', () => ({
-      getProvider: jest.fn().mockReturnValue(null),
-      getProviderIds: jest.fn().mockReturnValue(['openai', 'anthropic'])
-    }), { virtual: true });
-    
     const options: RunOptions = {
       input: 'test-prompt.txt',
       includeMetadata: false,
@@ -559,16 +402,14 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Test passes if no exception is thrown
+    // Verify we still proceed with the available models
+    expect(queryExecutor.executeQueries).toHaveBeenCalled();
   });
 
-  it('should handle LLM errors gracefully', async () => {
-    // Mock provider that throws an error
-    (llmRegistry.getProvider as jest.Mock).mockImplementation(() => {
-      return {
-        providerId: 'error',
-        generate: () => Promise.reject(new Error('API error'))
-      };
+  it('should throw error from ModelSelector when no models available', async () => {
+    // Mock ModelSelector to throw an error
+    (modelSelector.selectModels as jest.Mock).mockImplementationOnce(() => {
+      throw new Error('No enabled models found');
     });
 
     const options: RunOptions = {
@@ -577,13 +418,76 @@ describe('runThinktank', () => {
       useColors: false,
     };
 
-    const result = await runThinktank(options);
+    // Should propagate the error as a ThinktankError
+    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
+  });
+  
+  it('should handle API execution errors from QueryExecutor', async () => {
+    // Mock QueryExecutor to return a response with an error
+    (queryExecutor.executeQueries as jest.Mock).mockResolvedValueOnce({
+      responses: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          text: '',
+          error: 'API call failed',
+          configKey: 'mock:mock-model'
+        }
+      ],
+      statuses: {
+        'mock:mock-model': { 
+          status: 'error',
+          message: 'API call failed',
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        }
+      },
+      timing: {
+        startTime: 1,
+        endTime: 2,
+        durationMs: 1
+      }
+    });
+
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
     
-    expect(result).toContain('API error');
+    // Should still complete and call formatForConsole
+    expect(outputHandler.formatForConsole).toHaveBeenCalled();
+  });
+
+  it('should handle file write errors from OutputHandler', async () => {
+    // Mock OutputHandler to return a result with failed writes
+    (outputHandler.writeResponsesToFiles as jest.Mock).mockResolvedValueOnce({
+      outputDirectory: '/fake/output/dir',
+      files: [{ status: 'error', filename: 'mock-mock-model.md', error: 'Write error' }],
+      succeededWrites: 0,
+      failedWrites: 1,
+      timing: { startTime: 1, endTime: 2, durationMs: 1 }
+    });
+
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should still complete without throwing
+    await runThinktank(options);
+    
+    // Should still format the console output
+    expect(outputHandler.formatForConsole).toHaveBeenCalled();
   });
 
   it('should throw ThinktankError for file read errors', async () => {
-    (fileReader.readFileContent as jest.Mock).mockRejectedValue(
+    // Mock InputHandler to throw an error
+    (inputHandler.processInput as jest.Mock).mockRejectedValue(
       new Error('File not found')
     );
 
