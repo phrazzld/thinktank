@@ -23,7 +23,6 @@ import {
   styleError, 
   styleWarning, 
   styleInfo,
-  divider, 
   formatError, 
   formatErrorWithTip,
   errorCategories,
@@ -202,46 +201,9 @@ function getElapsedTime(startTime: number): number {
  * @param modelStatuses - Current status of each model
  * @param startTime - Start time of API calls
  * @param currentModel - Current model being processed (optional)
+ * @param options - The RunOptions for context
  * @returns Formatted status string
  */
-/**
- * Formats a group header for display in the console
- * 
- * @param groupName - The name of the group
- * @param models - The models in the group
- * @param description - Optional group description
- * @returns Formatted header string for console output
- */
-function formatGroupHeader(
-  groupName: string,
-  models: ModelConfig[],
-  description?: string
-): string {
-  // Use styling functions imported at the top of the file
-  
-  const enabledModels = models.filter(m => m.enabled);
-  
-  // Create header lines
-  const lines: string[] = [];
-  
-  // Add a blank line for separation
-  lines.push('');
-  
-  // Format the main header with group name and model count
-  const header = `Group: ${groupName} (${enabledModels.length} model${enabledModels.length === 1 ? '' : 's'})`;
-  lines.push(styleHeader(header));
-  
-  // Add description if available
-  if (description) {
-    lines.push(styleDim(description));
-  }
-  
-  // Add divider
-  lines.push(divider(80));
-  
-  // Return the formatted header
-  return lines.join('\n');
-}
 
 /**
  * Formats a string for the file writing status
@@ -381,9 +343,20 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     timings.inputRead = getElapsedTime(startTimeInput);
     spinner.text = `Reading input file... (${timings.inputRead}ms)`;
     
-    // 2.5 Create output directory - this is now always done
-    // Generate the output directory path with timestamped subdirectory
-    outputDirectoryPath = generateOutputDirectoryPath(options.output);
+    // 2.5 Create output directory with simplified naming
+    // Generate the output directory path based on CLI mode (specific model or group)
+    let directoryIdentifier: string | undefined;
+    
+    if (options.specificModel) {
+      // Use the specific model as the directory identifier
+      directoryIdentifier = options.specificModel;
+    } else if (options.groupName) {
+      // Use the group name as the directory identifier
+      directoryIdentifier = options.groupName;
+    }
+    
+    // Generate output directory path with the identifier
+    outputDirectoryPath = generateOutputDirectoryPath(options.output, directoryIdentifier);
     
     spinner.text = `Creating output directory: ${outputDirectoryPath}`;
     const startTimeDirectory = getCurrentTime();
@@ -592,22 +565,104 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 5. Prepare API calls
     spinner.text = `Preparing to query ${models.length} model${models.length === 1 ? '' : 's'}...`;
     
-    // List models being used
-    const modelsHeader = styleInfo(`Models to be queried (${models.length}):`);
-    spinner.info(modelsHeader);
+    // Create mode-specific header for the models list
+    let headerText: string;
+    if (options.specificModel) {
+      headerText = `Using model ${styleInfo(options.specificModel)}:`;
+    } else if (options.groupName) {
+      headerText = `Models in group ${styleInfo(options.groupName)} (${models.length}):`;
+    } else if (options.groups && options.groups.length > 0) {
+      headerText = `Models in selected groups (${models.length} total):`;
+    } else {
+      headerText = `Models to be queried (${models.length}):`;
+    }
     
-    // Display each model on its own line
-    const formattedModelList = models.map((model, index) => {
-      const configKey = getModelConfigKey(model);
+    // Display header
+    spinner.info(styleInfo(headerText));
+    
+    // Group models by their group for better display
+    const modelsByGroup = new Map<string, ModelConfig[]>();
+    
+    // Organize models by group
+    models.forEach(model => {
       const groupInfo = findModelGroup(config, model);
       const groupName = groupInfo?.groupName || 'default';
       
-      // Format with bullet points and group information
-      return `  ${index + 1}. ${configKey}${groupName !== 'default' ? ` (${groupName} group)` : ''}`;
-    }).join('\n');
+      if (!modelsByGroup.has(groupName)) {
+        modelsByGroup.set(groupName, []);
+      }
+      
+      modelsByGroup.get(groupName)!.push(model);
+    });
     
-    // eslint-disable-next-line no-console
-    console.log(formattedModelList);
+    // Calculate API key status for all models
+    const missingApiKeyModels = new Set<string>();
+    missingKeyModels.forEach(model => {
+      missingApiKeyModels.add(`${model.provider}:${model.modelId}`);
+    });
+    
+    // Format and display models based on CLI mode
+    const allLines: string[] = [];
+    
+    // If we have multiple groups, group the models in the display
+    if (modelsByGroup.size > 1 && !options.specificModel) {
+      // Display models grouped by their group
+      let modelIndex = 1;
+      
+      for (const [groupName, groupModels] of modelsByGroup.entries()) {
+        // Add group header with description if available
+        const group = config.groups?.[groupName];
+        const groupIcon = groupName === 'default' ? '⚪' : '🔶';
+        const groupDescription = group?.description ? ` - ${styleDim(group.description)}` : '';
+        
+        allLines.push(`\n  ${groupIcon} ${styleInfo(groupName)} group${groupDescription}:`);
+        
+        // Add models in this group
+        groupModels.forEach(model => {
+          const configKey = getModelConfigKey(model);
+          const icon = missingApiKeyModels.has(configKey) ? '❌' : '✅';
+          const statusIcon = model.enabled ? icon : '⚫';
+          
+          // Format model line with status indicators
+          allLines.push(`    ${modelIndex}. ${statusIcon} ${configKey}${!model.enabled ? styleDim(' (disabled)') : ''}${missingApiKeyModels.has(configKey) ? styleError(' (missing API key)') : ''}`);
+          modelIndex++;
+        });
+      }
+    } else {
+      // Flat list of models (single group or specificModel mode)
+      models.forEach((model, index) => {
+        const configKey = getModelConfigKey(model);
+        const groupInfo = findModelGroup(config, model);
+        const groupName = groupInfo?.groupName || 'default';
+        const showGroup = !options.specificModel && !options.groupName && groupName !== 'default';
+        
+        // Determine status icon based on API key and enabled status
+        const icon = missingApiKeyModels.has(configKey) ? '❌' : '✅';
+        const statusIcon = model.enabled ? icon : '⚫';
+        
+        // Format with status icons and relevant information
+        allLines.push(`  ${index + 1}. ${statusIcon} ${configKey}${showGroup ? ` (${styleInfo(groupName)} group)` : ''}${!model.enabled ? styleDim(' (disabled)') : ''}${missingApiKeyModels.has(configKey) ? styleError(' (missing API key)') : ''}`);
+      });
+    }
+    
+    const formattedModelList = allLines.join('\n');
+    
+    // Add a legend if needed
+    if (models.some(m => !m.enabled) || missingApiKeyModels.size > 0) {
+      const legendItems = [];
+      if (models.some(m => !m.enabled)) {
+        legendItems.push(`${styleDim('⚫ = disabled')}`);
+      }
+      if (missingApiKeyModels.size > 0) {
+        legendItems.push(`${styleError('❌ = missing API key')}`);
+      }
+      const legend = `\n  Legend: ${legendItems.join(', ')}`;
+      // eslint-disable-next-line no-console
+      console.log(formattedModelList + legend);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(formattedModelList);
+    }
     
     // Initialize status tracking
     models.forEach(model => {
@@ -615,44 +670,30 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       modelStatuses[configKey] = { status: 'pending' };
     });
     
-    // Group models by their group for display and processing
-    const modelsByGroup = new Map<string, { models: ModelConfig[], description?: string }>();
+    // Group models by their group for processing
+    const modelsByGroupForProcessing = new Map<string, { models: ModelConfig[], description?: string }>();
     
-    // Function to add a model to its group
-    const addModelToGroup = (model: ModelConfig): void => {
-      // Find which group this model belongs to
-      const groupInfo = findModelGroup(config, model);
-      const groupName = groupInfo?.groupName || 'default';
-      
+    // Use the existing groups mapping we created for display
+    for (const [groupName, groupModels] of modelsByGroup.entries()) {
       // Get group description if available
       let description: string | undefined;
       if (groupName !== 'default' && config.groups && config.groups[groupName]) {
         description = config.groups[groupName].description;
       }
       
-      // Initialize group if not already in the map
-      if (!modelsByGroup.has(groupName)) {
-        modelsByGroup.set(groupName, { models: [], description });
-      }
-      
-      // Add model to its group
-      modelsByGroup.get(groupName)!.models.push(model);
-    };
-    
-    // Organize models by group
-    models.forEach(addModelToGroup);
+      // Initialize group for processing
+      modelsByGroupForProcessing.set(groupName, { models: groupModels, description });
+    }
     
     // Print headers and organize models by group
     const callPromises: Array<Promise<LLMResponse & { configKey: string }>> = [];
     
     // Process each group
-    for (const [groupName, groupData] of modelsByGroup.entries()) {
-      // Display group header
-      if (modelsByGroup.size > 1 || groupName !== 'default') {
-        // Log the group header to the console
-        // eslint-disable-next-line no-console
-        console.log(formatGroupHeader(groupName, groupData.models, groupData.description));
-        
+    for (const [groupName, groupData] of modelsByGroupForProcessing.entries()) {
+      // Display group header if it wasn't already shown in the model list display
+      if ((modelsByGroupForProcessing.size > 1 || groupName !== 'default') && 
+          !options.specificModel && 
+          (options.groupName === undefined || options.groupName === groupName)) {
         // Update spinner with group info
         spinner.text = `Processing group: ${groupName} (${groupData.models.length} models)`;
       }
@@ -912,40 +953,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     const fileDetails: FileDetail[] = [];
     
-    // First, create all needed group directories
-    const groupDirs = new Set<string>();
-    
-    results.forEach(result => {
-      if (result.groupInfo?.name && result.groupInfo.name !== 'default') {
-        groupDirs.add(sanitizeFilename(result.groupInfo.name));
-      }
-    });
-    
-    // Create all group directories concurrently
-    if (groupDirs.size > 0) {
-      spinner.text = `Creating group directories (${groupDirs.size}): ${Array.from(groupDirs).join(', ')}...`;
-      const createDirPromises = Array.from(groupDirs).map(async (groupName) => {
-        const groupDir = path.join(outputDirectoryPath!, groupName);
-        try {
-          await fs.mkdir(groupDir, { recursive: true });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          const errorObj = error instanceof Error ? error : new Error(String(error));
-          const category = categorizeError(errorObj);
-          const tip = getTroubleshootingTip(errorObj, category) || 
-            'Check permissions and ensure parent directories exist';
-          
-          // eslint-disable-next-line no-console
-          console.warn(formatError(
-            `Could not create group directory ${groupDir}: ${errorMessage}`, 
-            category, 
-            tip
-          ));
-        }
-      });
-      
-      await Promise.all(createDirPromises);
-    }
+    // Simplified directory structure: all files go in the main output directory
+    // No need to create group subdirectories
     
     // Process each result
     results.forEach((result) => {
@@ -955,16 +964,17 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       let filename: string;
       let filePath: string;
       
-      // Format the filename based on whether it belongs to a group
-      if (result.groupInfo?.name && result.groupInfo.name !== 'default') {
+      // Format the filename to include group information when relevant
+      if (result.groupInfo?.name && result.groupInfo.name !== 'default' && !options.specificModel) {
+        // Include group in filename but don't create subdirectories
         const sanitizedGroupName = sanitizeFilename(result.groupInfo.name);
-        // When in group subdirectory, no need to prefix filename with group
-        filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
-        filePath = path.join(outputDirectoryPath!, sanitizedGroupName, filename);
+        filename = `${sanitizedGroupName}-${sanitizedProvider}-${sanitizedModelId}.md`;
       } else {
         filename = `${sanitizedProvider}-${sanitizedModelId}.md`;
-        filePath = path.join(outputDirectoryPath!, filename);
       }
+      
+      // All files go directly in the output directory
+      filePath = path.join(outputDirectoryPath!, filename);
       
       // Format the response as Markdown
       const markdownContent = formatResponseAsMarkdown(result, options.includeMetadata);
@@ -972,9 +982,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Add to tracking array
       const fileDetail: FileDetail = {
         model: result.configKey,
-        filename: result.groupInfo?.name && result.groupInfo.name !== 'default' 
-          ? `${result.groupInfo.name}/${filename}` // Include group in display path
-          : filename,
+        filename: filename, // Just use the filename directly
         status: 'pending'
       };
       fileDetails.push(fileDetail);
@@ -1021,13 +1029,6 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     await Promise.all(fileWritePromises);
     timings.fileWrites = getElapsedTime(startTimeFileWrites);
     
-    // Group results by group for reporting
-    const groupedResults = new Map<string, number>();
-    results.forEach(result => {
-      const groupName = result.groupInfo?.name || 'default';
-      groupedResults.set(groupName, (groupedResults.get(groupName) || 0) + 1);
-    });
-    
     // Get the file writing time in a readable format
     const fileWriteTime = timings.fileWrites > 1000 
       ? `${(timings.fileWrites / 1000).toFixed(2)}s` 
@@ -1048,22 +1049,26 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // eslint-disable-next-line no-console
       console.log(`\n${styleInfo(`📁 Output directory: ${outputDirectoryPath}`)}`);
       
-      // If using groups, show group summary
-      if (groupedResults.size > 1 || !groupedResults.has('default')) {
-        // eslint-disable-next-line no-console
-        console.log('\n' + styleHeader('📊 Group summary:'));
+      // Show models summary
+      // eslint-disable-next-line no-console
+      console.log('\n' + styleHeader('📊 Response summary:'));
+      
+      // Display model count
+      // eslint-disable-next-line no-console
+      console.log(styleInfo(`  📝 ${succeededWrites} model response${succeededWrites === 1 ? '' : 's'} saved`));
+      
+      // Show model list with simplified display
+      results.forEach((result, index) => {
+        const configKey = result.configKey;
+        const groupName = result.groupInfo?.name || 'default';
         
-        for (const [group, count] of groupedResults.entries()) {
-          const groupIcon = group === 'default' ? '⚪' : '🔶';
-          if (group === 'default') {
-            // eslint-disable-next-line no-console
-            console.log(styleDim(`  ${groupIcon} Default group: ${count} model${count === 1 ? '' : 's'}`));
-          } else {
-            // eslint-disable-next-line no-console
-            console.log(styleInfo(`  ${groupIcon} ${group} group: ${count} model${count === 1 ? '' : 's'}`));
-          }
-        }
-      }
+        const modelIcon = '🤖';
+        const groupText = groupName !== 'default' ? ` (${groupName} group)` : '';
+        const hasError = result.error ? ' ❌' : ' ✅';
+        
+        // eslint-disable-next-line no-console
+        console.log(`  ${index + 1}. ${modelIcon} ${configKey}${groupText}${hasError}`);
+      });
     } else {
       // Some files failed to write
       spinner.warn(styleWarning(`Completed with issues: ${succeededWrites} successful, ${failedWrites} failed writes (${fileWriteTime})`));

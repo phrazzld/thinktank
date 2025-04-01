@@ -66,12 +66,12 @@
   - Dependencies: Model Selection Logic
   - Priority: Medium
 
-- [ ] Create Model List Display
+- [x] Create Model List Display
   - Description: Display a numbered list of models being processed
   - Dependencies: Model Selection Logic
   - Priority: Medium
 
-- [ ] Simplify Output Directory Structure
+- [x] Simplify Output Directory Structure
   - Description: Create a more intuitive output directory structure based on group or model name
   - Dependencies: Model Selection Logic
   - Priority: Medium

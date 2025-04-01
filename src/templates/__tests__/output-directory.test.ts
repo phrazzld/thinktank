@@ -68,8 +68,8 @@ describe('Output Directory Feature', () => {
     });
     
     // Mock helper functions
-    jest.spyOn(helpers, 'generateRunDirectoryName').mockReturnValue(mockRunDirectoryName);
-    jest.spyOn(helpers, 'resolveOutputDirectory').mockReturnValue(mockFullOutputDir);
+    // Mock the new generateOutputDirectoryPath function
+    jest.spyOn(helpers, 'generateOutputDirectoryPath').mockReturnValue(mockFullOutputDir);
     jest.spyOn(helpers, 'sanitizeFilename').mockImplementation((input) => {
       // Simple sanitize implementation
       return input.replace(/[/\\:*?"<>|]/g, '_').replace(/\s+/g, '_');

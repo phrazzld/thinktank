@@ -163,21 +163,36 @@ describe('Helper Functions', () => {
   });
   
   describe('generateOutputDirectoryPath', () => {
-    it('should append a timestamped subdirectory to the output path', () => {
+    it('should append a timestamped run directory to the output path', () => {
       const outputPath = generateOutputDirectoryPath('/custom/path');
-      // Match the expected pattern rather than an exact string
-      expect(outputPath).toMatch(/^\/custom\/path\/thinktank_run_\d{8}_\d{6}_\d{3}$/);
+      // Match the expected pattern with new format: run-YYYYMMDD-HHmmss
+      expect(outputPath).toMatch(/^\/custom\/path\/run-\d{8}-\d{6}$/);
     });
     
-    it('should include a timestamped directory in the path', () => {
-      // Capture the timestamp part from the run directory
-      const path1 = generateOutputDirectoryPath('/test/option');
-      const timestampMatch = path1.match(/thinktank_run_(\d{8}_\d{6}_\d{3})$/);
+    it('should include specified identifier in the directory name when provided', () => {
+      const outputPath = generateOutputDirectoryPath('/custom/path', 'test-group');
+      // Check that identifier is included in path
+      expect(outputPath).toContain('test-group-');
+      expect(outputPath).toMatch(/^\/custom\/path\/test-group-\d{8}-\d{6}$/);
+    });
+    
+    it('should replace colons with hyphens for provider:model format', () => {
+      const outputPath = generateOutputDirectoryPath('/custom/path', 'openai:gpt-4o');
+      // Check that colon is replaced with hyphen
+      expect(outputPath).toContain('openai-gpt-4o-');
+      expect(outputPath).not.toContain(':');
+    });
+    
+    it('should use thinktank-output as default directory when no output is specified', () => {
+      // Mock path.resolve to avoid system-specific paths
+      const originalResolve = path.resolve;
+      path.resolve = jest.fn((...args) => args.join('/'));
       
-      expect(timestampMatch).not.toBeNull();
-      if (timestampMatch) {
-        const timestamp = timestampMatch[1];
-        expect(timestamp).toMatch(/^\d{8}_\d{6}_\d{3}$/);
+      try {
+        const outputPath = generateOutputDirectoryPath();
+        expect(outputPath).toContain('thinktank-output/run-');
+      } finally {
+        path.resolve = originalResolve;
       }
     });
   });
