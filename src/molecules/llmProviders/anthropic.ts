@@ -134,14 +134,19 @@ export class AnthropicProvider implements LLMProvider {
       // Get the response based on whether thinking is enabled
       let response;
       if (options?.thinking) {
-        const thinkingOpt = options.thinking as ThinkingOptions;
-        response = await client.messages.create({
+        const thinkingOpt = options.thinking as unknown as ThinkingOptions;
+        
+        // Force temperature to 1 when thinking is enabled - Anthropic API requirement
+        const params = {
           ...baseParams,
+          temperature: 1, // Override any other temperature value
           thinking: {
             type: 'enabled' as const,
             budget_tokens: thinkingOpt.budget_tokens
           }
-        });
+        };
+        
+        response = await client.messages.create(params);
       } else {
         response = await client.messages.create(baseParams);
       }
@@ -156,7 +161,8 @@ export class AnthropicProvider implements LLMProvider {
       }
       
       // Extract thinking output if available
-      const responseObj = response as any; // Use any to handle the thinking property
+      // Use unknown and type assertion for safer type handling
+      const responseObj = response as unknown as { thinking?: unknown };
       
       // Return formatted response
       return {

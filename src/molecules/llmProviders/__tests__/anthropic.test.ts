@@ -175,6 +175,28 @@ describe('Anthropic Provider', () => {
       });
     });
     
+    it('should force temperature to 1 when thinking is enabled', async () => {
+      const options: ModelOptions = {
+        temperature: 0.5, // This should be overridden
+        maxTokens: 500,
+        thinking: {
+          type: 'enabled',
+          budget_tokens: 16000
+        }
+      };
+      
+      await provider.generate('Test prompt', 'claude-3-opus-20240229', options);
+      
+      // Verify temperature is set to exactly 1 regardless of user's setting
+      expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+        temperature: 1, // Should be exactly 1 as required by Anthropic API
+        thinking: {
+          type: 'enabled',
+          budget_tokens: 16000
+        }
+      }));
+    });
+    
     it('should return a properly formatted LLMResponse', async () => {
       const response = await provider.generate('Test prompt', 'claude-3-opus-20240229');
       

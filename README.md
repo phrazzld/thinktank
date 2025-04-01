@@ -542,6 +542,28 @@ To display the thinking output, use the `--show-thinking` flag:
 thinktank prompt.txt thinking --show-thinking
 ```
 
+### Important Temperature Limitation
+
+**When using Claude's thinking capability, the temperature will automatically be set to 1, regardless of what value you configured.** This is a technical requirement from Anthropic's API.
+
+For example, if you have:
+```json
+{
+  "provider": "anthropic",
+  "modelId": "claude-3-7-sonnet-20250219",
+  "enabled": true,
+  "options": {
+    "temperature": 0.7,
+    "thinking": {
+      "type": "enabled",
+      "budget_tokens": 16000
+    }
+  }
+}
+```
+
+The temperature will be forced to 1 when making the API request, regardless of the 0.7 value specified.
+
 ### When to Use Thinking
 
 Claude's thinking capability is most valuable for:

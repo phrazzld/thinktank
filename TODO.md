@@ -175,24 +175,21 @@ models.forEach((model, i) => {
 console.log(`${colors.dim('└')} Complete.`);
 ```
 
-## Issue 4: Temperature validation error with Claude's thinking capability
+## ✅ Issue 4: Temperature validation error with Claude's thinking capability (FIXED)
 **Problem:** Claude returned an error about temperature validation when thinking is enabled.
 
 **Root Cause:**  
-According to the error message, Claude requires temperature to be set to 1 when thinking is enabled:
-```
-"temperature` may only be set to 1 when thinking is enabled"
-```
+Anthropic's API requires that the temperature parameter must be set to exactly 1 when using Claude's thinking capability. Our implementation was passing along the user-configured temperature value, which caused an API error when thinking was enabled.
 
 **Solution:**
-1. Fix the anthropic.ts provider to handle the temperature requirement:
+1. Fixed the anthropic.ts provider to force temperature to 1 when thinking is enabled:
 ```typescript
 // In src/molecules/llmProviders/anthropic.ts
 // When thinking is enabled:
 if (options?.thinking) {
-  const thinkingOpt = options.thinking as ThinkingOptions;
+  const thinkingOpt = options.thinking as unknown as ThinkingOptions;
   
-  // Force temperature to 1 when thinking is enabled
+  // Force temperature to 1 when thinking is enabled - Anthropic API requirement
   const params = {
     ...baseParams,
     temperature: 1, // Override any other temperature value
@@ -209,11 +206,54 @@ if (options?.thinking) {
 }
 ```
 
-2. Add a warning in the documentation about this limitation:
+2. Added documentation about this limitation in the README.md:
 ```markdown
-## Claude's Thinking Capability
+### Important Temperature Limitation
 
-**Important:** When using Claude's thinking capability, the temperature will automatically be set to 1, regardless of what value you configured. This is a requirement from Anthropic's API.
+**When using Claude's thinking capability, the temperature will automatically be set to 1, regardless of what value you configured.** This is a technical requirement from Anthropic's API.
+
+For example, if you have:
+```json
+{
+  "provider": "anthropic",
+  "modelId": "claude-3-7-sonnet-20250219",
+  "enabled": true,
+  "options": {
+    "temperature": 0.7,
+    "thinking": {
+      "type": "enabled",
+      "budget_tokens": 16000
+    }
+  }
+}
+```
+
+The temperature will be forced to 1 when making the API request, regardless of the 0.7 value specified.
+```
+
+3. Added a test to ensure the behavior works correctly:
+```typescript
+it('should force temperature to 1 when thinking is enabled', async () => {
+  const options: ModelOptions = {
+    temperature: 0.5, // This should be overridden
+    maxTokens: 500,
+    thinking: {
+      type: 'enabled',
+      budget_tokens: 16000
+    }
+  };
+  
+  await provider.generate('Test prompt', 'claude-3-opus-20240229', options);
+  
+  // Verify temperature is set to exactly 1 regardless of user's setting
+  expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({
+    temperature: 1, // Should be exactly 1 as required by Anthropic API
+    thinking: {
+      type: 'enabled',
+      budget_tokens: 16000
+    }
+  }));
+})
 ```
 
 ## Implementation Plan
