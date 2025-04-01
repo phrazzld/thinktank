@@ -366,6 +366,14 @@ describe('Config Manager', () => {
             models: [
               { provider: 'p4', modelId: 'm4', enabled: true },
             ]
+          },
+          default: {
+            name: 'default',
+            systemPrompt: { text: 'You are a helpful assistant.' },
+            models: [
+              { provider: 'p1', modelId: 'm1', enabled: true },
+              { provider: 'p3', modelId: 'm3', enabled: true },
+            ]
           }
         }
       };
@@ -377,7 +385,7 @@ describe('Config Manager', () => {
       expect(groupModels[1].provider).toBe('p3');
     });
     
-    it('should return models from default group when group does not exist', () => {
+    it('should return empty array when group does not exist', () => {
       const config: AppConfig = {
         models: [
           { provider: 'p1', modelId: 'm1', enabled: true },
@@ -396,8 +404,7 @@ describe('Config Manager', () => {
       
       const groupModels = getEnabledGroupModels(config, 'nonexistent');
       
-      expect(groupModels).toHaveLength(1);
-      expect(groupModels[0].provider).toBe('p1');
+      expect(groupModels).toHaveLength(0);
     });
   });
 
@@ -477,8 +484,7 @@ describe('Config Manager', () => {
       
       const groupModels = getEnabledModelsFromGroups(config, ['nonexistent', 'coding']);
       
-      expect(groupModels).toHaveLength(2);
-      expect(groupModels.some(m => m.provider === 'p1')).toBe(true);
+      expect(groupModels).toHaveLength(1);
       expect(groupModels.some(m => m.provider === 'p3')).toBe(true);
     });
   });

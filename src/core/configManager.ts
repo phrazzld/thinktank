@@ -80,7 +80,7 @@ export type ValidatedAppConfig = z.infer<typeof appConfigSchema>;
  * @throws {ConfigError} If configuration cannot be loaded or is invalid
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppConfig> {
-  const { configPath, mergeWithDefaults = true } = options;
+  const { configPath, mergeWithDefaults = false } = options;
   
   try {
     let rawConfig: AppConfig;
@@ -99,7 +99,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
       rawConfig = await tryLoadConfigFromPaths(CONFIG_SEARCH_PATHS);
     }
     
-    // Merge with defaults if requested
+    // Merge with defaults if requested (now off by default)
     const config = mergeWithDefaults 
       ? mergeConfigs(DEFAULT_CONFIG, rawConfig) 
       : rawConfig;
@@ -185,8 +185,21 @@ async function tryLoadConfigFromPaths(paths: string[]): Promise<AppConfig> {
     }
   }
   
-  // If no config is found, use default
-  return structuredClone(DEFAULT_CONFIG);
+  // If no config is found, return an empty config that will pass validation
+  // This allows the user to start with a minimal config
+  return {
+    models: [],
+    groups: {
+      default: {
+        name: 'default',
+        systemPrompt: {
+          text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
+        },
+        models: [],
+        description: 'Default model group'
+      }
+    }
+  };
 }
 
 /**
@@ -380,6 +393,7 @@ function normalizeConfig(config: AppConfig): AppConfig {
   normalizedConfig.groups = normalizedConfig.groups || {};
   
   // If the default group doesn't exist, create it with standard system prompt
+  // This ensures there's always at least a minimal default group
   if (!normalizedConfig.groups.default) {
     normalizedConfig.groups.default = {
       name: 'default',
@@ -394,23 +408,8 @@ function normalizeConfig(config: AppConfig): AppConfig {
     };
   }
   
-  // Ensure the default group has all enabled models
-  // First, create a map of models already in the default group
-  const modelsInDefaultGroup = new Map<string, boolean>();
-  normalizedConfig.groups.default.models.forEach(model => {
-    const key = `${model.provider}:${model.modelId}`;
-    modelsInDefaultGroup.set(key, true);
-  });
-  
-  // Add any enabled models that are not already in the default group
-  normalizedConfig.models
-    .filter(model => model.enabled)
-    .forEach(model => {
-      const key = `${model.provider}:${model.modelId}`;
-      if (!modelsInDefaultGroup.has(key)) {
-        normalizedConfig.groups!.default.models.push(structuredClone(model));
-      }
-    });
+  // Note: We no longer automatically add models to the default group
+  // This ensures we respect the user's explicit configuration choices
   
   return normalizedConfig;
 }
@@ -428,9 +427,9 @@ export function getGroup(config: AppConfig, groupName: string): ModelConfig[] {
     return config.groups[groupName].models;
   }
   
-  // If looking for the default group or if the group doesn't exist,
-  // return the top-level models array
-  return config.models;
+  // If the group doesn't exist, return an empty array to indicate the group wasn't found
+  // This preserves the user's explicit configuration choices
+  return [];
 }
 
 /**
