@@ -3,7 +3,6 @@
  */
 import {
   loadConfig,
-  mergeConfigs,
   getEnabledModels,
   filterModels,
   validateModelApiKeys,
@@ -60,10 +59,8 @@ describe('Config Manager', () => {
 
   describe('loadConfig', () => {
     it('should load configuration from specified path', async () => {
-      // Turn off merging with defaults for this test
       const config = await loadConfig({ 
-        configPath: '/path/to/config.json',
-        mergeWithDefaults: false 
+        configPath: '/path/to/config.json'
       });
       
       expect(mockedFileExists).toHaveBeenCalledWith('/path/to/config.json');
@@ -95,7 +92,7 @@ describe('Config Manager', () => {
         throw new Error('File not found');
       });
       
-      const config = await loadConfig({ mergeWithDefaults: false });
+      const config = await loadConfig();
       
       // Should have checked the XDG path
       expect(mockedGetConfigFilePath).toHaveBeenCalled();
@@ -125,7 +122,7 @@ describe('Config Manager', () => {
         throw new Error('File not found');
       });
       
-      const config = await loadConfig({ mergeWithDefaults: false });
+      const config = await loadConfig();
       
       // Should have checked the XDG path
       expect(mockedGetConfigFilePath).toHaveBeenCalled();
@@ -155,132 +152,7 @@ describe('Config Manager', () => {
         .rejects.toThrow(/Invalid configuration/);
     });
     
-    it('should merge with default config when mergeWithDefaults is true', async () => {
-      // Custom default config for this test
-      const defaultConfig: AppConfig = {
-        models: [
-          {
-            provider: 'defaultprovider',
-            modelId: 'defaultmodel',
-            enabled: false,
-          },
-        ],
-      };
-      
-      // Mock structuredClone to return our custom default config
-      const originalStructuredClone = global.structuredClone;
-      global.structuredClone = jest.fn().mockImplementation(() => defaultConfig);
-      
-      mockedReadFileContent.mockResolvedValue(JSON.stringify({
-        models: [
-          {
-            provider: 'newprovider',
-            modelId: 'newmodel',
-            enabled: true,
-          },
-        ],
-      }));
-      
-      const config = await loadConfig({ 
-        configPath: '/path/to/config.json',
-        mergeWithDefaults: true,
-      });
-      
-      // Restore original structuredClone
-      global.structuredClone = originalStructuredClone;
-      
-      // Should contain both default model and the new model
-      expect(config.models).toHaveLength(2);
-      expect(config.models.some(m => m.provider === 'newprovider')).toBe(true);
-      expect(config.models.some(m => m.provider === 'defaultprovider')).toBe(true);
-    });
-    
-    it('should not merge with default config when mergeWithDefaults is false', async () => {
-      mockedReadFileContent.mockResolvedValue(JSON.stringify({
-        models: [
-          {
-            provider: 'newprovider',
-            modelId: 'newmodel',
-            enabled: true,
-          },
-        ],
-      }));
-      
-      const config = await loadConfig({ 
-        configPath: '/path/to/config.json',
-        mergeWithDefaults: false,
-      });
-      
-      // Should only contain the specified model
-      expect(config.models).toHaveLength(1);
-      expect(config.models[0].provider).toBe('newprovider');
-    });
-  });
-  
-  describe('mergeConfigs', () => {
-    it('should merge user config with default config', () => {
-      const defaultConfig: AppConfig = {
-        models: [
-          {
-            provider: 'provider1',
-            modelId: 'model1',
-            enabled: false,
-            options: { temperature: 0.5 },
-          },
-        ],
-      };
-      
-      const userConfig: Partial<AppConfig> = {
-        models: [
-          {
-            provider: 'provider1',
-            modelId: 'model1',
-            enabled: true, // Changed
-          },
-          {
-            provider: 'provider2',
-            modelId: 'model2',
-            enabled: true, // New model
-          },
-        ],
-      };
-      
-      const merged = mergeConfigs(defaultConfig, userConfig);
-      
-      expect(merged.models).toHaveLength(2);
-      expect(merged.models[0].enabled).toBe(true); // Should be updated
-      expect(merged.models[0].options?.temperature).toBe(0.5); // Should be preserved
-      expect(merged.models[1].provider).toBe('provider2'); // New model should be added
-    });
-    
-    it('should merge model options correctly', () => {
-      const defaultConfig: AppConfig = {
-        models: [
-          {
-            provider: 'provider1',
-            modelId: 'model1',
-            enabled: false,
-            options: { temperature: 0.5, maxTokens: 1000 },
-          },
-        ],
-      };
-      
-      const userConfig: Partial<AppConfig> = {
-        models: [
-          {
-            provider: 'provider1',
-            modelId: 'model1',
-            enabled: false, // Added required field
-            options: { temperature: 0.7 }, // Only override temperature
-          },
-        ],
-      };
-      
-      const merged = mergeConfigs(defaultConfig, userConfig);
-      
-      expect(merged.models[0].options?.temperature).toBe(0.7); // Should be updated
-      expect(merged.models[0].options?.maxTokens).toBe(1000); // Should be preserved
-    });
+    // Note: Config merging tests were removed since we no longer support that functionality
   });
   
   describe('getEnabledModels', () => {

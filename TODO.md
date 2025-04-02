@@ -17,7 +17,7 @@
   - Dependencies: XDG path resolution function
   - Priority: High
 
-- [ ] Remove configuration merging logic
+- [x] Remove configuration merging logic
   - Description: Remove mergeConfigs and related functionality from configManager.ts
   - Dependencies: Refactored loadConfig
   - Priority: Medium

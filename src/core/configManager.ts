@@ -21,7 +21,7 @@ dotenv.config();
  */
 export interface LoadConfigOptions {
   configPath?: string;
-  mergeWithDefaults?: boolean;
+  // mergeWithDefaults option removed - we now use a single configuration source
 }
 
 /**
@@ -84,7 +84,7 @@ export type ValidatedAppConfig = z.infer<typeof appConfigSchema>;
  * @throws {ConfigError} If configuration cannot be loaded or is invalid
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppConfig> {
-  const { configPath, mergeWithDefaults = false } = options;
+  const { configPath } = options;
   
   try {
     let rawConfig: AppConfig;
@@ -140,17 +140,8 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
       }
     }
     
-    // Merge with defaults if requested
-    // Note: This option is maintained for backward compatibility but is generally no longer needed
-    // since we create a complete default config if none exists
-    let config = rawConfig;
-    if (mergeWithDefaults) {
-      logger.debug('Merging with default configuration');
-      config = mergeConfigs(DEFAULT_CONFIG, rawConfig);
-    }
-    
     // Validate configuration using Zod schema
-    const validationResult = appConfigSchema.safeParse(config);
+    const validationResult = appConfigSchema.safeParse(rawConfig);
     if (!validationResult.success) {
       // Extract detailed validation errors
       const errorDetails = validationResult.error.errors
@@ -220,122 +211,10 @@ function parseJsonSafely(content: string): AppConfig {
 // Note: tryLoadConfigFromPaths was removed as it's no longer needed
 // The loadConfig function now handles all the logic for finding and creating config files
 
-/**
- * Merges user configuration with default configuration
- * 
- * @param defaultConfig - Default configuration
- * @param userConfig - User-provided configuration
- * @returns Merged configuration
- */
-export function mergeConfigs(defaultConfig: AppConfig, userConfig: Partial<AppConfig>): AppConfig {
-  // Start with a deep copy of the default config
-  const mergedConfig: AppConfig = structuredClone(defaultConfig);
-  
-  // If user config has models, merge them
-  if (userConfig.models) {
-    // Create a map of existing models for faster lookup
-    const modelMap = new Map<string, number>();
-    mergedConfig.models.forEach((model, index) => {
-      const key = `${model.provider}:${model.modelId}`;
-      modelMap.set(key, index);
-    });
-    
-    // Update existing models or add new ones
-    userConfig.models.forEach(userModel => {
-      const key = `${userModel.provider}:${userModel.modelId}`;
-      const existingIndex = modelMap.get(key);
-      
-      if (existingIndex !== undefined) {
-        // Update existing model
-        mergedConfig.models[existingIndex] = {
-          ...mergedConfig.models[existingIndex],
-          ...userModel,
-          options: userModel.options 
-            ? { ...mergedConfig.models[existingIndex].options, ...userModel.options }
-            : mergedConfig.models[existingIndex].options,
-        };
-      } else {
-        // Add new model
-        mergedConfig.models.push(userModel);
-      }
-    });
-  }
-  
-  // If user config has groups, merge them
-  if (userConfig.groups) {
-    // Initialize groups in merged config if it doesn't exist
-    if (!mergedConfig.groups) {
-      mergedConfig.groups = {};
-    }
-    
-    // Merge each group from user config
-    Object.entries(userConfig.groups).forEach(([groupName, userGroup]) => {
-      const existingGroup = mergedConfig.groups?.[groupName];
-      
-      if (existingGroup) {
-        // Merge existing group
-        mergedConfig.groups![groupName] = {
-          ...existingGroup,
-          ...userGroup,
-          // Merge system prompt if both exist
-          systemPrompt: userGroup.systemPrompt 
-            ? { 
-                ...existingGroup.systemPrompt,
-                ...userGroup.systemPrompt,
-              }
-            : existingGroup.systemPrompt,
-          // Merge models array
-          models: mergeModelArrays(existingGroup.models, userGroup.models),
-        };
-      } else {
-        // Add new group
-        mergedConfig.groups![groupName] = structuredClone(userGroup);
-      }
-    });
-  }
-  
-  return mergedConfig;
-}
-
-/**
- * Merges two arrays of model configurations
- * 
- * @param baseModels - Base array of model configurations
- * @param overrideModels - Override array of model configurations
- * @returns Merged array of model configurations
- */
-function mergeModelArrays(baseModels: ModelConfig[], overrideModels: ModelConfig[]): ModelConfig[] {
-  const result = structuredClone(baseModels);
-  const modelMap = new Map<string, number>();
-  
-  // Create a map of existing models for faster lookup
-  result.forEach((model, index) => {
-    const key = `${model.provider}:${model.modelId}`;
-    modelMap.set(key, index);
-  });
-  
-  // Update existing models or add new ones
-  overrideModels.forEach(overrideModel => {
-    const key = `${overrideModel.provider}:${overrideModel.modelId}`;
-    const existingIndex = modelMap.get(key);
-    
-    if (existingIndex !== undefined) {
-      // Update existing model
-      result[existingIndex] = {
-        ...result[existingIndex],
-        ...overrideModel,
-        options: overrideModel.options 
-          ? { ...result[existingIndex].options, ...overrideModel.options }
-          : result[existingIndex].options,
-      };
-    } else {
-      // Add new model
-      result.push(structuredClone(overrideModel));
-    }
-  });
-  
-  return result;
-}
+// Note: mergeConfigs and mergeModelArrays functions were removed
+// These functions were used for the old configuration approach with multiple config sources.
+// With our simplified XDG-based approach, we have a clear, single source of truth for configuration,
+// making this merging functionality unnecessary.
 
 /**
  * Gets all enabled models from the configuration
