@@ -22,6 +22,7 @@ import {
   errorCategories,
   colors
 } from '../utils/consoleUtils';
+import { generateFunName, generateFallbackName } from '../utils/nameGenerator';
 import ora from 'ora';
 import { logger } from '../utils/logger';
 
@@ -120,6 +121,13 @@ export interface RunOptions {
    * Whether to enable Claude's thinking capability
    */
   enableThinking?: boolean;
+  
+  /**
+   * Friendly name for the run
+   * Used in console output, but not for actual directory naming
+   * Set internally during run execution - not meant to be provided by users
+   */
+  friendlyRunName?: string;
 }
 
 /**
@@ -171,6 +179,11 @@ function formatResultsSummary(
     completionMessage = `${options.groupName} group (${responses.length} model${responses.length === 1 ? '' : 's'})`;
   } else {
     completionMessage = `${responses.length} model${responses.length === 1 ? '' : 's'}`;
+  }
+  
+  // Add the run name if available
+  if (options.friendlyRunName) {
+    completionMessage = `'${options.friendlyRunName}' (${completionMessage})`;
   }
   
   // Format completion time
@@ -306,6 +319,17 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const config = await loadConfig({ configPath: options.configPath });
     spinner.text = 'Configuration loaded successfully';
     
+    // 1.5 Generate a friendly run name
+    spinner.text = 'Generating run identifier...';
+    let friendlyRunName = await generateFunName();
+    if (!friendlyRunName) {
+      friendlyRunName = generateFallbackName();
+      spinner.warn(styleWarning(`Could not generate fun name, using fallback: ${friendlyRunName}`));
+    } else {
+      spinner.info(styleInfo(`Run name: ${styleSuccess(friendlyRunName)}`));
+    }
+    spinner.start(); // Restart spinner for next step
+    
     // 2. Process input (file, stdin, or direct text)
     spinner.text = 'Processing input...';
     const inputResult: InputResult = await processInput({ input: options.input });
@@ -319,7 +343,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       outputDirectory: options.output,
       directoryIdentifier
     });
-    spinner.info(styleInfo(`Output directory created: ${outputDirectoryPath}`));
+    spinner.info(styleInfo(`Output directory: ${outputDirectoryPath} (Run: ${friendlyRunName})`));
     
     // 4. Select models using ModelSelector
     spinner.text = 'Selecting models to query...';
@@ -441,7 +465,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // Display execution summary
     spinner.stop(); // Stop any active spinner
-    logger.plain(formatResultsSummary(queryResults, options));
+    // Pass the friendly run name to formatResultsSummary
+    const optionsWithRunName = { ...options, friendlyRunName };
+    logger.plain(formatResultsSummary(queryResults, optionsWithRunName));
     
     // 7. Write responses to files
     spinner.start();
@@ -472,11 +498,11 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Format completion message based on file writing results
     if (fileOutputResult.failedWrites === 0) {
       spinner.succeed(styleSuccess(
-        `All ${fileOutputResult.succeededWrites} model responses saved to ${styleInfo(outputDirectoryPath)}`
+        `Run '${friendlyRunName}' completed. ${fileOutputResult.succeededWrites} responses saved to ${styleInfo(outputDirectoryPath)}`
       ));
     } else {
       spinner.warn(styleWarning(
-        `Completed with issues: ${fileOutputResult.succeededWrites} successful, ${fileOutputResult.failedWrites} failed writes`
+        `Run '${friendlyRunName}' completed with issues: ${fileOutputResult.succeededWrites} successful, ${fileOutputResult.failedWrites} failed writes`
       ));
       
       // Show files with errors
@@ -488,8 +514,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       });
     }
     
-    // Show output directory
-    logger.plain(`\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
+    // Show run name and output directory
+    logger.plain(`\n${styleInfo(`Run Name: ${friendlyRunName}`)}\n${styleInfo(`Output directory: ${outputDirectoryPath}`)}`);
     
     // 8. Format model responses for console output
     const consoleOutput = formatForConsole(queryResults.responses, {
