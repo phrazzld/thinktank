@@ -166,6 +166,24 @@ thinktank config models disable openai:gpt-4o
 | `--thinking` | Enable Claude's thinking capability (for supported models) |
 | `--show-thinking` | Display thinking output in the results |
 
+### Fun Run Names
+
+When you run thinktank, it will generate a memorable "adjective-noun" style name for each run (e.g., `clever-meadow`, `swift-stream`) using Google's Gemini API. This makes it easier to identify and reference specific runs in the console output.
+
+To enable this feature:
+- Set the `GEMINI_API_KEY` environment variable with your Google API key
+- The tool will automatically generate a friendly name for each run
+- If the API key is missing or an error occurs, it will fall back to a timestamp-based name
+
+Example output:
+```
+$ thinktank run prompt.txt
+i Run name: swift-meadow
+i Output directory: /path/to/thinktank-output/run-20250401-123045 (Run: swift-meadow)
+...
++ Run 'swift-meadow' completed. 3 responses saved to /path/to/thinktank-output/run-20250401-123045
+```
+
 ## Configuration
 
 thinktank uses a JSON configuration file to define which LLM providers and models to use.

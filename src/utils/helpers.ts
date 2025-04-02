@@ -122,29 +122,45 @@ export function resolveOutputDirectory(
  * 
  * @param outputOption - The output option from CLI/config, if provided
  * @param identifier - The model or group identifier (optional)
+ * @param friendlyName - The friendly run name to use in directory name (optional)
  * @returns The resolved path to the run-specific output directory
  */
 export function generateOutputDirectoryPath(
   outputOption?: string, 
-  identifier?: string
+  identifier?: string,
+  friendlyName?: string
 ): string {
   // Get the base output directory (always use 'thinktank-output' as default)
   const baseOutputPath = resolveOutputDirectory(outputOption, 'thinktank-output');
   
-  // Generate a timestamp in a simpler format: YYYYMMDD-HHmmss
-  const now = new Date();
-  const timestamp = now.toISOString()
-    .replace(/[-:T.Z]/g, match => match === 'T' ? '-' : match === '.' ? '' : '')
-    .substring(0, 15); // Get YYYYMMDD-HHmmss format
-  
   // Generate the directory name
-  let dirName = `run-${timestamp}`;
+  let dirName: string;
   
-  // If an identifier was provided, include it in the directory name
-  if (identifier) {
-    // For provider:model format, replace colon with hyphen
-    const safeIdentifier = identifier.replace(/:/g, '-');
-    dirName = `${safeIdentifier}-${timestamp}`;
+  // If a friendly name is provided, use it as the directory name
+  if (friendlyName) {
+    dirName = sanitizeFilename(friendlyName);
+    
+    // If an identifier was also provided, include it
+    if (identifier) {
+      // For provider:model format, replace colon with hyphen
+      const safeIdentifier = identifier.replace(/:/g, '-');
+      dirName = `${safeIdentifier}-${dirName}`;
+    }
+  } else {
+    // Fallback to timestamp-based naming if no friendly name
+    const now = new Date();
+    const timestamp = now.toISOString()
+      .replace(/[-:T.Z]/g, match => match === 'T' ? '-' : match === '.' ? '' : '')
+      .substring(0, 15); // Get YYYYMMDD-HHmmss format
+    
+    dirName = `run-${timestamp}`;
+    
+    // If an identifier was provided, include it in the directory name
+    if (identifier) {
+      // For provider:model format, replace colon with hyphen
+      const safeIdentifier = identifier.replace(/:/g, '-');
+      dirName = `${safeIdentifier}-${timestamp}`;
+    }
   }
   
   // Return the full path to the run-specific directory

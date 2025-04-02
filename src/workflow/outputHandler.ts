@@ -103,6 +103,12 @@ export interface FileOutputOptions {
   directoryIdentifier?: string;
   
   /**
+   * Optional friendly name for the output directory
+   * If provided, this will be used instead of a timestamp
+   */
+  friendlyRunName?: string;
+  
+  /**
    * Whether to include metadata in the output files
    */
   includeMetadata?: boolean;
@@ -306,12 +312,13 @@ export function formatForConsole(
  * @throws {OutputHandlerError} If directory creation fails
  */
 export async function createOutputDirectory(
-  options: Pick<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier'> = {}
+  options: Pick<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier' | 'friendlyRunName'> = {}
 ): Promise<string> {
   // Generate output directory path
   const outputDirectoryPath = generateOutputDirectoryPath(
     options.outputDirectory,
-    options.directoryIdentifier
+    options.directoryIdentifier,
+    options.friendlyRunName
   );
   
   try {
@@ -464,7 +471,8 @@ export async function processOutput(
   // Create output directory
   const outputDirectory = await createOutputDirectory({
     outputDirectory: options.outputDirectory,
-    directoryIdentifier: options.directoryIdentifier
+    directoryIdentifier: options.directoryIdentifier,
+    friendlyRunName: options.friendlyRunName
   });
   
   // Write responses to files
