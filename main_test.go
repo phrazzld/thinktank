@@ -405,6 +405,10 @@ func TestBuildPrompt(t *testing.T) {
 			LoadTemplateFunc: func(templatePath string) error {
 				return fmt.Errorf("template file not found")
 			},
+			BuildPromptFunc: func(templateName string, data *prompt.TemplateData) (string, error) {
+				// Since LoadTemplate will fail, BuildPrompt should return error
+				return "", fmt.Errorf("failed to load template %s", templateName)
+			},
 		}
 
 		config := &Configuration{}

@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -19,22 +20,14 @@ import (
 	"github.com/phrazzld/architect/internal/spinner"
 )
 
-// Default constants
+// Constants referencing the config package defaults
 const (
-	defaultOutputFile = "PLAN.md"
-	defaultModel      = "gemini-2.5-pro-exp-03-25"
-	apiKeyEnvVar      = "GEMINI_API_KEY"
-	defaultFormat     = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
-
-	// Default excludes inspired by common project types
-	defaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
-		".zip,.tar,.gz,.rar,.7z,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp," +
-		".jpg,.jpeg,.png,.gif,.bmp,.tiff,.svg,.mp3,.wav,.ogg,.mp4,.avi,.mov,.wmv,.flv," +
-		".iso,.img,.dmg,.db,.sqlite,.log"
-
-	defaultExcludeNames = ".git,.hg,.svn,node_modules,bower_components,vendor,target,dist,build," +
-		"out,tmp,coverage,__pycache__,*.pyc,*.pyo,.DS_Store,~$*,desktop.ini,Thumbs.db," +
-		"package-lock.json,yarn.lock,go.sum,go.work"
+	defaultOutputFile   = config.DefaultOutputFile
+	defaultModel        = config.DefaultModel
+	apiKeyEnvVar        = config.APIKeyEnvVar
+	defaultFormat       = config.DefaultFormat
+	defaultExcludes     = config.DefaultExcludes
+	defaultExcludeNames = config.DefaultExcludeNames
 )
 
 // Configuration holds the parsed command-line options
@@ -61,10 +54,39 @@ type Configuration struct {
 
 func main() {
 	// Parse command line flags
-	config := parseFlags()
+	cliConfig := parseFlags()
 
-	// Setup logging
-	logger := setupLogging(config)
+	// Setup logging early for error reporting
+	logger := setupLogging(cliConfig)
+
+	// Initialize XDG-compliant configuration system
+	configManager := initConfigSystem(logger)
+
+	// Load configuration from files
+	err := configManager.LoadFromFiles()
+	if err != nil {
+		logger.Warn("Failed to load configuration: %v", err)
+		logger.Info("Using default configuration")
+	}
+
+	// Ensure configuration directories exist
+	if err := configManager.EnsureConfigDirs(); err != nil {
+		logger.Warn("Failed to create configuration directories: %v", err)
+	}
+
+	// Convert CLI flags to the format needed for merging
+	cliFlags := convertConfigToMap(cliConfig)
+
+	// Merge CLI flags with loaded configuration
+	if err := configManager.MergeWithFlags(cliFlags); err != nil {
+		logger.Warn("Failed to merge CLI flags with configuration: %v", err)
+	}
+
+	// Get the final configuration
+	appConfig := configManager.GetConfig()
+
+	// Create backfilled CLI config for backward compatibility
+	config := backfillConfigFromAppConfig(cliConfig, appConfig)
 
 	// Validate inputs
 	validateInputs(config, logger)
@@ -76,7 +98,7 @@ func main() {
 
 	// If task clarification is enabled, let the user refine their task
 	if config.ClarifyTask && !config.DryRun {
-		config.TaskDescription = clarifyTaskDescription(ctx, config, geminiClient, logger)
+		config.TaskDescription = clarifyTaskDescriptionWithConfig(ctx, config, geminiClient, configManager, logger)
 	}
 
 	// Gather context from files
@@ -84,31 +106,40 @@ func main() {
 
 	// Generate content if not in dry run mode
 	if !config.DryRun {
-		generateAndSavePlan(ctx, config, geminiClient, projectContext, logger)
+		generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
 	}
 }
 
-// clarifyTaskDescription performs an interactive process to refine the user's task description
+// clarifyTaskDescription is a backward-compatible wrapper for clarification process
 func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
+	// Use legacy version with default prompt manager
+	promptManager := prompt.NewManager(logger)
+	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
+}
+
+// clarifyTaskDescriptionWithConfig performs task clarification using the config system
+func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface) string {
+	// Set up prompt manager with config support
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		logger.Error("Failed to set up prompt manager: %v", err)
+		// Fall back to the non-config version
+		return clarifyTaskDescription(ctx, config, geminiClient, logger)
+	}
+
+	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
+}
+
+// clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
+func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
 	// Initialize spinner
 	spinnerInstance := initSpinner(config, logger)
-
-	// Initialize prompt manager for clarification templates
-	promptManager := prompt.NewManager(logger)
 
 	// Original task description
 	originalTask := config.TaskDescription
 
-	// Load clarification template
+	// Build prompt for clarification (template loading is handled internally)
 	spinnerInstance.Start("Analyzing task description...")
-	err := promptManager.LoadTemplate("clarify.tmpl")
-	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to load clarification template: %v", err))
-		logger.Error("Failed to load clarification template: %v", err)
-		return originalTask
-	}
-
-	// Build prompt for clarification
 	data := &prompt.TemplateData{
 		Task: originalTask,
 	}
@@ -173,15 +204,7 @@ func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiCl
 	// Now refine the task with the answers
 	spinnerInstance.Start("Refining task description...")
 
-	// Load the refine template
-	err = promptManager.LoadTemplate("refine.tmpl")
-	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to load refinement template: %v", err))
-		logger.Error("Failed to load refinement template: %v", err)
-		return originalTask
-	}
-
-	// Build prompt for refinement
+	// Build prompt for refinement (template loading is handled internally)
 	refineData := &prompt.TemplateData{
 		Task:    originalTask,
 		Context: questionAnswers.String(),
@@ -513,16 +536,41 @@ func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFi
 	logger.Info("To generate content, run without the --dry-run flag.")
 }
 
-// generateAndSavePlan creates and saves the plan to a file
+// generateAndSavePlan is a backward-compatible wrapper for plan generation
 func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, logger logutil.LoggerInterface) {
+
+	// Use the legacy version without config system support
+	promptManager := prompt.NewManager(logger)
+	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+}
+
+// generateAndSavePlanWithConfig creates and saves the plan to a file using the config system
+func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client,
+	projectContext string, configManager config.ManagerInterface, logger logutil.LoggerInterface) {
+
+	// Set up a prompt manager with config support
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		logger.Error("Failed to set up prompt manager: %v", err)
+		// Fall back to non-config version
+		generateAndSavePlan(ctx, config, geminiClient, projectContext, logger)
+		return
+	}
+
+	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+}
+
+// generateAndSavePlanWithPromptManager is the core implementation of plan generation
+func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
+	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
 
 	// Initialize spinner
 	spinnerInstance := initSpinner(config, logger)
 
-	// Construct prompt
+	// Construct prompt using the provided prompt manager
 	spinnerInstance.Start("Building prompt template...")
-	prompt, err := buildPrompt(config, config.TaskDescription, projectContext, logger)
+	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
 	if err != nil {
 		spinnerInstance.StopFail(fmt.Sprintf("Failed to build prompt: %v", err))
 		logger.Fatal("Failed to build prompt: %v", err)
@@ -531,13 +579,13 @@ func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClien
 
 	// Debug logging of prompt details
 	if config.LogLevel == logutil.DebugLevel {
-		logger.Debug("Prompt length: %d characters", len(prompt))
+		logger.Debug("Prompt length: %d characters", len(generatedPrompt))
 		logger.Debug("Sending task to Gemini: %s", config.TaskDescription)
 	}
 
 	// Get token count for confirmation and limit checking
 	spinnerInstance.Start("Checking token limits...")
-	tokenInfo, err := getTokenInfo(ctx, geminiClient, prompt, logger)
+	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
 	if err != nil {
 		spinnerInstance.StopFail("Token count check failed")
 
@@ -585,7 +633,7 @@ func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClien
 
 	// Call Gemini API
 	spinnerInstance.Start(fmt.Sprintf("Generating plan using model %s...", config.ModelName))
-	result, err := geminiClient.GenerateContent(ctx, prompt)
+	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
 		spinnerInstance.StopFail("Generation failed")
 
@@ -807,9 +855,108 @@ func checkTokenLimit(ctx context.Context, geminiClient gemini.Client, prompt str
 	return nil
 }
 
+// initConfigSystem initializes the configuration system
+func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
+	return config.NewManager(logger)
+}
+
+// convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config
+func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
+	// Create a map of CLI flags suitable for merging
+	return map[string]interface{}{
+		"task_description":    cliConfig.TaskDescription,
+		"task_file":           cliConfig.TaskFile,
+		"output_file":         cliConfig.OutputFile,
+		"model":               cliConfig.ModelName,
+		"verbose":             cliConfig.Verbose,
+		"log_level":           cliConfig.LogLevel,
+		"use_colors":          cliConfig.UseColors,
+		"include":             cliConfig.Include,
+		"format":              cliConfig.Format,
+		"clarify_task":        cliConfig.ClarifyTask,
+		"dry_run":             cliConfig.DryRun,
+		"confirm_tokens":      cliConfig.ConfirmTokens,
+		"no_spinner":          cliConfig.NoSpinner,
+		"paths":               cliConfig.Paths,
+		"api_key":             cliConfig.ApiKey,
+		"templates.default":   cliConfig.PromptTemplate, // Map prompt template to config format
+		"excludes.extensions": cliConfig.Exclude,
+		"excludes.names":      cliConfig.ExcludeNames,
+	}
+}
+
+// backfillConfigFromAppConfig creates a Configuration object from AppConfig for backward compatibility
+func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.AppConfig) *Configuration {
+	// Start with CLI config to preserve fields not in AppConfig
+	config := *cliConfig
+
+	// Override with values from AppConfig only if they weren't explicitly set via CLI
+	if flag.Lookup("output").Value.String() == defaultOutputFile {
+		config.OutputFile = appConfig.OutputFile
+	}
+	if flag.Lookup("model").Value.String() == defaultModel {
+		config.ModelName = appConfig.ModelName
+	}
+	if !isFlagSet("verbose") {
+		config.Verbose = appConfig.Verbose
+	}
+	if !isFlagSet("color") {
+		config.UseColors = appConfig.UseColors
+	}
+	if !isFlagSet("include") {
+		config.Include = appConfig.Include
+	}
+	if !isFlagSet("exclude") {
+		config.Exclude = appConfig.Excludes.Extensions
+	}
+	if !isFlagSet("exclude-names") {
+		config.ExcludeNames = appConfig.Excludes.Names
+	}
+	if !isFlagSet("format") {
+		config.Format = appConfig.Format
+	}
+	if !isFlagSet("confirm-tokens") {
+		config.ConfirmTokens = appConfig.ConfirmTokens
+	}
+	if !isFlagSet("no-spinner") {
+		config.NoSpinner = appConfig.NoSpinner
+	}
+	if !isFlagSet("clarify") {
+		config.ClarifyTask = appConfig.ClarifyTask
+	}
+	if !isFlagSet("prompt-template") && appConfig.Templates.Default != "" {
+		config.PromptTemplate = appConfig.Templates.Default
+	}
+
+	return &config
+}
+
+// isFlagSet checks if a flag was explicitly set on the command line
+func isFlagSet(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
+}
+
 // buildPrompt constructs the prompt string for the Gemini API.
 func buildPrompt(config *Configuration, task string, context string, logger logutil.LoggerInterface) (string, error) {
+	// Use config-less version for backward compatibility
 	return buildPromptWithManager(config, task, context, prompt.NewManager(logger), logger)
+}
+
+// buildPromptWithConfig constructs the prompt string using the configuration system
+func buildPromptWithConfig(config *Configuration, task string, context string, configManager config.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
+	// Create a prompt manager with config support
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		return "", fmt.Errorf("failed to set up prompt manager: %w", err)
+	}
+
+	return buildPromptWithManager(config, task, context, promptManager, logger)
 }
 
 // buildPromptWithManager constructs the prompt string using the provided prompt manager.
@@ -828,14 +975,8 @@ func buildPromptWithManager(config *Configuration, task string, context string, 
 		logger.Debug("Using custom prompt template: %s", templateName)
 	}
 
-	// Try to load the template
-	err := promptManager.LoadTemplate(templateName)
-	if err != nil {
-		return "", fmt.Errorf("failed to load prompt template: %w", err)
-	}
-
-	// Build the prompt
-	generatedPrompt, err := promptManager.BuildPrompt(filepath.Base(templateName), data)
+	// Build the prompt (template loading is now handled by the manager)
+	generatedPrompt, err := promptManager.BuildPrompt(templateName, data)
 	if err != nil {
 		return "", fmt.Errorf("failed to build prompt: %w", err)
 	}

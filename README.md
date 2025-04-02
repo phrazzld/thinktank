@@ -29,6 +29,9 @@ Architect analyzes your codebase and uses Gemini AI to create comprehensive tech
 git clone https://github.com/yourusername/architect.git
 cd architect
 go build
+
+# Install globally
+go install
 ```
 
 ## Usage
@@ -92,6 +95,83 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
 | `--no-spinner` | Disable spinner animation during API calls | `false` |
 | `--clarify` | Enable interactive task clarification to refine your task description | `false` |
+
+## Configuration Files
+
+Architect follows the XDG Base Directory Specification for configuration files, looking for settings in standardized locations across platforms.
+
+### Configuration File Locations
+
+- **User configuration**: `~/.config/architect/config.toml` (Linux/macOS) or `%APPDATA%\architect\config.toml` (Windows)
+- **System configuration**: `/etc/xdg/architect/config.toml` (Linux) or system-wide locations on other platforms
+
+### Automatic Configuration Initialization
+
+Architect automatically creates necessary configuration directories and files the first time you run any command:
+
+- No explicit initialization command is needed
+- User configuration directory (`~/.config/architect/`) is created automatically
+- Default configuration file is generated with sensible defaults
+- Template directory (`~/.config/architect/templates/`) is created for custom templates
+
+When automatic initialization occurs, you'll see a message like this:
+
+```
+✓ Architect configuration initialized automatically.
+  Created default configuration file at: /home/user/.config/architect/config.toml
+  Applying default settings:
+    - Output File: PLAN.md
+    - Model: gemini-2.5-pro-exp-03-25
+    - Log Level: info
+    - Default Template: default.tmpl
+  You can customize these settings by editing the file.
+```
+
+This message only appears the first time you run the tool, or if your configuration file is deleted.
+
+### Configuration Format
+
+Architect uses TOML as its configuration format. Example configuration:
+
+```toml
+# General configuration
+output_file = "PLAN.md"
+model = "gemini-2.5-pro-exp-03-25"
+log_level = "info"
+use_colors = true
+
+# Template settings
+[templates]
+default = "default.tmpl" 
+clarify = "clarify.tmpl"
+dir = "templates"  # Relative to config dir or absolute path
+
+# File exclusion patterns
+[excludes]
+extensions = ".exe,.bin,.o,.jar"
+names = ".git,node_modules,vendor"
+```
+
+For a complete example with all available options, see the [example configuration file](internal/config/example_config.toml).
+
+### Configuration Precedence
+
+Settings are loaded with the following precedence (highest to lowest):
+1. Command-line flags
+2. User configuration file
+3. System configuration files
+4. Default values
+
+### Template Directories
+
+Templates are searched in this order:
+1. Absolute paths or paths relative to current directory (if specified directly)
+2. Custom paths configured in the config file
+3. User template directory: `~/.config/architect/templates/`
+4. System template directories
+5. Built-in embedded templates (included in the binary)
+
+The template system is designed to work properly when the application is installed globally. No matter which directory you run Architect from, it will always find the appropriate templates using the XDG-compliant paths or embedded defaults.
 
 ## Token Management
 
@@ -165,6 +245,14 @@ Architect supports custom prompt templates for specialized plan generation:
 - Start with small, focused parts of your codebase and gradually include more
 - Use `--include` to target only relevant file types for your task
 - Set `--log-level=debug` for detailed information about the analysis process
+
+### Common Issues
+- **"Template not found"**: Ensure templates exist in the expected directories, or provide absolute paths
+- **Running from different directories**: Architect uses XDG config paths, not project-relative configs
+- **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
+- **Configuration file not created**: If the automatic initialization fails to create the configuration file (e.g., due to permission issues), the tool will still run with default settings in memory
+- **Custom configuration lost**: If you accidentally delete your configuration file, a new default one will be created on the next run; consider backing up your custom settings
+- **Unexpected default values**: If some settings are using defaults unexpectedly, check for typos in your config file as TOML requires exact field names
 
 ## Contributing
 
