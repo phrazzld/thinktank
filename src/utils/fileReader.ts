@@ -131,6 +131,37 @@ export async function writeFile(filePath: string, content: string): Promise<void
         }
       }
       
+      // Handle macOS-specific write errors
+      if (process.platform === 'darwin') {
+        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
+          throw new FileReadError(
+            `Permission denied writing file at ${filePath}. On macOS, this may happen if System Integrity Protection (SIP) is restricting access or if the file permissions are incorrect. Check folder permissions.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'ENOENT') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: The parent directory may not exist or may not be accessible on macOS.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'EROFS') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: The file system is read-only. On macOS, check if your disk is mounted with write permissions.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'EMFILE') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: Too many open files. On macOS, you may need to increase the open file limit or close some applications.`,
+            error
+          );
+        }
+      }
+      
       // Generic error for all platforms
       throw new FileReadError(`Failed to write file at ${filePath}: ${error.message}`, error);
     }
@@ -179,7 +210,16 @@ export async function getConfigDir(): Promise<string> {
     }
     // macOS: ~/Library/Preferences/thinktank (unless XDG_CONFIG_HOME is set)
     else if (process.platform === 'darwin') {
-      configDir = path.join(os.homedir(), 'Library', 'Preferences', APP_NAME);
+      // Use standard macOS preference location
+      // This follows Apple's guidelines for application preferences
+      const homeDir = os.homedir();
+      
+      // Ensure the home directory path is valid
+      if (!homeDir || homeDir.trim() === '') {
+        throw new FileReadError('Unable to determine home directory on macOS. Check user environment.');
+      }
+      
+      configDir = path.join(homeDir, 'Library', 'Preferences', APP_NAME);
     }
     // Linux/Unix/Default fallback: ~/.config/thinktank
     else {
@@ -206,6 +246,30 @@ export async function getConfigDir(): Promise<string> {
         if (errnoError.code === 'ENOENT') {
           throw new FileReadError(
             `Unable to create configuration directory. The AppData folder may not exist or may not be accessible.`,
+            error
+          );
+        }
+      }
+      
+      // Handle macOS-specific error codes
+      if (process.platform === 'darwin') {
+        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
+          throw new FileReadError(
+            `Permission denied creating config directory. On macOS, this may happen if you don't have write access to ~/Library/Preferences or if System Integrity Protection (SIP) is restricting access. Check folder permissions.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'ENOENT') {
+          throw new FileReadError(
+            `Unable to create configuration directory. The Library/Preferences path may not exist or may not be accessible. Check if your user account is properly set up.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'EROFS') {
+          throw new FileReadError(
+            `Configuration directory is on a read-only file system. On macOS, this may happen if your disk is mounted read-only or if System Integrity Protection is restricting write access.`,
             error
           );
         }

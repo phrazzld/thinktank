@@ -90,6 +90,63 @@ describe('File Reader', () => {
         Object.defineProperty(process, 'platform', { value: process.platform });
       });
     });
+    
+    describe('macOS-specific error handling', () => {
+      beforeEach(() => {
+        // Mock platform as macOS for these tests
+        Object.defineProperty(process, 'platform', { value: 'darwin' });
+      });
+      
+      it('should handle macOS permission errors (EACCES)', async () => {
+        // Mock write failure with access denied error
+        const error = new Error('Permission denied') as NodeJS.ErrnoException;
+        error.code = 'EACCES';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('Permission denied writing file');
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('System Integrity Protection');
+      });
+      
+      it('should handle macOS read-only filesystem errors (EROFS)', async () => {
+        // Mock write failure with read-only filesystem error
+        const error = new Error('Read-only file system') as NodeJS.ErrnoException;
+        error.code = 'EROFS';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('file system is read-only');
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('mounted with write permissions');
+      });
+      
+      it('should handle macOS too many open files errors (EMFILE)', async () => {
+        // Mock write failure with too many open files error
+        const error = new Error('Too many open files') as NodeJS.ErrnoException;
+        error.code = 'EMFILE';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('Too many open files');
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('increase the open file limit');
+      });
+      
+      it('should handle macOS path not found errors (ENOENT)', async () => {
+        // Mock directory creation success but write failure with path not found
+        mockedFs.mkdir.mockResolvedValue(undefined);
+        const error = new Error('No such file or directory') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('parent directory may not exist');
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('on macOS');
+      });
+      
+      afterEach(() => {
+        // Reset platform to prevent affecting other tests
+        Object.defineProperty(process, 'platform', { value: process.platform });
+      });
+    });
   });
   
   describe('readFileContent', () => {
@@ -290,14 +347,79 @@ describe('File Reader', () => {
       });
     });
     
-    it('should use Library/Preferences on macOS', async () => {
-      // Mock platform as macOS
-      Object.defineProperty(process, 'platform', { value: 'darwin' });
+    describe('macOS paths', () => {
+      beforeEach(() => {
+        // Mock platform as macOS for all tests in this group
+        Object.defineProperty(process, 'platform', { value: 'darwin' });
+        // Reset homedir mock for macOS tests
+        mockedOs.homedir.mockReturnValue('/Users/macuser');
+      });
+
+      it('should use Library/Preferences path on macOS', async () => {
+        const result = await getConfigDir();
+        
+        expect(result).toBe('/Users/macuser/Library/Preferences/thinktank');
+        expect(mockedFs.mkdir).toHaveBeenCalledWith('/Users/macuser/Library/Preferences/thinktank', { recursive: true });
+      });
       
-      const result = await getConfigDir();
+      it('should use XDG_CONFIG_HOME when set on macOS', async () => {
+        // Set XDG_CONFIG_HOME environment variable
+        process.env.XDG_CONFIG_HOME = '/Users/macuser/.xdg/config';
+        
+        const result = await getConfigDir();
+        
+        // Should use XDG_CONFIG_HOME when explicitly set, even on macOS
+        expect(result).toBe('/Users/macuser/.xdg/config/thinktank');
+        expect(mockedFs.mkdir).toHaveBeenCalledWith('/Users/macuser/.xdg/config/thinktank', { recursive: true });
+      });
       
-      expect(result).toBe('/home/user/Library/Preferences/thinktank');
-      expect(mockedFs.mkdir).toHaveBeenCalledWith('/home/user/Library/Preferences/thinktank', { recursive: true });
+      it('should throw an error when homedir is not available on macOS', async () => {
+        // Mock homedir to return empty string or undefined
+        mockedOs.homedir.mockReturnValue('');
+        
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Unable to determine home directory on macOS');
+      });
+      
+      it('should handle macOS permission errors correctly', async () => {
+        // Mock directory creation failure with macOS permission error
+        const error = new Error('Permission denied') as NodeJS.ErrnoException;
+        error.code = 'EACCES';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with macOS-specific message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Permission denied creating config directory');
+        await expect(getConfigDir()).rejects.toThrow('System Integrity Protection');
+      });
+      
+      it('should handle macOS ENOENT errors correctly', async () => {
+        // Mock directory creation failure with path not found error
+        const error = new Error('No such file or directory') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with macOS-specific message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Library/Preferences path may not exist');
+      });
+      
+      it('should handle macOS read-only filesystem errors correctly', async () => {
+        // Mock directory creation failure with read-only filesystem error
+        const error = new Error('Read-only file system') as NodeJS.ErrnoException;
+        error.code = 'EROFS';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with macOS-specific message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('read-only file system');
+        await expect(getConfigDir()).rejects.toThrow('System Integrity Protection');
+      });
+      
+      afterEach(() => {
+        // Clean up XDG environment variable
+        delete process.env.XDG_CONFIG_HOME;
+      });
     });
     
     it('should use ~/.config on Linux', async () => {

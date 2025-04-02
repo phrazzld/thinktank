@@ -92,7 +92,7 @@
   - Dependencies: XDG path resolution function
   - Priority: Medium
 
-- [ ] Ensure macOS support is robust
+- [x] Ensure macOS support is robust
   - Description: Test with both standard macOS and XDG paths
   - Dependencies: XDG path resolution function
   - Priority: Medium
