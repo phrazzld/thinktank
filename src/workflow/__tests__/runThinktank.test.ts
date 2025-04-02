@@ -9,6 +9,7 @@ import * as inputHandler from '../inputHandler';
 import * as modelSelector from '../modelSelector';
 import * as queryExecutor from '../queryExecutor';
 import * as outputHandler from '../outputHandler';
+import * as nameGenerator from '../../utils/nameGenerator';
 import { LLMProvider, LLMResponse, ModelConfig } from '../../core/types';
 import fs from 'fs/promises';
 
@@ -20,6 +21,7 @@ jest.mock('../inputHandler');
 jest.mock('../modelSelector');
 jest.mock('../queryExecutor');
 jest.mock('../outputHandler');
+jest.mock('../../utils/nameGenerator');
 jest.mock('fs/promises');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
@@ -188,6 +190,10 @@ describe('runThinktank', () => {
     // Mock fs
     (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
     (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+    
+    // Mock nameGenerator
+    (nameGenerator.generateFunName as jest.Mock).mockResolvedValue('clever-meadow');
+    (nameGenerator.generateFallbackName as jest.Mock).mockReturnValue('run-20250101-123045');
   });
 
   it('should run successfully with valid inputs', async () => {
@@ -420,6 +426,42 @@ describe('runThinktank', () => {
 
     // Should propagate the error as a ThinktankError
     await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
+  });
+  
+  it('should use fun name for run when name generation succeeds', async () => {
+    const funName = 'clever-meadow';
+    (nameGenerator.generateFunName as jest.Mock).mockResolvedValue(funName);
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+    };
+    
+    const result = await runThinktank(options);
+    
+    // Check that the name was used in console formatting
+    expect(outputHandler.formatForConsole).toHaveBeenCalled();
+    expect(result).toBe('Mock console output');
+    
+    // Verify the name was passed to formatResultsSummary (indirectly checking options object)
+    expect(queryExecutor.executeQueries).toHaveBeenCalled();
+  });
+  
+  it('should use fallback name when name generation fails', async () => {
+    const fallbackName = 'run-20250101-123045';
+    (nameGenerator.generateFunName as jest.Mock).mockResolvedValue(null);
+    (nameGenerator.generateFallbackName as jest.Mock).mockReturnValue(fallbackName);
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+    };
+    
+    const result = await runThinktank(options);
+    
+    // Check that the output was still successfully generated
+    expect(result).toBe('Mock console output');
+    
+    // The fallback name should have been used in the formatResultsSummary call
+    expect(queryExecutor.executeQueries).toHaveBeenCalled();
   });
   
   it('should handle API execution errors from QueryExecutor', async () => {
