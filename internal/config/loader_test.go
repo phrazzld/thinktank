@@ -279,7 +279,7 @@ func TestAutomaticInitialization(t *testing.T) {
 	t.Run("Basic initialization", func(t *testing.T) {
 		// Ensure test directory is clean
 		os.RemoveAll(tempDir)
-		
+
 		logger := newMockLogger()
 		manager := &Manager{
 			logger:        logger,
@@ -288,30 +288,30 @@ func TestAutomaticInitialization(t *testing.T) {
 			config:        DefaultConfig(),
 			viperInst:     viper.New(),
 		}
-		
+
 		// Run LoadFromFiles which should trigger initialization
 		err = manager.LoadFromFiles()
 		if err != nil {
 			t.Fatalf("LoadFromFiles failed: %v", err)
 		}
-		
+
 		// Verify initialization occurred
 		if !directoryExists(t, userConfigDir) {
 			t.Error("User config directory was not created")
 		}
-		
+
 		if !fileExists(t, configFilePath) {
 			t.Error("Configuration file was not created")
 		}
-		
+
 		// Verify template dir exists (created by EnsureConfigDirs)
 		if !directoryExists(t, templateDir) {
 			t.Error("Template directory was not created")
 		}
-		
+
 		// Verify info message was logged
 		assertMessageLogged(t, logger.infoMessages, "No configuration file found. Initializing default configuration...")
-		
+
 		// Verify success message via Printf was logged
 		assertMessageLogged(t, logger.infoMessages, "✓ Architect configuration initialized automatically.")
 	})
@@ -320,7 +320,7 @@ func TestAutomaticInitialization(t *testing.T) {
 	t.Run("Directory creation fails", func(t *testing.T) {
 		// Ensure test directory is clean
 		os.RemoveAll(tempDir)
-		
+
 		// Create a file with the same name as our config directory to cause failure
 		if err := os.MkdirAll(filepath.Dir(userConfigDir), 0755); err != nil {
 			t.Fatalf("Failed to create parent directory: %v", err)
@@ -328,7 +328,7 @@ func TestAutomaticInitialization(t *testing.T) {
 		if err := os.WriteFile(userConfigDir, []byte("not a directory"), 0644); err != nil {
 			t.Fatalf("Failed to create blocking file: %v", err)
 		}
-		
+
 		logger := newMockLogger()
 		manager := &Manager{
 			logger:        logger,
@@ -337,16 +337,16 @@ func TestAutomaticInitialization(t *testing.T) {
 			config:        DefaultConfig(),
 			viperInst:     viper.New(),
 		}
-		
+
 		// Run LoadFromFiles which should handle the error gracefully
 		err = manager.LoadFromFiles()
 		if err != nil {
 			t.Fatalf("LoadFromFiles should not return error even when dir creation fails: %v", err)
 		}
-		
+
 		// Verify warning message was logged
 		assertMessageLogged(t, logger.infoMessages, "Failed to create configuration directories:")
-		
+
 		// Ensure no initialization message was shown (since we failed)
 		for _, msg := range logger.infoMessages {
 			if msg == "✓ Architect configuration initialized automatically." {
@@ -359,19 +359,19 @@ func TestAutomaticInitialization(t *testing.T) {
 	t.Run("Existing configuration", func(t *testing.T) {
 		// Ensure test directory is clean
 		os.RemoveAll(tempDir)
-		
+
 		// Create required directories
 		if err := os.MkdirAll(userConfigDir, 0755); err != nil {
 			t.Fatalf("Failed to create user config dir: %v", err)
 		}
-		
+
 		// Create a mock config file
 		mockConfig := `output_file = "TEST_OUTPUT.md"
 model = "test-model"`
 		if err := os.WriteFile(configFilePath, []byte(mockConfig), 0644); err != nil {
 			t.Fatalf("Failed to create mock config: %v", err)
 		}
-		
+
 		logger := newMockLogger()
 		manager := &Manager{
 			logger:        logger,
@@ -380,43 +380,43 @@ model = "test-model"`
 			config:        DefaultConfig(),
 			viperInst:     viper.New(),
 		}
-		
+
 		// Run LoadFromFiles which should NOT trigger initialization
 		err = manager.LoadFromFiles()
 		if err != nil {
 			t.Fatalf("LoadFromFiles failed: %v", err)
 		}
-		
+
 		// Check that no initialization-related messages were logged
 		for _, msg := range logger.infoMessages {
 			if msg == "No configuration file found. Initializing default configuration..." {
 				t.Error("Should not log initialization message with existing config")
 			}
 		}
-		
+
 		// Verify custom config values were loaded
 		if manager.config.OutputFile != "TEST_OUTPUT.md" || manager.config.ModelName != "test-model" {
-			t.Errorf("Failed to load values from existing config file. Got: %s %s", 
+			t.Errorf("Failed to load values from existing config file. Got: %s %s",
 				manager.config.OutputFile, manager.config.ModelName)
 		}
 	})
-	
+
 	// Test case: Partial configuration file
 	t.Run("Partial configuration", func(t *testing.T) {
 		// Ensure test directory is clean
 		os.RemoveAll(tempDir)
-		
+
 		// Create required directories
 		if err := os.MkdirAll(userConfigDir, 0755); err != nil {
 			t.Fatalf("Failed to create user config dir: %v", err)
 		}
-		
+
 		// Create a partial config file (missing some fields)
 		partialConfig := `output_file = "PARTIAL_OUTPUT.md"`
 		if err := os.WriteFile(configFilePath, []byte(partialConfig), 0644); err != nil {
 			t.Fatalf("Failed to create partial config: %v", err)
 		}
-		
+
 		logger := newMockLogger()
 		manager := &Manager{
 			logger:        logger,
@@ -425,18 +425,18 @@ model = "test-model"`
 			config:        DefaultConfig(),
 			viperInst:     viper.New(),
 		}
-		
+
 		// Run LoadFromFiles which should load partial config and use defaults for the rest
 		err = manager.LoadFromFiles()
 		if err != nil {
 			t.Fatalf("LoadFromFiles failed: %v", err)
 		}
-		
+
 		// Check fields - customized from file
 		if manager.config.OutputFile != "PARTIAL_OUTPUT.md" {
 			t.Errorf("Failed to load custom value from partial config. Got: %s", manager.config.OutputFile)
 		}
-		
+
 		// Check fields - should be default
 		if manager.config.ModelName != DefaultModel {
 			t.Errorf("Failed to use default for missing field. Got: %s", manager.config.ModelName)
@@ -486,26 +486,26 @@ func TestDisplayInitializationMessage(t *testing.T) {
 		userConfigDir: "/test/config/dir",
 		config:        DefaultConfig(),
 	}
-	
+
 	// Call the function
 	manager.displayInitializationMessage()
-	
+
 	// Expected key messages
 	expectedMessages := []string{
 		"✓ Architect configuration initialized automatically",
 		"Created default configuration file at:",
-		"Output File:", 
+		"Output File:",
 		"Model:",
 		"Log Level:",
 		"Default Template:",
 		"customize these settings by editing",
 	}
-	
+
 	// Verify all expected messages are present
 	for _, expected := range expectedMessages {
 		assertMessageLogged(t, logger.infoMessages, expected)
 	}
-	
+
 	// Check for specific default values
 	assertMessageLogged(t, logger.infoMessages, DefaultOutputFile)
 	assertMessageLogged(t, logger.infoMessages, DefaultModel)

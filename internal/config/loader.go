@@ -148,7 +148,7 @@ func (m *Manager) GetTemplatePath(name string) (string, error) {
 	// No further filesystem-based fallbacks
 	// At this point, we rely on the embedded templates in prompt.go::LoadTemplate
 	// which will handle the final fallback case using Go's embed.FS
-	
+
 	return "", fmt.Errorf("template not found in user or system paths: %s (embedded templates will be used as fallback)", name)
 }
 

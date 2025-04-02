@@ -118,30 +118,30 @@ func newTestConfigManager(t *testing.T, logger logutil.LoggerInterface, userConf
 	t.Helper()
 	// Create a manager with standard paths
 	manager := config.NewManager(logger)
-	
+
 	// Hackish but effective: Set the config directories using reflection
 	managerVal := reflect.ValueOf(manager).Elem()
-	
+
 	// Set user config dir
 	userConfigDirField := managerVal.FieldByName("userConfigDir")
 	if !userConfigDirField.IsValid() {
 		t.Fatalf("Failed to find userConfigDir field in Manager struct")
 	}
 	userConfigDirField.SetString(userConfigDir)
-	
+
 	// Set system config dirs
 	sysConfigDirsField := managerVal.FieldByName("sysConfigDirs")
 	if !sysConfigDirsField.IsValid() {
 		t.Fatalf("Failed to find sysConfigDirs field in Manager struct")
 	}
-	
+
 	// Create new system dirs slice
 	newSysConfigDirs := reflect.MakeSlice(sysConfigDirsField.Type(), len(sysConfigDirs), len(sysConfigDirs))
 	for i, dir := range sysConfigDirs {
 		newSysConfigDirs.Index(i).SetString(dir)
 	}
 	sysConfigDirsField.Set(newSysConfigDirs)
-	
+
 	return manager
 }
 
@@ -552,7 +552,7 @@ output_file = "USER_OUTPUT.md"
 
 		// Create a new config manager - this would be equivalent to starting the app for the first time
 		configManager := config.NewManager(logger)
-		
+
 		// Show what XDG paths the manager is using
 		t.Logf("Manager using paths - userConfigDir: %s", configManager.GetUserConfigDir())
 		for i, dir := range configManager.GetSystemConfigDirs() {
@@ -615,7 +615,7 @@ default = "default.tmpl"
 		// Check that the config file has expected content
 		configStr := string(content)
 		t.Logf("Config file contents: %s", configStr)
-		
+
 		// Verify expected log messages
 		logOutput := logBuf.String()
 		t.Logf("Log output: %s", logOutput)
