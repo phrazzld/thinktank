@@ -28,12 +28,12 @@
   - Priority: Medium
 
 ## Configuration Saving
-- [ ] Update saveConfig function
+- [x] Update saveConfig function
   - Description: Ensure it uses the canonical path and properly creates directories
   - Dependencies: XDG path resolution function
   - Priority: High
 
-- [ ] Implement improved error handling
+- [x] Implement improved error handling
   - Description: Add detailed error reporting for file system operations and validation failures
   - Dependencies: Updated saveConfig
   - Priority: Medium
@@ -60,12 +60,12 @@
   - Priority: Medium
 
 ## Testing
-- [ ] Write tests for XDG path resolution
+- [x] Write tests for XDG path resolution
   - Description: Create comprehensive tests for path determination across platforms
   - Dependencies: XDG path resolution function
   - Priority: High
 
-- [ ] Update configManager tests
+- [x] Update configManager tests
   - Description: Modify existing tests to work with the new simplified approach
   - Dependencies: Refactored loadConfig and saveConfig
   - Priority: High

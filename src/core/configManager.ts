@@ -552,38 +552,72 @@ export function findModelGroup(
 /**
  * Save configuration to a file
  * 
+ * By default, saves to the XDG standard location. Ensures the configuration
+ * is valid before saving to prevent corrupted configuration files.
+ * 
  * @param config - The configuration to save
  * @param configPath - Optional path to the configuration file. If not provided, the XDG config path will be used.
- * @throws {ConfigError} If the configuration cannot be saved
+ * @throws {ConfigError} If the configuration is invalid or cannot be saved
  */
 export async function saveConfig(config: AppConfig, configPath?: string): Promise<void> {
   try {
-    // Validate configuration before saving
+    // Start with a deep validation of the configuration before attempting to save
+    // This helps prevent corrupted configuration files
     const validationResult = appConfigSchema.safeParse(config);
     if (!validationResult.success) {
-      throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
+      // Extract detailed validation errors for better debugging
+      const errorDetails = validationResult.error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('; ');
+        
+      throw new ConfigError(`Cannot save invalid configuration: ${errorDetails}`);
     }
-    
-    // Convert configuration to pretty-printed JSON
-    const configJson = JSON.stringify(config, null, 2);
     
     // Use provided path or get the XDG config path
     const targetPath = configPath || await getConfigFilePath();
+    logger.debug(`Preparing to save configuration to ${targetPath}`);
+    
+    // Normalize the configuration before saving to ensure consistency
+    // This is important for maintaining a reliable file format
+    const normalizedConfig = normalizeConfig(validationResult.data);
+    
+    // Convert configuration to pretty-printed JSON with consistent formatting
+    const configJson = JSON.stringify(normalizedConfig, null, 2);
+    
+    // Verify config can be parsed back (sanity check)
+    try {
+      JSON.parse(configJson);
+    } catch (parseError) {
+      throw new ConfigError(`Generated configuration JSON is invalid: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
     
     // Write the configuration to the file
+    // writeFile already handles directory creation via fs.mkdir
     await writeFile(targetPath, configJson);
     
-    logger.debug(`Configuration saved to ${targetPath}`);
+    logger.info(`Configuration saved successfully to ${targetPath}`);
   } catch (error) {
+    // Re-throw ConfigError instances
     if (error instanceof ConfigError) {
       throw error;
     }
     
+    // Handle file system errors with specific messages
     if (error instanceof Error) {
+      if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+        throw new ConfigError(`Permission denied when saving configuration to ${configPath || 'default location'}. Check file permissions.`, error);
+      }
+      
+      if ((error as NodeJS.ErrnoException).code === 'ENOSPC') {
+        throw new ConfigError(`Not enough disk space to save configuration to ${configPath || 'default location'}.`, error);
+      }
+      
+      // Generic error with message
       throw new ConfigError(`Failed to save configuration: ${error.message}`, error);
     }
     
-    throw new ConfigError('Unknown error saving configuration');
+    // Fallback for non-Error exceptions
+    throw new ConfigError('Unknown error occurred while saving configuration');
   }
 }
 
