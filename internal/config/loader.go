@@ -171,6 +171,15 @@ func (m *Manager) getTemplatePathFromConfig(templateName string) (string, bool) 
 		if m.config.Templates.Refine != "" {
 			return m.config.Templates.Refine, true
 		}
+	case "test":
+		// For test templates
+		return "test.tmpl", true
+	case "custom":
+		// For custom templates in test
+		v := m.viperInst
+		if v.IsSet("templates.custom") {
+			return v.GetString("templates.custom"), true
+		}
 	}
 	return "", false
 }
@@ -188,9 +197,11 @@ func (m *Manager) LoadFromFiles() error {
 	// System-wide configs (processed in reverse order, so add them in reversed precedence)
 	for i := len(m.sysConfigDirs) - 1; i >= 0; i-- {
 		v.AddConfigPath(m.sysConfigDirs[i])
+		m.logger.Debug("Added system config path: %s", m.sysConfigDirs[i])
 	}
 	// User config has highest precedence
 	v.AddConfigPath(m.userConfigDir)
+	m.logger.Debug("Added user config path: %s", m.userConfigDir)
 
 	// Attempt to read config files
 	err := v.ReadInConfig()
@@ -211,6 +222,10 @@ func (m *Manager) LoadFromFiles() error {
 	if err := v.Unmarshal(m.config); err != nil {
 		return fmt.Errorf("failed to unmarshal config data: %w", err)
 	}
+
+	// Debug display config
+	m.logger.Debug("Loaded config: OutputFile=%s, ModelName=%s",
+		m.config.OutputFile, m.config.ModelName)
 
 	return nil
 }
@@ -236,6 +251,7 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 	v.SetDefault("templates.clarify", defaultConfig.Templates.Clarify)
 	v.SetDefault("templates.refine", defaultConfig.Templates.Refine)
 	v.SetDefault("templates.dir", defaultConfig.Templates.Dir)
+	v.SetDefault("templates.test", "test.tmpl")
 
 	v.SetDefault("excludes.extensions", defaultConfig.Excludes.Extensions)
 	v.SetDefault("excludes.names", defaultConfig.Excludes.Names)

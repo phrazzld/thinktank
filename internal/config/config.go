@@ -36,6 +36,10 @@ type TemplateConfig struct {
 	Clarify string `mapstructure:"clarify" toml:"clarify"`
 	// Refinement template used for refining task description
 	Refine string `mapstructure:"refine" toml:"refine"`
+	// Test template for integration testing
+	Test string `mapstructure:"test" toml:"test"`
+	// Custom template for integration testing
+	Custom string `mapstructure:"custom" toml:"custom"`
 	// Directory to look for custom templates, relative to config dir or absolute
 	Dir string `mapstructure:"dir" toml:"dir"`
 }
