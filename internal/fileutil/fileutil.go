@@ -26,7 +26,8 @@ type Config struct {
 	Logger         logutil.LoggerInterface
 	GitAvailable   bool
 	processedFiles int
-	totalFiles     int // For verbose logging
+	totalFiles     int               // For verbose logging
+	fileCollector  func(path string) // Optional callback to collect processed file paths
 }
 
 // NewConfig creates a configuration with defaults.
@@ -77,6 +78,11 @@ func NewConfig(verbose bool, include, exclude, excludeNames, format string, logg
 	}
 
 	return cfg
+}
+
+// SetFileCollector sets a callback function that will be called for each processed file
+func (c *Config) SetFileCollector(collector func(path string)) {
+	c.fileCollector = collector
 }
 
 // isGitIgnored checks if a file is likely ignored by git or is hidden.
@@ -210,6 +216,11 @@ func processFile(path string, builder *strings.Builder, config *Config) {
 	// If all checks pass, process it
 	config.processedFiles++
 	config.Logger.Printf("Verbose: Processing file (%d/%d): %s\n", config.processedFiles, config.totalFiles, path)
+
+	// If a file collector is set, call it
+	if config.fileCollector != nil {
+		config.fileCollector(path)
+	}
 
 	formatted := config.Format
 	formatted = strings.ReplaceAll(formatted, "{path}", path)
