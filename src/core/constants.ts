@@ -6,17 +6,26 @@ import { AppConfig } from './types';
 
 /**
  * Default configuration structure used when no config file exists
- * or for merging with user-provided config
+ * or as a fallback if the template file is not available
  */
 export const DEFAULT_CONFIG: AppConfig = {
   models: [
     {
       provider: 'openai',
       modelId: 'gpt-4o',
+      enabled: true,
+      options: {
+        temperature: 0.7,
+        maxTokens: 2000,
+      },
+    },
+    {
+      provider: 'openai',
+      modelId: 'gpt-3.5-turbo',
       enabled: false,
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2000,
       },
     },
     {
@@ -25,7 +34,7 @@ export const DEFAULT_CONFIG: AppConfig = {
       enabled: false,
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2000,
       },
     },
     {
@@ -34,44 +43,16 @@ export const DEFAULT_CONFIG: AppConfig = {
       enabled: false,
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2000,
       },
     },
     {
       provider: 'anthropic',
       modelId: 'claude-3-haiku-20240307',
-      enabled: false,
+      enabled: true,
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'anthropic',
-      modelId: 'claude-3-5-sonnet-20240620',
-      enabled: false,
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'anthropic',
-      modelId: 'claude-3-7-sonnet-20250219',
-      enabled: false,
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'google',
-      modelId: 'gemini-1.5-flash',
-      enabled: false,
-      apiKeyEnvVar: 'GEMINI_API_KEY',
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2000,
       },
     },
     {
@@ -81,72 +62,66 @@ export const DEFAULT_CONFIG: AppConfig = {
       apiKeyEnvVar: 'GEMINI_API_KEY',
       options: {
         temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'google',
-      modelId: 'gemini-pro',
-      enabled: false,
-      apiKeyEnvVar: 'GEMINI_API_KEY',
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'openrouter',
-      modelId: 'openai/gpt-4o',
-      enabled: false,
-      apiKeyEnvVar: 'OPENROUTER_API_KEY',
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'openrouter',
-      modelId: 'anthropic/claude-3-opus-20240229',
-      enabled: false,
-      apiKeyEnvVar: 'OPENROUTER_API_KEY',
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
-      },
-    },
-    {
-      provider: 'openrouter',
-      modelId: 'meta-llama/llama-3-70b-instruct',
-      enabled: false,
-      apiKeyEnvVar: 'OPENROUTER_API_KEY',
-      options: {
-        temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 2000,
       },
     },
   ],
   groups: {
     default: {
       name: 'default',
-      description: 'Default model group with general-purpose system prompt',
+      description: 'Default group with general-purpose models',
       systemPrompt: {
         text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information. If you are unsure about something, admit it rather than making up an answer.',
         metadata: {
           source: 'default-configuration'
         }
       },
-      models: [] // Will be populated with all enabled models during config normalization
+      models: [
+        {
+          provider: 'openai',
+          modelId: 'gpt-4o',
+          enabled: true
+        },
+        {
+          provider: 'anthropic',
+          modelId: 'claude-3-haiku-20240307',
+          enabled: true
+        }
+      ]
     },
     coding: {
       name: 'coding',
-      description: 'Models optimized for code generation and programming tasks',
+      description: 'Models optimized for programming tasks',
       systemPrompt: {
-        text: 'You are an expert software engineer with deep knowledge of programming languages, algorithms, design patterns, and software architecture. Provide accurate, efficient, and well-documented code. Always consider edge cases, performance implications, and security best practices.',
+        text: 'You are an expert software engineer with deep knowledge of programming languages, algorithms, design patterns, and software architecture. Provide accurate, efficient, and well-documented code. Consider edge cases, performance, and security best practices.',
         metadata: {
           source: 'default-configuration'
         }
       },
-      models: [] // Will be populated during configuration
+      models: [
+        {
+          provider: 'openai',
+          modelId: 'gpt-4o',
+          enabled: true
+        }
+      ]
+    },
+    creative: {
+      name: 'creative',
+      description: 'Models optimized for creative writing and brainstorming',
+      systemPrompt: {
+        text: 'You are a creative assistant with a talent for generating innovative ideas, compelling narratives, and engaging content. Think outside the box and offer diverse perspectives and original concepts.',
+        metadata: {
+          source: 'default-configuration'
+        }
+      },
+      models: [
+        {
+          provider: 'anthropic',
+          modelId: 'claude-3-haiku-20240307',
+          enabled: true
+        }
+      ]
     }
   }
 };
