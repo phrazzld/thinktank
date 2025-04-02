@@ -49,7 +49,7 @@
   - Dependencies: Refactored loadConfig
   - Priority: Medium
 
-- [ ] Update model management commands
+- [x] Update model management commands
   - Description: Modify add/remove/enable/disable to use the new configuration approach
   - Dependencies: Updated loadConfig and saveConfig
   - Priority: Medium
