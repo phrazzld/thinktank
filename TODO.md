@@ -7,7 +7,7 @@
   - Priority: High
 
 ## Configuration Structure
-- [ ] Define Configuration Data Structure
+- [x] Define Configuration Data Structure
   - Description: Create AppConfig struct to hold configuration values from files/flags
   - Dependencies: None
   - Priority: High
