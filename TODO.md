@@ -76,7 +76,7 @@
   - Priority: Medium
 
 ## Documentation
-- [ ] Update README with new configuration location
+- [x] Update README with new configuration location
   - Description: Document the canonical configuration location for users
   - Dependencies: Implemented XDG path resolution
   - Priority: Low

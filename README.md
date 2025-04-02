@@ -186,11 +186,18 @@ i Output directory: /path/to/thinktank-output/run-20250401-123045 (Run: swift-me
 
 ## Configuration
 
-thinktank uses a JSON configuration file to define which LLM providers and models to use. The configuration file is stored in an XDG-compliant location based on your operating system:
+thinktank uses a JSON configuration file to define which LLM providers and models to use. The configuration file is stored in a standardized location following the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html) for each operating system:
 
 - **Windows**: `%APPDATA%\thinktank\config.json`
+  - Example: `C:\Users\Username\AppData\Roaming\thinktank\config.json`
+  - Falls back to `%USERPROFILE%\AppData\Roaming\thinktank\config.json` if `APPDATA` is not set
+
 - **macOS**: `~/Library/Preferences/thinktank/config.json`
-- **Linux/Unix**: `~/.config/thinktank/config.json` (or `$XDG_CONFIG_HOME/thinktank/config.json` if set)
+  - Example: `/Users/username/Library/Preferences/thinktank/config.json`
+
+- **Linux/Unix**: `~/.config/thinktank/config.json`
+  - Uses `$XDG_CONFIG_HOME/thinktank/config.json` if the `XDG_CONFIG_HOME` environment variable is set
+  - Example: `/home/username/.config/thinktank/config.json`
 
 You can view your configuration location with:
 
@@ -198,7 +205,44 @@ You can view your configuration location with:
 thinktank config path
 ```
 
-This standardized approach ensures your configuration is stored in the expected location for your OS, making it easier to find, backup, and manage.
+This command will show you exactly where your configuration is stored and whether the file already exists.
+
+### Working with Configuration Files
+
+The configuration system automatically creates a default configuration file the first time you run thinktank. You can:
+
+1. **View the current configuration**:
+   ```bash
+   thinktank config show
+   ```
+
+2. **Use a custom configuration file**:
+   ```bash
+   thinktank run prompt.txt --config /path/to/custom-config.json
+   ```
+
+3. **Back up your configuration**:
+   ```bash
+   # Copy your config to a backup file
+   cp "$(thinktank config path | tail -n 1 | awk '{print $3}')" ~/thinktank-config-backup.json
+   ```
+
+4. **Edit the configuration directly**:
+   ```bash
+   # Open the config in your default editor
+   nano "$(thinktank config path | tail -n 1 | awk '{print $3}')"
+   ```
+
+5. **Use the configuration commands**:
+   ```bash
+   # Add a model
+   thinktank config models add openai gpt-4o
+   
+   # Create a group
+   thinktank config groups create coding --models openai:gpt-4o,anthropic:claude-3-opus
+   ```
+
+The standardized location makes it easier to find, back up, and manage your configuration across different environments.
 
 ### Cascading Configuration System
 
@@ -316,9 +360,59 @@ You can customize model behavior in three main ways:
 
 ### Default Configuration
 
-When you first run thinktank, a default configuration will be automatically created in your system's XDG-compliant configuration directory. For backward compatibility, thinktank will also recognize a `thinktank.config.json` file in the current working directory if it exists.
+When you first run thinktank, a default configuration will be automatically created in your system's XDG-compliant configuration directory. This eliminates the need to manually set up a configuration file before using the tool.
 
-You can also specify a custom configuration file with the `--config` flag:
+The default configuration includes a minimal set of commonly used models from major providers, organized into basic groups that you can customize later:
+
+```json
+{
+  "groups": {
+    "default": {
+      "name": "default",
+      "systemPrompt": {
+        "text": "You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information. If you are unsure about something, admit it rather than making up an answer."
+      },
+      "models": [
+        {
+          "provider": "openai",
+          "modelId": "gpt-4o",
+          "enabled": true
+        }
+      ],
+      "description": "Default model group"
+    },
+    "coding": {
+      "name": "coding",
+      "systemPrompt": {
+        "text": "You are a skilled software engineer with expertise in multiple programming languages and frameworks. Help write, explain, and debug code. Provide clear explanations and follow best practices for the language/framework being discussed."
+      },
+      "models": [],
+      "description": "Models optimized for programming tasks"
+    },
+    "creative": {
+      "name": "creative",
+      "systemPrompt": {
+        "text": "You are a creative assistant with a talent for generating unique and imaginative content. Help with writing, brainstorming, and ideation. Be inventive while still providing content that matches the user's request."
+      },
+      "models": [],
+      "description": "Models for creative writing and generation"
+    }
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    }
+  ]
+}
+```
+
+You can specify a custom configuration file path with the `--config` flag:
 
 ```bash
 thinktank run prompt.txt --config ./custom-config.json
@@ -327,7 +421,19 @@ thinktank run prompt.txt --config ./custom-config.json
 The configuration system prioritizes in the following order:
 1. Explicitly specified configuration file with `--config`
 2. XDG-compliant user configuration directory
-3. Default configuration with common models (created automatically if needed)
+3. Auto-generated default configuration if no configuration exists
+
+#### Project-Local Configuration (Backward Compatibility)
+
+For backward compatibility, thinktank will also recognize a `thinktank.config.json` file in the current working directory. This allows teams to share configuration settings via version control.
+
+To see the path to the default project-local configuration:
+
+```bash
+thinktank config path
+```
+
+The output will show both the XDG path and the project-local path if applicable.
 
 ### Configuration File Format
 
