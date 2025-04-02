@@ -145,14 +145,11 @@ func (m *Manager) GetTemplatePath(name string) (string, error) {
 		}
 	}
 
-	// Finally, fallback to the internal templates - this will be implemented with embedding in a later step
-	// For now, try to find it in the current directory's internal/prompt/templates
-	internalTemplatePath := filepath.Join("internal", "prompt", "templates", filepath.Base(name))
-	if _, err := os.Stat(internalTemplatePath); err == nil {
-		return internalTemplatePath, nil
-	}
-
-	return "", fmt.Errorf("template not found: %s", name)
+	// No further filesystem-based fallbacks
+	// At this point, we rely on the embedded templates in prompt.go::LoadTemplate
+	// which will handle the final fallback case using Go's embed.FS
+	
+	return "", fmt.Errorf("template not found in user or system paths: %s (embedded templates will be used as fallback)", name)
 }
 
 // getTemplatePathFromConfig checks if there's a specific path configured for a template

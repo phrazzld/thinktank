@@ -383,14 +383,13 @@ output_file = "USER_OUTPUT.md"
 		}
 
 		// Test lookup for known embedded template
-		path, err := configManager.GetTemplatePath("default.tmpl")
-		if err != nil {
-			t.Fatalf("Failed to get default template path: %v", err)
-		}
-
-		// Should find the embedded default template
-		if !strings.Contains(path, "default.tmpl") {
-			t.Errorf("Expected path to include default.tmpl, got %s", path)
+		_, err = configManager.GetTemplatePath("default.tmpl")
+		// It's expected that GetTemplatePath returns an error now, since we're relying on the
+		// embedded templates in prompt.LoadTemplate
+		if err == nil {
+			t.Log("GetTemplatePath succeeded with a filesystem path")
+		} else if !strings.Contains(err.Error(), "embedded templates will be used as fallback") {
+			t.Fatalf("Unexpected error message: %v", err)
 		}
 
 		// Test with prompt manager

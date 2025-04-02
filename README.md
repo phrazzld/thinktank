@@ -171,6 +171,8 @@ Templates are searched in this order:
 4. System template directories
 5. Built-in embedded templates (included in the binary)
 
+The template system is designed to work properly when the application is installed globally. No matter which directory you run Architect from, it will always find the appropriate templates using the XDG-compliant paths or embedded defaults.
+
 ## Token Management
 
 Architect implements intelligent token management to prevent API errors and optimize context:

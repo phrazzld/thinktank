@@ -65,7 +65,14 @@ func NewManagerWithConfig(logger logutil.LoggerInterface, configManager ConfigMa
 	}
 }
 
-// LoadTemplate loads a prompt template from a file or embedded templates
+// LoadTemplate loads a prompt template from a file or embedded templates.
+// The lookup process is as follows:
+// 1. If a configManager is available, ask it for the template path
+// 2. If a filesystem path is found, load from there
+// 3. Otherwise, fallback to embedded templates
+//
+// This ensures the application can run from any directory, and doesn't
+// rely on relative paths that would break when installed globally.
 func (m *Manager) LoadTemplate(templatePath string) error {
 	var (
 		templateContent []byte
