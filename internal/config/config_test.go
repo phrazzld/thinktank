@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/logutil"
@@ -77,23 +78,29 @@ func newMockLogger() *mockLogger {
 }
 
 func (m *mockLogger) Debug(format string, args ...interface{}) {
-	m.debugMessages = append(m.debugMessages, format)
+	formattedMessage := fmt.Sprintf(format, args...)
+	m.debugMessages = append(m.debugMessages, formattedMessage)
 }
 
 func (m *mockLogger) Info(format string, args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, format)
+	formattedMessage := fmt.Sprintf(format, args...)
+	m.infoMessages = append(m.infoMessages, formattedMessage)
 }
 
 func (m *mockLogger) Error(format string, args ...interface{}) {
-	m.errorMessages = append(m.errorMessages, format)
+	formattedMessage := fmt.Sprintf(format, args...)
+	m.errorMessages = append(m.errorMessages, formattedMessage)
 }
 
 func (m *mockLogger) Printf(format string, args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, format)
+	// Format the string with args to capture the actual message with values
+	formattedMessage := fmt.Sprintf(format, args...)
+	m.infoMessages = append(m.infoMessages, formattedMessage)
 }
 
 func (m *mockLogger) Warn(format string, args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, format)
+	formattedMessage := fmt.Sprintf(format, args...)
+	m.infoMessages = append(m.infoMessages, formattedMessage)
 }
 
 func TestNewManager(t *testing.T) {
