@@ -104,6 +104,34 @@ export async function writeFile(filePath: string, content: string): Promise<void
     await fs.writeFile(filePath, content, { encoding: 'utf-8' });
   } catch (error) {
     if (error instanceof Error) {
+      // Cast to get access to error codes
+      const errnoError = error as NodeJS.ErrnoException;
+      
+      // Handle Windows-specific write errors
+      if (process.platform === 'win32') {
+        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
+          throw new FileReadError(
+            `Permission denied writing file at ${filePath}. On Windows, this may happen if the file is read-only or in use by another process.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'ENOENT') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: The directory path may not exist or may not be accessible.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'EBUSY') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: The file is in use by another process. Close any programs that might be using this file.`,
+            error
+          );
+        }
+      }
+      
+      // Generic error for all platforms
       throw new FileReadError(`Failed to write file at ${filePath}: ${error.message}`, error);
     }
     
@@ -112,10 +140,21 @@ export async function writeFile(filePath: string, content: string): Promise<void
 }
 
 /**
- * Gets the XDG config directory path following the XDG Base Directory Specification
+ * Gets the config directory path following platform-specific conventions:
+ * 
+ * - Windows: '%APPDATA%\thinktank' or '%USERPROFILE%\AppData\Roaming\thinktank'
+ *   - Uses APPDATA environment variable if available
+ *   - Falls back to homedir/AppData/Roaming if APPDATA is not set
+ * 
+ * - macOS: '~/Library/Preferences/thinktank'
+ *   - Uses standard macOS user preferences location
+ * 
+ * - Linux/Unix: XDG Base Directory Specification
+ *   - Uses $XDG_CONFIG_HOME/thinktank if XDG_CONFIG_HOME is set
+ *   - Falls back to ~/.config/thinktank otherwise
  * 
  * @returns Promise resolving to the platform-specific config directory path
- * @throws {FileReadError} If directory creation fails
+ * @throws {FileReadError} If directory creation fails with platform-specific error details
  */
 export async function getConfigDir(): Promise<string> {
   try {
@@ -125,9 +164,18 @@ export async function getConfigDir(): Promise<string> {
     if (process.env.XDG_CONFIG_HOME && process.env.XDG_CONFIG_HOME.trim() !== '') {
       configDir = path.join(process.env.XDG_CONFIG_HOME, APP_NAME);
     } 
-    // Windows: %APPDATA%\thinktank
+    // Windows: %APPDATA%\thinktank or %USERPROFILE%\AppData\Roaming\thinktank
     else if (process.platform === 'win32') {
-      configDir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), APP_NAME);
+      // Check for the APPDATA environment variable
+      const appDataEnv = process.env.APPDATA;
+      
+      // Use APPDATA if it exists and is not empty, otherwise construct from homedir
+      if (appDataEnv && appDataEnv.trim() !== '') {
+        configDir = path.join(appDataEnv, APP_NAME);
+      } else {
+        // Use the standard Windows AppData location as fallback
+        configDir = path.join(os.homedir(), 'AppData', 'Roaming', APP_NAME);
+      }
     }
     // macOS: ~/Library/Preferences/thinktank (unless XDG_CONFIG_HOME is set)
     else if (process.platform === 'darwin') {
@@ -144,6 +192,26 @@ export async function getConfigDir(): Promise<string> {
     return configDir;
   } catch (error) {
     if (error instanceof Error) {
+      const errnoError = error as NodeJS.ErrnoException;
+      
+      // Handle Windows-specific error codes
+      if (process.platform === 'win32') {
+        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
+          throw new FileReadError(
+            `Permission denied creating config directory. On Windows, this may happen if you don't have administrator rights or the folder is read-only. Try running the application with administrative privileges.`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'ENOENT') {
+          throw new FileReadError(
+            `Unable to create configuration directory. The AppData folder may not exist or may not be accessible.`,
+            error
+          );
+        }
+      }
+      
+      // Generic error with message for all platforms
       throw new FileReadError(
         `Failed to create or access config directory: ${error.message}`, 
         error

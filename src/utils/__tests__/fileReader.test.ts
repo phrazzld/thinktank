@@ -1,7 +1,7 @@
 /**
  * Unit tests for file reader module
  */
-import { readFileContent, fileExists, FileReadError, getConfigDir, getConfigFilePath } from '../fileReader';
+import { readFileContent, fileExists, writeFile, FileReadError, getConfigDir, getConfigFilePath } from '../fileReader';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -19,6 +19,77 @@ describe('File Reader', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+  
+  describe('writeFile', () => {
+    const testFilePath = '/path/to/test/file.txt';
+    const testContent = 'Test content to write';
+    
+    beforeEach(() => {
+      mockedFs.mkdir.mockResolvedValue(undefined);
+      mockedFs.writeFile.mockResolvedValue(undefined);
+    });
+    
+    it('should write content to a file', async () => {
+      await writeFile(testFilePath, testContent);
+      
+      expect(mockedFs.mkdir).toHaveBeenCalledWith(path.dirname(testFilePath), { recursive: true });
+      expect(mockedFs.writeFile).toHaveBeenCalledWith(testFilePath, testContent, { encoding: 'utf-8' });
+    });
+    
+    describe('Windows-specific error handling', () => {
+      beforeEach(() => {
+        // Mock platform as Windows for these tests
+        Object.defineProperty(process, 'platform', { value: 'win32' });
+      });
+      
+      it('should handle Windows permission errors (EACCES)', async () => {
+        // Mock write failure with access denied error
+        const error = new Error('Access is denied') as NodeJS.ErrnoException;
+        error.code = 'EACCES';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('Permission denied writing file');
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('read-only or in use by another process');
+      });
+      
+      it('should handle Windows permission errors (EPERM)', async () => {
+        // Mock write failure with permission error
+        const error = new Error('Operation not permitted') as NodeJS.ErrnoException;
+        error.code = 'EPERM';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('Permission denied writing file');
+      });
+      
+      it('should handle Windows "file in use" errors (EBUSY)', async () => {
+        // Mock write failure with file busy error
+        const error = new Error('Resource busy or locked') as NodeJS.ErrnoException;
+        error.code = 'EBUSY';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('file is in use by another process');
+      });
+      
+      it('should handle Windows path not found errors (ENOENT)', async () => {
+        // Mock directory creation success but write failure with path not found
+        mockedFs.mkdir.mockResolvedValue(undefined);
+        const error = new Error('No such file or directory') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        mockedFs.writeFile.mockRejectedValue(error);
+        
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow(FileReadError);
+        await expect(writeFile(testFilePath, testContent)).rejects.toThrow('directory path may not exist');
+      });
+      
+      afterEach(() => {
+        // Reset platform to prevent affecting other tests
+        Object.defineProperty(process, 'platform', { value: process.platform });
+      });
+    });
   });
   
   describe('readFileContent', () => {
@@ -131,16 +202,92 @@ describe('File Reader', () => {
       expect(mockedFs.mkdir).toHaveBeenCalledWith('/custom/xdg/config/thinktank', { recursive: true });
     });
     
-    it('should use AppData on Windows', async () => {
-      // Mock platform as windows
-      Object.defineProperty(process, 'platform', { value: 'win32' });
-      process.env.APPDATA = 'C:\\Users\\User\\AppData\\Roaming';
+    describe('Windows paths', () => {
+      beforeEach(() => {
+        // Mock platform as Windows for all tests in this group
+        Object.defineProperty(process, 'platform', { value: 'win32' });
+        // Reset homedir mock for Windows tests
+        mockedOs.homedir.mockReturnValue('C:\\Users\\User');
+      });
+
+      it('should use APPDATA environment variable when available', async () => {
+        // Set APPDATA environment variable
+        process.env.APPDATA = 'C:\\Users\\User\\AppData\\Roaming';
+        
+        const result = await getConfigDir();
+        
+        // Path.join will use the platform-specific separator, which is / in our test environment
+        expect(result).toBe(path.join('C:\\Users\\User\\AppData\\Roaming', 'thinktank'));
+        expect(mockedFs.mkdir).toHaveBeenCalledWith(path.join('C:\\Users\\User\\AppData\\Roaming', 'thinktank'), { recursive: true });
+      });
       
-      const result = await getConfigDir();
+      it('should fallback to homedir/AppData/Roaming when APPDATA is not set', async () => {
+        // Clear APPDATA environment variable
+        delete process.env.APPDATA;
+        
+        const result = await getConfigDir();
+        
+        // Should construct path from homedir
+        const expectedPath = path.join('C:\\Users\\User', 'AppData', 'Roaming', 'thinktank');
+        expect(result).toBe(expectedPath);
+        expect(mockedFs.mkdir).toHaveBeenCalledWith(expectedPath, { recursive: true });
+      });
       
-      // Path.join will use the platform-specific separator, which is / in our test environment
-      expect(result).toBe(path.join('C:\\Users\\User\\AppData\\Roaming', 'thinktank'));
-      expect(mockedFs.mkdir).toHaveBeenCalledWith(path.join('C:\\Users\\User\\AppData\\Roaming', 'thinktank'), { recursive: true });
+      it('should handle Windows permission errors correctly', async () => {
+        // Set APPDATA environment variable
+        process.env.APPDATA = 'C:\\Users\\User\\AppData\\Roaming';
+        
+        // Mock directory creation failure with Windows-specific access denied error
+        const error = new Error('Access is denied') as NodeJS.ErrnoException;
+        error.code = 'EACCES';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with proper message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Permission denied creating config directory');
+        await expect(getConfigDir()).rejects.toThrow('administrative privileges');
+      });
+      
+      it('should handle Windows EPERM errors correctly', async () => {
+        // Set APPDATA environment variable
+        process.env.APPDATA = 'C:\\Users\\User\\AppData\\Roaming';
+        
+        // Mock directory creation failure with Windows-specific permission error
+        const error = new Error('Operation not permitted') as NodeJS.ErrnoException;
+        error.code = 'EPERM';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with proper message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Permission denied creating config directory');
+      });
+      
+      it('should handle Windows ENOENT errors correctly', async () => {
+        // Set APPDATA environment variable to a non-existent path
+        process.env.APPDATA = 'C:\\Invalid\\Path';
+        
+        // Mock directory creation failure with Windows-specific no such file or directory error
+        const error = new Error('No such file or directory') as NodeJS.ErrnoException;
+        error.code = 'ENOENT';
+        mockedFs.mkdir.mockRejectedValue(error);
+        
+        // Should throw a FileReadError with proper message
+        await expect(getConfigDir()).rejects.toThrow(FileReadError);
+        await expect(getConfigDir()).rejects.toThrow('Unable to create configuration directory');
+        await expect(getConfigDir()).rejects.toThrow('AppData folder may not exist');
+      });
+      
+      it('should handle empty APPDATA environment variable', async () => {
+        // Set APPDATA to empty string
+        process.env.APPDATA = '';
+        
+        const result = await getConfigDir();
+        
+        // Should fallback to homedir path
+        const expectedPath = path.join('C:\\Users\\User', 'AppData', 'Roaming', 'thinktank');
+        expect(result).toBe(expectedPath);
+        expect(mockedFs.mkdir).toHaveBeenCalledWith(expectedPath, { recursive: true });
+      });
     });
     
     it('should use Library/Preferences on macOS', async () => {
