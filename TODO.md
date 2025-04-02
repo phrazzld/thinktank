@@ -21,7 +21,7 @@
   - Description: Use Go embed package to bundle default templates within binary
   - Dependencies: None
   - Priority: High
-- [ ] Refactor PromptManager
+- [x] Refactor PromptManager
   - Description: Update to search templates in user, system, and embedded locations
   - Dependencies: XDG Library, Embedded Templates
   - Priority: High

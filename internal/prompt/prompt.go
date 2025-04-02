@@ -191,8 +191,48 @@ func (m *Manager) ListTemplates() ([]string, error) {
 
 	// List templates from config manager if available
 	if m.configManager != nil {
-		// This would depend on the specific implementation of the config manager
-		// We'll use templates found via other methods for now
+		// Try to check user template directory from config
+		if configManager, ok := m.configManager.(interface {
+			GetUserTemplateDir() string
+			GetSystemTemplateDirs() []string
+		}); ok {
+			// Check user template directory
+			userTemplateDir := configManager.GetUserTemplateDir()
+			if _, err := os.Stat(userTemplateDir); err == nil {
+				err = filepath.WalkDir(userTemplateDir, func(path string, d fs.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if !d.IsDir() && strings.HasSuffix(d.Name(), ".tmpl") {
+						templateSet[d.Name()] = struct{}{}
+					}
+					return nil
+				})
+
+				if err != nil {
+					m.logger.Warn("Failed to list templates from user template directory: %v", err)
+				}
+			}
+
+			// Check system template directories
+			for _, sysDir := range configManager.GetSystemTemplateDirs() {
+				if _, err := os.Stat(sysDir); err == nil {
+					err = filepath.WalkDir(sysDir, func(path string, d fs.DirEntry, err error) error {
+						if err != nil {
+							return err
+						}
+						if !d.IsDir() && strings.HasSuffix(d.Name(), ".tmpl") {
+							templateSet[d.Name()] = struct{}{}
+						}
+						return nil
+					})
+
+					if err != nil {
+						m.logger.Warn("Failed to list templates from system template directory: %v", err)
+					}
+				}
+			}
+		}
 	}
 
 	// Add embedded templates
