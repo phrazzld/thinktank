@@ -186,7 +186,19 @@ i Output directory: /path/to/thinktank-output/run-20250401-123045 (Run: swift-me
 
 ## Configuration
 
-thinktank uses a JSON configuration file to define which LLM providers and models to use.
+thinktank uses a JSON configuration file to define which LLM providers and models to use. The configuration file is stored in an XDG-compliant location based on your operating system:
+
+- **Windows**: `%APPDATA%\thinktank\config.json`
+- **macOS**: `~/Library/Preferences/thinktank/config.json`
+- **Linux/Unix**: `~/.config/thinktank/config.json` (or `$XDG_CONFIG_HOME/thinktank/config.json` if set)
+
+You can view your configuration location with:
+
+```bash
+thinktank config path
+```
+
+This standardized approach ensures your configuration is stored in the expected location for your OS, making it easier to find, backup, and manage.
 
 ### Cascading Configuration System
 
@@ -304,7 +316,18 @@ You can customize model behavior in three main ways:
 
 ### Default Configuration
 
-By default, thinktank will look for a `thinktank.config.json` file in the current directory. If not found, it will use a default configuration with common models (disabled by default).
+When you first run thinktank, a default configuration will be automatically created in your system's XDG-compliant configuration directory. For backward compatibility, thinktank will also recognize a `thinktank.config.json` file in the current working directory if it exists.
+
+You can also specify a custom configuration file with the `--config` flag:
+
+```bash
+thinktank run prompt.txt --config ./custom-config.json
+```
+
+The configuration system prioritizes in the following order:
+1. Explicitly specified configuration file with `--config`
+2. XDG-compliant user configuration directory
+3. Default configuration with common models (created automatically if needed)
 
 ### Configuration File Format
 
