@@ -54,7 +54,7 @@
   - Dependencies: Updated loadConfig and saveConfig
   - Priority: Medium
 
-- [ ] Update group management commands
+- [x] Update group management commands
   - Description: Modify group creation/editing commands to use the new configuration approach
   - Dependencies: Updated loadConfig and saveConfig
   - Priority: Medium
