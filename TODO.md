@@ -81,11 +81,6 @@
   - Dependencies: Implemented XDG path resolution
   - Priority: Low
 
-- [ ] Add migration notes
-  - Description: Provide guidance for users with existing configurations
-  - Dependencies: Complete implementation
-  - Priority: Low
-
 ## Platform-Specific Considerations
 - [x] Ensure Windows support is robust
   - Description: Test directory creation and permissions on Windows platform
