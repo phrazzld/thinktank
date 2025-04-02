@@ -355,11 +355,11 @@ describe('File Reader', () => {
         mockedOs.homedir.mockReturnValue('/Users/macuser');
       });
 
-      it('should use Library/Preferences path on macOS', async () => {
+      it('should use ~/.config path on macOS for consistency with Linux', async () => {
         const result = await getConfigDir();
         
-        expect(result).toBe('/Users/macuser/Library/Preferences/thinktank');
-        expect(mockedFs.mkdir).toHaveBeenCalledWith('/Users/macuser/Library/Preferences/thinktank', { recursive: true });
+        expect(result).toBe('/Users/macuser/.config/thinktank');
+        expect(mockedFs.mkdir).toHaveBeenCalledWith('/Users/macuser/.config/thinktank', { recursive: true });
       });
       
       it('should use XDG_CONFIG_HOME when set on macOS', async () => {
@@ -378,7 +378,7 @@ describe('File Reader', () => {
         mockedOs.homedir.mockReturnValue('');
         
         await expect(getConfigDir()).rejects.toThrow(FileReadError);
-        await expect(getConfigDir()).rejects.toThrow('Unable to determine home directory on macOS');
+        await expect(getConfigDir()).rejects.toThrow('Unable to determine home directory');
       });
       
       it('should handle macOS permission errors correctly', async () => {

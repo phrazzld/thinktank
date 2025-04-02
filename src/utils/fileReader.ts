@@ -177,12 +177,12 @@ export async function writeFile(filePath: string, content: string): Promise<void
  *   - Uses APPDATA environment variable if available
  *   - Falls back to homedir/AppData/Roaming if APPDATA is not set
  * 
- * - macOS: '~/Library/Preferences/thinktank'
- *   - Uses standard macOS user preferences location
+ * - Unix-like systems (Linux, macOS): '~/.config/thinktank'
+ *   - Uses $XDG_CONFIG_HOME/thinktank if XDG_CONFIG_HOME environment variable is set
+ *   - Falls back to ~/.config/thinktank for both Linux and macOS for consistency
  * 
- * - Linux/Unix: XDG Base Directory Specification
- *   - Uses $XDG_CONFIG_HOME/thinktank if XDG_CONFIG_HOME is set
- *   - Falls back to ~/.config/thinktank otherwise
+ * Note: While macOS traditionally uses ~/Library/Preferences for app configs,
+ * we've chosen to use ~/.config for consistency across Unix-like platforms.
  * 
  * @returns Promise resolving to the platform-specific config directory path
  * @throws {FileReadError} If directory creation fails with platform-specific error details
@@ -208,22 +208,17 @@ export async function getConfigDir(): Promise<string> {
         configDir = path.join(os.homedir(), 'AppData', 'Roaming', APP_NAME);
       }
     }
-    // macOS: ~/Library/Preferences/thinktank (unless XDG_CONFIG_HOME is set)
-    else if (process.platform === 'darwin') {
-      // Use standard macOS preference location
-      // This follows Apple's guidelines for application preferences
+    // Unix-like systems (Linux, macOS): ~/.config/thinktank
+    else {
       const homeDir = os.homedir();
       
       // Ensure the home directory path is valid
       if (!homeDir || homeDir.trim() === '') {
-        throw new FileReadError('Unable to determine home directory on macOS. Check user environment.');
+        throw new FileReadError('Unable to determine home directory. Check user environment.');
       }
       
-      configDir = path.join(homeDir, 'Library', 'Preferences', APP_NAME);
-    }
-    // Linux/Unix/Default fallback: ~/.config/thinktank
-    else {
-      configDir = path.join(os.homedir(), '.config', APP_NAME);
+      // Use the same path for both Linux and macOS for consistency
+      configDir = path.join(homeDir, '.config', APP_NAME);
     }
     
     // Ensure the directory exists

@@ -192,12 +192,10 @@ thinktank uses a JSON configuration file to define which LLM providers and model
   - Example: `C:\Users\Username\AppData\Roaming\thinktank\config.json`
   - Falls back to `%USERPROFILE%\AppData\Roaming\thinktank\config.json` if `APPDATA` is not set
 
-- **macOS**: `~/Library/Preferences/thinktank/config.json`
-  - Example: `/Users/username/Library/Preferences/thinktank/config.json`
-
-- **Linux/Unix**: `~/.config/thinktank/config.json`
+- **macOS and Linux**: `~/.config/thinktank/config.json`
+  - Example: `/Users/username/.config/thinktank/config.json` (macOS)
+  - Example: `/home/username/.config/thinktank/config.json` (Linux)
   - Uses `$XDG_CONFIG_HOME/thinktank/config.json` if the `XDG_CONFIG_HOME` environment variable is set
-  - Example: `/home/username/.config/thinktank/config.json`
 
 You can view your configuration location with:
 
