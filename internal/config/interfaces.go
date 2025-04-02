@@ -29,4 +29,7 @@ type ManagerInterface interface {
 
 	// EnsureConfigDirs creates necessary configuration directories if they don't exist
 	EnsureConfigDirs() error
+
+	// WriteDefaultConfig writes the default configuration to the user's config file
+	WriteDefaultConfig() error
 }

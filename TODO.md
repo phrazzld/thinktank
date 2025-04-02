@@ -11,7 +11,7 @@
   - Description: Create AppConfig struct to hold configuration values from files/flags
   - Dependencies: None
   - Priority: High
-- [ ] Create Configuration Logic
+- [x] Create Configuration Logic
   - Description: Implement loading logic with precedence (user → system → defaults)
   - Dependencies: XDG Library, Configuration Structure
   - Priority: High
