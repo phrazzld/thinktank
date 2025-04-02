@@ -78,39 +78,39 @@
 
 ## Testing
 
-- [ ] Create nameGenerator.test.ts
+- [x] Create nameGenerator.test.ts
   - Description: Create test file for name generator functions
   - Dependencies: nameGenerator.ts implementation
   - Priority: Medium
 
-- [ ] Add successful name generation test
+- [x] Add successful name generation test
   - Description: Test generateFunName() with mocked successful API response
   - Dependencies: nameGenerator.test.ts setup
   - Priority: Medium
 
-- [ ] Add API error tests
+- [x] Add API error tests
   - Description: Test handling of API errors, network issues, auth failures
   - Dependencies: nameGenerator.test.ts setup
   - Priority: Medium
 
-- [ ] Add invalid response format tests
+- [x] Add invalid response format tests
   - Description: Test handling of responses that don't match expected format
   - Dependencies: nameGenerator.test.ts setup
   - Priority: Medium
 
-- [ ] Add fallback name generation test
+- [x] Add fallback name generation test
   - Description: Test generateFallbackName() timestamp format
   - Dependencies: nameGenerator.test.ts setup
   - Priority: Medium
 
-- [ ] Update runThinktank tests
+- [x] Update runThinktank tests
   - Description: Update existing tests to handle new run name functionality
   - Dependencies: Run name integration in workflow
   - Priority: Medium
 
 ## Documentation (Optional)
 
-- [ ] Update README.md
+- [x] Update README.md
   - Description: Document the new run naming feature and GEMINI_API_KEY requirement
   - Dependencies: Complete implementation
   - Priority: Low
