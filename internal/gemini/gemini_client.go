@@ -73,23 +73,41 @@ func newGeminiClient(ctx context.Context, apiKey, modelName string) (Client, err
 // GenerateContent sends a text prompt to Gemini and returns the generated content
 func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
 	if prompt == "" {
-		return nil, errors.New("prompt cannot be empty")
+		return nil, &APIError{
+			Original:   errors.New("prompt cannot be empty"),
+			Type:       ErrorTypeInvalidRequest,
+			Message:    "Cannot generate content with an empty prompt",
+			Suggestion: "Provide a task description using the --task flag or --task-file option",
+		}
 	}
 
 	// Generate content
 	resp, err := c.model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate content: %w", err)
+		apiErr := FormatAPIError(err, 0)
+		// Log detailed info for debugging
+		c.logger.Debug("Gemini API Error: %s", apiErr.DebugInfo())
+		return nil, apiErr
 	}
 
 	// Check for empty response
 	if resp == nil {
-		return nil, errors.New("received nil response from Gemini API")
+		return nil, &APIError{
+			Original:   errors.New("received nil response from Gemini API"),
+			Type:       ErrorTypeUnknown,
+			Message:    "Received an empty response from the Gemini API",
+			Suggestion: "This is likely a temporary issue. Please try again in a few moments.",
+		}
 	}
 
 	// Check for empty candidates
 	if len(resp.Candidates) == 0 {
-		return nil, errors.New("received empty candidates from Gemini API")
+		return nil, &APIError{
+			Original:   errors.New("received empty candidates from Gemini API"),
+			Type:       ErrorTypeUnknown,
+			Message:    "The Gemini API returned no generation candidates",
+			Suggestion: "This could be due to content filtering. Try modifying your prompt or task description.",
+		}
 	}
 
 	candidate := resp.Candidates[0]
@@ -138,7 +156,14 @@ func (c *geminiClient) CountTokens(ctx context.Context, prompt string) (*TokenCo
 
 	resp, err := c.model.CountTokens(ctx, genai.Text(prompt))
 	if err != nil {
-		return nil, fmt.Errorf("failed to count tokens: %w", err)
+		apiErr := FormatAPIError(err, 0)
+		apiErr.Message = "Failed to count tokens in prompt"
+		apiErr.Suggestion = "Check your API key and internet connection. This operation is required before sending content to the API."
+
+		// Log detailed info for debugging
+		c.logger.Debug("Token counting error: %s", apiErr.DebugInfo())
+
+		return nil, apiErr
 	}
 
 	return &TokenCount{
@@ -201,26 +226,66 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+		apiErr := &APIError{
+			Original:   err,
+			Type:       ErrorTypeNetwork,
+			Message:    "Failed to create HTTP request for model information",
+			Suggestion: "This is likely a temporary issue with network connectivity. Check your internet connection and try again.",
+		}
+		return nil, apiErr
 	}
 
 	// Make the request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch model info: %w", err)
+		apiErr := &APIError{
+			Original:   err,
+			Type:       ErrorTypeNetwork,
+			Message:    "Failed to connect to Gemini API to fetch model information",
+			Suggestion: "Check your internet connection and try again. If the issue persists, the API might be experiencing downtime.",
+			Details:    err.Error(),
+		}
+		return nil, apiErr
 	}
 	defer resp.Body.Close()
 
 	// Check status code
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned error %d: %s", resp.StatusCode, string(body))
+		bodyStr := string(body)
+
+		apiErr := FormatAPIError(
+			fmt.Errorf("API returned error: %s", bodyStr),
+			resp.StatusCode,
+		)
+
+		// Add model-specific details
+		apiErr.Details = fmt.Sprintf("Model: %s, Status: %d, Response: %s",
+			modelName, resp.StatusCode, bodyStr)
+
+		// For 404 errors, provide more context about the model
+		if resp.StatusCode == http.StatusNotFound {
+			apiErr.Message = fmt.Sprintf("Model '%s' not found or not accessible", modelName)
+			apiErr.Suggestion = "Check that the model name is correct and that you have access to it. Consider using a different model."
+		}
+
+		// Log detailed error for debugging
+		c.logger.Debug("Model info error: %s", apiErr.DebugInfo())
+
+		return nil, apiErr
 	}
 
 	// Parse response
 	var modelDetails ModelDetailsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&modelDetails); err != nil {
-		return nil, fmt.Errorf("failed to parse model info response: %w", err)
+		apiErr := &APIError{
+			Original:   err,
+			Type:       ErrorTypeInvalidRequest,
+			Message:    "Failed to parse model information response from Gemini API",
+			Suggestion: "This is likely a temporary API issue or a change in the API response format. Try again later.",
+			Details:    err.Error(),
+		}
+		return nil, apiErr
 	}
 
 	// Convert to our internal model
