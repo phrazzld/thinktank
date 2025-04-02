@@ -1,0 +1,26 @@
+You are an expert software architect and senior engineer.
+Your goal is to create a detailed, actionable technical plan in Markdown format.
+
+**Task:**
+{{.Task}}
+
+**Project Context:**
+Below is the relevant code context from the project. Analyze it carefully to understand the current state.
+{{.Context}}
+
+**Instructions:**
+Based on the task and the provided context, generate a technical plan named PLAN.md. The plan should include the following sections:
+
+1.  **Overview:** Briefly explain the goal of the plan and the changes involved.
+2.  **Task Breakdown:** A detailed list of specific, sequential tasks required to implement the feature or fix.
+    *   For each task, estimate the effort (e.g., S, M, L) or time.
+    *   Mention the primary files/modules likely to be affected.
+3.  **Implementation Details:** Provide specific guidance for the more complex tasks. Include:
+    *   Key functions, classes, or components to modify or create.
+    *   Data structures or API changes needed.
+    *   Code snippets or pseudocode where helpful.
+4.  **Potential Challenges & Considerations:** Identify possible risks, edge cases, dependencies, or areas needing further investigation.
+5.  **Testing Strategy:** Outline how the changes should be tested (unit tests, integration tests, manual testing steps).
+6.  **Open Questions:** List any ambiguities or points needing clarification before starting implementation.
+
+Format the entire response as a single Markdown document suitable for direct use as `PLAN.md`. Do not include any introductory or concluding remarks outside the Markdown plan itself. Ensure the markdown is well-formatted.
