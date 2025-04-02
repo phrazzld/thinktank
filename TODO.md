@@ -31,27 +31,27 @@
   - Description: Load configuration early in startup and pass to components
   - Dependencies: Configuration Logic, Refactored PromptManager
   - Priority: Medium
-- [ ] Ensure Backwards Compatibility
+- [x] Ensure Backwards Compatibility
   - Description: Verify command-line flags override config file values correctly
   - Dependencies: Configuration Logic, Updated Main Package
   - Priority: Medium
 
 ## Testing
-- [ ] Write Unit Tests
+- [x] Write Unit Tests
   - Description: Test config loading, template finding, and merging logic
   - Dependencies: All implementation tasks
   - Priority: Medium
-- [ ] Add Integration Tests
+- [x] Add Integration Tests
   - Description: Test full application with various config locations and scenarios
   - Dependencies: All implementation tasks
   - Priority: Medium
-- [ ] Manual Testing
+- [x] Manual Testing
   - Description: Test on different OSes and confirm expected behavior
   - Dependencies: All implementation tasks
   - Priority: Low
 
 ## Documentation
-- [ ] Update Project Documentation
+- [x] Update Project Documentation
   - Description: Add configuration file format and locations to README/docs
   - Dependencies: Implementation tasks
   - Priority: Low
