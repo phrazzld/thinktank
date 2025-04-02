@@ -1,0 +1,118 @@
+{
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-haiku-20240307",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-5-sonnet-20240620",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-7-sonnet-20250219",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-1.5-flash",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-1.5-pro",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-pro",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "meta-llama/llama-3-70b-instruct",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    }
+  ]
+}

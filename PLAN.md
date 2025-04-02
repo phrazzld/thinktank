@@ -1,238 +1,174 @@
-```markdown
-# PLAN: Improve UI/UX of Console Output
+# Engineering Plan: thinktank CLI Refactoring and Enhancement
 
-## 1. Overview
+## 1. Overview & Goals
 
-This plan details the steps to enhance the console output of the `thinktank` CLI tool. The goal is to improve user experience by making the output more informative, structured, readable, and visually appealing. This involves refining progress indicators, structuring results display (especially with groups), improving error message clarity, and integrating dependencies effectively, aligning with the existing architecture and atomic design principles. This plan supersedes the previous `PLAN.md` and integrates tasks from `TODO.md`.
+The `thinktank` CLI tool provides a valuable capability: querying multiple Large Language Models (LLMs) simultaneously and comparing their outputs. Based on recent critical analyses (Critiques A, B, C), while the tool leverages TypeScript effectively and has a modular concept (especially for LLM providers), its current implementation suffers from several key issues that hinder usability, maintainability, and overall elegance.
 
-## 2. Task Breakdown
+Specifically, the strict adherence to atomic design principles feels over-engineered for a CLI context, leading to file fragmentation. The reliance on manual JSON configuration creates a high barrier to entry and is error-prone. The core workflow logic is monolithic, and model selection lacks intuitive ad-hoc capabilities. Handling provider-specific configurations requires significant user effort.
 
-| Task                                                 | Description                                                                                                | Effort | Primary Files/Modules Affected                                        | Dependencies        |
-| :--------------------------------------------------- | :--------------------------------------------------------------------------------------------------------- | :----- | :-------------------------------------------------------------------- | :------------------ |
-| **Setup & Core Primitives**                          |                                                                                                            |        |                                                                       |                     |
-| Install Dependencies                                 | Add `cli-table3` and `figures` to `package.json`. Verify/update `chalk` and `ora` versions.                | S      | `package.json`, `package-lock.json`                                   | -                   |
-| Create Console Utility Module                        | Create `src/atoms/consoleUtils.ts` to centralize `chalk`, `figures`, and common formatting helpers.        | M      | `src/atoms/consoleUtils.ts`                                           | Installed deps      |
-| **Enhanced Progress Indicators**                     |                                                                                                            |        |                                                                       |                     |
-| Implement Stage Timing                               | Add start/end timestamps for major stages (config load, model processing, file writing) in `runThinktank`. | M      | `src/templates/runThinktank.ts`                                       | -                   |
-| Refine Spinner Messages                              | Update `ora` spinner text in `runThinktank` to show counts (current/total), percentages, and stage timing. | M      | `src/templates/runThinktank.ts`                                       | Stage Timing        |
-| **Group-Based Output Organization**                  |                                                                                                            |        |                                                                       |                     |
-| Add In-Progress Group Headers                        | In `runThinktank`, before processing models of a group, print a formatted header (name, count, description). | M      | `src/templates/runThinktank.ts`, `src/atoms/consoleUtils.ts`          | Console Utils       |
-| **Structured Results Display**                       |                                                                                                            |        |                                                                       |                     |
-| Design Final Summary Table Structure                 | Define columns (Model, Group, Status, Time, Tokens, etc.) and formatting rules (colors, symbols).          | S      | Design Document / This Plan                                           | -                   |
-| Implement Tabular Results Formatter                  | Create/update function (e.g., in `outputFormatter` or new molecule) using `cli-table3` for the final summary. | L      | `src/molecules/outputFormatter.ts` (or new), `src/atoms/consoleUtils.ts` | Console Utils, Deps |
-| Integrate Performance Metrics into Table             | Ensure response time and token counts (if available in `LLMResponse.metadata`) are included in the table.    | S      | Tabular Formatter function                                            | LLMResponse changes |
-| Calculate and Display Group Summary Stats            | Compute success/error counts and avg. response time per group for display (potentially below table/headers). | M      | `src/templates/runThinktank.ts` (data aggregation), Formatter function | Group Headers, Data |
-| **Better Error Handling Display**                    |                                                                                                            |        |                                                                       |                     |
-| Create Error Formatting Helper                       | Develop a function in `consoleUtils` or a dedicated error molecule to format errors consistently.          | M      | `src/atoms/consoleUtils.ts` (or new), `src/templates/runThinktank.ts` | Console Utils       |
-| Categorize & Color-Code Errors                       | Enhance error messages logged during `runThinktank` (API, config, file write) using the helper.            | M      | `src/templates/runThinktank.ts`, Error Formatter                      | Error Formatter     |
-| Add Contextual Troubleshooting Tips                  | Implement logic to detect common error patterns (e.g., API key issues) and suggest fixes via the helper.   | M      | Error Formatter, `src/templates/runThinktank.ts`                      | Error Formatter     |
-| **Integration & Refinement**                         |                                                                                                            |        |                                                                       |                     |
-| Integrate Formatting into `runThinktank`             | Replace/augment existing `console.log` and `spinner` calls with new utilities and formatters.              | L      | `src/templates/runThinktank.ts`                                       | All previous tasks  |
-| Refactor `outputFormatter.ts`                        | Adapt or replace existing functions to use the new table formatter and console utils. Remove redundancy.   | M      | `src/molecules/outputFormatter.ts`                                    | Tabular Formatter   |
-| Implement `--verbose` Flag                           | Add flag handling in `cli.ts` and conditional detailed logging (e.g., full metadata) in `runThinktank`.    | M      | `src/runtime/cli.ts`, `src/templates/runThinktank.ts`                 | -                   |
-| **Documentation & Polish (Lower Priority)**          |                                                                                                            |        |                                                                       |                     |
-| Add First-Run Usage Hints                            | Implement simple mechanism (e.g., check for a state file) to display tips on first execution.              | S      | `src/runtime/cli.ts`                                                  | -                   |
-| Add Documentation Links                              | Include relevant documentation links in error messages or help output where appropriate.                   | S      | Error Formatter, `src/runtime/cli.ts`                                 | -                   |
-| Implement Fallback Formatting (Optional)             | Add detection for limited terminals and provide simpler, non-color/non-Unicode output.                     | M      | `src/atoms/consoleUtils.ts`, `src/templates/runThinktank.ts`          | Console Utils       |
+This plan outlines a refactoring and enhancement strategy focused on:
 
-*Effort Estimation: S = Small (<= 2 hours), M = Medium (2-6 hours), L = Large (6+ hours)*
+1.  **Simplifying the Code Structure:** Migrating from strict atomic design to a more pragmatic, flatter structure suitable for a CLI application.
+2.  **Improving Configuration Management:** Replacing manual JSON editing with a robust, user-friendly CLI command interface and implementing a cascading configuration system for sensible defaults.
+3.  **Enhancing Usability:** Streamlining model selection for ad-hoc queries and introducing presets for new users.
+4.  **Increasing Maintainability & Readability:** Refactoring the core workflow into smaller, focused modules and improving logging.
+5.  **Preserving Core Functionality:** Ensuring all existing capabilities (multi-model querying, groups, provider extensibility) are retained or enhanced.
 
-## 3. Implementation Details
+The end goal is a more elegant, approachable, maintainable, and powerful `thinktank` CLI tool.
 
-### 3.1. Console Utility Module (`src/atoms/consoleUtils.ts`)
+## 2. Current State Analysis (Summary of Problems)
 
-*   **Purpose:** Centralize terminal styling and symbol usage. Avoid direct `chalk` and `figures` calls elsewhere.
-*   **Exports:**
-    *   Re-export `chalk` instance (configured based on terminal support/flags).
-    *   Export common symbols from `figures` (e.g., `tick`, `cross`, `warning`, `info`).
-    *   Helper functions:
-        *   `styleSuccess(text: string)`: Applies green color, maybe prepends `figures.tick`.
-        *   `styleError(text: string)`: Applies red color, maybe prepends `figures.cross`.
-        *   `styleWarning(text: string)`: Applies yellow color, maybe prepends `figures.warning`.
-        *   `styleInfo(text: string)`: Applies blue/cyan color, maybe prepends `figures.info`.
-        *   `styleHeader(text: string)`: Applies bold, maybe blue color.
-        *   `styleDim(text: string)`: Applies dim styling.
-        *   `formatError(error: Error | string, category?: string, tip?: string)`: Standardized error display (see Error Handling).
+Based on the provided critiques, the primary challenges are:
 
-```typescript
-// src/atoms/consoleUtils.ts (Example Snippet)
-import chalk from 'chalk'; // Use compatible version (v4 based on package.json)
-import figures from 'figures'; // Use compatible version (v6 based on package.json)
+*   **Overly Complex Structure:** Strict atomic design (`atoms`, `molecules`, etc.) leads to excessive file fragmentation and complicates code navigation without significant reuse benefits in this CLI context.
+*   **Cumbersome Configuration:** Manual editing of `thinktank.config.json` is required, making it inaccessible for non-technical users, error-prone (syntax/schema errors), and lacking immediate validation.
+*   **Monolithic Workflow:** `src/templates/runThinktank.ts` contains overly complex, lengthy logic handling configuration loading, model selection, parallel API calls, and output writing, reducing readability and testability.
+*   **Inflexible Model Selection:** Primarily relies on pre-defined groups in the config file, making quick, one-off comparisons across specific models cumbersome.
+*   **Difficult Provider-Specific Configuration:** Managing unique options for different models/providers (e.g., Anthropic's `thinking`, OpenAI's modes) requires manual specification within the JSON, lacking sensible defaults or a clear hierarchy.
+*   **Code Fragmentation & Verbosity:** Numerous small files and potentially excessive logging clutter the developer experience and runtime output.
 
-// TODO: Add logic to disable colors based on terminal support or flags
-const enabledChalk = new chalk.Instance({ level: 2 }); // Example: Force color level
+## 3. Proposed Architecture & Enhancements
 
-export const colors = enabledChalk;
-export const symbols = figures;
+We will implement the following architectural changes and feature enhancements:
 
-export function styleSuccess(text: string): string {
-  return `${colors.green(symbols.tick)} ${text}`;
-}
+### 3.1. Code Structure Simplification
 
-export function styleError(text: string): string {
-  return `${colors.red(symbols.cross)} ${text}`;
-}
+*   **Action:** Abandon the strict atomic design hierarchy. Adopt a flatter, domain-oriented structure:
+    *   `src/core/`: Core types (`types.ts`), interfaces (`LLMProvider.ts`), primary logic classes (`ConfigManager.ts`, `LLMRegistry.ts`).
+    *   `src/providers/`: Individual LLM provider implementations (e.g., `openai.ts`, `anthropic.ts`, `openrouter.ts`). Provider-specific utilities can be co-located or placed within a `src/providers/utils/` subdirectory if needed, but consolidation is preferred.
+    *   `src/cli/`: Command-line interface logic using `commander.js`. Includes the main entry point (`index.ts` or `main.ts`) and command definitions (e.g., `commands/config.ts`, `commands/run.ts`).
+    *   `src/utils/`: Common utility functions (e.g., `logger.ts`, `fileUtils.ts`, `helpers.ts`).
+    *   `src/workflow/`: Refactored components from the original `runThinktank.ts` (see section 3.5).
+*   **Rationale:** Reduces file count, improves navigability, aligns better with typical CLI application structures, and simplifies the mental model for developers.
 
-// ... other style helpers
+### 3.2. CLI-Based Configuration Management
 
-export function formatError(
-    error: Error | string,
-    category?: string,
-    tip?: string
-): string {
-    const errorMsg = error instanceof Error ? error.message : error;
-    let output = `${colors.red.bold('Error')}${category ? ` (${colors.yellow(category)})` : ''}: ${errorMsg}`;
-    if (tip) {
-        output += `\n  ${colors.cyan(symbols.info)} Tip: ${tip}`;
-    }
-    // Add stack trace in verbose mode?
-    return output;
-}
-```
+*   **Action:** Implement a dedicated `thinktank config` command suite using `commander.js` to manage `thinktank.config.json`.
+*   **Commands:**
+    *   `thinktank config path`: Display the path to the config file.
+    *   `thinktank config show`: Display the current configuration.
+    *   `thinktank config models list`: List all configured models in a table format (Provider, ModelId, Enabled, Options).
+    *   `thinktank config models add <provider> <modelId> [--options '{"key":"value",...}'] [--enable/--disable]`: Add a new model definition. Use JSON string for options initially, potentially add specific flags like `--temperature`, `--max-tokens` later.
+    *   `thinktank config models remove <identifier>`: Remove a model (using index number from `list` or `provider:modelId`).
+    *   `thinktank config models enable <identifier>` / `disable <identifier>`: Toggle model availability.
+    *   `thinktank config groups list`: List all configured groups.
+    *   `thinktank config groups create <groupName> [--prompt "System prompt text"] [--models <modelId1,modelId2...>]`: Create a new group.
+    *   `thinktank config groups add-model <groupName> <modelId>`: Add a model to a group.
+    *   `thinktank config groups remove-model <groupName> <modelId>`: Remove a model from a group.
+    *   `thinktank config groups set-prompt <groupName> --prompt "..."`: Set/update a group's system prompt.
+    *   `thinktank config groups remove <groupName>`: Delete a group.
+*   **Implementation:**
+    *   The `ConfigManager` class (`src/core/ConfigManager.ts`) will handle loading, validating (using Zod or similar for schema validation), modifying, and saving the JSON configuration.
+    *   Each command action will load the config, perform the modification via `ConfigManager` methods, validate the result, and save back, providing user feedback.
+*   **Benefit:** Eliminates manual JSON editing, provides immediate validation, lowers the barrier to entry, and reduces configuration errors.
 
-### 3.2. Enhanced Progress Indicators (`runThinktank.ts`)
+### 3.3. Cascading Model Configuration System
 
-*   Measure time using `performance.now()` or `Date.now()` at the start/end of logical stages (config load, model prep, API calls, file writing).
-*   Update `ora` spinner text dynamically:
-    *   During model processing: `spinner.text = \`Processing models [${completed}/${total}] (${percent}%): ${currentModelKey} - ${elapsedTime}s\`;`
-    *   During file writing: `spinner.text = \`Writing files [${written}/${total}] (${percent}%): ${currentFilename} - ${elapsedTime}s\`;`
-*   Use `spinner.info()`, `spinner.succeed()`, `spinner.warn()`, `spinner.fail()` with messages formatted using `consoleUtils`.
+*   **Action:** Implement a system to intelligently merge model options from multiple levels, providing sensible defaults and allowing user overrides.
+*   **Hierarchy (Lowest to Highest Priority):**
+    1.  **Base Defaults:** Universal defaults applicable to all models (e.g., `{ temperature: 0.7, maxTokens: 1000 }`). Hardcoded or loaded from a separate `defaults.json`.
+    2.  **Provider Defaults:** Defaults specific to an LLM provider (e.g., Anthropic: `{ thinking: 'enabled' }`).
+    3.  **Model-Specific Defaults:** Fine-tuned defaults for a specific model ID (e.g., `claude-3-opus`: `{ temperature: 0.8 }`).
+    4.  **User Config Defaults:** Options defined for a model within the `thinktank.config.json` file (via `config models add --options ...`).
+    5.  **Group-Specific Overrides:** Options defined within a group definition for a specific model in that group.
+    6.  **CLI Invocation Overrides:** Options provided directly via CLI flags during the `run` command (e.g., `thinktank run ... --temperature 0.5`).
+*   **Implementation:**
+    *   Define a clear `ModelOptions` interface in `src/core/types.ts`.
+    *   Create a function `resolveModelOptions(provider: string, modelId: string, userConfigOptions?: ModelOptions, groupOptions?: ModelOptions, cliOptions?: ModelOptions): ModelOptions` within `src/core/ConfigManager.ts` or a dedicated `src/core/optionsResolver.ts`.
+    *   This function will fetch defaults (potentially stored in `ConfigManager` or constants) and merge them using object spreading (`{...base, ...provider, ...modelSpecific, ...userConfig, ...group, ...cli}`).
+    *   Provider implementations will receive the final, resolved `ModelOptions`.
+*   **Benefit:** Simplifies configuration by providing smart defaults while retaining full user control for customization. Handles provider/model nuances gracefully.
 
-### 3.3. Group-Based Output Organization (`runThinktank.ts`, Formatter)
+### 3.4. Simplified Model Selection
 
-*   **In-Progress Headers:** Before the loop processing models within a specific group in `runThinktank.ts`:
-    ```typescript
-    // Inside runThinktank, when iterating through groups or models mapped to groups
-    import { styleHeader, styleDim } from '../atoms/consoleUtils';
-    // ...
-    console.log(styleHeader(`\n📋 Group: ${groupName} (${groupModels.length} models)`));
-    if (groupDescription) {
-        console.log(styleDim(groupDescription));
-    }
-    console.log(styleDim('─'.repeat(80)));
-    // ... start processing models in this group
-    ```
-*   **Final Summary Stats:** After `Promise.all(callPromises)` and `Promise.all(fileWritePromises)`, aggregate results by group. Calculate success/error counts and average response times per group. Display this information either before or after the main results table, or potentially integrated if the table library supports group summaries.
+*   **Action:** Introduce a `--models` CLI flag for the main run command to allow direct specification of models for ad-hoc queries.
+*   **Syntax:** `thinktank run prompt.txt --models <provider1>:<modelId1>,<provider2>:<modelId2>,...`
+*   **Logic:**
+    *   If `--models` is provided, use only those models, ignoring enabled status and groups (unless a group name is also provided as the primary target, which might be disallowed for clarity). Resolve their options using the cascading system (Section 3.3).
+    *   If `--group <groupName>` is provided, use the models defined in that group.
+    *   If neither is provided, use all models marked as `enabled: true` in the configuration.
+*   **Implementation:** Update the model selection logic within the refactored workflow (see Section 3.5).
+*   **Benefit:** Enables quick, targeted comparisons without needing to pre-configure groups or toggle `enabled` flags.
 
-### 3.4. Structured Results Display (Formatter Module)
+### 3.5. Workflow Refactoring
 
-*   Use `cli-table3`. Define columns precisely.
-*   Create a dedicated function `formatResultsTable(results: Array<LLMResponse & { configKey: string }>): string`.
-*   Map `LLMResponse` data to table rows. Use `consoleUtils` for styling status, group names, etc.
-*   Handle missing data gracefully (e.g., '-' for missing tokens/time).
+*   **Action:** Decompose the monolithic logic in `src/templates/runThinktank.ts` into smaller, single-responsibility functions/modules within the `src/workflow/` directory.
+*   **Proposed Modules:**
+    *   `inputHandler.ts`: Handles loading the prompt (from file or stdin) and loading the configuration via `ConfigManager`.
+    *   `modelSelector.ts`: Implements the logic described in Section 3.4 to determine the final list of models to query based on CLI flags (`--models`, `--group`) and config settings.
+    *   `optionsResolver.ts` (or within `ConfigManager`): Implements the cascading configuration logic (Section 3.3).
+    *   `queryExecutor.ts`: Takes the list of selected models (with resolved options) and the prompt, uses `LLMRegistry` to get provider instances, and executes API calls in parallel (`Promise.allSettled` for robustness). Includes spinner/progress feedback.
+    *   `outputHandler.ts`: Formats the results (successful responses and errors) and writes them to the specified output files/directory or prints to console.
+*   **Main Workflow Orchestration:** A simplified function (e.g., `src/cli/commands/run.ts`'s action handler) will call these modules sequentially.
+*   **Benefit:** Improves readability, testability, and maintainability by breaking down complexity. Makes future feature additions easier.
 
-```typescript
-// src/molecules/outputFormatter.ts (or new module) - Example Snippet
-import Table from 'cli-table3';
-import { LLMResponse } from '../atoms/types';
-import { colors, symbols, styleSuccess, styleError, styleWarning, styleDim } from '../atoms/consoleUtils';
+### 3.6. Enhanced User Experience
 
-export function formatResultsTable(results: Array<LLMResponse & { configKey: string }>): string {
-  const table = new Table({
-    head: [
-      colors.bold('Model'),
-      colors.bold('Group'),
-      colors.bold('Status'),
-      colors.bold('Time (ms)'),
-      colors.bold('Tokens'),
-    ],
-    colAligns: ['left', 'left', 'center', 'right', 'right'],
-    style: { head: ['blue'] } // Example styling
-  });
+*   **Action:** Implement features to improve ease of use and feedback.
+    *   **Presets:** Add a `--preset <presetName>` flag (e.g., `--preset basic`, `--preset coding`) to the `run` command. These presets map to predefined sets of models (potentially including specific options) stored within the application or config defaults. Requires adding preset definitions and updating `modelSelector.ts`.
+    *   **Logging Refinement:** Reduce default logging verbosity. Use spinners for active tasks but log only critical steps/summary information by default. Introduce a `--verbose` flag for detailed step-by-step logging useful for debugging. Implement this using a dedicated `logger.ts` utility.
+    *   **Error Handling:** Ensure clear, actionable error messages for common issues (invalid config, missing API keys, API errors, file access errors). Leverage `Promise.allSettled` in `queryExecutor.ts` to handle partial failures gracefully.
 
-  // Sort results perhaps by group then model?
-  results.sort((a, b) => {
-      const groupA = a.groupInfo?.name || 'default';
-      const groupB = b.groupInfo?.name || 'default';
-      if (groupA !== groupB) return groupA.localeCompare(groupB);
-      return a.configKey.localeCompare(b.configKey);
-  });
+## 4. Implementation Steps
 
-  results.forEach(result => {
-    let statusText: string;
-    if (result.error) {
-      // Consider differentiating API errors vs other errors if possible
-      statusText = styleError('Error');
-    } else {
-      statusText = styleSuccess('Success');
-      // Add warning symbol if metadata contains warnings?
-    }
+1.  **Setup:**
+    *   Create a new feature branch (e.g., `refactor/simplify-architecture`).
+    *   Ensure TypeScript, ESLint, Prettier, and testing frameworks (Jest) are configured correctly.
 
-    table.push([
-      result.configKey,
-      result.groupInfo?.name || styleDim('default'),
-      statusText,
-      result.metadata?.responseTime ?? styleDim('-'),
-      result.metadata?.usage?.total_tokens ?? styleDim('-'),
-    ]);
-  });
+2.  **Code Structure:**
+    *   Create the new directory structure (`src/core`, `src/providers`, `src/cli`, `src/utils`, `src/workflow`).
+    *   Move existing files to their new locations (e.g., types to `core`, provider logic to `providers`, entry point logic to `cli`).
+    *   Consolidate small utility files where appropriate (e.g., within providers or into `src/utils`).
+    *   Update all `import` paths across the project.
 
-  return table.toString();
-}
+3.  **Configuration System:**
+    *   Refine/Implement the `ConfigManager` class in `src/core/` with load, save, add, remove, update methods for models and groups. Implement robust validation (e.g., using Zod).
+    *   Implement the cascading `resolveModelOptions` function (Section 3.3), including defining base, provider, and model-specific defaults.
 
-// Update formatResults in outputFormatter.ts to call formatResultsTable
-// Or replace formatResults entirely if the table is the primary output now.
-```
+4.  **CLI Commands:**
+    *   Install/update `commander.js`.
+    *   Implement the `thinktank config ...` commands defined in Section 3.2 within `src/cli/commands/config.ts` (or similar), using the `ConfigManager`.
 
-### 3.5. Better Error Handling Display (`runThinktank.ts`, `consoleUtils.ts`)
+5.  **Model Selection & Workflow:**
+    *   Implement the `--models` flag logic in `src/cli/commands/run.ts` and the `modelSelector.ts` module (Section 3.4).
+    *   Refactor the existing `runThinktank.ts` logic into the new modules within `src/workflow/` (Section 3.5).
+    *   Ensure the main run command orchestrates calls to these workflow modules correctly.
 
-*   Wrap error-prone operations (API calls, file writes) in `try...catch`.
-*   Inside `catch` blocks, use the `formatError` helper from `consoleUtils`.
-*   Attempt to categorize errors based on context or error type/message:
-    *   API Key Error: Check `error.message` for keywords like 'API key', 'authentication', '401', '403'. Suggest checking `.env` or config.
-    *   Network Error: Check for 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND'. Suggest checking internet connection or service status.
-    *   Configuration Error: Catch errors during `loadConfig` or model validation. Suggest checking `thinktank.config.js`.
-    *   File System Error: Catch errors during `fs.mkdir` or `fs.writeFile`. Suggest checking permissions or disk space.
-*   Pass category and relevant tip to `formatError`.
-*   Log formatted errors using `console.error` or `spinner.fail()`.
+6.  **Provider Updates:**
+    *   Update all provider implementations in `src/providers/` to accept the resolved `ModelOptions` object and use it when making API calls. Remove any internal option defaulting that is now handled by the cascading system.
 
-### 3.6. Dependency Integration
+7.  **User Experience Enhancements:**
+    *   Implement the `--preset` flag logic.
+    *   Refactor logging using a dedicated utility and implement the `--verbose` flag (Section 3.6).
+    *   Review and enhance error handling throughout the workflow.
 
-*   Ensure `package.json` reflects the correct, compatible versions:
-    *   `chalk`: Currently `^4.1.2`. Plan mentioned `^5.0.0`. **Decision:** Stick with v4 for now unless v5 features are essential, as v5 is ESM-only and the project is CJS (`"type": "commonjs"`). If upgrading, requires build/runtime changes. *Assume v4 for now.*
-    *   `cli-table3`: Plan `^0.6.3`, actual `^0.6.5`. Use `^0.6.5`.
-    *   `figures`: Plan `^5.0.0`, actual `^6.1.0`. Use `^6.1.0`.
-    *   `ora`: Plan "existing", actual `^5.4.1`. Use `^5.4.1`.
-*   Import dependencies correctly (e.g., `import chalk from 'chalk';` for v4).
+8.  **Testing:**
+    *   Write unit tests for `ConfigManager`, `resolveModelOptions`, `modelSelector`, and individual utility functions.
+    *   Write integration tests for the `config` commands and the main `run` command workflow (mocking API calls).
+    *   Ensure existing tests are updated and passing.
 
-## 4. Potential Challenges & Considerations
+9.  **Documentation:**
+    *   Update `README.md` to reflect the new structure, CLI commands (especially `config` and `--models`/`--preset`), and configuration approach.
+    *   Add or update user guides/examples.
+    *   Document the cascading configuration hierarchy.
 
-*   **Refactoring `runThinktank.ts`:** This file has significant orchestration logic. Adding detailed progress, group headers, and improved error logging requires careful integration without breaking existing functionality.
-*   **Terminal Compatibility:** Ensuring consistent rendering of colors, symbols, and table borders across different terminals (macOS Terminal, iTerm2, Windows Terminal, VS Code integrated, basic Linux TTY) can be tricky. The `chalk` library helps, but testing is crucial. Fallback formatting adds complexity.
-*   **Information Overload:** Balancing detailed information (timing, tokens, verbose logs) with clarity. The table format helps, but too many columns or rows could become unwieldy. Consider truncation or alternative displays for very large result sets.
-*   **Performance:** While likely negligible, complex formatting and frequent spinner updates could theoretically add minor overhead. Profile if any slowdown is perceived.
-*   **State Management for Progress:** Accurately tracking completed/pending/failed counts across concurrent operations needs careful state management within `runThinktank.ts`.
-*   **Atomic Design Adherence:** Ensure the `consoleUtils` remains truly atomic (basic reusable elements) and doesn't creep into molecule-level concerns. Decide if the table formatter is a complex atom or a molecule.
-*   **Error Categorization Reliability:** Reliably categorizing errors based on messages can be brittle. Rely on error types or codes where possible.
+10. **Review & Merge:** Conduct code reviews for each major component and merge the feature branch upon successful testing and review.
 
-## 5. Testing Strategy
+## 5. Technical Details & Considerations
 
-*   **Unit Tests:**
-    *   `src/atoms/consoleUtils.ts`: Test all helper functions (`styleSuccess`, `formatError`, etc.) with various inputs. Mock `chalk` and `figures` to assert correct calls and output structure, independent of actual terminal rendering.
-    *   `src/molecules/outputFormatter.ts` (or new table formatter module): Test `formatResultsTable` with different `results` data (empty, single, multiple, errors, missing metadata, different groups). Mock `cli-table3` to verify constructor options and `push` calls. Assert the structure of the returned string (or table object).
-*   **Integration Tests:**
-    *   `src/templates/runThinktank.ts`: Mock file system operations (`fs`), API calls (`provider.generate`), and configuration loading. Verify that:
-        *   Correct spinner messages (including counts, timing) are generated at different stages.
-        *   Group headers are logged correctly based on mocked config/results.
-        *   `formatResultsTable` (or equivalent) is called with the correctly aggregated results data.
-        *   `formatError` is called with appropriate arguments for simulated errors.
-    *   `src/runtime/cli.ts`: Use `execa` or similar to run the CLI command with different arguments (`--group`, `--model`, `--verbose`, invalid inputs). Assert on the structure and key elements of the console output (presence of table, headers, error messages). Mock `runThinktank` to control its output/errors.
-*   **Manual Testing:**
-    *   Run `thinktank` commands in various real terminal emulators (as listed in Challenges).
-    *   Test with different configurations: no groups, multiple groups, models inside/outside groups.
-    *   Test with varying numbers of models (0, 1, 10, 50+).
-    *   Trigger real errors: invalid API key, non-existent model, network offline (if possible), invalid config file. Verify error display and tips.
-    *   Test with `--verbose` flag.
-    *   Test with long group names/descriptions or model IDs.
-    *   Verify output redirection (`thinktank ... > output.log`) produces clean text without ANSI codes (or test color disabling flags if implemented).
+*   **Dependency Management:** Audit existing dependencies. Remove unused ones. Consider using `npm audit` and potentially `Dependabot` for ongoing maintenance. Keep dependencies minimal where possible.
+*   **Configuration File:** The default location for `thinktank.config.json` should be user-configurable (e.g., via environment variable or flag) but default to a standard location (e.g., `~/.config/thinktank/thinktank.config.json`). `ConfigManager` should handle file creation if it doesn't exist.
+*   **API Keys:** Continue managing API keys via environment variables or a secure mechanism. Provide clear instructions/errors if keys are missing.
+*   **Type Safety:** Leverage TypeScript's strict mode and ensure strong typing throughout, especially around configuration objects and provider interfaces.
+*   **Asynchronous Operations:** Use `async/await` consistently. Employ `Promise.allSettled` for parallel API calls to handle individual failures without halting the entire process.
+*   **Testing Strategy:** Focus on unit tests for core logic (config management, option resolution) and integration tests for CLI commands and the end-to-end workflow (with mocks).
 
-## 6. Open Questions
+## 6. Expected Outcomes
 
-1.  **Dependency Versions:** Confirm sticking with `chalk` v4 due to CJS compatibility, or if migrating the project build to handle ESM v5 is desired/planned.
-2.  **Table Width:** How should the results table handle very long model names or potentially many columns if more metadata is added? Truncate? Wrap? Allow horizontal scrolling (less ideal for CLI)?
-3.  **Verbose Mode Content:** What specific extra information should `--verbose` enable? Full API request/response? Detailed timing breakdowns? Debug logs from dependencies? Stack traces for errors?
-4.  **Fallback Formatting:** Is the "Fallback formatting for limited terminals" task (low priority) a firm requirement, or can we assume modern terminal capabilities for now?
-5.  **First-Run Hint Mechanism:** Is storing a simple state file (e.g., `~/.thinktank_state`) acceptable for detecting the first run, or is another mechanism preferred?
-6.  **Error Categorization Specificity:** How granular should error categorization be (e.g., differentiate between 401/403/429 API errors)?
+*   **Improved Developer Experience:** Easier code navigation, understanding, and maintenance due to a simpler structure and modular workflow.
+*   **Enhanced User Experience:** Lower barrier to entry via CLI config management and presets. Increased flexibility via direct model selection (`--models`) and cascading options. Clearer feedback through refined logging and error handling.
+*   **Increased Robustness:** Reduced risk of configuration errors due to validation. Better handling of partial failures during execution.
+*   **Simplified Maintenance:** Easier to add new providers, commands, or features to the more modular codebase.
+*   **Elegant Design:** A more pragmatic and less fragmented architecture better suited to the tool's purpose.
 
-```
+This plan provides a clear roadmap for evolving `thinktank` into a significantly more refined and user-friendly tool while building upon its existing strengths.

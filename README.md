@@ -11,7 +11,7 @@ thinktank allows you to send the same text prompt to multiple LLM providers (lik
 - Testing prompts across different providers before committing to one
 - Educational purposes to understand model differences
 
-Built with TypeScript and designed with extensibility in mind, thinktank follows Atomic Design principles to provide a robust, maintainable architecture that makes it easy to add new LLM providers.
+Built with TypeScript and designed with extensibility in mind, thinktank provides a domain-oriented architecture that makes it easy to add new LLM providers and configure your experience via a convenient CLI interface.
 
 ## Installation
 
@@ -51,60 +51,238 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 ## Usage
 
-### Basic Usage
+thinktank uses a powerful command line interface built with commander.js:
 
 ```bash
-# Send a prompt file to all enabled models (saves responses to ./thinktank_outputs/)
-thinktank -i prompt.txt
+# Send a prompt to all models in the default group
+thinktank run prompt.txt
 
-# Send to a specific model
-thinktank -i prompt.txt -m openai:gpt-4o
+# Send a prompt to models in a specific group
+thinktank run prompt.txt --group coding
 
-# Use a custom config file
-thinktank -i prompt.txt -c custom-config.json
+# Send a prompt to one specific model
+thinktank run prompt.txt --model openai:gpt-4o
 
-# Specify a custom output directory
-thinktank -i prompt.txt -o ./custom-outputs
+# Send a prompt to multiple specific models
+thinktank run prompt.txt --models openai:gpt-4o,anthropic:claude-3-opus
 
-# Include metadata in the output
-thinktank -i prompt.txt --metadata
+# List all available models
+thinktank models list
 
-# Disable colored output
-thinktank -i prompt.txt --no-color
+# Configure models and groups
+thinktank config models add openai gpt-4o --options '{"temperature": 0.7}' 
+thinktank config groups create coding --models openai:gpt-4o,anthropic:claude-3-opus
 
-# List all available models from configured providers
-thinktank list-models
-
-# List models from a specific provider
-thinktank list-models -p anthropic
+# Get help
+thinktank --help
+thinktank run --help
+thinktank config --help
 ```
 
-### Command Line Options
+### Command Examples
 
-#### Default Command Options (for prompt querying)
+#### Running with a Prompt File
 
-| Option | Alias | Description | Type | Required |
-|--------|-------|-------------|------|----------|
-| `--input` | `-i` | Path to input prompt file | string | Yes |
-| `--config` | `-c` | Path to configuration file | string | No |
-| `--output` | `-o` | Path to custom output directory (default: './thinktank-reports/') | string | No |
-| `--model` | `-m` | Models to use (provider:model, provider, or model) | array | No |
-| `--metadata` | | Include metadata in output | boolean | No |
-| `--no-color` | | Disable colored output | boolean | No |
-| `--help` | `-h` | Show help | | |
-| `--version` | `-v` | Show version number | | |
+Send your prompt to all enabled models in the default group:
 
-#### List-Models Command Options
+```bash
+thinktank run path/to/prompt.txt
+```
 
-| Option | Alias | Description | Type | Required |
-|--------|-------|-------------|------|----------|
-| `--provider` | `-p` | Filter models by provider ID | string | No |
-| `--config` | `-c` | Path to configuration file | string | No |
-| `--help` | `-h` | Show help | | |
+#### Running with a Specific Group
+
+Send your prompt to all models in a named group (as defined in your config file):
+
+```bash
+thinktank run path/to/prompt.txt --group coding
+thinktank run path/to/prompt.txt --group creative
+thinktank run path/to/prompt.txt --group analysis
+```
+
+#### Running with Specific Models
+
+Send your prompt to a single model:
+
+```bash
+thinktank run path/to/prompt.txt --model openai:gpt-4o
+```
+
+Send your prompt to multiple models at once:
+
+```bash
+thinktank run path/to/prompt.txt --models openai:gpt-4o,anthropic:claude-3-opus-20240229,openrouter:anthropic/claude-3-5-sonnet-20240620
+```
+
+#### Listing Available Models
+
+List all available models from all configured providers:
+
+```bash
+thinktank models list
+```
+
+List models from a specific provider:
+
+```bash
+thinktank models list --provider openai
+thinktank models list --provider anthropic
+thinktank models list --provider openrouter
+```
+
+#### Configuring thinktank
+
+Show the current configuration:
+
+```bash
+thinktank config show
+```
+
+Add a new model to your configuration:
+
+```bash
+thinktank config models add openai gpt-4o --options '{"temperature": 0.7, "maxTokens": 4000}'
+```
+
+Create a new group of models:
+
+```bash
+thinktank config groups create coding --models openai:gpt-4o,anthropic:claude-3-opus
+```
+
+Enable or disable a model:
+
+```bash
+thinktank config models enable openai:gpt-4o
+thinktank config models disable openai:gpt-4o
+```
+
+### Additional Options
+
+| Option | Description |
+|--------|-------------|
+| `--help`, `-h` | Show help information |
+| `--version`, `-v` | Show version number |
+| `--no-color` | Disable colored output |
+| `--thinking` | Enable Claude's thinking capability (for supported models) |
+| `--show-thinking` | Display thinking output in the results |
 
 ## Configuration
 
 thinktank uses a JSON configuration file to define which LLM providers and models to use.
+
+### Cascading Configuration System
+
+thinktank implements a powerful cascading configuration system that intelligently resolves model options from multiple sources, ensuring sensible defaults while giving you fine-grained control over model behavior.
+
+#### Configuration Hierarchy
+
+Options for each model are resolved through a six-layer hierarchy, with each subsequent layer overriding settings from previous layers:
+
+1. **Base Defaults** - Global options for all models
+2. **Provider Defaults** - Defaults specific to a provider (e.g., Anthropic, OpenAI)
+3. **Model-Specific Defaults** - Defaults for a specific model (e.g., Claude 3 Opus, GPT-4o)
+4. **User Config Options** - Options set in your `thinktank.config.json` file
+5. **Group-Specific Options** - Options set for a model group
+6. **CLI Options** - Options provided via command-line flags
+
+This layered approach means you don't need to specify every option for every model. Instead, the system automatically applies appropriate defaults and only overrides what you explicitly specify.
+
+#### Option Resolution Example
+
+Let's trace how the system resolves options for `openai:gpt-4o` when used with the `coding` group:
+
+1. **Start with base defaults**:
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 1000
+   }
+   ```
+
+2. **Apply provider defaults** (OpenAI):
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 1000
+   }
+   ```
+
+3. **Apply model-specific defaults** (GPT-4o):
+   ```json
+   {
+     "temperature": 0.7,
+     "maxTokens": 4000  // Updated from 1000
+   }
+   ```
+
+4. **Apply user config options**:
+   ```json
+   {
+     "temperature": 0.6,  // Updated from 0.7
+     "maxTokens": 2000    // Updated from 4000
+   }
+   ```
+
+5. **Apply group-specific options** (coding group):
+   ```json
+   {
+     "temperature": 0.3,  // Updated from 0.6
+     "maxTokens": 2000
+   }
+   ```
+
+6. **Apply CLI options** (if provided):
+   ```json
+   {
+     "temperature": 0.9,  // Updated from 0.3
+     "maxTokens": 3000    // Updated from 2000
+   }
+   ```
+
+The final resolved options would be:
+```json
+{
+  "temperature": 0.9,
+  "maxTokens": 3000
+}
+```
+
+#### Using the Cascading Configuration System
+
+You can customize model behavior in three main ways:
+
+1. **Via Configuration File**
+   - Define options at the model level in `thinktank.config.json`
+   - Set provider-specific and model-specific options
+
+2. **Via Groups**
+   - Create specialized groups for different tasks
+   - Override options on a per-group basis
+
+3. **Via CLI**
+   - Override any option when running thinktank:
+   ```bash
+   # Set temperature for all models in this run
+   thinktank run prompt.txt --temperature 0.4
+
+   # Use a specific group and override its options
+   thinktank run prompt.txt --group coding --temperature 0.5
+   
+   # Use a specific model with overridden options
+   thinktank run prompt.txt --model openai:gpt-4o --temperature 0.8
+   ```
+
+#### Best Practices
+
+- **Task-Specific Configurations**
+  - Use lower temperatures (0.1-0.3) for factual, precise tasks
+  - Use medium temperatures (0.4-0.7) for balanced responses
+  - Use higher temperatures (0.8-1.0) for creative, exploratory tasks
+
+- **Layered Approach**
+  - Define sensible defaults at the user config level
+  - Create specialized groups for different tasks
+  - Use CLI overrides for one-off adjustments
 
 ### Default Configuration
 
@@ -114,6 +292,22 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
 
 ```json
 {
+  "defaultGroup": "general",
+  "groups": {
+    "general": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "coding": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-sonnet-20240229",
+      "gemini:gemini-1.5-pro"
+    ],
+    "creative": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4-turbo"
+    ]
+  },
   "models": [
     {
       "provider": "openai",
@@ -127,7 +321,25 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
     {
       "provider": "anthropic",
       "modelId": "claude-3-opus-20240229",
-      "enabled": false,
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229", 
+      "enabled": true,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "gemini",
+      "modelId": "gemini-1.5-pro", 
+      "enabled": true,
       "options": {
         "temperature": 0.7,
         "maxTokens": 1000
@@ -138,6 +350,17 @@ By default, thinktank will look for a `thinktank.config.json` file in the curren
 ```
 
 ### Configuration Options
+
+#### Group Configuration
+
+The `groups` object allows you to define named collections of models that can be activated with a single command:
+
+| Property | Type | Description | Required |
+|----------|------|-------------|----------|
+| `defaultGroup` | string | The name of the default group to use when no group is specified | Yes |
+| `groups` | object | An object where keys are group names and values are arrays of model identifiers | Yes |
+
+Each group is an array of model identifiers in the format `provider:modelId`. When you run thinktank with a group name, all models in that group will be used for the query.
 
 #### Model Configuration
 
@@ -161,6 +384,48 @@ The `options` object can include:
 | `maxTokens` | number | Maximum number of tokens to generate |
 
 Provider-specific options can also be included and will be passed directly to the underlying API.
+
+#### Provider-Specific Options
+
+Different providers support different options. Here are the most common ones for each:
+
+##### Anthropic (Claude)
+
+```json
+{
+  "temperature": 0.7,          // 0.0-1.0, controls randomness
+  "maxTokens": 4000,           // Maximum output tokens
+  "thinking": {                // Claude's thinking capability
+    "type": "enabled",
+    "budget_tokens": 10000
+  }
+}
+```
+
+##### OpenAI (GPT)
+
+```json
+{
+  "temperature": 0.7,         // 0.0-2.0, controls randomness
+  "maxTokens": 4000,          // Maximum output tokens
+  "top_p": 0.95,              // Alternative to temperature
+  "presence_penalty": 0.0,    // -2.0 to 2.0, penalizes repeated tokens
+  "frequency_penalty": 0.0,   // -2.0 to 2.0, penalizes frequent tokens
+  "seed": 12345,              // For reproducible outputs (if supported)
+  "stop": ["###"]             // Stop sequences
+}
+```
+
+##### Google (Gemini)
+
+```json
+{
+  "temperature": 0.7,         // 0.0-1.0, controls randomness
+  "maxTokens": 2048,          // Maximum output tokens
+  "topK": 40,                 // Limits token selection pool
+  "topP": 0.95                // Alternative to temperature
+}
+```
 
 #### Provider-Specific Configuration
 
@@ -208,75 +473,319 @@ Additional options supported by OpenRouter:
 
 To see the full list of available models, run:
 ```bash
-thinktank list-models -p openrouter
+thinktank models openrouter
 ```
 
-## List Models Feature
+### Configuration Examples
 
-thinktank allows you to list all available models from configured providers, making it easy to discover which models you can use in your queries.
+Below are example configurations for different use cases to help you get started.
 
-### Usage
+#### Minimal Configuration
 
+This is a minimal configuration with a default group and two models:
+
+```json
+{
+  "defaultGroup": "basic",
+  "groups": {
+    "basic": [
+      "openai:gpt-3.5-turbo",
+      "anthropic:claude-3-haiku-20240307"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-haiku-20240307",
+      "enabled": true
+    }
+  ]
+}
+```
+
+#### Development-Focused Configuration
+
+This configuration is optimized for software development tasks:
+
+```json
+{
+  "defaultGroup": "coding",
+  "groups": {
+    "coding": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "review": [
+      "openai:gpt-4o",
+      "anthropic:claude-3-sonnet-20240229"
+    ],
+    "quick": [
+      "openai:gpt-3.5-turbo"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.1,
+        "maxTokens": 8000
+      }
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true,
+      "options": {
+        "temperature": 0.2,
+        "maxTokens": 2000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.1,
+        "maxTokens": 8000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.2,
+        "maxTokens": 4000
+      }
+    }
+  ]
+}
+```
+
+#### Creative Writing Configuration
+
+This configuration is tailored for creative writing tasks:
+
+```json
+{
+  "defaultGroup": "creative",
+  "groups": {
+    "creative": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4o"
+    ],
+    "brainstorm": [
+      "anthropic:claude-3-opus-20240229",
+      "openai:gpt-4o",
+      "openai:gpt-3.5-turbo"
+    ],
+    "draft": [
+      "anthropic:claude-3-opus-20240229"
+    ],
+    "edit": [
+      "openai:gpt-4o"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openai",
+      "modelId": "gpt-4o",
+      "enabled": true,
+      "options": {
+        "temperature": 0.8,
+        "maxTokens": 4000,
+        "top_p": 0.9
+      }
+    },
+    {
+      "provider": "openai",
+      "modelId": "gpt-3.5-turbo",
+      "enabled": true,
+      "options": {
+        "temperature": 0.9,
+        "maxTokens": 2000,
+        "top_p": 0.95
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": true,
+      "options": {
+        "temperature": 0.8,
+        "maxTokens": 4000
+      }
+    }
+  ]
+}
+```
+
+#### Mixed-Provider Configuration with OpenRouter
+
+This configuration uses OpenRouter to access multiple providers through a single API:
+
+```json
+{
+  "defaultGroup": "mixed",
+  "groups": {
+    "mixed": [
+      "openrouter:anthropic/claude-3-opus-20240229",
+      "openrouter:openai/gpt-4o",
+      "openrouter:google/gemini-pro"
+    ],
+    "anthropic-only": [
+      "openrouter:anthropic/claude-3-opus-20240229",
+      "openrouter:anthropic/claude-3-sonnet-20240229"
+    ],
+    "openai-only": [
+      "openrouter:openai/gpt-4o",
+      "openrouter:openai/gpt-3.5-turbo"
+    ]
+  },
+  "models": [
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-sonnet-20240229",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 4000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-3.5-turbo",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "google/gemini-pro",
+      "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 2000
+      }
+    }
+  ]
+}
+```
+
+## Claude's Thinking Capability
+
+Claude supports a "thinking" feature that allows the model to show its reasoning process before providing a final answer. This is especially helpful for complex tasks or when you want to understand how Claude arrived at its conclusion.
+
+### Using Claude's Thinking
+
+There are three ways to enable Claude's thinking:
+
+1. **Use the `thinking` group:**
+   ```bash
+   thinktank prompt.txt --group thinking
+   ```
+   This uses a group specifically configured for Claude with thinking enabled.
+
+2. **Add the `--thinking` flag:**
+   ```bash
+   thinktank prompt.txt --thinking
+   ```
+   This enables thinking for any Claude models in the group.
+
+3. **Configure it directly in your config file:**
+   ```json
+   {
+     "provider": "anthropic",
+     "modelId": "claude-3-opus-20240229",
+     "options": {
+       "thinking": {
+         "type": "enabled",
+         "budget_tokens": 16000
+       }
+     }
+   }
+   ```
+
+To display the thinking output, use the `--show-thinking` flag:
 ```bash
-# List all available models from all providers
-thinktank list-models
-
-# List models from a specific provider
-thinktank list-models -p anthropic
-thinktank list-models -p openrouter
-
-# List models using a custom config file
-thinktank list-models -c custom-config.json
+thinktank prompt.txt --thinking --show-thinking
 ```
 
-### How It Works
+### Important Temperature Limitation
 
-1. The command queries each provider in your configuration for their available models
-2. For providers that support the `listModels` API (like Anthropic and OpenAI), it retrieves the list of models dynamically
-3. Results are displayed grouped by provider, with descriptions when available
-4. Errors (like missing API keys) are clearly shown for troubleshooting
+**When using Claude's thinking capability, the temperature will automatically be set to 1, regardless of what value you configured.** This is a technical requirement from Anthropic's API.
 
-### Example Output
-
-```
-Available Models:
-
---- openai ---
-  - gpt-4o (Owned by: system)
-  - gpt-4-turbo (Owned by: system)
-  - gpt-3.5-turbo (Owned by: openai)
-
---- anthropic ---
-  - claude-3-opus-20240229 (Most powerful model)
-  - claude-3-sonnet-20240229 (Balanced model)
-  - claude-3-haiku-20240307 (Fast, efficient model)
-  - claude-3-5-sonnet-20240620 (Latest Sonnet model)
-  - claude-3-7-sonnet-20250219 (Latest advanced model)
-
---- legacy-provider ---
-  Error fetching models: Provider 'legacy-provider' does not support listing models
+For example, if you have:
+```json
+{
+  "provider": "anthropic",
+  "modelId": "claude-3-7-sonnet-20250219",
+  "enabled": true,
+  "options": {
+    "temperature": 0.7,
+    "thinking": {
+      "type": "enabled",
+      "budget_tokens": 16000
+    }
+  }
+}
 ```
 
-## Output Directory Feature
+The temperature will be forced to 1 when making the API request, regardless of the 0.7 value specified.
+
+### When to Use Thinking
+
+Claude's thinking capability is most valuable for:
+
+- Complex reasoning tasks
+- Mathematical problem-solving
+- Multi-step decisions
+- Tasks requiring careful analysis
+- Understanding model reasoning
+
+Note that using thinking may increase token usage, as the model generates additional content for its reasoning process.
+
+## Output Directory
 
 thinktank automatically saves individual model responses to separate files in a dedicated output directory.
 
-### Usage
-
-```bash
-# Run with default output directory (./thinktank-reports/)
-thinktank -i prompt.txt
-
-# Specify a custom output directory
-thinktank -i prompt.txt -o ./custom-outputs
-```
-
 ### How It Works
 
-1. thinktank always creates a timestamped directory for each run (e.g., `./thinktank-reports/thinktank_run_20250331_123456_789/` by default).
-2. The `-o/--output` option allows you to specify a custom base directory instead of the default `./thinktank-reports/`.
-3. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
-4. Console output will show progress information and the location of the output directory.
+1. For each run, thinktank creates a directory under `./thinktank-reports/` based on the group or model name.
+2. Each model's response is saved as a separate Markdown (.md) file within this directory, with filenames based on the provider and model ID (e.g., `openai-gpt-4o.md`).
+3. Console output will show progress information and the location of the output directory.
 
 ### Output File Format
 
@@ -291,7 +800,7 @@ Generated: YYYY-MM-DDThh:mm:ss.sssZ
 
 The text response from the model goes here...
 
-## Metadata (Optional, if --metadata is specified)
+## Metadata
 
 ```json
 {
@@ -319,38 +828,42 @@ Error message from the API
 
 ## Architecture
 
-thinktank follows the Atomic Design methodology with a clear separation of concerns:
+thinktank follows a domain-oriented architecture with a clear separation of concerns:
 
 ```
 src/
-├── atoms/       # Core types, constants, and helpers
-├── molecules/   # Basic functionality (file reading, providers)
-├── organisms/   # Complex components (config, registry)
-├── templates/   # Main workflow orchestration
-└── runtime/     # CLI entry point
+├── core/        # Core types, interfaces, config management, and registry
+├── providers/   # LLM provider implementations
+├── cli/         # Command-line interface with commander.js
+├── utils/       # Common utility functions
+└── workflow/    # Main workflow orchestration modules
 ```
 
 ### Key Components
 
-- **ConfigManager**: Handles loading and validating configuration
-- **LLMRegistry**: Manages provider registration and retrieval
-- **LLMProviders**: Implementation of various LLM APIs
-- **Runthinktank**: Orchestrates the main workflow
-- **CLI**: Provides the command-line interface
+- **ConfigManager**: Handles loading, validating, and modifying configuration with full CLI management
+- **LLMRegistry**: Manages provider registration and retrieval with cascading configuration support
+- **Providers**: Implementation of various LLM APIs (OpenAI, Anthropic, Google, OpenRouter)
+- **CLI**: Provides a comprehensive command-line interface with commander.js
+- **Workflow Modules**:
+  - **InputHandler**: Processes prompts from files or direct input
+  - **ModelSelector**: Determines which models to use based on configuration and CLI flags
+  - **QueryExecutor**: Manages parallel API calls with proper error handling
+  - **OutputHandler**: Formats and writes results to files and console
 
 ## Extending thinktank
 
 ### Adding a New LLM Provider
 
-1. Create a new file in `src/molecules/llmProviders/<provider-name>.ts`
+1. Create a new file in `src/providers/<provider-name>.ts`
 2. Implement the `LLMProvider` interface
 3. Register the provider in the LLM registry
 
 Here's an example implementation for a new provider:
 
 ```typescript
-import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../../atoms/types';
-import { registerProvider } from '../../organisms/llmRegistry';
+import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel } from '../core/types';
+import { registerProvider } from '../core/llmRegistry';
 
 export class NewProvider implements LLMProvider {
   public readonly providerId = 'new-provider';
@@ -415,16 +928,23 @@ export class NewProvider implements LLMProvider {
 export const newProvider = new NewProvider();
 ```
 
-4. Import and use the provider in `src/templates/runthinktank.ts`:
+4. Import the provider in `src/workflow/runThinktank.ts`:
 
 ```typescript
 // Import provider modules to ensure they're registered
-import '../molecules/llmProviders/openai';
-import '../molecules/llmProviders/new-provider';
+import '../providers/openai';
+import '../providers/anthropic';
+import '../providers/google';
+import '../providers/openrouter';
+import '../providers/new-provider';
 // Future providers will be imported here
 ```
 
-5. Add an example configuration in `templates/thinktank.config.default.json`
+5. Add an example configuration using the CLI:
+
+```bash
+thinktank config models add new-provider model-1 --options '{"temperature": 0.7}'
+```
 
 ### Example: OpenRouter Provider Implementation
 
@@ -456,13 +976,12 @@ OpenRouter is included as an example implementation that demonstrates how to add
 
 ```bash
 # List all models available through OpenRouter
-thinktank list-models -p openrouter
+thinktank models openrouter
 
 # Query a specific model via OpenRouter
-thinktank -i prompt.txt -m openrouter:anthropic/claude-3-opus-20240229
+thinktank prompt.txt openrouter:anthropic/claude-3-opus-20240229
 
-# Query multiple OpenRouter models
-thinktank -i prompt.txt -m openrouter:openai/gpt-4o -m openrouter:anthropic/claude-3-haiku
+# Include OpenRouter models in a group config
 ```
 
 #### OpenRouter Model IDs:
@@ -480,24 +999,27 @@ When configuring models in your config file or when using the `-m` option, use t
 
 1. **"Input file not found"**
    - Ensure the file path is correct and the file exists
-   - Try using an absolute path
+   - Check if you're in the right working directory
+   - Try using an absolute path instead of a relative one
 
-2. **"No enabled models found in configuration"**
-   - Check your config file to ensure at least one model has `"enabled": true`
-   - Alternatively, specify models directly with the `-m` option
+2. **"No models found in group"**
+   - Verify that the group name exists in your configuration
+   - Check that models in the group are properly configured and enabled
+   - Try using a specific model identifier instead
 
-3. **"Missing API keys for models"**
+3. **"Invalid model format"**
+   - Ensure you're using the correct format: `provider:modelId`
+   - For OpenRouter models, use: `openrouter:provider/modelId`
+   - Check for typos in provider or model names
+
+4. **"Missing API keys for models"**
    - Ensure you have set the correct environment variables in your `.env` file
    - Check that the API keys are valid
-
-4. **"Provider not found"**
-   - Make sure the provider ID in your config matches the registered provider
-   - Check that the provider module is properly imported in `runthinktank.ts`
+   - Follow the provider-specific instructions for obtaining API keys
 
 5. **"Failed to create output directory"**
    - Check if you have write permissions for the specified output directory
    - Ensure the path exists or can be created
-   - Try providing an absolute path instead of a relative one
 
 ### API Key Issues
 

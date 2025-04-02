@@ -6,32 +6,40 @@
       "enabled": true,
       "options": {
         "temperature": 0.7,
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     },
     {
-      "provider": "openai",
-      "modelId": "o3-mini",
-      "enabled": true,
-      "options": {
-        "maxTokens": 1000
-      }
-    },
-    {
-      "provider": "google",
-      "modelId": "gemini-2.5-pro-exp-03-25",
-      "enabled": true,
-      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "provider": "anthropic",
+      "modelId": "claude-3-opus-20240229",
+      "enabled": false,
       "options": {
         "temperature": 0.7,
         "maxTokens": 1000
       }
     },
     {
-      "provider": "google",
-      "modelId": "gemini-2.0-flash",
-      "enabled": true,
-      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "provider": "anthropic",
+      "modelId": "claude-3-sonnet-20240229",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-haiku-20240307",
+      "enabled": false,
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "anthropic",
+      "modelId": "claude-3-5-sonnet-20240620",
+      "enabled": false,
       "options": {
         "temperature": 0.7,
         "maxTokens": 1000
@@ -42,32 +50,162 @@
       "modelId": "claude-3-7-sonnet-20250219",
       "enabled": true,
       "options": {
+        "temperature": 1,
+        "maxTokens": 20000,
+        "thinking": {
+          "type": "enabled",
+          "budget_tokens": 16000
+        }
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-1.5-flash",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
         "temperature": 0.7,
         "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-1.5-pro",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-pro",
+      "enabled": false,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "openai/gpt-4o",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "anthropic/claude-3-opus-20240229",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openrouter",
+      "modelId": "meta-llama/llama-3-70b-instruct",
+      "enabled": false,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 1000
+      }
+    },
+    {
+      "provider": "openai",
+      "modelId": "o3-mini",
+      "enabled": true,
+      "options": {
+        "maxTokens": 5000
+      }
+    },
+    {
+      "provider": "google",
+      "modelId": "gemini-2.5-pro-exp-03-25",
+      "enabled": true,
+      "apiKeyEnvVar": "GEMINI_API_KEY",
+      "options": {
+        "temperature": 0.7,
+        "maxTokens": 5000
       }
     },
     {
       "provider": "openrouter",
       "modelId": "deepseek/deepseek-r1",
       "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
       "options": {
         "temperature": 0.7,
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     },
     {
       "provider": "openrouter",
       "modelId": "deepseek/deepseek-chat-v3-0324",
       "enabled": true,
+      "apiKeyEnvVar": "OPENROUTER_API_KEY",
       "options": {
         "temperature": 0.7,
-        "maxTokens": 1000
+        "maxTokens": 5000
       }
     }
   ],
   "groups": {
     "default": {
       "name": "default",
+      "systemPrompt": {
+        "text": "You are a helpful, concise, and accurate assistant.",
+        "metadata": {
+          "source": "default-configuration"
+        }
+      },
+      "models": [
+        {
+          "provider": "openai",
+          "modelId": "o3-mini",
+          "enabled": true
+        },
+        {
+          "provider": "anthropic",
+          "modelId": "claude-3-7-sonnet-20250219",
+          "enabled": true,
+          "options": {
+            "temperature": 1,
+            "maxTokens": 20000,
+            "thinking": {
+              "type": "enabled",
+              "budget_tokens": 16000
+            }
+          }
+        },
+        {
+          "provider": "google",
+          "modelId": "gemini-2.5-pro-exp-03-25",
+          "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY"
+        },
+        {
+          "provider": "openrouter",
+          "modelId": "deepseek/deepseek-r1",
+          "enabled": true,
+          "apiKeyEnvVar": "OPENROUTER_API_KEY",
+          "options": {
+            "temperature": 0.7,
+            "maxTokens": 5000
+          }
+        }
+      ],
+      "description": "Default model group"
+    },
+    "mids": {
+      "name": "mids",
       "systemPrompt": {
         "text": "You are a helpful, concise, and accurate assistant."
       },
@@ -78,89 +216,26 @@
           "enabled": true
         },
         {
-          "provider": "openai",
-          "modelId": "o3-mini",
-          "enabled": true,
-          "options": {
-            "maxTokens": 1000
-          }
-        },
-        {
-          "provider": "google",
-          "modelId": "gemini-2.5-pro-exp-03-25",
-          "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
-        },
-        {
-          "provider": "google",
-          "modelId": "gemini-2.0-flash",
-          "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
-        },
-        {
-          "provider": "anthropic",
-          "modelId": "claude-3-7-sonnet-20250219",
-          "enabled": true
-        },
-        {
-          "provider": "openrouter",
-          "modelId": "deepseek/deepseek-r1",
-          "enabled": true
-        },
-        {
           "provider": "openrouter",
           "modelId": "deepseek/deepseek-chat-v3-0324",
-          "enabled": true
-        }
-      ],
-      "description": "Collection of primary models across providers"
-    },
-    "coding": {
-      "name": "coding",
-      "systemPrompt": {
-        "text": "You are a coding assistant specialized in software development. Prioritize correct, efficient code and comprehensive explanations of programming concepts."
-      },
-      "models": [
-        {
-          "provider": "openai",
-          "modelId": "gpt-4o",
-          "enabled": true
-        },
-        {
-          "provider": "anthropic",
-          "modelId": "claude-3-7-sonnet-20250219",
-          "enabled": true
-        },
-        {
-          "provider": "openrouter",
-          "modelId": "deepseek/deepseek-chat-v3-0324",
-          "enabled": true
-        }
-      ],
-      "description": "Models optimized for programming tasks"
-    },
-    "fast": {
-      "name": "fast",
-      "systemPrompt": {
-        "text": "You are an assistant that provides quick, concise responses. Prioritize brevity and efficiency in your answers."
-      },
-      "models": [
-        {
-          "provider": "openai",
-          "modelId": "o3-mini",
           "enabled": true,
+          "apiKeyEnvVar": "OPENROUTER_API_KEY",
           "options": {
-            "maxTokens": 1000
+            "temperature": 0.7,
+            "maxTokens": 5000
           }
         },
         {
           "provider": "google",
           "modelId": "gemini-2.0-flash",
           "enabled": true,
-          "apiKeyEnvVar": "GEMINI_API_KEY"
+          "options": {
+            "temperature": 0.7,
+            "maxTokens": 5000
+          }
         }
       ],
-      "description": "Fastest models for quick responses"
+      "description": "Best non-reasoning models"
     }
   }
 }
