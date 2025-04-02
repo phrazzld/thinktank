@@ -152,35 +152,7 @@ export const DEFAULT_CONFIG: AppConfig = {
 };
 
 /**
- * Paths where the application will look for config files, in order of precedence
+ * Path to the default configuration template file in the package
+ * This is used to initialize a new configuration file if none exists
  */
-export const CONFIG_SEARCH_PATHS: string[] = [
-  // Current working directory
-  path.resolve(process.cwd(), 'thinktank.config.json'),
-  
-  // User's config directory
-  path.resolve(getUserConfigDir(), 'thinktank/config.json'),
-  
-  // Application directory
-  path.resolve(__dirname, '../../config/thinktank.config.default.json'),
-];
-
-/**
- * Get the user's config directory based on platform
- */
-function getUserConfigDir(): string {
-  const { platform } = process;
-  
-  // Windows: %APPDATA% (e.g., C:\Users\Username\AppData\Roaming)
-  if (platform === 'win32') {
-    return process.env.APPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Roaming');
-  }
-  
-  // macOS: ~/Library/Preferences
-  if (platform === 'darwin') {
-    return path.join(process.env.HOME || '', 'Library', 'Preferences');
-  }
-  
-  // Linux/Unix: ~/.config (XDG Base Directory Specification)
-  return path.join(process.env.HOME || '', '.config');
-}
+export const DEFAULT_CONFIG_TEMPLATE_PATH = path.resolve(__dirname, '../../config/thinktank.config.default.json');

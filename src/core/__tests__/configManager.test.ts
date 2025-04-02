@@ -11,8 +11,11 @@ import {
   getEnabledModelsFromGroups,
   findModelGroup,
   ConfigError,
+  getActiveConfigPath,
+  getDefaultConfigPath,
+  saveConfig,
 } from '../configManager';
-import { fileExists, readFileContent } from '../../utils/fileReader';
+import { fileExists, readFileContent, getConfigFilePath, writeFile } from '../../utils/fileReader';
 import { getApiKey } from '../../utils/helpers';
 import { AppConfig } from '../types';
 
@@ -22,14 +25,18 @@ jest.mock('../../utils/helpers');
 
 // Mock constants to override default behavior for tests
 jest.mock('../constants', () => ({
-  CONFIG_SEARCH_PATHS: ['/test/path1', '/test/path2', '/test/path3'],
   DEFAULT_CONFIG: {
     models: [],
   },
+  DEFAULT_CONFIG_TEMPLATE_PATH: '/test/default/template.json',
 }));
 
 const mockedFileExists = jest.mocked(fileExists);
 const mockedReadFileContent = jest.mocked(readFileContent);
+const mockedGetConfigFilePath = jest.mocked(getConfigFilePath);
+
+// Mock getConfigFilePath to return a test path
+mockedGetConfigFilePath.mockResolvedValue('/test/xdg/config.json');
 const mockedGetApiKey = jest.mocked(getApiKey);
 
 describe('Config Manager', () => {
@@ -74,20 +81,66 @@ describe('Config Manager', () => {
         .rejects.toThrow('Configuration file not found at specified path: /nonexistent.json');
     });
     
-    it('should search multiple paths when no specific path is provided', async () => {
-      // Make only the second path exist
+    it('should use XDG config path when no specific path is provided and file exists', async () => {
+      // Make the XDG path exist
       mockedFileExists.mockImplementation(async (path) => {
-        return path === '/test/path2';
+        return path === '/test/xdg/config.json';
       });
       
-      await loadConfig({ mergeWithDefaults: false });
+      // Mock readFileContent to return valid content
+      mockedReadFileContent.mockImplementation(async (path) => {
+        if (path === '/test/xdg/config.json') {
+          return validConfigContent;
+        }
+        throw new Error('File not found');
+      });
       
-      // Should have checked multiple paths
-      expect(mockedFileExists.mock.calls.length).toBeGreaterThan(1);
-      expect(mockedFileExists).toHaveBeenCalledWith('/test/path1');
-      expect(mockedFileExists).toHaveBeenCalledWith('/test/path2');
-      // Should have only read the content of the second path
-      expect(mockedReadFileContent).toHaveBeenCalledWith('/test/path2');
+      const config = await loadConfig({ mergeWithDefaults: false });
+      
+      // Should have checked the XDG path
+      expect(mockedGetConfigFilePath).toHaveBeenCalled();
+      expect(mockedFileExists).toHaveBeenCalledWith('/test/xdg/config.json');
+      // Should have read the XDG path content
+      expect(mockedReadFileContent).toHaveBeenCalledWith('/test/xdg/config.json');
+      // Should have the expected content
+      expect(config.models).toHaveLength(1);
+      expect(config.models[0].provider).toBe('testprovider');
+    });
+    
+    it('should create a new config file when XDG config does not exist', async () => {
+      // Make the XDG path not exist but the template exist
+      mockedFileExists.mockImplementation(async (path) => {
+        return path === '/test/default/template.json';
+      });
+      
+      // Mock readFileContent to return template content
+      const templateContent = JSON.stringify({
+        models: [{ provider: 'template', modelId: 'model', enabled: true }]
+      });
+      
+      mockedReadFileContent.mockImplementation(async (path) => {
+        if (path === '/test/default/template.json') {
+          return templateContent;
+        }
+        throw new Error('File not found');
+      });
+      
+      const config = await loadConfig({ mergeWithDefaults: false });
+      
+      // Should have checked the XDG path
+      expect(mockedGetConfigFilePath).toHaveBeenCalled();
+      expect(mockedFileExists).toHaveBeenCalledWith('/test/xdg/config.json');
+      
+      // Should have checked and read the template
+      expect(mockedFileExists).toHaveBeenCalledWith('/test/default/template.json');
+      expect(mockedReadFileContent).toHaveBeenCalledWith('/test/default/template.json');
+      
+      // Should have written the new config file
+      expect(writeFile).toHaveBeenCalledWith('/test/xdg/config.json', templateContent);
+      
+      // Should return the template content
+      expect(config.models).toHaveLength(1);
+      expect(config.models[0].provider).toBe('template');
     });
     
     it('should validate configuration structure', async () => {
@@ -579,6 +632,95 @@ describe('Config Manager', () => {
       expect(groupInfo).toBeDefined();
       expect(groupInfo?.groupName).toBe('default');
       expect(groupInfo?.systemPrompt.text).toBe('You are a helpful assistant.');
+    });
+  });
+
+  describe('getDefaultConfigPath', () => {
+    it('should return the path in the current working directory', () => {
+      // Save original process.cwd
+      const originalCwd = process.cwd;
+      
+      // Mock process.cwd
+      process.cwd = jest.fn().mockReturnValue('/test/current/directory');
+      
+      const result = getDefaultConfigPath();
+      
+      expect(result).toBe('/test/current/directory/thinktank.config.json');
+      
+      // Restore original process.cwd
+      process.cwd = originalCwd;
+    });
+  });
+  
+  describe('getActiveConfigPath', () => {
+    it('should return the XDG config path', async () => {
+      // getConfigFilePath is already mocked to return '/test/xdg/config.json'
+      const result = await getActiveConfigPath();
+      
+      expect(result).toBe('/test/xdg/config.json');
+      expect(mockedGetConfigFilePath).toHaveBeenCalled();
+    });
+  });
+  
+  describe('saveConfig', () => {
+    // Mock writeFile since we didn't do it at the test setup
+    const mockedWriteFile = jest.fn();
+    const originalWriteFile = jest.requireMock('../../utils/fileReader').writeFile;
+    
+    beforeEach(() => {
+      // Set up the writeFile mock
+      jest.requireMock('../../utils/fileReader').writeFile = mockedWriteFile;
+      mockedWriteFile.mockResolvedValue(undefined);
+    });
+    
+    afterEach(() => {
+      // Restore the original function
+      jest.requireMock('../../utils/fileReader').writeFile = originalWriteFile;
+    });
+    
+    it('should save configuration to specified path', async () => {
+      const config: AppConfig = {
+        models: [{ provider: 'test', modelId: 'model', enabled: true }]
+      };
+      
+      await saveConfig(config, '/custom/path/config.json');
+      
+      expect(mockedWriteFile).toHaveBeenCalledWith(
+        '/custom/path/config.json',
+        expect.any(String)
+      );
+      // Verify the JSON contains our test model
+      const jsonArg = mockedWriteFile.mock.calls[0][1];
+      expect(jsonArg).toContain('test');
+      expect(jsonArg).toContain('model');
+    });
+    
+    it('should save to XDG path when no path specified', async () => {
+      const config: AppConfig = {
+        models: [{ provider: 'test', modelId: 'model', enabled: true }]
+      };
+      
+      await saveConfig(config);
+      
+      expect(mockedGetConfigFilePath).toHaveBeenCalled();
+      expect(mockedWriteFile).toHaveBeenCalledWith(
+        '/test/xdg/config.json',
+        expect.any(String)
+      );
+    });
+    
+    it('should throw ConfigError for invalid configuration', async () => {
+      // Invalid config (missing required fields)
+      const invalidConfig = {
+        models: [{ enabled: true }] // Missing provider and modelId
+      };
+      
+      // Cast to fool TypeScript but test the runtime validation
+      await expect(saveConfig(invalidConfig as AppConfig))
+        .rejects.toThrow(ConfigError);
+      
+      // Verify no write attempt was made
+      expect(mockedWriteFile).not.toHaveBeenCalled();
     });
   });
 });

@@ -2,12 +2,13 @@
  * Configuration manager for loading and validating application config
  */
 import { z } from 'zod';
-import { fileExists, readFileContent, writeFile } from '../utils/fileReader';
+import { fileExists, readFileContent, writeFile, getConfigFilePath } from '../utils/fileReader';
 import { AppConfig, ModelConfig, ModelGroup, ModelOptions, SystemPrompt } from './types';
-import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from './constants';
+import { DEFAULT_CONFIG, DEFAULT_CONFIG_TEMPLATE_PATH } from './constants';
 import { getApiKey as getApiKeyHelper } from '../utils/helpers';
 import dotenv from 'dotenv';
 import { logger } from '../utils/logger';
+import path from 'path';
 
 // Re-export getApiKey for use in other modules
 export const getApiKey = getApiKeyHelper;
@@ -95,8 +96,33 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
       const configContent = await readFileContent(configPath);
       rawConfig = parseJsonSafely(configContent);
     } else {
-      // Otherwise, try paths in order of preference
-      rawConfig = await tryLoadConfigFromPaths(CONFIG_SEARCH_PATHS);
+      // Otherwise, use the XDG path
+      const xdgConfigPath = await getConfigFilePath();
+      
+      // Check if the file exists
+      if (await fileExists(xdgConfigPath)) {
+        // Load the existing config
+        const configContent = await readFileContent(xdgConfigPath);
+        rawConfig = parseJsonSafely(configContent);
+      } else {
+        // If it doesn't exist, create a config with defaults
+        logger.info(`Configuration file not found at ${xdgConfigPath}. Creating a default one.`);
+        
+        // Use the template if it exists, otherwise use the built-in default
+        let defaultContent: string;
+        
+        if (await fileExists(DEFAULT_CONFIG_TEMPLATE_PATH)) {
+          defaultContent = await readFileContent(DEFAULT_CONFIG_TEMPLATE_PATH);
+        } else {
+          defaultContent = JSON.stringify(DEFAULT_CONFIG, null, 2);
+        }
+        
+        // Save the default configuration
+        await writeFile(xdgConfigPath, defaultContent);
+        
+        // Parse the default content
+        rawConfig = parseJsonSafely(defaultContent);
+      }
     }
     
     // Merge with defaults if requested (now off by default)
@@ -165,42 +191,8 @@ function parseJsonSafely(content: string): AppConfig {
   }
 }
 
-/**
- * Attempts to load configuration from a list of paths
- * 
- * @param paths - Paths to try in order of preference
- * @returns The loaded configuration
- * @throws {ConfigError} If no configuration can be loaded
- */
-async function tryLoadConfigFromPaths(paths: string[]): Promise<AppConfig> {
-  for (const path of paths) {
-    if (await fileExists(path)) {
-      try {
-        const configContent = await readFileContent(path);
-        return parseJsonSafely(configContent);
-      } catch (error) {
-        // Log and try next path
-        logger.warn(`Failed to load config from ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-  }
-  
-  // If no config is found, return an empty config that will pass validation
-  // This allows the user to start with a minimal config
-  return {
-    models: [],
-    groups: {
-      default: {
-        name: 'default',
-        systemPrompt: {
-          text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
-        },
-        models: [],
-        description: 'Default model group'
-      }
-    }
-  };
-}
+// Note: tryLoadConfigFromPaths was removed as it's no longer needed
+// The loadConfig function now handles all the logic for finding and creating config files
 
 /**
  * Merges user configuration with default configuration
@@ -535,10 +527,10 @@ export function findModelGroup(
  * Save configuration to a file
  * 
  * @param config - The configuration to save
- * @param configPath - Path to the configuration file
+ * @param configPath - Optional path to the configuration file. If not provided, the XDG config path will be used.
  * @throws {ConfigError} If the configuration cannot be saved
  */
-export async function saveConfig(config: AppConfig, configPath: string): Promise<void> {
+export async function saveConfig(config: AppConfig, configPath?: string): Promise<void> {
   try {
     // Validate configuration before saving
     const validationResult = appConfigSchema.safeParse(config);
@@ -549,8 +541,13 @@ export async function saveConfig(config: AppConfig, configPath: string): Promise
     // Convert configuration to pretty-printed JSON
     const configJson = JSON.stringify(config, null, 2);
     
+    // Use provided path or get the XDG config path
+    const targetPath = configPath || await getConfigFilePath();
+    
     // Write the configuration to the file
-    await writeFile(configPath, configJson);
+    await writeFile(targetPath, configJson);
+    
+    logger.debug(`Configuration saved to ${targetPath}`);
   } catch (error) {
     if (error instanceof ConfigError) {
       throw error;
@@ -922,26 +919,21 @@ export function removeModelFromGroup(
  * @returns The path to the default configuration file
  */
 export function getDefaultConfigPath(): string {
-  // Return the first path in the search paths (highest priority)
-  return CONFIG_SEARCH_PATHS[0];
+  // Return the path in the project directory for backward compatibility
+  return path.resolve(process.cwd(), 'thinktank.config.json');
 }
 
 /**
  * Get the currently used configuration file path
  * 
- * This checks each path in the search paths and returns the first one that exists
+ * This returns the XDG config path. If the file doesn't exist yet, it will 
+ * still return the path where the config will be created.
  * 
  * @returns The path to the active configuration file
  */
 export async function getActiveConfigPath(): Promise<string> {
-  for (const path of CONFIG_SEARCH_PATHS) {
-    if (await fileExists(path)) {
-      return path;
-    }
-  }
-  
-  // If no config file exists, return the default path
-  return getDefaultConfigPath();
+  // Return the XDG config path
+  return getConfigFilePath();
 }
 
 // Base default options that apply to all models

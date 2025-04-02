@@ -6,7 +6,7 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Update configuration path constants
+- [x] Update configuration path constants
   - Description: Remove CONFIG_SEARCH_PATHS and replace with the new XDG-based approach
   - Dependencies: XDG path resolution function
   - Priority: High
