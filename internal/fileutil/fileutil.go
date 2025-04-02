@@ -3,6 +3,7 @@ package fileutil
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -10,29 +11,34 @@ import (
 	"slices"
 	"strings"
 	"unicode"
+
+	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // Config holds file processing configuration
 type Config struct {
-	Verbose       bool
-	IncludeExts   []string
-	ExcludeExts   []string
-	ExcludeNames  []string
-	Format        string
-	Logger        *log.Logger
-	GitAvailable  bool
+	Verbose        bool
+	IncludeExts    []string
+	ExcludeExts    []string
+	ExcludeNames   []string
+	Format         string
+	Logger         logutil.LoggerInterface
+	GitAvailable   bool
 	processedFiles int
-	totalFiles     int // For verbose logging
+	totalFiles     int               // For verbose logging
+	fileCollector  func(path string) // Optional callback to collect processed file paths
 }
 
 // NewConfig creates a configuration with defaults.
-func NewConfig(verbose bool, include, exclude, excludeNames, format string, logger *log.Logger) *Config {
+func NewConfig(verbose bool, include, exclude, excludeNames, format string, logger logutil.LoggerInterface) *Config {
 	// Check if git is available
 	_, gitErr := exec.LookPath("git")
 	gitAvailable := gitErr == nil
 
 	if logger == nil {
-		logger = log.New(os.Stderr, "[fileutil] ", log.LstdFlags)
+		stdLogger := log.New(os.Stderr, "[fileutil] ", log.LstdFlags)
+		logger = logutil.NewStdLoggerAdapter(stdLogger)
 	}
 
 	cfg := &Config{
@@ -72,6 +78,11 @@ func NewConfig(verbose bool, include, exclude, excludeNames, format string, logg
 	}
 
 	return cfg
+}
+
+// SetFileCollector sets a callback function that will be called for each processed file
+func (c *Config) SetFileCollector(collector func(path string)) {
+	c.fileCollector = collector
 }
 
 // isGitIgnored checks if a file is likely ignored by git or is hidden.
@@ -115,7 +126,7 @@ func isGitIgnored(path string, config *Config) bool {
 
 // Constants for binary file detection
 const (
-	binarySampleSize           = 512
+	binarySampleSize            = 512
 	binaryNonPrintableThreshold = 0.3
 )
 
@@ -206,6 +217,11 @@ func processFile(path string, builder *strings.Builder, config *Config) {
 	config.processedFiles++
 	config.Logger.Printf("Verbose: Processing file (%d/%d): %s\n", config.processedFiles, config.totalFiles, path)
 
+	// If a file collector is set, call it
+	if config.fileCollector != nil {
+		config.fileCollector(path)
+	}
+
 	formatted := config.Format
 	formatted = strings.ReplaceAll(formatted, "{path}", path)
 	// Need to handle potential triple backticks in content if using markdown code blocks
@@ -277,11 +293,43 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 func CalculateStatistics(content string) (charCount, lineCount, tokenCount int) {
 	charCount = len(content)
 	lineCount = strings.Count(content, "\n") + 1
-	tokenCount = estimateTokenCount(content)
+	tokenCount = estimateTokenCount(content) // Fallback estimation
+	return charCount, lineCount, tokenCount
+}
+
+// CalculateStatisticsWithTokenCounting calculates accurate statistics using Gemini's token counter.
+func CalculateStatisticsWithTokenCounting(ctx context.Context, geminiClient gemini.Client, content string, logger logutil.LoggerInterface) (charCount, lineCount, tokenCount int) {
+	charCount = len(content)
+	lineCount = strings.Count(content, "\n") + 1
+
+	// Use the Gemini API for accurate token counting
+	if geminiClient != nil {
+		tokenResult, err := geminiClient.CountTokens(ctx, content)
+		if err != nil {
+			// Log the error and fall back to estimation
+			if logger != nil {
+				logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
+			}
+			tokenCount = estimateTokenCount(content)
+		} else {
+			tokenCount = int(tokenResult.Total)
+			if logger != nil {
+				logger.Debug("Accurate token count: %d tokens", tokenCount)
+			}
+		}
+	} else {
+		// Fall back to estimation if no client provided
+		tokenCount = estimateTokenCount(content)
+		if logger != nil {
+			logger.Debug("Using estimated token count: %d tokens", tokenCount)
+		}
+	}
+
 	return charCount, lineCount, tokenCount
 }
 
 // estimateTokenCount counts tokens simply by whitespace boundaries.
+// This is kept as a fallback method in case the API token counting fails.
 func estimateTokenCount(text string) int {
 	count := 0
 	inToken := false
