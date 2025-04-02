@@ -76,6 +76,9 @@ export type ValidatedAppConfig = z.infer<typeof appConfigSchema>;
 /**
  * Loads configuration from file system or specified path
  * 
+ * By default, loads from the XDG standard location. If a file doesn't exist there,
+ * a default configuration file will be created.
+ * 
  * @param options - Configuration loading options
  * @returns The loaded configuration
  * @throws {ConfigError} If configuration cannot be loaded or is invalid
@@ -85,27 +88,36 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
   
   try {
     let rawConfig: AppConfig;
+    let configSource: string;
     
-    // If a specific config path is provided, use it
     if (configPath) {
-      const exists = await fileExists(configPath);
-      if (!exists) {
+      // Use specific provided path if given
+      configSource = configPath;
+      
+      // Verify the file exists
+      if (!await fileExists(configPath)) {
         throw new ConfigError(`Configuration file not found at specified path: ${configPath}`);
       }
       
+      // Read and parse the configuration
       const configContent = await readFileContent(configPath);
       rawConfig = parseJsonSafely(configContent);
+      
+      logger.debug(`Loaded configuration from specified path: ${configPath}`);
     } else {
-      // Otherwise, use the XDG path
+      // Use the XDG config path
       const xdgConfigPath = await getConfigFilePath();
+      configSource = xdgConfigPath;
       
       // Check if the file exists
       if (await fileExists(xdgConfigPath)) {
         // Load the existing config
         const configContent = await readFileContent(xdgConfigPath);
         rawConfig = parseJsonSafely(configContent);
+        
+        logger.debug(`Loaded configuration from XDG path: ${xdgConfigPath}`);
       } else {
-        // If it doesn't exist, create a config with defaults
+        // Create a default configuration if none exists
         logger.info(`Configuration file not found at ${xdgConfigPath}. Creating a default one.`);
         
         // Use the template if it exists, otherwise use the built-in default
@@ -113,42 +125,56 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
         
         if (await fileExists(DEFAULT_CONFIG_TEMPLATE_PATH)) {
           defaultContent = await readFileContent(DEFAULT_CONFIG_TEMPLATE_PATH);
+          logger.debug(`Using template from: ${DEFAULT_CONFIG_TEMPLATE_PATH}`);
         } else {
           defaultContent = JSON.stringify(DEFAULT_CONFIG, null, 2);
+          logger.debug('Using built-in default configuration');
         }
         
         // Save the default configuration
         await writeFile(xdgConfigPath, defaultContent);
+        logger.debug(`Created default configuration at: ${xdgConfigPath}`);
         
         // Parse the default content
         rawConfig = parseJsonSafely(defaultContent);
       }
     }
     
-    // Merge with defaults if requested (now off by default)
-    const config = mergeWithDefaults 
-      ? mergeConfigs(DEFAULT_CONFIG, rawConfig) 
-      : rawConfig;
-    
-    // Validate configuration
-    const validationResult = appConfigSchema.safeParse(config);
-    if (!validationResult.success) {
-      throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
+    // Merge with defaults if requested
+    // Note: This option is maintained for backward compatibility but is generally no longer needed
+    // since we create a complete default config if none exists
+    let config = rawConfig;
+    if (mergeWithDefaults) {
+      logger.debug('Merging with default configuration');
+      config = mergeConfigs(DEFAULT_CONFIG, rawConfig);
     }
     
-    // Normalize the configuration to include default group if needed
-    const normalizedConfig = normalizeConfig(validationResult.data);
+    // Validate configuration using Zod schema
+    const validationResult = appConfigSchema.safeParse(config);
+    if (!validationResult.success) {
+      // Extract detailed validation errors
+      const errorDetails = validationResult.error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('; ');
+        
+      throw new ConfigError(`Invalid configuration in ${configSource}: ${errorDetails}`);
+    }
     
+    // Normalize the configuration to ensure at least a default group exists
+    const normalizedConfig = normalizeConfig(validationResult.data);
     return normalizedConfig;
   } catch (error) {
+    // Re-throw ConfigError instances
     if (error instanceof ConfigError) {
       throw error;
     }
     
+    // Wrap other errors with context
     if (error instanceof Error) {
-      throw new ConfigError('Failed to load configuration', error);
+      throw new ConfigError(`Failed to load configuration: ${error.message}`, error);
     }
     
+    // Handle unexpected non-Error exceptions
     throw new ConfigError('Unknown error loading configuration');
   }
 }
