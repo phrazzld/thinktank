@@ -70,7 +70,7 @@
   - Dependencies: Refactored loadConfig and saveConfig
   - Priority: High
 
-- [ ] Test CLI commands with new configuration system
+- [x] Test CLI commands with new configuration system
   - Description: Ensure all CLI commands work correctly with the new path resolution
   - Dependencies: Updated CLI commands
   - Priority: Medium
