@@ -39,7 +39,7 @@
   - Priority: Medium
 
 ## CLI Command Updates
-- [ ] Update the 'config path' command
+- [x] Update the 'config path' command
   - Description: Modify to display the single canonical configuration path
   - Dependencies: XDG path resolution function
   - Priority: Medium

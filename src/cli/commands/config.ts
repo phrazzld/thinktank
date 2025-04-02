@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import { handleError } from '../index';
 import * as loadConfig from '../../core/configManager';
 import { colors } from '../../utils/consoleUtils';
-import { fileExists } from '../../utils/fileReader';
+import { fileExists, getConfigFilePath } from '../../utils/fileReader';
 import { AppConfig } from '../../core/types';
 
 // Create the main config command
@@ -20,26 +20,36 @@ pathCommand
   .description('Show the path to the config file')
   .action(async () => {
     try {
-      // Get the active config path
-      const configPath = await loadConfig.getActiveConfigPath();
+      // Get the XDG config path - this is now our canonical configuration location
+      const configPath = await getConfigFilePath();
       
-      // Show the path with some context
+      // Show the path with more descriptive context
       // eslint-disable-next-line no-console
-      console.log(`Active configuration file: ${configPath}`);
+      console.log(`Configuration file location: ${colors.cyan(configPath)}`);
       
       // Check if the file exists and show additional info
       if (await fileExists(configPath)) {
         // eslint-disable-next-line no-console
-        console.log('Status: File exists');
+        console.log(`Status: ${colors.green('File exists')}`);
       } else {
         // eslint-disable-next-line no-console
-        console.log('Status: File does not exist (will be created when needed)');
+        console.log(`Status: ${colors.yellow('File does not exist yet')} (will be created when needed)`);
       }
       
-      // Show the default config path for reference
-      const defaultPath = loadConfig.getDefaultConfigPath();
+      // Show more helpful contextual information
       // eslint-disable-next-line no-console
-      console.log(`Default configuration path: ${defaultPath}`);
+      console.log(colors.dim('\nThis is the default location where thinktank stores its configuration.'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('You can override this location with the --config option when running commands.'));
+      
+      // For backward compatibility, also mention the project-local config option
+      const projectLocalPath = loadConfig.getDefaultConfigPath();
+      if (projectLocalPath !== configPath) {
+        // eslint-disable-next-line no-console
+        console.log(colors.dim(`\nA project-local configuration can be placed at: ${projectLocalPath}`));
+        // eslint-disable-next-line no-console
+        console.log(colors.dim('Project-local configs can be used to share settings with a team via version control.'));
+      }
     } catch (error) {
       handleError(error);
     }
