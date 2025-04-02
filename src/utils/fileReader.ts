@@ -1,8 +1,9 @@
 /**
- * File reader module for handling prompt file input
+ * File reader module for handling prompt file input and configuration files
  */
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { normalizeText } from './helpers';
 
 /**
@@ -14,6 +15,11 @@ export class FileReadError extends Error {
     this.name = 'FileReadError';
   }
 }
+
+/**
+ * Application name used for XDG paths
+ */
+const APP_NAME = 'thinktank';
 
 /**
  * Options for reading file content
@@ -103,4 +109,57 @@ export async function writeFile(filePath: string, content: string): Promise<void
     
     throw new FileReadError(`Unknown error writing file at ${filePath}`);
   }
+}
+
+/**
+ * Gets the XDG config directory path following the XDG Base Directory Specification
+ * 
+ * @returns Promise resolving to the platform-specific config directory path
+ * @throws {FileReadError} If directory creation fails
+ */
+export async function getConfigDir(): Promise<string> {
+  try {
+    let configDir: string;
+    
+    // Check for XDG_CONFIG_HOME environment variable (Linux/Unix/macOS)
+    if (process.env.XDG_CONFIG_HOME && process.env.XDG_CONFIG_HOME.trim() !== '') {
+      configDir = path.join(process.env.XDG_CONFIG_HOME, APP_NAME);
+    } 
+    // Windows: %APPDATA%\thinktank
+    else if (process.platform === 'win32') {
+      configDir = path.join(process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'), APP_NAME);
+    }
+    // macOS: ~/Library/Preferences/thinktank (unless XDG_CONFIG_HOME is set)
+    else if (process.platform === 'darwin') {
+      configDir = path.join(os.homedir(), 'Library', 'Preferences', APP_NAME);
+    }
+    // Linux/Unix/Default fallback: ~/.config/thinktank
+    else {
+      configDir = path.join(os.homedir(), '.config', APP_NAME);
+    }
+    
+    // Ensure the directory exists
+    await fs.mkdir(configDir, { recursive: true });
+    
+    return configDir;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new FileReadError(
+        `Failed to create or access config directory: ${error.message}`, 
+        error
+      );
+    }
+    throw new FileReadError('Unknown error accessing config directory');
+  }
+}
+
+/**
+ * Gets the full path to the configuration file
+ * 
+ * @returns Promise resolving to the full config file path
+ * @throws {FileReadError} If directory creation fails
+ */
+export async function getConfigFilePath(): Promise<string> {
+  const configDir = await getConfigDir();
+  return path.join(configDir, 'config.json');
 }
