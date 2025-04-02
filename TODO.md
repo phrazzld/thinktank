@@ -17,7 +17,7 @@
   - Priority: High
 
 ## Template Management
-- [ ] Implement Embedded Templates
+- [x] Implement Embedded Templates
   - Description: Use Go embed package to bundle default templates within binary
   - Dependencies: None
   - Priority: High
