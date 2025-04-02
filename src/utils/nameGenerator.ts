@@ -7,19 +7,7 @@
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { logger } from './logger';
 
-/**
- * Schema for structured output from Gemini
- */
-const nameSchema = {
-  type: "object",
-  properties: {
-    name: {
-      type: "string",
-      description: "A fun 'adjective-noun' name, lowercase, hyphenated.",
-    },
-  },
-  required: ["name"],
-};
+// Removed Schema definition as we're using simple prompt-based approach
 
 /**
  * Generates a fun, unique name for a run using Google's Gemini-2.0-flash model
@@ -53,24 +41,15 @@ export async function generateFunName(): Promise<string | null> {
 
     const prompt = "Generate a fun, unique, two-word name for a software project run. Format: 'adjective-noun', lowercase, hyphenated. Examples: 'clever-otter', 'sunny-vista'. Please provide only the name, nothing else.";
     
-    // Request structured output if available
+    // Request output
     let response;
     try {
-      // Try with structured output format first
-      const structuredResult = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          responseMimeType: "application/json",
-          responseSchema: nameSchema
-        }
-      });
-      response = structuredResult.response;
-    } catch (structuredError) {
-      // Fallback to standard text generation if structured output fails
-      logger.debug("Structured output failed, falling back to standard text generation");
-      const standardResult = await model.generateContent(prompt);
-      response = standardResult.response;
+      // Gemini models have different API behaviors - try safest approach first
+      const result = await model.generateContent(prompt);
+      response = result.response;
+    } catch (error) {
+      logger.debug("Error generating name with Gemini");
+      return null;
     }
 
     let name = "";
@@ -102,7 +81,7 @@ export async function generateFunName(): Promise<string | null> {
       return null;
     }
   } catch (error) {
-    logger.debug("Error generating fun name from Gemini:", error instanceof Error ? error.message : error);
+    logger.debug("Error generating fun name from Gemini");
     return null;
   }
 }

@@ -182,7 +182,7 @@ function formatResultsSummary(
   }
   
   // Add the run name if available
-  if (options.friendlyRunName) {
+  if (options && options.friendlyRunName) {
     completionMessage = `'${options.friendlyRunName}' (${completionMessage})`;
   }
   
