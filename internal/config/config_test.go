@@ -88,6 +88,14 @@ func (m *mockLogger) Error(format string, args ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
 }
 
+func (m *mockLogger) Printf(format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, format)
+}
+
+func (m *mockLogger) Warn(format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, format)
+}
+
 func TestNewManager(t *testing.T) {
 	logger := newMockLogger()
 	manager := NewManager(logger)

@@ -191,29 +191,70 @@ func TestMergeWithFlags(t *testing.T) {
 }
 
 func TestLoadFromFiles(t *testing.T) {
-	// This test requires creating temporary config files with viper
-	// and is more complex to setup in a unit test.
-	// A more comprehensive test would be part of integration testing.
+	// Create a temporary directory to simulate user config directory
+	tempDir, err := os.MkdirTemp("", "architect-test-config-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
 
-	// For now, just verify basic function behavior with no config files present
+	// Create config subdirectories for test
+	userConfigDir := filepath.Join(tempDir, "user-config")
+	sysConfigDir := filepath.Join(tempDir, "sys-config")
+
+	// Create logger and configure manager with our test directories
 	logger := newMockLogger()
-	manager := NewManager(logger)
+	manager := &Manager{
+		logger:        logger,
+		userConfigDir: userConfigDir,
+		sysConfigDirs: []string{sysConfigDir},
+		config:        DefaultConfig(),
+		viperInst:     viper.New(),
+	}
 
-	err := manager.LoadFromFiles()
+	// Test loading without existing config files
+	err = manager.LoadFromFiles()
 	if err != nil {
 		t.Fatalf("LoadFromFiles should not error when no files found: %v", err)
 	}
 
-	// Check that a debug message was logged
-	found := false
-	for _, msg := range logger.debugMessages {
-		if msg == "No configuration file found, using defaults" {
-			found = true
+	// Verify initialization message was logged
+	foundInfoMessage := false
+	for _, msg := range logger.infoMessages {
+		if msg == "No configuration file found. Initializing default configuration..." {
+			foundInfoMessage = true
 			break
 		}
 	}
 
-	if !found {
-		t.Error("Expected debug message about using defaults")
+	if !foundInfoMessage {
+		t.Error("Expected info message about initializing configuration")
+	}
+
+	// Verify config directory was created
+	if _, err := os.Stat(userConfigDir); os.IsNotExist(err) {
+		t.Errorf("Expected user config directory %s to be created", userConfigDir)
+	}
+
+	// Verify config file was created
+	configFilePath := filepath.Join(userConfigDir, ConfigFilename)
+	if _, err := os.Stat(configFilePath); os.IsNotExist(err) {
+		t.Errorf("Expected config file %s to be created", configFilePath)
+	}
+
+	// Test loading with existing config file
+	logger = newMockLogger() // Reset logger
+	manager.logger = logger
+
+	err = manager.LoadFromFiles()
+	if err != nil {
+		t.Fatalf("LoadFromFiles should not error with existing config: %v", err)
+	}
+
+	// Verify no initialization message this time
+	for _, msg := range logger.infoMessages {
+		if msg == "No configuration file found. Initializing default configuration..." {
+			t.Error("Should not show initialization message on second load")
+		}
 	}
 }

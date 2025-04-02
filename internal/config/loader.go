@@ -206,10 +206,31 @@ func (m *Manager) LoadFromFiles() error {
 	// Attempt to read config files
 	err := v.ReadInConfig()
 	if err != nil {
-		// It's okay if config file doesn't exist
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			m.logger.Debug("No configuration file found, using defaults")
-			return nil
+		// Check if the error is specifically ConfigFileNotFoundError
+		var configFileNotFoundError viper.ConfigFileNotFoundError
+		if errors.As(err, &configFileNotFoundError) {
+			m.logger.Info("No configuration file found. Initializing default configuration...")
+
+			// Ensure config directories exist before writing
+			if ensureErr := m.EnsureConfigDirs(); ensureErr != nil {
+				// Log warning but proceed with defaults in memory
+				m.logger.Warn("Failed to create configuration directories: %v. Using default settings.", ensureErr)
+				// Return nil here because we can still operate with defaults,
+				// even if we couldn't write the initial file.
+				return nil
+			}
+
+			// Write the default configuration file
+			if writeErr := m.WriteDefaultConfig(); writeErr != nil {
+				// Log warning but proceed with defaults in memory
+				m.logger.Warn("Failed to write default configuration file: %v. Using default settings.", writeErr)
+			} else {
+				// Display success message only if write was successful
+				m.displayInitializationMessage()
+			}
+			// Even if writing failed, we proceed with defaults loaded via setViperDefaults.
+			// No need to unmarshal again as viper already has the defaults.
+			return nil // Indicate success (defaults are loaded)
 		}
 		// Other errors should be reported
 		return fmt.Errorf("error reading config file: %w", err)
@@ -423,7 +444,11 @@ func (m *Manager) WriteDefaultConfig() error {
 
 	// Check if file already exists
 	if _, err := os.Stat(configPath); !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("config file already exists at %s", configPath)
+		if err == nil {
+			m.logger.Debug("Config file already exists at %s, skipping default creation", configPath)
+			return nil // Not an error, just skip creation
+		}
+		return fmt.Errorf("failed to check for config file: %w", err)
 	}
 
 	// Ensure directory exists
@@ -440,6 +465,23 @@ func (m *Manager) WriteDefaultConfig() error {
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
-	m.logger.Info("Created default configuration at %s", configPath)
+	m.logger.Debug("Created default configuration at %s", configPath)
 	return nil
+}
+
+// displayInitializationMessage prints information about the automatic config creation
+func (m *Manager) displayInitializationMessage() {
+	configPath := filepath.Join(m.userConfigDir, ConfigFilename)
+	defaults := DefaultConfig() // Get a fresh set of defaults to display
+
+	// Use logger.Printf to ensure color settings are respected
+	m.logger.Printf("✓ Architect configuration initialized automatically.")
+	m.logger.Printf("  Created default configuration file at: %s", configPath)
+	m.logger.Printf("  Applying default settings:")
+	m.logger.Printf("    - Output File: %s", defaults.OutputFile)
+	m.logger.Printf("    - Model: %s", defaults.ModelName)
+	m.logger.Printf("    - Log Level: %s", defaults.LogLevel)
+	m.logger.Printf("    - Default Template: %s", defaults.Templates.Default)
+	m.logger.Printf("  You can customize these settings by editing the file.")
+	m.logger.Printf("  See documentation for all available options.")
 }

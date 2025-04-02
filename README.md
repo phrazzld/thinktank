@@ -104,7 +104,8 @@ Architect follows the XDG Base Directory Specification for configuration files, 
 
 - **User configuration**: `~/.config/architect/config.toml` (Linux/macOS) or `%APPDATA%\architect\config.toml` (Windows)
 - **System configuration**: `/etc/xdg/architect/config.toml` (Linux) or system-wide locations on other platforms
-- Configuration directories are automatically created on first run
+- Configuration directories and a default configuration file are automatically created on first run
+- When automatic initialization occurs, you'll see a summary of the default settings applied
 
 ### Configuration Format
 
