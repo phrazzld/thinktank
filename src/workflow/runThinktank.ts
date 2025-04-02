@@ -341,7 +341,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const directoryIdentifier = options.specificModel || options.groupName;
     const outputDirectoryPath = await createOutputDirectory({
       outputDirectory: options.output,
-      directoryIdentifier
+      directoryIdentifier,
+      friendlyRunName
     });
     spinner.info(styleInfo(`Output directory: ${outputDirectoryPath} (Run: ${friendlyRunName})`));
     
