@@ -70,10 +70,10 @@ showCommand
     groupsOnly?: boolean;
   }) => {
     try {
-      // Load the configuration
+      // Load the configuration using the refactored loadConfig without mergeWithDefaults
+      // The function now properly handles defaults without needing the mergeWithDefaults option
       const config = await loadConfig.loadConfig({ 
-        configPath: options.config,
-        mergeWithDefaults: true
+        configPath: options.config
       });
       
       // If JSON output is requested, display as formatted JSON
@@ -185,9 +185,15 @@ showCommand
         }
       }
       
-      // Show a helpful tip at the end
+      // Show helpful tips at the end
       // eslint-disable-next-line no-console
-      console.log(colors.dim('\nTip: Use --json for machine-readable output'));
+      console.log(colors.dim('\nTips:'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('• Use --json for machine-readable output'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('• Use --models-only or --groups-only to filter the display'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim(`• Configuration file location: ${await getConfigFilePath()}`));
     } catch (error) {
       handleError(error);
     }

@@ -44,7 +44,7 @@
   - Dependencies: XDG path resolution function
   - Priority: Medium
 
-- [ ] Update the 'config show' command
+- [x] Update the 'config show' command
   - Description: Remove mergeWithDefaults option and update to use new loadConfig
   - Dependencies: Refactored loadConfig
   - Priority: Medium
