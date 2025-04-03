@@ -1,11 +1,10 @@
 /**
  * Tests for the name generator module
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { generateFunName, generateFallbackName } from '../nameGenerator';
+import { generateFunName, generateFallbackName, ADJECTIVES, NOUNS } from '../nameGenerator';
 
-// Mock Google Generative AI client
-jest.mock('@google/generative-ai');
+// This will be used after refactoring
+// No need to mock Google Generative AI anymore
 
 // Mock process.env
 const originalEnv = process.env;
@@ -29,141 +28,40 @@ describe('nameGenerator', () => {
   });
 
   describe('generateFunName', () => {
-    it('should return null when no API key is available', async () => {
-      // Ensure no API key is set
-      delete process.env.GEMINI_API_KEY;
-      delete process.env.GOOGLE_API_KEY;
-      
-      const result = await generateFunName();
-      
-      expect(result).toBeNull();
+    it('should return a name in the format "adjective-noun"', () => {
+      const name = generateFunName();
+      expect(name).toMatch(/^[a-z]+-[a-z]+$/);
     });
 
-    it('should return a valid adjective-noun name when API call succeeds with JSON', async () => {
-      // Set mock API key
-      process.env.GEMINI_API_KEY = 'test-api-key';
+    it('should select words from the predefined lists', () => {
+      const name = generateFunName();
+      const [adjective, noun] = name.split('-');
       
-      // Mock the response
-      const mockResponse = {
-        text: jest.fn().mockReturnValue('{"name":"clever-meadow"}'),
-      };
-      
-      const mockGenerateContent = jest.fn().mockResolvedValue({
-        response: mockResponse
-      });
-      
-      const mockGetGenerativeModel = jest.fn().mockReturnValue({
-        generateContent: mockGenerateContent
-      });
-      
-      (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-        getGenerativeModel: mockGetGenerativeModel
-      }));
-      
-      const result = await generateFunName();
-      
-      expect(result).toBe('clever-meadow');
-      expect(GoogleGenerativeAI).toHaveBeenCalledWith('test-api-key');
-      expect(mockGetGenerativeModel).toHaveBeenCalled();
-      expect(mockGenerateContent).toHaveBeenCalled();
+      expect(ADJECTIVES).toContain(adjective);
+      expect(NOUNS).toContain(noun);
     });
 
-    it('should return a valid adjective-noun name when API call succeeds with plain text', async () => {
-      // Set mock API key
-      process.env.GEMINI_API_KEY = 'test-api-key';
+    it('should generate different names on multiple calls (usually)', () => {
+      // We'll generate multiple names and check that we get at least 2 unique results
+      // This is probabilistic but with 50+ words in each list, it's incredibly unlikely
+      // to get the same name three times in a row by chance
+      const names = new Set([
+        generateFunName(),
+        generateFunName(),
+        generateFunName(),
+        generateFunName(),
+        generateFunName()
+      ]);
       
-      // Mock the response for text generation
-      const mockResponse = {
-        text: jest.fn().mockReturnValue('swift-stream'),
-      };
-      
-      const mockGenerateContent = jest.fn().mockResolvedValue({
-        response: mockResponse
-      });
-      
-      const mockGetGenerativeModel = jest.fn().mockReturnValue({
-        generateContent: mockGenerateContent
-      });
-      
-      (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-        getGenerativeModel: mockGetGenerativeModel
-      }));
-      
-      const result = await generateFunName();
-      
-      expect(result).toBe('swift-stream');
+      // We should have at least 2 unique names out of 5 attempts
+      expect(names.size).toBeGreaterThan(1);
     });
 
-    it('should extract a valid name from invalid response if possible', async () => {
-      // Set mock API key
-      process.env.GEMINI_API_KEY = 'test-api-key';
-      
-      // Mock the response with extra text
-      const mockResponse = {
-        text: jest.fn().mockReturnValue('Here is a good name: happy-valley. Hope you like it!'),
-      };
-      
-      const mockGenerateContent = jest.fn().mockResolvedValue({
-        response: mockResponse
-      });
-      
-      const mockGetGenerativeModel = jest.fn().mockReturnValue({
-        generateContent: mockGenerateContent
-      });
-      
-      (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-        getGenerativeModel: mockGetGenerativeModel
-      }));
-      
-      const result = await generateFunName();
-      
-      expect(result).toBe('happy-valley');
-    });
-
-    it('should return null when API call fails', async () => {
-      // Set mock API key
-      process.env.GEMINI_API_KEY = 'test-api-key';
-      
-      // Mock the API call to throw an error
-      const mockGenerateContent = jest.fn().mockRejectedValue(new Error('API error'));
-      
-      const mockGetGenerativeModel = jest.fn().mockReturnValue({
-        generateContent: mockGenerateContent
-      });
-      
-      (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-        getGenerativeModel: mockGetGenerativeModel
-      }));
-      
-      const result = await generateFunName();
-      
-      expect(result).toBeNull();
-    });
-
-    it('should return null when response format is invalid', async () => {
-      // Set mock API key
-      process.env.GEMINI_API_KEY = 'test-api-key';
-      
-      // Mock the response with invalid format
-      const mockResponse = {
-        text: jest.fn().mockReturnValue('This is not a valid name format'),
-      };
-      
-      const mockGenerateContent = jest.fn().mockResolvedValue({
-        response: mockResponse
-      });
-      
-      const mockGetGenerativeModel = jest.fn().mockReturnValue({
-        generateContent: mockGenerateContent
-      });
-      
-      (GoogleGenerativeAI as jest.Mock).mockImplementation(() => ({
-        getGenerativeModel: mockGetGenerativeModel
-      }));
-      
-      const result = await generateFunName();
-      
-      expect(result).toBeNull();
+    it('should always return a valid string', () => {
+      // Function should never return null or undefined
+      const name = generateFunName();
+      expect(typeof name).toBe('string');
+      expect(name.length).toBeGreaterThan(0);
     });
   });
 
@@ -173,6 +71,37 @@ describe('nameGenerator', () => {
       
       // Check that it matches the expected pattern: run-YYYYMMDD-HHmmss
       expect(result).toMatch(/^run-\d{8}-\d{6}$/);
+    });
+  });
+
+  describe('word lists', () => {
+    it('should have at least 50 adjectives and 50 nouns', () => {
+      expect(ADJECTIVES).toBeDefined();
+      expect(NOUNS).toBeDefined();
+      expect(ADJECTIVES.length).toBeGreaterThanOrEqual(50);
+      expect(NOUNS.length).toBeGreaterThanOrEqual(50);
+    });
+
+    it('should contain only lowercase strings with no special characters', () => {
+      // All adjectives should be lowercase and contain only letters
+      ADJECTIVES.forEach((adj: string) => {
+        expect(adj).toMatch(/^[a-z]+$/);
+      });
+
+      // All nouns should be lowercase and contain only letters
+      NOUNS.forEach((noun: string) => {
+        expect(noun).toMatch(/^[a-z]+$/);
+      });
+    });
+
+    it('should not have duplicate words in each list', () => {
+      // Check for duplicates in ADJECTIVES
+      const uniqueAdjectives = new Set(ADJECTIVES);
+      expect(uniqueAdjectives.size).toBe(ADJECTIVES.length);
+
+      // Check for duplicates in NOUNS
+      const uniqueNouns = new Set(NOUNS);
+      expect(uniqueNouns.size).toBe(NOUNS.length);
     });
   });
 });

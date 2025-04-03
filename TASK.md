@@ -1,67 +1,45 @@
-# Task: Reimagine Configuration Management for Thinktank (COMPLETED)
+# Task: Replace Gemini-based Name Generation with Deterministic Random Name Generation
 
-## Context
-Thinktank's current configuration approach uses multiple search locations and prioritization logic that adds unnecessary complexity. As the sole user at this stage, we have the freedom to completely rethink this system without concerns for backward compatibility.
+## Overview
+Currently, ThinkTank generates a friendly name for output directories using Google's Gemini API. This approach has the following issues:
+- Requires an API call for each run
+- Often produces repetitive names (observed "jazzy" as the first word consistently)
+- Adds an external dependency
+- Increases latency during startup
 
-## Goal
-Create a clean, simple, and intuitive configuration system based on modern best practices. The configuration should live in a single, predictable location in the user's home directory (following XDG spec for Unix systems), eliminating confusion and simplifying both code and user experience.
+Instead, we'll implement a simple, deterministic approach using hardcoded arrays of adjectives and nouns, selecting one randomly from each to generate a name.
 
-## Completed Work
+## Requirements
+1. Create arrays of adjectives and nouns in the nameGenerator module
+2. Replace the current API-based implementation with a randomized selection from these arrays
+3. Keep the same hyphenated format (e.g., "clever-otter")
+4. Maintain the fallback name generation for error cases
 
-### Phase 1: Investigation and Planning
-- Analyzed existing configuration system and identified pain points
-- Researched XDG Base Directory Specification and how other tools implement it
-- Created a detailed implementation plan with prioritized tasks
+## Files to Modify
+- `/Users/phaedrus/Development/thinktank/src/utils/nameGenerator.ts` - Main implementation
+- `/Users/phaedrus/Development/thinktank/src/utils/__tests__/nameGenerator.test.ts` - Test updates
+- `/Users/phaedrus/Development/thinktank/src/workflow/runThinktank.ts` - Integration point (lines 324-331)
 
-### Phase 2: Core Implementation
-- Added XDG path resolution utility functions in `fileReader.ts`
-  - Implemented platform-specific path detection (Windows, macOS, Linux)
-  - Added proper directory creation and error handling
-- Updated configuration path constants in `constants.ts`
-  - Removed the complex CONFIG_SEARCH_PATHS array
-  - Simplified to use a single default template path
-- Refactored `loadConfig` function in `configManager.ts`
-  - Simplified to use XDG paths by default
-  - Improved error handling with specific error messages
-  - Maintained support for custom paths via `--config` option
-- Enhanced `saveConfig` function
-  - Added validation before saving to prevent corruption
-  - Improved error handling for file system errors
-  - Added detailed logging for better debugging
+## Implementation Details
+1. Create large arrays of adjectives and nouns (at least 50 of each) at the top of nameGenerator.ts
+2. Modify `generateFunName()` to:
+   - No longer require an API call
+   - Select a random adjective and noun
+   - Return in the format "adjective-noun"
+   - Remove Google API dependency
+3. Update tests to verify the new deterministic approach
+4. Remove Google GenerativeAI import and associated code
 
-### Phase 3: CLI Updates
-- Updated configuration commands to use the new XDG-based approach
-  - Enhanced 'config path' command to show canonical location
-  - Updated 'config show' command to use refactored functions
-  - Simplified how configuration paths are communicated to users
-- Updated model management commands
-  - Refactored all model commands (add, remove, enable, disable)
-  - Created helper function `displayConfigSavePath` for consistency
-  - Ensured all commands properly use the new XDG-based configuration
-- Updated group management commands
-  - Adapted all group commands to work with the new system
-  - Maintained backward compatibility for project-local configurations
-  - Improved error handling and user feedback
+## Expected Outcome
+- Faster, more reliable name generation
+- No external API dependency
+- More diverse output directory names
+- Consistent hyphenated format
 
-### Phase 4: Testing and Validation
-- Created comprehensive test coverage
-  - Unit tests for XDG path resolution
-  - Tests for configuration loading and saving
-  - Added `empty-config.test.ts` to verify proper initialization
-- Verified build and lint processes pass
-- Confirmed all commands work as expected
+## Testing
+- Verify that names are in the correct format
+- Ensure proper randomization across runs
+- Confirm fallback still works when needed
 
-## Benefits Achieved
-- Simplified codebase by removing complex config path search logic
-- Improved user experience with predictable, standards-compliant config locations
-- Enhanced error handling with clear, actionable messages
-- Maintained backward compatibility while modernizing the approach
-- Added detailed logging for easier troubleshooting
-- Standardized how config paths are displayed to users
-
-## Platform Support
-- Windows: `%APPDATA%\thinktank\config.json`
-- macOS: `~/Library/Preferences/thinktank/config.json`
-- Linux/Unix: `~/.config/thinktank/config.json` (or `$XDG_CONFIG_HOME/thinktank/config.json` if set)
-
-The configuration system now follows modern best practices while being simpler to understand and maintain.
+## Bonus
+Consider adding theme-based sets of words for more coherent naming patterns.
