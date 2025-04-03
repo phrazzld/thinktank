@@ -300,9 +300,11 @@ export async function main(): Promise<void> {
     
     // Clean up any lingering connections by explicitly exiting
     // This ensures we don't have hanging HTTP connections from axios/openai/anthropic libraries
-    process.nextTick(() => {
-      process.exit(0);
-    });
+    if (process.env.NODE_ENV !== 'test') {
+      process.nextTick(() => {
+        process.exit(0);
+      });
+    }
   } catch (error) {
     // Handle errors with enhanced formatting
     if (error instanceof ThinktankError) {
@@ -354,18 +356,26 @@ export async function main(): Promise<void> {
       console.error(`${colors.red('An unknown error occurred')}`);
     }
     
-    // Clean up any lingering connections on error
-    process.nextTick(() => {
-      process.exit(1);
-    });
+    // Clean up any lingering connections on error (in non-test environment)
+    if (process.env.NODE_ENV !== 'test') {
+      process.nextTick(() => {
+        process.exit(1);
+      });
+    }
+    throw error; // Re-throw to allow testing to catch it
   }
 }
 
-// Execute main function
-main().catch(error => {
-  // eslint-disable-next-line no-console
-  console.error('Fatal error:', error);
-  process.nextTick(() => {
-    process.exit(1);
+// Execute main function (only in non-test environment or when explicitly called)
+if (process.env.NODE_ENV !== 'test' || process.env.FORCE_CLI_EXECUTION === 'true') {
+  main().catch(error => {
+    // eslint-disable-next-line no-console
+    console.error('Fatal error:', error);
+    if (process.env.NODE_ENV !== 'test') {
+      process.nextTick(() => {
+        process.exit(1);
+      });
+    }
   });
-});
+}
+// Main function is already exported above
