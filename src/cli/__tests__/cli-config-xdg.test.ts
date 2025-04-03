@@ -157,7 +157,7 @@ describe('CLI Config XDG Integration Tests', () => {
       expect(typeof configManager.loadConfig).toBe('function');
       
       // Test that the mock is working as expected
-      loadConfig();
+      void loadConfig();
       expect(loadConfig).toHaveBeenCalled();
     });
     
@@ -166,7 +166,7 @@ describe('CLI Config XDG Integration Tests', () => {
       expect(typeof configManager.getActiveConfigPath).toBe('function');
       
       // Test that the mock is working as expected
-      getActiveConfigPath();
+      void getActiveConfigPath();
       expect(getActiveConfigPath).toHaveBeenCalled();
       expect(getActiveConfigPath).toHaveReturnedWith(expect.any(Promise));
     });
