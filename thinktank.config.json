@@ -229,6 +229,7 @@
           "provider": "google",
           "modelId": "gemini-2.0-flash",
           "enabled": true,
+          "apiKeyEnvVar": "GEMINI_API_KEY",
           "options": {
             "temperature": 0.7,
             "maxTokens": 5000
