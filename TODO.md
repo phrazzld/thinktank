@@ -1,126 +1,93 @@
-# TODO: Implement Fun Output Directory Naming with Gemini
+# TODO
 
-## Create Name Generator
-
-- [x] Create nameGenerator.ts file
-  - Description: Create new file with utility functions for generating fun run names
-  - Dependencies: @google/generative-ai package
-  - Priority: High
-
-- [x] Implement Gemini structured output schema
-  - Description: Define the JSON schema for structured output responses
+## XDG Directory Support
+- [x] Create XDG path resolution utility function
+  - Description: Implement a reusable function to determine the correct configuration directory path based on platform
   - Dependencies: None
   - Priority: High
 
-- [x] Implement generateFunName() function
-  - Description: Create function that prompts Gemini for adjective-noun names
-  - Dependencies: Gemini JSON schema
+- [x] Update configuration path constants
+  - Description: Remove CONFIG_SEARCH_PATHS and replace with the new XDG-based approach
+  - Dependencies: XDG path resolution function
   - Priority: High
 
-- [x] Add API error handling to generateFunName()
-  - Description: Handle potential API errors, authentication issues, rate limiting
-  - Dependencies: generateFunName() implementation
+## Configuration Loading
+- [x] Refactor loadConfig function
+  - Description: Simplify to use a single path with proper error handling and default creation
+  - Dependencies: XDG path resolution function
   - Priority: High
 
-- [x] Add response validation to generateFunName()
-  - Description: Validate response format with regex (/^[a-z]+-[a-z]+$/)
-  - Dependencies: generateFunName() implementation
-  - Priority: High
-
-- [x] Add fallback mechanism to handle invalid responses
-  - Description: Add code to extract valid names from otherwise invalid responses
-  - Dependencies: generateFunName() validation
+- [x] Remove configuration merging logic
+  - Description: Remove mergeConfigs and related functionality from configManager.ts
+  - Dependencies: Refactored loadConfig
   - Priority: Medium
 
-- [x] Implement generateFallbackName() function
-  - Description: Create timestamp-based fallback name function (run-YYYYMMDD-HHmmss)
+- [x] Create minimal default configuration template
+  - Description: Define the initial configuration structure created when no file exists
   - Dependencies: None
-  - Priority: High
-
-## Workflow Integration
-
-- [x] Import name generator in runThinktank.ts
-  - Description: Add imports for nameGenerator functions
-  - Dependencies: nameGenerator.ts implementation
-  - Priority: High
-
-- [x] Add run name generation to runThinktank workflow
-  - Description: Call generateFunName() after config loading but before directory creation
-  - Dependencies: nameGenerator.ts implementation
-  - Priority: High
-
-- [x] Implement fallback to timestamp if name generation fails
-  - Description: Call generateFallbackName() when generateFunName() returns null
-  - Dependencies: nameGenerator.ts implementation
-  - Priority: High
-
-- [x] Store friendly name for later use in console output
-  - Description: Store generated name in variable accessible throughout function scope
-  - Dependencies: Name generation implementation
-  - Priority: High
-
-## Console Output Updates
-
-- [x] Update output directory creation message
-  - Description: Include run name in output directory creation message
-  - Dependencies: Run name integration in workflow
   - Priority: Medium
 
-- [x] Update model completion success message
-  - Description: Include run name in completion message
-  - Dependencies: Run name integration in workflow
+## Configuration Saving
+- [x] Update saveConfig function
+  - Description: Ensure it uses the canonical path and properly creates directories
+  - Dependencies: XDG path resolution function
+  - Priority: High
+
+- [x] Implement improved error handling
+  - Description: Add detailed error reporting for file system operations and validation failures
+  - Dependencies: Updated saveConfig
   - Priority: Medium
 
-- [x] Update final output directory display message
-  - Description: Add separate line for run name in final output 
-  - Dependencies: Run name integration in workflow
+## CLI Command Updates
+- [x] Update the 'config path' command
+  - Description: Modify to display the single canonical configuration path
+  - Dependencies: XDG path resolution function
+  - Priority: Medium
+
+- [x] Update the 'config show' command
+  - Description: Remove mergeWithDefaults option and update to use new loadConfig
+  - Dependencies: Refactored loadConfig
+  - Priority: Medium
+
+- [x] Update model management commands
+  - Description: Modify add/remove/enable/disable to use the new configuration approach
+  - Dependencies: Updated loadConfig and saveConfig
+  - Priority: Medium
+
+- [x] Update group management commands
+  - Description: Modify group creation/editing commands to use the new configuration approach
+  - Dependencies: Updated loadConfig and saveConfig
   - Priority: Medium
 
 ## Testing
+- [x] Write tests for XDG path resolution
+  - Description: Create comprehensive tests for path determination across platforms
+  - Dependencies: XDG path resolution function
+  - Priority: High
 
-- [x] Create nameGenerator.test.ts
-  - Description: Create test file for name generator functions
-  - Dependencies: nameGenerator.ts implementation
+- [x] Update configManager tests
+  - Description: Modify existing tests to work with the new simplified approach
+  - Dependencies: Refactored loadConfig and saveConfig
+  - Priority: High
+
+- [x] Test CLI commands with new configuration system
+  - Description: Ensure all CLI commands work correctly with the new path resolution
+  - Dependencies: Updated CLI commands
   - Priority: Medium
 
-- [x] Add successful name generation test
-  - Description: Test generateFunName() with mocked successful API response
-  - Dependencies: nameGenerator.test.ts setup
-  - Priority: Medium
-
-- [x] Add API error tests
-  - Description: Test handling of API errors, network issues, auth failures
-  - Dependencies: nameGenerator.test.ts setup
-  - Priority: Medium
-
-- [x] Add invalid response format tests
-  - Description: Test handling of responses that don't match expected format
-  - Dependencies: nameGenerator.test.ts setup
-  - Priority: Medium
-
-- [x] Add fallback name generation test
-  - Description: Test generateFallbackName() timestamp format
-  - Dependencies: nameGenerator.test.ts setup
-  - Priority: Medium
-
-- [x] Update runThinktank tests
-  - Description: Update existing tests to handle new run name functionality
-  - Dependencies: Run name integration in workflow
-  - Priority: Medium
-
-## Documentation (Optional)
-
-- [x] Update README.md
-  - Description: Document the new run naming feature and GEMINI_API_KEY requirement
-  - Dependencies: Complete implementation
+## Documentation
+- [x] Update README with new configuration location
+  - Description: Document the canonical configuration location for users
+  - Dependencies: Implemented XDG path resolution
   - Priority: Low
 
-## Assumptions and Questions
+## Platform-Specific Considerations
+- [x] Ensure Windows support is robust
+  - Description: Test directory creation and permissions on Windows platform
+  - Dependencies: XDG path resolution function
+  - Priority: Medium
 
-1. We're assuming the Gemini-2.0-flash model reliably supports structured output/JSON schema mode. If not, we'll need to handle raw text responses with more robust validation.
-
-2. We're assuming the fallback name format (run-YYYYMMDD-HHmmss) is acceptable. This should be confirmed.
-
-3. The current implementation plan only displays the friendly name in console output and doesn't store it elsewhere (like in a metadata file). This should be confirmed as sufficient.
-
-4. We're assuming the small latency added by the API call (~1-3 seconds) is acceptable for the improved user experience.
+- [x] Ensure macOS support is robust
+  - Description: Test with both standard macOS and XDG paths
+  - Dependencies: XDG path resolution function
+  - Priority: Medium

@@ -78,7 +78,7 @@ describe('Anthropic Provider', () => {
       await provider.generate('Test prompt', 'claude-3-opus-20240229');
       
       // Verify API key was used
-      expect(MockedAnthropic).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
+      expect(MockedAnthropic).toHaveBeenCalledWith({ apiKey: 'test-api-key', maxRetries: 0 });
     });
     
     it('should use API key from environment', async () => {
@@ -106,7 +106,7 @@ describe('Anthropic Provider', () => {
       await provider.generate('Test prompt', 'claude-3-opus-20240229');
       
       // Verify environment API key was used
-      expect(MockedAnthropic).toHaveBeenCalledWith({ apiKey: 'env-api-key' });
+      expect(MockedAnthropic).toHaveBeenCalledWith({ apiKey: 'env-api-key', maxRetries: 0 });
     });
     
     it('should throw error if API key is missing', async () => {

@@ -7,8 +7,17 @@ import { Command } from 'commander';
 import { handleError } from '../index';
 import * as loadConfig from '../../core/configManager';
 import { colors } from '../../utils/consoleUtils';
-import { fileExists } from '../../utils/fileReader';
+import { fileExists, getConfigFilePath } from '../../utils/fileReader';
 import { AppConfig } from '../../core/types';
+
+/**
+ * Helper function to display where the configuration was saved
+ */
+async function displayConfigSavePath(customPath?: string): Promise<void> {
+  const savePath = customPath || await getConfigFilePath();
+  // eslint-disable-next-line no-console
+  console.log(colors.dim(`\nConfiguration saved to: ${savePath}`));
+}
 
 // Create the main config command
 const configCommand = new Command('config');
@@ -20,26 +29,36 @@ pathCommand
   .description('Show the path to the config file')
   .action(async () => {
     try {
-      // Get the active config path
-      const configPath = await loadConfig.getActiveConfigPath();
+      // Get the XDG config path - this is now our canonical configuration location
+      const configPath = await getConfigFilePath();
       
-      // Show the path with some context
+      // Show the path with more descriptive context
       // eslint-disable-next-line no-console
-      console.log(`Active configuration file: ${configPath}`);
+      console.log(`Configuration file location: ${colors.cyan(configPath)}`);
       
       // Check if the file exists and show additional info
       if (await fileExists(configPath)) {
         // eslint-disable-next-line no-console
-        console.log('Status: File exists');
+        console.log(`Status: ${colors.green('File exists')}`);
       } else {
         // eslint-disable-next-line no-console
-        console.log('Status: File does not exist (will be created when needed)');
+        console.log(`Status: ${colors.yellow('File does not exist yet')} (will be created when needed)`);
       }
       
-      // Show the default config path for reference
-      const defaultPath = loadConfig.getDefaultConfigPath();
+      // Show more helpful contextual information
       // eslint-disable-next-line no-console
-      console.log(`Default configuration path: ${defaultPath}`);
+      console.log(colors.dim('\nThis is the default location where thinktank stores its configuration.'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('You can override this location with the --config option when running commands.'));
+      
+      // For backward compatibility, also mention the project-local config option
+      const projectLocalPath = loadConfig.getDefaultConfigPath();
+      if (projectLocalPath !== configPath) {
+        // eslint-disable-next-line no-console
+        console.log(colors.dim(`\nA project-local configuration can be placed at: ${projectLocalPath}`));
+        // eslint-disable-next-line no-console
+        console.log(colors.dim('Project-local configs can be used to share settings with a team via version control.'));
+      }
     } catch (error) {
       handleError(error);
     }
@@ -60,10 +79,10 @@ showCommand
     groupsOnly?: boolean;
   }) => {
     try {
-      // Load the configuration
+      // Load the configuration using the refactored loadConfig without mergeWithDefaults
+      // The function now properly handles defaults without needing the mergeWithDefaults option
       const config = await loadConfig.loadConfig({ 
-        configPath: options.config,
-        mergeWithDefaults: true
+        configPath: options.config
       });
       
       // If JSON output is requested, display as formatted JSON
@@ -175,9 +194,15 @@ showCommand
         }
       }
       
-      // Show a helpful tip at the end
+      // Show helpful tips at the end
       // eslint-disable-next-line no-console
-      console.log(colors.dim('\nTip: Use --json for machine-readable output'));
+      console.log(colors.dim('\nTips:'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('• Use --json for machine-readable output'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim('• Use --models-only or --groups-only to filter the display'));
+      // eslint-disable-next-line no-console
+      console.log(colors.dim(`• Configuration file location: ${await getConfigFilePath()}`));
     } catch (error) {
       handleError(error);
     }
@@ -339,9 +364,10 @@ addModelCommand
     config?: string;
   }) => {
     try {
-      // Load the existing configuration
-      const configPath = options.config || await loadConfig.getActiveConfigPath();
-      const config = await loadConfig.loadConfig({ configPath });
+      // Load the existing configuration - use custom path if provided, otherwise use default XDG path
+      const config = await loadConfig.loadConfig({ 
+        configPath: options.config 
+      });
       
       // Parse the options JSON if provided
       let modelOptions: Record<string, unknown> | undefined;
@@ -369,8 +395,8 @@ addModelCommand
       // Add or update the model in the configuration
       const updatedConfig = loadConfig.addOrUpdateModel(config, modelConfig);
       
-      // Save the updated configuration
-      await loadConfig.saveConfig(updatedConfig, configPath);
+      // Save the updated configuration - saveConfig will use the XDG path unless custom path is provided
+      await loadConfig.saveConfig(updatedConfig, options.config);
       
       // Determine if this was an add or update operation
       const existingModel = loadConfig.findModel(config, provider, modelId);
@@ -407,8 +433,7 @@ addModelCommand
       }
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -517,8 +542,7 @@ removeModelCommand
       }
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -597,8 +621,7 @@ enableModelCommand
       );
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -677,8 +700,7 @@ disableModelCommand
       );
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -920,8 +942,7 @@ createGroupCommand
       }
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -1015,8 +1036,7 @@ addModelToGroupCommand
       });
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -1103,8 +1123,7 @@ removeModelFromGroupCommand
       }
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -1156,8 +1175,7 @@ setGroupPromptCommand
       console.log(`New system prompt: "${options.prompt}"`);
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }
@@ -1220,8 +1238,7 @@ removeGroupCommand
       }
       
       // Show configuration file path
-      // eslint-disable-next-line no-console
-      console.log(colors.dim(`\nConfiguration saved to: ${configPath}`));
+      await displayConfigSavePath(options.config);
     } catch (error) {
       handleError(error);
     }

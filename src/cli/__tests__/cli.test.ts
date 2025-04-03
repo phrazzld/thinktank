@@ -19,9 +19,13 @@ describe('CLI Interface', () => {
   const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
+  const originalNodeEnv = process.env.NODE_ENV;
   
   beforeEach(() => {
     jest.clearAllMocks();
+    
+    // Set NODE_ENV for testing
+    process.env.NODE_ENV = 'test';
     
     // Mock methods
     console.log = jest.fn();
@@ -40,6 +44,7 @@ describe('CLI Interface', () => {
     console.error = originalConsoleError;
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
+    process.env.NODE_ENV = originalNodeEnv;
   });
   
   function setMockArgs(args: string[]): void {
@@ -52,18 +57,22 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
+    try {
+      await main();
     
-    // Verify file was checked
-    expect(fs.access).toHaveBeenCalledWith('test-prompt.txt');
-    
-    // Verify runThinktank was called with correct parameters
-    expect(runThinktank).toHaveBeenCalledWith({
-      input: 'test-prompt.txt',
-    });
-    
-    // Check that process.exit was called with success code
-    expect(process.exit).toHaveBeenCalledWith(0);
+      // Verify file was checked
+      expect(fs.access).toHaveBeenCalledWith('test-prompt.txt');
+      
+      // Verify runThinktank was called with correct parameters
+      expect(runThinktank).toHaveBeenCalledWith({
+        input: 'test-prompt.txt',
+      });
+      
+      // In test mode, process.exit should not be called
+      expect(process.exit).not.toHaveBeenCalled();
+    } catch (error) {
+      fail('Should not throw an error: ' + String(error));
+    }
   });
   
   it('should handle file not found error correctly with enhanced messages', async () => {
@@ -75,31 +84,37 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
     
-    // Verify that error handling occurred with the enhanced error message
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('File System'));
-    
-    // Verify suggestions were displayed
-    const calls = (console.error as jest.Mock).mock.calls;
-    let suggestionsHeaderShown = false;
-    let examplesHeaderShown = false;
-    let correctUsageShown = false;
-    
-    for (const call of calls) {
-      const message = call[0];
-      if (typeof message === 'string') {
-        if (message.includes('Suggestions:')) suggestionsHeaderShown = true;
-        if (message.includes('Example commands:')) examplesHeaderShown = true;
-        if (message.includes('Correct usage:')) correctUsageShown = true;
+    try {
+      await main();
+      // The function should not reach this point
+      fail('Should have thrown an error but did not');
+    } catch (error) {
+      // Expected to catch an error
+      
+      // Verify that error handling occurred with the enhanced error message
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('File System'));
+      
+      // Verify suggestions were displayed
+      const calls = (console.error as jest.Mock).mock.calls;
+      let suggestionsHeaderShown = false;
+      let examplesHeaderShown = false;
+      let correctUsageShown = false;
+      
+      for (const call of calls) {
+        const message = call[0];
+        if (typeof message === 'string') {
+          if (message.includes('Suggestions:')) suggestionsHeaderShown = true;
+          if (message.includes('Example commands:')) examplesHeaderShown = true;
+          if (message.includes('Correct usage:')) correctUsageShown = true;
+        }
       }
+      
+      expect(suggestionsHeaderShown).toBe(true);
+      expect(examplesHeaderShown).toBe(true);
+      expect(correctUsageShown).toBe(true);
     }
-    
-    expect(suggestionsHeaderShown).toBe(true);
-    expect(examplesHeaderShown).toBe(true);
-    expect(correctUsageShown).toBe(true);
-    expect(process.exit).toHaveBeenCalledWith(1);
   });
   
   it('should handle errors from runThinktank correctly', async () => {
@@ -111,11 +126,12 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
+    
+    // The function should throw an error
+    await expect(main()).rejects.toThrow();
     
     // Verify error handling was invoked
     expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Unexpected error: Some error'));
-    expect(process.exit).toHaveBeenCalledWith(1);
   });
   
   it('should handle prompt file with specific group', async () => {
@@ -124,15 +140,20 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
-    
-    // Verify runThinktank was called with correct parameters
-    expect(runThinktank).toHaveBeenCalledWith({
-      input: 'test-prompt.txt',
-      groupName: 'coding'
-    });
-    
-    expect(process.exit).toHaveBeenCalledWith(0);
+    try {
+      await main();
+      
+      // Verify runThinktank was called with correct parameters
+      expect(runThinktank).toHaveBeenCalledWith({
+        input: 'test-prompt.txt',
+        groupName: 'coding'
+      });
+      
+      // In test mode, process.exit should not be called
+      expect(process.exit).not.toHaveBeenCalled();
+    } catch (error) {
+      fail('Should not throw an error: ' + String(error));
+    }
   });
   
   it('should handle prompt file with specific model', async () => {
@@ -141,15 +162,20 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
-    
-    // Verify runThinktank was called with correct parameters
-    expect(runThinktank).toHaveBeenCalledWith({
-      input: 'test-prompt.txt',
-      specificModel: 'openai:gpt-4o'
-    });
-    
-    expect(process.exit).toHaveBeenCalledWith(0);
+    try {
+      await main();
+      
+      // Verify runThinktank was called with correct parameters
+      expect(runThinktank).toHaveBeenCalledWith({
+        input: 'test-prompt.txt',
+        specificModel: 'openai:gpt-4o'
+      });
+      
+      // In test mode, process.exit should not be called
+      expect(process.exit).not.toHaveBeenCalled();
+    } catch (error) {
+      fail('Should not throw an error: ' + String(error));
+    }
   });
   
   it('should validate the provider:model format with helpful errors', async () => {
@@ -158,14 +184,20 @@ describe('CLI Interface', () => {
     
     // Import and execute the module
     const { main } = await import('../cli');
-    await main();
     
-    // Verify that enhanced error handling occurred
-    expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
-    expect(process.exit).toHaveBeenCalledWith(1);
-    
-    // Verify runThinktank was not called
-    expect(runThinktank).not.toHaveBeenCalled();
+    try {
+      await main();
+      // The function should not reach this point
+      fail('Should have thrown an error but did not');
+    } catch (error) {
+      // Expected to catch an error
+      
+      // Verify that enhanced error handling occurred 
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'));
+      
+      // Verify runThinktank was not called
+      expect(runThinktank).not.toHaveBeenCalled();
+    }
   });
   
   it('should handle no arguments by showing help', async () => {

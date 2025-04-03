@@ -2,12 +2,13 @@
  * Configuration manager for loading and validating application config
  */
 import { z } from 'zod';
-import { fileExists, readFileContent, writeFile } from '../utils/fileReader';
+import { fileExists, readFileContent, writeFile, getConfigFilePath } from '../utils/fileReader';
 import { AppConfig, ModelConfig, ModelGroup, ModelOptions, SystemPrompt } from './types';
-import { CONFIG_SEARCH_PATHS, DEFAULT_CONFIG } from './constants';
+import { DEFAULT_CONFIG, DEFAULT_CONFIG_TEMPLATE_PATH } from './constants';
 import { getApiKey as getApiKeyHelper } from '../utils/helpers';
 import dotenv from 'dotenv';
 import { logger } from '../utils/logger';
+import path from 'path';
 
 // Re-export getApiKey for use in other modules
 export const getApiKey = getApiKeyHelper;
@@ -20,7 +21,7 @@ dotenv.config();
  */
 export interface LoadConfigOptions {
   configPath?: string;
-  mergeWithDefaults?: boolean;
+  // mergeWithDefaults option removed - we now use a single configuration source
 }
 
 /**
@@ -75,54 +76,96 @@ export type ValidatedAppConfig = z.infer<typeof appConfigSchema>;
 /**
  * Loads configuration from file system or specified path
  * 
+ * By default, loads from the XDG standard location. If a file doesn't exist there,
+ * a default configuration file will be created.
+ * 
  * @param options - Configuration loading options
  * @returns The loaded configuration
  * @throws {ConfigError} If configuration cannot be loaded or is invalid
  */
 export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppConfig> {
-  const { configPath, mergeWithDefaults = false } = options;
+  const { configPath } = options;
   
   try {
     let rawConfig: AppConfig;
+    let configSource: string;
     
-    // If a specific config path is provided, use it
     if (configPath) {
-      const exists = await fileExists(configPath);
-      if (!exists) {
+      // Use specific provided path if given
+      configSource = configPath;
+      
+      // Verify the file exists
+      if (!await fileExists(configPath)) {
         throw new ConfigError(`Configuration file not found at specified path: ${configPath}`);
       }
       
+      // Read and parse the configuration
       const configContent = await readFileContent(configPath);
       rawConfig = parseJsonSafely(configContent);
+      
+      logger.debug(`Loaded configuration from specified path: ${configPath}`);
     } else {
-      // Otherwise, try paths in order of preference
-      rawConfig = await tryLoadConfigFromPaths(CONFIG_SEARCH_PATHS);
+      // Use the XDG config path
+      const xdgConfigPath = await getConfigFilePath();
+      configSource = xdgConfigPath;
+      
+      // Check if the file exists
+      if (await fileExists(xdgConfigPath)) {
+        // Load the existing config
+        const configContent = await readFileContent(xdgConfigPath);
+        rawConfig = parseJsonSafely(configContent);
+        
+        logger.debug(`Loaded configuration from XDG path: ${xdgConfigPath}`);
+      } else {
+        // Create a default configuration if none exists
+        logger.info(`Configuration file not found at ${xdgConfigPath}. Creating a default one.`);
+        
+        // Use the template if it exists, otherwise use the built-in default
+        let defaultContent: string;
+        
+        if (await fileExists(DEFAULT_CONFIG_TEMPLATE_PATH)) {
+          defaultContent = await readFileContent(DEFAULT_CONFIG_TEMPLATE_PATH);
+          logger.debug(`Using template from: ${DEFAULT_CONFIG_TEMPLATE_PATH}`);
+        } else {
+          defaultContent = JSON.stringify(DEFAULT_CONFIG, null, 2);
+          logger.debug('Using built-in default configuration');
+        }
+        
+        // Save the default configuration
+        await writeFile(xdgConfigPath, defaultContent);
+        logger.debug(`Created default configuration at: ${xdgConfigPath}`);
+        
+        // Parse the default content
+        rawConfig = parseJsonSafely(defaultContent);
+      }
     }
     
-    // Merge with defaults if requested (now off by default)
-    const config = mergeWithDefaults 
-      ? mergeConfigs(DEFAULT_CONFIG, rawConfig) 
-      : rawConfig;
-    
-    // Validate configuration
-    const validationResult = appConfigSchema.safeParse(config);
+    // Validate configuration using Zod schema
+    const validationResult = appConfigSchema.safeParse(rawConfig);
     if (!validationResult.success) {
-      throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
+      // Extract detailed validation errors
+      const errorDetails = validationResult.error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('; ');
+        
+      throw new ConfigError(`Invalid configuration in ${configSource}: ${errorDetails}`);
     }
     
-    // Normalize the configuration to include default group if needed
+    // Normalize the configuration to ensure at least a default group exists
     const normalizedConfig = normalizeConfig(validationResult.data);
-    
     return normalizedConfig;
   } catch (error) {
+    // Re-throw ConfigError instances
     if (error instanceof ConfigError) {
       throw error;
     }
     
+    // Wrap other errors with context
     if (error instanceof Error) {
-      throw new ConfigError('Failed to load configuration', error);
+      throw new ConfigError(`Failed to load configuration: ${error.message}`, error);
     }
     
+    // Handle unexpected non-Error exceptions
     throw new ConfigError('Unknown error loading configuration');
   }
 }
@@ -165,159 +208,13 @@ function parseJsonSafely(content: string): AppConfig {
   }
 }
 
-/**
- * Attempts to load configuration from a list of paths
- * 
- * @param paths - Paths to try in order of preference
- * @returns The loaded configuration
- * @throws {ConfigError} If no configuration can be loaded
- */
-async function tryLoadConfigFromPaths(paths: string[]): Promise<AppConfig> {
-  for (const path of paths) {
-    if (await fileExists(path)) {
-      try {
-        const configContent = await readFileContent(path);
-        return parseJsonSafely(configContent);
-      } catch (error) {
-        // Log and try next path
-        logger.warn(`Failed to load config from ${path}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-  }
-  
-  // If no config is found, return an empty config that will pass validation
-  // This allows the user to start with a minimal config
-  return {
-    models: [],
-    groups: {
-      default: {
-        name: 'default',
-        systemPrompt: {
-          text: 'You are a helpful, accurate, and intelligent assistant. Provide clear, concise, and correct information.'
-        },
-        models: [],
-        description: 'Default model group'
-      }
-    }
-  };
-}
+// Note: tryLoadConfigFromPaths was removed as it's no longer needed
+// The loadConfig function now handles all the logic for finding and creating config files
 
-/**
- * Merges user configuration with default configuration
- * 
- * @param defaultConfig - Default configuration
- * @param userConfig - User-provided configuration
- * @returns Merged configuration
- */
-export function mergeConfigs(defaultConfig: AppConfig, userConfig: Partial<AppConfig>): AppConfig {
-  // Start with a deep copy of the default config
-  const mergedConfig: AppConfig = structuredClone(defaultConfig);
-  
-  // If user config has models, merge them
-  if (userConfig.models) {
-    // Create a map of existing models for faster lookup
-    const modelMap = new Map<string, number>();
-    mergedConfig.models.forEach((model, index) => {
-      const key = `${model.provider}:${model.modelId}`;
-      modelMap.set(key, index);
-    });
-    
-    // Update existing models or add new ones
-    userConfig.models.forEach(userModel => {
-      const key = `${userModel.provider}:${userModel.modelId}`;
-      const existingIndex = modelMap.get(key);
-      
-      if (existingIndex !== undefined) {
-        // Update existing model
-        mergedConfig.models[existingIndex] = {
-          ...mergedConfig.models[existingIndex],
-          ...userModel,
-          options: userModel.options 
-            ? { ...mergedConfig.models[existingIndex].options, ...userModel.options }
-            : mergedConfig.models[existingIndex].options,
-        };
-      } else {
-        // Add new model
-        mergedConfig.models.push(userModel);
-      }
-    });
-  }
-  
-  // If user config has groups, merge them
-  if (userConfig.groups) {
-    // Initialize groups in merged config if it doesn't exist
-    if (!mergedConfig.groups) {
-      mergedConfig.groups = {};
-    }
-    
-    // Merge each group from user config
-    Object.entries(userConfig.groups).forEach(([groupName, userGroup]) => {
-      const existingGroup = mergedConfig.groups?.[groupName];
-      
-      if (existingGroup) {
-        // Merge existing group
-        mergedConfig.groups![groupName] = {
-          ...existingGroup,
-          ...userGroup,
-          // Merge system prompt if both exist
-          systemPrompt: userGroup.systemPrompt 
-            ? { 
-                ...existingGroup.systemPrompt,
-                ...userGroup.systemPrompt,
-              }
-            : existingGroup.systemPrompt,
-          // Merge models array
-          models: mergeModelArrays(existingGroup.models, userGroup.models),
-        };
-      } else {
-        // Add new group
-        mergedConfig.groups![groupName] = structuredClone(userGroup);
-      }
-    });
-  }
-  
-  return mergedConfig;
-}
-
-/**
- * Merges two arrays of model configurations
- * 
- * @param baseModels - Base array of model configurations
- * @param overrideModels - Override array of model configurations
- * @returns Merged array of model configurations
- */
-function mergeModelArrays(baseModels: ModelConfig[], overrideModels: ModelConfig[]): ModelConfig[] {
-  const result = structuredClone(baseModels);
-  const modelMap = new Map<string, number>();
-  
-  // Create a map of existing models for faster lookup
-  result.forEach((model, index) => {
-    const key = `${model.provider}:${model.modelId}`;
-    modelMap.set(key, index);
-  });
-  
-  // Update existing models or add new ones
-  overrideModels.forEach(overrideModel => {
-    const key = `${overrideModel.provider}:${overrideModel.modelId}`;
-    const existingIndex = modelMap.get(key);
-    
-    if (existingIndex !== undefined) {
-      // Update existing model
-      result[existingIndex] = {
-        ...result[existingIndex],
-        ...overrideModel,
-        options: overrideModel.options 
-          ? { ...result[existingIndex].options, ...overrideModel.options }
-          : result[existingIndex].options,
-      };
-    } else {
-      // Add new model
-      result.push(structuredClone(overrideModel));
-    }
-  });
-  
-  return result;
-}
+// Note: mergeConfigs and mergeModelArrays functions were removed
+// These functions were used for the old configuration approach with multiple config sources.
+// With our simplified XDG-based approach, we have a clear, single source of truth for configuration,
+// making this merging functionality unnecessary.
 
 /**
  * Gets all enabled models from the configuration
@@ -534,33 +431,72 @@ export function findModelGroup(
 /**
  * Save configuration to a file
  * 
+ * By default, saves to the XDG standard location. Ensures the configuration
+ * is valid before saving to prevent corrupted configuration files.
+ * 
  * @param config - The configuration to save
- * @param configPath - Path to the configuration file
- * @throws {ConfigError} If the configuration cannot be saved
+ * @param configPath - Optional path to the configuration file. If not provided, the XDG config path will be used.
+ * @throws {ConfigError} If the configuration is invalid or cannot be saved
  */
-export async function saveConfig(config: AppConfig, configPath: string): Promise<void> {
+export async function saveConfig(config: AppConfig, configPath?: string): Promise<void> {
   try {
-    // Validate configuration before saving
+    // Start with a deep validation of the configuration before attempting to save
+    // This helps prevent corrupted configuration files
     const validationResult = appConfigSchema.safeParse(config);
     if (!validationResult.success) {
-      throw new ConfigError(`Invalid configuration: ${validationResult.error.message}`);
+      // Extract detailed validation errors for better debugging
+      const errorDetails = validationResult.error.errors
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('; ');
+        
+      throw new ConfigError(`Cannot save invalid configuration: ${errorDetails}`);
     }
     
-    // Convert configuration to pretty-printed JSON
-    const configJson = JSON.stringify(config, null, 2);
+    // Use provided path or get the XDG config path
+    const targetPath = configPath || await getConfigFilePath();
+    logger.debug(`Preparing to save configuration to ${targetPath}`);
+    
+    // Normalize the configuration before saving to ensure consistency
+    // This is important for maintaining a reliable file format
+    const normalizedConfig = normalizeConfig(validationResult.data);
+    
+    // Convert configuration to pretty-printed JSON with consistent formatting
+    const configJson = JSON.stringify(normalizedConfig, null, 2);
+    
+    // Verify config can be parsed back (sanity check)
+    try {
+      JSON.parse(configJson);
+    } catch (parseError) {
+      throw new ConfigError(`Generated configuration JSON is invalid: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
     
     // Write the configuration to the file
-    await writeFile(configPath, configJson);
+    // writeFile already handles directory creation via fs.mkdir
+    await writeFile(targetPath, configJson);
+    
+    logger.info(`Configuration saved successfully to ${targetPath}`);
   } catch (error) {
+    // Re-throw ConfigError instances
     if (error instanceof ConfigError) {
       throw error;
     }
     
+    // Handle file system errors with specific messages
     if (error instanceof Error) {
+      if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+        throw new ConfigError(`Permission denied when saving configuration to ${configPath || 'default location'}. Check file permissions.`, error);
+      }
+      
+      if ((error as NodeJS.ErrnoException).code === 'ENOSPC') {
+        throw new ConfigError(`Not enough disk space to save configuration to ${configPath || 'default location'}.`, error);
+      }
+      
+      // Generic error with message
       throw new ConfigError(`Failed to save configuration: ${error.message}`, error);
     }
     
-    throw new ConfigError('Unknown error saving configuration');
+    // Fallback for non-Error exceptions
+    throw new ConfigError('Unknown error occurred while saving configuration');
   }
 }
 
@@ -922,26 +858,21 @@ export function removeModelFromGroup(
  * @returns The path to the default configuration file
  */
 export function getDefaultConfigPath(): string {
-  // Return the first path in the search paths (highest priority)
-  return CONFIG_SEARCH_PATHS[0];
+  // Return the path in the project directory for backward compatibility
+  return path.resolve(process.cwd(), 'thinktank.config.json');
 }
 
 /**
  * Get the currently used configuration file path
  * 
- * This checks each path in the search paths and returns the first one that exists
+ * This returns the XDG config path. If the file doesn't exist yet, it will 
+ * still return the path where the config will be created.
  * 
  * @returns The path to the active configuration file
  */
 export async function getActiveConfigPath(): Promise<string> {
-  for (const path of CONFIG_SEARCH_PATHS) {
-    if (await fileExists(path)) {
-      return path;
-    }
-  }
-  
-  // If no config file exists, return the default path
-  return getDefaultConfigPath();
+  // Return the XDG config path
+  return getConfigFilePath();
 }
 
 // Base default options that apply to all models
