@@ -6,22 +6,22 @@
   - Dependencies: None
   - Priority: High
 
-- [ ] Refactor generateFunName Function
+- [x] Refactor generateFunName Function
   - Description: Modify generateFunName to use word lists for random name generation, remove API call logic
   - Dependencies: Word Lists
   - Priority: High
 
-- [ ] Update Integration Point
+- [x] Update Integration Point
   - Description: Modify call to generateFunName in runThinktank.ts to handle synchronous nature
   - Dependencies: Refactored generateFunName
   - Priority: High
 
-- [ ] Update Unit Tests
+- [x] Update Unit Tests
   - Description: Rewrite tests in nameGenerator.test.ts to verify random generation logic
   - Dependencies: Refactored generateFunName
   - Priority: Medium
 
-- [ ] Code Cleanup
+- [x] Code Cleanup
   - Description: Remove unused imports and dead code related to API implementation
   - Dependencies: Refactored functions
   - Priority: Medium

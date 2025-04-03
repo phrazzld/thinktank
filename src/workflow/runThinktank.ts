@@ -22,7 +22,7 @@ import {
   errorCategories,
   colors
 } from '../utils/consoleUtils';
-import { generateFunName, generateFallbackName } from '../utils/nameGenerator';
+import { generateFunName } from '../utils/nameGenerator';
 import ora from 'ora';
 import { logger } from '../utils/logger';
 
@@ -321,13 +321,9 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // 1.5 Generate a friendly run name
     spinner.text = 'Generating run identifier...';
-    let friendlyRunName = await generateFunName();
-    if (!friendlyRunName) {
-      friendlyRunName = generateFallbackName();
-      spinner.warn(styleWarning(`Could not generate fun name, using fallback: ${friendlyRunName}`));
-    } else {
-      spinner.info(styleInfo(`Run name: ${styleSuccess(friendlyRunName)}`));
-    }
+    // generateFunName is now synchronous and always returns a string
+    const friendlyRunName = generateFunName();
+    spinner.info(styleInfo(`Run name: ${styleSuccess(friendlyRunName)}`));
     spinner.start(); // Restart spinner for next step
     
     // 2. Process input (file, stdin, or direct text)
