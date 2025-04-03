@@ -2,7 +2,7 @@
  * Tests for the name generator module
  */
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { generateFunName, generateFallbackName } from '../nameGenerator';
+import { generateFunName, generateFallbackName, ADJECTIVES, NOUNS } from '../nameGenerator';
 
 // Mock Google Generative AI client
 jest.mock('@google/generative-ai');
@@ -173,6 +173,37 @@ describe('nameGenerator', () => {
       
       // Check that it matches the expected pattern: run-YYYYMMDD-HHmmss
       expect(result).toMatch(/^run-\d{8}-\d{6}$/);
+    });
+  });
+
+  describe('word lists', () => {
+    it('should have at least 50 adjectives and 50 nouns', () => {
+      expect(ADJECTIVES).toBeDefined();
+      expect(NOUNS).toBeDefined();
+      expect(ADJECTIVES.length).toBeGreaterThanOrEqual(50);
+      expect(NOUNS.length).toBeGreaterThanOrEqual(50);
+    });
+
+    it('should contain only lowercase strings with no special characters', () => {
+      // All adjectives should be lowercase and contain only letters
+      ADJECTIVES.forEach((adj: string) => {
+        expect(adj).toMatch(/^[a-z]+$/);
+      });
+
+      // All nouns should be lowercase and contain only letters
+      NOUNS.forEach((noun: string) => {
+        expect(noun).toMatch(/^[a-z]+$/);
+      });
+    });
+
+    it('should not have duplicate words in each list', () => {
+      // Check for duplicates in ADJECTIVES
+      const uniqueAdjectives = new Set(ADJECTIVES);
+      expect(uniqueAdjectives.size).toBe(ADJECTIVES.length);
+
+      // Check for duplicates in NOUNS
+      const uniqueNouns = new Set(NOUNS);
+      expect(uniqueNouns.size).toBe(NOUNS.length);
     });
   });
 });

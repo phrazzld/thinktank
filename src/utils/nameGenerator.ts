@@ -1,11 +1,43 @@
 /**
  * Name generator module for thinktank
  * 
- * Provides functions to generate user-friendly run names using Google's Gemini-2.0-flash model
- * and fallback mechanisms when API generation fails.
+ * Provides functions to generate user-friendly run names using a deterministic approach with
+ * predefined word lists and fallback mechanisms when needed.
  */
 import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
 import { logger } from './logger';
+
+/**
+ * List of adjectives used for generating friendly names
+ */
+export const ADJECTIVES: string[] = [
+  "adaptable", "adventurous", "agile", "alert", "ambitious", "analytical",
+  "artistic", "assertive", "attentive", "balanced", "bold", "brave",
+  "bright", "brilliant", "calm", "capable", "careful", "charming",
+  "cheerful", "clever", "collaborative", "committed", "compassionate", "confident",
+  "considerate", "consistent", "courageous", "creative", "curious", "daring",
+  "decisive", "dedicated", "deliberate", "determined", "diligent", "diplomatic",
+  "disciplined", "dynamic", "eager", "efficient", "eloquent", "empathetic",
+  "energetic", "enthusiastic", "excellent", "exceptional", "experienced", "expert",
+  "focused", "friendly", "generous", "gentle", "genuine", "graceful",
+  "happy", "harmonious", "helpful", "honest", "humble", "imaginative"
+];
+
+/**
+ * List of nouns used for generating friendly names
+ */
+export const NOUNS: string[] = [
+  "acorn", "anchor", "apple", "arrow", "aurora", "autumn",
+  "badger", "bamboo", "bastion", "beacon", "blossom", "breeze",
+  "brook", "butterfly", "canyon", "cardinal", "cascade", "cedar",
+  "cheetah", "cherry", "citadel", "comet", "compass", "coral",
+  "crystal", "cypress", "diamond", "dolphin", "eagle", "ember",
+  "falcon", "feather", "firefly", "forest", "fountain", "galaxy",
+  "garden", "gazelle", "geyser", "glacier", "griffin", "harbor",
+  "heron", "horizon", "island", "jasmine", "lagoon", "lantern",
+  "lotus", "marble", "meadow", "mercury", "nebula", "ocean",
+  "orchid", "oasis", "panther", "phoenix", "quasar", "river"
+];
 
 // Removed Schema definition as we're using simple prompt-based approach
 
