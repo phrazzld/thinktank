@@ -25,9 +25,14 @@ describe('Run Command Integration', () => {
   const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
+  const originalNodeEnv = process.env.NODE_ENV;
   
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.resetModules();
+    
+    // Set NODE_ENV for testing
+    process.env.NODE_ENV = 'test';
     
     // Mock console methods
     console.log = jest.fn();
@@ -68,6 +73,7 @@ describe('Run Command Integration', () => {
     console.error = originalConsoleError;
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
+    process.env.NODE_ENV = originalNodeEnv;
   });
   
   describe('CLI Interface', () => {
@@ -86,8 +92,8 @@ describe('Run Command Integration', () => {
         input: 'test-prompt.txt'
       });
       
-      // And exit was called with success code
-      expect(process.exit).toHaveBeenCalledWith(0);
+      // In test mode, process.exit should not be called
+      expect(process.exit).not.toHaveBeenCalled();
     });
     
     it('should display help when no arguments are provided', async () => {
@@ -115,12 +121,11 @@ describe('Run Command Integration', () => {
       // Set command-line arguments for a non-existent file
       process.argv = ['node', 'thinktank', 'nonexistent.txt'];
       
-      // Run the CLI main function
-      await main();
+      // The function should throw an error
+      await expect(main()).rejects.toThrow();
       
       // Verify error handling was invoked
       expect(console.error).toHaveBeenCalled();
-      expect(process.exit).toHaveBeenCalledWith(1); // Error exit code
     });
   });
 });
