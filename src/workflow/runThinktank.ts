@@ -456,7 +456,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       prompt: inputResult.content,
       systemPrompt: options.systemPrompt,
       enableThinking: options.enableThinking,
-      timeoutMs: 120000, // 2 minute timeout
+      timeoutMs: 660000, // 11 minute timeout 
       onStatusUpdate
     });
     
