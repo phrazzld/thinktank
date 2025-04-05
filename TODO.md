@@ -37,7 +37,7 @@
   - Dependencies: Core error system implementation
   - Priority: Medium
 
-- [ ] Update ModelSelectionError handling
+- [x] Update ModelSelectionError handling
   - Description: Convert ModelSelectionError to use the new error hierarchy
   - Dependencies: Core error system implementation
   - Priority: Medium

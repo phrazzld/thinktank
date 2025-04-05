@@ -5,6 +5,7 @@ import { selectModels, ModelSelectionError } from '../modelSelector';
 import { AppConfig, ModelConfig } from '../../core/types';
 import * as configManager from '../../core/configManager';
 import * as llmRegistry from '../../core/llmRegistry';
+import { ConfigError, ThinktankError } from '../../core/errors';
 
 // Mock the configManager and llmRegistry modules
 jest.mock('../../core/configManager');
@@ -149,8 +150,14 @@ describe('Model Selector', () => {
           throwOnError: true
         });
       } catch (error) {
+        // Verify error is both a ModelSelectionError and a ConfigError
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
+        expect(error instanceof ThinktankError).toBe(true);
+        
         const typedError = error as ModelSelectionError;
         expect(typedError.message).toContain('None of the specified models could be used');
+        expect(typedError.category).toBe('Configuration');
         expect(typedError.suggestions).toBeDefined();
         expect(typedError.suggestions?.some(suggestion => 
           suggestion.includes('Check that you have specified valid models')
@@ -216,11 +223,16 @@ describe('Model Selector', () => {
           specificModel: 'invalid-format'
         });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
+        expect(error instanceof ThinktankError).toBe(true);
+        
         const typedError = error as ModelSelectionError;
         expect(typedError.message).toContain('Invalid model format');
+        expect(typedError.category).toBe('Configuration');
         expect(typedError.suggestions).toBeDefined();
         expect(typedError.suggestions?.some(suggestion => 
-          suggestion.includes('Use the provider:modelId format')
+          suggestion.includes('Model specifications must use the format')
         )).toBe(true);
       }
     });
@@ -239,8 +251,13 @@ describe('Model Selector', () => {
           specificModel: 'unknown:model'
         });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
+        expect(error instanceof ThinktankError).toBe(true);
+        
         const typedError = error as ModelSelectionError;
         expect(typedError.message).toContain('Model "unknown:model" not found');
+        expect(typedError.category).toBe('Configuration');
         expect(typedError.suggestions).toBeDefined();
         expect(typedError.suggestions?.some(suggestion => 
           suggestion.includes('Check that the model is correctly spelled')
@@ -327,8 +344,13 @@ describe('Model Selector', () => {
           groupName: 'nonexistent'
         });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
+        expect(error instanceof ThinktankError).toBe(true);
+        
         const typedError = error as ModelSelectionError;
         expect(typedError.message).toContain('Group "nonexistent" not found');
+        expect(typedError.category).toBe('Configuration');
         expect(typedError.suggestions).toBeDefined();
         expect(typedError.suggestions?.some(suggestion => 
           suggestion.includes('Check your configuration file')
@@ -469,9 +491,17 @@ describe('Model Selector', () => {
           throwOnError: true
         });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
+        expect(error instanceof ThinktankError).toBe(true);
+        
         const typedError = error as ModelSelectionError;
         expect(typedError.message).toContain('No models with valid API keys available');
+        expect(typedError.category).toBe('Configuration');
         expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.some(suggestion => 
+          suggestion.includes('Check that you have set the correct environment variables')
+        )).toBe(true);
       }
     });
     
@@ -514,7 +544,10 @@ describe('Model Selector', () => {
       try {
         selectModels(mockConfig, { specificModel: 'unknown:model' });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
         expect((error as Error).message).toContain('Model "unknown:model" not found');
+        expect((error as ModelSelectionError).category).toBe('Configuration');
       }
       
       // 2. Empty group
@@ -532,14 +565,20 @@ describe('Model Selector', () => {
       try {
         selectModels(mockConfigWithEmptyGroup, { groupName: 'empty-group' });
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
         expect((error as Error).message).toContain('No enabled models found in the specified group');
+        expect((error as ModelSelectionError).category).toBe('Configuration');
       }
       
       // 3. Default case - no enabled models
       try {
         selectModels(mockConfig);
       } catch (error) {
+        expect(error instanceof ModelSelectionError).toBe(true);
+        expect(error instanceof ConfigError).toBe(true);
         expect((error as Error).message).toContain('No enabled models found in configuration');
+        expect((error as ModelSelectionError).category).toBe('Configuration');
       }
     });
     

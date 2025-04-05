@@ -11,22 +11,33 @@ import {
   findModel
 } from '../core/configManager';
 import { getProviderIds } from '../core/llmRegistry';
-import { ThinktankError, errorCategories } from '../core/errors';
+import { 
+  ConfigError, 
+  createModelFormatError, 
+  createModelNotFoundError,
+  createMissingApiKeyError
+} from '../core/errors';
 
 /**
  * Error class for model selection errors
+ * Extends ConfigError since model selection errors are configuration-related
  */
-export class ModelSelectionError extends ThinktankError {
+export class ModelSelectionError extends ConfigError {
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
     examples?: string[];
   }) {
-    super(message, {
-      ...options,
-      category: errorCategories.CONFIG
-    });
+    super(message, options);
     this.name = 'ModelSelectionError';
+    
+    // Ensure name property is correctly set and non-enumerable 
+    // This is important for instanceof checks in tests
+    Object.defineProperty(this, 'name', {
+      value: 'ModelSelectionError',
+      enumerable: false,
+      configurable: true
+    });
   }
 }
 
@@ -181,18 +192,19 @@ function processSingleModelIdentifier(
     const enabledModels = getEnabledModels(config);
     const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
     
-    const error = new ModelSelectionError(
-      `Invalid model format: "${modelIdentifier}". Models must be in provider:modelId format (e.g., openai:gpt-4o).`,
-      {
-        suggestions: [
-          'Use the provider:modelId format (e.g., openai:gpt-4o)',
-          `Available providers: ${availableProviders.join(', ')}`,
-          availableModels.length > 0 
-            ? `Available models: ${availableModels.join(', ')}` 
-            : 'No enabled models found in configuration'
-        ]
-      }
+    // Use factory function to create consistent error
+    const formatError = createModelFormatError(
+      modelIdentifier,
+      availableProviders,
+      availableModels
     );
+    
+    // Create ModelSelectionError from the factory error
+    const error = new ModelSelectionError(formatError.message, {
+      cause: formatError,
+      suggestions: formatError.suggestions,
+      examples: formatError.examples
+    });
     
     throw error;
   }
@@ -205,18 +217,22 @@ function processSingleModelIdentifier(
     const enabledModels = getEnabledModels(config);
     const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
     
-    const error = new ModelSelectionError(
-      `Model "${modelIdentifier}" not found in configuration.`,
-      {
-        suggestions: [
-          'Check that the model is correctly spelled and exists in your configuration',
-          availableModels.length > 0 
-            ? `Available models: ${availableModels.join(', ')}` 
-            : 'No enabled models found in configuration',
-          'Use "thinktank models" to list all available models'
-        ]
-      }
+    // Use factory function to create consistent error
+    const notFoundError = createModelNotFoundError(
+      modelIdentifier,
+      availableModels
     );
+    
+    // Create ModelSelectionError from the factory error
+    const error = new ModelSelectionError(notFoundError.message, {
+      cause: notFoundError,
+      suggestions: [
+        'Check that the model is correctly spelled and exists in your configuration',
+        ...(notFoundError.suggestions || []),
+        'Use "thinktank models" to list all available models'
+      ],
+      examples: notFoundError.examples
+    });
     
     throw error;
   }
@@ -234,6 +250,9 @@ function processSingleModelIdentifier(
         'Enable the model in your configuration with:',
         `  thinktank config models update ${provider} ${modelId} --enable`,
         'Or use an enabled model instead'
+      ],
+      examples: [
+        `thinktank config models update ${provider} ${modelId} --enable`
       ]
     }
   );
@@ -275,9 +294,17 @@ function processGroupName(
       'Use "thinktank models" to list all available models and their groups'
     );
     
+    const examples = [
+      'thinktank config groups create my-group',
+      'thinktank config groups add-model my-group openai:gpt-4o'
+    ];
+    
     const error = new ModelSelectionError(
       `Group "${groupName}" not found in configuration.`,
-      { suggestions }
+      { 
+        suggestions,
+        examples
+      }
     );
     
     throw error;
@@ -362,19 +389,27 @@ export function selectModels(
           const enabledModels = getEnabledModels(config);
           const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
           
-          const error = new ModelSelectionError(
-            `None of the specified models could be used: ${errors.join(', ')}`,
-            {
-              suggestions: [
-                'Check that you have specified valid models in provider:modelId format',
-                'Make sure the models exist in your configuration and are enabled',
-                `Available providers: ${availableProviders.join(', ')}`,
-                availableModels.length > 0 
-                  ? `Available models: ${availableModels.join(', ')}` 
-                  : 'No enabled models found in configuration'
-              ]
-            }
+          // Create more detailed error message
+          const errorMessage = `None of the specified models could be used: ${errors.join(', ')}`;
+          
+          // Use factory function for consistent format
+          const formatError = createModelFormatError(
+            modelIds.join(', '),
+            availableProviders,
+            availableModels,
+            errorMessage
           );
+          
+          // Wrap in ModelSelectionError for type consistency
+          const error = new ModelSelectionError(formatError.message, {
+            cause: formatError,
+            suggestions: [
+              'Check that you have specified valid models in provider:modelId format',
+              'Make sure the models exist in your configuration and are enabled',
+              ...(formatError.suggestions || [])
+            ],
+            examples: formatError.examples
+          });
           
           throw error;
         } else {
@@ -490,6 +525,10 @@ export function selectModels(
             'Check your configuration to ensure there are enabled models',
             'You can enable models with: thinktank config models update <provider> <modelId> --enable',
             'Use "thinktank models" to list all available models'
+          ],
+          examples: [
+            'thinktank config models update openai gpt-4o --enable',
+            'thinktank config models update anthropic claude-3-opus-20240229 --enable'
           ]
         });
         
@@ -519,12 +558,26 @@ export function selectModels(
           );
         } else if (throwOnError && !wouldHaveModelsLeft) {
           // If we wouldn't have any models left and throwOnError is true, throw
-          const error = new ModelSelectionError('No models with valid API keys available.', {
+          // Get missing models in format needed for factory function
+          const missingModelsList = missingApiKeyModels.map(model => ({
+            provider: model.provider,
+            modelId: model.modelId
+          }));
+          
+          // Use factory function to create consistent API key error
+          const apiKeyError = createMissingApiKeyError(
+            missingModelsList,
+            'No models with valid API keys available.'
+          );
+          
+          // Create ModelSelectionError from factory error
+          const error = new ModelSelectionError(apiKeyError.message, {
+            cause: apiKeyError,
             suggestions: [
               'Check that you have set the correct environment variables for your API keys',
-              'You can set them in your .env file or in your environment',
-              `Missing API keys for: ${modelNames}`
-            ]
+              ...(apiKeyError.suggestions || [])
+            ],
+            examples: apiKeyError.examples
           });
           
           throw error;
@@ -553,13 +606,37 @@ export function selectModels(
     // Rethrow any non-ModelSelectionError errors
     if (!(error instanceof ModelSelectionError)) {
       if (error instanceof Error) {
-        throw new ModelSelectionError(`Error selecting models: ${error.message}`, { cause: error });
+        const message = `Error selecting models: ${error.message}`;
+        // Create ModelSelectionError with proper cause chaining
+        const modelError = new ModelSelectionError(message, { 
+          cause: error,
+          suggestions: [
+            'This is likely an internal error or unexpected condition',
+            'Please report this issue if it persists'
+          ]
+        });
+        
+        throw modelError;
       } else {
-        throw new ModelSelectionError(`Unknown error selecting models: ${String(error)}`);
+        // For non-Error objects, create a string representation
+        const message = `Unknown error selecting models: ${String(error)}`;
+        throw new ModelSelectionError(message, {
+          suggestions: ['This is an unexpected error condition']
+        });
       }
     }
     
-    // Rethrow ModelSelectionError as is
+    // Rethrow ModelSelectionError as is, but ensure name is set properly
+    // This fixes an issue where instanceof checks might fail in tests
+    if (error instanceof ModelSelectionError) {
+      // Ensure name property is correctly set for test assertions
+      Object.defineProperty(error, 'name', {
+        value: 'ModelSelectionError',
+        enumerable: false,
+        configurable: true
+      });
+    }
+    
     throw error;
   }
 }
