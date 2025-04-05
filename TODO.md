@@ -17,7 +17,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 2.1 (Repeated manual setting of error "name").
 
-- [ ] **Split errors.ts into multiple files**
+- [x] **Split errors.ts into multiple files**
   - **Action:** Refactor the large `errors.ts` (996 lines) into multiple files organized by error category (e.g., ApiErrors.ts, ConfigErrors.ts) to improve maintainability.
   - **Depends On:** None.
   - **AC Ref:** AC 2.2 (Large file size of `errors.ts`).
