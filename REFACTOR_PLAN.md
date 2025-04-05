@@ -107,14 +107,14 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
         export function createModelFormatError(model: string, ...): ThinktankError { ... }
         // etc.
         ```
-    3.  ⏳ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors - in progress.
-    4.  ⏳ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately - pending.
+    3.  ✅ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors - completed all provider implementations.
+    4.  ✅ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately - completed with enhanced category-specific guidance.
     5.  ✅ Refactor `consoleUtils` error creation functions to use new error system:
         * Updated `consoleUtils.ts` to properly handle ThinktankError instances in `formatError` and related functions
         * Added deprecated JSDoc tags to functions that should be replaced
         * Used ThinktankError.format() for error formatting
         * Updated tests to verify correct handling of ThinktankError instances
-*   **Status:** Partially completed. Core error system implemented, `consoleUtils.ts`, `runThinktank.ts`, `modelSelector.ts`, `anthropic.ts`, and `openai.ts` updated. Still need to update remaining provider modules (google.ts, openrouter.ts) and CLI error handling.
+*   **Status:** Near completion. Core error system implemented, `consoleUtils.ts`, `runThinktank.ts`, `modelSelector.ts`, `anthropic.ts`, `openai.ts`, `google.ts`, `openrouter.ts` updated. Also updated CLI error handling in the main index.ts handler and key command files (run.ts, models.ts).
 
 ### T6: Workflow Orchestration (`runThinktank`) Refactor
 
