@@ -68,7 +68,7 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
     4.  ✅ Run `npm install` or `yarn install` and ensure tests still pass.
 *   **Status:** Completed on 2025-04-05. Verified that yargs is not used anywhere in the codebase.
 
-### T3: Error Handling Refinement ⏳
+### T3: Error Handling Refinement ✅
 
 *   **Goal:** Centralize error types and handling.
 *   **Action:**
@@ -79,6 +79,7 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
           category?: string;
           suggestions?: string[];
           examples?: string[];
+          cause?: Error;
           
           constructor(message: string, options?: ErrorOptions) {
             super(message);
@@ -88,11 +89,13 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
               this.category = options.category;
               this.suggestions = options.suggestions;
               this.examples = options.examples;
+              this.cause = options.cause;
             }
           }
           
           format(): string {
             // Formats error message with category, suggestions, and examples
+            // for consistent CLI display
           }
         }
         
@@ -100,29 +103,53 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
         export class ConfigError extends ThinktankError { ... }
         export class ApiError extends ThinktankError { ... }
         export class FileSystemError extends ThinktankError { ... }
-        // etc.
+        export class ValidationError extends ThinktankError { ... }
+        export class NetworkError extends ThinktankError { ... }
+        export class PermissionError extends ThinktankError { ... }
+        export class InputError extends ThinktankError { ... }
         
         // Factory functions
-        export function createFileNotFoundError(filepath: string): ThinktankError { ... }
-        export function createModelFormatError(model: string, ...): ThinktankError { ... }
-        // etc.
+        export function createFileNotFoundError(filepath: string): FileSystemError { ... }
+        export function createModelFormatError(model: string, ...): ConfigError { ... }
+        export function createMissingApiKeyError(models: Array<...>): ApiError { ... }
+        export function createModelNotFoundError(model: string, ...): ConfigError { ... }
         ```
-    3.  ✅ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors - completed all provider implementations.
-    4.  ✅ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately - completed with enhanced category-specific guidance.
+    3.  ✅ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors:
+        * Updated all provider implementations (anthropic, openai, google, openrouter) to use ApiError with providerId
+        * Updated ModelSelectionError to use the new hierarchy
+        * Updated error handling in runThinktank.ts with specialized error types
+        * Updated all CLI command files with consistent error handling
+    4.  ✅ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately:
+        * Added enhanced category-specific guidance based on error type
+        * Implemented provider-specific error handling for API errors
+        * Ensured error causes are properly displayed in the CLI
+        * Added formatted examples and suggestions in the error output
     5.  ✅ Refactor `consoleUtils` error creation functions to use new error system:
         * Updated `consoleUtils.ts` to properly handle ThinktankError instances in `formatError` and related functions
         * Added deprecated JSDoc tags to functions that should be replaced
         * Used ThinktankError.format() for error formatting
         * Updated tests to verify correct handling of ThinktankError instances
-*   **Status:** Nearly complete. Core error system fully implemented including:
-    * Base `ThinktankError` class and error categories
-    * Specialized subclasses (`ApiError`, `ConfigError`, `FileSystemError`, etc.)
-    * Factory functions for common error cases
-    * Updated all provider implementations (anthropic, openai, google, openrouter)
-    * Updated CLI error handling in index.ts and command files
-    * Updated tests to verify correct handling of the new error system
-    * Completed error handling tests in runThinktank-error-handling.test.ts and cli-error-handling.test.ts
-    * Remaining tasks: Adding JSDoc comments and testing cross-module error propagation
+    6.  ✅ Create comprehensive test suite for errors:
+        * Implemented unit tests for all error classes and factory functions
+        * Updated existing error handling tests to use the new system
+        * Created cross-module error propagation tests to verify proper error flow
+    7.  ✅ Add comprehensive JSDoc documentation:
+        * Documented the base ThinktankError class and all properties
+        * Added detailed JSDoc to all specialized error classes
+        * Documented all factory functions with examples and parameter descriptions
+        * Added module-level documentation explaining the error system architecture
+*   **Status:** Completed on 2025-04-06. The error handling system has been completely refactored with the following key achievements:
+    * Centralized error hierarchy with ThinktankError as the base class
+    * Seven specialized error subclasses for different error categories
+    * Four factory functions for common error creation scenarios
+    * Error chaining with cause property for improved debugging
+    * Consistent error formatting for CLI display
+    * Provider-specific error handling with customized guidance
+    * Complete test coverage for all error classes and propagation paths
+    * Comprehensive JSDoc documentation for the entire error system
+    * Backward compatibility with existing code through deprecated utility functions
+
+    The implementation follows the SOLID principles with a focus on extensibility and maintainability. The new error system provides much richer error information to users with context-aware suggestions, examples, and troubleshooting guidance, while also making the codebase more maintainable with consistent error handling patterns across all modules.
 
 ### T6: Workflow Orchestration (`runThinktank`) Refactor
 
