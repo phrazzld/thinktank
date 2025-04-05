@@ -6,16 +6,16 @@
 import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import { runThinktank, ThinktankError } from '../../workflow/runThinktank';
-
-// Interface for error objects with metadata
-interface ErrorWithMetadata {
-  message: string;
-  category?: string;
-  suggestions?: string[];
-  examples?: string[];
-}
-import { createFileNotFoundError, colors } from '../../utils/consoleUtils';
+import { runThinktank } from '../../workflow/runThinktank';
+import { 
+  ThinktankError, 
+  ApiError, 
+  ConfigError, 
+  FileSystemError,
+  createFileNotFoundError,
+  createModelFormatError
+} from '../../core/errors';
+import { colors } from '../../utils/consoleUtils';
 import { handleError } from '../index';
 import * as configManager from '../../core/configManager';
 import { logger } from '../../utils/logger';
@@ -52,22 +52,8 @@ runCommand
       try {
         await fs.access(promptFile);
       } catch (error) {
-        // Create a helpful file not found error using our utility
-        const errorMessage = `Input file not found: ${promptFile}`;
-        const baseError = createFileNotFoundError(promptFile, errorMessage);
-        
-        // Convert to ThinktankError for consistency
-        const fileError = new ThinktankError(baseError.message);
-        
-        // Copy properties from baseError
-        const typedError = baseError as ErrorWithMetadata;
-        if (typedError.category) {
-          fileError.category = typedError.category;
-        }
-        
-        if (typedError.suggestions) {
-          fileError.suggestions = typedError.suggestions;
-        }
+        // Use the specialized factory function to create a file not found error
+        const fileError = createFileNotFoundError(promptFile, `Input file not found: ${promptFile}`);
         
         // Customize examples for CLI usage
         const basename = path.basename(promptFile);
@@ -88,16 +74,12 @@ runCommand
         // Validate that each model follows the provider:model format
         for (const model of specificModels) {
           if (!model.includes(':')) {
-            throw new ThinktankError(
-              `Invalid model format: "${model}". Models must be in provider:modelId format (e.g., openai:gpt-4o).`
-            );
+            throw createModelFormatError(model, ['openai', 'anthropic', 'google', 'openrouter']);
           }
           
           const [provider, modelId] = model.split(':');
           if (!provider || !modelId) {
-            throw new ThinktankError(
-              `Invalid model format: "${model}". Provider and modelId must not be empty.`
-            );
+            throw createModelFormatError(model, ['openai', 'anthropic', 'google', 'openrouter']);
           }
         }
         
@@ -156,6 +138,91 @@ runCommand
         useColors: true
       });
     } catch (error) {
+      // Handle specialized error types
+      if (error instanceof ThinktankError) {
+        // Error is already properly formatted, just pass it through
+        handleError(error);
+        return;
+      } 
+      
+      // If not a ThinktankError, check for common error patterns
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        
+        // Handle file-related errors
+        if (message.includes('file') || 
+            message.includes('directory') || 
+            message.includes('path') ||
+            message.includes('enoent')) {
+          handleError(new FileSystemError(`File system error: ${error.message}`, {
+            cause: error,
+            filePath: promptFile,
+            suggestions: [
+              'Check that the prompt file exists and is accessible',
+              'Verify that the path is correct',
+              'Make sure you have read permissions for the file'
+            ],
+            examples: [
+              `thinktank run prompt.txt`,
+              `thinktank run ./path/to/prompt.txt`
+            ]
+          }));
+          return;
+        }
+        
+        // Handle model-related errors
+        if (message.includes('model')) {
+          handleError(new ConfigError(`Model error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Ensure the model is specified in the correct format (provider:modelId)',
+              'Check that the model exists in your configuration',
+              options.models ?
+                `The provided models were: ${options.models}` :
+                'No specific models were provided - try specifying models explicitly'
+            ],
+            examples: [
+              'thinktank run prompt.txt --models=openai:gpt-4o',
+              'thinktank run prompt.txt --group=default'
+            ]
+          }));
+          return;
+        }
+        
+        // Handle API-related errors
+        if (message.includes('api') || 
+            message.includes('key') ||
+            message.includes('token') ||
+            message.includes('authentication') ||
+            message.includes('authorization')) {
+          handleError(new ApiError(`API error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Check your API credentials',
+              'Verify that you have the correct API keys set in your environment variables',
+              'Make sure the provider services are accessible from your network'
+            ]
+          }));
+          return;
+        }
+        
+        // Handle config-related errors
+        if (message.includes('config') || message.includes('configuration')) {
+          handleError(new ConfigError(`Configuration error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Ensure your configuration file is valid JSON',
+              options.config ?
+                `The specified config path was: ${options.config}` :
+                'No custom config path was provided - using default config location',
+              'Try using the default configuration by omitting the --config option'
+            ]
+          }));
+          return;
+        }
+      }
+      
+      // Default to passing the error through to the central handler
       handleError(error);
     }
   });

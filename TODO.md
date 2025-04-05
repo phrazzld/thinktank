@@ -69,7 +69,7 @@
   - Dependencies: Core error system implementation
   - Priority: Medium
 
-- [ ] Update CLI command error handling
+- [x] Update CLI command error handling
   - Description: Update try/catch blocks in command files to use new error classes
   - Dependencies: Core error system implementation
   - Priority: Low
