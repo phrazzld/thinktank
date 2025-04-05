@@ -58,7 +58,7 @@
   - Dependencies: Core error system implementation
   - Priority: Medium
 
-- [ ] Update openrouter.ts error handling
+- [x] Update openrouter.ts error handling
   - Description: Use ApiError in catch blocks with providerId
   - Dependencies: Core error system implementation
   - Priority: Medium
