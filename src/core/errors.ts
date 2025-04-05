@@ -148,6 +148,23 @@ export class ThinktankError extends Error {
    * @param options.suggestions - List of suggestions to help resolve the error
    * @param options.examples - Examples of valid usage or configuration
    */
+  /**
+   * Sets the error name property based on the constructor's name
+   * 
+   * This protected method is called by the constructor to ensure that
+   * the error name is properly set for all subclasses in the hierarchy.
+   * This allows new error types to inherit the correct naming behavior
+   * without having to manually set the name property.
+   * 
+   * @protected
+   */
+  protected setErrorName(): void {
+    // Get the constructor's name (which is the class name)
+    const constructorName = this.constructor.name;
+    // Set the name property to the class name
+    this.name = constructorName;
+  }
+
   constructor(message: string, options?: {
     cause?: Error;
     category?: string;
@@ -155,7 +172,8 @@ export class ThinktankError extends Error {
     examples?: string[];
   }) {
     super(message);
-    this.name = 'ThinktankError';
+    // Set the error name based on the class name
+    this.setErrorName();
     
     if (options?.cause) {
       this.cause = options.cause;
@@ -257,7 +275,6 @@ export class ConfigError extends ThinktankError {
       ...options,
       category: errorCategories.CONFIG,
     });
-    this.name = 'ConfigError';
   }
 }
 
@@ -329,7 +346,6 @@ export class ApiError extends ThinktankError {
       category: errorCategories.API,
     });
     
-    this.name = 'ApiError';
     this.providerId = options?.providerId;
   }
 }
@@ -393,7 +409,6 @@ export class FileSystemError extends ThinktankError {
       category: errorCategories.FILESYSTEM,
     });
     
-    this.name = 'FileSystemError';
     this.filePath = options?.filePath;
   }
 }
@@ -439,7 +454,6 @@ export class ValidationError extends ThinktankError {
       ...options,
       category: errorCategories.VALIDATION,
     });
-    this.name = 'ValidationError';
   }
 }
 
@@ -490,7 +504,6 @@ export class NetworkError extends ThinktankError {
       ...options,
       category: errorCategories.NETWORK,
     });
-    this.name = 'NetworkError';
   }
 }
 
@@ -537,7 +550,6 @@ export class PermissionError extends ThinktankError {
       ...options,
       category: errorCategories.PERMISSION,
     });
-    this.name = 'PermissionError';
   }
 }
 
@@ -588,7 +600,6 @@ export class InputError extends ThinktankError {
       ...options,
       category: errorCategories.INPUT,
     });
-    this.name = 'InputError';
   }
 }
 

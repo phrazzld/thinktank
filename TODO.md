@@ -12,7 +12,7 @@
   - **AC Ref:** AC 1.2 (DRY Violation in CLI Error Tests).
 
 ## Error System Refinements
-- [ ] **Create helper method for error name property setting**
+- [x] **Create helper method for error name property setting**
   - **Action:** Add a helper method in `ThinktankError` base class to standardize setting the error name property across all error subclasses, ensuring proper inheritance and correct `instanceof` checks.
   - **Depends On:** None.
   - **AC Ref:** AC 2.1 (Repeated manual setting of error "name").
