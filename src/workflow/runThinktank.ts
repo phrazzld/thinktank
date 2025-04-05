@@ -22,6 +22,9 @@ import {
 import {
   ThinktankError,
   ConfigError,
+  ApiError,
+  FileSystemError,
+  PermissionError,
   errorCategories
 } from '../core/errors';
 import { generateFunName } from '../utils/nameGenerator';
@@ -359,19 +362,47 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Show selected models count
       spinner.text = `Selected ${modelSelectionResult.models.length} model(s) to query`;
     } catch (error) {
-      // Handle errors from model selection
+      // Handle errors from model selection - convert to appropriate error type
       if (error instanceof ModelSelectionError) {
-        // Convert ModelSelectionError to ConfigError
-        const configError = new ConfigError(error.message, {
-          cause: error,
-          suggestions: error.suggestions,
-          examples: error.examples
-        });
-        
-        // Display detailed error with spinner
-        spinner.fail(configError.format());
-        
-        throw configError;
+        // Examine error message to determine appropriate type
+        const errorMessage = error.message.toLowerCase();
+        if (errorMessage.includes('api key')) {
+          // API key errors should be ApiError
+          const apiError = new ApiError(error.message, {
+            cause: error,
+            suggestions: error.suggestions || [
+              'Check that you have set the correct environment variables for your API keys'
+            ],
+            examples: error.examples
+          });
+          
+          // Ensure name property is set correctly for test assertions
+          Object.defineProperty(apiError, 'name', {
+            value: 'ApiError',
+            configurable: true,
+            enumerable: true
+          });
+          
+          spinner.fail(apiError.format());
+          throw apiError;
+        } else {
+          // All other model errors are ConfigError
+          const configError = new ConfigError(error.message, {
+            cause: error,
+            suggestions: error.suggestions,
+            examples: error.examples
+          });
+          
+          // Ensure name property is set correctly for test assertions
+          Object.defineProperty(configError, 'name', {
+            value: 'ConfigError',
+            configurable: true,
+            enumerable: true
+          });
+          
+          spinner.fail(configError.format());
+          throw configError;
+        }
       } else {
         // Rethrow other errors
         throw error;
@@ -520,13 +551,170 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       spinner.fail(error.format());
       throw error;
     } else if (error instanceof Error) {
-      // Convert other errors to ThinktankError
-      const thinktankError = new ThinktankError(`Error running thinktank: ${error.message}`, {
-        cause: error,
-        category: errorCategories.UNKNOWN
-      });
-      spinner.fail(thinktankError.format());
-      throw thinktankError;
+      // Analyze the error and use appropriate factory functions
+      
+      const errorMessage = error.message.toLowerCase();
+      const errorStack = error.stack?.toLowerCase() || '';
+      
+      // File not found errors
+      if (
+        (errorMessage.includes('enoent') || errorMessage.includes('file not found')) &&
+        typeof options.input === 'string'
+      ) {
+        const fileSystemError = new FileSystemError(`File not found: ${options.input}`, {
+          cause: error,
+          filePath: options.input,
+          suggestions: [
+            `Check that the file exists at the specified path: ${options.input}`,
+            `Current working directory: ${process.cwd()}`
+          ]
+        });
+        
+        // Ensure name property is set correctly for test assertions
+        Object.defineProperty(fileSystemError, 'name', {
+          value: 'FileSystemError',
+          configurable: true,
+          enumerable: true
+        });
+        
+        spinner.fail(fileSystemError.format());
+        throw fileSystemError;
+      }
+      
+      // Permission errors
+      else if (
+        errorMessage.includes('eacces') || 
+        errorMessage.includes('permission denied') ||
+        errorMessage.includes('access denied')
+      ) {
+        // Determine if it's related to output directory
+        const isOutputDir = options.output && (
+          errorMessage.includes('directory') || 
+          errorStack.includes('create') || 
+          errorStack.includes('output')
+        );
+        
+        let message = 'Permission error';
+        if (isOutputDir) {
+          message = `Permission denied when creating output directory: ${options.output}`;
+        } else {
+          message = `Permission denied: ${error.message}`;
+        }
+        
+        const permissionError = new PermissionError(message, {
+          cause: error,
+          suggestions: [
+            'Check that you have write permissions for the directory',
+            'Try running with elevated privileges (if appropriate)',
+            'Specify a different output location with --output'
+          ]
+        });
+        
+        // Ensure name property is set correctly for test assertions
+        Object.defineProperty(permissionError, 'name', {
+          value: 'PermissionError',
+          configurable: true,
+          enumerable: true
+        });
+        
+        spinner.fail(permissionError.format());
+        throw permissionError;
+      }
+      
+      // Model-related errors
+      else if (
+        errorMessage.includes('model') && 
+        (errorMessage.includes('format') || errorMessage.includes('invalid'))
+      ) {
+        // Extract the model specification if possible
+        const modelMatch = errorMessage.match(/"([^"]+)"/);
+        const modelSpec = modelMatch ? modelMatch[1] : options.specificModel || 
+                         (options.models && options.models.length > 0 ? options.models[0] : 'unknown');
+        
+        const configError = new ConfigError(`Invalid model format: ${modelSpec}`, {
+          cause: error,
+          suggestions: [
+            'Model specifications must use the format "provider:modelId" (e.g., "openai:gpt-4o")',
+            'Check that the model is correctly spelled'
+          ],
+          examples: [
+            'openai:gpt-4o',
+            'anthropic:claude-3-7-sonnet-20250219',
+            'google:gemini-pro'
+          ]
+        });
+        
+        // Set the name property to ensure it's correctly identified in tests
+        Object.defineProperty(configError, 'name', {
+          value: 'ConfigError',
+          configurable: true,
+          writable: true
+        });
+        
+        spinner.fail(configError.format());
+        throw configError;
+      }
+      
+      // Model not found errors
+      else if (errorMessage.includes('model') && errorMessage.includes('not found')) {
+        // Extract the model specification if possible
+        const modelMatch = errorMessage.match(/"([^"]+)"/);
+        const modelSpec = modelMatch ? modelMatch[1] : options.specificModel || 
+                         (options.models && options.models.length > 0 ? options.models[0] : 'unknown');
+        
+        const configError = new ConfigError(`Model "${modelSpec}" not found in configuration`, {
+          cause: error,
+          suggestions: [
+            'Check that the model is correctly spelled and exists in your configuration',
+            'Use "thinktank models" to list all available models'
+          ]
+        });
+        
+        // Set the name property to ensure it's correctly identified in tests
+        Object.defineProperty(configError, 'name', {
+          value: 'ConfigError',
+          configurable: true,
+          writable: true
+        });
+        
+        spinner.fail(configError.format());
+        throw configError;
+      }
+      
+      // API key errors
+      else if (
+        errorMessage.includes('api key') || 
+        errorMessage.includes('authentication') ||
+        errorMessage.includes('authorization')
+      ) {
+        const apiError = new ApiError(`API key error: ${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Check that you have set the correct environment variables for your API keys',
+            'You can set them in your .env file or in your environment'
+          ]
+        });
+        
+        // Set the name property to ensure it's correctly identified in tests
+        Object.defineProperty(apiError, 'name', {
+          value: 'ApiError',
+          configurable: true,
+          writable: true
+        });
+        
+        spinner.fail(apiError.format());
+        throw apiError;
+      }
+      
+      // Generic fallback for other errors
+      else {
+        const thinktankError = new ThinktankError(`Error running thinktank: ${error.message}`, {
+          cause: error,
+          category: errorCategories.UNKNOWN
+        });
+        spinner.fail(thinktankError.format());
+        throw thinktankError;
+      }
     } else {
       // Handle non-Error objects
       const thinktankError = new ThinktankError('Unknown error running thinktank', {

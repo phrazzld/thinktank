@@ -114,7 +114,7 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
         * Added deprecated JSDoc tags to functions that should be replaced
         * Used ThinktankError.format() for error formatting
         * Updated tests to verify correct handling of ThinktankError instances
-*   **Status:** Partially completed. Core error system implemented and `consoleUtils.ts` updated. Still need to update other modules to use the new error system.
+*   **Status:** Partially completed. Core error system implemented, `consoleUtils.ts` and `runThinktank.ts` updated. Still need to update other modules to use the new error system.
 
 ### T6: Workflow Orchestration (`runThinktank`) Refactor
 
