@@ -16,7 +16,7 @@
   - Dependencies: Error subclasses
   - Priority: High
 
-- [ ] Add error formatting capabilities
+- [x] Add error formatting capabilities
   - Description: Implement format() method on ThinktankError base class
   - Dependencies: Base ThinktankError class
   - Priority: High

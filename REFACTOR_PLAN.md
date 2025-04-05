@@ -21,8 +21,6 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
 
 **Areas for Refactoring:**
 
-*   **CLI Structure:** Potential redundancy between `src/cli/cli.ts` (simpler, possibly older) and the main Commander setup in `src/cli/index.ts` and `src/cli/commands/`.
-*   **Dependencies:** `yargs` is listed in `package.json` but `commander` seems to be the active CLI library.
 *   **Configuration Complexity:** `configManager.ts` handles complex logic (loading, validation, normalization, cascading options). While functional, it could be a source of bugs and difficult to maintain.
 *   **Error Handling:** Error types and handling are somewhat distributed (`ThinktankError`, provider-specific errors, `consoleUtils` helpers). Consolidation could improve clarity and consistency.
 *   **Testing:** Coverage is moderate (50-60%). Some tests focus heavily on mock setup rather than behavior. E2E tests might be skipped if the build isn't present.
@@ -190,7 +188,6 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
 
 ## 7. Open Questions
 
-1.  **`yargs` Dependency:** Is the `yargs` package actually used anywhere? Can it be safely removed?
-2.  **Configuration Normalization:** Is the current behavior of `normalizeConfig` (especially regarding the default group) essential, or can it be simplified?
+1.  **Configuration Normalization:** Is the current behavior of `normalizeConfig` (especially regarding the default group) essential, or can it be simplified?
 
 ```

@@ -17,11 +17,13 @@ import {
   styleError, 
   styleWarning, 
   styleInfo,
-  formatError, 
-  formatErrorWithTip,
-  errorCategories,
   colors
 } from '../utils/consoleUtils';
+import {
+  ThinktankError,
+  ConfigError,
+  errorCategories
+} from '../core/errors';
 import { generateFunName } from '../utils/nameGenerator';
 import ora from 'ora';
 import { logger } from '../utils/logger';
@@ -130,31 +132,7 @@ export interface RunOptions {
   friendlyRunName?: string;
 }
 
-/**
- * Error class for thinktank runtime errors
- * Provides additional context like category and helpful suggestions
- */
-export class ThinktankError extends Error {
-  /**
-   * The category of error (e.g., "File System", "API", etc.)
-   */
-  category?: string;
-  
-  /**
-   * List of suggestions to help resolve the error
-   */
-  suggestions?: string[];
-  
-  /**
-   * Examples of valid commands related to this error context
-   */
-  examples?: string[];
-  
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = 'ThinktankError';
-  }
-}
+// ThinktankError class is now imported from src/core/errors.ts
 
 /**
  * Creates a nice tree-style summary of the execution results 
@@ -383,29 +361,17 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     } catch (error) {
       // Handle errors from model selection
       if (error instanceof ModelSelectionError) {
-        // Convert ModelSelectionError to ThinktankError
-        const thinktankError = new ThinktankError(error.message, error);
-        
-        if (error.category) {
-          thinktankError.category = error.category;
-        }
-        
-        if (error.suggestions) {
-          thinktankError.suggestions = error.suggestions;
-        }
-        
-        if (error.examples) {
-          thinktankError.examples = error.examples;
-        }
+        // Convert ModelSelectionError to ConfigError
+        const configError = new ConfigError(error.message, {
+          cause: error,
+          suggestions: error.suggestions,
+          examples: error.examples
+        });
         
         // Display detailed error with spinner
-        spinner.fail(formatError(
-          error.message, 
-          error.category || errorCategories.CONFIG, 
-          'Check your model specifications and configuration'
-        ));
+        spinner.fail(configError.format());
         
-        throw thinktankError;
+        throw configError;
       } else {
         // Rethrow other errors
         throw error;
@@ -549,12 +515,25 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Return the formatted results for CLI display
     return consoleOutput;
   } catch (error) {
-    spinner.fail(formatErrorWithTip(error instanceof Error ? error : 'An unknown error occurred'));
-    
-    if (error instanceof Error) {
-      throw new ThinktankError(`Error running thinktank: ${error.message}`, error);
+    // If it's already a ThinktankError, display it using its format method
+    if (error instanceof ThinktankError) {
+      spinner.fail(error.format());
+      throw error;
+    } else if (error instanceof Error) {
+      // Convert other errors to ThinktankError
+      const thinktankError = new ThinktankError(`Error running thinktank: ${error.message}`, {
+        cause: error,
+        category: errorCategories.UNKNOWN
+      });
+      spinner.fail(thinktankError.format());
+      throw thinktankError;
+    } else {
+      // Handle non-Error objects
+      const thinktankError = new ThinktankError('Unknown error running thinktank', {
+        category: errorCategories.UNKNOWN
+      });
+      spinner.fail(thinktankError.format());
+      throw thinktankError;
     }
-    
-    throw new ThinktankError('Unknown error running thinktank');
   }
 }

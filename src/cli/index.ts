@@ -8,8 +8,8 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
 import dotenv from 'dotenv';
-import { ThinktankError } from '../workflow/runThinktank';
-import { colors, errorCategories } from '../utils/consoleUtils';
+import { ThinktankError } from '../core/errors';
+import { colors } from '../utils/consoleUtils';
 import { configureLogger, logger } from '../utils/logger';
 
 // Load environment variables from .env file
@@ -53,36 +53,16 @@ program
 export function handleError(error: unknown): void {
   // Handle errors with enhanced formatting
   if (error instanceof ThinktankError) {
-    // Display the main error message with appropriate category if available
-    const category = error.category ? ` (${error.category})` : '';
-    const message = `${colors.red('Error')}${colors.yellow(category)}: ${error.message}`;
+    // Use the built-in format method for consistent error display
+    logger.error(error.format());
     
-    // Use the logger but directly with console.error to ensure it's shown
-    logger.error(message);
-    
-    // Display cause if available
-    if (error.cause) {
+    // Display cause if available and not already shown in format()
+    if (error.cause && !error.format().includes('Cause:')) {
       logger.error(`${colors.dim('Cause:')} ${error.cause.message}`);
     }
     
-    // Show suggestions if available
-    if (error.suggestions && error.suggestions.length > 0) {
-      logger.error('\nSuggestions:');
-      error.suggestions.forEach(suggestion => {
-        logger.error(`  ${colors.cyan('•')} ${suggestion}`);
-      });
-    }
-    
-    // Show examples if available
-    if (error.examples && error.examples.length > 0) {
-      logger.error('\nExample commands:');
-      error.examples.forEach(example => {
-        logger.error(`  ${colors.green('>')} ${example}`);
-      });
-    }
-    
-    // Show general help for common errors
-    if (error.category === errorCategories.FILESYSTEM) {
+    // Show general help for filesystem errors
+    if (error.category === 'File System') {
       logger.error('\nCorrect usage:');
       logger.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
       logger.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);

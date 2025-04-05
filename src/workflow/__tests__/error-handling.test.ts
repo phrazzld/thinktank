@@ -4,8 +4,13 @@
  * This file focuses specifically on testing the ThinktankError class
  * and how errors are handled, converted, and displayed throughout the application.
  */
-import { ThinktankError } from '../runThinktank';
-import * as consoleUtils from '../../utils/consoleUtils';
+import { 
+  ThinktankError,
+  createFileNotFoundError,
+  createModelFormatError,
+  createMissingApiKeyError,
+  errorCategories
+} from '../../core/errors';
 
 describe('ThinktankError', () => {
   test('should initialize correctly with message', () => {
@@ -14,26 +19,27 @@ describe('ThinktankError', () => {
     expect(error.message).toBe('Test error message');
     expect(error.name).toBe('ThinktankError');
     expect(error.cause).toBeUndefined();
-    expect(error.category).toBeUndefined();
+    expect(error.category).toBe(errorCategories.UNKNOWN); // Default category
     expect(error.suggestions).toBeUndefined();
     expect(error.examples).toBeUndefined();
   });
   
-  test('should initialize with cause error', () => {
+  test('should initialize with cause error in options', () => {
     const cause = new Error('Original error');
-    const error = new ThinktankError('Wrapped error', cause);
+    const error = new ThinktankError('Wrapped error', { cause });
     
     expect(error.message).toBe('Wrapped error');
     expect(error.cause).toBe(cause);
   });
   
-  test('should support adding category, suggestions and examples', () => {
-    const error = new ThinktankError('Categorized error');
-    error.category = consoleUtils.errorCategories.API;
-    error.suggestions = ['Fix API keys', 'Check documentation'];
-    error.examples = ['export API_KEY=value'];
+  test('should support initializing with category, suggestions and examples', () => {
+    const error = new ThinktankError('Categorized error', {
+      category: errorCategories.API,
+      suggestions: ['Fix API keys', 'Check documentation'],
+      examples: ['export API_KEY=value']
+    });
     
-    expect(error.category).toBe(consoleUtils.errorCategories.API);
+    expect(error.category).toBe(errorCategories.API);
     expect(error.suggestions).toEqual(['Fix API keys', 'Check documentation']);
     expect(error.examples).toEqual(['export API_KEY=value']);
   });
@@ -47,84 +53,87 @@ describe('ThinktankError', () => {
 });
 
 describe('Error Conversion', () => {
-  test('should convert from createFileNotFoundError to ThinktankError', () => {
+  test('should use createFileNotFoundError factory function', () => {
+    // Need to assert this is a ThinktankError for TypeScript
     // Mock process.cwd
     const originalCwd = process.cwd;
     process.cwd = jest.fn().mockReturnValue('/test/dir');
     
     try {
-      // Create base error from helper function
-      const baseError = consoleUtils.createFileNotFoundError('missing.txt');
+      // Create error directly from factory function 
+      // (which now returns a FileSystemError which extends ThinktankError)
+      const fileNotFoundError = createFileNotFoundError('missing.txt');
       
-      // Convert to ThinktankError
-      const thinktankError = new ThinktankError(baseError.message);
-      thinktankError.category = (baseError as any).category;
-      thinktankError.suggestions = (baseError as any).suggestions;
-      thinktankError.examples = (baseError as any).examples;
+      // Verify error has the correct type and properties
+      expect(fileNotFoundError).toBeInstanceOf(ThinktankError);
       
-      // Verify conversion preserved properties
-      expect(thinktankError.category).toBe(consoleUtils.errorCategories.FILESYSTEM);
-      expect(Array.isArray(thinktankError.suggestions)).toBe(true);
-      expect(thinktankError.suggestions?.length).toBeGreaterThan(0);
-      expect(Array.isArray(thinktankError.examples)).toBe(true);
-      expect(thinktankError.examples?.length).toBeGreaterThan(0);
+      // Cast to ThinktankError for TypeScript
+      const typedError = fileNotFoundError as ThinktankError;
+      
+      expect(typedError.category).toBe(errorCategories.FILESYSTEM);
+      expect(Array.isArray(typedError.suggestions)).toBe(true);
+      expect(typedError.suggestions?.length).toBeGreaterThan(0);
+      expect(Array.isArray(typedError.examples)).toBe(true);
+      expect(typedError.examples?.length).toBeGreaterThan(0);
       
       // Check content
-      expect(thinktankError.message).toContain('missing.txt');
-      expect(thinktankError.suggestions?.some(s => s.includes('/test/dir'))).toBe(true);
+      expect(typedError.message).toContain('missing.txt');
+      expect(typedError.suggestions?.some(s => s.includes('/test/dir'))).toBe(true);
     } finally {
       // Restore original process.cwd
       process.cwd = originalCwd;
     }
   });
   
-  test('should convert from createModelFormatError to ThinktankError', () => {
-    const baseError = consoleUtils.createModelFormatError('invalid');
+  test('should use createModelFormatError factory function', () => {
+    // Create error directly from factory function
+    // (which now returns a ConfigError which extends ThinktankError)
+    const modelFormatError = createModelFormatError('invalid');
     
-    // Convert to ThinktankError
-    const thinktankError = new ThinktankError(baseError.message);
-    thinktankError.category = (baseError as any).category;
-    thinktankError.suggestions = (baseError as any).suggestions;
-    thinktankError.examples = (baseError as any).examples;
+    // Verify error has the correct type and properties
+    expect(modelFormatError).toBeInstanceOf(ThinktankError);
     
-    // Verify conversion preserved properties
-    expect(thinktankError.category).toBe(consoleUtils.errorCategories.CONFIG);
-    expect(Array.isArray(thinktankError.suggestions)).toBe(true);
-    expect(thinktankError.suggestions?.length).toBeGreaterThan(0);
-    expect(Array.isArray(thinktankError.examples)).toBe(true);
-    expect(thinktankError.examples?.length).toBeGreaterThan(0);
+    // Cast to ThinktankError for TypeScript
+    const typedError = modelFormatError as ThinktankError;
+    
+    expect(typedError.category).toBe(errorCategories.CONFIG);
+    expect(Array.isArray(typedError.suggestions)).toBe(true);
+    expect(typedError.suggestions?.length).toBeGreaterThan(0);
+    expect(Array.isArray(typedError.examples)).toBe(true);
+    expect(typedError.examples?.length).toBeGreaterThan(0);
     
     // Check content
-    expect(thinktankError.message).toContain('invalid');
-    expect(thinktankError.suggestions?.some(s => s.includes('provider:modelId'))).toBe(true);
+    expect(typedError.message).toContain('invalid');
+    expect(typedError.suggestions?.some(s => s.includes('provider:modelId'))).toBe(true);
   });
   
-  test('should convert from createMissingApiKeyError to ThinktankError', () => {
+  test('should use createMissingApiKeyError factory function', () => {
     const missingModels = [
       { provider: 'openai', modelId: 'gpt-4o' },
       { provider: 'anthropic', modelId: 'claude-3' }
     ];
     
-    const baseError = consoleUtils.createMissingApiKeyError(missingModels);
+    // Create error directly from factory function
+    // (which now returns an ApiError which extends ThinktankError)
+    const apiKeyError = createMissingApiKeyError(missingModels);
     
-    // Convert to ThinktankError
-    const thinktankError = new ThinktankError(baseError.message);
-    thinktankError.category = (baseError as any).category;
-    thinktankError.suggestions = (baseError as any).suggestions;
-    thinktankError.examples = (baseError as any).examples;
+    // Verify error has the correct type and properties
+    expect(apiKeyError).toBeInstanceOf(ThinktankError);
     
-    // Verify conversion preserved properties
-    expect(thinktankError.category).toBe(consoleUtils.errorCategories.API);
-    expect(Array.isArray(thinktankError.suggestions)).toBe(true);
-    expect(thinktankError.suggestions?.length).toBeGreaterThan(0);
-    expect(Array.isArray(thinktankError.examples)).toBe(true);
-    expect(thinktankError.examples?.length).toBeGreaterThan(0);
+    // Cast to ThinktankError for TypeScript
+    const typedError = apiKeyError as ThinktankError;
+    
+    expect(typedError.category).toBe(errorCategories.API);
+    expect(Array.isArray(typedError.suggestions)).toBe(true);
+    expect(typedError.suggestions?.length).toBeGreaterThan(0);
+    expect(Array.isArray(typedError.examples)).toBe(true);
+    expect(typedError.examples?.length).toBeGreaterThan(0);
     
     // Check content
-    expect(thinktankError.message).toContain('Missing API key');
-    expect(thinktankError.suggestions?.some(s => s.includes('openai'))).toBe(true);
-    expect(thinktankError.suggestions?.some(s => s.includes('anthropic'))).toBe(true);
-    expect(thinktankError.suggestions?.some(s => s.includes('environment variables'))).toBe(true);
+    expect(typedError.message).toContain('Missing API key');
+    expect(typedError.suggestions?.some(s => s.includes('openai'))).toBe(true);
+    expect(typedError.suggestions?.some(s => s.includes('anthropic'))).toBe(true);
+    expect(typedError.suggestions?.some(s => s.includes('environment variables'))).toBe(true);
   });
 });
 
@@ -147,11 +156,12 @@ describe('Error Propagation', () => {
   }
   
   function enrichThinktankError(error: Error): ThinktankError {
-    const thinktankError = new ThinktankError(`Enhanced: ${error.message}`, error);
-    thinktankError.category = consoleUtils.errorCategories.API;
-    thinktankError.suggestions = ['Try this', 'Or try that'];
-    thinktankError.examples = ['Example command'];
-    return thinktankError;
+    return new ThinktankError(`Enhanced: ${error.message}`, {
+      cause: error,
+      category: errorCategories.API,
+      suggestions: ['Try this', 'Or try that'],
+      examples: ['Example command']
+    });
   }
   
   test('should properly propagate error as cause in ThinktankError', () => {
@@ -160,20 +170,21 @@ describe('Error Propagation', () => {
     
     expect(enhancedError.message).toBe('Enhanced: Base error');
     expect(enhancedError.cause).toBe(baseError);
-    expect(enhancedError.category).toBe(consoleUtils.errorCategories.API);
+    expect(enhancedError.category).toBe(errorCategories.API);
   });
   
-  test('should include cause when formatting the error', () => {
+  test('should include formatted output with format() method', () => {
     const baseError = createMockError();
     const enhancedError = enrichThinktankError(baseError);
     
-    // This is a simplified version of the error display logic from cli.ts
-    const category = enhancedError.category ? ` (${enhancedError.category})` : '';
-    const mainErrorMessage = `Error${category}: ${enhancedError.message}`;
-    const causeMessage = enhancedError.cause ? `Cause: ${enhancedError.cause.message}` : '';
+    // Use the new format() method
+    const formattedError = enhancedError.format();
     
-    expect(mainErrorMessage).toContain('API');
-    expect(mainErrorMessage).toContain('Enhanced: Base error');
-    expect(causeMessage).toContain('Base error');
+    expect(formattedError).toContain('Error');
+    expect(formattedError).toContain('API');
+    expect(formattedError).toContain('Enhanced: Base error');
+    expect(formattedError).toContain('Try this');
+    expect(formattedError).toContain('Or try that');
+    expect(formattedError).toContain('Example command');
   });
 });

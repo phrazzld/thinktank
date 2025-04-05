@@ -1,7 +1,8 @@
 /**
  * Tests specifically for error handling in runThinktank
  */
-import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
+import { runThinktank, RunOptions } from '../runThinktank';
+import { ThinktankError } from '../../core/errors';
 
 // Mock imports instead of requires
 import * as inputHandlerModule from '../inputHandler';

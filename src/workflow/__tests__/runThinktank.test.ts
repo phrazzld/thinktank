@@ -1,7 +1,8 @@
 /**
  * Integration tests for runThinktank.ts
  */
-import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
+import { runThinktank, RunOptions } from '../runThinktank';
+import { ThinktankError } from '../../core/errors';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
 import * as llmRegistry from '../../core/llmRegistry';

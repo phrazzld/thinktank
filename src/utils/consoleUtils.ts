@@ -23,6 +23,18 @@ export interface DetailedError extends Error {
   examples?: string[];
 }
 
+// Import the error system from core/errors
+import {
+  errorCategories as coreErrorCategories,
+  createFileNotFoundError as coreCreateFileNotFoundError,
+  createModelFormatError as coreCreateModelFormatError,
+  createMissingApiKeyError as coreCreateMissingApiKeyError,
+  createModelNotFoundError as coreCreateModelNotFoundError
+} from '../core/errors';
+
+// Re-export error categories (for backward compatibility)
+export const errorCategories = coreErrorCategories;
+
 // Define commonly used Unicode symbols (no emojis)
 export const symbols = {
   tick: '+',
@@ -99,17 +111,9 @@ export function divider(length = 80): string {
 
 /**
  * Categories of errors for consistent categorization
+ * @deprecated Import from src/core/errors instead
  */
-export const errorCategories = {
-  API: 'API',
-  CONFIG: 'Configuration',
-  NETWORK: 'Network',
-  FILESYSTEM: 'File System',
-  PERMISSION: 'Permission',
-  VALIDATION: 'Validation',
-  INPUT: 'Input',
-  UNKNOWN: 'Unknown',
-};
+// Already imported and re-exported above
 
 /**
  * Formats an error message with consistent styling
@@ -231,100 +235,11 @@ export function formatErrorWithTip(error: Error | string): string {
  * @param filePath - The path to the file that wasn't found
  * @param errorMessage - Optional custom error message
  * @returns A ThinktankError with suggestions
+ * @deprecated Import from src/core/errors instead
  */
 export function createFileNotFoundError(filePath: string, errorMessage?: string): Error {
-  // Define a path util interface for consistency
-  interface PathUtils {
-    isAbsolute: (path: string) => boolean;
-    dirname: (path: string) => string;
-    basename: (path: string) => string;
-    join: (...paths: string[]) => string;
-  }
-
-  // Import path if available, otherwise use a simpler approach
-  let path: PathUtils;
-  try {
-    // We know path will have these methods
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const nodePath = require('path');
-    path = {
-      isAbsolute: nodePath.isAbsolute,
-      dirname: nodePath.dirname,
-      basename: nodePath.basename,
-      join: nodePath.join
-    };
-  } catch {
-    // No path module, use simpler approach
-    path = {
-      isAbsolute: (p: string) => p.startsWith('/'),
-      dirname: (p: string) => {
-        const parts = p.split('/');
-        return parts.slice(0, -1).join('/') || '.';
-      },
-      basename: (p: string) => {
-        const parts = p.split('/');
-        return parts[parts.length - 1];
-      },
-      join: (...parts: string[]) => parts.join('/')
-    };
-  }
-
-  // Get current working directory
-  const currentDir = process.cwd();
-
-  // Create the error with a default message if none provided
-  const message = errorMessage || `File not found: ${filePath}`;
-  
-  // This requires the ThinktankError class which we can't import here
-  // to avoid circular dependencies, so we'll create a regular Error
-  // and add the properties the consumer can convert it if needed
-  const error = new Error(message);
-  
-  // Use the DetailedError interface defined at the top of the file
-
-  // Cast the error to our custom type
-  const detailedError = error as DetailedError;
-  
-  // Add metadata
-  detailedError.category = errorCategories.FILESYSTEM;
-  
-  // Extract path components
-  const isAbsolutePath = path.isAbsolute(filePath);
-  const dirname = path.dirname(filePath);
-  const basename = path.basename(filePath);
-  
-  // Build suggestions
-  const suggestions = [
-    `Check that the file exists at the specified path: ${isAbsolutePath ? filePath : path.join(currentDir, filePath)}`,
-    `Current working directory: ${currentDir}`
-  ];
-  
-  // Add path-specific suggestions
-  if (!isAbsolutePath && dirname !== '.') {
-    suggestions.push(`Ensure the directory exists: ${path.join(currentDir, dirname)}`);
-  }
-  
-  // Add common filename pattern suggestions
-  if (!basename.includes('.')) {
-    suggestions.push(`The file may need an extension (e.g., ${basename}.txt, ${basename}.md)`);
-  }
-  
-  // Add general suggestions
-  suggestions.push(
-    `Use a relative path (./path/to/file.txt) or absolute path (/full/path/to/file.txt)`,
-    `Make sure the file has read permissions`
-  );
-  
-  detailedError.suggestions = suggestions;
-  
-  // Add examples
-  detailedError.examples = [
-    `path/to/${basename}.txt`,
-    `./path/to/${basename}.txt`,
-    `${path.join(currentDir, basename)}.txt`
-  ];
-  
-  return error;
+  // Use the imported function from core/errors
+  return coreCreateFileNotFoundError(filePath, errorMessage);
 }
 
 /**
@@ -335,6 +250,7 @@ export function createFileNotFoundError(filePath: string, errorMessage?: string)
  * @param availableModels - Optional array of available model specifications
  * @param errorMessage - Optional custom error message
  * @returns An Error object with helpful suggestions
+ * @deprecated Import from src/core/errors instead
  */
 export function createModelFormatError(
   modelSpecification: string,
@@ -342,84 +258,13 @@ export function createModelFormatError(
   availableModels: string[] = [],
   errorMessage?: string
 ): Error {
-  // Create the error with a default message if none provided
-  let message = errorMessage;
-  
-  if (!message) {
-    if (!modelSpecification.includes(':')) {
-      message = `Invalid model format: "${modelSpecification}". Model must be specified as "provider:modelId".`;
-    } else if (modelSpecification.endsWith(':')) {
-      message = `Invalid model format: "${modelSpecification}". Missing model ID after provider.`;
-    } else if (modelSpecification.startsWith(':')) {
-      message = `Invalid model format: "${modelSpecification}". Missing provider name before model ID.`;
-    } else {
-      message = `Model not found: "${modelSpecification}". Use "provider:modelId" format.`;
-    }
-  }
-  
-  const error = new Error(message);
-  
-  // Add metadata
-  const detailedError = error as DetailedError;
-  detailedError.category = errorCategories.CONFIG;
-  
-  // Parse the model specification
-  const [provider] = modelSpecification.split(':');
-  
-  // Build suggestions
-  const suggestions: string[] = [
-    `Model specifications must use the format "provider:modelId" (e.g., "openai:gpt-4o")`
-  ];
-  
-  // Specific error cases
-  if (!modelSpecification.includes(':')) {
-    suggestions.push(`Add a colon between provider and model ID: "${modelSpecification}" → "provider:${modelSpecification}"`);
-  } else if (modelSpecification.endsWith(':')) {
-    suggestions.push(`Specify a model ID after the provider: "${modelSpecification}modelId"`);
-    
-    // If we have models from this provider, suggest some
-    if (availableModels.length > 0) {
-      const matchingModels = availableModels.filter(m => m.startsWith(`${provider}:`));
-      if (matchingModels.length > 0) {
-        const models = matchingModels.slice(0, 3).join(', ') + 
-          (matchingModels.length > 3 ? ', ...' : '');
-        suggestions.push(`Available models for ${provider}: ${models}`);
-      }
-    }
-  } else if (modelSpecification.startsWith(':')) {
-    suggestions.push(`Specify a provider before the model ID: "provider${modelSpecification}"`);
-    
-    // If we have providers, suggest some
-    if (availableProviders.length > 0) {
-      const providersList = availableProviders.slice(0, 5).join(', ') + 
-        (availableProviders.length > 5 ? ', ...' : '');
-      suggestions.push(`Available providers: ${providersList}`);
-    }
-  }
-  
-  // Add general provider/model suggestions
-  if (availableProviders.length > 0) {
-    suggestions.push(`Available providers: ${availableProviders.join(', ')}`);
-  }
-  
-  if (availableModels.length > 0) {
-    // Limit to a reasonable number of examples
-    const modelExamples = availableModels.slice(0, 5);
-    const exampleList = modelExamples.join(', ') + 
-      (availableModels.length > 5 ? ', ...' : '');
-    suggestions.push(`Example models: ${exampleList}`);
-  }
-  
-  detailedError.suggestions = suggestions;
-  
-  // Add examples
-  detailedError.examples = [
-    'openai:gpt-4o',
-    'anthropic:claude-3-7-sonnet-20250219',
-    'google:gemini-pro'
-  ];
-  
-  return error;
+  // Use the imported function from core/errors
+  return coreCreateModelFormatError(
+    modelSpecification,
+    availableProviders,
+    availableModels,
+    errorMessage
+  );
 }
 
 /**
@@ -437,196 +282,37 @@ export function createModelFormatError(
  * @param missingModels - Array of models with missing API keys
  * @param errorMessage - Optional custom error message
  * @returns An Error object with helpful suggestions for setting API keys
+ * @deprecated Import from src/core/errors instead
  */
 export function createMissingApiKeyError(
   missingModels: Array<{ provider: string; modelId: string }>,
   errorMessage?: string
 ): Error {
-  // Create the error with a default message if none provided
-  const message = errorMessage || 
-    `Missing API key${missingModels.length > 1 ? 's' : ''} for ${missingModels.length} model${missingModels.length > 1 ? 's' : ''}`;
-  
-  const error = new Error(message);
-  
-  // Add metadata
-  const detailedError = error as DetailedError;
-  detailedError.category = errorCategories.API;
-  
-  // Group models by provider for better suggestions
-  const providerModels: Record<string, string[]> = {};
-  missingModels.forEach(model => {
-    if (!providerModels[model.provider]) {
-      providerModels[model.provider] = [];
-    }
-    providerModels[model.provider].push(`${model.provider}:${model.modelId}`);
-  });
-  
-  // Build suggestions for each provider
-  const suggestions: string[] = [];
-  
-  // Add suggestions for each provider
-  Object.entries(providerModels).forEach(([provider, models]) => {
-    const modelsText = models.join(', ');
-    suggestions.push(`Missing API key for ${provider} model${models.length > 1 ? 's' : ''}: ${modelsText}`);
-    
-    const envVarName = `${provider.toUpperCase()}_API_KEY`;
-    
-    // Provider-specific instructions
-    switch (provider.toLowerCase()) {
-      case 'openai':
-        suggestions.push(
-          `To use OpenAI models, get your API key from: https://platform.openai.com/api-keys`,
-          `Set the ${envVarName} environment variable with your key`
-        );
-        break;
-        
-      case 'anthropic':
-        suggestions.push(
-          `To use Anthropic Claude models, get your API key from: https://console.anthropic.com/keys`,
-          `Set the ${envVarName} environment variable with your key`
-        );
-        break;
-        
-      case 'google':
-        suggestions.push(
-          `To use Google AI models, get your API key from: https://aistudio.google.com/app/apikey`,
-          `Set the ${envVarName} environment variable with your key`
-        );
-        break;
-        
-      case 'openrouter':
-        suggestions.push(
-          `To use OpenRouter models, get your API key from: https://openrouter.ai/keys`,
-          `Set the ${envVarName} environment variable with your key`
-        );
-        break;
-        
-      default:
-        suggestions.push(
-          `Get an API key for ${provider} from their developer portal`,
-          `Set the ${envVarName} environment variable with your key`
-        );
-    }
-  });
-  
-  // Add general environment variable setup instructions
-  suggestions.push(
-    `\nTo set environment variables:`,
-    '• For Bash/Zsh: Add `export PROVIDER_API_KEY=your_key_here` to your ~/.bashrc or ~/.zshrc',
-    '• For Windows Command Prompt: Use `set PROVIDER_API_KEY=your_key_here`',
-    '• For PowerShell: Use `$env:PROVIDER_API_KEY = "your_key_here"`',
-    '• For a local project: Create a .env file with `PROVIDER_API_KEY=your_key_here`'
-  );
-  
-  detailedError.suggestions = suggestions;
-  
-  // Add example commands
-  const examples = Object.keys(providerModels).map(provider => {
-    const envVarName = `${provider.toUpperCase()}_API_KEY`;
-    return `export ${envVarName}=your_${provider}_key_here`;
-  });
-  
-  detailedError.examples = examples;
-  
-  return error;
+  // Use the imported function from core/errors
+  return coreCreateMissingApiKeyError(missingModels, errorMessage);
 }
 
+/**
+ * Creates an error for model not found in configuration
+ * 
+ * @param modelSpecification - The model specification that wasn't found
+ * @param availableModels - Optional array of available model specifications
+ * @param groupName - Optional group name if relevant to the context
+ * @param errorMessage - Optional custom error message
+ * @returns A ConfigError with helpful suggestions
+ * @deprecated Import from src/core/errors instead
+ */
 export function createModelNotFoundError(
   modelSpecification: string,
   availableModels: string[] = [],
   groupName?: string,
   errorMessage?: string
 ): Error {
-  const [provider, modelId] = modelSpecification.split(':');
-  
-  // Create the error with a default message if none provided
-  let message = errorMessage;
-  
-  if (!message) {
-    if (groupName) {
-      message = `Model "${modelSpecification}" not found in group "${groupName}".`;
-    } else {
-      message = `Model "${modelSpecification}" not found in configuration.`;
-    }
-  }
-  
-  const error = new Error(message);
-  
-  // Add metadata
-  const detailedError = error as DetailedError;
-  detailedError.category = errorCategories.CONFIG;
-  
-  // Build suggestions
-  const suggestions: string[] = [];
-  
-  // Suggest similar models by partial matching
-  if (availableModels.length > 0) {
-    // Find models with the same provider
-    const sameProviderModels = availableModels.filter(m => m.startsWith(`${provider}:`));
-    
-    if (sameProviderModels.length > 0) {
-      const providerModelList = sameProviderModels.slice(0, 5).join(', ') + 
-        (sameProviderModels.length > 5 ? ', ...' : '');
-      suggestions.push(`Available models from ${provider}: ${providerModelList}`);
-    } else {
-      // Provider not found
-      suggestions.push(`Provider "${provider}" not found.`);
-      
-      // Find all available providers
-      const availableProviders = new Set<string>();
-      availableModels.forEach(m => {
-        const parts = m.split(':');
-        if (parts.length === 2) {
-          availableProviders.add(parts[0]);
-        }
-      });
-      
-      if (availableProviders.size > 0) {
-        suggestions.push(`Available providers: ${Array.from(availableProviders).join(', ')}`);
-      }
-    }
-    
-    // For specific model ID matching
-    if (modelId) {
-      // Find models with similar model IDs
-      const similarModelIds = availableModels.filter(m => {
-        const parts = m.split(':');
-        return parts.length === 2 && parts[1].includes(modelId);
-      });
-      
-      if (similarModelIds.length > 0) {
-        const similarList = similarModelIds.slice(0, 3).join(', ') + 
-          (similarModelIds.length > 3 ? ', ...' : '');
-        suggestions.push(`Models with similar IDs: ${similarList}`);
-      }
-    }
-    
-    // Add a list of example models regardless
-    const exampleList = availableModels.slice(0, 5).join(', ') + 
-      (availableModels.length > 5 ? ', ...' : '');
-    suggestions.push(`Available models: ${exampleList}`);
-  }
-  
-  // Add configuration suggestions
-  suggestions.push(
-    'Check your thinktank.config.json file to ensure the model is properly defined',
-    'Models must be enabled in the configuration to be usable'
+  // Use the imported function from core/errors
+  return coreCreateModelNotFoundError(
+    modelSpecification,
+    availableModels,
+    groupName,
+    errorMessage
   );
-  
-  if (groupName) {
-    suggestions.push(`Ensure the model is included in the "${groupName}" group configuration`);
-  }
-  
-  detailedError.suggestions = suggestions;
-  
-  // Add examples
-  detailedError.examples = availableModels.length > 0 
-    ? availableModels.slice(0, 3) 
-    : [
-        'openai:gpt-4o',
-        'anthropic:claude-3-7-sonnet-20250219',
-        'google:gemini-pro'
-      ];
-  
-  return error;
 }
