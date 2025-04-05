@@ -48,7 +48,7 @@
   - Dependencies: Core error system implementation
   - Priority: Medium
 
-- [ ] Update openai.ts error handling
+- [x] Update openai.ts error handling
   - Description: Use ApiError in catch blocks with providerId
   - Dependencies: Core error system implementation
   - Priority: Medium
