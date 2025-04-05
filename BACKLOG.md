@@ -14,3 +14,4 @@
 	* pick a model to send all of the model outputs to for synthesis
 - better default config init
 - program still hangs for a while after completing a run
+- set up github actions
