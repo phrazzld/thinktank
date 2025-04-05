@@ -68,44 +68,53 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
     4.  ✅ Run `npm install` or `yarn install` and ensure tests still pass.
 *   **Status:** Completed on 2025-04-05. Verified that yargs is not used anywhere in the codebase.
 
-### T3: Error Handling Refinement
+### T3: Error Handling Refinement ⏳
 
 *   **Goal:** Centralize error types and handling.
 *   **Action:**
-    1.  Define base `ThinktankError` in a central location (e.g., `src/core/errors.ts` or keep in `runThinktank.ts` but ensure it's the base).
-    2.  Define specific error types extending `ThinktankError`:
+    1.  ✅ Define base `ThinktankError` in a central location - created `src/core/errors.ts` with the base class.
+    2.  ✅ Define specific error types extending `ThinktankError` - implemented various subclasses and factory functions:
         ```typescript
-        // Example: src/core/errors.ts
         export class ThinktankError extends Error {
           category?: string;
           suggestions?: string[];
           examples?: string[];
-          constructor(message: string, public readonly cause?: Error) {
+          
+          constructor(message: string, options?: ErrorOptions) {
             super(message);
             this.name = 'ThinktankError';
+            
+            if (options) {
+              this.category = options.category;
+              this.suggestions = options.suggestions;
+              this.examples = options.examples;
+            }
+          }
+          
+          format(): string {
+            // Formats error message with category, suggestions, and examples
           }
         }
-
-        export class ConfigError extends ThinktankError {
-          constructor(message: string, cause?: Error) {
-            super(message, cause);
-            this.name = 'ConfigError';
-            this.category = errorCategories.CONFIG; // Assuming errorCategories is imported
-          }
-        }
-
-        export class ProviderError extends ThinktankError {
-          constructor(providerId: string, message: string, cause?: Error) {
-            super(`[${providerId}] ${message}`, cause);
-            this.name = 'ProviderError';
-            this.category = errorCategories.API;
-          }
-        }
-        // Add InputError, FileSystemError, etc.
+        
+        // Specialized error subclasses
+        export class ConfigError extends ThinktankError { ... }
+        export class ApiError extends ThinktankError { ... }
+        export class FileSystemError extends ThinktankError { ... }
+        // etc.
+        
+        // Factory functions
+        export function createFileNotFoundError(filepath: string): ThinktankError { ... }
+        export function createModelFormatError(model: string, ...): ThinktankError { ... }
+        // etc.
         ```
-    3.  Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors.
-    4.  Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately, potentially using a switch on `error.name` or `error.category`.
-    5.  Refactor `consoleUtils` error creation functions (e.g., `createFileNotFoundError`) to return instances of the new error types or be replaced by direct error instantiation.
+    3.  ⏳ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors - in progress.
+    4.  ⏳ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately - pending.
+    5.  ✅ Refactor `consoleUtils` error creation functions to use new error system:
+        * Updated `consoleUtils.ts` to properly handle ThinktankError instances in `formatError` and related functions
+        * Added deprecated JSDoc tags to functions that should be replaced
+        * Used ThinktankError.format() for error formatting
+        * Updated tests to verify correct handling of ThinktankError instances
+*   **Status:** Partially completed. Core error system implemented and `consoleUtils.ts` updated. Still need to update other modules to use the new error system.
 
 ### T6: Workflow Orchestration (`runThinktank`) Refactor
 

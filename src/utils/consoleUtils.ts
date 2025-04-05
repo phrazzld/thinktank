@@ -25,6 +25,7 @@ export interface DetailedError extends Error {
 
 // Import the error system from core/errors
 import {
+  ThinktankError,
   errorCategories as coreErrorCategories,
   createFileNotFoundError as coreCreateFileNotFoundError,
   createModelFormatError as coreCreateModelFormatError,
@@ -121,12 +122,24 @@ export function divider(length = 80): string {
  * @param category - Optional error category
  * @param tip - Optional troubleshooting tip
  * @returns Formatted error message
+ * @deprecated Use ThinktankError.format() directly for ThinktankError instances
  */
 export function formatError(
   error: Error | string, 
   category: string = errorCategories.UNKNOWN,
   tip?: string
 ): string {
+  // If it's a ThinktankError, use its built-in format method
+  if (error instanceof ThinktankError) {
+    // Return the formatted error with tip if provided and not already in suggestions
+    const formatted = error.format();
+    if (tip && (!error.suggestions || !error.suggestions.includes(tip))) {
+      return `${formatted}\n  ${colors.cyan(symbols.info)} Tip: ${tip}`;
+    }
+    return formatted;
+  }
+  
+  // Otherwise, continue with the existing formatting logic
   const errorMsg = error instanceof Error ? error.message : error;
   let output = `${colors.red.bold('Error')}${category ? ` (${colors.yellow(category)})` : ''}: ${errorMsg}`;
   
@@ -141,8 +154,15 @@ export function formatError(
  * Tries to categorize an error based on its message or type
  * @param error - The error to categorize
  * @returns The error category
+ * @deprecated Use direct access to ThinktankError.category for ThinktankError instances
  */
 export function categorizeError(error: Error | string): string {
+  // If it's a ThinktankError, use its category
+  if (error instanceof ThinktankError) {
+    return error.category;
+  }
+  
+  // Otherwise, use the existing categorization logic
   const message = error instanceof Error ? error.message : error;
   const lowerMsg = message.toLowerCase();
   
@@ -183,8 +203,15 @@ export function categorizeError(error: Error | string): string {
  * @param error - The error message or object
  * @param category - The error category
  * @returns A helpful tip or undefined if none available
+ * @deprecated Use ThinktankError.suggestions for ThinktankError instances
  */
 export function getTroubleshootingTip(error: Error | string, category: string): string | undefined {
+  // If it's a ThinktankError with suggestions, use the first suggestion
+  if (error instanceof ThinktankError && error.suggestions && error.suggestions.length > 0) {
+    return error.suggestions[0];
+  }
+  
+  // Otherwise, use the existing logic
   const message = error instanceof Error ? error.message : error;
   const lowerMsg = message.toLowerCase();
   
@@ -222,8 +249,15 @@ export function getTroubleshootingTip(error: Error | string, category: string): 
  * Formats an error with automatically determined category and tip
  * @param error - The error to format
  * @returns A formatted error message with category and tip
+ * @deprecated Use ThinktankError.format() directly for ThinktankError instances
  */
 export function formatErrorWithTip(error: Error | string): string {
+  // If it's a ThinktankError, use its built-in format method directly
+  if (error instanceof ThinktankError) {
+    return error.format();
+  }
+  
+  // Otherwise, use the existing logic
   const category = categorizeError(error);
   const tip = getTroubleshootingTip(error, category);
   return formatError(error, category, tip);

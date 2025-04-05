@@ -2,6 +2,7 @@
  * Tests for the console utilities module
  */
 import * as consoleUtils from '../consoleUtils';
+import { ThinktankError } from '../../core/errors';
 
 // Mock chalk and figures to test our styling without actually modifying strings
 jest.mock('chalk', () => {
@@ -72,6 +73,8 @@ describe('consoleUtils', () => {
   });
 
   describe('error formatting', () => {
+    // ThinktankError is imported at the top level
+    
     test('formatError should format error with category and tip', () => {
       const result = consoleUtils.formatError(
         'Something went wrong', 
@@ -89,6 +92,29 @@ describe('consoleUtils', () => {
       const error = new Error('Failed to connect');
       const result = consoleUtils.formatError(error);
       expect(result).toContain('Failed to connect');
+    });
+    
+    test('formatError should use format() method when given a ThinktankError', () => {
+      // Create a ThinktankError with suggestions and examples
+      const thinktankError = new ThinktankError('Test error message', {
+        category: consoleUtils.errorCategories.CONFIG,
+        suggestions: ['Try this', 'Or try that'],
+        examples: ['Example command']
+      });
+      
+      // Spy on the format method to verify it's called
+      const formatSpy = jest.spyOn(thinktankError, 'format');
+      
+      const result = consoleUtils.formatError(thinktankError);
+      
+      // Verify format() was called
+      expect(formatSpy).toHaveBeenCalled();
+      
+      // Verify the result contains the formatted output
+      expect(result).toContain('Test error message');
+      
+      // Clean up
+      formatSpy.mockRestore();
     });
 
     test('categorizeError should detect API errors', () => {
@@ -108,6 +134,15 @@ describe('consoleUtils', () => {
       const category = consoleUtils.categorizeError(error);
       expect(category).toBe(consoleUtils.errorCategories.UNKNOWN);
     });
+    
+    test('categorizeError should use category from ThinktankError', () => {
+      const thinktankError = new ThinktankError('Permission denied', {
+        category: consoleUtils.errorCategories.PERMISSION
+      });
+      
+      const category = consoleUtils.categorizeError(thinktankError);
+      expect(category).toBe(consoleUtils.errorCategories.PERMISSION);
+    });
 
     test('getTroubleshootingTip should return appropriate tips', () => {
       const apiError = new Error('Invalid API key');
@@ -117,12 +152,48 @@ describe('consoleUtils', () => {
       );
       expect(tip).toContain('Check your API key');
     });
+    
+    test('getTroubleshootingTip should use first suggestion from ThinktankError if available', () => {
+      const thinktankError = new ThinktankError('Network error', {
+        category: consoleUtils.errorCategories.NETWORK,
+        suggestions: ['Check your internet connection', 'Try again later']
+      });
+      
+      const tip = consoleUtils.getTroubleshootingTip(
+        thinktankError,
+        consoleUtils.errorCategories.NETWORK
+      );
+      
+      expect(tip).toBe('Check your internet connection');
+    });
 
     test('formatErrorWithTip should automatically categorize and add tip', () => {
       const error = new Error('API key is invalid');
       const result = consoleUtils.formatErrorWithTip(error);
       expect(result).toContain('API');
       expect(result).toContain('Check your API key');
+    });
+    
+    test('formatErrorWithTip should use format() method when given a ThinktankError', () => {
+      // Create a ThinktankError with suggestions and examples
+      const thinktankError = new ThinktankError('Invalid configuration', {
+        category: consoleUtils.errorCategories.CONFIG,
+        suggestions: ['Check your config file']
+      });
+      
+      // Spy on the format method to verify it's called
+      const formatSpy = jest.spyOn(thinktankError, 'format');
+      
+      const result = consoleUtils.formatErrorWithTip(thinktankError);
+      
+      // Verify format() was called
+      expect(formatSpy).toHaveBeenCalled();
+      
+      // Verify the result contains the formatted output
+      expect(result).toContain('Invalid configuration');
+      
+      // Clean up
+      formatSpy.mockRestore();
     });
 
     test('createFileNotFoundError should generate helpful error with suggestions', () => {
