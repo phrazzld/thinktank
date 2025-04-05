@@ -3,12 +3,47 @@
  * 
  * This module defines a consistent error hierarchy and error handling utilities
  * to improve error reporting and troubleshooting across the application.
+ * 
+ * The error system is built around a hierarchy of error classes extending from the base
+ * {@link ThinktankError} class, with specialized subclasses for different error categories.
+ * 
+ * Key features:
+ * - Consistent error categorization with {@link errorCategories}
+ * - Rich error objects with suggestions and examples
+ * - Support for error chaining with the `cause` property
+ * - Standardized formatting through the {@link ThinktankError.format} method
+ * - Factory functions for common error types
+ * 
+ * @example
+ * ```typescript
+ * // Using error class directly
+ * throw new ConfigError('Invalid configuration', {
+ *   suggestions: ['Check your thinktank.config.json file']
+ * });
+ * 
+ * // Using a factory function
+ * throw createFileNotFoundError('/path/to/missing-file.txt');
+ * ```
+ * 
+ * @module errors
  */
 
 import { colors } from '../utils/consoleUtils';
 
 /**
- * Error categories for consistent categorization across the application
+ * Error categories for consistent categorization across the application.
+ * 
+ * These categories are used to classify errors in a standardized way,
+ * allowing for consistent error handling, display, and filtering.
+ * 
+ * @property {string} API - Errors related to external API interactions (e.g., OpenAI, Anthropic)
+ * @property {string} CONFIG - Configuration-related errors (e.g., invalid settings, missing config)
+ * @property {string} NETWORK - Network connectivity issues (e.g., timeouts, connection failures)
+ * @property {string} FILESYSTEM - File system operation errors (e.g., file not found, permission denied)
+ * @property {string} PERMISSION - Permission-related errors (e.g., insufficient permissions)
+ * @property {string} VALIDATION - Input validation errors (e.g., invalid format, schema violations)
+ * @property {string} INPUT - User input processing errors (e.g., invalid prompts)
+ * @property {string} UNKNOWN - Uncategorized or internal errors
  */
 export const errorCategories = {
   API: 'API',
@@ -22,30 +57,97 @@ export const errorCategories = {
 };
 
 /**
- * Base error class for all thinktank errors
- * Provides a consistent structure for error reporting
+ * Base error class for all thinktank errors.
+ * 
+ * This class extends the native JavaScript Error class and provides additional
+ * properties and methods for enhanced error reporting, troubleshooting assistance,
+ * and consistent formatting across the application.
+ * 
+ * All specialized error types in the thinktank application should extend this class
+ * rather than the native Error class to ensure consistent behavior and properties.
+ * 
+ * @example
+ * ```typescript
+ * // Creating a basic ThinktankError
+ * const error = new ThinktankError('Something went wrong');
+ * 
+ * // Creating a more detailed error
+ * const detailedError = new ThinktankError('Configuration file is invalid', {
+ *   category: errorCategories.CONFIG,
+ *   suggestions: [
+ *     'Check the JSON syntax in your configuration file',
+ *     'Ensure all required fields are present'
+ *   ],
+ *   examples: [
+ *     '{ "models": [], "groups": {} }'
+ *   ]
+ * });
+ * 
+ * // Error with a cause
+ * try {
+ *   JSON.parse(invalidJson);
+ * } catch (parseError) {
+ *   throw new ThinktankError('Failed to parse configuration', {
+ *     cause: parseError,
+ *     category: errorCategories.CONFIG
+ *   });
+ * }
+ * ```
+ * 
+ * @extends {Error}
  */
 export class ThinktankError extends Error {
   /**
-   * Error category for grouping similar errors
+   * The error category for grouping similar errors.
+   * 
+   * This property allows for categorization of errors to help with filtering,
+   * handling, and displaying errors in a more structured way. Default is 'Unknown'.
+   * 
+   * @type {string}
+   * @default errorCategories.UNKNOWN
    */
   category: string = errorCategories.UNKNOWN;
   
   /**
-   * List of suggestions to help resolve the error
+   * List of suggestions to help resolve the error.
+   * 
+   * These suggestions are displayed to the user to provide actionable
+   * guidance on how to fix the issue.
+   * 
+   * @type {string[] | undefined}
    */
   suggestions?: string[];
   
   /**
-   * Examples of valid commands or configurations
+   * Examples of valid commands, configurations, or usage patterns.
+   * 
+   * These examples help users understand the correct way to use the
+   * functionality that caused the error.
+   * 
+   * @type {string[] | undefined}
    */
   examples?: string[];
 
   /**
-   * The original error that caused this error
+   * The original error that caused this error.
+   * 
+   * This property facilitates error chaining, allowing for more detailed
+   * error diagnostics by preserving the underlying cause.
+   * 
+   * @type {Error | undefined}
    */
   cause?: Error;
   
+  /**
+   * Creates a new ThinktankError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.category - The error category from errorCategories
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     category?: string;
@@ -73,7 +175,21 @@ export class ThinktankError extends Error {
   }
   
   /**
-   * Formats the error for display
+   * Formats the error for display in CLI and logging contexts.
+   * 
+   * This method generates a user-friendly, formatted representation of the error
+   * that includes the error message, category, suggestions, and examples.
+   * The output uses ANSI colors for better readability in terminal environments.
+   * 
+   * @returns A formatted string representation of the error
+   * 
+   * @example
+   * ```typescript
+   * const error = new ConfigError('Invalid model format');
+   * console.log(error.format());
+   * // Output: 
+   * // Error (Configuration): Invalid model format
+   * ```
    */
   format(): string {
     let output = `${colors.red.bold('Error')} (${colors.yellow(this.category)}): ${this.message}`;
@@ -97,9 +213,41 @@ export class ThinktankError extends Error {
 }
 
 /**
- * Configuration-related errors
+ * Configuration-related error class.
+ * 
+ * This error class is used for issues related to the application configuration,
+ * such as invalid configuration files, missing required properties, or invalid
+ * configuration values.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new ConfigError('Invalid model configuration');
+ * 
+ * // With suggestions and examples
+ * throw new ConfigError('Required configuration file not found', {
+ *   suggestions: [
+ *     'Create a thinktank.config.json file in your project root',
+ *     'Copy the template from the examples directory'
+ *   ],
+ *   examples: [
+ *     'cp templates/thinktank.config.default.json ./thinktank.config.json'
+ *   ]
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class ConfigError extends ThinktankError {
+  /**
+   * Creates a new ConfigError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
@@ -114,17 +262,64 @@ export class ConfigError extends ThinktankError {
 }
 
 /**
- * API interaction errors
+ * API interaction error class.
+ * 
+ * This error class is used for issues related to external API interactions,
+ * such as authentication failures, rate limits, or server errors from LLM
+ * providers like OpenAI, Anthropic, or Google.
+ * 
+ * The `providerId` property allows for provider-specific error handling and
+ * guidance.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new ApiError('Failed to generate response', {
+ *   providerId: 'openai'
+ * });
+ * 
+ * // With detailed options
+ * throw new ApiError('API rate limit exceeded', {
+ *   providerId: 'anthropic',
+ *   suggestions: [
+ *     'Wait and try again later',
+ *     'Reduce the frequency of requests',
+ *     'Consider upgrading your API tier'
+ *   ],
+ *   cause: originalError
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class ApiError extends ThinktankError {
+  /**
+   * The identifier of the provider that generated the error.
+   * 
+   * This allows for provider-specific error handling and guidance
+   * (e.g., 'openai', 'anthropic', 'google').
+   * 
+   * @type {string | undefined}
+   */
   providerId?: string;
   
+  /**
+   * Creates a new ApiError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.providerId - Identifier of the provider that generated the error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     providerId?: string;
     suggestions?: string[];
     examples?: string[];
   }) {
+    // Prefix the message with the provider ID if available
     const formattedMessage = options?.providerId 
       ? `[${options.providerId}] ${message}`
       : message;
@@ -140,11 +335,53 @@ export class ApiError extends ThinktankError {
 }
 
 /**
- * File system related errors
+ * File system related error class.
+ * 
+ * This error class is used for issues related to file system operations,
+ * such as file not found, permission denied, or directory creation failures.
+ * 
+ * The `filePath` property contains the path to the file or directory that 
+ * caused the error, which can be used for error reporting and troubleshooting.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new FileSystemError('Failed to read file', {
+ *   filePath: '/path/to/file.txt'
+ * });
+ * 
+ * // With suggestions
+ * throw new FileSystemError('Permission denied while writing to file', {
+ *   filePath: '/path/to/file.txt',
+ *   suggestions: [
+ *     'Check file permissions',
+ *     'Ensure you have write access to the directory'
+ *   ]
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class FileSystemError extends ThinktankError {
+  /**
+   * The path to the file or directory that caused the error.
+   * 
+   * This property is used for error reporting and troubleshooting file system issues.
+   * 
+   * @type {string | undefined}
+   */
   filePath?: string;
   
+  /**
+   * Creates a new FileSystemError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.filePath - Path to the file or directory that caused the error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     filePath?: string;
@@ -162,9 +399,37 @@ export class FileSystemError extends ThinktankError {
 }
 
 /**
- * Input validation errors
+ * Input validation error class.
+ * 
+ * This error class is used for issues related to validation of user inputs,
+ * such as invalid formats, missing required fields, or incorrect values.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new ValidationError('Invalid parameter format');
+ * 
+ * // With suggestions
+ * throw new ValidationError('Prompt exceeds maximum allowed length', {
+ *   suggestions: [
+ *     'Limit your prompt to 4000 characters',
+ *     'Break up long prompts into multiple requests'
+ *   ]
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class ValidationError extends ThinktankError {
+  /**
+   * Creates a new ValidationError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
@@ -179,9 +444,43 @@ export class ValidationError extends ThinktankError {
 }
 
 /**
- * Network-related errors
+ * Network-related error class.
+ * 
+ * This error class is used for issues related to network connectivity,
+ * such as timeouts, connection failures, or DNS resolution problems.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new NetworkError('Connection timeout');
+ * 
+ * // With cause and suggestions
+ * try {
+ *   // Network operation
+ * } catch (error) {
+ *   throw new NetworkError('Failed to connect to API endpoint', {
+ *     cause: error,
+ *     suggestions: [
+ *       'Check your internet connection',
+ *       'Verify the API endpoint is correct and accessible',
+ *       'Try again later as the service might be temporarily down'
+ *     ]
+ *   });
+ * }
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class NetworkError extends ThinktankError {
+  /**
+   * Creates a new NetworkError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
@@ -196,9 +495,39 @@ export class NetworkError extends ThinktankError {
 }
 
 /**
- * Permission-related errors
+ * Permission-related error class.
+ * 
+ * This error class is used for issues related to permissions,
+ * such as insufficient file system permissions, API access restrictions,
+ * or unauthorized operations.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new PermissionError('Permission denied');
+ * 
+ * // With suggestions
+ * throw new PermissionError('Permission denied when writing to output directory', {
+ *   suggestions: [
+ *     'Check file system permissions for the output directory',
+ *     'Run the command with appropriate privileges',
+ *     'Select a different output directory that you have write access to'
+ *   ]
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class PermissionError extends ThinktankError {
+  /**
+   * Creates a new PermissionError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
@@ -213,9 +542,43 @@ export class PermissionError extends ThinktankError {
 }
 
 /**
- * Input processing errors
+ * Input processing error class.
+ * 
+ * This error class is used for issues related to processing user inputs,
+ * such as invalid prompt formats, unsupported file types, or content issues.
+ * Unlike ValidationError which focuses on format/schema validation, this error
+ * is related to semantic issues or processing failures.
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw new InputError('Failed to process input file');
+ * 
+ * // With suggestions
+ * throw new InputError('Input file contains unsupported markdown syntax', {
+ *   suggestions: [
+ *     'Use only basic markdown syntax',
+ *     'Remove complex tables or diagrams',
+ *     'Check for syntax errors in your markdown'
+ *   ],
+ *   examples: [
+ *     '# Heading\n\nSimple paragraph with **bold** and *italic* text'
+ *   ]
+ * });
+ * ```
+ * 
+ * @extends {ThinktankError}
  */
 export class InputError extends ThinktankError {
+  /**
+   * Creates a new InputError instance.
+   * 
+   * @param message - The error message describing what went wrong
+   * @param options - Optional configuration for the error
+   * @param options.cause - The original error that caused this error
+   * @param options.suggestions - List of suggestions to help resolve the error
+   * @param options.examples - Examples of valid usage or configuration
+   */
   constructor(message: string, options?: {
     cause?: Error;
     suggestions?: string[];
@@ -230,11 +593,24 @@ export class InputError extends ThinktankError {
 }
 
 /**
- * Creates a file not found error with helpful suggestions
+ * Creates a file not found error with helpful suggestions and examples.
+ * 
+ * This factory function generates a FileSystemError with context-aware suggestions
+ * based on the provided file path. It includes guidance on checking file existence,
+ * path formatting, file extensions, and permissions.
  * 
  * @param filePath - The path to the file that wasn't found
- * @param errorMessage - Optional custom error message
- * @returns A FileSystemError with relevant suggestions
+ * @param errorMessage - Optional custom error message (defaults to "File not found: {filePath}")
+ * @returns A FileSystemError with relevant suggestions and examples
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw createFileNotFoundError('/path/to/config.json');
+ * 
+ * // With custom error message
+ * throw createFileNotFoundError('./prompt.txt', 'Unable to locate prompt file');
+ * ```
  */
 export function createFileNotFoundError(filePath: string, errorMessage?: string): FileSystemError {
   const message = errorMessage || `File not found: ${filePath}`;
@@ -285,13 +661,33 @@ export function createFileNotFoundError(filePath: string, errorMessage?: string)
 }
 
 /**
- * Creates an error for invalid model format
+ * Creates an error for invalid model format with context-aware suggestions.
  * 
- * @param modelSpecification - The invalid model specification
- * @param availableProviders - Optional array of available provider IDs
- * @param availableModels - Optional array of available model specifications
+ * This factory function generates a ConfigError for issues with model specification
+ * format. It analyzes the given model string and generates appropriate suggestions
+ * based on the specific issue detected (missing colon, missing provider, etc.).
+ * 
+ * When provided with available providers and models, it enhances the suggestions
+ * with specific examples from the available options.
+ * 
+ * @param modelSpecification - The invalid model specification (e.g., "openai-gpt4" instead of "openai:gpt-4")
+ * @param availableProviders - Optional array of available provider IDs (e.g., ["openai", "anthropic"])
+ * @param availableModels - Optional array of available model specifications (e.g., ["openai:gpt-4o", "anthropic:claude-3"])
  * @param errorMessage - Optional custom error message
- * @returns A ConfigError with helpful suggestions
+ * @returns A ConfigError with helpful suggestions based on the specific format issue
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage
+ * throw createModelFormatError('openai-gpt4');
+ * 
+ * // With available providers and models
+ * throw createModelFormatError(
+ *   'openai-gpt4',
+ *   ['openai', 'anthropic', 'google'],
+ *   ['openai:gpt-4o', 'openai:gpt-3.5-turbo', 'anthropic:claude-3-opus']
+ * );
+ * ```
  */
 export function createModelFormatError(
   modelSpecification: string,
@@ -372,11 +768,28 @@ export function createModelFormatError(
 }
 
 /**
- * Creates an error for missing API keys
+ * Creates an error for missing API keys with provider-specific guidance.
  * 
- * @param missingModels - Array of models with missing API keys
+ * This factory function generates an ApiError for missing API keys, with
+ * customized suggestions based on the specific providers that need API keys.
+ * It includes provider-specific links to obtain API keys and instructions
+ * for setting environment variables.
+ * 
+ * @param missingModels - Array of models with missing API keys (each with provider and modelId)
  * @param errorMessage - Optional custom error message
- * @returns An ApiError with helpful suggestions
+ * @returns An ApiError with provider-specific guidance on obtaining and setting API keys
+ * 
+ * @example
+ * ```typescript
+ * // Single missing API key
+ * throw createMissingApiKeyError([{ provider: 'openai', modelId: 'gpt-4o' }]);
+ * 
+ * // Multiple missing API keys
+ * throw createMissingApiKeyError([
+ *   { provider: 'openai', modelId: 'gpt-4o' },
+ *   { provider: 'anthropic', modelId: 'claude-3-opus' }
+ * ]);
+ * ```
  */
 export function createMissingApiKeyError(
   missingModels: Array<{ provider: string; modelId: string }>,
@@ -462,13 +875,33 @@ export function createMissingApiKeyError(
 }
 
 /**
- * Creates an error for model not found in configuration
+ * Creates an error for model not found in configuration with specific suggestions.
  * 
- * @param modelSpecification - The model specification that wasn't found
- * @param availableModels - Optional array of available model specifications
- * @param groupName - Optional group name if relevant to the context
+ * This factory function generates a ConfigError when a requested model cannot
+ * be found in the configuration. It provides context-specific suggestions based
+ * on whether the issue is related to a model group or general configuration.
+ * 
+ * When provided with available models, it enhances the suggestions with similar
+ * models or available providers to help users correct their model selection.
+ * 
+ * @param modelSpecification - The model specification that wasn't found (e.g., "openai:gpt-5")
+ * @param availableModels - Optional array of available model specifications to suggest alternatives
+ * @param groupName - Optional group name if relevant to the context (e.g., when model is missing from a specific group)
  * @param errorMessage - Optional custom error message
- * @returns A ConfigError with helpful suggestions
+ * @returns A ConfigError with context-aware suggestions for resolving the issue
+ * 
+ * @example
+ * ```typescript
+ * // Basic usage - model not found
+ * throw createModelNotFoundError('openai:nonexistent-model');
+ * 
+ * // When a model is not found in a specific group
+ * throw createModelNotFoundError(
+ *   'openai:gpt-4o', 
+ *   ['openai:gpt-3.5-turbo', 'anthropic:claude-3-haiku'],
+ *   'fast-models'
+ * );
+ * ```
  */
 export function createModelNotFoundError(
   modelSpecification: string,
