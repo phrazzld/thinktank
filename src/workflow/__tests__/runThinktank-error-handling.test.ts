@@ -3,9 +3,14 @@
  */
 import { runThinktank, RunOptions } from '../runThinktank';
 import { 
-  ThinktankError, 
   ConfigError, 
-  ApiError 
+  ApiError,
+  FileSystemError,
+  PermissionError,
+  errorCategories,
+  createFileNotFoundError,
+  createModelFormatError,
+  createMissingApiKeyError
 } from '../../core/errors';
 
 // Mock imports instead of requires
@@ -40,17 +45,17 @@ jest.mock('ora', () => {
 
 describe('runThinktank Error Handling', () => {
   
-  // Skip all tests - we'll complete these later
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('should throw FileSystemError when prompt file cannot be read', async () => {
+    // Create a FileSystemError using the factory function
+    const fileNotFoundError = createFileNotFoundError('nonexistent.txt');
+    
     // Override with error case for this specific test - this is the key behavior
     // Make this reject immediately to simulate file not found error
-    (inputHandlerModule.processInput as jest.Mock).mockRejectedValue(
-      new Error('ENOENT: File not found')
-    );
+    (inputHandlerModule.processInput as jest.Mock).mockRejectedValue(fileNotFoundError);
     
     // Call with valid options
     const options: RunOptions = {
@@ -58,15 +63,16 @@ describe('runThinktank Error Handling', () => {
     };
     
     // Expect it to throw with a helpful error
-    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
+    await expect(runThinktank(options)).rejects.toThrow(FileSystemError);
     // Test for more specific error properties
     try {
       await runThinktank(options);
     } catch (error: any) {
       expect(error.name).toBe('FileSystemError');
-      expect(error.category).toBe('File System');
+      expect(error.category).toBe(errorCategories.FILESYSTEM);
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions.length).toBeGreaterThan(0);
+      expect(error.filePath).toBe('nonexistent.txt');
     }
   });
   
@@ -85,9 +91,14 @@ describe('runThinktank Error Handling', () => {
     });
     
     // Setup directory creation to fail with permission error
-    (outputHandlerModule.createOutputDirectory as jest.Mock).mockRejectedValue(
-      new Error('EACCES: Failed to create output directory. Permission denied')
-    );
+    const permissionError = new PermissionError('Permission denied: Failed to create output directory', {
+      suggestions: [
+        'Check that you have write permissions for the directory',
+        'Try using a different output path',
+        'Ensure the parent directory exists and is writable'
+      ]
+    });
+    (outputHandlerModule.createOutputDirectory as jest.Mock).mockRejectedValue(permissionError);
     
     // Call with valid options
     const options: RunOptions = {
@@ -96,17 +107,17 @@ describe('runThinktank Error Handling', () => {
     };
     
     // Expect it to throw with a helpful error
-    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
+    await expect(runThinktank(options)).rejects.toThrow(PermissionError);
     
     // Test for more specific error properties
     try {
       await runThinktank(options);
     } catch (error: any) {
       expect(error.name).toBe('PermissionError');
-      expect(error.category).toBe('Permission');
+      expect(error.category).toBe(errorCategories.PERMISSION);
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions.length).toBeGreaterThan(0);
-      expect(error.message).toMatch(/directory|output|permission/i);
+      expect(error.message).toMatch(/permission denied/i);
     }
   });
   
@@ -133,26 +144,24 @@ describe('runThinktank Error Handling', () => {
     // Setup output directory creation
     (outputHandlerModule.createOutputDirectory as jest.Mock).mockResolvedValue('/output/directory/path');
     
-    // Create a ConfigError instance for mocking
-    const mockConfig = {
-      suggestions: [
-        'Use the provider:modelId format (e.g., openai:gpt-4o)',
-        'Available providers: openai, anthropic'
-      ]
-    };
-    const mockError = new ConfigError('Invalid model format: "openai-gpt4". Models must be in provider:modelId format.', mockConfig);
+    // Use factory function to create a model format error
+    const modelFormatError = createModelFormatError(
+      'openai-gpt4',  // Invalid format (missing colon)
+      ['openai', 'anthropic', 'google'],
+      ['openai:gpt-4o', 'anthropic:claude-3-opus']
+    );
     
     // Create a mock implementation that checks if the selection has the correct model format
     (modelSelectorModule.selectModels as jest.Mock).mockImplementation((_config: any, opts: any) => {
       if (opts.specificModel && !opts.specificModel.includes(':')) {
-        throw mockError;
+        throw modelFormatError;
       }
       return { models: [], warnings: [], missingApiKeyModels: [], disabledModels: [] };
     });
     
     // Expect it to throw with a helpful error
     await expect(runThinktank({ input: 'prompt.txt', specificModel: 'openai-gpt4' }))
-      .rejects.toThrow(ThinktankError);
+      .rejects.toThrow(ConfigError);
     
     // Use a try-catch to test error properties
     try {
@@ -162,10 +171,12 @@ describe('runThinktank Error Handling', () => {
       // Verify the correct error type is thrown
       expect(error).toBeDefined();
       expect(error.name).toBe('ConfigError');
-      expect(error.category).toBe('Configuration');
+      expect(error.category).toBe(errorCategories.CONFIG);
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions.length).toBeGreaterThan(0);
       expect(error.message).toMatch(/model format|provider:modelId/i);
+      expect(error.examples).toBeDefined();
+      expect(error.examples.length).toBeGreaterThan(0);
     }
   });
   
@@ -193,13 +204,16 @@ describe('runThinktank Error Handling', () => {
     (outputHandlerModule.createOutputDirectory as jest.Mock).mockResolvedValue('/output/directory/path');
     
     // Create a ConfigError instance for model not found
-    const modelNotFoundConfig = {
+    const modelNotFoundError = new ConfigError('Model "openai:nonexistent-model" not found in configuration.', {
       suggestions: [
         'Check that the model is correctly spelled and exists in your configuration',
         'Available models: openai:gpt-4o, anthropic:claude-3-opus'
+      ],
+      examples: [
+        'thinktank run prompt.txt --models=openai:gpt-4o',
+        'thinktank run prompt.txt --group=default'
       ]
-    };
-    const modelNotFoundError = new ConfigError('Model "openai:nonexistent-model" not found in configuration.', modelNotFoundConfig);
+    });
     
     // Mock selectModels to throw for non-existent models
     (modelSelectorModule.selectModels as jest.Mock).mockImplementation((_config: any, opts: any) => {
@@ -211,7 +225,7 @@ describe('runThinktank Error Handling', () => {
     
     // Expect it to throw with a helpful error
     await expect(runThinktank({ input: 'prompt.txt', specificModel: 'openai:nonexistent-model' }))
-      .rejects.toThrow(ThinktankError);
+      .rejects.toThrow(ConfigError);
     
     // Call with a non-existent model
     try {
@@ -221,10 +235,12 @@ describe('runThinktank Error Handling', () => {
       // Verify the correct error type is thrown
       expect(error).toBeDefined();
       expect(error.name).toBe('ConfigError');
-      expect(error.category).toBe('Configuration');
+      expect(error.category).toBe(errorCategories.CONFIG);
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions.length).toBeGreaterThan(0);
       expect(error.message).toMatch(/model.*not found/i);
+      expect(error.examples).toBeDefined();
+      expect(error.examples.length).toBeGreaterThan(0);
     }
   });
   
@@ -251,28 +267,24 @@ describe('runThinktank Error Handling', () => {
     // Setup output directory creation
     (outputHandlerModule.createOutputDirectory as jest.Mock).mockResolvedValue('/output/directory/path');
     
-    // Create an ApiError instance for missing API keys
-    const apiErrorConfig = {
-      suggestions: [
-        'Check that you have set the correct environment variables for your API keys',
-        'You can set them in your .env file or in your environment',
-        'Missing API keys for: openai:gpt-4o, anthropic:claude-3-opus'
-      ]
-    };
-    const apiKeyError = new ApiError('No models with valid API keys available.', apiErrorConfig);
+    // Create an ApiError instance for missing API keys using the factory function
+    const missingApiKeyError = createMissingApiKeyError([
+      { provider: 'openai', modelId: 'gpt-4o' },
+      { provider: 'anthropic', modelId: 'claude-3-opus' }
+    ]);
     
     // Mock selectModels to throw for missing API keys
     (modelSelectorModule.selectModels as jest.Mock).mockImplementation((_config: any, opts: any) => {
       // API key issues when using validateApiKeys=true
       if (opts.validateApiKeys) {
-        throw apiKeyError;
+        throw missingApiKeyError;
       }
       return { models: [], warnings: [], missingApiKeyModels: [], disabledModels: [] };
     });
     
     // Expect it to throw with a helpful error
     await expect(runThinktank({ input: 'prompt.txt' }))
-      .rejects.toThrow(ThinktankError);
+      .rejects.toThrow(ApiError);
     
     // Call with options that would require API keys
     try {
@@ -282,10 +294,12 @@ describe('runThinktank Error Handling', () => {
       // Verify the correct error type is thrown
       expect(error).toBeDefined();
       expect(error.name).toBe('ApiError');
-      expect(error.category).toBe('API');
+      expect(error.category).toBe(errorCategories.API);
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions.length).toBeGreaterThan(0);
-      expect(error.message).toMatch(/api key|authentication/i);
+      expect(error.message).toMatch(/missing api key/i);
+      expect(error.examples).toBeDefined();
+      expect(error.examples.length).toBeGreaterThan(0);
     }
   });
   
@@ -323,6 +337,15 @@ describe('runThinktank Error Handling', () => {
     // Setup output directory creation
     (outputHandlerModule.createOutputDirectory as jest.Mock).mockResolvedValue('/output/directory/path');
     
+    // Set up an API error for the second model
+    const apiRateLimitError = new ApiError('Rate limit exceeded', {
+      providerId: 'anthropic',
+      suggestions: [
+        'Try again later or reduce the number of requests',
+        'Consider using a different model or provider'
+      ]
+    });
+    
     // Setup query execution with mixed success/error results
     (queryExecutorModule.executeQueries as jest.Mock).mockResolvedValue({
       responses: [
@@ -352,7 +375,7 @@ describe('runThinktank Error Handling', () => {
         'anthropic:claude-3-opus': {
           status: 'error',
           message: 'Rate limit exceeded',
-          detailedError: new Error('Rate limit exceeded'),
+          detailedError: apiRateLimitError,
           startTime: Date.now() - 1200,
           endTime: Date.now(),
           durationMs: 1200
@@ -365,7 +388,17 @@ describe('runThinktank Error Handling', () => {
       }
     });
     
-    // Setup file writing success
+    // Setup file writing error
+    const fileWriteError = new FileSystemError('Failed to write file', {
+      filePath: '/output/directory/path/anthropic-claude-3-opus.md',
+      suggestions: [
+        'Check file system permissions',
+        'Ensure the directory exists and is writable',
+        'Verify there is enough disk space'
+      ]
+    });
+    
+    // Setup file writing with mixed success/error results
     (outputHandlerModule.writeResponsesToFiles as jest.Mock).mockResolvedValue({
       succeededWrites: 1,
       failedWrites: 1,
@@ -377,7 +410,7 @@ describe('runThinktank Error Handling', () => {
         { 
           filename: 'anthropic-claude-3-opus.md', 
           status: 'error',
-          error: 'Failed to write file'
+          error: fileWriteError
         }
       ],
       timing: {
@@ -446,18 +479,18 @@ describe('runThinktank Error Handling', () => {
     // Setup output directory creation
     (outputHandlerModule.createOutputDirectory as jest.Mock).mockResolvedValue('/output/directory/path');
     
-    // Create a mock for group not found error
-    const groupError = {
-      name: 'ModelSelectionError',
-      message: 'Group "nonexistent-group" not found in configuration.',
-      category: 'Configuration',
+    // Create a ConfigError for group not found
+    const groupError = new ConfigError('Group "nonexistent-group" not found in configuration.', {
       suggestions: [
         'Check your configuration file and make sure the group is defined',
         'Available groups: default, fast, premium',
         'Groups must be defined in your thinktank.config.json file'
       ],
-      toString: () => 'Group not found error'
-    };
+      examples: [
+        'thinktank run prompt.txt --group=default',
+        'thinktank config groups list'
+      ]
+    });
     
     // Mock selectModels to throw for non-existent groups
     (modelSelectorModule.selectModels as jest.Mock).mockImplementation((_config: any, opts: any) => {
@@ -467,6 +500,10 @@ describe('runThinktank Error Handling', () => {
       return { models: [], warnings: [], missingApiKeyModels: [], disabledModels: [] };
     });
     
+    // Expect it to throw with helpful error
+    await expect(runThinktank({ input: 'prompt.txt', groupName: 'nonexistent-group' }))
+      .rejects.toThrow(ConfigError);
+    
     // Call with a non-existent group
     try {
       await runThinktank({ input: 'prompt.txt', groupName: 'nonexistent-group' });
@@ -474,8 +511,12 @@ describe('runThinktank Error Handling', () => {
     } catch (error: any) {
       // Verify the correct error type is thrown
       expect(error).toBeDefined();
-      expect(error.name).toBe('ThinktankError');
-      expect(error.message).toContain('Unknown error running thinktank');
+      expect(error.name).toBe('ConfigError');
+      expect(error.category).toBe(errorCategories.CONFIG);
+      expect(error.suggestions).toBeDefined();
+      expect(error.suggestions.length).toBeGreaterThan(0);
+      expect(error.message).toContain('nonexistent-group');
+      expect(error.message).toContain('not found');
     }
   });
   
@@ -537,6 +578,15 @@ describe('runThinktank Error Handling', () => {
       }
     });
     
+    // Create permission error for file writing
+    const permissionError = new PermissionError('Permission denied when writing to file', {
+      suggestions: [
+        'Check file permissions',
+        'Ensure you have write access to the directory',
+        'Try using a different output path'
+      ]
+    });
+    
     // Setup file writing to throw an error
     (outputHandlerModule.writeResponsesToFiles as jest.Mock).mockResolvedValue({
       succeededWrites: 0,
@@ -545,7 +595,7 @@ describe('runThinktank Error Handling', () => {
         { 
           filename: 'openai-gpt-4o.md', 
           status: 'error',
-          error: 'EACCES: Permission denied' 
+          error: permissionError
         }
       ],
       timing: {
@@ -576,5 +626,42 @@ describe('runThinktank Error Handling', () => {
     // Since the file writing failed but the API calls succeeded, 
     // the function should still return the API responses
     expect(result).toBeTruthy();
+  });
+  
+  it('should properly propagate error causes through the call chain', async () => {
+    // Create a chain of errors with causes
+    const rootCause = new Error('Network connection failed');
+    const apiError = new ApiError('Failed to connect to OpenAI API', {
+      providerId: 'openai',
+      cause: rootCause,
+      suggestions: [
+        'Check your internet connection',
+        'Verify the API endpoint is correct',
+        'Try again later'
+      ]
+    });
+    
+    // Setup input processing to throw an error
+    (inputHandlerModule.processInput as jest.Mock).mockRejectedValue(apiError);
+    
+    // Call with valid options
+    const options: RunOptions = {
+      input: 'prompt.txt'
+    };
+    
+    // Expect it to throw with a helpful error that preserves the cause chain
+    await expect(runThinktank(options)).rejects.toThrow(ApiError);
+    
+    try {
+      await runThinktank(options);
+    } catch (error: any) {
+      // Verify the correct error type is thrown
+      expect(error).toBeDefined();
+      expect(error.name).toBe('ApiError');
+      expect(error.category).toBe(errorCategories.API);
+      expect(error.cause).toBeDefined();
+      expect(error.cause?.message).toBe('Network connection failed');
+      expect(error.providerId).toBe('openai');
+    }
   });
 });

@@ -80,7 +80,7 @@
   - Dependencies: Core error system implementation
   - Priority: High
 
-- [ ] Update existing error handling tests
+- [x] Update existing error handling tests
   - Description: Update runThinktank-error-handling.test.ts and cli-error-handling.test.ts
   - Dependencies: Updated modules and error system
   - Priority: Medium
