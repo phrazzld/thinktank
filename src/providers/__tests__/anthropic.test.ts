@@ -6,6 +6,7 @@
 import { AnthropicProvider, AnthropicProviderError, anthropicProvider } from '../anthropic';
 import { ModelOptions, LLMAvailableModel } from '../../core/types';
 import { clearRegistry, getProvider } from '../../core/llmRegistry';
+import { ApiError, ThinktankError } from '../../core/errors';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Mock Anthropic library
@@ -115,8 +116,24 @@ describe('Anthropic Provider', () => {
       
       const provider = new AnthropicProvider();
       
+      // Should still be catchable as AnthropicProviderError for backward compatibility
       await expect(provider.generate('Test', 'claude-3-opus-20240229')).rejects.toThrow(AnthropicProviderError);
-      await expect(provider.generate('Test', 'claude-3-opus-20240229')).rejects.toThrow('Anthropic API key is missing');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test', 'claude-3-opus-20240229')).rejects.toThrow(ApiError);
+      // And should be an instance of the base ThinktankError
+      await expect(provider.generate('Test', 'claude-3-opus-20240229')).rejects.toThrow(ThinktankError);
+      
+      try {
+        await provider.generate('Test', 'claude-3-opus-20240229');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as AnthropicProviderError;
+        expect(typedError.message).toContain('Anthropic API key is missing');
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('anthropic');
+        expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.length).toBeGreaterThan(0);
+      }
     });
   });
   
@@ -231,8 +248,22 @@ describe('Anthropic Provider', () => {
       // Mock an API error
       mockCreate.mockRejectedValue(new Error('API error message'));
       
+      // Should still be catchable as AnthropicProviderError for backward compatibility
       await expect(provider.generate('Test prompt', 'claude-3-opus-20240229')).rejects.toThrow(AnthropicProviderError);
-      await expect(provider.generate('Test prompt', 'claude-3-opus-20240229')).rejects.toThrow('Anthropic API error: API error message');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test prompt', 'claude-3-opus-20240229')).rejects.toThrow(ApiError);
+      await expect(provider.generate('Test prompt', 'claude-3-opus-20240229')).rejects.toThrow('[anthropic] API error message');
+      
+      try {
+        await provider.generate('Test prompt', 'claude-3-opus-20240229');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as AnthropicProviderError;
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('anthropic');
+        expect(typedError.cause).toBeInstanceOf(Error);
+        expect(typedError.cause?.message).toBe('API error message');
+      }
     });
     
     it('should reuse the Anthropic client for multiple requests', async () => {
@@ -345,9 +376,44 @@ describe('Anthropic Provider', () => {
       const apiError = new Error('Invalid API key');
       mockList.mockRejectedValue(apiError);
       
-      // The method should throw AnthropicProviderError
+      // Should still be catchable as AnthropicProviderError for backward compatibility
       await expect(provider.listModels('invalid-key')).rejects.toThrow(AnthropicProviderError);
-      await expect(provider.listModels('invalid-key')).rejects.toThrow('Anthropic API error when listing models');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.listModels('invalid-key')).rejects.toThrow(ApiError);
+      await expect(provider.listModels('invalid-key')).rejects.toThrow('[anthropic]');
+      
+      try {
+        await provider.listModels('invalid-key');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as AnthropicProviderError;
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('anthropic');
+        expect(typedError.cause).toBeInstanceOf(Error);
+        expect(typedError.cause?.message).toBe('Invalid API key');
+        expect(typedError.message).toContain('Invalid API key');
+        expect(typedError.suggestions).toBeDefined();
+      }
+    });
+    
+    it('should handle rate limiting errors with specific suggestions', async () => {
+      // Mock rate limit error
+      const rateLimitError = new Error('Rate limit exceeded');
+      mockList.mockRejectedValue(rateLimitError);
+      
+      try {
+        await provider.listModels('valid-key');
+      } catch (error) {
+        // Verify error contains specific rate limit suggestions
+        const typedError = error as AnthropicProviderError;
+        expect(typedError.suggestions).toBeDefined();
+        // Check that at least one suggestion mentions rate limiting or waiting
+        expect(typedError.suggestions?.some(suggestion => 
+          suggestion.toLowerCase().includes('rate') || 
+          suggestion.toLowerCase().includes('wait') ||
+          suggestion.toLowerCase().includes('delay')
+        )).toBe(true);
+      }
     });
   });
 });

@@ -43,7 +43,7 @@
   - Priority: Medium
 
 ## Provider-Specific Updates
-- [ ] Update anthropic.ts error handling
+- [x] Update anthropic.ts error handling
   - Description: Use ApiError in catch blocks with providerId
   - Dependencies: Core error system implementation
   - Priority: Medium

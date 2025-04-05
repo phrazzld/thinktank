@@ -11,14 +11,32 @@ import {
   ThinkingOptions 
 } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
+import { ApiError } from '../core/errors';
 
 /**
  * Anthropic provider error class
+ * Extends ApiError for better error handling while maintaining backward compatibility
  */
-export class AnthropicProviderError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
+export class AnthropicProviderError extends ApiError {
+  constructor(message: string, options?: {
+    cause?: Error;
+    suggestions?: string[];
+    examples?: string[];
+  }) {
+    super(message, {
+      ...options,
+      providerId: 'anthropic' // Always set the provider ID to 'anthropic'
+    });
+    
     this.name = 'AnthropicProviderError';
+    
+    // Ensure the name property is correctly set and non-enumerable
+    // This ensures instanceof checks work correctly in tests
+    Object.defineProperty(this, 'name', {
+      value: 'AnthropicProviderError',
+      enumerable: false,
+      configurable: true
+    });
   }
 }
 
@@ -61,7 +79,17 @@ export class AnthropicProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.ANTHROPIC_API_KEY;
     
     if (!apiKey) {
-      throw new AnthropicProviderError('Anthropic API key is missing. Set ANTHROPIC_API_KEY environment variable or provide it when creating the provider.');
+      throw new AnthropicProviderError('Anthropic API key is missing. Set ANTHROPIC_API_KEY environment variable or provide it when creating the provider.', {
+        suggestions: [
+          'Set the ANTHROPIC_API_KEY environment variable in your shell or .env file',
+          'Get an API key from the Anthropic console: https://console.anthropic.com/keys',
+          'Provide the API key directly when creating the provider instance'
+        ],
+        examples: [
+          'export ANTHROPIC_API_KEY=your_api_key',
+          'const provider = new AnthropicProvider("your_api_key")'
+        ]
+      });
     }
     
     this.client = new Anthropic({ 
@@ -182,16 +210,85 @@ export class AnthropicProvider implements LLMProvider {
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
+        // Re-throw our own errors
         if (error instanceof AnthropicProviderError) {
-          throw error; // Re-throw our own errors
+          throw error;
         }
         
-        // Handle Anthropic API errors
-        throw new AnthropicProviderError(`Anthropic API error: ${error.message}`, error);
+        // Check for specific error types based on message content
+        const errorMessage = error.message.toLowerCase();
+        
+        // Handle rate limit errors
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429') || errorMessage.includes('too many requests')) {
+          throw new AnthropicProviderError(`Rate limit exceeded: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Wait before sending additional requests',
+              'Implement exponential backoff in your code',
+              'Reduce the frequency of requests to the Anthropic API',
+              'Consider using a different model with higher rate limits'
+            ],
+            examples: [
+              '// Example exponential backoff implementation',
+              'const backoff = (retries) => Math.pow(2, retries) * 1000;',
+              'for (let i = 0; i < maxRetries; i++) {',
+              '  try {',
+              '    return await provider.generate(prompt, modelId);',
+              '  } catch (e) {',
+              '    if (!isRateLimitError(e) || i === maxRetries - 1) throw e;',
+              '    await new Promise(r => setTimeout(r, backoff(i)));',
+              '  }',
+              '}'
+            ]
+          });
+        }
+        
+        // Handle API authentication errors
+        if (errorMessage.includes('key') && (errorMessage.includes('invalid') || errorMessage.includes('expired'))) {
+          throw new AnthropicProviderError(`API key error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Check that your Anthropic API key is valid and not expired',
+              'Ensure the API key has the correct permissions',
+              'Generate a new API key in the Anthropic console if needed'
+            ],
+            examples: [
+              'export ANTHROPIC_API_KEY=your_new_api_key'
+            ]
+          });
+        }
+        
+        // Handle model-specific errors
+        if (errorMessage.includes('model')) {
+          throw new AnthropicProviderError(`Model error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Check that the specified model ID is correct',
+              'Verify that the model is available in your Anthropic account',
+              'Some models may require special access or be in limited preview'
+            ]
+          });
+        }
+        
+        // Generic API error for other cases
+        throw new AnthropicProviderError(`${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Check the Anthropic API documentation for more information',
+            'Review the Claude API status page for any ongoing issues',
+            'Ensure your request parameters are valid'
+          ]
+        });
       }
       
-      // Handle unknown errors
-      throw new AnthropicProviderError('Unknown error occurred while generating text from Anthropic');
+      // Handle unknown errors (non-Error objects)
+      throw new AnthropicProviderError('Unknown error occurred while generating text from Anthropic', {
+        suggestions: [
+          'Check your network connection',
+          'Verify your request parameters',
+          'Try again later or contact Anthropic support if the issue persists'
+        ]
+      });
     }
   }
 
@@ -219,11 +316,55 @@ export class AnthropicProvider implements LLMProvider {
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
-        throw new AnthropicProviderError(`Anthropic API error when listing models: ${error.message}`, error);
+        // Check for specific error types based on message content
+        const errorMessage = error.message.toLowerCase();
+        
+        // Handle rate limit errors
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429') || errorMessage.includes('too many requests')) {
+          throw new AnthropicProviderError(`Rate limit exceeded when listing models: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Wait before sending additional requests',
+              'Try again after a short delay',
+              'Reduce the frequency of requests to the Anthropic API'
+            ]
+          });
+        }
+        
+        // Handle API authentication errors
+        if (errorMessage.includes('key') && (errorMessage.includes('invalid') || errorMessage.includes('expired'))) {
+          throw new AnthropicProviderError(`API key error when listing models: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Check that your Anthropic API key is valid and not expired',
+              'Ensure the API key has the correct permissions',
+              'Generate a new API key in the Anthropic console if needed'
+            ],
+            examples: [
+              'export ANTHROPIC_API_KEY=your_new_api_key'
+            ]
+          });
+        }
+        
+        // Generic API error for other cases
+        throw new AnthropicProviderError(`Error listing Anthropic models: ${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Check the Anthropic API documentation for more information',
+            'Ensure your account has access to Anthropic models',
+            'Verify your network connection'
+          ]
+        });
       }
       
-      // Handle unknown errors
-      throw new AnthropicProviderError('Unknown error occurred while listing models from Anthropic');
+      // Handle unknown errors (non-Error objects)
+      throw new AnthropicProviderError('Unknown error occurred while listing models from Anthropic', {
+        suggestions: [
+          'Check your network connection',
+          'Verify your API key is correct',
+          'Try again later or contact Anthropic support if the issue persists'
+        ]
+      });
     }
   }
 }
