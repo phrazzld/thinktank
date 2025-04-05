@@ -5,14 +5,32 @@ import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold 
 import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
+import { ApiError } from '../core/errors';
 
 /**
  * Google provider error class
+ * Extends ApiError for better error handling while maintaining backward compatibility
  */
-export class GoogleProviderError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
+export class GoogleProviderError extends ApiError {
+  constructor(message: string, options?: {
+    cause?: Error;
+    suggestions?: string[];
+    examples?: string[];
+  }) {
+    super(message, {
+      ...options,
+      providerId: 'google' // Always set the provider ID to 'google'
+    });
+    
     this.name = 'GoogleProviderError';
+    
+    // Ensure the name property is correctly set and non-enumerable
+    // This ensures instanceof checks work correctly in tests
+    Object.defineProperty(this, 'name', {
+      value: 'GoogleProviderError',
+      enumerable: false,
+      configurable: true
+    });
   }
 }
 
@@ -55,7 +73,20 @@ export class GoogleProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
-      throw new GoogleProviderError('Google API key is missing. Set GEMINI_API_KEY environment variable or provide it when creating the provider.');
+      // Add specific suggestions and examples for the API key error
+      throw new GoogleProviderError('Google API key is missing', {
+        suggestions: [
+          'Set the GEMINI_API_KEY environment variable with your Google AI Studio API key',
+          'Provide the API key when creating the GoogleProvider instance: new GoogleProvider(apiKey)',
+          'Get your API key from Google AI Studio at: https://aistudio.google.com/app/apikey',
+          'Make sure the API key has permissions for the Gemini models you are trying to use'
+        ],
+        examples: [
+          'export GEMINI_API_KEY=your_api_key_here',
+          'const googleProvider = new GoogleProvider("your_api_key_here")',
+          'GEMINI_API_KEY=your_api_key_here npm start'
+        ]
+      });
     }
     
     this.client = new GoogleGenerativeAI(apiKey);
@@ -193,12 +224,95 @@ export class GoogleProvider implements LLMProvider {
         throw error; // Re-throw our own errors
       }
       
+      // Detect specific error types and provide customized suggestions
       if (error instanceof Error) {
-        throw new GoogleProviderError(`Google API error: ${error.message}`, error);
+        const errorMessage = error.message.toLowerCase();
+        
+        // Handle authentication errors
+        if (errorMessage.includes('auth') || errorMessage.includes('unauthorized') || 
+            errorMessage.includes('unauthenticated') || errorMessage.includes('invalid key')) {
+          throw new GoogleProviderError(`Authentication failed`, {
+            cause: error,
+            suggestions: [
+              'Verify your Google API key is correct and not expired',
+              'Check that your API key has access to the requested model',
+              'Ensure you have quota/credits remaining in your Google AI Studio account',
+              'Generate a new API key if the current one is not working'
+            ],
+            examples: [
+              'export GEMINI_API_KEY=your_new_api_key_here',
+              'const provider = new GoogleProvider("your_new_api_key_here")'
+            ]
+          });
+        }
+        
+        // Handle rate limiting errors
+        if (errorMessage.includes('rate') || errorMessage.includes('limit') || 
+            errorMessage.includes('quota') || errorMessage.includes('capacity')) {
+          throw new GoogleProviderError(`Rate limit or quota exceeded`, {
+            cause: error,
+            suggestions: [
+              'Wait a few minutes before trying again',
+              'Reduce the frequency of your API requests',
+              'Request a quota increase from Google AI Studio',
+              'Use a different model with higher quota limits'
+            ]
+          });
+        }
+        
+        // Handle model availability errors
+        if (errorMessage.includes('model') && 
+            (errorMessage.includes('not found') || errorMessage.includes('unavailable'))) {
+          throw new GoogleProviderError(`Model unavailable or not found`, {
+            cause: error,
+            suggestions: [
+              'Verify the model ID is correct and available in your region',
+              'Check if the model requires special access (e.g., gemini-pro-vision)',
+              'Try with a different version of the model',
+              'Check the Google AI Studio status page for outages'
+            ],
+            examples: [
+              'Use "gemini-1.5-pro" instead of "gemini-pro"',
+              'Use "gemini-1.0-pro" for older stable version'
+            ]
+          });
+        }
+        
+        // Handle content filtering/safety errors
+        if (errorMessage.includes('safety') || errorMessage.includes('harmful') || 
+            errorMessage.includes('content') || errorMessage.includes('blocked')) {
+          throw new GoogleProviderError(`Content blocked by safety filters`, {
+            cause: error,
+            suggestions: [
+              'Your prompt may have triggered content safety filters',
+              'Modify your prompt to avoid sensitive topics',
+              'Check for potentially harmful or dangerous content in your prompt',
+              'Review Google\'s Content Policy for Generative AI'
+            ]
+          });
+        }
+        
+        // Generic error for unrecognized cases
+        throw new GoogleProviderError(`Google API error: ${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Check your network connection',
+            'Verify your prompt does not exceed token limits',
+            'Ensure the model ID is correct',
+            'Try with a different model or lower parameter settings'
+          ]
+        });
       }
       
       // Handle unknown errors
-      throw new GoogleProviderError('Unknown error occurred while generating text from Google Gemini');
+      throw new GoogleProviderError('Unknown error occurred while generating text from Google Gemini', {
+        suggestions: [
+          'Check your network connection',
+          'Verify your environment setup',
+          'Try with a simpler prompt or different model',
+          'Check Google AI Studio status for service disruptions'
+        ]
+      });
     }
   }
   
@@ -234,19 +348,143 @@ export class GoogleProvider implements LLMProvider {
                      `Input token limit: ${model.inputTokenLimit}, Output token limit: ${model.outputTokenLimit}`,
       }));
     } catch (error) {
+      if (error instanceof GoogleProviderError) {
+        throw error; // Re-throw our own errors
+      }
+      
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
         const responseData = error.response?.data as { error?: { message?: string } } | undefined;
-        const message = responseData?.error?.message || error.message;
-        throw new GoogleProviderError(`Google API error listing models (Status: ${status}): ${message}`, error);
+        const errorMessage = responseData?.error?.message || error.message;
+        
+        // Handle different HTTP status codes specifically
+        switch (status) {
+          case 401:
+            throw new GoogleProviderError(`Authentication failed (Status: 401)`, {
+              cause: error,
+              suggestions: [
+                'Verify your Google API key is correct',
+                'Ensure your API key has not expired',
+                'Generate a new API key if necessary',
+                'Check that your API key has permission to list models'
+              ],
+              examples: [
+                'export GEMINI_API_KEY=your_new_api_key_here',
+                'Get a new key at https://aistudio.google.com/app/apikey'
+              ]
+            });
+            
+          case 403:
+            throw new GoogleProviderError(`Permission denied (Status: 403)`, {
+              cause: error,
+              suggestions: [
+                'Your API key does not have permission to access this resource',
+                'Check if your Google account has access to the requested models',
+                'Verify you have completed any required verification steps',
+                'Check if your account has any restrictions or limitations'
+              ]
+            });
+            
+          case 429:
+            throw new GoogleProviderError(`Rate limit exceeded (Status: 429)`, {
+              cause: error,
+              suggestions: [
+                'You have exceeded your quota or rate limit',
+                'Wait a few minutes before trying again',
+                'Request a quota increase from Google AI Studio',
+                'Reduce the frequency of your API requests'
+              ]
+            });
+            
+          case 404:
+            throw new GoogleProviderError(`Resource not found (Status: 404)`, {
+              cause: error,
+              suggestions: [
+                'The requested endpoint may have changed',
+                'Check if the API version in the URL is correct',
+                'Verify that the Google Generative AI API is available in your region'
+              ]
+            });
+            
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            throw new GoogleProviderError(`Google API server error (Status: ${status})`, {
+              cause: error,
+              suggestions: [
+                'This is likely a temporary issue with Google\'s servers',
+                'Wait a few minutes and try again',
+                'Check Google AI Studio status page for any reported outages',
+                'Try using a different model or endpoint if available'
+              ]
+            });
+            
+          default:
+            // Generic error for other status codes
+            throw new GoogleProviderError(`Google API error listing models (Status: ${status}): ${errorMessage}`, {
+              cause: error,
+              suggestions: [
+                'Check your network connection',
+                'Verify your API key is correctly formatted',
+                'Ensure your Google account is in good standing',
+                'Try again after a few minutes'
+              ]
+            });
+        }
       }
       
       if (error instanceof Error) {
-        throw new GoogleProviderError(`Error listing Google models: ${error.message}`, error);
+        // Check for network or connectivity issues
+        const errorMessage = error.message.toLowerCase();
+        
+        if (errorMessage.includes('network') || errorMessage.includes('connect') || 
+            errorMessage.includes('timeout') || errorMessage.includes('enotfound')) {
+          throw new GoogleProviderError(`Network error connecting to Google API`, {
+            cause: error,
+            suggestions: [
+              'Check your internet connection',
+              'Verify that DNS resolution is working correctly',
+              'Ensure your firewall or security software allows connections to Google\'s APIs',
+              'If you\'re using a proxy or VPN, try disabling it temporarily'
+            ]
+          });
+        }
+        
+        // Handle rate limiting errors
+        if (errorMessage.includes('rate') || errorMessage.includes('limit') || 
+            errorMessage.includes('quota') || errorMessage.includes('capacity')) {
+          throw new GoogleProviderError(`Error listing Google models: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'You may have exceeded your API rate limit or quota',
+              'Wait a few minutes before trying again',
+              'Request a quota increase from Google AI Studio',
+              'Reduce the frequency of your API requests'
+            ]
+          });
+        }
+        
+        // Generic error for other Error types
+        throw new GoogleProviderError(`Error listing Google models: ${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Check your environment setup',
+            'Verify that your API key is correctly formatted',
+            'Ensure you have the correct permissions in your Google account'
+          ]
+        });
       }
       
       // Handle unknown errors
-      throw new GoogleProviderError('Unknown error occurred while listing models from Google');
+      throw new GoogleProviderError('Unknown error occurred while listing models from Google', {
+        suggestions: [
+          'Check your network connection',
+          'Verify your environment setup',
+          'Check Google AI Studio status for service disruptions',
+          'Try with a different API key or account'
+        ]
+      });
     }
   }
 }

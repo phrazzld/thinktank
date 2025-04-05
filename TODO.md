@@ -53,7 +53,7 @@
   - Dependencies: Core error system implementation
   - Priority: Medium
 
-- [ ] Update google.ts error handling
+- [x] Update google.ts error handling
   - Description: Use ApiError in catch blocks with providerId
   - Dependencies: Core error system implementation
   - Priority: Medium
