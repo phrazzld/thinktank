@@ -9,14 +9,16 @@ import {
   ApiError, 
   ConfigError,
   FileSystemError,
-  NetworkError,
   PermissionError,
   errorCategories,
   createFileNotFoundError,
   createModelFormatError,
   createMissingApiKeyError
 } from '../../core/errors';
-import { colors } from '../../utils/consoleUtils';
+// Import handleError function from our test helpers
+// We're using a separate file just for testing to avoid CLI initialization
+// This is needed to prevent the CLI from running after tests complete
+import { handleError } from './test-helpers/cli-handlers';
 import { logger } from '../../utils/logger';
 
 // Mock the logger to prevent actual console output during tests
@@ -306,234 +308,45 @@ describe('CLI Error Handling', () => {
 });
 
 /**
- * Simulates CLI error display formatting
- * This is based on the actual logic in CLI's handleError function
+ * Test helper function that captures CLI error output from the actual handleError function
+ * 
+ * This function:
+ * 1. Mocks process.exit to prevent tests from terminating
+ * 2. Captures all calls to logger.error
+ * 3. Calls the actual handleError function with the provided error
+ * 4. Returns the captured error messages as a string
+ * 
+ * @param error - The error to handle
+ * @returns The formatted error output as a string
  */
-function formatErrorForCLI(error: Error): string {
-  // Capture calls to logger.error in an array so we can reconstruct the output
+function formatErrorForCLI(error: unknown): string {
+  // Capture calls to logger.error in an array
   const errorMessages: string[] = [];
+  
+  // Store the original implementations to restore later
   const originalLoggerError = logger.error;
+  const originalProcessExit = process.exit;
+  
+  // Mock logger.error to capture messages
   logger.error = jest.fn().mockImplementation((msg: string) => {
     errorMessages.push(msg);
   });
   
-  // Call our mock implementation of handleError
-  mockHandleError(error);
+  // Mock process.exit to prevent test termination
+  process.exit = jest.fn() as unknown as (code?: number) => never;
   
-  // Restore logger.error
-  logger.error = originalLoggerError;
-  
-  // Join all captured error messages into a single string
-  return errorMessages.join('\n');
-}
-
-/**
- * Handles unknown error types directly (not just Error instances)
- */
-function formatErrorForCliDirect(error: unknown): string {
-  // Capture calls to logger.error in an array so we can reconstruct the output
-  const errorMessages: string[] = [];
-  const originalLoggerError = logger.error;
-  logger.error = jest.fn().mockImplementation((msg: string) => {
-    errorMessages.push(msg);
-  });
-  
-  // Call our mock implementation of handleError
-  mockHandleError(error);
-  
-  // Restore logger.error
-  logger.error = originalLoggerError;
-  
-  // Join all captured error messages into a single string
-  return errorMessages.join('\n');
-}
-
-/**
- * Simulates the CLI's handleError function
- */
-function mockHandleError(error: unknown): void {
-  // Handle errors with enhanced formatting
-  if (error instanceof ThinktankError) {
-    // Use the built-in format method for consistent error display
-    logger.error(error.format());
+  try {
+    // Call the actual handleError function from CLI
+    handleError(error);
     
-    // Display cause if available and not already shown in format()
-    if (error.cause && !error.format().includes('Cause:')) {
-      logger.error(`${colors.dim('Cause:')} ${error.cause.message}`);
-    }
-    
-    // Provide category-specific guidance
-    addMockGuidance(error);
-    
-  } else if (error instanceof Error) {
-    // Convert standard Error to ThinktankError for consistent formatting
-    const wrappedError = wrapMockError(error);
-    logger.error(wrappedError.format());
-    
-    // Add contextual help for the wrapped error
-    addMockGuidance(wrappedError);
-  } else {
-    // Handle unknown errors (non-Error objects)
-    const genericError = new ThinktankError('An unknown error occurred', {
-      category: errorCategories.UNKNOWN,
-      suggestions: [
-        'This is likely an internal error in thinktank',
-        'Check for updates to thinktank as this may be a fixed issue',
-        'Report this issue if it persists'
-      ]
-    });
-    logger.error(genericError.format());
+    // Return the captured error messages
+    return errorMessages.join('\n');
+  } finally {
+    // Restore the original implementations
+    logger.error = originalLoggerError;
+    process.exit = originalProcessExit;
   }
 }
 
-/**
- * Adds category-specific guidance based on error type
- * This simulates the actual implementation in CLI
- */
-function addMockGuidance(error: ThinktankError): void {
-  // File System errors
-  if (error.category === errorCategories.FILESYSTEM) {
-    logger.error('\nCorrect usage:');
-    logger.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
-    logger.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);
-  }
-  
-  // Configuration errors
-  else if (error.category === errorCategories.CONFIG) {
-    logger.error('\nConfiguration help:');
-    logger.error(`  ${colors.green('>')} thinktank config view`);
-    logger.error(`  ${colors.green('>')} thinktank config set key value`);
-    logger.error(`  ${colors.green('>')} Edit ~/.thinktank/config.json directly`);
-  }
-  
-  // API errors
-  else if (error.category === errorCategories.API) {
-    // For API errors, check if it's provider-specific
-    if (error instanceof ApiError && error.providerId) {
-      // Provider-specific guidance
-      switch (error.providerId.toLowerCase()) {
-        case 'openai':
-          logger.error('\nOpenAI API help:');
-          logger.error(`  ${colors.green('>')} Get API keys: https://platform.openai.com/api-keys`);
-          logger.error(`  ${colors.green('>')} Set with: export OPENAI_API_KEY=your_key_here`);
-          break;
-          
-        case 'anthropic':
-          logger.error('\nAnthropic API help:');
-          logger.error(`  ${colors.green('>')} Get API keys: https://console.anthropic.com/keys`);
-          logger.error(`  ${colors.green('>')} Set with: export ANTHROPIC_API_KEY=your_key_here`);
-          break;
-          
-        case 'google':
-          logger.error('\nGoogle AI API help:');
-          logger.error(`  ${colors.green('>')} Get API keys: https://aistudio.google.com/app/apikey`);
-          logger.error(`  ${colors.green('>')} Set with: export GEMINI_API_KEY=your_key_here`);
-          break;
-          
-        case 'openrouter':
-          logger.error('\nOpenRouter API help:');
-          logger.error(`  ${colors.green('>')} Get API keys: https://openrouter.ai/keys`);
-          logger.error(`  ${colors.green('>')} Set with: export OPENROUTER_API_KEY=your_key_here`);
-          break;
-          
-        default:
-          logger.error('\nAPI help:');
-          logger.error(`  ${colors.green('>')} Ensure you have the correct API key for ${error.providerId}`);
-          logger.error(`  ${colors.green('>')} Set with: export ${error.providerId.toUpperCase()}_API_KEY=your_key_here`);
-      }
-    } else {
-      // Generic API error guidance
-      logger.error('\nAPI help:');
-      logger.error(`  ${colors.green('>')} Check your API credentials`);
-      logger.error(`  ${colors.green('>')} Verify network connectivity to API services`);
-      logger.error(`  ${colors.green('>')} Run with --debug flag for more information`);
-    }
-  }
-  
-  // Network errors
-  else if (error.category === errorCategories.NETWORK) {
-    logger.error('\nNetwork troubleshooting:');
-    logger.error(`  ${colors.green('>')} Check your internet connection`);
-    logger.error(`  ${colors.green('>')} Verify you can access the API endpoints (no firewall blocking)`);
-    logger.error(`  ${colors.green('>')} Try again in a few minutes if service might be down`);
-  }
-  
-  // Validation errors (including input errors)
-  else if (error.category === errorCategories.VALIDATION || error.category === errorCategories.INPUT) {
-    logger.error('\nInput help:');
-    logger.error(`  ${colors.green('>')} thinktank run prompt.txt [options]`);
-    logger.error(`  ${colors.green('>')} Use --help with any command for detailed usage`);
-  }
-  
-  // For unknown or other errors, offer general debugging help
-  else if (error.category === errorCategories.UNKNOWN) {
-    logger.error('\nTroubleshooting help:');
-    logger.error(`  ${colors.green('>')} Run with --debug flag for more information`);
-    logger.error(`  ${colors.green('>')} Check thinktank documentation for guidance`);
-    logger.error(`  ${colors.green('>')} Report bugs at: https://github.com/phrazzld/thinktank/issues`);
-  }
-}
-
-/**
- * Wraps standard Error objects in ThinktankError for consistent formatting
- * Mirrors the implementation in the CLI
- */
-function wrapMockError(error: Error): ThinktankError {
-  // Try to categorize based on message content
-  const message = error.message.toLowerCase();
-  
-  // Network-related errors
-  if (message.includes('network') || 
-      message.includes('econnrefused') || 
-      message.includes('timeout') ||
-      message.includes('socket')) {
-    return new NetworkError(`Network error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check your internet connection',
-        'Verify that required services are accessible from your network',
-        'The service might be down or experiencing issues'
-      ]
-    });
-  }
-  
-  // File-related errors
-  else if (message.includes('file') || 
-           message.includes('directory') || 
-           message.includes('enoent') ||
-           message.includes('permission denied')) {
-    return new FileSystemError(`File system error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check that the file or directory exists',
-        'Verify that you have appropriate permissions',
-        'Ensure the path is correct'
-      ]
-    });
-  }
-  
-  // Configuration errors
-  else if (message.includes('config') || 
-           message.includes('settings') || 
-           message.includes('option')) {
-    return new ConfigError(`Configuration error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check your thinktank configuration file',
-        'Try resetting to default configuration with: thinktank config reset',
-        'Verify that configuration values are in the correct format'
-      ]
-    });
-  }
-  
-  // Default to unknown category
-  return new ThinktankError(`Unexpected error: ${error.message}`, {
-    category: errorCategories.UNKNOWN,
-    cause: error,
-    suggestions: [
-      'Run with --debug flag for more detailed information',
-      'Check documentation for this feature',
-      'This may be an internal error in thinktank'
-    ]
-  });
-}
+// Simple alias for formatErrorForCLI to maintain backward compatibility in tests
+const formatErrorForCliDirect = formatErrorForCLI;
