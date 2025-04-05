@@ -8,7 +8,14 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
 import dotenv from 'dotenv';
-import { ThinktankError } from '../core/errors';
+import { 
+  ThinktankError, 
+  ApiError, 
+  ConfigError, 
+  FileSystemError, 
+  NetworkError,
+  errorCategories 
+} from '../core/errors';
 import { colors } from '../utils/consoleUtils';
 import { configureLogger, logger } from '../utils/logger';
 
@@ -61,19 +68,186 @@ export function handleError(error: unknown): void {
       logger.error(`${colors.dim('Cause:')} ${error.cause.message}`);
     }
     
-    // Show general help for filesystem errors
-    if (error.category === 'File System') {
-      logger.error('\nCorrect usage:');
-      logger.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
-      logger.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);
-    }
+    // Provide category-specific guidance
+    // This adds contextual help based on error category
+    addCategorySpecificGuidance(error);
+    
   } else if (error instanceof Error) {
-    logger.error(`Unexpected error: ${error.message}`, error);
+    // Convert standard Error to ThinktankError for consistent formatting
+    const wrappedError = wrapStandardError(error);
+    logger.error(wrappedError.format());
+    
+    // Add contextual help for the wrapped error
+    addCategorySpecificGuidance(wrappedError);
   } else {
-    logger.error('An unknown error occurred');
+    // Handle unknown errors (non-Error objects)
+    const genericError = new ThinktankError('An unknown error occurred', {
+      category: errorCategories.UNKNOWN,
+      suggestions: [
+        'This is likely an internal error in thinktank',
+        'Check for updates to thinktank as this may be a fixed issue',
+        'Report this issue if it persists'
+      ]
+    });
+    logger.error(genericError.format());
   }
   
   process.exit(1);
+}
+
+/**
+ * Adds category-specific guidance based on error type
+ * 
+ * @param error - The ThinktankError to provide guidance for
+ */
+function addCategorySpecificGuidance(error: ThinktankError): void {
+  // File System errors
+  if (error.category === errorCategories.FILESYSTEM) {
+    logger.error('\nCorrect usage:');
+    logger.error(`  ${colors.green('>')} thinktank run prompt.txt [--group=group]`);
+    logger.error(`  ${colors.green('>')} thinktank run prompt.txt --models=provider:model`);
+  }
+  
+  // Configuration errors
+  else if (error.category === errorCategories.CONFIG) {
+    logger.error('\nConfiguration help:');
+    logger.error(`  ${colors.green('>')} thinktank config view`);
+    logger.error(`  ${colors.green('>')} thinktank config set key value`);
+    logger.error(`  ${colors.green('>')} Edit ~/.thinktank/config.json directly`);
+  }
+  
+  // API errors
+  else if (error.category === errorCategories.API) {
+    // For API errors, check if it's provider-specific
+    if (error instanceof ApiError && error.providerId) {
+      // Provider-specific guidance
+      switch (error.providerId.toLowerCase()) {
+        case 'openai':
+          logger.error('\nOpenAI API help:');
+          logger.error(`  ${colors.green('>')} Get API keys: https://platform.openai.com/api-keys`);
+          logger.error(`  ${colors.green('>')} Set with: export OPENAI_API_KEY=your_key_here`);
+          break;
+          
+        case 'anthropic':
+          logger.error('\nAnthropic API help:');
+          logger.error(`  ${colors.green('>')} Get API keys: https://console.anthropic.com/keys`);
+          logger.error(`  ${colors.green('>')} Set with: export ANTHROPIC_API_KEY=your_key_here`);
+          break;
+          
+        case 'google':
+          logger.error('\nGoogle AI API help:');
+          logger.error(`  ${colors.green('>')} Get API keys: https://aistudio.google.com/app/apikey`);
+          logger.error(`  ${colors.green('>')} Set with: export GEMINI_API_KEY=your_key_here`);
+          break;
+          
+        case 'openrouter':
+          logger.error('\nOpenRouter API help:');
+          logger.error(`  ${colors.green('>')} Get API keys: https://openrouter.ai/keys`);
+          logger.error(`  ${colors.green('>')} Set with: export OPENROUTER_API_KEY=your_key_here`);
+          break;
+          
+        default:
+          logger.error('\nAPI help:');
+          logger.error(`  ${colors.green('>')} Ensure you have the correct API key for ${error.providerId}`);
+          logger.error(`  ${colors.green('>')} Set with: export ${error.providerId.toUpperCase()}_API_KEY=your_key_here`);
+      }
+    } else {
+      // Generic API error guidance
+      logger.error('\nAPI help:');
+      logger.error(`  ${colors.green('>')} Check your API credentials`);
+      logger.error(`  ${colors.green('>')} Verify network connectivity to API services`);
+      logger.error(`  ${colors.green('>')} Run with --debug flag for more information`);
+    }
+  }
+  
+  // Network errors
+  else if (error.category === errorCategories.NETWORK) {
+    logger.error('\nNetwork troubleshooting:');
+    logger.error(`  ${colors.green('>')} Check your internet connection`);
+    logger.error(`  ${colors.green('>')} Verify you can access the API endpoints (no firewall blocking)`);
+    logger.error(`  ${colors.green('>')} Try again in a few minutes if service might be down`);
+  }
+  
+  // Validation errors (including input errors)
+  else if (error.category === errorCategories.VALIDATION || error.category === errorCategories.INPUT) {
+    logger.error('\nInput help:');
+    logger.error(`  ${colors.green('>')} thinktank run prompt.txt [options]`);
+    logger.error(`  ${colors.green('>')} Use --help with any command for detailed usage`);
+  }
+  
+  // For unknown or other errors, offer general debugging help
+  else if (error.category === errorCategories.UNKNOWN) {
+    logger.error('\nTroubleshooting help:');
+    logger.error(`  ${colors.green('>')} Run with --debug flag for more information`);
+    logger.error(`  ${colors.green('>')} Check thinktank documentation for guidance`);
+    logger.error(`  ${colors.green('>')} Report bugs at: https://github.com/phrazzld/thinktank/issues`);
+  }
+}
+
+/**
+ * Wraps standard Error objects in ThinktankError for consistent formatting
+ * 
+ * @param error - The standard Error to wrap
+ * @returns A ThinktankError with appropriate category and cause
+ */
+function wrapStandardError(error: Error): ThinktankError {
+  // Try to categorize based on message content
+  const message = error.message.toLowerCase();
+  
+  // Network-related errors
+  if (message.includes('network') || 
+      message.includes('econnrefused') || 
+      message.includes('timeout') ||
+      message.includes('socket')) {
+    return new NetworkError(`Network error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check your internet connection',
+        'Verify that required services are accessible from your network',
+        'The service might be down or experiencing issues'
+      ]
+    });
+  }
+  
+  // File-related errors
+  else if (message.includes('file') || 
+           message.includes('directory') || 
+           message.includes('enoent') ||
+           message.includes('permission denied')) {
+    return new FileSystemError(`File system error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check that the file or directory exists',
+        'Verify that you have appropriate permissions',
+        'Ensure the path is correct'
+      ]
+    });
+  }
+  
+  // Configuration errors
+  else if (message.includes('config') || 
+           message.includes('settings') || 
+           message.includes('option')) {
+    return new ConfigError(`Configuration error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check your thinktank configuration file',
+        'Try resetting to default configuration with: thinktank config reset',
+        'Verify that configuration values are in the correct format'
+      ]
+    });
+  }
+  
+  // Default to unknown category
+  return new ThinktankError(`Unexpected error: ${error.message}`, {
+    category: errorCategories.UNKNOWN,
+    cause: error,
+    suggestions: [
+      'Run with --debug flag for more detailed information',
+      'Check documentation for this feature',
+      'This may be an internal error in thinktank'
+    ]
+  });
 }
 
 // Main execution function

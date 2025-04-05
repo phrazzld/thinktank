@@ -4,7 +4,14 @@
  * These tests verify that the CLI properly handles and displays
  * various types of errors with helpful, actionable information.
  */
-import { ThinktankError, errorCategories } from '../../core/errors';
+import { 
+  ThinktankError, 
+  ApiError, 
+  ConfigError,
+  FileSystemError,
+  NetworkError,
+  errorCategories 
+} from '../../core/errors';
 
 // This file tests error formatting for CLI display
 
@@ -88,9 +95,9 @@ describe('CLI Error Handling', () => {
   });
   
   test('API Key errors should show provider-specific guidance', () => {
-    // Create an API Key error
-    const error = new ThinktankError('Missing API key for provider: openai', {
-      category: errorCategories.API,
+    // Create an API Key error with ApiError class
+    const error = new ApiError('Missing API key for provider', {
+      providerId: 'openai',
       suggestions: [
         'Get your API key from platform.openai.com',
         'Set the OPENAI_API_KEY environment variable'
@@ -110,6 +117,39 @@ describe('CLI Error Handling', () => {
     expect(errorDisplay).toContain('OPENAI_API_KEY');
     expect(errorDisplay).toContain('export OPENAI_API_KEY=your_key_here');
   });
+  
+  test('Standard errors should be wrapped with appropriate ThinktankError type', () => {
+    // Create a standard Error that looks like a network issue
+    const error = new Error('Connection timeout when connecting to API server');
+    
+    // Simulate CLI error handling with wrapped error
+    const errorDisplay = formatErrorForCLI(error);
+    
+    // Verify error display shows networking guidance
+    expect(errorDisplay).toContain('Network error');
+    expect(errorDisplay).toContain('Connection timeout');
+    expect(errorDisplay).toContain('Network troubleshooting');
+    expect(errorDisplay).toContain('Check your internet connection');
+  });
+  
+  test('Configuration errors should show configuration help', () => {
+    // Create a config error
+    const error = new ConfigError('Invalid configuration: model not found', {
+      suggestions: [
+        'Check available models',
+        'Verify model ID format'
+      ]
+    });
+    
+    // Simulate CLI error handling
+    const errorDisplay = formatErrorForCLI(error);
+    
+    // Verify configuration help is shown
+    expect(errorDisplay).toContain('Error (Configuration)');
+    expect(errorDisplay).toContain('Invalid configuration');
+    expect(errorDisplay).toContain('Configuration help');
+    expect(errorDisplay).toContain('thinktank config view');
+  });
 });
 
 /**
@@ -128,17 +168,96 @@ function formatErrorForCLI(error: Error): string {
       output += `Cause: ${error.cause.message}\n`;
     }
     
-    // Show general help for common errors
-    if (error.category === errorCategories.FILESYSTEM) {
-      output += '\nCorrect usage:\n';
-      output += '  > thinktank prompt.txt [group]\n';
-      output += '  > thinktank prompt.txt provider:model\n';
-    }
+    // Add category-specific guidance
+    output = addTestGuidance(error, output);
   } else if (error instanceof Error) {
-    output += `Unexpected error: ${error.message}\n`;
+    // Convert standard Error to ThinktankError
+    const wrappedError = wrapTestError(error);
+    output += wrappedError.format() + '\n';
+    
+    // Add guidance for the wrapped error
+    output = addTestGuidance(wrappedError, output);
   } else {
     output += 'An unknown error occurred\n';
   }
   
   return output;
+}
+
+/**
+ * Adds test-specific guidance similar to the CLI implementation
+ */
+function addTestGuidance(error: ThinktankError, output: string): string {
+  let updatedOutput = output;
+  
+  // File System errors
+  if (error.category === errorCategories.FILESYSTEM) {
+    updatedOutput += '\nCorrect usage:\n';
+    updatedOutput += '  > thinktank prompt.txt [group]\n';
+    updatedOutput += '  > thinktank prompt.txt provider:model\n';
+  }
+  
+  // Configuration errors
+  else if (error.category === errorCategories.CONFIG) {
+    updatedOutput += '\nConfiguration help:\n';
+    updatedOutput += '  > thinktank config view\n';
+    updatedOutput += '  > thinktank config set key value\n';
+    updatedOutput += '  > Edit ~/.thinktank/config.json directly\n';
+  }
+  
+  // API errors
+  else if (error.category === errorCategories.API) {
+    // For API errors, check if it's provider-specific
+    if (error instanceof ApiError && error.providerId) {
+      // Provider-specific guidance
+      switch (error.providerId.toLowerCase()) {
+        case 'openai':
+          updatedOutput += '\nOpenAI API help:\n';
+          updatedOutput += '  > Get API keys: https://platform.openai.com/api-keys\n';
+          updatedOutput += '  > Set with: export OPENAI_API_KEY=your_key_here\n';
+          break;
+          
+        case 'anthropic':
+          updatedOutput += '\nAnthropic API help:\n';
+          updatedOutput += '  > Get API keys: https://console.anthropic.com/keys\n';
+          updatedOutput += '  > Set with: export ANTHROPIC_API_KEY=your_key_here\n';
+          break;
+      }
+    }
+  }
+  
+  // Network errors
+  else if (error.category === errorCategories.NETWORK) {
+    updatedOutput += '\nNetwork troubleshooting:\n';
+    updatedOutput += '  > Check your internet connection\n';
+    updatedOutput += '  > Verify you can access the API endpoints\n';
+    updatedOutput += '  > Try again in a few minutes\n';
+  }
+  
+  return updatedOutput;
+}
+
+/**
+ * Wraps test errors in ThinktankError for testing
+ */
+function wrapTestError(error: Error): ThinktankError {
+  const message = error.message.toLowerCase();
+  
+  if (message.includes('timeout') || message.includes('network')) {
+    return new NetworkError(`Network error: ${error.message}`, {
+      cause: error,
+      suggestions: ['Check your internet connection']
+    });
+  }
+  
+  if (message.includes('file') || message.includes('directory')) {
+    return new FileSystemError(`File system error: ${error.message}`, {
+      cause: error,
+      suggestions: ['Check that the file exists']
+    });
+  }
+  
+  return new ThinktankError(`Unexpected error: ${error.message}`, {
+    cause: error
+  });
 }
