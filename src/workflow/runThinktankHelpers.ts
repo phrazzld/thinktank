@@ -17,6 +17,7 @@ import {
   errorCategories
 } from '../core/errors';
 import { createContextualError } from '../core/errors/utils/categorization';
+import { FileOutputStatus } from '../utils/throttledSpinner';
 import { 
   styleInfo, 
   styleSuccess, 
@@ -482,12 +483,18 @@ export async function _executeQueries({
       
       // Define status update callback to update spinner with model progress
       onStatusUpdate: (modelKey: string, status: ModelQueryStatus) => {
-        if (status.status === 'running') {
-          spinner.text = `Querying ${modelKey}...`;
-        } else if (status.status === 'success') {
-          spinner.text = `Received response from ${modelKey} (${status.durationMs}ms)`;
-        } else if (status.status === 'error') {
-          spinner.text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
+        // Check if the spinner has the enhanced method
+        if ('updateForModelStatus' in spinner) {
+          spinner.updateForModelStatus(modelKey, status);
+        } else {
+          // Fallback to basic text updates
+          if (status.status === 'running') {
+            spinner.text = `Querying ${modelKey}...`;
+          } else if (status.status === 'success') {
+            spinner.text = `Received response from ${modelKey} (${status.durationMs}ms)`;
+          } else if (status.status === 'error') {
+            spinner.text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
+          }
         }
       }
     };
@@ -531,7 +538,11 @@ export async function _executeQueries({
     }
     
     // Set final spinner text for consistent state
-    spinner.text = `Query execution complete: ${successCount} succeeded, ${failureCount} failed`;
+    if ('updateForModelSummary' in spinner) {
+      spinner.updateForModelSummary(successCount, failureCount, true);
+    } else {
+      spinner.text = `Query execution complete: ${successCount} succeeded, ${failureCount} failed`;
+    }
     
     // 6. Return the results
     return { queryResults };
@@ -594,12 +605,25 @@ export async function _processOutput({
       status: string;
       error?: string;
     }, _allDetails: Array<{ modelKey: string; filename: string; status: string; error?: string }>): void => {
-      if (fileDetail.status === 'pending') {
-        spinner.text = `Writing file for ${fileDetail.modelKey}...`;
-      } else if (fileDetail.status === 'success') {
-        spinner.text = `Wrote results for ${fileDetail.modelKey}`;
-      } else if (fileDetail.status === 'error') {
-        spinner.text = `Error writing file for ${fileDetail.modelKey}: ${fileDetail.error || 'Unknown error'}`;
+      if ('updateForFileStatus' in spinner) {
+        // Convert to FileOutputStatus type for enhanced spinner update
+        const typedStatus: FileOutputStatus = {
+          modelKey: fileDetail.modelKey,
+          filename: fileDetail.filename,
+          status: fileDetail.status as 'pending' | 'success' | 'error', // Cast to our enum values
+          error: fileDetail.error
+        };
+        
+        spinner.updateForFileStatus(typedStatus);
+      } else {
+        // Fallback to basic text updates
+        if (fileDetail.status === 'pending') {
+          spinner.text = `Writing file for ${fileDetail.modelKey}...`;
+        } else if (fileDetail.status === 'success') {
+          spinner.text = `Wrote results for ${fileDetail.modelKey}`;
+        } else if (fileDetail.status === 'error') {
+          spinner.text = `Error writing file for ${fileDetail.modelKey}: ${fileDetail.error || 'Unknown error'}`;
+        }
       }
     };
     
@@ -660,7 +684,11 @@ export async function _processOutput({
     }
     
     // Set final spinner text for consistent state
-    spinner.text = `Output processing complete: ${succeededWrites} files written, ${failedWrites} failed`;
+    if ('updateForFileSummary' in spinner) {
+      spinner.updateForFileSummary(succeededWrites, failedWrites, true);
+    } else {
+      spinner.text = `Output processing complete: ${succeededWrites} files written, ${failedWrites} failed`;
+    }
     
     // 6. Return the result
     return {

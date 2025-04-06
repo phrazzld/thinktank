@@ -12,15 +12,20 @@ import { ModelSelectionResult } from './modelSelector';
 import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
 import type { Ora } from 'ora';
+import { ThrottledSpinner } from '../utils/throttledSpinner';
 
 /**
- * Common spinner parameter type for functions that need spinner access
+ * Enhanced spinner type for use in the workflow
+ * This allows either a regular Ora spinner or our enhanced ThrottledSpinner
  */
+export type EnhancedSpinner = Ora | ThrottledSpinner;
+
 export interface SpinnerContext {
   /**
-   * Ora spinner instance for providing visual feedback
+   * Spinner instance for providing visual feedback
+   * This can be either a regular Ora spinner or our enhanced ThrottledSpinner
    */
-  spinner: Ora;
+  spinner: EnhancedSpinner;
 }
 
 /**

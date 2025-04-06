@@ -20,10 +20,11 @@
   - **AC Ref:** Low-Medium risk issue identified in PLAN.md. Affects user experience.
   - **Completed:** Implemented a throttled spinner wrapper that limits update frequency to reduce flickering. Created a configurable factory to easily toggle between regular and throttled spinners.
 
-- [ ] **Refactor Duplicated Spinner Logic**: Centralize spinner update code
+- [x] **Refactor Duplicated Spinner Logic**: Centralize spinner update code
   - **Action:** Create a single function for updating spinner text based on model status to eliminate repetition in the code.
   - **Depends On:** "Optimize Spinner Updates"
   - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to inconsistencies if not addressed.
+  - **Completed:** Enhanced the ThrottledSpinner class with specialized methods to handle different types of status updates. Implemented a duck-typing approach that gracefully falls back to basic text updates for compatibility with regular Ora spinners.
 
 - [ ] **Add Missing JSDoc Comments**: Improve code documentation
   - **Action:** Add comprehensive JSDoc comments to helper functions in `runThinktankTypes.ts` and `runThinktankHelpers.ts`.
