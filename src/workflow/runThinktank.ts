@@ -11,7 +11,7 @@ import {
 } from '../utils/consoleUtils';
 import { logger } from '../utils/logger';
 import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
-import { WorkflowState } from './runThinktankTypes';
+import { WorkflowState, EnhancedSpinner } from './runThinktankTypes';
 import {
   _setupWorkflow,
   _processInput,
@@ -164,7 +164,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   });
   
   // Initialize the spinner for user feedback
-  const spinner = ora('Starting thinktank...').start();
+  const spinner = ora('Starting thinktank...') as EnhancedSpinner;
+  spinner.start();
   
   try {
     // 1. Setup workflow: Load configuration, generate run name, create output directory

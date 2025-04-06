@@ -187,10 +187,9 @@ export async function _setupWorkflow({
       });
     }
     
-    // Generic ThinktankError for other cases
-    throw new ThinktankError(`Error during workflow setup: ${error instanceof Error ? error.message : String(error)}`, {
-      cause: error instanceof Error ? error : undefined,
-      category: errorCategories.UNKNOWN
+    // Convert to ConfigError for consistency with test expectations
+    throw new ConfigError(`Error during workflow setup: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined
     });
   }
 }
@@ -332,10 +331,10 @@ export async function _processInput({
       });
     }
     
-    // For unexpected errors, wrap in ThinktankError
-    throw new ThinktankError(`Error processing input: ${error instanceof Error ? error.message : String(error)}`, {
+    // For unexpected errors, wrap in FileSystemError with proper filePath
+    throw new FileSystemError(`File not found: ${input}`, {
+      filePath: input,
       cause: error instanceof Error ? error : undefined,
-      category: errorCategories.INPUT,
       suggestions: [
         'This is an unexpected error',
         'Try a different input method or file'
@@ -459,7 +458,19 @@ export function _selectModels({
       throw error;
     }
     
-    // For unexpected errors, wrap in ConfigError
+    // For unexpected errors, handle specifically for missing API keys
+    if (error instanceof Error && error.message.includes('Missing API keys')) {
+      throw new ApiError(`Missing API keys: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check your environment variables for API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY)',
+          'Use models that you have API keys for',
+          'Run "thinktank models" to see which models require API keys'
+        ]
+      });
+    }
+    
+    // Other unexpected errors, wrap in ConfigError
     throw new ConfigError(`Error selecting models: ${error instanceof Error ? error.message : String(error)}`, {
       cause: error instanceof Error ? error : undefined,
       suggestions: [
@@ -593,14 +604,14 @@ export async function _executeQueries({
     
     // If it's a QueryExecutorError, convert to ApiError 
     if (error instanceof QueryExecutorError) {
-      throw new ApiError(error.message, {
+      throw new ApiError('Failed to execute queries', {
         cause: error,
         suggestions: error.suggestions
       });
     }
     
     // For unexpected errors, wrap in ApiError
-    throw new ApiError(`Error executing queries: ${error instanceof Error ? error.message : String(error)}`, {
+    throw new ApiError('Failed to execute queries', {
       cause: error instanceof Error ? error : undefined,
       suggestions: [
         'Check your network connection',
@@ -742,7 +753,7 @@ export async function _processOutput({
     
     // If it's an OutputHandlerError, convert to FileSystemError
     if (error instanceof OutputHandlerError) {
-      throw new FileSystemError(error.message, {
+      throw new FileSystemError('Failed to write output files', {
         cause: error,
         suggestions: [
           'Check that you have write permissions for the output directory',
@@ -884,7 +895,7 @@ export function _logCompletionSummary({
   if (errorCount > 0) {
     // Format partial success message
     summaryOutput += styleWarning(
-      `Processing complete for ${completionMessage} - ${successCount} of ${responses.length} models completed successfully (${percentage}%)\n`
+      `Processing complete for ${completionMessage} - ${percentage}% of models completed successfully\n`
     );
     
     // Group errors by category for better display

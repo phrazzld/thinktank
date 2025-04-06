@@ -47,7 +47,7 @@ export function configureSpinnerFactory(config: Partial<SpinnerFactoryConfig>): 
  */
 export function createSpinner(
   options?: string | ThrottledSpinnerOptions | originalOra.Options
-): any {
+): originalOra.Ora | ThrottledSpinner {
   if (currentConfig.useThrottledSpinner) {
     // Create a throttled spinner
     if (typeof options === 'string') {
@@ -57,7 +57,7 @@ export function createSpinner(
       });
     } else if (options) {
       const throttledOptions: ThrottledSpinnerOptions = {
-        initialText: (options as any).text || '',
+        initialText: (options as { text?: string }).text || '',
         throttleInterval: currentConfig.defaultThrottleInterval
       };
       return new ThrottledSpinner(throttledOptions);
@@ -65,7 +65,7 @@ export function createSpinner(
     return new ThrottledSpinner({ throttleInterval: currentConfig.defaultThrottleInterval });
   } else {
     // Use the original ora spinner
-    return originalOra(options as any);
+    return originalOra(options as string | originalOra.Options);
   }
 }
 

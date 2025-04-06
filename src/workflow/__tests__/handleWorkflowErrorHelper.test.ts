@@ -321,7 +321,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       fail('Function should throw an error');
     } catch (err) {
       if (!(err instanceof ThinktankError)) {
-        fail(`Expected ThinktankError but got ${err}`);
+        fail(`Expected ThinktankError but got ${String(err)}`);
       }
       expect(err).toBe(originalError); // Should be the same instance
       expect(err.suggestions).toContain('Wait and try again later');
@@ -346,7 +346,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       fail('Function should throw an error');
     } catch (err) {
       if (!(err instanceof ThinktankError)) {
-        fail(`Expected ThinktankError but got ${err}`);
+        fail(`Expected ThinktankError but got ${String(err)}`);
       }
       expect(err).toBeInstanceOf(ThinktankError);
       expect(err.message).toContain('just a string error');

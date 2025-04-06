@@ -496,7 +496,7 @@ describe('_executeQueries Helper', () => {
     } catch (error) {
       expect(error).toBeInstanceOf(ApiError);
       if (error instanceof ApiError) {
-        expect(error.message).toContain('Error executing queries');
+        expect(error.message).toContain('Failed to execute queries');
         expect(error.cause).toBe(unknownError);
         expect(error.suggestions).toBeDefined();
         expect(error.suggestions!.length).toBeGreaterThan(0);

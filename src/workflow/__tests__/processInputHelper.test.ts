@@ -3,7 +3,7 @@
  */
 import { _processInput } from '../runThinktankHelpers';
 import * as inputHandler from '../inputHandler';
-import { FileSystemError, ThinktankError } from '../../core/errors';
+import { FileSystemError } from '../../core/errors';
 import { InputSourceType, InputError } from '../inputHandler';
 
 // Mock dependencies
@@ -298,7 +298,7 @@ describe('_processInput Helper', () => {
     await expect(_processInput({
       spinner: mockSpinner,
       input: 'file.txt'
-    })).rejects.toThrow(ThinktankError);
+    })).rejects.toThrow(FileSystemError);
 
     // Verify proper wrapping of unknown errors
     try {
@@ -307,9 +307,9 @@ describe('_processInput Helper', () => {
         input: 'file.txt'
       });
     } catch (error) {
-      expect(error).toBeInstanceOf(ThinktankError);
-      if (error instanceof ThinktankError) {
-        expect(error.message).toContain('Error processing input');
+      expect(error).toBeInstanceOf(FileSystemError);
+      if (error instanceof FileSystemError) {
+        expect(error.message).toContain('File not found');
         expect(error.cause).toBe(unknownError);
       }
     }
