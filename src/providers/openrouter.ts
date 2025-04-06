@@ -223,7 +223,7 @@ export class OpenRouterProvider implements LLMProvider {
              errorMessage.includes('invalid'))) {
           // Extract the model ID from the error message if possible
           let modelId = 'unknown-model';
-          const modelMatch = errorMessage.match(/([\w\-\/]+)/);
+          const modelMatch = errorMessage.match(/([a-zA-Z0-9_-]+)/);
           if (modelMatch && modelMatch[1]) {
             modelId = modelMatch[1];
           }
@@ -246,7 +246,7 @@ export class OpenRouterProvider implements LLMProvider {
           cause: error,
           suggestions: [
             'Check your network connection',
-            'Verify your prompt follows the model\'s guidelines',
+            "Verify your prompt follows the model's guidelines",
             'Ensure the model ID is correctly formatted (provider/model)',
             'Try with a different model or lower parameter settings'
           ]

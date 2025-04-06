@@ -161,11 +161,11 @@ export const providerErrorPatternMap = {
  * Provides a cleaner way to check for specific provider error types
  */
 export const providerErrorCheckers = {
-  isRateLimitError: (message: string) => testPatterns(message, providerErrorPatternMap.rateLimitPatterns),
-  isTokenLimitError: (message: string) => testPatterns(message, providerErrorPatternMap.tokenLimitPatterns),
-  isContentPolicyError: (message: string) => testPatterns(message, providerErrorPatternMap.contentPolicyPatterns),
-  isAuthError: (message: string) => testPatterns(message, providerErrorPatternMap.authErrorPatterns),
-  isNetworkError: (message: string) => testPatterns(message, providerErrorPatternMap.networkErrorPatterns),
+  isRateLimitError: (message: string): boolean => testPatterns(message, providerErrorPatternMap.rateLimitPatterns),
+  isTokenLimitError: (message: string): boolean => testPatterns(message, providerErrorPatternMap.tokenLimitPatterns),
+  isContentPolicyError: (message: string): boolean => testPatterns(message, providerErrorPatternMap.contentPolicyPatterns),
+  isAuthError: (message: string): boolean => testPatterns(message, providerErrorPatternMap.authErrorPatterns),
+  isNetworkError: (message: string): boolean => testPatterns(message, providerErrorPatternMap.networkErrorPatterns),
 };
 
 /**

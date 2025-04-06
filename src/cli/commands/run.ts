@@ -42,7 +42,7 @@ runCommand
   verbose?: boolean;
   includeMetadata?: boolean;
   systemPrompt?: string;
-}) => {
+}): Promise<void> => {
     try {
       // Validate prompt file exists
       try {
@@ -91,8 +91,16 @@ runCommand
       
       // Validate group exists in config if provided
       if (options.group) {
-        const config = await configManager.loadConfig(options.config);
-        const groups = config.modelGroups || [];
+        const configOptions: configManager.LoadConfigOptions = options.config ? { configPath: options.config } : {};
+        const config = await configManager.loadConfig(configOptions);
+        // Define a proper interface for the config structure
+        interface ConfigWithGroups {
+          modelGroups?: Array<{name: string}>;
+          groups?: Record<string, {name: string}>;
+        }
+        // Use a type guard to handle different config formats
+        const configWithGroups = config as ConfigWithGroups;
+        const groups: Array<{name: string}> = configWithGroups.modelGroups || [];
         
         const groupExists = groups.some(group => group.name === options.group);
         if (!groupExists) {
@@ -109,7 +117,8 @@ runCommand
         
         // If verbose, show group models
         if (options.verbose) {
-          const groupModels = await configManager.getEnabledModelsFromGroups([options.group], config);
+          // Pass correct types to this function
+          const groupModels = configManager.getEnabledModelsFromGroups(config, [options.group]);
           logger.info(
             colors.cyan(`Running with model group "${options.group}" (${groupModels.length} models)`)
           );
@@ -165,18 +174,17 @@ runCommand
       }
       
       // Run the core function
-      const results = await runThinktank({
-        promptFile,
-        models: specificModels,
-        group: options.group,
-        outputDir: options.output,
+      await runThinktank({
+        input: promptFile,
+        specificModel: specificModels ? specificModels.join(',') : undefined,
+        groupName: options.group,
+        output: options.output,
         configPath: options.config,
-        verbose: options.verbose,
         includeMetadata: options.includeMetadata,
         systemPrompt
       });
       
-      // Output final results summary if verbose
+      // Output completion message if verbose
       if (options.verbose) {
         logger.info(colors.green('\nExecution complete!'));
         
@@ -187,20 +195,17 @@ runCommand
         }
       }
       
-      // Return results for testing
-      return results;
+      // Just return, no need to return results (void return type)
+      return;
     } catch (error) {
       // Convert to ThinktankError if it's not already one
-      let thinktankError: ThinktankError;
-      
-      if (error instanceof ThinktankError) {
-        thinktankError = error;
-      } else {
-        // Create a new error with the original as cause
-        thinktankError = new ThinktankError(
+      // We'll use this for error handling
+      if (!(error instanceof ThinktankError)) {
+        handleError(new ThinktankError(
           error instanceof Error ? error.message : String(error),
           { cause: error instanceof Error ? error : undefined }
-        );
+        ));
+        return;
       }
       
       // Try to provide specific guidance for common error types

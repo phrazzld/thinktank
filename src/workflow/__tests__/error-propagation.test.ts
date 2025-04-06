@@ -72,8 +72,8 @@ describe('Cross-Module Error Propagation', () => {
         providerId: 'openai'
       };
       
-      // Set up getProvider mock for this test
-      const getProvider = require('../../core/llmRegistry').getProvider;
+      // Set up getProvider mock for this test - Use the imported and mocked function
+      const { getProvider } = jest.requireMock('../../core/llmRegistry');
       getProvider.mockImplementation((providerId: string) => {
         if (providerId === 'openai') return mockProviderInstance;
         return null;
@@ -144,8 +144,8 @@ describe('Cross-Module Error Propagation', () => {
         providerId: 'anthropic'
       };
       
-      // Set up getProvider mock for this test
-      const getProvider = require('../../core/llmRegistry').getProvider;
+      // Set up getProvider mock for this test - Use the imported and mocked function
+      const { getProvider } = jest.requireMock('../../core/llmRegistry');
       getProvider.mockImplementation((providerId: string) => {
         if (providerId === 'anthropic') return mockProviderInstance;
         return null;
@@ -297,8 +297,8 @@ describe('Cross-Module Error Propagation', () => {
         providerId: 'google'
       };
       
-      // Set up getProvider mock for this test
-      const getProvider = require('../../core/llmRegistry').getProvider;
+      // Set up getProvider mock for this test - Use the imported and mocked function
+      const { getProvider } = jest.requireMock('../../core/llmRegistry');
       getProvider.mockImplementation((providerId: string) => {
         if (providerId === 'google') return mockProviderInstance;
         return null;
