@@ -33,7 +33,7 @@
   - **AC Ref:** AC 2.4 (String-based error categorization).
 
 ## Deprecated Code and Documentation
-- [ ] **Complete migration from deprecated utility functions**
+- [x] **Complete migration from deprecated utility functions**
   - **Action:** Identify all uses of deprecated functions in `consoleUtils.ts` and update them to use the new error system directly. Remove the deprecated functions once migration is complete.
   - **Depends On:** None.
   - **AC Ref:** AC 3.1 (Deprecated functions in `consoleUtils.ts`).

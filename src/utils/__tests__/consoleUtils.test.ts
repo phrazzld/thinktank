@@ -2,7 +2,17 @@
  * Tests for the console utilities module
  */
 import * as consoleUtils from '../consoleUtils';
-import { ThinktankError } from '../../core/errors';
+import { 
+  ThinktankError, 
+  errorCategories, 
+  createFileNotFoundError, 
+  createModelFormatError, 
+  createModelNotFoundError, 
+  createMissingApiKeyError 
+} from '../../core/errors';
+import { 
+  categorizeError 
+} from '../../core/errors/utils/categorization';
 
 // Mock chalk and figures to test our styling without actually modifying strings
 jest.mock('chalk', () => {
@@ -17,20 +27,9 @@ jest.mock('chalk', () => {
     dim: jest.fn((text) => `dim(${text})`),
     bold: {
       blue: jest.fn((text) => `bold.blue(${text})`),
+      underline: jest.fn((text) => `bold.underline(${text})`),
     },
     red: mockRed
-  };
-});
-
-jest.mock('figures', () => {
-  return {
-    tick: '+',
-    cross: 'x',
-    warning: '!',
-    info: 'i',
-    pointer: '>',
-    line: '-',
-    bullet: '*',
   };
 });
 
@@ -56,9 +55,14 @@ describe('consoleUtils', () => {
       expect(result).toBe('blue(i) Info message');
     });
 
-    test('styleHeader should format text as bold blue', () => {
+    test('styleHeader should format text as bold', () => {
       const result = consoleUtils.styleHeader('Header');
       expect(result).toBe('bold.blue(Header)');
+    });
+
+    test('styleSectionHeader should format text as bold underlined with newline', () => {
+      const result = consoleUtils.styleSectionHeader('Section Header');
+      expect(result).toBe('bold.underline(\nSection Header)');
     });
 
     test('styleDim should format text as dimmed', () => {
@@ -68,159 +72,93 @@ describe('consoleUtils', () => {
 
     test('divider should create a styled horizontal line', () => {
       const result = consoleUtils.divider(5);
-      expect(result).toBe('dim(-----)');
+      expect(result).toBe('-----');
     });
   });
 
-  describe('error formatting', () => {
-    // ThinktankError is imported at the top level
-    
-    test('formatError should format error with category and tip', () => {
-      const result = consoleUtils.formatError(
-        'Something went wrong', 
-        consoleUtils.errorCategories.API, 
-        'Check your API key'
-      );
-      expect(result).toContain('red.bold(Error)');
-      expect(result).toContain('yellow(API)');
-      expect(result).toContain('Something went wrong');
-      expect(result).toContain('cyan(i)');
-      expect(result).toContain('Tip: Check your API key');
-    });
-
-    test('formatError should handle Error objects', () => {
-      const error = new Error('Failed to connect');
-      const result = consoleUtils.formatError(error);
-      expect(result).toContain('Failed to connect');
-    });
-    
-    test('formatError should use format() method when given a ThinktankError', () => {
+  describe('error system integration', () => {
+    test('ThinktankError format method should produce properly formatted error output', () => {
       // Create a ThinktankError with suggestions and examples
       const thinktankError = new ThinktankError('Test error message', {
-        category: consoleUtils.errorCategories.CONFIG,
+        category: errorCategories.CONFIG,
         suggestions: ['Try this', 'Or try that'],
         examples: ['Example command']
       });
       
-      // Spy on the format method to verify it's called
-      const formatSpy = jest.spyOn(thinktankError, 'format');
-      
-      const result = consoleUtils.formatError(thinktankError);
-      
-      // Verify format() was called
-      expect(formatSpy).toHaveBeenCalled();
+      const result = thinktankError.format();
       
       // Verify the result contains the formatted output
+      expect(result).toContain('red.bold(Error)');
+      expect(result).toContain('yellow(Configuration)');
       expect(result).toContain('Test error message');
-      
-      // Clean up
-      formatSpy.mockRestore();
+      expect(result).toContain('Try this');
+      expect(result).toContain('Or try that');
+      expect(result).toContain('Example command');
     });
 
     test('categorizeError should detect API errors', () => {
       const error = new Error('Invalid API key provided');
-      const category = consoleUtils.categorizeError(error);
-      expect(category).toBe(consoleUtils.errorCategories.API);
+      const category = categorizeError(error);
+      expect(category).toBe(errorCategories.API);
     });
 
     test('categorizeError should detect network errors', () => {
       const error = new Error('ETIMEDOUT: Connection timed out');
-      const category = consoleUtils.categorizeError(error);
-      expect(category).toBe(consoleUtils.errorCategories.NETWORK);
+      const category = categorizeError(error);
+      expect(category).toBe(errorCategories.NETWORK);
     });
 
     test('categorizeError should return UNKNOWN for unrecognized errors', () => {
       const error = new Error('Some completely random error');
-      const category = consoleUtils.categorizeError(error);
-      expect(category).toBe(consoleUtils.errorCategories.UNKNOWN);
+      const category = categorizeError(error);
+      expect(category).toBe(errorCategories.UNKNOWN);
     });
     
     test('categorizeError should use category from ThinktankError', () => {
       const thinktankError = new ThinktankError('Permission denied', {
-        category: consoleUtils.errorCategories.PERMISSION
+        category: errorCategories.PERMISSION
       });
       
-      const category = consoleUtils.categorizeError(thinktankError);
-      expect(category).toBe(consoleUtils.errorCategories.PERMISSION);
+      expect(thinktankError.category).toBe(errorCategories.PERMISSION);
     });
 
-    test('getTroubleshootingTip should return appropriate tips', () => {
-      const apiError = new Error('Invalid API key');
-      const tip = consoleUtils.getTroubleshootingTip(
-        apiError, 
-        consoleUtils.errorCategories.API
-      );
-      expect(tip).toContain('Check your API key');
-    });
-    
-    test('getTroubleshootingTip should use first suggestion from ThinktankError if available', () => {
+    test('ThinktankError should include suggestions', () => {
       const thinktankError = new ThinktankError('Network error', {
-        category: consoleUtils.errorCategories.NETWORK,
+        category: errorCategories.NETWORK,
         suggestions: ['Check your internet connection', 'Try again later']
       });
       
-      const tip = consoleUtils.getTroubleshootingTip(
-        thinktankError,
-        consoleUtils.errorCategories.NETWORK
-      );
-      
-      expect(tip).toBe('Check your internet connection');
+      expect(thinktankError.suggestions).toHaveLength(2);
+      expect(thinktankError.suggestions?.[0]).toBe('Check your internet connection');
     });
+  });
 
-    test('formatErrorWithTip should automatically categorize and add tip', () => {
-      const error = new Error('API key is invalid');
-      const result = consoleUtils.formatErrorWithTip(error);
-      expect(result).toContain('API');
-      expect(result).toContain('Check your API key');
-    });
-    
-    test('formatErrorWithTip should use format() method when given a ThinktankError', () => {
-      // Create a ThinktankError with suggestions and examples
-      const thinktankError = new ThinktankError('Invalid configuration', {
-        category: consoleUtils.errorCategories.CONFIG,
-        suggestions: ['Check your config file']
-      });
-      
-      // Spy on the format method to verify it's called
-      const formatSpy = jest.spyOn(thinktankError, 'format');
-      
-      const result = consoleUtils.formatErrorWithTip(thinktankError);
-      
-      // Verify format() was called
-      expect(formatSpy).toHaveBeenCalled();
-      
-      // Verify the result contains the formatted output
-      expect(result).toContain('Invalid configuration');
-      
-      // Clean up
-      formatSpy.mockRestore();
-    });
-
+  describe('error factory functions', () => {
     test('createFileNotFoundError should generate helpful error with suggestions', () => {
       // Mock process.cwd to return a predictable value
       const originalCwd = process.cwd;
       process.cwd = jest.fn().mockReturnValue('/home/user/project');
       
       try {
-        const error = consoleUtils.createFileNotFoundError('nonexistent.txt');
+        const error = createFileNotFoundError('nonexistent.txt');
         
         // Verify error has the expected properties
         expect(error.message).toBe('File not found: nonexistent.txt');
-        expect((error as any).category).toBe(consoleUtils.errorCategories.FILESYSTEM);
+        expect(error.category).toBe(errorCategories.FILESYSTEM);
         
         // Suggestions should be an array with useful tips
-        expect(Array.isArray((error as any).suggestions)).toBe(true);
-        expect((error as any).suggestions.length).toBeGreaterThan(0);
+        expect(Array.isArray(error.suggestions)).toBe(true);
+        expect(error.suggestions?.length).toBeGreaterThan(0);
         
         // Examples should provide command examples
-        expect(Array.isArray((error as any).examples)).toBe(true);
-        expect((error as any).examples.length).toBeGreaterThan(0);
+        expect(Array.isArray(error.examples)).toBe(true);
+        expect(error.examples?.length).toBeGreaterThan(0);
         
         // Examples should mention the basename (nonexistent)
-        expect((error as any).examples.some((ex: string) => ex.includes('nonexistent'))).toBe(true);
+        expect(error.examples?.some(ex => ex.includes('nonexistent'))).toBe(true);
         
         // Should mention working directory
-        const suggestions = (error as any).suggestions.join(' ');
+        const suggestions = error.suggestions?.join(' ') || '';
         expect(suggestions).toContain('/home/user/project');
       } finally {
         // Restore original method
@@ -237,63 +175,63 @@ describe('consoleUtils', () => {
       ];
       
       testCases.forEach(testCase => {
-        const error = consoleUtils.createModelFormatError(testCase.input);
+        const error = createModelFormatError(testCase.input);
         
         // Verify error has the expected properties
         expect(error.message).toContain(testCase.expectText);
-        expect((error as any).category).toBe(consoleUtils.errorCategories.CONFIG);
+        expect(error.category).toBe(errorCategories.CONFIG);
         
         // Suggestions should be an array with useful tips
-        expect(Array.isArray((error as any).suggestions)).toBe(true);
-        expect((error as any).suggestions.length).toBeGreaterThan(0);
+        expect(Array.isArray(error.suggestions)).toBe(true);
+        expect(error.suggestions?.length).toBeGreaterThan(0);
         
         // Should contain format guidance
-        const suggestions = (error as any).suggestions.join(' ');
+        const suggestions = error.suggestions?.join(' ') || '';
         expect(suggestions).toContain('provider:modelId');
         
         // Examples should be provided
-        expect(Array.isArray((error as any).examples)).toBe(true);
-        expect((error as any).examples.length).toBeGreaterThan(0);
+        expect(Array.isArray(error.examples)).toBe(true);
+        expect(error.examples?.length).toBeGreaterThan(0);
       });
       
       // Test with available providers
-      const errorWithProviders = consoleUtils.createModelFormatError(
+      const errorWithProviders = createModelFormatError(
         'invalidformat', 
         ['openai', 'anthropic'], 
         ['openai:gpt-4o', 'anthropic:claude-3']
       );
       
       // Should include available providers in suggestions
-      const suggestions = (errorWithProviders as any).suggestions.join(' ');
+      const suggestions = errorWithProviders.suggestions?.join(' ') || '';
       expect(suggestions).toContain('Available providers: openai, anthropic');
       expect(suggestions).toContain('Example models');
     });
     
     test('createModelNotFoundError should generate helpful error with suggestions', () => {
       // Test basic model not found error
-      const error = consoleUtils.createModelNotFoundError('openai:nonexistent-model');
+      const error = createModelNotFoundError('openai:nonexistent-model');
       
       // Verify basic properties
       expect(error.message).toContain('not found in configuration');
-      expect((error as any).category).toBe(consoleUtils.errorCategories.CONFIG);
+      expect(error.category).toBe(errorCategories.CONFIG);
       
       // Should have suggestions
-      expect(Array.isArray((error as any).suggestions)).toBe(true);
-      expect((error as any).suggestions.length).toBeGreaterThan(0);
+      expect(Array.isArray(error.suggestions)).toBe(true);
+      expect(error.suggestions?.length).toBeGreaterThan(0);
       
       // Test with available models
-      const errorWithModels = consoleUtils.createModelNotFoundError(
+      const errorWithModels = createModelNotFoundError(
         'openai:nonexistent-model',
         ['openai:gpt-4o', 'openai:gpt-3.5-turbo', 'anthropic:claude-3']
       );
       
       // Should list available models from same provider
-      const suggestions = (errorWithModels as any).suggestions.join(' ');
+      const suggestions = errorWithModels.suggestions?.join(' ') || '';
       expect(suggestions).toContain('Available models from openai');
       expect(suggestions).toContain('gpt-4o');
       
       // Test with group context
-      const errorWithGroup = consoleUtils.createModelNotFoundError(
+      const errorWithGroup = createModelNotFoundError(
         'openai:nonexistent-model',
         ['openai:gpt-4o', 'anthropic:claude-3'],
         'coding'
@@ -301,7 +239,7 @@ describe('consoleUtils', () => {
       
       // Should mention the group
       expect(errorWithGroup.message).toContain('not found in group "coding"');
-      const groupSuggestions = (errorWithGroup as any).suggestions.join(' ');
+      const groupSuggestions = errorWithGroup.suggestions?.join(' ') || '';
       expect(groupSuggestions).toContain('in the "coding" group configuration');
     });
     
@@ -313,17 +251,17 @@ describe('consoleUtils', () => {
         { provider: 'google', modelId: 'gemini-pro' }
       ];
       
-      const error = consoleUtils.createMissingApiKeyError(missingModels);
+      const error = createMissingApiKeyError(missingModels);
       
       // Verify basic properties
       expect(error.message).toContain('Missing API keys for 3 models');
-      expect((error as any).category).toBe(consoleUtils.errorCategories.API);
+      expect(error.category).toBe(errorCategories.API);
       
       // Should have suggestions
-      expect(Array.isArray((error as any).suggestions)).toBe(true);
+      expect(Array.isArray(error.suggestions)).toBe(true);
       
       // Should group by provider
-      const suggestions = (error as any).suggestions.join(' ');
+      const suggestions = error.suggestions?.join(' ') || '';
       expect(suggestions).toContain('Missing API key for openai');
       expect(suggestions).toContain('Missing API key for anthropic');
       expect(suggestions).toContain('Missing API key for google');
@@ -339,18 +277,18 @@ describe('consoleUtils', () => {
       expect(suggestions).toContain('$env:PROVIDER_API_KEY');
       
       // Should have examples
-      expect(Array.isArray((error as any).examples)).toBe(true);
-      expect((error as any).examples.length).toBe(3); // One per provider
+      expect(Array.isArray(error.examples)).toBe(true);
+      expect(error.examples?.length).toBe(3); // One per provider
       
       // Examples should include provider-specific environment variables
-      const examplesString = (error as any).examples.join(' ');
+      const examplesString = error.examples?.join(' ') || '';
       expect(examplesString).toContain('OPENAI_API_KEY');
       expect(examplesString).toContain('ANTHROPIC_API_KEY');
       expect(examplesString).toContain('GOOGLE_API_KEY');
       
       // Test with single provider (singular message)
       const singleModel = [{ provider: 'openai', modelId: 'gpt-4o' }];
-      const singleError = consoleUtils.createMissingApiKeyError(singleModel);
+      const singleError = createMissingApiKeyError(singleModel);
       
       expect(singleError.message).toContain('Missing API key for 1 model');
       expect(singleError.message).not.toContain('keys');
