@@ -1,6 +1,31 @@
 /**
- * Mock utilities for gitignore-based file filtering in tests
- * Provides a consistent interface for mocking gitignore utilities
+ * Mock utilities for gitignore-based file filtering in tests.
+ * 
+ * This module provides utilities for mocking gitignore pattern matching and
+ * directory filtering functionality, allowing tests to simulate .gitignore
+ * behavior without relying on actual filesystem operations.
+ * 
+ * @module mockGitignoreUtils
+ * 
+ * @example
+ * ```typescript
+ * import { 
+ *   resetMockGitignore, 
+ *   setupMockGitignore, 
+ *   mockShouldIgnorePath,
+ *   mockCreateIgnoreFilter 
+ * } from '../../../__tests__/utils/mockGitignoreUtils';
+ *
+ * // Reset and setup mocks before each test
+ * beforeEach(() => {
+ *   resetMockGitignore();
+ *   setupMockGitignore();
+ *   
+ *   // Configure specific mock behaviors
+ *   mockShouldIgnorePath(/\.log$/, true); // Ignore all log files
+ *   mockCreateIgnoreFilter('/project', ['node_modules', '*.tmp']);
+ * });
+ * ```
  */
 import { jest } from '@jest/globals';
 import * as gitignoreUtils from '../../utils/gitignoreUtils';
@@ -123,8 +148,19 @@ const DEFAULT_CONFIG: GitignoreMockConfig = {
 };
 
 /**
- * Reset all gitignore mock functions to their initial state
- * This should be called before each test to prevent test pollution
+ * Resets all gitignore mock functions to their initial state.
+ * 
+ * This function should be called in the `beforeEach` hook of your tests to prevent
+ * test cross-contamination. It clears all mock implementations, mock calls history,
+ * and path-specific rules that may have been configured.
+ * 
+ * @example
+ * ```typescript
+ * beforeEach(() => {
+ *   resetMockGitignore();
+ *   setupMockGitignore();
+ * });
+ * ```
  */
 export function resetMockGitignore(): void {
   jest.clearAllMocks();
@@ -200,8 +236,26 @@ function createMockIgnoreFilter(ignorePatterns: string[] = [], includePatterns: 
 }
 
 /**
- * Configure the mocked gitignoreUtils module with default behaviors
+ * Configures the mocked gitignoreUtils module with default behaviors.
+ * 
+ * This function sets up mock implementations for gitignore-related functions,
+ * applying the provided configuration or default values. It should be called
+ * after `resetMockGitignore()` to establish baseline behavior for gitignore operations.
+ * 
  * @param config - Optional configuration to customize the default behaviors
+ * 
+ * @example
+ * ```typescript
+ * // Setup with defaults (don't ignore files by default)
+ * setupMockGitignore();
+ * 
+ * // Setup with custom defaults
+ * setupMockGitignore({
+ *   defaultIgnoreBehavior: false,
+ *   defaultIgnorePatterns: ['node_modules', '.git', 'dist', '*.log'],
+ *   defaultIncludePatterns: ['important.log']
+ * });
+ * ```
  */
 export function setupMockGitignore(config?: GitignoreMockConfig): void {
   // Merge provided config with defaults
@@ -281,9 +335,29 @@ export function setupMockGitignore(config?: GitignoreMockConfig): void {
 }
 
 /**
- * Configure shouldIgnorePath to return specific results for given path patterns
+ * Configures shouldIgnorePath to return specific results for given path patterns.
+ * 
+ * This function allows you to specify which paths should be ignored by the
+ * gitignore filtering functionality, based on exact strings or regex patterns.
+ * 
  * @param pathPattern - Path or regex pattern to match
- * @param ignored - Whether matching paths should be ignored
+ * @param ignored - Whether matching paths should be ignored (true) or included (false)
+ * 
+ * @example
+ * ```typescript
+ * // Ignore all log files
+ * mockShouldIgnorePath(/\.log$/, true);
+ * 
+ * // Ignore a specific file
+ * mockShouldIgnorePath('build/output.js', true);
+ * 
+ * // Never ignore a specific important file, even if it would match
+ * // other ignore patterns
+ * mockShouldIgnorePath('important.log', false);
+ * 
+ * // Ignore all files in a specific directory
+ * mockShouldIgnorePath(/node_modules\//, true);
+ * ```
  */
 export const mockShouldIgnorePath: MockShouldIgnorePathFunction = 
   (pathPattern: string | RegExp, ignored: boolean): void => {
@@ -307,9 +381,37 @@ export const mockShouldIgnorePath: MockShouldIgnorePathFunction =
   };
 
 /**
- * Configure createIgnoreFilter to use specific ignore rules for a directory
+ * Configures createIgnoreFilter to use specific ignore rules for a directory.
+ * 
+ * This function allows you to customize the behavior of gitignore pattern
+ * filtering for specific directories, either using an array of patterns or
+ * a custom function for more complex logic.
+ * 
  * @param directoryPath - The directory path to configure ignore rules for
  * @param ignorePatterns - Array of patterns to ignore, or a function that determines if a path should be ignored
+ * 
+ * @example
+ * ```typescript
+ * // Using an array of patterns
+ * mockCreateIgnoreFilter('/home/project', [
+ *   'node_modules',
+ *   'dist',
+ *   '*.log',
+ *   'tmp'
+ * ]);
+ * 
+ * // Using a custom function for more complex logic
+ * mockCreateIgnoreFilter('/home/project', (path) => {
+ *   return path.includes('node_modules') || 
+ *          path.endsWith('.log') ||
+ *          path.includes('.git');
+ * });
+ * 
+ * // Later usage in tests
+ * const filter = await gitignoreUtils.createIgnoreFilter('/home/project');
+ * expect(filter.ignores('node_modules/package.json')).toBe(true);
+ * expect(filter.ignores('src/index.js')).toBe(false);
+ * ```
  */
 export const mockCreateIgnoreFilter: MockCreateIgnoreFilterFunction =
   (directoryPath: string, ignorePatterns: string[] | ((path: string) => boolean)): void => {

@@ -1,6 +1,31 @@
 /**
- * Mock utilities for the Node.js fs/promises module in tests
- * Provides a consistent interface for mocking filesystem operations
+ * Mock utilities for the Node.js fs/promises module in tests.
+ * 
+ * This module provides a comprehensive set of utilities for mocking filesystem 
+ * operations in Jest tests, allowing precise control over file access, reads, writes,
+ * stats, directory listings, and more.
+ * 
+ * @module mockFsUtils
+ * 
+ * @example
+ * ```typescript
+ * import { 
+ *   resetMockFs, 
+ *   setupMockFs, 
+ *   mockReadFile, 
+ *   mockStat 
+ * } from '../../../__tests__/utils/mockFsUtils';
+ *
+ * // Reset and setup mocks before each test
+ * beforeEach(() => {
+ *   resetMockFs();
+ *   setupMockFs();
+ *   
+ *   // Configure specific mock behaviors
+ *   mockReadFile('/path/to/file.txt', 'File content');
+ *   mockStat('/path/to/file.txt', { isFile: () => true });
+ * });
+ * ```
  */
 import fs from 'fs/promises';
 import { Stats } from 'fs';
@@ -123,8 +148,19 @@ interface WriteFileRule {
 const writeFileRules: WriteFileRule[] = [];
 
 /**
- * Resets all fs mock functions to their initial state
- * This should be called before each test to prevent test pollution
+ * Resets all fs mock functions to their initial state.
+ * 
+ * This function should be called in the `beforeEach` hook of your tests to prevent
+ * test cross-contamination. It clears all mock implementations, mock calls history,
+ * and path-specific rules that may have been configured.
+ * 
+ * @example
+ * ```typescript
+ * beforeEach(() => {
+ *   resetMockFs();
+ *   setupMockFs();
+ * });
+ * ```
  */
 export function resetMockFs(): void {
   jest.clearAllMocks();
@@ -147,8 +183,30 @@ export function resetMockFs(): void {
 }
 
 /**
- * Configures the mocked fs module with default behaviors
+ * Configures the mocked fs module with default behaviors.
+ * 
+ * This function sets up mock implementations for all fs/promises functions,
+ * applying the provided configuration or default values. It should be called
+ * after `resetMockFs()` to establish baseline behavior for all fs operations.
+ * 
  * @param config - Optional configuration to customize the default behaviors
+ * 
+ * @example
+ * ```typescript
+ * // Setup with defaults (files are accessible, empty content)
+ * setupMockFs();
+ * 
+ * // Setup with custom defaults
+ * setupMockFs({
+ *   defaultFileContent: 'Default file content',
+ *   defaultAccessBehavior: true,
+ *   defaultStats: {
+ *     isFile: () => true,
+ *     isDirectory: () => false,
+ *     size: 1024
+ *   }
+ * });
+ * ```
  */
 export function setupMockFs(config?: FsMockConfig): void {
   // Merge provided config with defaults
@@ -571,12 +629,39 @@ export interface MockWriteFileFunction {
 }
 
 /**
- * Creates a Node.js-like filesystem error
- * @param code - Error code (e.g., 'ENOENT', 'EACCES')
- * @param message - Error message
- * @param syscall - System call that failed
+ * Creates a Node.js-like filesystem error.
+ * 
+ * This utility function creates an Error object with the properties expected
+ * from Node.js filesystem errors, making it suitable for use in mocking
+ * filesystem operation failures.
+ * 
+ * @param code - Error code (e.g., 'ENOENT', 'EACCES', 'EPERM', 'EROFS')
+ * @param message - Error message to include in the error
+ * @param syscall - System call that failed (e.g., 'access', 'readFile', 'writeFile')
  * @param filepath - Path that caused the error
  * @returns Error with proper fs error properties
+ * 
+ * @example
+ * ```typescript
+ * // Create a file not found error
+ * const notFoundError = createFsError(
+ *   'ENOENT',
+ *   'File not found',
+ *   'readFile',
+ *   '/path/to/missing.txt'
+ * );
+ * 
+ * // Create a permission denied error
+ * const permissionError = createFsError(
+ *   'EACCES',
+ *   'Permission denied',
+ *   'access',
+ *   '/path/to/protected.txt'
+ * );
+ * 
+ * // Use the error in a mock
+ * mockReadFile('/path/to/error.txt', notFoundError);
+ * ```
  */
 export function createFsError(
   code: string,
@@ -592,10 +677,36 @@ export function createFsError(
 }
 
 /**
- * Configures fs.access to resolve or reject for specific paths
+ * Configures fs.access to resolve or reject for specific paths.
+ * 
+ * This function allows you to mock the behavior of fs.access for specific paths
+ * or path patterns, controlling whether access is allowed or denied, and what
+ * error should be returned when denied.
+ * 
  * @param pathPattern - Path or regex pattern to match
  * @param allowed - Whether access should be allowed (true) or denied (false)
  * @param options - Optional error details if denied
+ * 
+ * @example
+ * ```typescript
+ * // Allow access to a specific file
+ * mockAccess('/path/to/file.txt', true);
+ * 
+ * // Deny access to a specific file (file not found)
+ * mockAccess('/path/to/missing.txt', false, {
+ *   errorCode: 'ENOENT',
+ *   errorMessage: 'File not found'
+ * });
+ * 
+ * // Deny access to a specific file (permission denied)
+ * mockAccess('/path/to/protected.txt', false, {
+ *   errorCode: 'EACCES',
+ *   errorMessage: 'Permission denied'
+ * });
+ * 
+ * // Use regex pattern to match multiple paths
+ * mockAccess(/\.log$/, false); // Deny access to all .log files
+ * ```
  */
 export const mockAccess: MockAccessFunction = (
   pathPattern: string | RegExp,
@@ -630,9 +741,34 @@ export const mockAccess: MockAccessFunction = (
 };
 
 /**
- * Configures fs.readFile to return content or throw an error for specific paths
+ * Configures fs.readFile to return content or throw an error for specific paths.
+ * 
+ * This function allows you to mock the behavior of fs.readFile for specific paths
+ * or path patterns, controlling what content should be returned or what error
+ * should be thrown.
+ * 
  * @param pathPattern - Path or regex pattern to match
- * @param content - Content to return or Error to throw
+ * @param content - Content to return (string or Buffer) or Error to throw
+ * 
+ * @example
+ * ```typescript
+ * // Return text content for a specific file
+ * mockReadFile('/path/to/file.txt', 'File content');
+ * 
+ * // Return binary content for a specific file
+ * mockReadFile('/path/to/binary.bin', Buffer.from([0x00, 0xFF, 0x42]));
+ * 
+ * // Simulate a file read error
+ * mockReadFile('/path/to/error.txt', createFsError(
+ *   'ENOENT',
+ *   'File not found',
+ *   'readFile',
+ *   '/path/to/error.txt'
+ * ));
+ * 
+ * // Use regex pattern to match multiple files
+ * mockReadFile(/\.json$/, '{"key": "value"}');
+ * ```
  */
 export const mockReadFile: MockReadFileFunction = (
   pathPattern: string | RegExp,
@@ -661,9 +797,45 @@ export const mockReadFile: MockReadFileFunction = (
 };
 
 /**
- * Configures fs.stat to return stats or throw an error for specific paths
+ * Configures fs.stat to return stats or throw an error for specific paths.
+ * 
+ * This function allows you to mock the behavior of fs.stat for specific paths
+ * or path patterns, controlling what stats should be returned or what error
+ * should be thrown.
+ * 
  * @param pathPattern - Path or regex pattern to match
  * @param statsOrError - Stats object to return or Error to throw
+ * 
+ * @example
+ * ```typescript
+ * // Configure a regular file
+ * mockStat('/path/to/file.txt', {
+ *   isFile: () => true,
+ *   isDirectory: () => false,
+ *   size: 1024
+ * });
+ * 
+ * // Configure a directory
+ * mockStat('/path/to/dir', {
+ *   isFile: () => false,
+ *   isDirectory: () => true,
+ *   size: 4096
+ * });
+ * 
+ * // Configure a stat error (file not found)
+ * mockStat('/path/to/missing.txt', createFsError(
+ *   'ENOENT',
+ *   'No such file or directory',
+ *   'stat',
+ *   '/path/to/missing.txt'
+ * ));
+ * 
+ * // Use regex to match multiple paths
+ * mockStat(/\.jpg$/, {
+ *   isFile: () => true,
+ *   size: 1024 * 1024 // 1MB
+ * });
+ * ```
  */
 export const mockStat: MockStatFunction = (
   pathPattern: string | RegExp,
@@ -692,9 +864,34 @@ export const mockStat: MockStatFunction = (
 };
 
 /**
- * Configures fs.readdir to return entries or throw an error for specific directories
+ * Configures fs.readdir to return entries or throw an error for specific directories.
+ * 
+ * This function allows you to mock the behavior of fs.readdir for specific paths
+ * or path patterns, controlling what directory entries should be returned or what
+ * error should be thrown.
+ * 
  * @param pathPattern - Path or regex pattern to match
  * @param entries - Directory entries to return or Error to throw
+ * 
+ * @example
+ * ```typescript
+ * // Return a list of files for a specific directory
+ * mockReaddir('/path/to/dir', ['file1.txt', 'file2.js', 'subdir']);
+ * 
+ * // Return an empty directory
+ * mockReaddir('/path/to/empty', []);
+ * 
+ * // Simulate a directory read error
+ * mockReaddir('/path/to/error', createFsError(
+ *   'ENOENT',
+ *   'Directory not found',
+ *   'readdir',
+ *   '/path/to/error'
+ * ));
+ * 
+ * // Use regex pattern to match multiple directories
+ * mockReaddir(/\/config\/.*$/, ['settings.json', 'environment.json']);
+ * ```
  */
 export const mockReaddir: MockReaddirFunction = (
   pathPattern: string | RegExp,
@@ -723,9 +920,39 @@ export const mockReaddir: MockReaddirFunction = (
 };
 
 /**
- * Configures fs.mkdir to succeed or fail for specific paths
+ * Configures fs.mkdir to succeed or fail for specific paths.
+ * 
+ * This function allows you to mock the behavior of fs.mkdir for specific paths
+ * or path patterns, controlling whether directory creation should succeed or
+ * fail, and what error should be thrown in case of failure.
+ * 
  * @param pathPattern - Path or regex pattern to match
  * @param success - Whether mkdir should succeed (true) or fail (false or Error)
+ * 
+ * @example
+ * ```typescript
+ * // Allow directory creation for a specific path
+ * mockMkdir('/path/to/new/dir', true);
+ * 
+ * // Deny directory creation with a default error
+ * mockMkdir('/path/to/fail/dir', false);
+ * 
+ * // Deny directory creation with a specific error
+ * mockMkdir('/path/to/protected/dir', createFsError(
+ *   'EACCES',
+ *   'Permission denied',
+ *   'mkdir',
+ *   '/path/to/protected/dir'
+ * ));
+ * 
+ * // Use regex pattern to match multiple paths
+ * mockMkdir(/\/readonly\/.*$/, createFsError(
+ *   'EROFS',
+ *   'Read-only file system',
+ *   'mkdir',
+ *   '/readonly/path'
+ * ));
+ * ```
  */
 export const mockMkdir: MockMkdirFunction = (
   pathPattern: string | RegExp,
@@ -754,9 +981,39 @@ export const mockMkdir: MockMkdirFunction = (
 };
 
 /**
- * Configures fs.writeFile to succeed or fail for specific paths
+ * Configures fs.writeFile to succeed or fail for specific paths.
+ * 
+ * This function allows you to mock the behavior of fs.writeFile for specific paths
+ * or path patterns, controlling whether file writing should succeed or fail, and
+ * what error should be thrown in case of failure.
+ * 
  * @param pathPattern - Path or regex pattern to match
  * @param success - Whether writeFile should succeed (true) or fail (false or Error)
+ * 
+ * @example
+ * ```typescript
+ * // Allow writing to a specific file
+ * mockWriteFile('/path/to/writeable.txt', true);
+ * 
+ * // Deny writing with a default error (permission denied)
+ * mockWriteFile('/path/to/readonly.txt', false);
+ * 
+ * // Deny writing with a specific error
+ * mockWriteFile('/path/to/protected.txt', createFsError(
+ *   'EACCES',
+ *   'Permission denied',
+ *   'writeFile',
+ *   '/path/to/protected.txt'
+ * ));
+ * 
+ * // Use regex pattern to deny writing to multiple files
+ * mockWriteFile(/\.log$/, createFsError(
+ *   'EPERM',
+ *   'Operation not permitted',
+ *   'writeFile',
+ *   'log file'
+ * ));
+ * ```
  */
 export const mockWriteFile: MockWriteFileFunction = (
   pathPattern: string | RegExp,
@@ -785,9 +1042,33 @@ export const mockWriteFile: MockWriteFileFunction = (
 };
 
 /**
- * Creates a Stats-like object from partial stats
+ * Creates a Stats-like object from partial stats.
+ * 
+ * This utility function creates a fully fleshed-out fs.Stats object from a
+ * partial MockedStats object, filling in default values for any missing properties.
+ * This is used internally by the mockStat function but can also be used directly
+ * if needed.
+ * 
  * @param stats - Partial stats object with properties to include
  * @returns A full Stats-like object with all required methods
+ * 
+ * @example
+ * ```typescript
+ * // Create a full Stats object for a file
+ * const fileStats = createStats({
+ *   isFile: () => true,
+ *   isDirectory: () => false,
+ *   size: 1024,
+ *   mtime: new Date('2023-01-01')
+ * });
+ * 
+ * // Create a full Stats object for a directory
+ * const dirStats = createStats({
+ *   isFile: () => false,
+ *   isDirectory: () => true,
+ *   size: 4096
+ * });
+ * ```
  */
 export function createStats(stats: MockedStats): Stats {
   // Create a base Stats object with default values

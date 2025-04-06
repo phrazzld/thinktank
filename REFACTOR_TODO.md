@@ -130,12 +130,12 @@
   - **Depends On:** All refactor test file tasks.
   - **AC Ref:** AC 5.1.
 
-- [ ] **Code review for consistency**
+- [x] **Code review for consistency**
   - **Action:** Review all refactored test files to ensure consistent use of the new utilities and removal of unnecessary direct mocks.
   - **Depends On:** All refactor test file tasks.
   - **AC Ref:** AC 4.2.
 
-- [ ] **Document new test utilities**
+- [x] **Document new test utilities**
   - **Action:** Add documentation for the new test utilities in relevant README files or comments within the utility files.
   - **Depends On:** Run test suite to verify refactoring.
   - **AC Ref:** AC 5.2.
