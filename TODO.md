@@ -19,7 +19,7 @@
 
 ## Context Reading Utility
 
-- [ ] **Add dependency for gitignore parsing**
+- [x] **Add dependency for gitignore parsing**
   - **Action:** Research and add a dependency for parsing .gitignore files (e.g., 'ignore', 'globby', or similar library).
   - **Depends On:** None.
   - **AC Ref:** AC 2.3 - System must ignore files and directories according to .gitignore rules.
