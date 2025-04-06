@@ -9,8 +9,8 @@ import {
   styleDim,
   styleWarning
 } from '../utils/consoleUtils';
-import ora from 'ora';
 import { logger } from '../utils/logger';
+import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
 import { WorkflowState } from './runThinktankTypes';
 import {
   _setupWorkflow,
@@ -109,6 +109,13 @@ export interface RunOptions {
   useColors?: boolean;
   
   /**
+   * Whether to disable spinner throttling
+   * If true, spinner updates will not be throttled, which may cause more terminal flicker
+   * If false or undefined, spinner updates will be throttled to reduce flicker
+   */
+  disableSpinnerThrottling?: boolean;
+  
+  /**
    * Whether to include thinking output (for Claude models that support it)
    */
   includeThinking?: boolean;
@@ -151,7 +158,12 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     options
   };
   
-  // Initialize the ora spinner for user feedback
+  // Configure spinner throttling based on options
+  configureSpinnerFactory({
+    useThrottledSpinner: !options.disableSpinnerThrottling
+  });
+  
+  // Initialize the spinner for user feedback
   const spinner = ora('Starting thinktank...').start();
   
   try {

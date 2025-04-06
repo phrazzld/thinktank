@@ -11,7 +11,7 @@ import { InputResult } from './inputHandler';
 import { ModelSelectionResult } from './modelSelector';
 import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
-import ora from 'ora';
+import type { Ora } from 'ora';
 
 /**
  * Common spinner parameter type for functions that need spinner access
@@ -20,7 +20,7 @@ export interface SpinnerContext {
   /**
    * Ora spinner instance for providing visual feedback
    */
-  spinner: ora.Ora;
+  spinner: Ora;
 }
 
 /**

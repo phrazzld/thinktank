@@ -14,10 +14,11 @@
   - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to maintenance challenges if not addressed.
   - **Completed:** Created a new `createContextualError` utility function in `categorization.ts` to centralize error handling, simplified the `_handleWorkflowError` function significantly. Successfully refactored to improve maintainability.
 
-- [ ] **Optimize Spinner Updates**: Reduce terminal flicker
+- [x] **Optimize Spinner Updates**: Reduce terminal flicker
   - **Action:** Implement debouncing or batching for spinner updates to reduce visual flicker and improve user experience.
   - **Depends On:** None.
   - **AC Ref:** Low-Medium risk issue identified in PLAN.md. Affects user experience.
+  - **Completed:** Implemented a throttled spinner wrapper that limits update frequency to reduce flickering. Created a configurable factory to easily toggle between regular and throttled spinners.
 
 - [ ] **Refactor Duplicated Spinner Logic**: Centralize spinner update code
   - **Action:** Create a single function for updating spinner text based on model status to eliminate repetition in the code.
@@ -50,11 +51,3 @@
   - **Action:** Update documentation to reflect the XDG-compliant configuration approach and remove any references to thinktank.config.json in the project root.
   - **Depends On:** None
   - **AC Ref:** Ensures documentation is consistent with actual implementation.
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Test File Organization Strategy**: What is the preferred approach for test file organization?
-  - **Context:** There are duplicate test files with different naming conventions (`*.test.ts` vs `*Helper.test.ts`). Need to clarify the preferred naming convention and organization strategy for test files in the project.
-
-- [ ] **Spinner Management Approach**: What is the preferred approach for managing spinner updates?
-  - **Context:** The frequent spinner updates may cause visual flicker. Need to determine if optimizing spinner updates with debouncing or batching is compatible with the project's UI/UX goals.
