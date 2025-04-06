@@ -15,11 +15,17 @@ import {
   PermissionError,
   errorCategories
 } from '../core/errors';
-import { styleInfo, styleSuccess } from '../utils/consoleUtils';
+import { styleInfo, styleSuccess, styleWarning } from '../utils/consoleUtils';
 import {
   SetupWorkflowParams,
-  SetupWorkflowResult
+  SetupWorkflowResult,
+  ProcessInputParams,
+  ProcessInputResult,
+  SelectModelsParams,
+  SelectModelsResult
 } from './runThinktankTypes';
+import { processInput, InputError } from './inputHandler';
+import { selectModels, ModelSelectionError } from './modelSelector';
 
 /**
  * Setup workflow helper function
@@ -147,6 +153,275 @@ export async function _setupWorkflow({
     throw new ThinktankError(`Error during workflow setup: ${error instanceof Error ? error.message : String(error)}`, {
       cause: error instanceof Error ? error : undefined,
       category: errorCategories.UNKNOWN
+    });
+  }
+}
+
+/**
+ * Input processing helper function
+ * 
+ * Handles input processing from various sources (file, stdin, or direct text)
+ * with proper error handling and spinner updates.
+ * 
+ * @param params - Parameters containing the spinner and input string
+ * @returns An object containing the processed input result
+ * @throws 
+ *   - FileSystemError when input processing fails due to file system issues
+ *   - ThinktankError for other unexpected errors
+ */
+export async function _processInput({ 
+  spinner, 
+  input 
+}: ProcessInputParams): Promise<ProcessInputResult> {
+  try {
+    // 1. Update spinner with processing status
+    spinner.text = 'Processing input...';
+    
+    // 2. Process the input using inputHandler.processInput
+    const inputResult = await processInput({ input });
+    
+    // 3. Update spinner with success information
+    spinner.text = `Input processed from ${inputResult.sourceType} (${inputResult.content.length} characters)`;
+    
+    // 4. Return the properly structured result
+    return { inputResult };
+  } catch (error) {
+    // Handle specific error types according to the error handling contract
+    
+    // If it's an InputError, convert to FileSystemError
+    if (error instanceof InputError) {
+      const errorMessage = error.message.toLowerCase();
+      
+      // File not found errors
+      if (errorMessage.includes('not found') || errorMessage.includes('enoent')) {
+        throw new FileSystemError(`File not found: ${input}`, {
+          cause: error,
+          filePath: input,
+          suggestions: [
+            'Check that the file exists at the specified path',
+            `Current working directory: ${process.cwd()}`,
+            'Use an absolute path if necessary'
+          ]
+        });
+      }
+      
+      // Permission errors
+      if (errorMessage.includes('permission') || errorMessage.includes('access') || errorMessage.includes('eacces')) {
+        throw new FileSystemError(`Permission denied: ${error.message}`, {
+          cause: error,
+          filePath: input,
+          suggestions: [
+            'Check that you have read permissions for the file',
+            'Try using a different input source with proper permissions'
+          ]
+        });
+      }
+      
+      // Empty input error
+      if (errorMessage.includes('input is required') || errorMessage.includes('empty')) {
+        throw new FileSystemError(`Input is required`, {
+          cause: error,
+          suggestions: [
+            'Provide a file path, stdin indicator (-), or a direct text prompt',
+            'Example: thinktank run prompt.txt',
+            'Example: cat prompt.txt | thinktank run -',
+            'Example: thinktank run "Your prompt text here"'
+          ]
+        });
+      }
+      
+      // Stdin errors
+      if (errorMessage.includes('stdin') || errorMessage.includes('timeout')) {
+        throw new FileSystemError(`Input processing error: ${error.message}`, {
+          cause: error,
+          suggestions: [
+            'Make sure you are piping content to stdin when using "-" as input',
+            'Check that the input is not empty',
+            'Consider using a file instead if stdin is not working'
+          ]
+        });
+      }
+      
+      // Pass through the original error message to match test expectations
+      throw new FileSystemError(error.message, {
+        cause: error,
+        suggestions: [
+          'Check that your input is valid and accessible',
+          'Try using a different input method (file, stdin, or direct text)'
+        ]
+      });
+    }
+    
+    // Handle NodeJS.ErrnoException for file system errors
+    if (
+      error instanceof Error && 
+      'code' in error && 
+      typeof (error as NodeJS.ErrnoException).code === 'string'
+    ) {
+      const nodeError = error as NodeJS.ErrnoException;
+      
+      // Permission errors
+      if (nodeError.code === 'EACCES' || nodeError.code === 'EPERM') {
+        throw new FileSystemError(`Permission denied when accessing input: ${error.message}`, {
+          cause: error,
+          filePath: input,
+          suggestions: [
+            'Check file permissions',
+            'Try using a different input file'
+          ]
+        });
+      }
+      
+      // File not found
+      if (nodeError.code === 'ENOENT') {
+        throw new FileSystemError(`File not found: ${input}`, {
+          cause: error,
+          filePath: input,
+          suggestions: [
+            'Check that the file exists at the specified path',
+            `Current working directory: ${process.cwd()}`
+          ]
+        });
+      }
+      
+      // Other file system errors
+      throw new FileSystemError(`File system error while processing input: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check file permissions and path',
+          'Verify that the file exists and is readable'
+        ]
+      });
+    }
+    
+    // For unexpected errors, wrap in ThinktankError
+    throw new ThinktankError(`Error processing input: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined,
+      category: errorCategories.INPUT,
+      suggestions: [
+        'This is an unexpected error',
+        'Try a different input method or file'
+      ]
+    });
+  }
+}
+
+/**
+ * Model selection helper function
+ * 
+ * Handles model selection with warnings display, error handling, and appropriate spinner updates.
+ * Uses ConfigError for wrapping errors.
+ * 
+ * @param params - Parameters containing the spinner, config, and options
+ * @returns An object containing the model selection result and a mode description
+ * @throws 
+ *   - ConfigError when model selection fails
+ */
+export function _selectModels({
+  spinner,
+  config,
+  options
+}: SelectModelsParams): SelectModelsResult {
+  try {
+    // 1. Update spinner with selection status
+    spinner.text = 'Selecting models...';
+    
+    // 2. Determine selection mode description based on options
+    let modeDescription: string;
+    if (options.specificModel) {
+      modeDescription = `Specific model: ${options.specificModel}`;
+    } else if (options.groupName) {
+      modeDescription = `Group: ${options.groupName}`;
+    } else if (options.models && options.models.length > 0) {
+      modeDescription = `Selected models: ${options.models.join(', ')}`;
+    } else {
+      modeDescription = 'All enabled models';
+    }
+    
+    // 3. Select models using the modelSelector
+    const modelSelectionResult = selectModels(config, {
+      specificModel: options.specificModel,
+      groupName: options.groupName,
+      models: options.models,
+      groups: options.groups,
+      includeDisabled: true,  // Always include disabled models in results
+      validateApiKeys: true   // Always validate API keys
+    });
+    
+    // 4. Display warnings if any
+    if (modelSelectionResult.warnings.length > 0) {
+      for (const warning of modelSelectionResult.warnings) {
+        spinner.warn(styleWarning(warning));
+      }
+      // Restart spinner after displaying warnings
+      spinner.start();
+    }
+    
+    // 5. Update spinner with success information
+    const modelCount = modelSelectionResult.models.length;
+    spinner.text = `Models selected: ${modelCount} ${modelCount === 1 ? 'model' : 'models'}`;
+    
+    // Display model list in spinner info
+    const modelList = modelSelectionResult.models
+      .map(model => `${model.provider}:${model.modelId}`)
+      .join(', ');
+    
+    spinner.info(styleInfo(`Using ${modelCount} ${modelCount === 1 ? 'model' : 'models'}: ${styleSuccess(modelList)}`));
+    spinner.start(); // Restart spinner for next step
+    
+    // 6. Return the result
+    return {
+      modelSelectionResult,
+      modeDescription
+    };
+  } catch (error) {
+    // Handle specific error types according to the error handling contract
+    
+    // If it's a ModelSelectionError or an object with name 'ModelSelectionError', wrap it in ConfigError
+    if (error instanceof ModelSelectionError) {
+      // These errors come from the modelSelector module and need to be wrapped
+      // in ConfigError to maintain consistent error types
+      throw new ConfigError(error.message, {
+        cause: error,
+        suggestions: error.suggestions,
+        examples: error.examples
+      });
+    } 
+    
+    // For test mocks that aren't proper Error instances but have the right structure
+    if (
+      error && 
+      typeof error === 'object' && 
+      'name' in error && 
+      error.name === 'ModelSelectionError' && 
+      'message' in error
+    ) {
+      const errorObj = error as { 
+        message: string; 
+        suggestions?: string[]; 
+        examples?: string[];
+      };
+      
+      throw new ConfigError(errorObj.message, {
+        cause: undefined,
+        suggestions: errorObj.suggestions,
+        examples: errorObj.examples
+      });
+    }
+    
+    // If it's already a ConfigError, just rethrow it
+    if (error instanceof ConfigError) {
+      throw error;
+    }
+    
+    // For unexpected errors, wrap in ConfigError
+    throw new ConfigError(`Error selecting models: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined,
+      suggestions: [
+        'Check your configuration file for valid model definitions',
+        'Verify the model or group name is spelled correctly',
+        'Use "thinktank models" to list available models'
+      ]
     });
   }
 }

@@ -17,12 +17,12 @@
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5
 
-- [ ] **Implement Input Processing Helper**: Create the `_processInput` helper function.
+- [x] **Implement Input Processing Helper**: Create the `_processInput` helper function.
   - **Action:** Implement function that handles input processing with appropriate spinner text updates and error wrapping using `FileSystemError`.
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5
 
-- [ ] **Implement Model Selection Helper**: Create the `_selectModels` helper function.
+- [x] **Implement Model Selection Helper**: Create the `_selectModels` helper function.
   - **Action:** Implement function that handles model selection with warnings display, error handling, and appropriate spinner updates. Use `ConfigError` for wrapping errors.
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5
