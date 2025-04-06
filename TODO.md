@@ -62,20 +62,23 @@
   - **Depends On:** Refactor Main runThinktank Function
   - **AC Ref:** T6.6
 
-- [ ] **Add Unit Tests for Helper Functions**: Create tests for each helper function.
+- [x] **Add Unit Tests for Helper Functions**: Create tests for each helper function.
   - **Action:** Create new test files or update existing ones to test each helper function in isolation with mocked dependencies.
   - **Depends On:** All helper implementation tasks
   - **AC Ref:** T6.8
+  - **Completed:** April 5, 2025 - Created tests for setupWorkflowHelper, processInputHelper, selectModelsHelper, executeQueriesHelper, processOutputHelper, logCompletionSummaryHelper, and handleWorkflowErrorHelper.
 
-- [ ] **Update Integration Tests**: Refactor existing tests to work with new structure.
+- [x] **Update Integration Tests**: Refactor existing tests to work with new structure.
   - **Action:** Update `runThinktank.test.ts` to mock helper functions and verify orchestration logic. Test error propagation through the entire workflow.
   - **Depends On:** Add Unit Tests for Helper Functions
   - **AC Ref:** T6.8
+  - **Completed:** April 5, 2025 - Updated runThinktank integration tests to mock helper functions and verify the orchestration logic. The tests now verify helper function interactions and all feature parameter handling.
 
-- [ ] **Update Error Handling Tests**: Ensure tests cover all error scenarios.
+- [x] **Update Error Handling Tests**: Ensure tests cover all error scenarios.
   - **Action:** Update `runThinktank-error-handling.test.ts` to verify each helper properly catches, wraps, and propagates errors. Test the main error handling catch block.
   - **Depends On:** Update Integration Tests
   - **AC Ref:** T6.8
+  - **Completed:** April 5, 2025 - Updated error handling tests to focus on helper functions. Added tests for error propagation, error categorization, and context-aware error suggestions.
 
 - [ ] **Run End-to-End Tests**: Verify behavior of refactored workflow.
   - **Action:** Run E2E tests to confirm the refactored runThinktank behaves exactly as before from external perspective.

@@ -2,40 +2,19 @@
  * Integration tests for runThinktank.ts
  */
 import { runThinktank, RunOptions } from '../runThinktank';
-import { ThinktankError } from '../../core/errors';
-import * as fileReader from '../../utils/fileReader';
-import * as configManager from '../../core/configManager';
-import * as llmRegistry from '../../core/llmRegistry';
-import * as inputHandler from '../inputHandler';
-import * as modelSelector from '../modelSelector';
-import * as queryExecutor from '../queryExecutor';
-import * as outputHandler from '../outputHandler';
+import { ConfigError, ApiError, FileSystemError } from '../../core/errors';
+import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
-import { LLMProvider, LLMResponse, ModelConfig } from '../../core/types';
-import fs from 'fs/promises';
+import { FileWriteStatus } from '../outputHandler';
 
-// Store module paths for restoration
-const fileReaderPath = require.resolve('../../utils/fileReader');
-const configManagerPath = require.resolve('../../core/configManager');
-const llmRegistryPath = require.resolve('../../core/llmRegistry');
-const inputHandlerPath = require.resolve('../inputHandler');
-const modelSelectorPath = require.resolve('../modelSelector');
-const queryExecutorPath = require.resolve('../queryExecutor');
-const outputHandlerPath = require.resolve('../outputHandler');
+// Store original module path for restoration
+const helpersPath = require.resolve('../runThinktankHelpers');
 const nameGeneratorPath = require.resolve('../../utils/nameGenerator');
-const fsPromisesPath = require.resolve('fs/promises');
 const oraPath = require.resolve('ora');
 
 // Mock dependencies
-jest.mock('../../utils/fileReader');
-jest.mock('../../core/configManager');
-jest.mock('../../core/llmRegistry');
-jest.mock('../inputHandler');
-jest.mock('../modelSelector');
-jest.mock('../queryExecutor');
-jest.mock('../outputHandler');
+jest.mock('../runThinktankHelpers');
 jest.mock('../../utils/nameGenerator');
-jest.mock('fs/promises');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
     return {
@@ -50,24 +29,6 @@ jest.mock('ora', () => {
   });
 });
 
-// Mock provider for testing
-class MockProvider implements LLMProvider {
-  providerId = 'mock';
-  
-  async generate(prompt: string, modelId: string): Promise<LLMResponse> {
-    return {
-      provider: this.providerId,
-      modelId,
-      text: `Mock response for prompt: ${prompt}`,
-      metadata: {
-        usage: { total_tokens: 10 },
-        model: modelId,
-        id: 'mock-response-id',
-      }
-    };
-  }
-}
-
 describe('runThinktank', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -75,103 +36,19 @@ describe('runThinktank', () => {
   
   // Restore all mocked modules after tests
   afterAll(() => {
-    jest.unmock('../../utils/fileReader');
-    jest.unmock('../../core/configManager');
-    jest.unmock('../../core/llmRegistry');
-    jest.unmock('../inputHandler');
-    jest.unmock('../modelSelector');
-    jest.unmock('../queryExecutor');
-    jest.unmock('../outputHandler');
+    jest.unmock('../runThinktankHelpers');
     jest.unmock('../../utils/nameGenerator');
-    jest.unmock('fs/promises');
     jest.unmock('ora');
     
     // Clear module cache to ensure fresh imports
-    delete require.cache[fileReaderPath];
-    delete require.cache[configManagerPath];
-    delete require.cache[llmRegistryPath];
-    delete require.cache[inputHandlerPath];
-    delete require.cache[modelSelectorPath];
-    delete require.cache[queryExecutorPath];
-    delete require.cache[outputHandlerPath];
+    delete require.cache[helpersPath];
     delete require.cache[nameGeneratorPath];
-    delete require.cache[fsPromisesPath];
     delete require.cache[oraPath];
   });
   
   beforeEach(() => {
-    // Default mock implementations
-    (fileReader.readFileContent as jest.Mock).mockResolvedValue('Test prompt');
-    
-    // Mock inputHandler
-    (inputHandler.processInput as jest.Mock).mockResolvedValue({
-      content: 'Test prompt',
-      sourceType: inputHandler.InputSourceType.FILE,
-      sourcePath: 'test-prompt.txt',
-      metadata: {
-        processingTimeMs: 5,
-        originalLength: 11,
-        finalLength: 11,
-        normalized: true
-      }
-    });
-    
-    // Mock outputHandler
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir');
-    (outputHandler.writeResponsesToFiles as jest.Mock).mockResolvedValue({
-      outputDirectory: '/fake/output/dir',
-      files: [{ status: 'success', filename: 'mock-mock-model.md' }],
-      succeededWrites: 1,
-      failedWrites: 0,
-      timing: { startTime: 1, endTime: 2, durationMs: 1 }
-    });
-    (outputHandler.formatForConsole as jest.Mock).mockReturnValue('Mock console output');
-    
-    // Mock modelSelector
-    (modelSelector.selectModels as jest.Mock).mockReturnValue({
-      models: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true,
-          options: { temperature: 0.7 }
-        }
-      ],
-      missingApiKeyModels: [],
-      disabledModels: [],
-      warnings: []
-    });
-    
-    // Mock queryExecutor
-    (queryExecutor.executeQueries as jest.Mock).mockResolvedValue({
-      responses: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          text: 'Mock response for prompt: Test prompt',
-          configKey: 'mock:mock-model',
-          metadata: {
-            usage: { total_tokens: 10 },
-            model: 'mock-model',
-            id: 'mock-response-id',
-          }
-        }
-      ],
-      statuses: {
-        'mock:mock-model': { 
-          status: 'success',
-          startTime: 1,
-          endTime: 2,
-          durationMs: 1
-        }
-      },
-      timing: {
-        startTime: 1,
-        endTime: 2,
-        durationMs: 1
-      }
-    });
-    (configManager.loadConfig as jest.Mock).mockResolvedValue({
+    // Default helper mock implementations
+    const mockConfig = {
       models: [
         {
           provider: 'mock',
@@ -192,49 +69,110 @@ describe('runThinktank', () => {
               options: { temperature: 0.7 }
             }
           ]
-        },
-        coding: {
-          name: 'coding',
-          systemPrompt: { text: 'You are a coding assistant.' },
-          models: [
-            {
-              provider: 'mock',
-              modelId: 'mock-model',
-              enabled: true,
-              options: { temperature: 0.7 }
-            }
-          ]
+        }
+      }
+    };
+    
+    // Setup workflow helper mock
+    (helpers._setupWorkflow as jest.Mock).mockResolvedValue({
+      config: mockConfig,
+      friendlyRunName: 'clever-meadow',
+      outputDirectoryPath: '/fake/output/dir'
+    });
+    
+    // Process input helper mock
+    (helpers._processInput as jest.Mock).mockResolvedValue({
+      inputResult: {
+        content: 'Test prompt',
+        sourceType: 'file',
+        sourcePath: 'test-prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 11,
+          finalLength: 11,
+          normalized: true
         }
       }
     });
-    (configManager.getEnabledModels as jest.Mock).mockImplementation((config) => {
-      return config.models.filter((model: ModelConfig) => model.enabled);
-    });
-    (configManager.filterModels as jest.Mock).mockImplementation((config, modelFilter) => {
-      return config.models.filter((model: ModelConfig) => 
-        `${model.provider}:${model.modelId}`.includes(modelFilter)
-      );
-    });
-    (configManager.validateModelApiKeys as jest.Mock).mockReturnValue({
-      missingKeyModels: []
+    
+    // Select models helper mock
+    (helpers._selectModels as jest.Mock).mockReturnValue({
+      modelSelectionResult: {
+        models: [
+          {
+            provider: 'mock',
+            modelId: 'mock-model',
+            enabled: true,
+            options: { temperature: 0.7 }
+          }
+        ],
+        missingApiKeyModels: [],
+        disabledModels: [],
+        warnings: []
+      },
+      modeDescription: 'All enabled models'
     });
     
-    // Mock llmRegistry.getProvider
-    const mockProvider = new MockProvider();
-    (llmRegistry.getProvider as jest.Mock).mockImplementation((providerId) => {
-      if (providerId === 'mock') {
-        return mockProvider;
+    // Execute queries helper mock
+    (helpers._executeQueries as jest.Mock).mockResolvedValue({
+      queryResults: {
+        responses: [
+          {
+            provider: 'mock',
+            modelId: 'mock-model',
+            text: 'Mock response for prompt: Test prompt',
+            configKey: 'mock:mock-model',
+            metadata: {
+              usage: { total_tokens: 10 },
+              model: 'mock-model',
+              id: 'mock-response-id',
+            }
+          }
+        ],
+        statuses: {
+          'mock:mock-model': { 
+            status: 'success',
+            startTime: 1,
+            endTime: 2,
+            durationMs: 1
+          }
+        },
+        timing: {
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        }
       }
-      return null;
     });
-
-    // Mock fs
-    (fs.writeFile as jest.Mock).mockResolvedValue(undefined);
-    (fs.mkdir as jest.Mock).mockResolvedValue(undefined);
+    
+    // Process output helper mock
+    (helpers._processOutput as jest.Mock).mockResolvedValue({
+      fileOutputResult: {
+        outputDirectory: '/fake/output/dir',
+        files: [{ 
+          modelKey: 'mock:mock-model', 
+          filename: 'mock-model.md', 
+          status: 'success' as FileWriteStatus,
+          filePath: '/fake/output/dir/mock-model.md'
+        }],
+        succeededWrites: 1,
+        failedWrites: 0,
+        timing: { startTime: 1, endTime: 2, durationMs: 1 }
+      },
+      consoleOutput: 'Mock console output'
+    });
+    
+    // Log completion summary helper mock
+    (helpers._logCompletionSummary as jest.Mock).mockReturnValue({});
+    
+    // Error handling helper mock - should never actually run in success tests
+    // Convert the error handler to a simple function that just rethrows the error
+    jest.spyOn(helpers, '_handleWorkflowError').mockImplementation((params: any) => {
+      throw params.error;
+    });
     
     // Mock nameGenerator
     (nameGenerator.generateFunName as jest.Mock).mockResolvedValue('clever-meadow');
-    (nameGenerator.generateFallbackName as jest.Mock).mockReturnValue('run-20250101-123045');
   });
 
   it('should run successfully with valid inputs', async () => {
@@ -246,16 +184,62 @@ describe('runThinktank', () => {
 
     const result = await runThinktank(options);
     
-    // Verify our component modules were called with correct parameters
-    expect(inputHandler.processInput).toHaveBeenCalledWith({ input: 'test-prompt.txt' });
-    expect(configManager.loadConfig).toHaveBeenCalled();
-    expect(modelSelector.selectModels).toHaveBeenCalled();
-    expect(queryExecutor.executeQueries).toHaveBeenCalled();
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalled();
-    expect(outputHandler.writeResponsesToFiles).toHaveBeenCalled();
-    expect(outputHandler.formatForConsole).toHaveBeenCalled();
+    // Verify our helper functions were called in the correct sequence
+    expect(helpers._setupWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        options
+      })
+    );
     
-    // Verify the result is the formatted output
+    expect(helpers._processInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        input: 'test-prompt.txt'
+      })
+    );
+    
+    expect(helpers._selectModels).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        config: expect.any(Object),
+        options
+      })
+    );
+    
+    expect(helpers._executeQueries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        config: expect.any(Object),
+        models: expect.any(Array),
+        prompt: 'Test prompt',
+        options
+      })
+    );
+    
+    expect(helpers._processOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        queryResults: expect.any(Object),
+        outputDirectoryPath: '/fake/output/dir',
+        options,
+        friendlyRunName: 'clever-meadow'
+      })
+    );
+    
+    expect(helpers._logCompletionSummary).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryResults: expect.any(Object),
+        fileOutputResult: expect.any(Object),
+        options: expect.objectContaining({
+          input: 'test-prompt.txt',
+          friendlyRunName: 'clever-meadow'
+        }),
+        outputDirectoryPath: '/fake/output/dir'
+      })
+    );
+    
+    // Verify the result is the formatted console output
     expect(result).toBe('Mock console output');
   });
 
@@ -269,11 +253,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify we pass the models list to modelSelector
-    expect(modelSelector.selectModels).toHaveBeenCalledWith(
-      expect.anything(),
+    // Verify we pass the models list to the select models helper
+    expect(helpers._selectModels).toHaveBeenCalledWith(
       expect.objectContaining({
-        models: ['mock:mock-model']
+        options: expect.objectContaining({
+          models: ['mock:mock-model']
+        })
       })
     );
   });
@@ -288,11 +273,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify we pass the specificModel to modelSelector
-    expect(modelSelector.selectModels).toHaveBeenCalledWith(
-      expect.anything(),
+    // Verify we pass the specificModel to the select models helper
+    expect(helpers._selectModels).toHaveBeenCalledWith(
       expect.objectContaining({
-        specificModel: 'mock:mock-model'
+        options: expect.objectContaining({
+          specificModel: 'mock:mock-model'
+        })
       })
     );
   });
@@ -307,11 +293,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify we pass the groupName to modelSelector
-    expect(modelSelector.selectModels).toHaveBeenCalledWith(
-      expect.anything(),
+    // Verify we pass the groupName to the select models helper
+    expect(helpers._selectModels).toHaveBeenCalledWith(
       expect.objectContaining({
-        groupName: 'coding'
+        options: expect.objectContaining({
+          groupName: 'coding'
+        })
       })
     );
   });
@@ -326,12 +313,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify system prompt from CLI was passed to QueryExecutor
-    expect(queryExecutor.executeQueries).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
+    // Verify system prompt from CLI was passed to query execution helper
+    expect(helpers._executeQueries).toHaveBeenCalledWith(
       expect.objectContaining({
-        systemPrompt: 'Custom CLI system prompt override'
+        options: expect.objectContaining({
+          systemPrompt: 'Custom CLI system prompt override'
+        })
       })
     );
   });
@@ -346,12 +333,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify enableThinking was passed to QueryExecutor
-    expect(queryExecutor.executeQueries).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
+    // Verify enableThinking was passed to query execution helper
+    expect(helpers._executeQueries).toHaveBeenCalledWith(
       expect.objectContaining({
-        enableThinking: true
+        options: expect.objectContaining({
+          enableThinking: true
+        })
       })
     );
   });
@@ -365,20 +352,12 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify includeMetadata was passed to OutputHandler
-    expect(outputHandler.writeResponsesToFiles).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
+    // Verify includeMetadata was passed to process output helper
+    expect(helpers._processOutput).toHaveBeenCalledWith(
       expect.objectContaining({
-        includeMetadata: true
-      })
-    );
-    
-    // Verify includeMetadata was passed to formatForConsole
-    expect(outputHandler.formatForConsole).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        includeMetadata: true
+        options: expect.objectContaining({
+          includeMetadata: true
+        })
       })
     );
   });
@@ -393,145 +372,47 @@ describe('runThinktank', () => {
 
     await runThinktank(options);
     
-    // Verify output path was passed to createOutputDirectory
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+    // Verify output path was passed to setup workflow helper
+    expect(helpers._setupWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        outputDirectory: '/custom/output/path'
+        options: expect.objectContaining({
+          output: '/custom/output/path'
+        })
       })
     );
   });
 
-  it('should include thinking output when specified', async () => {
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeThinking: true,
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    await runThinktank(options);
-    
-    // Verify includeThinking was passed to formatForConsole
-    expect(outputHandler.formatForConsole).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({
-        includeThinking: true
-      })
-    );
-  });
-
-  it('should handle missing API keys warning from ModelSelector', async () => {
-    // Set modelSelector to return some missing API key models
-    (modelSelector.selectModels as jest.Mock).mockReturnValueOnce({
-      models: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          enabled: true
-        }
-      ],
-      missingApiKeyModels: [
-        {
-          provider: 'missing',
-          modelId: 'missing-model',
-          enabled: true
-        }
-      ],
-      disabledModels: [],
-      warnings: ['Missing API keys for models: missing:missing-model']
-    });
-
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    await runThinktank(options);
-    
-    // Verify we still proceed with the available models
-    expect(queryExecutor.executeQueries).toHaveBeenCalled();
-  });
-
-  it('should throw error from ModelSelector when no models available', async () => {
-    // Mock ModelSelector to throw an error
-    (modelSelector.selectModels as jest.Mock).mockImplementationOnce(() => {
-      throw new Error('No enabled models found');
-    });
-
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    // Should propagate the error as a ThinktankError
-    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
-  });
-  
-  it('should use fun name for run when name generation succeeds', async () => {
-    const funName = 'clever-meadow';
-    (nameGenerator.generateFunName as jest.Mock).mockResolvedValue(funName);
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-    };
-    
-    const result = await runThinktank(options);
-    
-    // Check that the name was used in console formatting
-    expect(outputHandler.formatForConsole).toHaveBeenCalled();
-    expect(result).toBe('Mock console output');
-    
-    // Verify the name was passed to formatResultsSummary (indirectly checking options object)
-    expect(queryExecutor.executeQueries).toHaveBeenCalled();
-  });
-  
-  it('should use fallback name when name generation fails', async () => {
-    const fallbackName = 'run-20250101-123045';
-    (nameGenerator.generateFunName as jest.Mock).mockResolvedValue(null);
-    (nameGenerator.generateFallbackName as jest.Mock).mockReturnValue(fallbackName);
-    
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-    };
-    
-    const result = await runThinktank(options);
-    
-    // Check that the output was still successfully generated
-    expect(result).toBe('Mock console output');
-    
-    // The fallback name should have been used in the formatResultsSummary call
-    expect(queryExecutor.executeQueries).toHaveBeenCalled();
-  });
-  
-  it('should handle API execution errors from QueryExecutor', async () => {
-    // Mock QueryExecutor to return a response with an error
-    (queryExecutor.executeQueries as jest.Mock).mockResolvedValueOnce({
-      responses: [
-        {
-          provider: 'mock',
-          modelId: 'mock-model',
-          text: '',
-          error: 'API call failed',
-          configKey: 'mock:mock-model'
-        }
-      ],
-      statuses: {
-        'mock:mock-model': { 
-          status: 'error',
-          message: 'API call failed',
-          startTime: 1,
-          endTime: 2,
-          durationMs: 1
-        }
+  it('should return early when no models are selected', async () => {
+    // Mock _selectModels to return empty models array
+    (helpers._selectModels as jest.Mock).mockReturnValueOnce({
+      modelSelectionResult: {
+        models: [],
+        missingApiKeyModels: [],
+        disabledModels: [],
+        warnings: []
       },
-      timing: {
-        startTime: 1,
-        endTime: 2,
-        durationMs: 1
-      }
+      modeDescription: 'All enabled models'
     });
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    const result = await runThinktank(options);
+    
+    // Verify that the execute queries helper was not called
+    expect(helpers._executeQueries).not.toHaveBeenCalled();
+    
+    // Verify that a warning message was returned
+    expect(result).toContain('No models available');
+  });
+
+  it('should throw error from setup workflow helper', async () => {
+    // Mock _setupWorkflow to throw an error
+    const setupError = new ConfigError('Config loading failed');
+    (helpers._setupWorkflow as jest.Mock).mockRejectedValueOnce(setupError);
 
     const options: RunOptions = {
       input: 'test-prompt.txt',
@@ -539,40 +420,23 @@ describe('runThinktank', () => {
       useColors: false,
     };
 
-    await runThinktank(options);
+    // Should propagate the error
+    await expect(runThinktank(options)).rejects.toThrow(ConfigError);
     
-    // Should still complete and call formatForConsole
-    expect(outputHandler.formatForConsole).toHaveBeenCalled();
-  });
-
-  it('should handle file write errors from OutputHandler', async () => {
-    // Mock OutputHandler to return a result with failed writes
-    (outputHandler.writeResponsesToFiles as jest.Mock).mockResolvedValueOnce({
-      outputDirectory: '/fake/output/dir',
-      files: [{ status: 'error', filename: 'mock-mock-model.md', error: 'Write error' }],
-      succeededWrites: 0,
-      failedWrites: 1,
-      timing: { startTime: 1, endTime: 2, durationMs: 1 }
-    });
-
-    const options: RunOptions = {
-      input: 'test-prompt.txt',
-      includeMetadata: false,
-      useColors: false,
-    };
-
-    // Should still complete without throwing
-    await runThinktank(options);
-    
-    // Should still format the console output
-    expect(outputHandler.formatForConsole).toHaveBeenCalled();
-  });
-
-  it('should throw ThinktankError for file read errors', async () => {
-    // Mock InputHandler to throw an error
-    (inputHandler.processInput as jest.Mock).mockRejectedValue(
-      new Error('File not found')
+    // Verify the error handler was called with the right parameters
+    expect(helpers._handleWorkflowError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: setupError,
+        options,
+        workflowState: expect.any(Object)
+      })
     );
+  });
+  
+  it('should throw error from process input helper', async () => {
+    // Mock _processInput to throw an error
+    const inputError = new FileSystemError('File not found');
+    (helpers._processInput as jest.Mock).mockRejectedValueOnce(inputError);
 
     const options: RunOptions = {
       input: 'nonexistent.txt',
@@ -580,6 +444,111 @@ describe('runThinktank', () => {
       useColors: false,
     };
 
-    await expect(runThinktank(options)).rejects.toThrow(ThinktankError);
+    // Should propagate the error
+    await expect(runThinktank(options)).rejects.toThrow(FileSystemError);
+    
+    // Verify the error handler was called with the right parameters
+    expect(helpers._handleWorkflowError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: inputError,
+        options,
+        workflowState: expect.any(Object)
+      })
+    );
+  });
+  
+  it('should throw error from select models helper', async () => {
+    // Mock _selectModels to throw an error
+    const modelError = new ConfigError('Invalid model format');
+    (helpers._selectModels as jest.Mock).mockImplementationOnce(() => {
+      throw modelError;
+    });
+
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      specificModel: 'invalid-format',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should propagate the error
+    await expect(runThinktank(options)).rejects.toThrow(ConfigError);
+    
+    // Verify the error handler was called with the right parameters
+    expect(helpers._handleWorkflowError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: modelError,
+        options,
+        workflowState: expect.any(Object)
+      })
+    );
+  });
+  
+  it('should throw error from execute queries helper', async () => {
+    // Mock _executeQueries to throw an error
+    const apiError = new ApiError('API call failed');
+    (helpers._executeQueries as jest.Mock).mockRejectedValueOnce(apiError);
+
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should propagate the error
+    await expect(runThinktank(options)).rejects.toThrow(ApiError);
+    
+    // Verify the error handler was called with the right parameters
+    expect(helpers._handleWorkflowError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: apiError,
+        options,
+        workflowState: expect.any(Object)
+      })
+    );
+  });
+  
+  it('should throw error from process output helper', async () => {
+    // Mock _processOutput to throw an error
+    const fsError = new FileSystemError('Write error');
+    (helpers._processOutput as jest.Mock).mockRejectedValueOnce(fsError);
+
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    // Should propagate the error
+    await expect(runThinktank(options)).rejects.toThrow(FileSystemError);
+    
+    // Verify the error handler was called with the right parameters
+    expect(helpers._handleWorkflowError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: fsError,
+        options,
+        workflowState: expect.any(Object)
+      })
+    );
+  });
+  
+  it('should display extra metadata when includeMetadata is true', async () => {
+    // Mock console.log to verify it's called with metadata
+    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: true,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify that the completion summary was called and console.log was used
+    expect(helpers._logCompletionSummary).toHaveBeenCalled();
+    expect(consoleLogSpy).toHaveBeenCalled();
+    
+    // Restore console.log
+    consoleLogSpy.mockRestore();
   });
 });
