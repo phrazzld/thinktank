@@ -51,7 +51,7 @@
 
 ## Gitignore Mock Utilities
 
-- [ ] **Define gitignore mock utility interfaces**
+- [x] **Define gitignore mock utility interfaces**
   - **Action:** Create TypeScript interfaces for `GitignoreMockConfig` and other types needed by the gitignore mock utility.
   - **Depends On:** Create shared test utilities directory.
   - **AC Ref:** AC 3.1.
