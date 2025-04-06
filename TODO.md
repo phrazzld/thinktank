@@ -26,10 +26,11 @@
   - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to inconsistencies if not addressed.
   - **Completed:** Enhanced the ThrottledSpinner class with specialized methods to handle different types of status updates. Implemented a duck-typing approach that gracefully falls back to basic text updates for compatibility with regular Ora spinners.
 
-- [ ] **Add Missing JSDoc Comments**: Improve code documentation
+- [x] **Add Missing JSDoc Comments**: Improve code documentation
   - **Action:** Add comprehensive JSDoc comments to helper functions in `runThinktankTypes.ts` and `runThinktankHelpers.ts`.
   - **Depends On:** None.
   - **AC Ref:** Low-risk issue identified in PLAN.md. Affects code understandability.
+  - **Completed:** Added comprehensive JSDoc comments to both files, enhancing documentation of the workflow structure, function behavior, error contracts, and type definitions. Used consistent style with detailed descriptions for all components.
 
 - [ ] **Simplify Return Types**: Improve type clarity
   - **Action:** Refactor the `_selectModels` return type to eliminate unnecessary nesting by returning `ModelSelectionResult & { modeDescription: string }` directly.
