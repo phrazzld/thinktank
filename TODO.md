@@ -12,7 +12,7 @@
   - **Depends On:** Install memfs library
   - **AC Ref:** AC 1.3, AC 1.4
 
-- [ ] **Remove test-specific logic from production code**
+- [x] **Remove test-specific logic from production code**
   - **Action:** Remove any checks for `_isTestError` or similar flags from `fileReader.ts` and other production code
   - **Depends On:** None
   - **AC Ref:** AC 1.5
