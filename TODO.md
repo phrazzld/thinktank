@@ -73,7 +73,7 @@
   - **Depends On:** Modify _processInput helper.
   - **AC Ref:** AC 3.2 - Workflow must integrate context reading with prompt processing.
 
-- [ ] **Pass contextPaths to _processInput**
+- [x] **Pass contextPaths to _processInput**
   - **Action:** Modify the call to `_processInput` in `runThinktank` to pass contextPaths from options.
   - **Depends On:** Update RunOptions interface, Modify _processInput helper.
   - **AC Ref:** AC 3.3 - runThinktank must pass contextPaths from options to input processing.

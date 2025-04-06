@@ -269,6 +269,26 @@ describe('runThinktank', () => {
     );
   });
   
+  it('should pass contextPaths from options to _processInput', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      contextPaths: ['src/file1.js', 'src/dir1/'],
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify contextPaths is passed to _processInput
+    expect(helpers._processInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        input: 'test-prompt.txt',
+        contextPaths: ['src/file1.js', 'src/dir1/']
+      })
+    );
+  });
+  
   it('should handle specific model parameter correctly', async () => {
     const options: RunOptions = {
       input: 'test-prompt.txt',
