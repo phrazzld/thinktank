@@ -213,7 +213,7 @@ export function setupMockFs(config?: FsMockConfig): void {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   
   // Configure fs.access with path-specific behavior support
-  mockedFs.access.mockImplementation((path) => {
+  mockedFs.access.mockImplementation((path, _mode) => {
     // Convert path to string for comparison (it could be URL or Buffer too)
     const pathStr = String(path);
     
@@ -227,9 +227,13 @@ export function setupMockFs(config?: FsMockConfig): void {
         if (rule.allowed) {
           return Promise.resolve(undefined);
         } else {
+          // Format message according to specific error code
+          const errorMessage = rule.errorMessage || 'File not found or access denied';
+          
+          // Create appropriate error based on code
           const error = createFsError(
             rule.errorCode || mergedConfig.defaultAccessErrorCode || 'ENOENT',
-            rule.errorMessage || 'File not found or access denied',
+            errorMessage,
             'access',
             pathStr
           );
@@ -280,12 +284,18 @@ export function setupMockFs(config?: FsMockConfig): void {
         
         // Handle encoding option for string content
         if (typeof content === 'string') {
+          // Special handling for raw/normalized content
+          // Convert line endings for Windows compatibility in tests
+          const normalizedContent = typeof options === 'string' && options === 'utf-8' 
+            ? content.replace(/\r\n/g, '\n')
+            : content;
+            
           // If no encoding is specified, return a Buffer
           if (!options || (typeof options === 'object' && !options.encoding)) {
-            return Promise.resolve(Buffer.from(content));
+            return Promise.resolve(Buffer.from(normalizedContent));
           }
           // Otherwise return the string directly
-          return Promise.resolve(content);
+          return Promise.resolve(normalizedContent);
         }
         
         // For Buffer content, return it directly
@@ -443,6 +453,12 @@ export function setupMockFs(config?: FsMockConfig): void {
 
 /**
  * Interface for a mocked filesystem error
+ * 
+ * NOTE: This interface is deprecated and will be removed.
+ * Use NodeJS.ErrnoException directly instead, which properly
+ * represents the structure of filesystem errors.
+ * 
+ * @deprecated Use NodeJS.ErrnoException instead
  */
 export interface MockedFsError {
   /**
@@ -668,11 +684,24 @@ export function createFsError(
   message: string,
   syscall: string,
   filepath: string
-): Error & MockedFsError {
-  const error = new Error(message) as Error & MockedFsError;
+): NodeJS.ErrnoException {
+  // First create a basic error object
+  const error = new Error() as NodeJS.ErrnoException;
+  
+  // Set standard properties
   error.code = code;
   error.syscall = syscall;
   error.path = filepath;
+  error.message = message; // Use the message directly as provided
+  
+  // Map common error codes to errno numbers for better compatibility
+  if (code === 'ENOENT') error.errno = -2;
+  else if (code === 'EACCES') error.errno = -13;
+  else if (code === 'EPERM') error.errno = -1;
+  else if (code === 'EROFS') error.errno = -30;
+  else if (code === 'EBUSY') error.errno = -16;
+  else if (code === 'EMFILE') error.errno = -24;
+  
   return error;
 }
 
