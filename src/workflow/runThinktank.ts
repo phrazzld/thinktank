@@ -193,11 +193,15 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // Show list of selected models
+    // Stop spinner before showing the model list to avoid visual conflicts
+    spinner.stop();
     const modelList = modelSelectionResult.modelSelectionResult.models
       .map((model, index) => `  ${index + 1}. ${model.provider}:${model.modelId}${!model.enabled ? ' (disabled)' : ''}`)
       .join('\n');
     
     logger.plain(modelList);
+    // Restart spinner for next step
+    spinner.start();
     
     // 4. Execute queries: Query the selected models with the processed input
     const queryResults = await _executeQueries({
@@ -225,6 +229,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     workflowState.consoleOutput = outputResult.consoleOutput;
     
     // 6. Log completion summary: Display a summary of the executed queries
+    // Stop spinner before showing completion summary to avoid visual conflicts
+    spinner.stop();
     _logCompletionSummary({
       queryResults: queryResults.queryResults,
       fileOutputResult: outputResult.fileOutputResult,
@@ -234,6 +240,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     
     // 7. Show additional metadata if requested
     if (options.includeMetadata) {
+      // Spinner is already stopped after _logCompletionSummary call
       // Display timing information
       logger.plain('\n' + styleHeader('Execution timing:'));
       

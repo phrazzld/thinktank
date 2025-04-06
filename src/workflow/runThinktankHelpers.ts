@@ -86,6 +86,9 @@ export async function _setupWorkflow({
     spinner.info(styleInfo(`Output directory: ${outputDirectoryPath} (Run: ${friendlyRunName})`));
     spinner.start(); // Restart spinner for next step
     
+    // Update spinner for final state
+    spinner.text = 'Setup completed successfully';
+    
     // Return the result object with all required properties
     return {
       config,
@@ -387,6 +390,9 @@ export function _selectModels({
     spinner.info(styleInfo(`Using ${modelCount} ${modelCount === 1 ? 'model' : 'models'}: ${styleSuccess(modelList)}`));
     spinner.start(); // Restart spinner for next step
     
+    // Ensure spinner has final status text for consistent state
+    spinner.text = `Model selection complete: ${modelCount} ${modelCount === 1 ? 'model' : 'models'} selected`;
+    
     // 6. Return the result
     return {
       modelSelectionResult,
@@ -502,6 +508,7 @@ export async function _executeQueries({
       // Display timing information
       const totalTime = queryResults.timing.durationMs / 1000;
       spinner.info(styleInfo(`Queried ${successCount} ${successCount === 1 ? 'model' : 'models'} in ${totalTime.toFixed(2)}s`));
+      spinner.start(); // Restart spinner after info message
     } else if (successCount > 0) {
       // Partial success
       spinner.text = `Queries completed with some failures`;
@@ -509,6 +516,7 @@ export async function _executeQueries({
       
       // Display counts of successes and failures
       spinner.info(styleInfo(`Results: ${successCount} succeeded, ${failureCount} failed`));
+      spinner.start(); // Restart spinner after info message
     } else {
       // All models failed
       spinner.text = `All queries failed`;
@@ -520,10 +528,11 @@ export async function _executeQueries({
         .join(', ');
         
       spinner.info(styleInfo(`Errors: ${errorSummary}`));
+      spinner.start(); // Restart spinner after info message
     }
     
-    // Restart spinner for next step
-    spinner.start();
+    // Set final spinner text for consistent state
+    spinner.text = `Query execution complete: ${successCount} succeeded, ${failureCount} failed`;
     
     // 6. Return the results
     return { queryResults };
@@ -626,6 +635,7 @@ export async function _processOutput({
       
       // Display success message with output directory
       spinner.info(styleInfo(`Results saved to: ${styleSuccess(outputDirectoryPath)}`));
+      spinner.start(); // Restart spinner after info message
     } else if (succeededWrites > 0) {
       // Partial success
       spinner.text = `Output processed with some failures`;
@@ -633,6 +643,7 @@ export async function _processOutput({
       
       // Show success and output directory
       spinner.info(styleInfo(`${succeededWrites} ${succeededWrites === 1 ? 'file' : 'files'} saved to: ${outputDirectoryPath}`));
+      spinner.start(); // Restart spinner after info message
     } else {
       // All files failed
       spinner.text = `Failed to write any output files`;
@@ -645,11 +656,12 @@ export async function _processOutput({
         
       if (errorMessages.length > 0) {
         spinner.info(styleInfo(`Errors: ${errorMessages.join(', ')}`));
+        spinner.start(); // Restart spinner after info message
       }
     }
     
-    // Restart spinner for next step
-    spinner.start();
+    // Set final spinner text for consistent state
+    spinner.text = `Output processing complete: ${succeededWrites} files written, ${failedWrites} failed`;
     
     // 6. Return the result
     return {
