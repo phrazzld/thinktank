@@ -16,6 +16,7 @@ import {
   NetworkError,
   errorCategories 
 } from '../core/errors';
+import { categorizeError } from '../core/errors/utils/categorization';
 import { colors } from '../utils/consoleUtils';
 import { configureLogger, logger } from '../utils/logger';
 
@@ -191,63 +192,63 @@ function addCategorySpecificGuidance(error: ThinktankError): void {
  * @returns A ThinktankError with appropriate category and cause
  */
 function wrapStandardError(error: Error): ThinktankError {
-  // Try to categorize based on message content
-  const message = error.message.toLowerCase();
+  // Use the categorization utility to determine the error category
+  const category = categorizeError(error);
   
-  // Network-related errors
-  if (message.includes('network') || 
-      message.includes('econnrefused') || 
-      message.includes('timeout') ||
-      message.includes('socket')) {
-    return new NetworkError(`Network error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check your internet connection',
-        'Verify that required services are accessible from your network',
-        'The service might be down or experiencing issues'
-      ]
-    });
+  // Create appropriate error type based on the category
+  switch (category) {
+    case errorCategories.NETWORK:
+      return new NetworkError(`Network error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check your internet connection',
+          'Verify that required services are accessible from your network',
+          'The service might be down or experiencing issues'
+        ]
+      });
+      
+    case errorCategories.FILESYSTEM:
+      return new FileSystemError(`File system error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check that the file or directory exists',
+          'Verify that you have appropriate permissions',
+          'Ensure the path is correct'
+        ]
+      });
+      
+    case errorCategories.CONFIG:
+      return new ConfigError(`Configuration error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check your thinktank configuration file',
+          'Try resetting to default configuration with: thinktank config reset',
+          'Verify that configuration values are in the correct format'
+        ]
+      });
+      
+    case errorCategories.API:
+      return new ApiError(`API error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check your API key and permissions',
+          'Verify the API endpoint is correct',
+          'The service might be experiencing issues'
+        ]
+      });
+      
+    // Default to unknown category
+    default:
+      return new ThinktankError(`Unexpected error: ${error.message}`, {
+        category: errorCategories.UNKNOWN,
+        cause: error,
+        suggestions: [
+          'Run with --debug flag for more detailed information',
+          'Check documentation for this feature',
+          'This may be an internal error in thinktank'
+        ]
+      });
   }
-  
-  // File-related errors
-  else if (message.includes('file') || 
-           message.includes('directory') || 
-           message.includes('enoent') ||
-           message.includes('permission denied')) {
-    return new FileSystemError(`File system error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check that the file or directory exists',
-        'Verify that you have appropriate permissions',
-        'Ensure the path is correct'
-      ]
-    });
-  }
-  
-  // Configuration errors
-  else if (message.includes('config') || 
-           message.includes('settings') || 
-           message.includes('option')) {
-    return new ConfigError(`Configuration error: ${error.message}`, {
-      cause: error,
-      suggestions: [
-        'Check your thinktank configuration file',
-        'Try resetting to default configuration with: thinktank config reset',
-        'Verify that configuration values are in the correct format'
-      ]
-    });
-  }
-  
-  // Default to unknown category
-  return new ThinktankError(`Unexpected error: ${error.message}`, {
-    category: errorCategories.UNKNOWN,
-    cause: error,
-    suggestions: [
-      'Run with --debug flag for more detailed information',
-      'Check documentation for this feature',
-      'This may be an internal error in thinktank'
-    ]
-  });
 }
 
 // Main execution function

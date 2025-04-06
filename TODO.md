@@ -22,12 +22,12 @@
   - **Depends On:** None.
   - **AC Ref:** AC 2.2 (Large file size of `errors.ts`).
 
-- [ ] **Simplify error message construction**
+- [x] **Simplify error message construction**
   - **Action:** Refactor error message construction in provider error handlers to eliminate duplication and improve consistency across different providers.
   - **Depends On:** None.
   - **AC Ref:** AC 2.3 (Duplicate error message construction).
 
-- [ ] **Abstract error categorization logic**
+- [x] **Abstract error categorization logic**
   - **Action:** Create utility functions or mappings to standardize error message categorization, replacing string-based conditionals with more maintainable approaches.
   - **Depends On:** None.
   - **AC Ref:** AC 2.4 (String-based error categorization).
