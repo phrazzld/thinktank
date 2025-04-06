@@ -95,23 +95,25 @@ describe('runThinktank', () => {
       }
     });
     
-    // Select models helper mock
-    (helpers._selectModels as jest.Mock).mockReturnValue({
-      modelSelectionResult: {
-        models: [
-          {
-            provider: 'mock',
-            modelId: 'mock-model',
-            enabled: true,
-            options: { temperature: 0.7 }
-          }
-        ],
-        missingApiKeyModels: [],
-        disabledModels: [],
-        warnings: []
-      },
+    // Select models helper mock with flattened structure
+    const mockSelectionResult: any = {
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true,
+          options: { temperature: 0.7 }
+        }
+      ],
+      missingApiKeyModels: [],
+      disabledModels: [],
+      warnings: [],
       modeDescription: 'All enabled models'
-    });
+    };
+    // Add self-reference for backward compatibility
+    mockSelectionResult.modelSelectionResult = mockSelectionResult;
+    
+    (helpers._selectModels as jest.Mock).mockReturnValue(mockSelectionResult);
     
     // Execute queries helper mock
     (helpers._executeQueries as jest.Mock).mockResolvedValue({
@@ -383,16 +385,18 @@ describe('runThinktank', () => {
   });
 
   it('should return early when no models are selected', async () => {
-    // Mock _selectModels to return empty models array
-    (helpers._selectModels as jest.Mock).mockReturnValueOnce({
-      modelSelectionResult: {
-        models: [],
-        missingApiKeyModels: [],
-        disabledModels: [],
-        warnings: []
-      },
+    // Mock _selectModels to return empty models array with flattened structure
+    const mockModelSelectionResult: any = {
+      models: [],
+      missingApiKeyModels: [],
+      disabledModels: [],
+      warnings: [],
       modeDescription: 'All enabled models'
-    });
+    };
+    // Add self-reference for backward compatibility
+    mockModelSelectionResult.modelSelectionResult = mockModelSelectionResult;
+    
+    (helpers._selectModels as jest.Mock).mockReturnValueOnce(mockModelSelectionResult);
     
     const options: RunOptions = {
       input: 'test-prompt.txt',

@@ -195,10 +195,10 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     });
     
     // Update workflow state with model selection result
-    workflowState.modelSelectionResult = modelSelectionResult.modelSelectionResult;
+    workflowState.modelSelectionResult = modelSelectionResult;
     
     // Early return if no models were selected
-    if (modelSelectionResult.modelSelectionResult.models.length === 0) {
+    if (modelSelectionResult.models.length === 0) {
       const message = 'No models available after filtering.';
       spinner.warn(styleWarning(message));
       return message;
@@ -207,7 +207,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Show list of selected models
     // Stop spinner before showing the model list to avoid visual conflicts
     spinner.stop();
-    const modelList = modelSelectionResult.modelSelectionResult.models
+    const modelList = modelSelectionResult.models
       .map((model, index) => `  ${index + 1}. ${model.provider}:${model.modelId}${!model.enabled ? ' (disabled)' : ''}`)
       .join('\n');
     
@@ -219,7 +219,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const queryResults = await _executeQueries({
       spinner,
       config: setupResult.config,
-      models: modelSelectionResult.modelSelectionResult.models,
+      models: modelSelectionResult.models,
       prompt: inputResult.inputResult.content,
       options
     });

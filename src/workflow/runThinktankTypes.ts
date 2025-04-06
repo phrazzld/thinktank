@@ -217,17 +217,24 @@ export interface SelectModelsParams extends SpinnerContext {
 
 /**
  * Result of the _selectModels helper function
+ * 
+ * This is an intersection type that combines the ModelSelectionResult with
+ * additional properties specific to the _selectModels helper function.
+ * Using an intersection type provides a flatter structure than nested objects
+ * while maintaining full type safety.
  */
-export interface SelectModelsResult {
-  /**
-   * The result of model selection, including selected models, warnings, and disabled models
-   */
-  modelSelectionResult: ModelSelectionResult;
-  
+export type SelectModelsResult = ModelSelectionResult & {
   /**
    * Description of the model selection mode (group, specific model, etc.)
    */
   modeDescription: string;
+  
+  /**
+   * Self-reference for backward compatibility
+   * Allows existing code to access properties via modelSelectionResult.property
+   * @deprecated Access properties directly instead (result.models vs result.modelSelectionResult.models)
+   */
+  modelSelectionResult: ModelSelectionResult;
 }
 
 // ----------------------------------------

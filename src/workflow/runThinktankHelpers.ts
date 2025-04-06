@@ -410,11 +410,15 @@ export function _selectModels({
     // Ensure spinner has final status text for consistent state
     spinner.text = `Model selection complete: ${modelCount} ${modelCount === 1 ? 'model' : 'models'} selected`;
     
-    // 6. Return the result
-    return {
-      modelSelectionResult,
-      modeDescription
+    // 6. Create the flattened result object using intersection type
+    const result = {
+      ...modelSelectionResult,  // Spread all properties from ModelSelectionResult
+      modeDescription,          // Add the modeDescription property
+      modelSelectionResult      // Self-reference for backward compatibility
     };
+    
+    // Return the enhanced result
+    return result;
   } catch (error) {
     // Handle specific error types according to the error handling contract
     

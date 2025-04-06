@@ -91,23 +91,25 @@ describe('runThinktank Error Handling', () => {
       }
     });
     
-    // Select models helper mock - success by default
-    (helpers._selectModels as jest.Mock).mockReturnValue({
-      modelSelectionResult: {
-        models: [
-          {
-            provider: 'mock',
-            modelId: 'mock-model',
-            enabled: true,
-            options: { temperature: 0.7 }
-          }
-        ],
-        missingApiKeyModels: [],
-        disabledModels: [],
-        warnings: []
-      },
+    // Select models helper mock - success by default with flattened structure
+    const mockSelectionResult: any = {
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true,
+          options: { temperature: 0.7 }
+        }
+      ],
+      missingApiKeyModels: [],
+      disabledModels: [],
+      warnings: [],
       modeDescription: 'All enabled models'
-    });
+    };
+    // Add self-reference for backward compatibility
+    mockSelectionResult.modelSelectionResult = mockSelectionResult;
+    
+    (helpers._selectModels as jest.Mock).mockReturnValue(mockSelectionResult);
     
     // Execute queries helper mock - success by default
     (helpers._executeQueries as jest.Mock).mockResolvedValue({
@@ -567,27 +569,29 @@ describe('runThinktank Error Handling', () => {
     // Mock _processOutput to return mixed file output results
     (helpers._processOutput as jest.Mock).mockResolvedValueOnce(mixedFileOutput);
     
-    // Mock _selectModels to return multiple models
-    (helpers._selectModels as jest.Mock).mockReturnValueOnce({
-      modelSelectionResult: {
-        models: [
-          {
-            provider: 'openai',
-            modelId: 'gpt-4o',
-            enabled: true
-          },
-          {
-            provider: 'anthropic',
-            modelId: 'claude-3-opus',
-            enabled: true
-          }
-        ],
-        missingApiKeyModels: [],
-        disabledModels: [],
-        warnings: []
-      },
+    // Mock _selectModels to return multiple models with flattened structure
+    const multiModelMock: any = {
+      models: [
+        {
+          provider: 'openai',
+          modelId: 'gpt-4o',
+          enabled: true
+        },
+        {
+          provider: 'anthropic',
+          modelId: 'claude-3-opus',
+          enabled: true
+        }
+      ],
+      missingApiKeyModels: [],
+      disabledModels: [],
+      warnings: [],
       modeDescription: 'All enabled models'
-    });
+    };
+    // Add self-reference for backward compatibility
+    multiModelMock.modelSelectionResult = multiModelMock;
+    
+    (helpers._selectModels as jest.Mock).mockReturnValueOnce(multiModelMock);
     
     // Call with test options
     const options: RunOptions = {

@@ -94,6 +94,46 @@ describe('_selectModels Helper', () => {
     expect(mockSpinner.info).toHaveBeenCalled();
     expect(mockSpinner.start).toHaveBeenCalled();
   });
+  
+  it('should return a flattened structure with ModelSelectionResult & modeDescription properties', () => {
+    // Setup mocks
+    const mockSelectionResult = {
+      models: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          enabled: true
+        }
+      ],
+      warnings: [],
+      disabledModels: [],
+      missingApiKeyModels: []
+    };
+    
+    (modelSelector.selectModels as jest.Mock).mockReturnValue(mockSelectionResult);
+
+    // Call the function
+    const result = _selectModels({
+      spinner: mockSpinner,
+      config: sampleConfig,
+      options: {
+        input: 'test-prompt.txt'
+      }
+    });
+
+    // Verify we have a properly flattened structure
+    expect(result).toHaveProperty('models');  // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('warnings');  // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('disabledModels');  // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('missingApiKeyModels');  // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('modeDescription');  // Our added property
+    
+    // Should have the same models array from the original selection result
+    expect(result.models).toBe(mockSelectionResult.models);
+    
+    // Backward compatibility check - modelSelectionResult should contain the same models array
+    expect(result.modelSelectionResult.models).toBe(result.models);
+  });
 
   it('should select specific model when provided', () => {
     // Setup mocks

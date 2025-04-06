@@ -32,10 +32,11 @@
   - **AC Ref:** Low-risk issue identified in PLAN.md. Affects code understandability.
   - **Completed:** Added comprehensive JSDoc comments to both files, enhancing documentation of the workflow structure, function behavior, error contracts, and type definitions. Used consistent style with detailed descriptions for all components.
 
-- [ ] **Simplify Return Types**: Improve type clarity
+- [x] **Simplify Return Types**: Improve type clarity
   - **Action:** Refactor the `_selectModels` return type to eliminate unnecessary nesting by returning `ModelSelectionResult & { modeDescription: string }` directly.
   - **Depends On:** None.
   - **AC Ref:** Low-risk issue identified in PLAN.md. Minor code readability improvement.
+  - **Completed:** Refactored SelectModelsResult to be an intersection type that combines ModelSelectionResult with the modeDescription property. Updated all code using this type to work with the flattened structure while maintaining backward compatibility.
 
 - [ ] **Improve Error Factory Accessibility**: Make error factories more discoverable
   - **Action:** Re-export error factory functions from `core/errors/index.ts` to improve discoverability and ease of use.
