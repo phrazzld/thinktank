@@ -192,9 +192,12 @@ thinktank uses a JSON configuration file to define which LLM providers and model
   - Example: `C:\Users\Username\AppData\Roaming\thinktank\config.json`
   - Falls back to `%USERPROFILE%\AppData\Roaming\thinktank\config.json` if `APPDATA` is not set
 
-- **macOS and Linux**: `~/.config/thinktank/config.json`
-  - Example: `/Users/username/.config/thinktank/config.json` (macOS)
-  - Example: `/home/username/.config/thinktank/config.json` (Linux)
+- **macOS**: `~/.config/thinktank/config.json`
+  - Example: `/Users/username/.config/thinktank/config.json`
+  - Uses `$XDG_CONFIG_HOME/thinktank/config.json` if the `XDG_CONFIG_HOME` environment variable is set
+
+- **Linux**: `~/.config/thinktank/config.json`
+  - Example: `/home/username/.config/thinktank/config.json`
   - Uses `$XDG_CONFIG_HOME/thinktank/config.json` if the `XDG_CONFIG_HOME` environment variable is set
 
 You can view your configuration location with:
@@ -222,13 +225,13 @@ The configuration system automatically creates a default configuration file the 
 3. **Back up your configuration**:
    ```bash
    # Copy your config to a backup file
-   cp "$(thinktank config path | tail -n 1 | awk '{print $3}')" ~/thinktank-config-backup.json
+   cp "$(thinktank config path)" ~/thinktank-config-backup.json
    ```
 
 4. **Edit the configuration directly**:
    ```bash
    # Open the config in your default editor
-   nano "$(thinktank config path | tail -n 1 | awk '{print $3}')"
+   nano "$(thinktank config path)"
    ```
 
 5. **Use the configuration commands**:
@@ -421,17 +424,23 @@ The configuration system prioritizes in the following order:
 2. XDG-compliant user configuration directory
 3. Auto-generated default configuration if no configuration exists
 
-#### Project-Local Configuration (Backward Compatibility)
+#### Custom Configuration Path
 
-For backward compatibility, thinktank will also recognize a `thinktank.config.json` file in the current working directory. This allows teams to share configuration settings via version control.
+You can specify a custom configuration file path using the `--config` flag:
 
-To see the path to the default project-local configuration:
+```bash
+thinktank run prompt.txt --config ./custom-config.json
+```
+
+This allows teams to share configuration settings via version control or use different configurations for different projects.
+
+To see the path to the current configuration:
 
 ```bash
 thinktank config path
 ```
 
-The output will show both the XDG path and the project-local path if applicable.
+The output will show the XDG-compliant configuration path that's being used.
 
 ### Configuration File Format
 

@@ -18,7 +18,7 @@
  * ```typescript
  * // Using error class directly
  * throw new ConfigError('Invalid configuration', {
- *   suggestions: ['Check your thinktank.config.json file']
+ *   suggestions: ['Check your configuration file']
  * });
  * 
  * // Using a factory function

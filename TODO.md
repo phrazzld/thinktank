@@ -51,7 +51,8 @@
   - **Depends On:** "Clean Up Redundant Test Files"
   - **AC Ref:** Ensures test coverage remains complete after removing redundant tests.
 
-- [ ] **Update Documentation**: Reflect recent refactoring changes
+- [x] **Update Documentation**: Reflect recent refactoring changes
   - **Action:** Update documentation to reflect the XDG-compliant configuration approach and remove any references to thinktank.config.json in the project root.
   - **Depends On:** None
   - **AC Ref:** Ensures documentation is consistent with actual implementation.
+  - **Completed:** Updated README.md to correctly document XDG-compliant configuration paths. Updated error messages and examples to refer to the proper configuration file location. Fixed CLI examples and command reference to show the correct way to locate configuration files.

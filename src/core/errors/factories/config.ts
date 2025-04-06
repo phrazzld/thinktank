@@ -215,8 +215,9 @@ export function createModelNotFoundError(
   
   // Add configuration suggestions
   suggestions.push(
-    'Check your thinktank.config.json file to ensure the model is properly defined',
-    'Models must be enabled in the configuration to be usable'
+    'Check your configuration file to ensure the model is properly defined',
+    'Models must be enabled in the configuration to be usable',
+    'Use "thinktank config path" to locate your configuration file'
   );
   
   if (groupName) {
