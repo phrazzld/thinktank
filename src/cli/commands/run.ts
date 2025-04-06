@@ -95,23 +95,26 @@ runCommand
         const config = await configManager.loadConfig(configOptions);
         // Define a proper interface for the config structure
         interface ConfigWithGroups {
-          modelGroups?: Array<{name: string}>;
           groups?: Record<string, {name: string}>;
         }
         // Use a type guard to handle different config formats
         const configWithGroups = config as ConfigWithGroups;
-        const groups: Array<{name: string}> = configWithGroups.modelGroups || [];
         
-        const groupExists = groups.some(group => group.name === options.group);
+        // Check if the groups object exists and if the specified group exists in it
+        const groupExists = configWithGroups.groups && configWithGroups.groups[options.group];
         if (!groupExists) {
+          // Get available groups for error message
+          const availableGroups = configWithGroups.groups ? Object.keys(configWithGroups.groups) : [];
+          
           throw new ConfigError(`Model group "${options.group}" not found in config`, {
             suggestions: [
               'Check that the group name matches exactly (case-sensitive)',
-              'Available groups: ' + (groups.length > 0 
-                ? groups.map(g => g.name).join(', ') 
+              'Available groups: ' + (availableGroups.length > 0 
+                ? availableGroups.join(', ') 
                 : 'none defined'),
               'Define your groups in thinktank.config.json'
-            ]
+            ],
+            cause: new Error(`Model group "${options.group}" not found in config`)
           });
         }
         
