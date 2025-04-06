@@ -14,8 +14,11 @@ import {
   ApiError,
   FileSystemError,
   PermissionError,
+  ValidationError,
+  NetworkError,
   errorCategories
 } from '../core/errors';
+import { categorizeError } from '../core/errors/utils/categorization';
 import { 
   styleInfo, 
   styleSuccess, 
@@ -35,7 +38,8 @@ import {
   ProcessOutputParams,
   ProcessOutputResult,
   LogCompletionSummaryParams,
-  LogCompletionSummaryResult
+  LogCompletionSummaryResult,
+  HandleWorkflowErrorParams
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
 import { selectModels, ModelSelectionError } from './modelSelector';
@@ -910,4 +914,307 @@ export function _logCompletionSummary({
   
   // Return empty object since this function primarily produces console output
   return {};
+}
+
+/**
+ * Error handling helper function
+ * 
+ * Categorizes unknown errors, ensures proper ThinktankError types, logs contextual
+ * information, and rethrows for upstream handling.
+ * 
+ * @param params - Parameters containing error, spinner, options, and workflow state
+ * @returns Never returns normally, always throws an error
+ * @throws ThinktankError or one of its specialized subclasses
+ */
+export function _handleWorkflowError({
+  error,
+  spinner,
+  options,
+  workflowState
+}: HandleWorkflowErrorParams): never {
+  // Type assertions to help TypeScript understand types better
+  const typedSpinner = spinner as { 
+    fail: (message: string) => void;
+    warn: (message: string) => void;
+    info: (message: string) => void;
+  };
+  
+  const typedOptions = options as {
+    input?: string;
+    output?: string;
+    specificModel?: string;
+    models?: string[];
+  };
+  
+  const typedWorkflowState = workflowState as {
+    outputDirectoryPath?: string;
+    friendlyRunName?: string;
+  };
+  // If the error is already a ThinktankError, we may still want to add context
+  if (error instanceof ThinktankError) {
+    // Update the spinner with the error's formatted message
+    typedSpinner.fail(error.format());
+    
+    // Rethrow the existing error
+    throw error;
+  }
+  
+  // Handle standard Error objects
+  if (error instanceof Error) {
+    // Extract valuable information from the error
+    const errorMessage = error.message.toLowerCase();
+    const errorStack = error.stack?.toLowerCase() || '';
+    
+    // Create context information from workflow state to use in error suggestions
+    const contextInfo = {
+      // Current working directory for file-related errors
+      cwd: process.cwd(),
+      // Input information for input-related errors
+      input: typedOptions.input,
+      // Output directory for file system errors
+      outputDirectory: typedWorkflowState.outputDirectoryPath || typedOptions.output,
+      // Model information for API and model-related errors
+      specificModel: typedOptions.specificModel,
+      modelsList: typedOptions.models,
+      // Run name for general context
+      runName: typedWorkflowState.friendlyRunName
+    };
+    
+    // File not found errors
+    if (
+      (errorMessage.includes('enoent') || errorMessage.includes('file not found')) &&
+      typeof typedOptions.input === 'string'
+    ) {
+      const fileSystemError = new FileSystemError(`File not found: ${typedOptions.input}`, {
+        cause: error,
+        suggestions: [
+          `Check that the file exists at the specified path: ${typedOptions.input}`,
+          `Current working directory: ${contextInfo.cwd}`
+        ]
+      });
+      
+      // Update spinner and throw the specialized error
+      typedSpinner.fail(fileSystemError.format());
+      throw fileSystemError;
+    }
+    
+    // Permission errors
+    if (
+      errorMessage.includes('eacces') || 
+      errorMessage.includes('eperm') || 
+      errorMessage.includes('permission denied') ||
+      errorMessage.includes('access denied')
+    ) {
+      // Determine if it's related to output directory
+      const isOutputDir = 
+        (errorStack.includes('directory') || errorStack.includes('mkdir')) && 
+        contextInfo.outputDirectory;
+      
+      let message = '';
+      let suggestions: string[] = [];
+      
+      if (isOutputDir) {
+        message = `Permission denied when creating output directory: ${contextInfo.outputDirectory}`;
+        suggestions = [
+          'Check that you have write permissions for the directory',
+          'Try specifying a different output directory with --output'
+        ];
+      } else if (errorMessage.includes('input') || (errorStack.includes('read') && contextInfo.input)) {
+        message = `Permission denied when reading input: ${contextInfo.input}`;
+        suggestions = [
+          'Check that you have read permissions for the file',
+          'Try using a different input source'
+        ];
+      } else {
+        message = `Permission denied: ${error.message}`;
+        suggestions = [
+          'Check file and directory permissions',
+          'Try using a different location or running with elevated privileges if appropriate'
+        ];
+      }
+      
+      const permissionError = new PermissionError(message, {
+        cause: error,
+        suggestions
+      });
+      
+      // Update spinner and throw the specialized error
+      typedSpinner.fail(permissionError.format());
+      throw permissionError;
+    }
+    
+    // Model-related errors
+    if (errorMessage.includes('model')) {
+      if (errorMessage.includes('format') || errorMessage.includes('invalid')) {
+        // Extract the model specification if possible
+        const modelMatch = errorMessage.match(/"([^"]+)"/);
+        const modelSpec = modelMatch ? modelMatch[1] : contextInfo.specificModel || 
+                         (contextInfo.modelsList && contextInfo.modelsList.length > 0 ? contextInfo.modelsList[0] : 'unknown');
+        
+        const configError = new ConfigError(`Invalid model format: ${modelSpec}`, {
+          cause: error,
+          suggestions: [
+            'Model specifications must use the format "provider:modelId" (e.g., "openai:gpt-4o")',
+            'Check that the model is correctly spelled'
+          ],
+          examples: [
+            'openai:gpt-4o',
+            'anthropic:claude-3-7-sonnet-20250219',
+            'google:gemini-pro'
+          ]
+        });
+        
+        typedSpinner.fail(configError.format());
+        throw configError;
+      } else if (errorMessage.includes('not found')) {
+        // Extract the model specification if possible
+        const modelMatch = errorMessage.match(/"([^"]+)"/);
+        const modelSpec = modelMatch ? modelMatch[1] : contextInfo.specificModel || 
+                         (contextInfo.modelsList && contextInfo.modelsList.length > 0 ? contextInfo.modelsList[0] : 'unknown');
+        
+        const configError = new ConfigError(`Model "${modelSpec}" not found in configuration`, {
+          cause: error,
+          suggestions: [
+            'Check that the model is correctly spelled and exists in your configuration',
+            'Use "thinktank models" to list all available models'
+          ]
+        });
+        
+        typedSpinner.fail(configError.format());
+        throw configError;
+      }
+    }
+    
+    // API key and authentication errors
+    if (
+      errorMessage.includes('api key') || 
+      errorMessage.includes('authentication') ||
+      errorMessage.includes('authorization') ||
+      errorMessage.includes('auth') ||
+      errorMessage.includes('credentials') ||
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('401')
+    ) {
+      const apiError = new ApiError(`API key error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check that you have set the correct environment variables for your API keys',
+          'You can set them in your .env file or in your environment',
+          'Verify that your API keys are valid and have not expired'
+        ]
+      });
+      
+      typedSpinner.fail(apiError.format());
+      throw apiError;
+    }
+    
+    // Network errors
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('connect') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('econnrefused') ||
+      errorMessage.includes('etimedout') ||
+      errorMessage.includes('socket') ||
+      errorMessage.includes('dns')
+    ) {
+      const networkError = new NetworkError(`Network error: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check your internet connection',
+          'Verify that the service endpoints are accessible',
+          'Try again later if the service might be experiencing downtime'
+        ]
+      });
+      
+      typedSpinner.fail(networkError.format());
+      throw networkError;
+    }
+    
+    // For all other Error objects, use categorization utility
+    const category = categorizeError(error);
+    let thinktankError: ThinktankError;
+    
+    // Create the appropriate error type based on the category
+    switch (category) {
+      case errorCategories.API:
+        thinktankError = new ApiError(`API error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.CONFIG:
+        thinktankError = new ConfigError(`Configuration error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.FILESYSTEM:
+        thinktankError = new FileSystemError(`File system error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.PERMISSION:
+        thinktankError = new PermissionError(`Permission error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.VALIDATION:
+        thinktankError = new ValidationError(`Validation error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.INPUT:
+        // Use ThinktankError with INPUT category since InputError is already defined elsewhere
+        thinktankError = new ThinktankError(`Input error: ${error.message}`, { 
+          cause: error,
+          category: errorCategories.INPUT
+        });
+        break;
+        
+      case errorCategories.NETWORK:
+        thinktankError = new NetworkError(`Network error: ${error.message}`, { cause: error });
+        break;
+        
+      case errorCategories.UNKNOWN:
+      default:
+        // For unknown categories, create a generic ThinktankError
+        thinktankError = new ThinktankError(`Error running thinktank: ${error.message}`, {
+          cause: error,
+          category: errorCategories.UNKNOWN
+        });
+        break;
+    }
+    
+    // Add workflow state context to the error's suggestions
+    const suggestions = thinktankError.suggestions || [];
+    
+    // Add context-specific suggestions based on the workflow state
+    if (typedWorkflowState.friendlyRunName) {
+      suggestions.push(`This error occurred during run: ${typedWorkflowState.friendlyRunName}`);
+    }
+    
+    if (category === errorCategories.FILESYSTEM && typedWorkflowState.outputDirectoryPath) {
+      suggestions.push(`Output directory: ${typedWorkflowState.outputDirectoryPath}`);
+    }
+    
+    // Update the error with the enhanced suggestions
+    thinktankError.suggestions = suggestions;
+    
+    // Update spinner and throw the categorized error
+    typedSpinner.fail(thinktankError.format());
+    throw thinktankError;
+  }
+  
+  // Handle non-Error objects (like string messages, numbers, or other values)
+  const unknownErrorMessage = error !== null && error !== undefined 
+    ? String(error) 
+    : 'Unknown error (no error information provided)';
+    
+  const thinktankError = new ThinktankError(`Unknown error running thinktank: ${unknownErrorMessage}`, {
+    category: errorCategories.UNKNOWN,
+    suggestions: [
+      'This is an unexpected error type',
+      'Please report this issue with steps to reproduce'
+    ]
+  });
+  
+  // Update spinner with the error message
+  typedSpinner.fail(thinktankError.format());
+  
+  // Throw the error for upstream handling
+  throw thinktankError;
 }
