@@ -1,22 +1,29 @@
 /**
  * Tests for file size limit checking functionality
  */
-import fs from 'fs/promises';
-import { Stats } from 'fs';
 import { readContextFile } from '../fileReader';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockAccess, 
+  mockStat, 
+  mockReadFile,
+  mockedFs
+} from '../../__tests__/utils/mockFsUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
 
-// Access mocked functions
-const mockedFs = jest.mocked(fs);
-
 describe('File size limit checks', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset and setup mocks before each test
+    resetMockFs();
+    setupMockFs();
     
-    // Mock file system access
-    mockedFs.access.mockResolvedValue(undefined);
+    // Set up default successful access for test files
+    mockAccess('/path/to/large-file.txt', true);
+    mockAccess('/path/to/normal-file.txt', true);
+    mockAccess('/path/to/very-large-file.txt', true);
   });
   
   it('should return an error for files exceeding the size limit', async () => {
@@ -24,14 +31,14 @@ describe('File size limit checks', () => {
     const largeFileSize = 11 * 1024 * 1024;
     
     // Mock file stats with large size
-    mockedFs.stat.mockResolvedValue({
+    mockStat('/path/to/large-file.txt', {
       isFile: () => true,
       isDirectory: () => false,
       size: largeFileSize
-    } as Stats);
+    });
     
     // This shouldn't be called because we should fail before reading
-    mockedFs.readFile.mockResolvedValue('Large file content');
+    mockReadFile('/path/to/large-file.txt', 'Large file content');
     
     const result = await readContextFile('/path/to/large-file.txt');
     
@@ -50,15 +57,15 @@ describe('File size limit checks', () => {
     const acceptableFileSize = 5 * 1024 * 1024;
     
     // Mock file stats with acceptable size
-    mockedFs.stat.mockResolvedValue({
+    mockStat('/path/to/normal-file.txt', {
       isFile: () => true,
       isDirectory: () => false,
       size: acceptableFileSize
-    } as Stats);
+    });
     
     // Mock file content
     const fileContent = 'Normal file content';
-    mockedFs.readFile.mockResolvedValue(fileContent);
+    mockReadFile('/path/to/normal-file.txt', fileContent);
     
     const result = await readContextFile('/path/to/normal-file.txt');
     
@@ -75,11 +82,11 @@ describe('File size limit checks', () => {
     const largeFileSize = 15 * 1024 * 1024; // 15MB
     
     // Mock file stats
-    mockedFs.stat.mockResolvedValue({
+    mockStat('/path/to/very-large-file.txt', {
       isFile: () => true,
       isDirectory: () => false,
       size: largeFileSize
-    } as Stats);
+    });
     
     const result = await readContextFile('/path/to/very-large-file.txt');
     
