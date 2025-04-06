@@ -118,16 +118,16 @@ export function resolveOutputDirectory(
 }
 
 /**
- * Generates a complete output directory path including a model/group name and timestamp
+ * Generates a complete output directory path using a friendly run name or timestamp
  * 
  * @param outputOption - The output option from CLI/config, if provided
- * @param identifier - The model or group identifier (optional)
+ * @param _ - The model or group identifier (no longer used, kept for backward compatibility)
  * @param friendlyName - The friendly run name to use in directory name (optional)
  * @returns The resolved path to the run-specific output directory
  */
 export function generateOutputDirectoryPath(
   outputOption?: string, 
-  identifier?: string,
+  _?: string, // Unused parameter, kept for API compatibility
   friendlyName?: string
 ): string {
   // Get the base output directory (always use 'thinktank-output' as default)
@@ -139,13 +139,6 @@ export function generateOutputDirectoryPath(
   // If a friendly name is provided, use it as the directory name
   if (friendlyName) {
     dirName = sanitizeFilename(friendlyName);
-    
-    // If an identifier was also provided, include it
-    if (identifier) {
-      // For provider:model format, replace colon with hyphen
-      const safeIdentifier = identifier.replace(/:/g, '-');
-      dirName = `${safeIdentifier}-${dirName}`;
-    }
   } else {
     // Fallback to timestamp-based naming if no friendly name
     const now = new Date();
@@ -154,13 +147,6 @@ export function generateOutputDirectoryPath(
       .substring(0, 15); // Get YYYYMMDD-HHmmss format
     
     dirName = `run-${timestamp}`;
-    
-    // If an identifier was provided, include it in the directory name
-    if (identifier) {
-      // For provider:model format, replace colon with hyphen
-      const safeIdentifier = identifier.replace(/:/g, '-');
-      dirName = `${safeIdentifier}-${timestamp}`;
-    }
   }
   
   // Return the full path to the run-specific directory

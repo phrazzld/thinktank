@@ -466,12 +466,29 @@ export async function processOutput(
   fileOutput: FileOutputResult;
   consoleOutput: string;
 }> {
-  // Create output directory
-  const outputDirectory = await createOutputDirectory({
-    outputDirectory: options.outputDirectory,
-    directoryIdentifier: options.directoryIdentifier,
-    friendlyRunName: options.friendlyRunName
-  });
+  // Use the provided output directory directly if it exists,
+  // otherwise create a new output directory
+  let outputDirectory: string;
+  
+  if (options.outputDirectory && typeof options.outputDirectory === 'string') {
+    // Ensure the directory exists
+    try {
+      await fs.mkdir(options.outputDirectory, { recursive: true });
+      outputDirectory = options.outputDirectory;
+    } catch (error) {
+      throw new OutputHandlerError(
+        `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  } else {
+    // Create a new output directory if none provided
+    outputDirectory = await createOutputDirectory({
+      outputDirectory: options.outputDirectory,
+      directoryIdentifier: options.directoryIdentifier,
+      friendlyRunName: options.friendlyRunName
+    });
+  }
   
   // Write responses to files
   const fileOutput = await writeResponsesToFiles(
