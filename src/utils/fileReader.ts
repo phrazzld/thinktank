@@ -17,6 +17,36 @@ export class FileReadError extends Error {
 }
 
 /**
+ * Result of reading a context file
+ */
+export interface ContextFileResult {
+  /**
+   * Path to the file that was read (original path provided)
+   */
+  path: string;
+  
+  /**
+   * Content of the file, or null if there was an error
+   */
+  content: string | null;
+  
+  /**
+   * Error information if reading failed, or null if successful
+   */
+  error: {
+    /**
+     * Error code (e.g., 'ENOENT', 'EACCES', 'NOT_FILE', etc.)
+     */
+    code: string;
+    
+    /**
+     * Human-readable error message
+     */
+    message: string;
+  } | null;
+}
+
+/**
  * Application name used for XDG paths
  */
 const APP_NAME = 'thinktank';
@@ -289,4 +319,93 @@ export async function getConfigDir(): Promise<string> {
 export async function getConfigFilePath(): Promise<string> {
   const configDir = await getConfigDir();
   return path.join(configDir, 'config.json');
+}
+
+/**
+ * Reads content from a file for use as context in prompts
+ * Instead of throwing errors, returns an object with path, content, and error information
+ * 
+ * @param filePath - Path to the file to read
+ * @returns Promise resolving to an object containing the file path, content, and any error information
+ */
+export async function readContextFile(filePath: string): Promise<ContextFileResult> {
+  // Initialize the result with the provided path
+  const result: ContextFileResult = {
+    path: filePath,
+    content: null,
+    error: null
+  };
+  
+  try {
+    // Resolve to absolute path if relative path is provided
+    const resolvedPath = path.isAbsolute(filePath) 
+      ? filePath 
+      : path.resolve(process.cwd(), filePath);
+    
+    // Check if file exists and is readable
+    await fs.access(resolvedPath, fs.constants.R_OK);
+    
+    // Check if path is a file (not a directory or other non-file)
+    const stats = await fs.stat(resolvedPath);
+    if (!stats.isFile()) {
+      return {
+        ...result,
+        error: {
+          code: 'NOT_FILE',
+          message: `Path is not a file: ${filePath}`
+        }
+      };
+    }
+    
+    // Read file content
+    const content = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Return successful result with content
+    return {
+      ...result,
+      content,
+      error: null
+    };
+  } catch (error) {
+    // Handle specific error types
+    if (error instanceof Error) {
+      const errnoError = error as NodeJS.ErrnoException;
+      
+      if (errnoError.code === 'ENOENT') {
+        return {
+          ...result,
+          error: {
+            code: 'ENOENT',
+            message: `File not found: ${filePath}`
+          }
+        };
+      } else if (errnoError.code === 'EACCES') {
+        return {
+          ...result,
+          error: {
+            code: 'EACCES',
+            message: `Permission denied to read file: ${filePath}`
+          }
+        };
+      }
+      
+      // Generic error case with Error object
+      return {
+        ...result,
+        error: {
+          code: 'READ_ERROR',
+          message: `Error reading file: ${filePath}`
+        }
+      };
+    }
+    
+    // Unknown error type
+    return {
+      ...result,
+      error: {
+        code: 'UNKNOWN',
+        message: `Unknown error reading file: ${filePath}`
+      }
+    };
+  }
 }
