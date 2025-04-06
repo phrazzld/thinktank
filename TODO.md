@@ -7,12 +7,12 @@
   - **Depends On:** None.
   - **AC Ref:** AC 1.1 - CLI must support variadic path arguments after the prompt file.
 
-- [ ] **Update action handler to receive contextPaths**
+- [x] **Update action handler to receive contextPaths**
   - **Action:** Update the action handler function in `src/cli/commands/run.ts` to receive and process the contextPaths parameter correctly.
   - **Depends On:** Update `commander` definition in run command.
   - **AC Ref:** AC 1.2 - CLI must pass context paths to the workflow function.
 
-- [ ] **Update RunOptions interface**
+- [x] **Update RunOptions interface**
   - **Action:** Update `RunOptions` interface in `src/workflow/runThinktank.ts` to include the `contextPaths?: string[]` property.
   - **Depends On:** Update action handler to receive contextPaths.
   - **AC Ref:** AC 1.2 - CLI must pass context paths to the workflow function.
