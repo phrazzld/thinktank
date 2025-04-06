@@ -5,6 +5,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { normalizeText } from './helpers';
+import { shouldIgnorePath } from './gitignoreUtils';
 
 /**
  * Custom error for file reading operations
@@ -411,10 +412,10 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
 }
 
 /**
- * Common directories to ignore during traversal
- * These will be replaced with .gitignore-based filtering in a future task
+ * Fallback directories to ignore during traversal when .gitignore is not available
+ * Also serves as a safety net for critical directories
  */
-const IGNORED_DIRECTORIES = [
+const DEFAULT_IGNORED_DIRECTORIES = [
   'node_modules',
   '.git',
   'dist',
@@ -465,16 +466,26 @@ export async function readDirectoryContents(dirPath: string): Promise<ContextFil
         const entryStats = await fs.stat(entryPath);
         
         if (entryStats.isFile()) {
-          // If it's a file, read it and add to results
-          const fileResult = await readContextFile(entryPath);
-          results.push(fileResult);
-        } else if (entryStats.isDirectory()) {
-          // Skip ignored directories
-          if (IGNORED_DIRECTORIES.includes(entry)) {
+          // Check if the file should be ignored based on gitignore rules
+          if (await shouldIgnorePath(dirPath, entryPath)) {
             continue;
           }
           
-          // If it's a directory, recursively read its contents
+          // If not ignored, read the file and add to results
+          const fileResult = await readContextFile(entryPath);
+          results.push(fileResult);
+        } else if (entryStats.isDirectory()) {
+          // Always skip certain critical directories regardless of gitignore rules
+          if (DEFAULT_IGNORED_DIRECTORIES.includes(entry)) {
+            continue;
+          }
+          
+          // Check if the directory should be ignored based on gitignore rules
+          if (await shouldIgnorePath(dirPath, entryPath)) {
+            continue;
+          }
+          
+          // If it's a directory and not ignored, recursively read its contents
           const subdirResults = await readDirectoryContents(entryPath);
           results.push(...subdirResults);
         }

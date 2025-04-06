@@ -34,7 +34,7 @@
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.2 - System must recursively read directory contents.
 
-- [ ] **Implement .gitignore-based filtering logic**
+- [x] **Implement .gitignore-based filtering logic**
   - **Action:** Add logic to parse .gitignore files and use their patterns to filter files and directories during traversal.
   - **Depends On:** Create directory reader utility function, Add dependency for gitignore parsing.
   - **AC Ref:** AC 2.3 - System must ignore files and directories according to .gitignore rules.
