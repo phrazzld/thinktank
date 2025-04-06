@@ -1,17 +1,21 @@
 /**
  * Tests for gitignore utilities
  */
-import fs from 'fs/promises';
 import path from 'path';
 import * as gitignoreUtils from '../gitignoreUtils';
 import * as fileReader from '../fileReader';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockReadFile,
+  mockedFs
+} from '../../__tests__/utils/mockFsUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
 jest.mock('../fileReader');
 
-// Access mocked functions
-const mockedFs = jest.mocked(fs);
+// Access mocked fileReader function
 const mockedFileExists = jest.mocked(fileReader.fileExists);
 
 describe('gitignoreUtils', () => {
@@ -19,12 +23,14 @@ describe('gitignoreUtils', () => {
   const gitignorePath = path.join(testDirPath, '.gitignore');
   
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset and setup mocks
+    resetMockFs();
+    setupMockFs();
     gitignoreUtils.clearIgnoreCache();
     
     // Default mocks
     mockedFileExists.mockResolvedValue(true);
-    mockedFs.readFile.mockResolvedValue('*.log\ntmp/\n.DS_Store');
+    mockReadFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
   });
   
   describe('createIgnoreFilter', () => {
@@ -61,7 +67,7 @@ describe('gitignoreUtils', () => {
     
     it('should handle errors when reading .gitignore file', async () => {
       // Mock error when reading .gitignore
-      mockedFs.readFile.mockRejectedValue(new Error('Read error'));
+      mockReadFile(gitignorePath, new Error('Read error'));
       
       // Capture console warnings
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -94,6 +100,7 @@ describe('gitignoreUtils', () => {
     
     it('should create different ignore filters for different directories', async () => {
       const otherDirPath = '/other/dir';
+      const otherGitignorePath = path.join(otherDirPath, '.gitignore');
       
       // Set up mock for the second directory
       mockedFileExists.mockImplementation(async (path) => {
@@ -106,9 +113,13 @@ describe('gitignoreUtils', () => {
       
       // Verify .gitignore existence was checked for both directories
       expect(mockedFileExists).toHaveBeenCalledTimes(2);
+      expect(mockedFileExists).toHaveBeenCalledWith(gitignorePath);
+      expect(mockedFileExists).toHaveBeenCalledWith(otherGitignorePath);
       
       // But file was read only for the first one
       expect(mockedFs.readFile).toHaveBeenCalledTimes(1);
+      expect(mockedFs.readFile).toHaveBeenCalledWith(gitignorePath, 'utf-8');
+      expect(mockedFs.readFile).not.toHaveBeenCalledWith(otherGitignorePath, 'utf-8');
       
       // Filters should be different instances
       expect(ignoreFilter1).not.toBe(ignoreFilter2);
@@ -139,8 +150,7 @@ describe('gitignoreUtils', () => {
       await gitignoreUtils.createIgnoreFilter(testDirPath);
       
       // Clear mocks to verify second call behavior
-      mockedFileExists.mockClear();
-      mockedFs.readFile.mockClear();
+      jest.clearAllMocks();
       
       // This should use cached version
       await gitignoreUtils.createIgnoreFilter(testDirPath);
