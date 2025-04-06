@@ -494,6 +494,87 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
 }
 
 /**
+ * Reads content from multiple paths (files and/or directories) for use as context in prompts
+ * Processes each path concurrently and returns a flattened array of all results
+ * 
+ * @param paths - Array of file or directory paths to read
+ * @returns Promise resolving to a flattened array of ContextFileResult objects
+ */
+export async function readContextPaths(paths: string[]): Promise<ContextFileResult[]> {
+  // Handle empty paths array
+  if (!paths || paths.length === 0) {
+    return [];
+  }
+  
+  // Process each path concurrently and collect results
+  const resultsArrays = await Promise.all(
+    paths.map(async (pathToProcess: string) => {
+      try {
+        // Resolve to absolute path if relative path is provided
+        const resolvedPath = path.isAbsolute(pathToProcess) 
+          ? pathToProcess 
+          : path.resolve(process.cwd(), pathToProcess);
+        
+        // Check if path exists
+        try {
+          await fs.access(resolvedPath, fs.constants.R_OK);
+        } catch (error) {
+          // For access errors, use the same error format as readContextFile
+          // So we maintain consistent error codes throughout the codebase
+          const errnoError = error as NodeJS.ErrnoException;
+          return [{
+            path: pathToProcess,
+            content: null,
+            error: {
+              code: errnoError.code || 'ACCESS_ERROR',
+              message: errnoError.code === 'ENOENT' 
+                ? `File not found: ${pathToProcess}`
+                : `Unable to access path: ${pathToProcess}`
+            }
+          }];
+        }
+        
+        // Get stats to determine if it's a file or directory
+        const stats = await fs.stat(resolvedPath);
+        
+        // Process as a file or directory accordingly
+        if (stats.isFile()) {
+          // For individual files, read content using readContextFile
+          const fileResult = await readContextFile(pathToProcess);
+          return [fileResult];
+        } else if (stats.isDirectory()) {
+          // For directories, recursively read contents using readDirectoryContents
+          return readDirectoryContents(pathToProcess);
+        } else {
+          // Handle other types (symlinks, etc.)
+          return [{
+            path: pathToProcess,
+            content: null,
+            error: {
+              code: 'INVALID_PATH_TYPE',
+              message: `Path is neither a file nor a directory: ${pathToProcess}`
+            }
+          }];
+        }
+      } catch (error) {
+        // Handle errors at the path level
+        return [{
+          path: pathToProcess,
+          content: null,
+          error: {
+            code: 'PROCESSING_ERROR',
+            message: `Error processing path: ${pathToProcess} - ${(error as Error).message || 'Unknown error'}`
+          }
+        }];
+      }
+    })
+  );
+  
+  // Flatten and return results
+  return resultsArrays.flat();
+}
+
+/**
  * Fallback directories to ignore during traversal when .gitignore is not available
  * Also serves as a safety net for critical directories
  */

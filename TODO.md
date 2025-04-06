@@ -49,7 +49,7 @@
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.5 - System must implement size limits for individual files.
 
-- [ ] **Create master readContextPaths function**
+- [x] **Create master readContextPaths function**
   - **Action:** Implement the main `readContextPaths` function that handles both files and directories, returning a combined array of path/content pairs.
   - **Depends On:** Create context file reader utility function, Create directory reader utility function, Implement .gitignore-based filtering logic.
   - **AC Ref:** AC 2.6 - System must provide a unified API for reading both files and directories.
