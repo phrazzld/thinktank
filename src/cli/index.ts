@@ -114,7 +114,7 @@ function addCategorySpecificGuidance(error: ThinktankError): void {
     logger.error('\nConfiguration help:');
     logger.error(`  ${colors.green('>')} thinktank config view`);
     logger.error(`  ${colors.green('>')} thinktank config set key value`);
-    logger.error(`  ${colors.green('>')} Edit ~/.thinktank/config.json directly`);
+    logger.error(`  ${colors.green('>')} Edit ~/.config/thinktank/config.json directly`);
   }
   
   // API errors
