@@ -38,10 +38,11 @@
   - **AC Ref:** Low-risk issue identified in PLAN.md. Minor code readability improvement.
   - **Completed:** Refactored SelectModelsResult to be an intersection type that combines ModelSelectionResult with the modeDescription property. Updated all code using this type to work with the flattened structure while maintaining backward compatibility.
 
-- [ ] **Improve Error Factory Accessibility**: Make error factories more discoverable
+- [x] **Improve Error Factory Accessibility**: Make error factories more discoverable
   - **Action:** Re-export error factory functions from `core/errors/index.ts` to improve discoverability and ease of use.
   - **Depends On:** None.
   - **AC Ref:** Low-risk issue identified in PLAN.md. Addresses code discoverability issue.
+  - **Completed:** Re-exported all error factory functions including provider-specific factories from core/errors/index.ts. Updated provider modules to use the centralized imports. All tests pass except for unrelated existing failures.
 
 ## Additional Tasks
 

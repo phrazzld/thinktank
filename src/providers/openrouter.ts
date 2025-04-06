@@ -5,8 +5,8 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
-import { ApiError } from '../core/errors';
 import { 
+  ApiError,
   createProviderApiKeyMissingError,
   createProviderRateLimitError,
   createProviderModelNotFoundError,
@@ -18,7 +18,7 @@ import {
   isProviderTokenLimitError,
   isProviderContentPolicyError,
   isProviderAuthError
-} from '../core/errors/factories/provider';
+} from '../core/errors';
 
 /**
  * OpenRouter provider error class - maintained for backward compatibility

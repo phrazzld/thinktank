@@ -4,8 +4,8 @@
 import OpenAI from 'openai';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
-import { ApiError } from '../core/errors';
 import { 
+  ApiError,
   createProviderApiKeyMissingError,
   createProviderRateLimitError,
   createProviderTokenLimitError,
@@ -15,7 +15,7 @@ import {
   isProviderTokenLimitError,
   isProviderContentPolicyError,
   isProviderAuthError
-} from '../core/errors/factories/provider';
+} from '../core/errors';
 
 /**
  * OpenAI provider error class - maintained for backward compatibility

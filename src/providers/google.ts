@@ -5,8 +5,8 @@ import { GoogleGenerativeAI, GenerationConfig, HarmCategory, HarmBlockThreshold 
 import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
-import { ApiError } from '../core/errors';
 import { 
+  ApiError,
   createProviderApiKeyMissingError,
   createProviderRateLimitError,
   createProviderTokenLimitError,
@@ -16,7 +16,7 @@ import {
   isProviderRateLimitError,
   isProviderNetworkError,
   isProviderContentPolicyError
-} from '../core/errors/factories/provider';
+} from '../core/errors';
 
 /**
  * Google provider error class - maintained for backward compatibility
