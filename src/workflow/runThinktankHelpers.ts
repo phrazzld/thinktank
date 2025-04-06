@@ -7,7 +7,7 @@
  */
 import { loadConfig } from '../core/configManager';
 import { generateFunName } from '../utils/nameGenerator';
-import { createOutputDirectory } from './outputHandler';
+import { createOutputDirectory, processOutput, OutputHandlerError } from './outputHandler';
 import { 
   ThinktankError,
   ConfigError,
@@ -25,7 +25,9 @@ import {
   SelectModelsParams,
   SelectModelsResult,
   ExecuteQueriesParams,
-  ExecuteQueriesResult
+  ExecuteQueriesResult,
+  ProcessOutputParams,
+  ProcessOutputResult
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
 import { selectModels, ModelSelectionError } from './modelSelector';
@@ -536,6 +538,191 @@ export async function _executeQueries({
         'Check your network connection',
         'Verify API keys for the models are correctly set',
         'Check if the models are available and not experiencing downtime'
+      ]
+    });
+  }
+}
+
+/**
+ * Output processing helper function
+ * 
+ * Handles file writing and console output formatting with spinner updates.
+ * Catches and wraps errors using `FileSystemError` when needed.
+ * 
+ * @param params - Parameters containing spinner, query results, output directory path, and options
+ * @returns Promise resolving to an object containing file output result and console formatted output
+ * @throws 
+ *   - FileSystemError when file writing fails
+ *   - PermissionError when permission issues occur
+ *   - ThinktankError for other unexpected errors
+ */
+export async function _processOutput({
+  spinner,
+  queryResults,
+  outputDirectoryPath,
+  options,
+  friendlyRunName
+}: ProcessOutputParams): Promise<ProcessOutputResult> {
+  try {
+    // 1. Update spinner with processing status
+    spinner.text = 'Processing output and writing results...';
+    
+    // 2. Prepare the file write status update callback to update spinner
+    const onStatusUpdate = (fileDetail: {
+      modelKey: string;
+      filename: string;
+      status: string;
+      error?: string;
+    }, _allDetails: Array<{ modelKey: string; filename: string; status: string; error?: string }>): void => {
+      if (fileDetail.status === 'pending') {
+        spinner.text = `Writing file for ${fileDetail.modelKey}...`;
+      } else if (fileDetail.status === 'success') {
+        spinner.text = `Wrote results for ${fileDetail.modelKey}`;
+      } else if (fileDetail.status === 'error') {
+        spinner.text = `Error writing file for ${fileDetail.modelKey}: ${fileDetail.error || 'Unknown error'}`;
+      }
+    };
+    
+    // 3. Process output using the outputHandler
+    const outputOptions = {
+      outputDirectory: outputDirectoryPath,
+      directoryIdentifier: undefined, // Already incorporated in the path
+      friendlyRunName,
+      includeMetadata: options.includeMetadata,
+      useColors: true,
+      includeThinking: options.enableThinking,
+      throwOnError: false, // Handle errors locally
+      onStatusUpdate
+    };
+    
+    // Extract responses from query results for output processing
+    const responses = queryResults.responses.map(response => ({
+      ...response,
+      configKey: `${response.provider}:${response.modelId}`
+    }));
+    
+    // 4. Process output (both file writing and console formatting)
+    const outputResult = await processOutput(responses, outputOptions);
+    
+    // 5. Update spinner with success/warning information based on results
+    const { succeededWrites, failedWrites } = outputResult.fileOutput;
+    const totalFiles = succeededWrites + failedWrites;
+    
+    if (failedWrites === 0) {
+      // All files wrote successfully
+      spinner.text = `Output processed successfully: ${succeededWrites} ${succeededWrites === 1 ? 'file' : 'files'} written`;
+      
+      // Display success message with output directory
+      spinner.info(styleInfo(`Results saved to: ${styleSuccess(outputDirectoryPath)}`));
+    } else if (succeededWrites > 0) {
+      // Partial success
+      spinner.text = `Output processed with some failures`;
+      spinner.warn(styleWarning(`Some files failed to write (${failedWrites} of ${totalFiles})`));
+      
+      // Show success and output directory
+      spinner.info(styleInfo(`${succeededWrites} ${succeededWrites === 1 ? 'file' : 'files'} saved to: ${outputDirectoryPath}`));
+    } else {
+      // All files failed
+      spinner.text = `Failed to write any output files`;
+      spinner.warn(styleWarning(`All ${failedWrites} ${failedWrites === 1 ? 'file' : 'files'} failed to write`));
+      
+      // Show errors summary
+      const errorMessages = outputResult.fileOutput.files
+        .filter(f => f.error)
+        .map(f => `${f.modelKey}: ${f.error}`);
+        
+      if (errorMessages.length > 0) {
+        spinner.info(styleInfo(`Errors: ${errorMessages.join(', ')}`));
+      }
+    }
+    
+    // Restart spinner for next step
+    spinner.start();
+    
+    // 6. Return the result
+    return {
+      fileOutputResult: outputResult.fileOutput,
+      consoleOutput: outputResult.consoleOutput
+    };
+  } catch (error) {
+    // Handle specific error types according to the error handling contract
+    
+    // If it's already a FileSystemError or PermissionError, just rethrow it
+    if (error instanceof FileSystemError || error instanceof PermissionError) {
+      throw error;
+    }
+    
+    // If it's an OutputHandlerError, convert to FileSystemError
+    if (error instanceof OutputHandlerError) {
+      throw new FileSystemError(error.message, {
+        cause: error,
+        suggestions: [
+          'Check that you have write permissions for the output directory',
+          'Verify that there is sufficient disk space',
+          'Try using a different output directory with --output'
+        ]
+      });
+    }
+    
+    // Handle NodeJS.ErrnoException for file system errors
+    if (
+      error instanceof Error && 
+      'code' in error && 
+      typeof (error as NodeJS.ErrnoException).code === 'string'
+    ) {
+      const nodeError = error as NodeJS.ErrnoException;
+      
+      // Permission errors
+      if (nodeError.code === 'EACCES' || nodeError.code === 'EPERM') {
+        throw new PermissionError(`Permission denied when writing output: ${error.message} (path: ${outputDirectoryPath})`, {
+          cause: error,
+          suggestions: [
+            'Check that you have write permissions for the output directory',
+            'Try specifying a different output directory with --output'
+          ]
+        });
+      }
+      
+      // Directory or file not found
+      if (nodeError.code === 'ENOENT') {
+        throw new FileSystemError(`Directory not found: ${outputDirectoryPath}`, {
+          cause: error,
+          suggestions: [
+            'The output directory may have been deleted during processing',
+            'Try specifying a different output directory with --output'
+          ]
+        });
+      }
+      
+      // Disk space issues
+      if (nodeError.code === 'ENOSPC') {
+        throw new FileSystemError(`No space left on device when writing output files`, {
+          cause: error,
+          suggestions: [
+            'Free up disk space',
+            'Try specifying a different output directory on a drive with more space'
+          ]
+        });
+      }
+      
+      // Other file system errors
+      throw new FileSystemError(`File system error while writing output: ${error.message}`, {
+        cause: error,
+        suggestions: [
+          'Check directory permissions and path',
+          'Verify that the disk is not full or write-protected'
+        ]
+      });
+    }
+    
+    // For unexpected errors, wrap in ThinktankError
+    throw new ThinktankError(`Error processing output: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined,
+      category: errorCategories.FILESYSTEM,
+      suggestions: [
+        'This is an unexpected error',
+        'Try a different output directory',
+        'Check system resources and permissions'
       ]
     });
   }
