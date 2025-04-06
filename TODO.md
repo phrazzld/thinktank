@@ -100,7 +100,7 @@
   - **Depends On:** Create directory reader utility function.
   - **AC Ref:** AC 5.2 - Directory traversal functionality has test coverage.
 
-- [ ] **Create tests for .gitignore-based filtering logic**
+- [x] **Create tests for .gitignore-based filtering logic**
   - **Action:** Write unit tests for .gitignore parsing and pattern matching against file paths.
   - **Depends On:** Implement .gitignore-based filtering logic.
   - **AC Ref:** AC 5.3 - Filtering logic has test coverage.
