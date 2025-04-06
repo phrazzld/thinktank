@@ -35,6 +35,24 @@ const DEFAULT_CONFIG: FsMockConfig = {
 };
 
 /**
+ * Access rule used by the mockAccess function
+ * Defines the behavior when a path matches a specific pattern
+ */
+interface AccessRule {
+  /** Pattern to match against paths */
+  pattern: string | RegExp;
+  /** Whether access should be allowed */
+  allowed: boolean;
+  /** Optional error code to use if denied */
+  errorCode?: string;
+  /** Optional error message to use if denied */
+  errorMessage?: string;
+}
+
+/** Registry of path-specific access rules */
+const accessRules: AccessRule[] = [];
+
+/**
  * Resets all fs mock functions to their initial state
  * This should be called before each test to prevent test pollution
  */
@@ -48,6 +66,9 @@ export function resetMockFs(): void {
   mockedFs.stat.mockReset();
   mockedFs.readdir.mockReset();
   mockedFs.mkdir.mockReset();
+  
+  // Clear all path-specific configurations
+  accessRules.length = 0;
 }
 
 /**
@@ -58,20 +79,47 @@ export function setupMockFs(config?: FsMockConfig): void {
   // Merge provided config with defaults
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   
-  // Configure fs.access
-  if (mergedConfig.defaultAccessBehavior) {
-    // Access allowed - resolve successfully
-    mockedFs.access.mockResolvedValue(undefined);
-  } else {
-    // Access denied - reject with error
-    const error = createFsError(
-      mergedConfig.defaultAccessErrorCode || 'ENOENT',
-      'File not found or access denied',
-      'access',
-      '/path/to/file'
-    );
-    mockedFs.access.mockRejectedValue(error);
-  }
+  // Configure fs.access with path-specific behavior support
+  mockedFs.access.mockImplementation((path) => {
+    // Convert path to string for comparison (it could be URL or Buffer too)
+    const pathStr = String(path);
+    
+    // Check if we have any path-specific rules
+    for (const rule of accessRules) {
+      const matches = 
+        (typeof rule.pattern === 'string' && rule.pattern === pathStr) || 
+        (rule.pattern instanceof RegExp && rule.pattern.test(pathStr));
+      
+      if (matches) {
+        if (rule.allowed) {
+          return Promise.resolve(undefined);
+        } else {
+          const error = createFsError(
+            rule.errorCode || mergedConfig.defaultAccessErrorCode || 'ENOENT',
+            rule.errorMessage || 'File not found or access denied',
+            'access',
+            pathStr
+          );
+          return Promise.reject(error);
+        }
+      }
+    }
+    
+    // Fall back to default behavior if no path-specific rule matched
+    if (mergedConfig.defaultAccessBehavior) {
+      // Access allowed - resolve successfully
+      return Promise.resolve(undefined);
+    } else {
+      // Access denied - reject with error
+      const error = createFsError(
+        mergedConfig.defaultAccessErrorCode || 'ENOENT',
+        'File not found or access denied',
+        'access',
+        pathStr
+      );
+      return Promise.reject(error);
+    }
+  });
   
   // Configure fs.readFile
   mockedFs.readFile.mockImplementation((path) => {
@@ -305,6 +353,44 @@ export function createFsError(
   error.path = filepath;
   return error;
 }
+
+/**
+ * Configures fs.access to resolve or reject for specific paths
+ * @param pathPattern - Path or regex pattern to match
+ * @param allowed - Whether access should be allowed (true) or denied (false)
+ * @param options - Optional error details if denied
+ */
+export const mockAccess: MockAccessFunction = (
+  pathPattern: string | RegExp,
+  allowed: boolean,
+  options?: {
+    errorCode?: string;
+    errorMessage?: string;
+  }
+): void => {
+  // Find and remove any existing rule with the same pattern
+  const existingIndex = accessRules.findIndex(
+    rule => 
+      (typeof rule.pattern === 'string' && 
+       typeof pathPattern === 'string' && 
+       rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+       pathPattern instanceof RegExp && 
+       rule.pattern.source === pathPattern.source)
+  );
+  
+  if (existingIndex !== -1) {
+    accessRules.splice(existingIndex, 1);
+  }
+  
+  // Add new rule at the beginning for higher precedence
+  accessRules.unshift({
+    pattern: pathPattern,
+    allowed,
+    errorCode: options?.errorCode,
+    errorMessage: options?.errorMessage
+  });
+};
 
 /**
  * Creates a Stats-like object from partial stats

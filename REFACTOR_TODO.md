@@ -19,7 +19,7 @@
   - **Depends On:** Define filesystem mock utility interfaces.
   - **AC Ref:** AC 2.1.
 
-- [ ] **Implement filesystem access mock helpers**
+- [x] **Implement filesystem access mock helpers**
   - **Action:** Add helper functions to mock fs.access for specific paths with success/error responses.
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
