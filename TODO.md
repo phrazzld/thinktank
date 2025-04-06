@@ -12,7 +12,7 @@
   - **Depends On:** Analyze Current Flow Structure
   - **AC Ref:** T6.2
 
-- [ ] **Implement Setup Workflow Helper**: Create the `_setupWorkflow` helper function.
+- [x] **Implement Setup Workflow Helper**: Create the `_setupWorkflow` helper function.
   - **Action:** Implement function to handle configuration loading, run name generation, and output directory creation with proper error handling and spinner updates.
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5
