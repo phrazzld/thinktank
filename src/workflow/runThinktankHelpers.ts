@@ -43,6 +43,7 @@ import {
   styleDim
 } from '../utils/consoleUtils';
 import { logger } from '../utils/logger';
+import { readContextPaths, formatCombinedInput, ContextFileResult } from '../utils/fileReader';
 import {
   SetupWorkflowParams,
   SetupWorkflowResult,
@@ -197,31 +198,119 @@ export async function _setupWorkflow({
 /**
  * Input processing helper function
  * 
- * Handles input processing from various sources (file, stdin, or direct text)
- * with proper error handling and spinner updates.
+ * Handles input processing from various sources (file, stdin, or direct text),
+ * processes optional context files/directories, and combines them with the main prompt.
  * 
- * @param params - Parameters containing the spinner and input string
- * @returns An object containing the processed input result
+ * @param params - Parameters containing the spinner, input string, and optional context paths
+ * @returns An object containing the processed input result and context files
  * @throws 
  *   - FileSystemError when input processing fails due to file system issues
  *   - ThinktankError for other unexpected errors
  */
 export async function _processInput({ 
   spinner, 
-  input 
+  input,
+  contextPaths
 }: ProcessInputParams): Promise<ProcessInputResult> {
   try {
     // 1. Update spinner with processing status
     spinner.text = 'Processing input...';
     
-    // 2. Process the input using inputHandler.processInput
-    const inputResult = await processInput({ input });
+    // 2. Process the main input using inputHandler.processInput
+    const originalInputResult = await processInput({ input });
     
-    // 3. Update spinner with success information
-    spinner.text = `Input processed from ${inputResult.sourceType} (${inputResult.content.length} characters)`;
+    // Create extended input result with proper type for metadata
+    const inputResult: import('./runThinktankTypes').ExtendedInputResult = {
+      ...originalInputResult,
+      metadata: {
+        ...originalInputResult.metadata,
+        contextFilesCount: undefined,
+        contextFilesWithErrors: undefined,
+        hasContextFiles: false
+      }
+    };
     
-    // 4. Return the properly structured result
-    return { inputResult };
+    // 3. If no context paths are provided, return the input result as is
+    if (!contextPaths || contextPaths.length === 0) {
+      spinner.text = `Input processed from ${inputResult.sourceType} (${inputResult.content.length} characters)`;
+      return { inputResult, contextFiles: [] };
+    }
+    
+    // 4. Process context paths if provided
+    spinner.text = `Processing context files from ${contextPaths.length} path${contextPaths.length === 1 ? '' : 's'}...`;
+    
+    let contextFiles: ContextFileResult[];
+    try {
+      contextFiles = await readContextPaths(contextPaths);
+    } catch (err) {
+      // If it's already a FileSystemError, just rethrow it
+      if (err instanceof FileSystemError) {
+        throw err;
+      }
+      
+      // Handle other errors in context file reading
+      throw new FileSystemError(`Failed to read context files: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err instanceof Error ? err : undefined,
+        suggestions: [
+          'Check that all context paths exist and are accessible',
+          'Verify permissions on context files and directories',
+          'Try using absolute paths if the files are in a different location'
+        ]
+      });
+    }
+    
+    // 5. Count successful and error context files
+    const successfulContextFiles = contextFiles.filter(file => file.error === null && file.content !== null);
+    const errorContextFiles = contextFiles.filter(file => file.error !== null || file.content === null);
+    
+    // 6. Show warning for context files with errors
+    if (errorContextFiles.length > 0) {
+      spinner.warn(styleWarning(`${errorContextFiles.length} of ${contextFiles.length} context files could not be read and will be skipped.`));
+      
+      // Log detailed information about each error file
+      errorContextFiles.forEach(file => {
+        logger.debug(`Context file error - ${file.path}: ${file.error?.message || 'Unknown error'}`);
+      });
+      
+      // Restart spinner after warnings
+      spinner.start();
+    }
+    
+    // 7. Combine context content with prompt if we have successful context files
+    if (successfulContextFiles.length > 0) {
+      // Use formatCombinedInput to merge the prompt with context files
+      const combinedContent = formatCombinedInput(inputResult.content, contextFiles);
+      
+      // Update input result with the combined content
+      inputResult.content = combinedContent;
+      
+      // Add context information to metadata
+      inputResult.metadata.hasContextFiles = true;
+      inputResult.metadata.contextFilesCount = successfulContextFiles.length;
+      inputResult.metadata.contextFilesWithErrors = errorContextFiles.length;
+      inputResult.metadata.finalLength = combinedContent.length;
+      
+      // Display success message
+      spinner.info(styleInfo(`Added ${successfulContextFiles.length} context file${successfulContextFiles.length === 1 ? '' : 's'} to the prompt.`));
+      spinner.start(); // Restart spinner after info
+    } else if (contextPaths.length > 0) {
+      // If no context files were successfully read but some were specified
+      spinner.warn(styleWarning('No context files could be read. Continuing with original prompt only.'));
+      spinner.start(); // Restart spinner after warning
+    }
+    
+    // 8. Update spinner with final status
+    spinner.text = `Input processed from ${inputResult.sourceType}`;
+    if (successfulContextFiles.length > 0) {
+      spinner.text += ` with ${successfulContextFiles.length} context file${successfulContextFiles.length === 1 ? '' : 's'}`;
+    }
+    spinner.text += ` (${inputResult.content.length} characters)`;
+    
+    // 9. Return the result with context files
+    return { 
+      inputResult,
+      contextFiles
+    };
   } catch (error) {
     // Handle specific error types according to the error handling contract
     

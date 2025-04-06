@@ -178,6 +178,62 @@ export interface ProcessInputParams extends SpinnerContext {
    * The user-provided input (file path, raw text, or stdin indicator)
    */
   input: string;
+  
+  /**
+   * Optional array of paths to files or directories to include as context
+   * If provided, these will be read and combined with the prompt
+   */
+  contextPaths?: string[];
+}
+
+/**
+ * Extended metadata for input processing including context information
+ */
+export interface ExtendedInputMetadata {
+  /**
+   * Processing time in milliseconds
+   */
+  processingTimeMs: number;
+  
+  /**
+   * Original content length before any processing
+   */
+  originalLength: number;
+  
+  /**
+   * Final content length after processing
+   */
+  finalLength: number;
+  
+  /**
+   * Whether the content was normalized
+   */
+  normalized: boolean;
+  
+  /**
+   * Number of context files successfully processed (if applicable)
+   */
+  contextFilesCount?: number;
+  
+  /**
+   * Number of context files that had errors during processing (if applicable)
+   */
+  contextFilesWithErrors?: number;
+  
+  /**
+   * Whether the content includes context files
+   */
+  hasContextFiles?: boolean;
+}
+
+/**
+ * Extended input result with context information
+ */
+export interface ExtendedInputResult extends Omit<InputResult, 'metadata'> {
+  /**
+   * Extended metadata including context information
+   */
+  metadata: ExtendedInputMetadata;
 }
 
 /**
@@ -187,7 +243,13 @@ export interface ProcessInputResult {
   /**
    * Processed input with content and metadata
    */
-  inputResult: InputResult;
+  inputResult: ExtendedInputResult;
+  
+  /**
+   * Array of context file results if contextPaths were provided
+   * Includes both successful and failed context files
+   */
+  contextFiles?: Array<import('../utils/fileReader').ContextFileResult>;
 }
 
 // ----------------------------------------

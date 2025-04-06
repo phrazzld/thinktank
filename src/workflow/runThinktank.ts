@@ -188,7 +188,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 2. Process input: Read from file, stdin, or direct text
     const inputResult = await _processInput({
       spinner,
-      input: options.input
+      input: options.input,
+      contextPaths: options.contextPaths
     });
     
     // Update workflow state with input result
