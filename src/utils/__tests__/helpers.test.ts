@@ -193,18 +193,26 @@ describe('Helper Functions', () => {
       expect(outputPath).toMatch(/^\/custom\/path\/run-\d{8}-\d{6}$/);
     });
     
-    it('should include specified identifier in the directory name when provided', () => {
+    it('should generate directory without identifier after refactoring', () => {
+      // Mock the date to get a predictable timestamp
+      jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('2025-04-01T12:00:00.000Z');
+      
       const outputPath = generateOutputDirectoryPath('/custom/path', 'test-group');
-      // Check that identifier is included in path
-      expect(outputPath).toContain('test-group-');
-      expect(outputPath).toMatch(/^\/custom\/path\/test-group-\d{8}-\d{6}$/);
+      // After refactoring, the identifier should no longer be included in the path
+      expect(outputPath).not.toContain('test-group-');
+      expect(outputPath).toMatch(/^\/custom\/path\/run-\d{8}-\d{6}$/);
     });
     
-    it('should replace colons with hyphens for provider:model format', () => {
+    it('should omit provider:model format after refactoring', () => {
+      // Mock the date to get a predictable timestamp
+      jest.spyOn(Date.prototype, 'toISOString').mockReturnValue('2025-04-01T12:00:00.000Z');
+      
       const outputPath = generateOutputDirectoryPath('/custom/path', 'openai:gpt-4o');
-      // Check that colon is replaced with hyphen
-      expect(outputPath).toContain('openai-gpt-4o-');
+      // After refactoring, provider:model should no longer be included
+      expect(outputPath).not.toContain('openai-gpt-4o-');
       expect(outputPath).not.toContain(':');
+      // Instead, it should just create a run directory
+      expect(outputPath).toMatch(/^\/custom\/path\/run-\d{8}-\d{6}$/);
     });
     
     it('should use thinktank-output as default directory when no output is specified', () => {

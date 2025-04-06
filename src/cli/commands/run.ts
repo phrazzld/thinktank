@@ -26,7 +26,8 @@ const runCommand = new Command('run');
 // Configure the command
 runCommand
   .description('Run a prompt against LLM models')
-  .argument('<promptFile>', 'Path to the file containing the prompt')
+  .argument('<promptFile>', 'Path to the file containing the main prompt')
+  .argument('[contextPaths...]', 'Optional paths to files or directories to include as context')
   .option('-m, --models <models>', 'Comma-separated list of specific models to use (e.g., openai:gpt-4o,anthropic:claude-3-opus)')
   .option('-g, --group <group>', 'Name of a model group from config to use')
   .option('-o, --output <directory>', 'Directory to save results to')
@@ -35,7 +36,7 @@ runCommand
   .option('--include-metadata', 'Include raw API response metadata in output')
   .option('--system-prompt <system-prompt>', 'Custom system prompt for supported models')
   .option('--disable-spinner-throttling', 'Disable spinner update throttling (may cause more terminal flicker)')
-  .action(async (promptFile: string, options: {
+  .action(async (promptFile: string, contextPaths: string[], options: {
   models?: string;
   group?: string;
   output?: string;
@@ -181,6 +182,7 @@ runCommand
       // Run the core function
       await runThinktank({
         input: promptFile,
+        contextPaths: contextPaths.length > 0 ? contextPaths : undefined,
         specificModel: specificModels ? specificModels.join(',') : undefined,
         groupName: options.group,
         output: options.output,

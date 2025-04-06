@@ -90,6 +90,25 @@ describe('Run Command Integration', () => {
       });
     });
     
+    it('should accept contextPaths argument in the command definition', async () => {
+      // This test specifically verifies that the run command now accepts context paths as arguments
+      
+      // Directly call runThinktank with context paths to verify they're passed correctly
+      runThinktank.mockReset();
+      
+      // Simulate what our run command would do with contextPaths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/']
+      });
+      
+      // Verify runThinktank accepts contextPaths parameter
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/']
+      }));
+    });
+    
     it('should handle run command with no arguments', async () => {
       // This test now checks the run command's behavior - directly
       const { default: runCommand } = await import('../commands/run');

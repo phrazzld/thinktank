@@ -212,13 +212,15 @@ describe('OutputHandler', () => {
       expect(outputDir).toContain('run-');
     });
     
-    it('should include identifier in directory name', async () => {
+    it('should not include identifier in directory name after refactoring', async () => {
       const outputDir = await createOutputDirectory({
         directoryIdentifier: 'test-run'
       });
       
-      // Verify directory name includes identifier
-      expect(outputDir).toContain('test-run-');
+      // After refactoring, the directory name should NOT include the identifier
+      expect(outputDir).not.toContain('test-run-');
+      // Instead, it should use the standard run-timestamp format
+      expect(outputDir).toMatch(/run-\d{8}-\d{6}/);
     });
     
     it('should throw error if directory creation fails', async () => {

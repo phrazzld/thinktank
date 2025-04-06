@@ -49,6 +49,12 @@ export interface RunOptions {
   input: string;
   
   /**
+   * Array of paths to files or directories to include as context (optional)
+   * If provided, these will be read and combined with the prompt
+   */
+  contextPaths?: string[];
+  
+  /**
    * Path to the configuration file (optional)
    */
   configPath?: string;
