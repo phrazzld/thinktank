@@ -1,29 +1,36 @@
 /**
  * Comprehensive tests for gitignore-based filtering logic
  */
-import fs from 'fs/promises';
 import path from 'path';
 import * as gitignoreUtils from '../gitignoreUtils';
 import * as fileReader from '../fileReader';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockReadFile,
+  mockedFs
+} from '../../__tests__/utils/mockFsUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
 jest.mock('../fileReader');
 
 // Access mocked functions
-const mockedFs = jest.mocked(fs);
 const mockedFileExists = jest.mocked(fileReader.fileExists);
 
 describe('Gitignore-based Filtering Logic', () => {
   const testDirPath = '/test/dir';
+  const gitignorePath = path.join(testDirPath, '.gitignore');
   
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset and setup mocks
+    resetMockFs();
+    setupMockFs();
     gitignoreUtils.clearIgnoreCache();
     
     // Default mocks
     mockedFileExists.mockResolvedValue(true);
-    mockedFs.readFile.mockResolvedValue('# Default test gitignore\n*.log\ntmp/\n.DS_Store');
+    mockReadFile(gitignorePath, '# Default test gitignore\n*.log\ntmp/\n.DS_Store');
   });
   
   describe('shouldIgnorePath', () => {
@@ -66,7 +73,7 @@ describe('Gitignore-based Filtering Logic', () => {
     
     it('should respect negated patterns that re-include certain paths', async () => {
       // Set up a gitignore with negated patterns
-      mockedFs.readFile.mockResolvedValue('*.log\n!important.log\ntmp/');
+      mockReadFile(gitignorePath, '*.log\n!important.log\ntmp/');
       
       // Mock implementation of shouldIgnorePath to correctly handle negation
       // (since we're testing our understanding of gitignore patterns, not the actual implementation)
@@ -102,7 +109,7 @@ describe('Gitignore-based Filtering Logic', () => {
     
     it('should handle comment lines and blank lines in .gitignore files', async () => {
       // Set up a gitignore with comments and blank lines
-      mockedFs.readFile.mockResolvedValue('# This is a comment\n\n*.log\n\n# Another comment\ntmp/');
+      mockReadFile(gitignorePath, '# This is a comment\n\n*.log\n\n# Another comment\ntmp/');
       
       // Should ignore patterns as normal, ignoring comments and blank lines
       expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'info.log')).toBe(true);
@@ -114,7 +121,7 @@ describe('Gitignore-based Filtering Logic', () => {
     
     it('should handle complex glob patterns correctly', async () => {
       // Set up a gitignore with complex patterns
-      mockedFs.readFile.mockResolvedValue('**/*.min.js\n**/node_modules/**\n**/build-*/\n*.{jpg,png,gif}');
+      mockReadFile(gitignorePath, '**/*.min.js\n**/node_modules/**\n**/build-*/\n*.{jpg,png,gif}');
       
       // Mock implementation of shouldIgnorePath to correctly handle complex patterns
       jest.spyOn(gitignoreUtils, 'shouldIgnorePath').mockImplementation(async (_unused, filePath) => {
@@ -176,7 +183,7 @@ describe('Gitignore-based Filtering Logic', () => {
       ];
       
       // Set up .gitignore with custom patterns
-      mockedFs.readFile.mockResolvedValue('*.log\ncustom-dir/');
+      mockReadFile(gitignorePath, '*.log\ncustom-dir/');
       
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
@@ -210,7 +217,7 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should handle errors when reading .gitignore files gracefully', async () => {
       // Setup file exists but fails to read
       mockedFileExists.mockResolvedValue(true);
-      mockedFs.readFile.mockRejectedValue(new Error('Permission denied'));
+      mockReadFile(gitignorePath, new Error('Permission denied'));
       
       // Spy on console.warn
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
@@ -234,8 +241,7 @@ describe('Gitignore-based Filtering Logic', () => {
       const filter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
       // Clear mock counts
-      mockedFileExists.mockClear();
-      mockedFs.readFile.mockClear();
+      jest.clearAllMocks();
       
       // Second call should use cache
       const filter2 = await gitignoreUtils.createIgnoreFilter(testDirPath);
@@ -251,20 +257,17 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should create separate filters for different directory paths', async () => {
       const dir1 = '/path/one';
       const dir2 = '/path/two';
+      const gitignorePath1 = path.join(dir1, '.gitignore');
+      const gitignorePath2 = path.join(dir2, '.gitignore');
       
       // Set up different mock responses for different paths
       mockedFileExists.mockImplementation(async () => {
         return true; // Both paths have .gitignore files
       });
       
-      mockedFs.readFile.mockImplementation(async (filePath) => {
-        const filePathStr = String(filePath);
-        if (filePathStr.includes(dir1)) {
-          return '*.log';
-        } else {
-          return '*.tmp';
-        }
-      });
+      // Mock different content for different gitignore files
+      mockReadFile(gitignorePath1, '*.log');
+      mockReadFile(gitignorePath2, '*.tmp');
       
       // Create filters for different paths
       const filter1 = await gitignoreUtils.createIgnoreFilter(dir1);
@@ -286,14 +289,13 @@ describe('Gitignore-based Filtering Logic', () => {
       await gitignoreUtils.createIgnoreFilter(testDirPath);
       
       // Clear mock counts
-      mockedFileExists.mockClear();
-      mockedFs.readFile.mockClear();
+      jest.clearAllMocks();
       
       // Clear the cache
       gitignoreUtils.clearIgnoreCache();
       
       // Update .gitignore content for next read
-      mockedFs.readFile.mockResolvedValue('*.new-pattern');
+      mockReadFile(gitignorePath, '*.new-pattern');
       
       // This should need to read again
       const newFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
