@@ -290,7 +290,8 @@ function processGroupName(
     
     // Add configuration hint
     suggestions.push(
-      'Groups must be defined in your thinktank.config.json file',
+      'Groups must be defined in your configuration file',
+      'Use "thinktank config path" to locate your configuration file',
       'Use "thinktank models" to list all available models and their groups'
     );
     

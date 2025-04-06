@@ -1,12 +1,6 @@
 # BACKLOG
 
-- transform into very simple interactive tui
-	* steps
-		* define task
-		* select files / directories for additional context
-		* select models / group to execute task
-		* select output directory (or go with default)
-		* confirm and run
+- user should be able to add an arbitrary number of files / directories as context
 - user should be able to save task prompts in their config
 - user should be able to define an arbitrary number of steps in their task
 	* ie task is 1) generate a plan file, 2) critique the plan file, 3) generate a second draft plan file

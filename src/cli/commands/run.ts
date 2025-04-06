@@ -34,6 +34,7 @@ runCommand
   .option('-v, --verbose', 'Show detailed output during execution')
   .option('--include-metadata', 'Include raw API response metadata in output')
   .option('--system-prompt <system-prompt>', 'Custom system prompt for supported models')
+  .option('--disable-spinner-throttling', 'Disable spinner update throttling (may cause more terminal flicker)')
   .action(async (promptFile: string, options: {
   models?: string;
   group?: string;
@@ -42,6 +43,7 @@ runCommand
   verbose?: boolean;
   includeMetadata?: boolean;
   systemPrompt?: string;
+  disableSpinnerThrottling?: boolean;
 }): Promise<void> => {
     try {
       // Validate prompt file exists
@@ -184,7 +186,8 @@ runCommand
         output: options.output,
         configPath: options.config,
         includeMetadata: options.includeMetadata,
-        systemPrompt
+        systemPrompt,
+        disableSpinnerThrottling: options.disableSpinnerThrottling
       });
       
       // Output completion message if verbose

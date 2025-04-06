@@ -18,11 +18,14 @@
  * ```typescript
  * // Using error class directly
  * throw new ConfigError('Invalid configuration', {
- *   suggestions: ['Check your thinktank.config.json file']
+ *   suggestions: ['Check your configuration file']
  * });
  * 
  * // Using a factory function
  * throw createFileNotFoundError('/path/to/missing-file.txt');
+ * 
+ * // Using a provider-specific factory function
+ * throw createProviderRateLimitError('openai', 'OpenAI', error);
  * ```
  * 
  * @module errors
@@ -42,10 +45,28 @@ export {
   PermissionError
 } from './types';
 
-// Re-export all factory functions
+// Re-export basic factory functions
 export {
   createFileNotFoundError,
   createModelFormatError,
   createModelNotFoundError,
   createMissingApiKeyError
 } from './factories';
+
+// Re-export provider factory functions
+export {
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderModelNotFoundError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderUnknownError,
+  createProviderNetworkError,
+  
+  // Provider error detection utilities
+  isProviderRateLimitError,
+  isProviderTokenLimitError,
+  isProviderContentPolicyError,
+  isProviderAuthError,
+  isProviderNetworkError
+} from './factories/provider';

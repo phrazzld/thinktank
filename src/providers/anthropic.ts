@@ -11,8 +11,8 @@ import {
   LLMAvailableModel
 } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
-import { ApiError } from '../core/errors';
-import {
+import { 
+  ApiError,
   createProviderApiKeyMissingError,
   createProviderRateLimitError,
   createProviderModelNotFoundError,
@@ -24,7 +24,7 @@ import {
   isProviderTokenLimitError,
   isProviderContentPolicyError,
   isProviderNetworkError
-} from '../core/errors/factories/provider';
+} from '../core/errors';
 
 // NOTE: We've removed the custom AnthropicProviderError class
 // and now use the standardized ApiError created by the provider error factories

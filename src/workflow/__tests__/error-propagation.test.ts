@@ -470,8 +470,10 @@ describe('Cross-Module Error Propagation', () => {
           expect(error.message).toContain('Missing API keys');
           expect(error.category).toBe(errorCategories.API);
           expect(error.suggestions).toBeDefined();
-          expect(error.suggestions?.some(s => s.includes('openai'))).toBe(true);
-          expect(error.suggestions?.some(s => s.includes('anthropic'))).toBe(true);
+          // These tests were previously checking for specific provider names
+          // We've updated to look for API key names instead
+          expect(error.suggestions?.some(s => s.includes('OPENAI_API_KEY') || s.includes('openai'))).toBe(true);
+          expect(error.suggestions?.some(s => s.includes('ANTHROPIC_API_KEY') || s.includes('anthropic'))).toBe(true);
         }
       }
     });
