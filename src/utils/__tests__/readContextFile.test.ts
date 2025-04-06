@@ -2,16 +2,22 @@
  * Tests for the context file reader utility
  */
 import path from 'path';
-import fs from 'fs/promises';
-import { Stats } from 'fs';
 import { readContextFile, MAX_FILE_SIZE } from '../fileReader';
 import logger from '../logger';
+import {
+  resetMockFs,
+  setupMockFs,
+  mockAccess,
+  mockStat,
+  mockReadFile,
+  mockedFs,
+  createFsError
+} from '../../__tests__/utils/mockFsUtils';
 
-// Mock fs.promises module
+// Mock dependencies
 jest.mock('fs/promises');
 jest.mock('../logger');
 
-const mockedFs = jest.mocked(fs);
 const mockedLogger = jest.mocked(logger);
 
 describe('readContextFile', () => {
@@ -19,13 +25,20 @@ describe('readContextFile', () => {
   const testContent = 'This is test content\nwith multiple lines.';
   
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockedFs.access.mockResolvedValue(undefined);
-    mockedFs.readFile.mockResolvedValue(testContent);
-    mockedFs.stat.mockResolvedValue({
+    // Reset mocks and set up default behavior
+    resetMockFs();
+    setupMockFs();
+    
+    // Set up default mocks for the test file
+    mockAccess(testFilePath, true);
+    mockReadFile(testFilePath, testContent);
+    mockStat(testFilePath, {
       isFile: () => true,
-      size: 1024, // 1KB file size
-    } as Stats);
+      size: 1024 // 1KB file size
+    });
+    
+    // Reset logger mocks
+    jest.clearAllMocks();
   });
   
   describe('Basic Functionality', () => {
@@ -45,6 +58,14 @@ describe('readContextFile', () => {
       const relativePath = 'relative/path.txt';
       const absolutePath = path.resolve(process.cwd(), relativePath);
       
+      // Set up mocks for the resolved absolute path
+      mockAccess(absolutePath, true);
+      mockReadFile(absolutePath, testContent);
+      mockStat(absolutePath, {
+        isFile: () => true,
+        size: 1024
+      });
+      
       const result = await readContextFile(relativePath);
       
       expect(result.path).toBe(relativePath); // Original path is preserved in the result
@@ -54,6 +75,15 @@ describe('readContextFile', () => {
 
     it('should handle paths with special characters', async () => {
       const specialCharPath = '/path/with spaces and #special characters!.txt';
+      
+      // Set up mocks for the special character path
+      mockAccess(specialCharPath, true);
+      mockReadFile(specialCharPath, testContent);
+      mockStat(specialCharPath, {
+        isFile: () => true,
+        size: 1024
+      });
+      
       const result = await readContextFile(specialCharPath);
       
       expect(result.path).toBe(specialCharPath);
@@ -64,7 +94,7 @@ describe('readContextFile', () => {
 
     it('should handle empty files', async () => {
       // Mock an empty file
-      mockedFs.readFile.mockResolvedValue('');
+      mockReadFile(testFilePath, '');
       
       const result = await readContextFile(testFilePath);
       
@@ -76,9 +106,7 @@ describe('readContextFile', () => {
   describe('Error Handling', () => {
     it('should return error info when file is not found', async () => {
       // Mock file not found error
-      const error = new Error('File not found') as NodeJS.ErrnoException;
-      error.code = 'ENOENT';
-      mockedFs.access.mockRejectedValue(error);
+      mockAccess(testFilePath, false, { errorCode: 'ENOENT' });
       
       const result = await readContextFile(testFilePath);
       
@@ -94,9 +122,10 @@ describe('readContextFile', () => {
     
     it('should return error info when permission is denied', async () => {
       // Mock permission denied error
-      const error = new Error('Permission denied') as NodeJS.ErrnoException;
-      error.code = 'EACCES';
-      mockedFs.access.mockRejectedValue(error);
+      mockAccess(testFilePath, false, { 
+        errorCode: 'EACCES',
+        errorMessage: 'Permission denied'
+      });
       
       const result = await readContextFile(testFilePath);
       
@@ -112,10 +141,11 @@ describe('readContextFile', () => {
     
     it('should return error info when path is not a file', async () => {
       // Mock path being a directory, not a file
-      mockedFs.stat.mockResolvedValue({
+      mockStat(testFilePath, {
         isFile: () => false,
-        size: 0,
-      } as Stats);
+        isDirectory: () => true,
+        size: 0
+      });
       
       const result = await readContextFile(testFilePath);
       
@@ -131,8 +161,8 @@ describe('readContextFile', () => {
     
     it('should return error for other read errors', async () => {
       // Mock generic read error
-      const error = new Error('Some random error');
-      mockedFs.readFile.mockRejectedValue(error);
+      const readError = new Error('Some random error');
+      mockReadFile(testFilePath, readError);
       
       const result = await readContextFile(testFilePath);
       
@@ -147,7 +177,8 @@ describe('readContextFile', () => {
     });
     
     it('should handle unknown errors properly', async () => {
-      // Mock non-Error object rejection
+      // For unknown errors, we need to manipulate mockedFs directly
+      // since our mock utilities expect Error objects
       mockedFs.access.mockRejectedValue('Not an error object');
       
       const result = await readContextFile(testFilePath);
@@ -160,13 +191,17 @@ describe('readContextFile', () => {
           message: `Unknown error reading file: ${testFilePath}`
         }
       });
+      
+      // Reset access mock to prevent affecting other tests
+      resetMockFs();
+      setupMockFs();
+      mockAccess(testFilePath, true);
     });
 
     it('should return error for file system errors during stat', async () => {
       // Mock fs.stat to throw an error
-      const statError = new Error('Stat error') as NodeJS.ErrnoException;
-      statError.code = 'EMFILE'; // Too many open files
-      mockedFs.stat.mockRejectedValue(statError);
+      const statError = createFsError('EMFILE', 'Too many open files', 'stat', testFilePath);
+      mockStat(testFilePath, statError);
       
       const result = await readContextFile(testFilePath);
       
@@ -183,6 +218,14 @@ describe('readContextFile', () => {
       
       const windowsPath = 'C:\\Users\\user\\Documents\\file.txt';
       
+      // Set up mocks for the Windows path
+      mockAccess(windowsPath, true);
+      mockReadFile(windowsPath, testContent);
+      mockStat(windowsPath, {
+        isFile: () => true,
+        size: 1024
+      });
+      
       const result = await readContextFile(windowsPath);
       
       expect(result.path).toBe(windowsPath);
@@ -197,6 +240,14 @@ describe('readContextFile', () => {
     it('should handle Unix-style absolute paths', async () => {
       const unixPath = '/Users/user/Documents/file.txt';
       
+      // Set up mocks for the Unix path
+      mockAccess(unixPath, true);
+      mockReadFile(unixPath, testContent);
+      mockStat(unixPath, {
+        isFile: () => true,
+        size: 1024
+      });
+      
       const result = await readContextFile(unixPath);
       
       expect(result.path).toBe(unixPath);
@@ -209,10 +260,10 @@ describe('readContextFile', () => {
     it('should return error for files exceeding the size limit', async () => {
       // Set file size above the limit
       const largeSize = MAX_FILE_SIZE + 1024; // 1KB over limit
-      mockedFs.stat.mockResolvedValue({
+      mockStat(testFilePath, {
         isFile: () => true,
-        size: largeSize,
-      } as Stats);
+        size: largeSize
+      });
       
       const result = await readContextFile(testFilePath);
       
@@ -225,10 +276,10 @@ describe('readContextFile', () => {
     
     it('should process files exactly at the size limit', async () => {
       // Set file size exactly at the limit
-      mockedFs.stat.mockResolvedValue({
+      mockStat(testFilePath, {
         isFile: () => true,
-        size: MAX_FILE_SIZE,
-      } as Stats);
+        size: MAX_FILE_SIZE
+      });
       
       const result = await readContextFile(testFilePath);
       
@@ -241,7 +292,7 @@ describe('readContextFile', () => {
     it('should return error for binary files', async () => {
       // Mock readFile to return binary-like content with null bytes (which is a strong binary indicator)
       const binaryContent = 'Some text with \0 null bytes \0 in it';
-      mockedFs.readFile.mockResolvedValue(binaryContent);
+      mockReadFile(testFilePath, binaryContent);
       
       const result = await readContextFile(testFilePath);
       
@@ -257,7 +308,7 @@ describe('readContextFile', () => {
     it('should handle files with special UTF-8 characters', async () => {
       // File with UTF-8 characters
       const utf8Content = 'Unicode characters: 你好 こんにちは éàçñßø';
-      mockedFs.readFile.mockResolvedValue(utf8Content);
+      mockReadFile(testFilePath, utf8Content);
       
       const result = await readContextFile(testFilePath);
       
@@ -268,7 +319,7 @@ describe('readContextFile', () => {
     it('should handle files with mixed line endings', async () => {
       // File with mixed line endings (Windows CRLF and Unix LF)
       const mixedContent = 'Line 1\r\nLine 2\nLine 3\r\nLine 4';
-      mockedFs.readFile.mockResolvedValue(mixedContent);
+      mockReadFile(testFilePath, mixedContent);
       
       const result = await readContextFile(testFilePath);
       
@@ -279,7 +330,7 @@ describe('readContextFile', () => {
     it('should handle files with trailing whitespace', async () => {
       // File with trailing whitespace
       const contentWithWhitespace = 'Line with trailing space    \nAnother line\t\t';
-      mockedFs.readFile.mockResolvedValue(contentWithWhitespace);
+      mockReadFile(testFilePath, contentWithWhitespace);
       
       const result = await readContextFile(testFilePath);
       
