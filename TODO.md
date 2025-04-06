@@ -120,19 +120,19 @@
   - **Depends On:** Modify _processInput helper.
   - **AC Ref:** AC 5.6 - Input processing has test coverage.
 
-- [ ] **Create tests for CLI command changes**
+- [x] **Create tests for CLI command changes**
   - **Action:** Write unit tests for the updated run command to verify contextPaths parsing.
   - **Depends On:** Update action handler to receive contextPaths.
   - **AC Ref:** AC 5.7 - CLI command has test coverage.
 
 ## Testing - Integration Tests
 
-- [ ] **Create integration tests for runThinktank workflow**
+- [x] **Create integration tests for runThinktank workflow**
   - **Action:** Write tests that verify the workflow correctly passes context through the entire pipeline.
   - **Depends On:** Pass contextPaths to _processInput, Modify call to _executeQueries.
   - **AC Ref:** AC 6.1 - Integration tests verify workflow correctly handles context.
 
-- [ ] **Create integration tests for various path combinations**
+- [x] **Create integration tests for various path combinations**
   - **Action:** Write tests for different combinations of file/directory paths.
   - **Depends On:** Create integration tests for runThinktank workflow.
   - **AC Ref:** AC 6.2 - Integration tests cover various path combinations.
