@@ -27,7 +27,7 @@
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5
 
-- [ ] **Implement Query Execution Helper**: Create the `_executeQueries` helper function.
+- [x] **Implement Query Execution Helper**: Create the `_executeQueries` helper function.
   - **Action:** Implement function that handles query execution with spinner updates and proper error propagation using `ApiError` when appropriate.
   - **Depends On:** Design Helper Function Interfaces
   - **AC Ref:** T6.2, T6.4, T6.5

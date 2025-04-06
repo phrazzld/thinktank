@@ -11,6 +11,7 @@ import { createOutputDirectory } from './outputHandler';
 import { 
   ThinktankError,
   ConfigError,
+  ApiError,
   FileSystemError,
   PermissionError,
   errorCategories
@@ -22,10 +23,13 @@ import {
   ProcessInputParams,
   ProcessInputResult,
   SelectModelsParams,
-  SelectModelsResult
+  SelectModelsResult,
+  ExecuteQueriesParams,
+  ExecuteQueriesResult
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
 import { selectModels, ModelSelectionError } from './modelSelector';
+import { executeQueries, QueryExecutorError, ModelQueryStatus } from './queryExecutor';
 
 /**
  * Setup workflow helper function
@@ -421,6 +425,117 @@ export function _selectModels({
         'Check your configuration file for valid model definitions',
         'Verify the model or group name is spelled correctly',
         'Use "thinktank models" to list available models'
+      ]
+    });
+  }
+}
+
+/**
+ * Query execution helper function
+ * 
+ * Handles execution of queries to LLM providers with appropriate spinner updates
+ * and error handling. Uses ApiError for categorizing and propagating errors.
+ * 
+ * @param params - Parameters containing spinner, config, models, prompt, and options
+ * @returns Promise resolving to an object containing query execution results
+ * @throws
+ *   - ApiError when query execution fails due to API errors
+ *   - ThinktankError for other unexpected errors
+ */
+export async function _executeQueries({
+  spinner,
+  config,
+  models,
+  prompt,
+  options
+}: ExecuteQueriesParams): Promise<ExecuteQueriesResult> {
+  try {
+    // 1. Update spinner with execution status
+    spinner.text = `Executing queries to ${models.length} ${models.length === 1 ? 'model' : 'models'}...`;
+    
+    // 2. Extract relevant options for the query executor
+    const queryOptions = {
+      prompt,
+      systemPrompt: options.systemPrompt,
+      enableThinking: options.enableThinking,
+      // Only pass timeoutMs if it's defined in options
+      ...(options.timeoutMs !== undefined && { timeoutMs: options.timeoutMs }),
+      
+      // Define status update callback to update spinner with model progress
+      onStatusUpdate: (modelKey: string, status: ModelQueryStatus) => {
+        if (status.status === 'running') {
+          spinner.text = `Querying ${modelKey}...`;
+        } else if (status.status === 'success') {
+          spinner.text = `Received response from ${modelKey} (${status.durationMs}ms)`;
+        } else if (status.status === 'error') {
+          spinner.text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
+        }
+      }
+    };
+    
+    // 3. Execute queries to models
+    const queryResults = await executeQueries(config, models, queryOptions);
+    
+    // 4. Count successes and failures
+    const successCount = queryResults.responses.filter(r => !r.error).length;
+    const failureCount = queryResults.responses.filter(r => !!r.error).length;
+    
+    // 5. Update spinner with appropriate success/warning message
+    if (failureCount === 0) {
+      // All models succeeded
+      spinner.text = `Queries completed successfully: ${successCount} ${successCount === 1 ? 'model' : 'models'}`;
+      
+      // Display timing information
+      const totalTime = queryResults.timing.durationMs / 1000;
+      spinner.info(styleInfo(`Queried ${successCount} ${successCount === 1 ? 'model' : 'models'} in ${totalTime.toFixed(2)}s`));
+    } else if (successCount > 0) {
+      // Partial success
+      spinner.text = `Queries completed with some failures`;
+      spinner.warn(styleWarning(`Some models failed to respond (${failureCount} of ${models.length})`));
+      
+      // Display counts of successes and failures
+      spinner.info(styleInfo(`Results: ${successCount} succeeded, ${failureCount} failed`));
+    } else {
+      // All models failed
+      spinner.text = `All queries failed`;
+      spinner.warn(styleWarning(`All models failed to respond (${failureCount} ${failureCount === 1 ? 'model' : 'models'})`));
+      
+      // Display failure details
+      const errorSummary = queryResults.responses
+        .map(r => `${r.configKey}: ${r.error}`)
+        .join(', ');
+        
+      spinner.info(styleInfo(`Errors: ${errorSummary}`));
+    }
+    
+    // Restart spinner for next step
+    spinner.start();
+    
+    // 6. Return the results
+    return { queryResults };
+  } catch (error) {
+    // Handle specific error types according to the error handling contract
+    
+    // If it's already an ApiError, just rethrow it
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    
+    // If it's a QueryExecutorError, convert to ApiError 
+    if (error instanceof QueryExecutorError) {
+      throw new ApiError(error.message, {
+        cause: error,
+        suggestions: error.suggestions
+      });
+    }
+    
+    // For unexpected errors, wrap in ApiError
+    throw new ApiError(`Error executing queries: ${error instanceof Error ? error.message : String(error)}`, {
+      cause: error instanceof Error ? error : undefined,
+      suggestions: [
+        'Check your network connection',
+        'Verify API keys for the models are correctly set',
+        'Check if the models are available and not experiencing downtime'
       ]
     });
   }

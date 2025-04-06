@@ -128,6 +128,11 @@ export interface RunOptions {
   enableThinking?: boolean;
   
   /**
+   * Timeout in milliseconds for each model query
+   */
+  timeoutMs?: number;
+  
+  /**
    * Friendly name for the run
    * Used in console output, but not for actual directory naming
    * Set internally during run execution - not meant to be provided by users
