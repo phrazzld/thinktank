@@ -4,6 +4,23 @@
  * This file contains the implementation of helper functions that encapsulate
  * distinct phases of the runThinktank workflow, making the main function more
  * modular and easier to maintain.
+ * 
+ * Each helper function follows a consistent pattern:
+ * 1. Updates the spinner with current status
+ * 2. Performs its core functionality
+ * 3. Updates the spinner with success/failure information
+ * 4. Returns structured result data
+ * 5. Handles errors according to defined error contracts
+ * 
+ * The workflow is divided into these sequential phases:
+ * - Setup: Configuration loading and output directory creation
+ * - Input Processing: Handling file/stdin/direct text input
+ * - Model Selection: Determining which models to query
+ * - Query Execution: Sending prompts to selected models
+ * - Output Processing: Writing responses to files and formatting console output
+ * - Completion Summary: Displaying final results and statistics
+ * 
+ * Error handling follows established contracts defined in runThinktankTypes.ts
  */
 import { loadConfig } from '../core/configManager';
 import { generateFunName } from '../utils/nameGenerator';
@@ -453,14 +470,30 @@ export function _selectModels({
 /**
  * Query execution helper function
  * 
- * Handles execution of queries to LLM providers with appropriate spinner updates
- * and error handling. Uses ApiError for categorizing and propagating errors.
+ * Central function for executing LLM queries against multiple models in parallel.
+ * This function:
+ * 1. Configures the query executor with appropriate options
+ * 2. Sets up real-time progress reporting via status update callbacks
+ * 3. Handles success and error states for each model
+ * 4. Aggregates and summarizes results for reporting
+ * 5. Formats spinner updates to show progress for each model
  * 
- * @param params - Parameters containing spinner, config, models, prompt, and options
+ * This function uses a status update callback to provide real-time updates to the 
+ * UI spinner for each model. It supports both standard Ora spinners and enhanced
+ * ThrottledSpinner instances by using feature detection with duck typing.
+ * 
+ * After execution completes, it provides a summary of successes and failures
+ * with appropriate console messages based on the outcome.
+ * 
+ * @param params - Parameters for query execution
+ * @param params.spinner - The spinner instance for providing visual feedback
+ * @param params.config - The loaded application configuration
+ * @param params.models - Array of model configurations to query
+ * @param params.prompt - The text prompt to send to each model
+ * @param params.options - The user-provided run options
  * @returns Promise resolving to an object containing query execution results
- * @throws
- *   - ApiError when query execution fails due to API errors
- *   - ThinktankError for other unexpected errors
+ * @throws {ApiError} When query execution fails due to API communication errors
+ * @throws {ThinktankError} For other unexpected errors during query execution
  */
 export async function _executeQueries({
   spinner,
@@ -958,15 +991,27 @@ export function _logCompletionSummary({
 /**
  * Error handling helper function
  * 
- * Categorizes unknown errors, ensures proper ThinktankError types, logs contextual
- * information, and rethrows for upstream handling.
+ * Centralized error handling for the entire workflow. This function:
+ * 1. Categorizes unknown errors into appropriate ThinktankError subtypes
+ * 2. Enriches errors with contextual information from the workflow state
+ * 3. Adds helpful suggestions based on error category and context
+ * 4. Updates the spinner with formatted error messages
+ * 5. Rethrows the categorized error for upstream handling
  * 
  * Uses the createContextualError utility to simplify error categorization and
- * provide consistent error handling.
+ * provide consistent error handling with proper context awareness.
+ * 
+ * This function is responsible for transforming any error type (including unknown)
+ * into a properly structured ThinktankError with appropriate categorization,
+ * making all errors in the system consistent and user-friendly.
  * 
  * @param params - Parameters containing error, spinner, options, and workflow state
+ * @param params.error - The original error that occurred
+ * @param params.spinner - The spinner instance for providing visual feedback
+ * @param params.options - The user-provided run options
+ * @param params.workflowState - The current state of the workflow when the error occurred
  * @returns Never returns normally, always throws an error
- * @throws ThinktankError or one of its specialized subclasses
+ * @throws {ThinktankError} Throws a properly categorized ThinktankError or one of its specialized subclasses
  */
 export function _handleWorkflowError({
   error,
