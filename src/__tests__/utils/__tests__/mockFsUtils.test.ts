@@ -13,6 +13,7 @@ import {
   mockReadFile,
   mockStat,
   mockReaddir,
+  mockMkdir,
   createFsError,
   MockedStats
 } from '../mockFsUtils';
@@ -553,6 +554,93 @@ describe('mockFsUtils core functions', () => {
       const filesWithTypes = await mockedFs.readdir('/mixed/directory', { withFileTypes: true });
       expect(Array.isArray(filesWithTypes)).toBe(true);
       expect(filesWithTypes).toEqual(['file1.txt', 'file2.js', 'subdirectory']);
+    });
+  });
+
+  describe('mockMkdir', () => {
+    beforeEach(() => {
+      resetMockFs();
+      setupMockFs(); // Start with default configuration
+    });
+
+    it('should allow creation of specific directories when configured to succeed', async () => {
+      // Configure specific directory to be created successfully
+      mockMkdir('/path/to/new/directory', true);
+      
+      // The mkdir call should resolve successfully
+      await expect(mockedFs.mkdir('/path/to/new/directory')).resolves.toBeUndefined();
+    });
+
+    it('should reject with default error when configured to fail', async () => {
+      // Configure specific directory to fail creation
+      mockMkdir('/failed/directory', false);
+      
+      // The mkdir call should reject with the default error
+      await expect(mockedFs.mkdir('/failed/directory')).rejects.toHaveProperty('code');
+    });
+
+    it('should reject with specific errors when configured', async () => {
+      // Configure specific directory to fail with custom error
+      const error = createFsError('EACCES', 'Permission denied', 'mkdir', '/permission/denied/directory');
+      mockMkdir('/permission/denied/directory', error);
+      
+      // The mkdir call should reject with the specified error
+      await expect(mockedFs.mkdir('/permission/denied/directory')).rejects.toMatchObject({
+        code: 'EACCES',
+        message: expect.stringContaining('Permission denied')
+      });
+    });
+
+    it('should support pattern matching with regular expressions', async () => {
+      // Configure all directories in a specific path to fail
+      const error = createFsError('EEXIST', 'Directory already exists', 'mkdir', '/existing/path');
+      mockMkdir(/^\/existing\/.*$/, error);
+      
+      // All paths matching the pattern should fail with the specified error
+      await expect(mockedFs.mkdir('/existing/dir1')).rejects.toMatchObject({
+        code: 'EEXIST'
+      });
+      await expect(mockedFs.mkdir('/existing/nested/dir2')).rejects.toMatchObject({
+        code: 'EEXIST'
+      });
+    });
+
+    it('should fall back to default behavior for non-matching paths', async () => {
+      // Setup specific directory to fail
+      mockMkdir('/specific/directory', false);
+      
+      // The specific path should fail
+      await expect(mockedFs.mkdir('/specific/directory')).rejects.toHaveProperty('code');
+      
+      // Default behavior is to succeed
+      await expect(mockedFs.mkdir('/other/directory')).resolves.toBeUndefined();
+    });
+
+    it('should allow overriding previously configured behavior', async () => {
+      // Initially configure a directory to fail
+      mockMkdir('/config/directory', false);
+      await expect(mockedFs.mkdir('/config/directory')).rejects.toHaveProperty('code');
+      
+      // Then override to succeed
+      mockMkdir('/config/directory', true);
+      await expect(mockedFs.mkdir('/config/directory')).resolves.toBeUndefined();
+      
+      // Then override with a specific error
+      const error = createFsError('EACCES', 'Permission denied', 'mkdir', '/config/directory');
+      mockMkdir('/config/directory', error);
+      await expect(mockedFs.mkdir('/config/directory')).rejects.toHaveProperty('code', 'EACCES');
+    });
+
+    it('should handle recursive option correctly', async () => {
+      // Configure a directory to fail non-recursively but succeed recursively
+      mockMkdir('/path/with/options', false);
+      
+      // Non-recursive should fail
+      await expect(mockedFs.mkdir('/path/with/options')).rejects.toHaveProperty('code');
+      
+      // Recursive should still fail (our implementation doesn't distinguish)
+      // Note: A more sophisticated implementation could differentiate based on options
+      await expect(mockedFs.mkdir('/path/with/options', { recursive: true })).rejects.toHaveProperty('code');
     });
   });
 });

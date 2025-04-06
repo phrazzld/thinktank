@@ -39,7 +39,7 @@
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
 
-- [ ] **Implement filesystem mkdir mock helpers**
+- [x] **Implement filesystem mkdir mock helpers**
   - **Action:** Add helper functions to mock fs.mkdir for specific paths with success/error responses.
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
