@@ -1,0 +1,59 @@
+# TODO
+
+## Refactor runThinktank Workflow Improvements
+
+- [x] **Clean Up Redundant Test Files**: Consolidate duplicate test files
+  - **Action:** Remove redundant test files (`processInput.test.ts`, `selectModels.test.ts`, `setupWorkflow.test.ts`), keeping the more comprehensive `*Helper.test.ts` versions.
+  - **Depends On:** None.
+  - **AC Ref:** Low-risk issue identified in PLAN.md. Reduces code clutter and maintenance overhead.
+  - **Completed:** Removed redundant test files, keeping the more comprehensive and newer *Helper.test.ts versions. Build and tests pass successfully.
+
+- [ ] **Simplify Error Handling Logic**: Make error categorization more maintainable
+  - **Action:** Refactor the complex error handling in `_handleWorkflowError` by creating or enhancing utility functions for error categorization.
+  - **Depends On:** None.
+  - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to maintenance challenges if not addressed.
+
+- [ ] **Optimize Spinner Updates**: Reduce terminal flicker
+  - **Action:** Implement debouncing or batching for spinner updates to reduce visual flicker and improve user experience.
+  - **Depends On:** None.
+  - **AC Ref:** Low-Medium risk issue identified in PLAN.md. Affects user experience.
+
+- [ ] **Refactor Duplicated Spinner Logic**: Centralize spinner update code
+  - **Action:** Create a single function for updating spinner text based on model status to eliminate repetition in the code.
+  - **Depends On:** "Optimize Spinner Updates"
+  - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to inconsistencies if not addressed.
+
+- [ ] **Add Missing JSDoc Comments**: Improve code documentation
+  - **Action:** Add comprehensive JSDoc comments to helper functions in `runThinktankTypes.ts` and `runThinktankHelpers.ts`.
+  - **Depends On:** None.
+  - **AC Ref:** Low-risk issue identified in PLAN.md. Affects code understandability.
+
+- [ ] **Simplify Return Types**: Improve type clarity
+  - **Action:** Refactor the `_selectModels` return type to eliminate unnecessary nesting by returning `ModelSelectionResult & { modeDescription: string }` directly.
+  - **Depends On:** None.
+  - **AC Ref:** Low-risk issue identified in PLAN.md. Minor code readability improvement.
+
+- [ ] **Improve Error Factory Accessibility**: Make error factories more discoverable
+  - **Action:** Re-export error factory functions from `core/errors/index.ts` to improve discoverability and ease of use.
+  - **Depends On:** None.
+  - **AC Ref:** Low-risk issue identified in PLAN.md. Addresses code discoverability issue.
+
+## Additional Tasks
+
+- [ ] **Ensure Test Consistency**: Verify test coverage after consolidation
+  - **Action:** After removing redundant test files, ensure that all functionality is still properly tested by the remaining test files.
+  - **Depends On:** "Clean Up Redundant Test Files"
+  - **AC Ref:** Ensures test coverage remains complete after removing redundant tests.
+
+- [ ] **Update Documentation**: Reflect recent refactoring changes
+  - **Action:** Update documentation to reflect the XDG-compliant configuration approach and remove any references to thinktank.config.json in the project root.
+  - **Depends On:** None
+  - **AC Ref:** Ensures documentation is consistent with actual implementation.
+
+## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
+
+- [ ] **Test File Organization Strategy**: What is the preferred approach for test file organization?
+  - **Context:** There are duplicate test files with different naming conventions (`*.test.ts` vs `*Helper.test.ts`). Need to clarify the preferred naming convention and organization strategy for test files in the project.
+
+- [ ] **Spinner Management Approach**: What is the preferred approach for managing spinner updates?
+  - **Context:** The frequent spinner updates may cause visual flicker. Need to determine if optimizing spinner updates with debouncing or batching is compatible with the project's UI/UX goals.
