@@ -56,7 +56,7 @@
 
 ## Input Formatting
 
-- [ ] **Create formatCombinedInput function**
+- [x] **Create formatCombinedInput function**
   - **Action:** Implement function to combine prompt content with context files using the defined formatting strategy.
   - **Depends On:** None.
   - **AC Ref:** AC 3.1 - System must format combined content in a way LLMs can understand context separation.

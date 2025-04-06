@@ -494,6 +494,117 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
 }
 
 /**
+ * Gets the language identifier for a file based on its extension
+ * Used for syntax highlighting in markdown code blocks
+ * 
+ * @param filePath - Path to the file
+ * @returns Language identifier string for markdown code blocks
+ */
+function getLanguageForFile(filePath: string): string {
+  const extension = path.extname(filePath).toLowerCase().slice(1);
+  
+  // Map of file extensions to markdown code block language identifiers
+  const languageMap: Record<string, string> = {
+    // JavaScript/TypeScript
+    'js': 'javascript',
+    'jsx': 'jsx',
+    'ts': 'typescript',
+    'tsx': 'tsx',
+    
+    // Web
+    'html': 'html',
+    'css': 'css',
+    'scss': 'scss',
+    'sass': 'sass',
+    'less': 'less',
+    
+    // Data formats
+    'json': 'json',
+    'yml': 'yaml',
+    'yaml': 'yaml',
+    'xml': 'xml',
+    'toml': 'toml',
+    
+    // Markdown
+    'md': 'markdown',
+    'markdown': 'markdown',
+    
+    // Shell/config
+    'sh': 'bash',
+    'bash': 'bash',
+    'zsh': 'bash',
+    'fish': 'bash',
+    'conf': 'ini',
+    'ini': 'ini',
+    'env': 'ini',
+    
+    // Programming languages
+    'py': 'python',
+    'python': 'python',
+    'rb': 'ruby',
+    'ruby': 'ruby',
+    'java': 'java',
+    'c': 'c',
+    'cpp': 'cpp',
+    'cs': 'csharp',
+    'go': 'go',
+    'rs': 'rust',
+    'rust': 'rust',
+    'php': 'php',
+    'swift': 'swift',
+    'kotlin': 'kotlin',
+    'scala': 'scala'
+  };
+  
+  return languageMap[extension] || 'text';
+}
+
+/**
+ * Formats the combined prompt content with context files for LLM input
+ * Uses markdown formatting with clear section boundaries
+ * 
+ * @param promptContent - The main prompt text
+ * @param contextFiles - Array of context file results to include
+ * @returns Formatted string combining context files and prompt content
+ */
+export function formatCombinedInput(
+  promptContent: string, 
+  contextFiles: ContextFileResult[]
+): string {
+  // Filter out context files with errors
+  const validContextFiles = contextFiles.filter(file => file.error === null && file.content !== null);
+  
+  // If no valid context files, just return the prompt content with a header
+  if (validContextFiles.length === 0) {
+    return `# USER PROMPT\n\n${promptContent}`;
+  }
+  
+  // Start building the combined content with context files section
+  let combinedContent = '# CONTEXT DOCUMENTS\n\n';
+  
+  // Add each context file with proper formatting
+  validContextFiles.forEach(file => {
+    // Normalize path for display (maintains OS-appropriate path separators)
+    const normalizedPath = path.normalize(file.path);
+    
+    // Determine language for syntax highlighting
+    const language = getLanguageForFile(file.path);
+    
+    // Add file header and content in a code block
+    combinedContent += `## File: ${normalizedPath}\n`;
+    combinedContent += '```' + language + '\n';
+    combinedContent += file.content + '\n';
+    combinedContent += '```\n\n';
+  });
+  
+  // Add separator and prompt section
+  combinedContent += '# USER PROMPT\n\n';
+  combinedContent += promptContent;
+  
+  return combinedContent;
+}
+
+/**
  * Reads content from multiple paths (files and/or directories) for use as context in prompts
  * Processes each path concurrently and returns a flattened array of all results
  * 
