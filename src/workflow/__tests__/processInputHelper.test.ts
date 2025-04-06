@@ -371,6 +371,49 @@ describe('_processInput Helper', () => {
       // check for the result text instead
       expect(mockSpinner.text).toContain('with 2 context files');
     });
+    
+    it('should expose combinedContent property for direct access to content', async () => {
+      // Setup mocks for input
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Mock context files
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '/path/to/context1.js',
+          content: 'Context file 1 content',
+          error: null
+        }
+      ];
+
+      // Mock readContextPaths
+      (fileReader.readContextPaths as jest.Mock).mockResolvedValue(mockContextFiles);
+
+      // Mock formatCombinedInput
+      const formattedContent = '# CONTEXT DOCUMENTS\n\n## File: /path/to/context1.js\n```javascript\nContext file 1 content\n```\n\n# USER PROMPT\n\nMain prompt content';
+      (fileReader.formatCombinedInput as jest.Mock).mockReturnValue(formattedContent);
+
+      // Call function with context paths
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['context1.js']
+      });
+
+      // Verify the combinedContent property matches the inputResult.content
+      expect(result.combinedContent).toBeDefined();
+      expect(result.combinedContent).toBe(formattedContent);
+      expect(result.combinedContent).toBe(result.inputResult.content);
+    });
 
     it('should handle empty context paths array', async () => {
       // Setup mocks

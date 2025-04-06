@@ -238,10 +238,16 @@ export interface ExtendedInputResult extends Omit<InputResult, 'metadata'> {
 
 /**
  * Result of the _processInput helper function
+ * 
+ * This interface provides both the full ExtendedInputResult with all metadata
+ * and a direct accessor for the combined content (the content field already
+ * contains prompt+context when context files are provided)
  */
 export interface ProcessInputResult {
   /**
    * Processed input with content and metadata
+   * When context files are provided, the content field contains
+   * the combined prompt+context content
    */
   inputResult: ExtendedInputResult;
   
@@ -250,6 +256,13 @@ export interface ProcessInputResult {
    * Includes both successful and failed context files
    */
   contextFiles?: Array<import('../utils/fileReader').ContextFileResult>;
+  
+  /**
+   * Direct accessor for the combined prompt+context content
+   * This is the same as inputResult.content, provided for convenience
+   * and more explicit access by other components like executeQueries
+   */
+  combinedContent: string;
 }
 
 // ----------------------------------------

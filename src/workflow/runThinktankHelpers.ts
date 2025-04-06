@@ -233,7 +233,11 @@ export async function _processInput({
     // 3. If no context paths are provided, return the input result as is
     if (!contextPaths || contextPaths.length === 0) {
       spinner.text = `Input processed from ${inputResult.sourceType} (${inputResult.content.length} characters)`;
-      return { inputResult, contextFiles: [] };
+      return { 
+        inputResult, 
+        contextFiles: [],
+        combinedContent: inputResult.content
+      };
     }
     
     // 4. Process context paths if provided
@@ -306,10 +310,11 @@ export async function _processInput({
     }
     spinner.text += ` (${inputResult.content.length} characters)`;
     
-    // 9. Return the result with context files
+    // 9. Return the result with context files and combinedContent
     return { 
       inputResult,
-      contextFiles
+      contextFiles,
+      combinedContent: inputResult.content
     };
   } catch (error) {
     // Handle specific error types according to the error handling contract
