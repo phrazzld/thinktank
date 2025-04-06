@@ -15,7 +15,7 @@ import {
   createFileNotFoundError,
   createModelFormatError,
   createMissingApiKeyError,
-  createModelNotFoundError
+  createModelNotFoundError as createConfigModelNotFoundError
 } from '../errors';
 
 describe('Error categories', () => {
@@ -395,8 +395,8 @@ describe('Error factory functions', () => {
     });
   });
 
-  describe('createModelNotFoundError', () => {
-    test('createModelNotFoundError creates proper ConfigError', () => {
+  describe('createConfigModelNotFoundError', () => {
+    test('createConfigModelNotFoundError creates proper ConfigError', () => {
       const modelSpec = 'openai:nonexistent-model';
       const availableModels = [
         'openai:gpt-4o', 
@@ -404,7 +404,7 @@ describe('Error factory functions', () => {
         'anthropic:claude-3-opus'
       ];
       
-      const error = createModelNotFoundError(modelSpec, availableModels);
+      const error = createConfigModelNotFoundError(modelSpec, availableModels);
       
       expect(error).toBeInstanceOf(ConfigError);
       expect(error.message).toContain('Model "openai:nonexistent-model" not found in configuration');
@@ -415,17 +415,17 @@ describe('Error factory functions', () => {
       expect(error.examples?.length).toBeGreaterThan(0);
     });
 
-    test('createModelNotFoundError includes group context when provided', () => {
+    test('createConfigModelNotFoundError includes group context when provided', () => {
       const modelSpec = 'openai:nonexistent-model';
       const groupName = 'premium';
       
-      const error = createModelNotFoundError(modelSpec, [], groupName);
+      const error = createConfigModelNotFoundError(modelSpec, [], groupName);
       
       expect(error.message).toContain(`not found in group "${groupName}"`);
       expect(error.suggestions?.some((s: string) => s.includes(groupName))).toBe(true);
     });
 
-    test('createModelNotFoundError suggests models from same provider', () => {
+    test('createConfigModelNotFoundError suggests models from same provider', () => {
       const modelSpec = 'openai:nonexistent-model';
       const availableModels = [
         'openai:gpt-4o', 
@@ -433,7 +433,7 @@ describe('Error factory functions', () => {
         'anthropic:claude-3-opus'
       ];
       
-      const error = createModelNotFoundError(modelSpec, availableModels);
+      const error = createConfigModelNotFoundError(modelSpec, availableModels);
       
       expect(error.suggestions?.some((s: string) => 
         s.includes('Available models from openai') && 
@@ -442,7 +442,7 @@ describe('Error factory functions', () => {
       )).toBe(true);
     });
 
-    test('createModelNotFoundError suggests similar models by ID', () => {
+    test('createConfigModelNotFoundError suggests similar models by ID', () => {
       const modelSpec = 'openai:gpt4';
       const availableModels = [
         'openai:gpt-4o', 
@@ -450,7 +450,7 @@ describe('Error factory functions', () => {
         'anthropic:claude-3-opus'
       ];
       
-      const error = createModelNotFoundError(modelSpec, availableModels);
+      const error = createConfigModelNotFoundError(modelSpec, availableModels);
       
       // Verify we have suggestions
       expect(error.suggestions).toBeDefined();
@@ -462,14 +462,14 @@ describe('Error factory functions', () => {
       expect(error.suggestions?.some(s => s.includes('gpt-4-turbo'))).toBe(true);
     });
 
-    test('createModelNotFoundError suggests available providers when provider not found', () => {
+    test('createConfigModelNotFoundError suggests available providers when provider not found', () => {
       const modelSpec = 'unknown:model';
       const availableModels = [
         'openai:gpt-4o', 
         'anthropic:claude-3-opus'
       ];
       
-      const error = createModelNotFoundError(modelSpec, availableModels);
+      const error = createConfigModelNotFoundError(modelSpec, availableModels);
       
       expect(error.suggestions?.some((s: string) => s.includes('Provider "unknown" not found'))).toBe(true);
       expect(error.suggestions?.some((s: string) => 
@@ -479,8 +479,8 @@ describe('Error factory functions', () => {
       )).toBe(true);
     });
 
-    test('createModelNotFoundError accepts custom error message', () => {
-      const error = createModelNotFoundError(
+    test('createConfigModelNotFoundError accepts custom error message', () => {
+      const error = createConfigModelNotFoundError(
         'openai:nonexistent-model',
         [],
         undefined,
@@ -541,7 +541,7 @@ describe('Error Integration', () => {
       'anthropic:claude-3-opus'
     ];
     
-    const error = createModelNotFoundError('openai:gpt4', models);
+    const error = createConfigModelNotFoundError('openai:gpt4', models);
     const formatted = error.format();
     
     // Should contain helpful guidance

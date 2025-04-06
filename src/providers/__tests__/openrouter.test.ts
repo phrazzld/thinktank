@@ -388,7 +388,15 @@ describe('OpenRouter Provider', () => {
       
       try {
         await provider.listModels('invalid-key');
-      } catch (error) {
+      } catch (err) {
+        // Debug: Log the error to see what's happening
+        const error = err as any;
+        console.log('ERROR TYPE:', error.constructor?.name);
+        console.log('ERROR DETAILS:', JSON.stringify(error, (key, value) => {
+          if (key === 'cause') return value?.message || '(cause present)';
+          return value;
+        }, 2));
+        
         // Verify it has the expected properties from ApiError
         const typedError = error as OpenRouterProviderError;
         expect(typedError.message).toContain('Error listing OpenRouter models');

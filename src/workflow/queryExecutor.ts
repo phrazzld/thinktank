@@ -14,10 +14,9 @@ import { getProvider } from '../core/llmRegistry';
 import { findModelGroup } from '../core/configManager';
 import { AppConfig } from '../core/types';
 import { 
-  categorizeError,
-  getTroubleshootingTip,
+  ThinktankError,
   errorCategories
-} from '../utils/consoleUtils';
+} from '../core/errors';
 
 /**
  * Error thrown by the QueryExecutor module
@@ -333,11 +332,19 @@ export async function executeQueries(
         const endTime = Date.now();
         const durationMs = endTime - (statuses[modelKey].startTime || endTime);
         
-        // Get error message and categorize it
+        // Get error message and extract details
         const errorMessage = error instanceof Error ? error.message : String(error);
         const errorObj = error instanceof Error ? error : new Error(String(error));
-        const category = categorizeError(errorObj);
-        const tip = getTroubleshootingTip(errorObj, category);
+        
+        // If it's a ThinktankError, use its category, otherwise use UNKNOWN
+        const category = (error instanceof ThinktankError) 
+          ? error.category 
+          : errorCategories.UNKNOWN;
+        
+        // Try to get a suggestion if it's a ThinktankError
+        const tip = (error instanceof ThinktankError && error.suggestions && error.suggestions.length > 0)
+          ? error.suggestions[0]
+          : undefined;
         
         // Update status with error
         statuses[modelKey] = { 

@@ -6,33 +6,26 @@ import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
 import { ApiError } from '../core/errors';
+import { 
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderUnknownError,
+  createProviderNetworkError,
+  isProviderRateLimitError,
+  isProviderNetworkError,
+  isProviderContentPolicyError
+} from '../core/errors/factories/provider';
 
 /**
- * Google provider error class
- * Extends ApiError for better error handling while maintaining backward compatibility
+ * Google provider error class - maintained for backward compatibility
+ * This type alias ensures existing code that checks for GoogleProviderError
+ * will continue to work
  */
-export class GoogleProviderError extends ApiError {
-  constructor(message: string, options?: {
-    cause?: Error;
-    suggestions?: string[];
-    examples?: string[];
-  }) {
-    super(message, {
-      ...options,
-      providerId: 'google' // Always set the provider ID to 'google'
-    });
-    
-    this.name = 'GoogleProviderError';
-    
-    // Ensure the name property is correctly set and non-enumerable
-    // This ensures instanceof checks work correctly in tests
-    Object.defineProperty(this, 'name', {
-      value: 'GoogleProviderError',
-      enumerable: false,
-      configurable: true
-    });
-  }
-}
+export type GoogleProviderError = ApiError;
+// Create a constructor alias that returns an ApiError
+export const GoogleProviderError = ApiError;
 
 /**
  * Implements the LLMProvider interface for Google Gemini
@@ -62,7 +55,7 @@ export class GoogleProvider implements LLMProvider {
    * Gets or initializes the Google Generative AI client
    * 
    * @returns The Google Generative AI client instance
-   * @throws {GoogleProviderError} If the API key is missing
+   * @throws {ApiError} If the API key is missing
    */
   private getClient(): GoogleGenerativeAI {
     if (this.client) {
@@ -73,20 +66,11 @@ export class GoogleProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
-      // Add specific suggestions and examples for the API key error
-      throw new GoogleProviderError('Google API key is missing', {
-        suggestions: [
-          'Set the GEMINI_API_KEY environment variable with your Google AI Studio API key',
-          'Provide the API key when creating the GoogleProvider instance: new GoogleProvider(apiKey)',
-          'Get your API key from Google AI Studio at: https://aistudio.google.com/app/apikey',
-          'Make sure the API key has permissions for the Gemini models you are trying to use'
-        ],
-        examples: [
-          'export GEMINI_API_KEY=your_api_key_here',
-          'const googleProvider = new GoogleProvider("your_api_key_here")',
-          'GEMINI_API_KEY=your_api_key_here npm start'
-        ]
-      });
+      throw createProviderApiKeyMissingError(
+        'google',
+        'Google',
+        'https://aistudio.google.com/app/apikey'
+      );
     }
     
     this.client = new GoogleGenerativeAI(apiKey);
@@ -220,7 +204,7 @@ export class GoogleProvider implements LLMProvider {
         metadata,
       };
     } catch (error) {
-      if (error instanceof GoogleProviderError) {
+      if (error instanceof ApiError) {
         throw error; // Re-throw our own errors
       }
       
@@ -231,7 +215,8 @@ export class GoogleProvider implements LLMProvider {
         // Handle authentication errors
         if (errorMessage.includes('auth') || errorMessage.includes('unauthorized') || 
             errorMessage.includes('unauthenticated') || errorMessage.includes('invalid key')) {
-          throw new GoogleProviderError(`Authentication failed`, {
+          throw new ApiError(`Authentication failed`, {
+            providerId: 'google',
             cause: error,
             suggestions: [
               'Verify your Google API key is correct and not expired',
@@ -247,23 +232,15 @@ export class GoogleProvider implements LLMProvider {
         }
         
         // Handle rate limiting errors
-        if (errorMessage.includes('rate') || errorMessage.includes('limit') || 
-            errorMessage.includes('quota') || errorMessage.includes('capacity')) {
-          throw new GoogleProviderError(`Rate limit or quota exceeded`, {
-            cause: error,
-            suggestions: [
-              'Wait a few minutes before trying again',
-              'Reduce the frequency of your API requests',
-              'Request a quota increase from Google AI Studio',
-              'Use a different model with higher quota limits'
-            ]
-          });
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('google', 'Google', error);
         }
         
         // Handle model availability errors
         if (errorMessage.includes('model') && 
             (errorMessage.includes('not found') || errorMessage.includes('unavailable'))) {
-          throw new GoogleProviderError(`Model unavailable or not found`, {
+          throw new ApiError(`Model unavailable or not found`, {
+            providerId: 'google',
             cause: error,
             suggestions: [
               'Verify the model ID is correct and available in your region',
@@ -279,21 +256,23 @@ export class GoogleProvider implements LLMProvider {
         }
         
         // Handle content filtering/safety errors
-        if (errorMessage.includes('safety') || errorMessage.includes('harmful') || 
-            errorMessage.includes('content') || errorMessage.includes('blocked')) {
-          throw new GoogleProviderError(`Content blocked by safety filters`, {
-            cause: error,
-            suggestions: [
-              'Your prompt may have triggered content safety filters',
-              'Modify your prompt to avoid sensitive topics',
-              'Check for potentially harmful or dangerous content in your prompt',
-              'Review Google\'s Content Policy for Generative AI'
-            ]
-          });
+        if (isProviderContentPolicyError(errorMessage)) {
+          throw createProviderContentPolicyError('google', 'Google', error);
+        }
+        
+        // Handle token limit errors
+        if (errorMessage.includes('token') || errorMessage.includes('length')) {
+          throw createProviderTokenLimitError('google', 'Google', error);
+        }
+        
+        // Handle network errors
+        if (isProviderNetworkError(errorMessage)) {
+          throw createProviderNetworkError('google', 'Google', error);
         }
         
         // Generic error for unrecognized cases
-        throw new GoogleProviderError(`Google API error: ${error.message}`, {
+        throw new ApiError(`Google API error: ${error.message}`, {
+          providerId: 'google',
           cause: error,
           suggestions: [
             'Check your network connection',
@@ -305,14 +284,7 @@ export class GoogleProvider implements LLMProvider {
       }
       
       // Handle unknown errors
-      throw new GoogleProviderError('Unknown error occurred while generating text from Google Gemini', {
-        suggestions: [
-          'Check your network connection',
-          'Verify your environment setup',
-          'Try with a simpler prompt or different model',
-          'Check Google AI Studio status for service disruptions'
-        ]
-      });
+      throw createProviderUnknownError('google', 'Google');
     }
   }
   
@@ -360,7 +332,8 @@ export class GoogleProvider implements LLMProvider {
         // Handle different HTTP status codes specifically
         switch (status) {
           case 401:
-            throw new GoogleProviderError(`Authentication failed (Status: 401)`, {
+            throw new ApiError(`Invalid API key`, {
+              providerId: 'google',
               cause: error,
               suggestions: [
                 'Verify your Google API key is correct',

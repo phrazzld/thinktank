@@ -29,7 +29,7 @@ export class ThinktankError extends Error {
     this.name = 'ThinktankError';
   }
 }
-import { errorCategories } from '../utils/consoleUtils';
+import { errorCategories } from '../core/errors';
 
 /**
  * Input source types supported by the InputHandler

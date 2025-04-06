@@ -14,7 +14,7 @@ import { getProviderIds } from '../core/llmRegistry';
 import { 
   ConfigError, 
   createModelFormatError, 
-  createModelNotFoundError,
+  createModelNotFoundError as createConfigModelNotFoundError,
   createMissingApiKeyError
 } from '../core/errors';
 
@@ -218,7 +218,7 @@ function processSingleModelIdentifier(
     const availableModels = enabledModels.map(model => `${model.provider}:${model.modelId}`);
     
     // Use factory function to create consistent error
-    const notFoundError = createModelNotFoundError(
+    const notFoundError = createConfigModelNotFoundError(
       modelIdentifier,
       availableModels
     );

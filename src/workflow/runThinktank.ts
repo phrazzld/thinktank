@@ -11,8 +11,8 @@ import { executeQueries, QueryExecutionResult } from './queryExecutor';
 import { createOutputDirectory, formatForConsole, writeResponsesToFiles, FileOutputResult } from './outputHandler';
 // No need to import LLMResponse as it's not directly used in this file
 import { 
-  styleHeader, 
-  styleDim, 
+  styleHeader,
+  styleDim,
   styleSuccess, 
   styleError, 
   styleWarning, 

@@ -103,4 +103,38 @@ modelsCommand
     }
   });
 
+/**
+ * Models command action implementation
+ * Made available for testing purposes
+ */
+export async function modelsCommandAction(options: {
+  provider?: string;
+  config?: string;
+}) {
+  try {
+    // Validate provider if specified
+    if (options.provider && typeof options.provider !== 'string') {
+      throw new ValidationError('Provider option must be a string', {
+        suggestions: [
+          'Specify a valid provider ID (e.g., openai, anthropic, google)',
+          'Use --provider=openai format to specify the provider'
+        ],
+        examples: [
+          'thinktank models --provider=openai',
+          'thinktank models --provider=anthropic'
+        ]
+      });
+    }
+    
+    // Call listAvailableModels with the parsed options
+    return await listAvailableModels({
+      provider: options.provider,
+      config: options.config
+    });
+  } catch (error) {
+    // Re-throw to be handled by the command action
+    throw error;
+  }
+}
+
 export default modelsCommand;

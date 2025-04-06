@@ -12,9 +12,7 @@ import {
   sanitizeFilename, 
   generateOutputDirectoryPath 
 } from '../utils/helpers';
-import { 
-  errorCategories
-} from '../utils/consoleUtils';
+import { errorCategories } from '../core/errors';
 
 /**
  * Error thrown by the OutputHandler module

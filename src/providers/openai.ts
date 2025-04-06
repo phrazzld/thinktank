@@ -5,33 +5,26 @@ import OpenAI from 'openai';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
 import { ApiError } from '../core/errors';
+import { 
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderUnknownError,
+  isProviderRateLimitError,
+  isProviderTokenLimitError,
+  isProviderContentPolicyError,
+  isProviderAuthError
+} from '../core/errors/factories/provider';
 
 /**
- * OpenAI provider error class
- * Extends ApiError for better error handling while maintaining backward compatibility
+ * OpenAI provider error class - maintained for backward compatibility
+ * This type alias ensures existing code that checks for OpenAIProviderError
+ * will continue to work
  */
-export class OpenAIProviderError extends ApiError {
-  constructor(message: string, options?: {
-    cause?: Error;
-    suggestions?: string[];
-    examples?: string[];
-  }) {
-    super(message, {
-      ...options,
-      providerId: 'openai' // Always set the provider ID to 'openai'
-    });
-    
-    this.name = 'OpenAIProviderError';
-    
-    // Ensure the name property is correctly set and non-enumerable
-    // This ensures instanceof checks work correctly in tests
-    Object.defineProperty(this, 'name', {
-      value: 'OpenAIProviderError',
-      enumerable: false,
-      configurable: true
-    });
-  }
-}
+export type OpenAIProviderError = ApiError;
+// Create a constructor alias that returns an ApiError
+export const OpenAIProviderError = ApiError;
 
 /**
  * Implements the LLMProvider interface for OpenAI
@@ -61,7 +54,7 @@ export class OpenAIProvider implements LLMProvider {
    * Gets or initializes the OpenAI client
    * 
    * @returns The OpenAI client instance
-   * @throws {OpenAIProviderError} If the API key is missing
+   * @throws {ApiError} If the API key is missing
    */
   private getClient(): OpenAI {
     if (this.client) {
@@ -72,17 +65,11 @@ export class OpenAIProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.OPENAI_API_KEY;
     
     if (!apiKey) {
-      throw new OpenAIProviderError('OpenAI API key is missing. Set OPENAI_API_KEY environment variable or provide it when creating the provider.', {
-        suggestions: [
-          'Set the OPENAI_API_KEY environment variable in your shell or .env file',
-          'Get an API key from the OpenAI platform: https://platform.openai.com/api-keys',
-          'Provide the API key directly when creating the provider instance'
-        ],
-        examples: [
-          'export OPENAI_API_KEY=your_api_key',
-          'const provider = new OpenAIProvider("your_api_key")'
-        ]
-      });
+      throw createProviderApiKeyMissingError(
+        'openai',
+        'OpenAI',
+        'https://platform.openai.com/api-keys'
+      );
     }
     
     this.client = new OpenAI({ apiKey });
@@ -179,46 +166,23 @@ export class OpenAIProvider implements LLMProvider {
       // Handle specific error cases
       if (error instanceof Error) {
         // Re-throw our own errors
-        if (error instanceof OpenAIProviderError) {
+        if (error instanceof ApiError) {
           throw error;
         }
         
-        // Check for specific error types based on message content
         const errorMessage = error.message.toLowerCase();
         
+        // Use factory functions and pattern detection utilities for more consistent error handling
+        
         // Handle rate limit errors
-        if (errorMessage.includes('rate limit') || 
-            errorMessage.includes('429') || 
-            errorMessage.includes('too many requests')) {
-          throw new OpenAIProviderError(`Rate limit exceeded: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Wait before sending additional requests',
-              'Implement exponential backoff in your code',
-              'Reduce the frequency of requests to the OpenAI API',
-              'Consider using a different model with higher rate limits'
-            ],
-            examples: [
-              '// Example exponential backoff implementation',
-              'const backoff = (retries) => Math.pow(2, retries) * 1000;',
-              'for (let i = 0; i < maxRetries; i++) {',
-              '  try {',
-              '    return await provider.generate(prompt, modelId);',
-              '  } catch (e) {',
-              '    if (!isRateLimitError(e) || i === maxRetries - 1) throw e;',
-              '    await new Promise(r => setTimeout(r, backoff(i)));',
-              '  }',
-              '}'
-            ]
-          });
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('openai', 'OpenAI', error);
         }
         
         // Handle API authentication errors
-        if (errorMessage.includes('key') && 
-            (errorMessage.includes('invalid') || 
-             errorMessage.includes('expired') || 
-             errorMessage.includes('incorrect'))) {
-          throw new OpenAIProviderError(`API key error: ${error.message}`, {
+        if (isProviderAuthError(errorMessage)) {
+          throw new ApiError(`API key error: ${error.message}`, {
+            providerId: 'openai',
             cause: error,
             suggestions: [
               'Check that your OpenAI API key is valid and not expired',
@@ -233,7 +197,8 @@ export class OpenAIProvider implements LLMProvider {
         
         // Handle model-specific errors
         if (errorMessage.includes('model')) {
-          throw new OpenAIProviderError(`Model error: ${error.message}`, {
+          throw new ApiError(`Model error: ${error.message}`, {
+            providerId: 'openai',
             cause: error,
             suggestions: [
               'Check that the specified model ID is correct',
@@ -248,22 +213,18 @@ export class OpenAIProvider implements LLMProvider {
         }
         
         // Handle token/context length errors
-        if (errorMessage.includes('token') || 
-            errorMessage.includes('context') || 
-            errorMessage.includes('length')) {
-          throw new OpenAIProviderError(`Token limit exceeded: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Reduce the length of your input prompt',
-              'Reduce the max_tokens parameter in your request',
-              'Use a model with a larger context window',
-              'Split your content into smaller chunks'
-            ]
-          });
+        if (isProviderTokenLimitError(errorMessage)) {
+          throw createProviderTokenLimitError('openai', 'OpenAI', error);
+        }
+        
+        // Handle content policy violations
+        if (isProviderContentPolicyError(errorMessage)) {
+          throw createProviderContentPolicyError('openai', 'OpenAI', error);
         }
         
         // Generic API error for other cases
-        throw new OpenAIProviderError(`${error.message}`, {
+        throw new ApiError(`${error.message}`, {
+          providerId: 'openai',
           cause: error,
           suggestions: [
             'Check the OpenAI API documentation for more information',
@@ -274,13 +235,7 @@ export class OpenAIProvider implements LLMProvider {
       }
       
       // Handle unknown errors (non-Error objects)
-      throw new OpenAIProviderError('Unknown error occurred while generating text from OpenAI', {
-        suggestions: [
-          'Check your network connection',
-          'Verify your request parameters',
-          'Try again later or contact OpenAI support if the issue persists'
-        ]
-      });
+      throw createProviderUnknownError('openai', 'OpenAI');
     }
   }
 
@@ -315,29 +270,22 @@ export class OpenAIProvider implements LLMProvider {
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
-        // Check for specific error types based on message content
+        // Re-throw our own errors
+        if (error instanceof ApiError) {
+          throw error;
+        }
+        
         const errorMessage = error.message.toLowerCase();
         
         // Handle rate limit errors
-        if (errorMessage.includes('rate limit') || 
-            errorMessage.includes('429') || 
-            errorMessage.includes('too many requests')) {
-          throw new OpenAIProviderError(`Rate limit exceeded when listing models: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Wait before sending additional requests',
-              'Try again after a short delay',
-              'Reduce the frequency of requests to the OpenAI API'
-            ]
-          });
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('openai', 'OpenAI', error);
         }
         
         // Handle API authentication errors
-        if (errorMessage.includes('key') && 
-            (errorMessage.includes('invalid') || 
-             errorMessage.includes('expired') || 
-             errorMessage.includes('incorrect'))) {
-          throw new OpenAIProviderError(`API key error when listing models: ${error.message}`, {
+        if (isProviderAuthError(errorMessage)) {
+          throw new ApiError(`API key error when listing models: ${error.message}`, {
+            providerId: 'openai',
             cause: error,
             suggestions: [
               'Check that your OpenAI API key is valid and not expired',
@@ -351,7 +299,8 @@ export class OpenAIProvider implements LLMProvider {
         }
         
         // Generic API error for other cases
-        throw new OpenAIProviderError(`Error listing OpenAI models: ${error.message}`, {
+        throw new ApiError(`Error listing OpenAI models: ${error.message}`, {
+          providerId: 'openai',
           cause: error,
           suggestions: [
             'Check the OpenAI API documentation for more information',
@@ -362,13 +311,7 @@ export class OpenAIProvider implements LLMProvider {
       }
       
       // Handle unknown errors (non-Error objects)
-      throw new OpenAIProviderError('Unknown error occurred while listing models from OpenAI', {
-        suggestions: [
-          'Check your network connection',
-          'Verify your API key is correct',
-          'Try again later or contact OpenAI support if the issue persists'
-        ]
-      });
+      throw createProviderUnknownError('openai', 'OpenAI');
     }
   }
 }

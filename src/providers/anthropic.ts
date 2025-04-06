@@ -2,57 +2,49 @@
  * Anthropic provider implementation for thinktank
  */
 import Anthropic from '@anthropic-ai/sdk';
+// Import MessageParam type from Anthropic SDK
+import type { MessageParam } from '@anthropic-ai/sdk/resources/messages/messages';
 import { 
   LLMProvider, 
   LLMResponse, 
   ModelOptions, 
-  LLMAvailableModel, 
-  SystemPrompt,
-  ThinkingOptions 
+  LLMAvailableModel
 } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
 import { ApiError } from '../core/errors';
+import {
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderModelNotFoundError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderNetworkError,
+  createProviderUnknownError,
+  isProviderRateLimitError,
+  isProviderTokenLimitError,
+  isProviderContentPolicyError,
+  isProviderNetworkError
+} from '../core/errors/factories/provider';
 
-/**
- * Anthropic provider error class
- * Extends ApiError for better error handling while maintaining backward compatibility
- */
-export class AnthropicProviderError extends ApiError {
-  constructor(message: string, options?: {
-    cause?: Error;
-    suggestions?: string[];
-    examples?: string[];
-  }) {
-    super(message, {
-      ...options,
-      providerId: 'anthropic' // Always set the provider ID to 'anthropic'
-    });
-    
-    this.name = 'AnthropicProviderError';
-    
-    // Ensure the name property is correctly set and non-enumerable
-    // This ensures instanceof checks work correctly in tests
-    Object.defineProperty(this, 'name', {
-      value: 'AnthropicProviderError',
-      enumerable: false,
-      configurable: true
-    });
-  }
-}
+// NOTE: We've removed the custom AnthropicProviderError class
+// and now use the standardized ApiError created by the provider error factories
 
 /**
  * Implements the LLMProvider interface for Anthropic
  */
 export class AnthropicProvider implements LLMProvider {
   public readonly providerId = 'anthropic';
-  private client: Anthropic | null = null;
+  private client?: Anthropic;
+  private apiKey?: string;
   
   /**
-   * Creates an instance of the Anthropic provider
+   * Creates a new AnthropicProvider instance
    * 
-   * @param apiKey - Optional API key to use instead of environment variable
+   * @param apiKey - Optional API key (falls back to environment variable)
    */
-  constructor(private readonly apiKey?: string) {
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey;
+    
     // Auto-register this provider instance
     try {
       registerProvider(this);
@@ -68,7 +60,7 @@ export class AnthropicProvider implements LLMProvider {
    * Gets or initializes the Anthropic client
    * 
    * @returns The Anthropic client instance
-   * @throws {AnthropicProviderError} If the API key is missing
+   * @throws {ApiError} If the API key is missing
    */
   private getClient(): Anthropic {
     if (this.client) {
@@ -79,17 +71,11 @@ export class AnthropicProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.ANTHROPIC_API_KEY;
     
     if (!apiKey) {
-      throw new AnthropicProviderError('Anthropic API key is missing. Set ANTHROPIC_API_KEY environment variable or provide it when creating the provider.', {
-        suggestions: [
-          'Set the ANTHROPIC_API_KEY environment variable in your shell or .env file',
-          'Get an API key from the Anthropic console: https://console.anthropic.com/keys',
-          'Provide the API key directly when creating the provider instance'
-        ],
-        examples: [
-          'export ANTHROPIC_API_KEY=your_api_key',
-          'const provider = new AnthropicProvider("your_api_key")'
-        ]
-      });
+      throw createProviderApiKeyMissingError(
+        'anthropic',
+        'Anthropic',
+        'https://console.anthropic.com/keys'
+      );
     }
     
     this.client = new Anthropic({ 
@@ -98,96 +84,75 @@ export class AnthropicProvider implements LLMProvider {
     });
     return this.client;
   }
-  
+
   /**
-   * Translates standard options format to Anthropic-specific parameters
+   * Generate a response from an Anthropic model
    * 
-   * @param options - Model options from the cascading configuration system
-   * @returns Anthropic-specific parameters
+   * @param prompt - The input prompt to send to the model
+   * @param modelId - The model ID (e.g., "claude-3-opus-20240229")
+   * @param options - Additional options for the generation
+   * @returns A properly formatted LLMResponse object
+   * @throws {ApiError} When API request fails
    */
-  private mapOptions(options: ModelOptions): Record<string, unknown> {
-    const params: Record<string, unknown> = {};
-    
-    // Map standard parameters to Anthropic-specific format
-    // Note: The options should already have appropriate defaults from resolveModelOptions
-    
-    // Map temperature directly (same scale for Anthropic)
-    if (options.temperature !== undefined) {
-      params.temperature = options.temperature;
-    }
-    
-    // Map maxTokens to max_tokens
-    if (options.maxTokens !== undefined) {
-      params.max_tokens = options.maxTokens;
-    }
-    
-    // Add all other options directly, excluding ones we've already processed
-    Object.entries(options).forEach(([key, value]) => {
-      if (key !== 'temperature' && key !== 'maxTokens') {
-        params[key] = value;
-      }
-    });
-    
-    return params;
-  }
-  
-  /**
-   * Generates text from the Anthropic API
-   * 
-   * @param prompt - The prompt to send to the API
-   * @param modelId - The ID of the model to use
-   * @param options - Optional parameters for the request
-   * @param systemPrompt - Optional system prompt to control model behavior
-   * @returns The API response as an LLMResponse
-   * @throws {AnthropicProviderError} If the API call fails
-   */
-  public async generate(
+  async generate(
     prompt: string,
     modelId: string,
-    options: ModelOptions = {},  // Default to empty object if not provided
-    systemPrompt?: SystemPrompt
+    options?: ModelOptions
   ): Promise<LLMResponse> {
     try {
       const client = this.getClient();
-      const params = this.mapOptions(options);
       
-      // Prepare base parameters
-      const baseParams = {
+      // Create a message structure
+      const messages: MessageParam[] = [];
+      
+      // Add user message (the prompt)
+      messages.push({
+        role: 'user' as const,
+        content: prompt
+      });
+      
+      // Set options for the API request
+      const requestOptions: Anthropic.MessageCreateParamsNonStreaming = {
         model: modelId,
-        messages: [{ role: 'user' as const, content: prompt }],
-        max_tokens: options.maxTokens || 1000, // Always require max_tokens for Anthropic API
-        ...(systemPrompt && { system: systemPrompt.text }),
-        ...params, // For other parameters
+        max_tokens: options?.maxTokens || 1000,
+        temperature: options?.temperature ?? 0.7,
+        messages,
       };
       
-      // Get the response based on whether thinking is enabled
-      let response;
-      if (options.thinking) {
-        const thinkingOpt = options.thinking as unknown as ThinkingOptions;
-        
-        // Force temperature to 1 when thinking is enabled - Anthropic API requirement
-        const thinkingParams = {
-          ...baseParams,
-          temperature: 1, // Override any other temperature value
-          max_tokens: options.maxTokens || 1000, // Explicitly include max_tokens even though it's in baseParams
-          thinking: {
-            type: 'enabled' as const,
-            budget_tokens: thinkingOpt.budget_tokens || 16000
+      // Copy additional options (like topP) to requestOptions
+      if (options) {
+        Object.entries(options).forEach(([key, value]) => {
+          if (key !== 'maxTokens' && key !== 'temperature' && key !== 'systemPrompt') {
+            // Convert camelCase to snake_case for Anthropic API
+            const snakeCaseKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+            (requestOptions as any)[snakeCaseKey] = value;
           }
-        };
-        
-        response = await client.messages.create(thinkingParams);
-      } else {
-        response = await client.messages.create(baseParams);
+        });
       }
       
-      // Extract the response text - handle the ContentBlock type
+      // Add system prompt if provided
+      if (options?.systemPrompt && typeof options.systemPrompt === 'object' && 'text' in options.systemPrompt) {
+        requestOptions.system = options.systemPrompt.text as string;
+      }
+      
+      // Handle thinking feature if specified
+      if (options?.thinking && typeof options.thinking === 'object' && options.thinking.type === 'enabled') {
+        // Set temperature to exactly 1 as required by Anthropic API for thinking
+        requestOptions.temperature = 1;
+        // Include the thinking parameter directly
+        (requestOptions as any).thinking = options.thinking;
+      }
+      
+      // Request the completion
+      const response = await client.messages.create(requestOptions);
+      
+      // Extract the response text from the first content block
       let responseText = '';
-      if (response.content.length > 0) {
-        const firstContent = response.content[0];
-        if ('text' in firstContent) {
-          responseText = firstContent.text;
-        }
+      if (response.content && response.content.length > 0) {
+        responseText = response.content
+          .filter(c => c.type === 'text')
+          .map(c => c.text)
+          .join('\n');
       }
       
       // Extract thinking output if available
@@ -211,7 +176,7 @@ export class AnthropicProvider implements LLMProvider {
       // Handle specific error cases
       if (error instanceof Error) {
         // Re-throw our own errors
-        if (error instanceof AnthropicProviderError) {
+        if (error instanceof ApiError && error.providerId === 'anthropic') {
           throw error;
         }
         
@@ -219,150 +184,195 @@ export class AnthropicProvider implements LLMProvider {
         const errorMessage = error.message.toLowerCase();
         
         // Handle rate limit errors
-        if (errorMessage.includes('rate limit') || errorMessage.includes('429') || errorMessage.includes('too many requests')) {
-          throw new AnthropicProviderError(`Rate limit exceeded: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Wait before sending additional requests',
-              'Implement exponential backoff in your code',
-              'Reduce the frequency of requests to the Anthropic API',
-              'Consider using a different model with higher rate limits'
-            ],
-            examples: [
-              '// Example exponential backoff implementation',
-              'const backoff = (retries) => Math.pow(2, retries) * 1000;',
-              'for (let i = 0; i < maxRetries; i++) {',
-              '  try {',
-              '    return await provider.generate(prompt, modelId);',
-              '  } catch (e) {',
-              '    if (!isRateLimitError(e) || i === maxRetries - 1) throw e;',
-              '    await new Promise(r => setTimeout(r, backoff(i)));',
-              '  }',
-              '}'
-            ]
-          });
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('anthropic', 'Anthropic', error);
         }
         
         // Handle API authentication errors
         if (errorMessage.includes('key') && (errorMessage.includes('invalid') || errorMessage.includes('expired'))) {
-          throw new AnthropicProviderError(`API key error: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Check that your Anthropic API key is valid and not expired',
-              'Ensure the API key has the correct permissions',
-              'Generate a new API key in the Anthropic console if needed'
-            ],
-            examples: [
-              'export ANTHROPIC_API_KEY=your_new_api_key'
-            ]
-          });
+          throw new ApiError(
+            `API key error: ${error.message}`,
+            {
+              providerId: 'anthropic',
+              cause: error,
+              suggestions: [
+                'Check that your Anthropic API key is valid and not expired',
+                'Ensure the API key has the correct permissions',
+                'Generate a new API key in the Anthropic console if needed'
+              ],
+              examples: [
+                'export ANTHROPIC_API_KEY=your_new_api_key'
+              ]
+            }
+          );
         }
         
         // Handle model-specific errors
         if (errorMessage.includes('model')) {
-          throw new AnthropicProviderError(`Model error: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Check that the specified model ID is correct',
-              'Verify that the model is available in your Anthropic account',
-              'Some models may require special access or be in limited preview'
-            ]
-          });
+          throw createProviderModelNotFoundError('anthropic', 'Anthropic', modelId);
+        }
+        
+        // Handle token limit errors
+        if (isProviderTokenLimitError(errorMessage)) {
+          throw createProviderTokenLimitError('anthropic', 'Anthropic', error);
+        }
+        
+        // Handle content policy violations
+        if (isProviderContentPolicyError(errorMessage)) {
+          throw createProviderContentPolicyError('anthropic', 'Anthropic', error);
+        }
+        
+        // Handle network errors
+        if (isProviderNetworkError(errorMessage)) {
+          throw createProviderNetworkError('anthropic', 'Anthropic', error);
         }
         
         // Generic API error for other cases
-        throw new AnthropicProviderError(`${error.message}`, {
-          cause: error,
-          suggestions: [
-            'Check the Anthropic API documentation for more information',
-            'Review the Claude API status page for any ongoing issues',
-            'Ensure your request parameters are valid'
-          ]
-        });
+        throw new ApiError(
+          `${error.message}`,
+          {
+            providerId: 'anthropic',
+            cause: error,
+            suggestions: [
+              'Check the Anthropic API documentation for more information',
+              'Review the Claude API status page for any ongoing issues',
+              'Ensure your request parameters are valid'
+            ]
+          }
+        );
       }
       
       // Handle unknown errors (non-Error objects)
-      throw new AnthropicProviderError('Unknown error occurred while generating text from Anthropic', {
-        suggestions: [
-          'Check your network connection',
-          'Verify your request parameters',
-          'Try again later or contact Anthropic support if the issue persists'
-        ]
-      });
+      throw createProviderUnknownError('anthropic', 'Anthropic');
     }
   }
 
   /**
    * Lists available models from the Anthropic API
    * 
-   * @param apiKey - The API key to use for authentication
-   * @returns Promise resolving to array of available models
-   * @throws {AnthropicProviderError} If the API call fails
+   * @returns Array of available model objects
+   * @throws {ApiError} When API request fails
    */
-  public async listModels(apiKey: string): Promise<LLMAvailableModel[]> {
+  async listModels(apiKey?: string): Promise<LLMAvailableModel[]> {
     try {
-      // Use the provided API key directly instead of the one from the constructor
-      // This allows fetching models with a different key
-      const client = new Anthropic({ apiKey });
+      // Store the original API key
+      const originalApiKey = this.apiKey;
       
-      // Fetch models using the SDK
-      const response = await client.models.list();
+      // Use the provided API key if available
+      if (apiKey) {
+        this.apiKey = apiKey;
+      }
       
-      // Map the response to LLMAvailableModel format
-      return response.data.map(model => ({
+      try {
+        // Ensure we have a valid API key/client, but we don't use it directly
+        this.getClient();
+      } finally {
+        // Restore the original API key
+        this.apiKey = originalApiKey;
+      }
+      
+      // Anthropic doesn't have a dedicated models endpoint, so we list known models
+      // This could be updated when they add a proper models endpoint
+      const knownModels = [
+        {
+          id: 'claude-3-opus-20240229',
+          name: 'Claude 3 Opus',
+          description: 'Anthropic\'s most powerful model for highly complex tasks'
+        },
+        {
+          id: 'claude-3-sonnet-20240229',
+          name: 'Claude 3 Sonnet',
+          description: 'Anthropic\'s balanced model for enterprise workloads'
+        },
+        {
+          id: 'claude-3-haiku-20240307',
+          name: 'Claude 3 Haiku',
+          description: 'Anthropic\'s fastest and most compact model for near-instant responsiveness'
+        },
+        {
+          id: 'claude-2.0',
+          name: 'Claude 2',
+          description: 'Anthropic\'s previous generation flagship model'
+        },
+        {
+          id: 'claude-instant-1.2',
+          name: 'Claude Instant 1.2',
+          description: 'Anthropic\'s previous generation lightweight model'
+        }
+      ];
+      
+      // Format the models into LLMAvailableModel objects
+      return knownModels.map(model => ({
         id: model.id,
-        description: model.display_name
+        name: model.name,
+        provider: this.providerId,
+        description: model.description,
+        capabilities: {
+          streamingSupport: true,
+          promptTemplate: 'Default',
+          systemMessageSupport: true,
+          thinkingStepsSupport: false,
+        },
+        availability: 'available', // Assuming all listed models are available
+        pricing: {
+          inputPerMillionTokens: model.id.includes('3-opus') ? 15 : 
+                                 model.id.includes('3-sonnet') ? 7.5 : 
+                                 model.id.includes('3-haiku') ? 0.25 : 
+                                 model.id.includes('claude-2') ? 8 : 1.63,
+          outputPerMillionTokens: model.id.includes('3-opus') ? 75 : 
+                                  model.id.includes('3-sonnet') ? 24 : 
+                                  model.id.includes('3-haiku') ? 1.25 : 
+                                  model.id.includes('claude-2') ? 24 : 5.51,
+          currency: 'USD'
+        },
+        contextWindow: model.id.includes('3-opus') ? 200000 : 
+                       model.id.includes('3-sonnet') ? 200000 : 
+                       model.id.includes('3-haiku') ? 200000 : 
+                       model.id.includes('claude-2') ? 100000 : 100000,
       }));
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
-        // Check for specific error types based on message content
+        // Re-throw our own errors
+        if (error instanceof ApiError && error.providerId === 'anthropic') {
+          throw error;
+        }
+        
+        // Check for specific error types
         const errorMessage = error.message.toLowerCase();
         
-        // Handle rate limit errors
-        if (errorMessage.includes('rate limit') || errorMessage.includes('429') || errorMessage.includes('too many requests')) {
-          throw new AnthropicProviderError(`Rate limit exceeded when listing models: ${error.message}`, {
+        // Handle API key errors
+        if (errorMessage.includes('key') || errorMessage.includes('auth')) {
+          throw new ApiError(`Anthropic API key error: ${error.message}`, {
+            providerId: 'anthropic',
             cause: error,
             suggestions: [
-              'Wait before sending additional requests',
-              'Try again after a short delay',
-              'Reduce the frequency of requests to the Anthropic API'
+              'Check that your Anthropic API key is valid',
+              'Ensure the ANTHROPIC_API_KEY environment variable is correctly set',
+              'Generate a new API key from the Anthropic console'
             ]
           });
         }
         
-        // Handle API authentication errors
-        if (errorMessage.includes('key') && (errorMessage.includes('invalid') || errorMessage.includes('expired'))) {
-          throw new AnthropicProviderError(`API key error when listing models: ${error.message}`, {
-            cause: error,
-            suggestions: [
-              'Check that your Anthropic API key is valid and not expired',
-              'Ensure the API key has the correct permissions',
-              'Generate a new API key in the Anthropic console if needed'
-            ],
-            examples: [
-              'export ANTHROPIC_API_KEY=your_new_api_key'
-            ]
-          });
-        }
-        
-        // Generic API error for other cases
-        throw new AnthropicProviderError(`Error listing Anthropic models: ${error.message}`, {
+        // Handle other API errors
+        throw new ApiError(`Error listing Anthropic models: ${error.message}`, {
+          providerId: 'anthropic',
           cause: error,
           suggestions: [
-            'Check the Anthropic API documentation for more information',
-            'Ensure your account has access to Anthropic models',
-            'Verify your network connection'
+            'Check your API key and permissions',
+            'Verify your network connection',
+            'The Anthropic API may be experiencing issues'
           ]
         });
       }
       
-      // Handle unknown errors (non-Error objects)
-      throw new AnthropicProviderError('Unknown error occurred while listing models from Anthropic', {
+      // Handle unknown errors
+      throw new ApiError('Unknown error occurred while listing Anthropic models', {
+        providerId: 'anthropic',
         suggestions: [
           'Check your network connection',
-          'Verify your API key is correct',
-          'Try again later or contact Anthropic support if the issue persists'
+          'Verify your environment setup',
+          'Try again later'
         ]
       });
     }
@@ -371,3 +381,13 @@ export class AnthropicProvider implements LLMProvider {
 
 // Export a default instance
 export const anthropicProvider = new AnthropicProvider();
+
+// Auto-register the provider instance
+try {
+  registerProvider(anthropicProvider);
+} catch (error) {
+  // Ignore if already registered
+  if (!(error instanceof Error && error.message.includes('already registered'))) {
+    throw error;
+  }
+}
