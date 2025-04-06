@@ -113,7 +113,7 @@
   - **Depends On:** Implement filesystem readFile mock helpers.
   - **AC Ref:** AC 4.1, AC 4.2.
 
-- [ ] **Refactor gitignoreFilterIntegration.test.ts**
+- [x] **Refactor gitignoreFilterIntegration.test.ts**
   - **Action:** Replace direct fs and gitignore mocks with calls to the new utility functions.
   - **Depends On:** Implement filesystem readFile mock helpers, Implement shouldIgnorePath mock helper, Implement createIgnoreFilter mock helper.
   - **AC Ref:** AC 4.1, AC 4.2.
