@@ -217,6 +217,9 @@ describe('runThinktank End-to-End Tests', () => {
     
     // Clean up environment variables
     delete process.env.MOCK_API_KEY;
+    
+    // Reset modules that may have open handles
+    jest.resetModules();
   });
   
   it('should process a prompt file and generate output files', async () => {
