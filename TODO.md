@@ -39,7 +39,7 @@
   - **Depends On:** Create directory reader utility function, Add dependency for gitignore parsing.
   - **AC Ref:** AC 2.3 - System must ignore files and directories according to .gitignore rules.
 
-- [ ] **Add detection and handling of binary files**
+- [x] **Add detection and handling of binary files**
   - **Action:** Implement logic to detect binary files and skip them (with warning).
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.4 - System must handle binary files appropriately.

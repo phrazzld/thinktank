@@ -6,6 +6,7 @@ import path from 'path';
 import os from 'os';
 import { normalizeText } from './helpers';
 import { shouldIgnorePath } from './gitignoreUtils';
+import logger from './logger';
 
 /**
  * Custom error for file reading operations
@@ -323,6 +324,52 @@ export async function getConfigFilePath(): Promise<string> {
 }
 
 /**
+ * Analyzes content to determine if it appears to be a binary file.
+ * This uses a statistical approach to detect binary content:
+ * - Checks for NULL bytes which are common in binary files but rare in text files
+ * - Counts the percentage of non-printable characters
+ * - Sets a threshold for binary file detection
+ * 
+ * @param content - The file content to analyze
+ * @returns True if the content appears to be binary, false otherwise
+ */
+export function isBinaryFile(content: string): boolean {
+  // Skip empty files
+  if (!content || content.length === 0) {
+    return false;
+  }
+  
+  // Get a sample of the file (first 4KB is usually sufficient)
+  const sampleSize = Math.min(content.length, 4096);
+  const sample = content.slice(0, sampleSize);
+  
+  // If NULL bytes are found, it's almost certainly binary
+  if (sample.includes('\0')) {
+    return true;
+  }
+  
+  // Count non-printable characters (control characters excluding common whitespace)
+  let nonPrintableCount = 0;
+  
+  for (let i = 0; i < sample.length; i++) {
+    const code = sample.charCodeAt(i);
+    
+    // Allow: Tab (9), Line feed (10), Carriage return (13)
+    if ((code < 32 && code !== 9 && code !== 10 && code !== 13) || 
+        // DEL character (127)
+        code === 127) {
+      nonPrintableCount++;
+    }
+  }
+  
+  // Calculate percentage of non-printable characters
+  const nonPrintablePercentage = (nonPrintableCount / sample.length) * 100;
+  
+  // If more than 10% of characters are non-printable, consider it binary
+  return nonPrintablePercentage > 10;
+}
+
+/**
  * Reads content from a file for use as context in prompts
  * Instead of throwing errors, returns an object with path, content, and error information
  * 
@@ -360,6 +407,18 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
     
     // Read file content
     const content = await fs.readFile(resolvedPath, 'utf-8');
+    
+    // Check if the file is binary
+    if (isBinaryFile(content)) {
+      logger.warn(`Binary file detected and skipped: ${filePath}`);
+      return {
+        ...result,
+        error: {
+          code: 'BINARY_FILE',
+          message: `Binary file detected: ${filePath}. Binary files are skipped to avoid sending non-text content to LLMs.`
+        }
+      };
+    }
     
     // Return successful result with content
     return {
@@ -473,6 +532,9 @@ export async function readDirectoryContents(dirPath: string): Promise<ContextFil
           
           // If not ignored, read the file and add to results
           const fileResult = await readContextFile(entryPath);
+          
+          // For binary files, we already log a warning in readContextFile
+          // Just add the result with the binary file error
           results.push(fileResult);
         } else if (entryStats.isDirectory()) {
           // Always skip certain critical directories regardless of gitignore rules
