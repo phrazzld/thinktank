@@ -56,7 +56,7 @@
   - **Depends On:** Create shared test utilities directory.
   - **AC Ref:** AC 3.1.
 
-- [ ] **Implement core gitignore mock setup**
+- [x] **Implement core gitignore mock setup**
   - **Action:** Create `mockGitignoreUtils.ts` with basic mock setup and reset functions for gitignoreUtils.
   - **Depends On:** Define gitignore mock utility interfaces.
   - **AC Ref:** AC 3.1.
