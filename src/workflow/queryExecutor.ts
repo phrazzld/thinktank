@@ -90,6 +90,7 @@ export interface ModelQueryStatus {
 export interface QueryExecutionOptions {
   /**
    * The prompt to send to the models
+   * This may contain combined prompt and context content
    */
   prompt: string;
   

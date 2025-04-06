@@ -598,7 +598,7 @@ export function _selectModels({
  * @param params.spinner - The spinner instance for providing visual feedback
  * @param params.config - The loaded application configuration
  * @param params.models - Array of model configurations to query
- * @param params.prompt - The text prompt to send to each model
+ * @param params.combinedContent - The combined prompt and context content to send to models
  * @param params.options - The user-provided run options
  * @returns Promise resolving to an object containing query execution results
  * @throws {ApiError} When query execution fails due to API communication errors
@@ -608,7 +608,7 @@ export async function _executeQueries({
   spinner,
   config,
   models,
-  prompt,
+  combinedContent,
   options
 }: ExecuteQueriesParams): Promise<ExecuteQueriesResult> {
   try {
@@ -617,7 +617,7 @@ export async function _executeQueries({
     
     // 2. Extract relevant options for the query executor
     const queryOptions = {
-      prompt,
+      prompt: combinedContent, // Use the combinedContent as the prompt for the query executor
       systemPrompt: options.systemPrompt,
       enableThinking: options.enableThinking,
       // Only pass timeoutMs if it's defined in options

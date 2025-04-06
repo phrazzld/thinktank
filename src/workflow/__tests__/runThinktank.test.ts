@@ -83,16 +83,20 @@ describe('runThinktank', () => {
     // Process input helper mock
     (helpers._processInput as jest.Mock).mockResolvedValue({
       inputResult: {
-        content: 'Test prompt',
+        content: 'Test prompt with context',
         sourceType: 'file',
         sourcePath: 'test-prompt.txt',
         metadata: {
           processingTimeMs: 5,
           originalLength: 11,
-          finalLength: 11,
-          normalized: true
+          finalLength: 25,
+          normalized: true,
+          hasContextFiles: true,
+          contextFilesCount: 1
         }
-      }
+      },
+      // Add the combinedContent property to match the updated interface
+      combinedContent: 'Test prompt with context'
     });
     
     // Select models helper mock with flattened structure
@@ -214,7 +218,7 @@ describe('runThinktank', () => {
         spinner: expect.any(Object),
         config: expect.any(Object),
         models: expect.any(Array),
-        prompt: 'Test prompt',
+        combinedContent: expect.any(String), // Now expects combinedContent instead of prompt
         options
       })
     );

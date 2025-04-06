@@ -337,9 +337,11 @@ export interface ExecuteQueriesParams extends SpinnerContext {
   models: ModelConfig[];
   
   /**
-   * The processed input content
+   * The combined prompt and context content
+   * This is the formatted content that will be sent to the LLM,
+   * potentially containing both the user prompt and additional context files
    */
-  prompt: string;
+  combinedContent: string;
   
   /**
    * The user-provided run options

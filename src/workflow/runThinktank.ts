@@ -223,12 +223,12 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Restart spinner for next step
     spinner.start();
     
-    // 4. Execute queries: Query the selected models with the processed input
+    // 4. Execute queries: Query the selected models with the processed input (including context if any)
     const queryResults = await _executeQueries({
       spinner,
       config: setupResult.config,
       models: modelSelectionResult.models,
-      prompt: inputResult.inputResult.content,
+      combinedContent: inputResult.combinedContent,
       options
     });
     
