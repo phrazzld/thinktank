@@ -44,7 +44,7 @@
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
 
-- [ ] **Implement filesystem writeFile mock helpers**
+- [x] **Implement filesystem writeFile mock helpers**
   - **Action:** Add helper functions to mock fs.writeFile for specific paths with success/error responses.
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.

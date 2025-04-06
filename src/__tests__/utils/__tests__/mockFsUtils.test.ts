@@ -14,6 +14,7 @@ import {
   mockStat,
   mockReaddir,
   mockMkdir,
+  mockWriteFile,
   createFsError,
   MockedStats
 } from '../mockFsUtils';
@@ -641,6 +642,106 @@ describe('mockFsUtils core functions', () => {
       // Recursive should still fail (our implementation doesn't distinguish)
       // Note: A more sophisticated implementation could differentiate based on options
       await expect(mockedFs.mkdir('/path/with/options', { recursive: true })).rejects.toHaveProperty('code');
+    });
+  });
+
+  describe('mockWriteFile', () => {
+    beforeEach(() => {
+      resetMockFs();
+      setupMockFs(); // Start with default configuration
+    });
+
+    it('should allow writing to specific files when configured to succeed', async () => {
+      // Configure specific file to be written successfully
+      mockWriteFile('/path/to/success.txt', true);
+      
+      // The writeFile call should resolve successfully
+      await expect(mockedFs.writeFile('/path/to/success.txt', 'test content')).resolves.toBeUndefined();
+    });
+
+    it('should reject with default error when configured to fail', async () => {
+      // Configure specific file to fail on write
+      mockWriteFile('/path/to/fail.txt', false);
+      
+      // The writeFile call should reject with the default error
+      await expect(mockedFs.writeFile('/path/to/fail.txt', 'test content')).rejects.toHaveProperty('code');
+    });
+
+    it('should reject with specific errors when configured', async () => {
+      // Configure specific file to fail with custom error
+      const error = createFsError('EACCES', 'Permission denied', 'writeFile', '/permission/denied.txt');
+      mockWriteFile('/permission/denied.txt', error);
+      
+      // The writeFile call should reject with the specified error
+      await expect(mockedFs.writeFile('/permission/denied.txt', 'test content')).rejects.toMatchObject({
+        code: 'EACCES',
+        message: expect.stringContaining('Permission denied')
+      });
+    });
+
+    it('should support pattern matching with regular expressions', async () => {
+      // Configure all read-only files to fail on write
+      const error = createFsError('EROFS', 'Read-only file system', 'writeFile', '/readonly/file.txt');
+      mockWriteFile(/^\/readonly\/.*$/, error);
+      
+      // All paths matching the pattern should fail with the specified error
+      await expect(mockedFs.writeFile('/readonly/file1.txt', 'test content')).rejects.toMatchObject({
+        code: 'EROFS'
+      });
+      await expect(mockedFs.writeFile('/readonly/folder/file2.txt', 'test content')).rejects.toMatchObject({
+        code: 'EROFS'
+      });
+    });
+
+    it('should fall back to default behavior for non-matching paths', async () => {
+      // Setup specific file to fail
+      mockWriteFile('/specific/file.txt', false);
+      
+      // The specific path should fail
+      await expect(mockedFs.writeFile('/specific/file.txt', 'test content')).rejects.toHaveProperty('code');
+      
+      // Default behavior is to succeed
+      await expect(mockedFs.writeFile('/other/file.txt', 'test content')).resolves.toBeUndefined();
+    });
+
+    it('should allow overriding previously configured behavior', async () => {
+      // Initially configure a file to fail
+      mockWriteFile('/config/file.txt', false);
+      await expect(mockedFs.writeFile('/config/file.txt', 'test content')).rejects.toHaveProperty('code');
+      
+      // Then override to succeed
+      mockWriteFile('/config/file.txt', true);
+      await expect(mockedFs.writeFile('/config/file.txt', 'test content')).resolves.toBeUndefined();
+      
+      // Then override with a specific error
+      const error = createFsError('ENOSPC', 'No space left on device', 'writeFile', '/config/file.txt');
+      mockWriteFile('/config/file.txt', error);
+      await expect(mockedFs.writeFile('/config/file.txt', 'test content')).rejects.toHaveProperty('code', 'ENOSPC');
+    });
+
+    it('should handle different content types', async () => {
+      // Configure a file to succeed for different content types
+      mockWriteFile('/content/types.txt', true);
+      
+      // String content
+      await expect(mockedFs.writeFile('/content/types.txt', 'string content')).resolves.toBeUndefined();
+      
+      // Buffer content
+      await expect(mockedFs.writeFile('/content/types.txt', Buffer.from('buffer content'))).resolves.toBeUndefined();
+      
+      // Uint8Array content
+      await expect(mockedFs.writeFile('/content/types.txt', new Uint8Array([1, 2, 3]))).resolves.toBeUndefined();
+    });
+
+    it('should handle write options', async () => {
+      // Configure a file to succeed with options
+      mockWriteFile('/options/file.txt', true);
+      
+      // With encoding option
+      await expect(mockedFs.writeFile('/options/file.txt', 'content', 'utf8')).resolves.toBeUndefined();
+      
+      // With options object
+      await expect(mockedFs.writeFile('/options/file.txt', 'content', { encoding: 'utf8' })).resolves.toBeUndefined();
     });
   });
 });

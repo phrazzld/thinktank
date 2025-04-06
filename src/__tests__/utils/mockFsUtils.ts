@@ -109,6 +109,20 @@ interface MkdirRule {
 const mkdirRules: MkdirRule[] = [];
 
 /**
+ * WriteFile rule used by the mockWriteFile function
+ * Defines the behavior when a path matches a specific pattern
+ */
+interface WriteFileRule {
+  /** Pattern to match against paths */
+  pattern: string | RegExp;
+  /** Whether writeFile should succeed (true) or fail (false or Error) */
+  result: boolean | Error;
+}
+
+/** Registry of path-specific writeFile rules */
+const writeFileRules: WriteFileRule[] = [];
+
+/**
  * Resets all fs mock functions to their initial state
  * This should be called before each test to prevent test pollution
  */
@@ -129,6 +143,7 @@ export function resetMockFs(): void {
   statRules.length = 0;
   readdirRules.length = 0;
   mkdirRules.length = 0;
+  writeFileRules.length = 0;
 }
 
 /**
@@ -233,8 +248,42 @@ export function setupMockFs(config?: FsMockConfig): void {
     return Promise.resolve(defaultContent as any);
   });
   
-  // Configure fs.writeFile
-  mockedFs.writeFile.mockResolvedValue(undefined);
+  // Configure fs.writeFile with path-specific behavior support
+  mockedFs.writeFile.mockImplementation((path, _data, _options) => {
+    // Convert path to string for comparison (it could be URL, Buffer, or FileHandle)
+    const pathStr = String(path);
+    
+    // Check if we have any path-specific rules
+    for (const rule of writeFileRules) {
+      const matches = 
+        (typeof rule.pattern === 'string' && rule.pattern === pathStr) || 
+        (rule.pattern instanceof RegExp && rule.pattern.test(pathStr));
+      
+      if (matches) {
+        // If the rule specifies an error, reject with it
+        if (rule.result instanceof Error) {
+          return Promise.reject(rule.result);
+        }
+        
+        // If the rule is boolean, it determines success (true) or failure (false)
+        if (rule.result === true) {
+          return Promise.resolve(undefined);
+        } else {
+          // Default error for failure case
+          const error = createFsError(
+            'EACCES', 
+            'Permission denied',
+            'writeFile',
+            pathStr
+          );
+          return Promise.reject(error);
+        }
+      }
+    }
+    
+    // Fall back to default behavior if no path-specific rule matched (success)
+    return Promise.resolve(undefined);
+  });
   
   // Configure fs.stat with path-specific behavior support
   mockedFs.stat.mockImplementation((path) => {
@@ -699,6 +748,37 @@ export const mockMkdir: MockMkdirFunction = (
   
   // Add new rule at the beginning for higher precedence
   mkdirRules.unshift({
+    pattern: pathPattern,
+    result: success
+  });
+};
+
+/**
+ * Configures fs.writeFile to succeed or fail for specific paths
+ * @param pathPattern - Path or regex pattern to match
+ * @param success - Whether writeFile should succeed (true) or fail (false or Error)
+ */
+export const mockWriteFile: MockWriteFileFunction = (
+  pathPattern: string | RegExp,
+  success: boolean | Error
+): void => {
+  // Find and remove any existing rule with the same pattern
+  const existingIndex = writeFileRules.findIndex(
+    rule => 
+      (typeof rule.pattern === 'string' && 
+       typeof pathPattern === 'string' && 
+       rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+       pathPattern instanceof RegExp && 
+       rule.pattern.source === pathPattern.source)
+  );
+  
+  if (existingIndex !== -1) {
+    writeFileRules.splice(existingIndex, 1);
+  }
+  
+  // Add new rule at the beginning for higher precedence
+  writeFileRules.unshift({
     pattern: pathPattern,
     result: success
   });
