@@ -409,3 +409,111 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
     };
   }
 }
+
+/**
+ * Common directories to ignore during traversal
+ * These will be replaced with .gitignore-based filtering in a future task
+ */
+const IGNORED_DIRECTORIES = [
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  'coverage',
+  '.cache',
+  '.next',
+  '.nuxt',
+  '.output',
+  '.vscode',
+  '.idea'
+];
+
+/**
+ * Recursively reads all files in a directory and its subdirectories
+ * 
+ * @param dirPath - Path to the directory to read
+ * @returns Promise resolving to an array of ContextFileResult objects
+ */
+export async function readDirectoryContents(dirPath: string): Promise<ContextFileResult[]> {
+  const results: ContextFileResult[] = [];
+  
+  try {
+    // Resolve to absolute path if relative path is provided
+    const resolvedPath = path.isAbsolute(dirPath) 
+      ? dirPath 
+      : path.resolve(process.cwd(), dirPath);
+    
+    // Check if directory exists and is readable
+    await fs.access(resolvedPath, fs.constants.R_OK);
+    
+    // Check if path is a directory
+    const stats = await fs.stat(resolvedPath);
+    if (!stats.isDirectory()) {
+      // If it's a file, just read it and return the result
+      const fileResult = await readContextFile(dirPath);
+      return [fileResult];
+    }
+    
+    // Read directory contents
+    const entries = await fs.readdir(resolvedPath);
+    
+    // Process each entry
+    for (const entry of entries) {
+      const entryPath = path.join(dirPath, entry);
+      
+      try {
+        const entryStats = await fs.stat(entryPath);
+        
+        if (entryStats.isFile()) {
+          // If it's a file, read it and add to results
+          const fileResult = await readContextFile(entryPath);
+          results.push(fileResult);
+        } else if (entryStats.isDirectory()) {
+          // Skip ignored directories
+          if (IGNORED_DIRECTORIES.includes(entry)) {
+            continue;
+          }
+          
+          // If it's a directory, recursively read its contents
+          const subdirResults = await readDirectoryContents(entryPath);
+          results.push(...subdirResults);
+        }
+        // Skip other types (symlinks, etc.)
+      } catch (error) {
+        // If we can't process an entry, add an error result for it
+        results.push({
+          path: entryPath,
+          content: null,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error processing directory entry: ${entryPath}`
+          }
+        });
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    // Handle directory access errors
+    if (error instanceof Error) {
+      return [{
+        path: dirPath,
+        content: null,
+        error: {
+          code: 'READ_ERROR',
+          message: `Error reading directory: ${dirPath} - ${error.message}`
+        }
+      }];
+    }
+    
+    // Unknown error type
+    return [{
+      path: dirPath,
+      content: null,
+      error: {
+        code: 'UNKNOWN',
+        message: `Unknown error reading directory: ${dirPath}`
+      }
+    }];
+  }
+}

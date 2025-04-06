@@ -29,7 +29,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 2.1 - System must read content from individual files.
 
-- [ ] **Create directory reader utility function**
+- [x] **Create directory reader utility function**
   - **Action:** Implement a recursive directory reading function that traverses directories and collects file contents.
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.2 - System must recursively read directory contents.
