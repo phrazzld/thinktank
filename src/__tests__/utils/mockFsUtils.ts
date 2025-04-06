@@ -81,6 +81,20 @@ interface StatRule {
 const statRules: StatRule[] = [];
 
 /**
+ * Readdir rule used by the mockReaddir function
+ * Defines the behavior when a path matches a specific pattern
+ */
+interface ReaddirRule {
+  /** Pattern to match against paths */
+  pattern: string | RegExp;
+  /** Directory entries to return or error to throw */
+  result: string[] | Error;
+}
+
+/** Registry of path-specific readdir rules */
+const readdirRules: ReaddirRule[] = [];
+
+/**
  * Resets all fs mock functions to their initial state
  * This should be called before each test to prevent test pollution
  */
@@ -99,6 +113,7 @@ export function resetMockFs(): void {
   accessRules.length = 0;
   readFileRules.length = 0;
   statRules.length = 0;
+  readdirRules.length = 0;
 }
 
 /**
@@ -236,8 +251,33 @@ export function setupMockFs(config?: FsMockConfig): void {
     return Promise.resolve(stats as any);
   });
   
-  // Configure fs.readdir
-  mockedFs.readdir.mockResolvedValue([]);
+  // Configure fs.readdir with path-specific behavior support
+  mockedFs.readdir.mockImplementation((path) => {
+    // Convert path to string for comparison (it could be URL, Buffer, or FileHandle)
+    const pathStr = String(path);
+    
+    // Check if we have any path-specific rules
+    for (const rule of readdirRules) {
+      const matches = 
+        (typeof rule.pattern === 'string' && rule.pattern === pathStr) || 
+        (rule.pattern instanceof RegExp && rule.pattern.test(pathStr));
+      
+      if (matches) {
+        // If the rule specifies an error, reject with it
+        if (rule.result instanceof Error) {
+          return Promise.reject(rule.result);
+        }
+        
+        // Otherwise, return the list of directory entries
+        // Cast to any to avoid TypeScript issues with different return types
+        return Promise.resolve(rule.result as any);
+      }
+    }
+    
+    // Fall back to default behavior if no path-specific rule matched (empty directory)
+    // Cast to any to avoid TypeScript issues with different return types
+    return Promise.resolve([] as any);
+  });
   
   // Configure fs.mkdir
   mockedFs.mkdir.mockResolvedValue(undefined);
@@ -548,6 +588,37 @@ export const mockStat: MockStatFunction = (
   statRules.unshift({
     pattern: pathPattern,
     result: statsOrError
+  });
+};
+
+/**
+ * Configures fs.readdir to return entries or throw an error for specific directories
+ * @param pathPattern - Path or regex pattern to match
+ * @param entries - Directory entries to return or Error to throw
+ */
+export const mockReaddir: MockReaddirFunction = (
+  pathPattern: string | RegExp,
+  entries: string[] | Error
+): void => {
+  // Find and remove any existing rule with the same pattern
+  const existingIndex = readdirRules.findIndex(
+    rule => 
+      (typeof rule.pattern === 'string' && 
+       typeof pathPattern === 'string' && 
+       rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+       pathPattern instanceof RegExp && 
+       rule.pattern.source === pathPattern.source)
+  );
+  
+  if (existingIndex !== -1) {
+    readdirRules.splice(existingIndex, 1);
+  }
+  
+  // Add new rule at the beginning for higher precedence
+  readdirRules.unshift({
+    pattern: pathPattern,
+    result: entries
   });
 };
 

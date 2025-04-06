@@ -12,6 +12,7 @@ import {
   mockAccess,
   mockReadFile,
   mockStat,
+  mockReaddir,
   createFsError,
   MockedStats
 } from '../mockFsUtils';
@@ -451,6 +452,107 @@ describe('mockFsUtils core functions', () => {
       mockStat('/config/path', error);
       
       await expect(mockedFs.stat('/config/path')).rejects.toHaveProperty('code', 'ENOENT');
+    });
+  });
+
+  describe('mockReaddir', () => {
+    beforeEach(() => {
+      resetMockFs();
+      setupMockFs(); // Start with default configuration
+    });
+
+    it('should return specific file lists for exact path matches', async () => {
+      // Configure a directory with specific files
+      const fileList = ['file1.txt', 'file2.js', 'subdirectory'];
+      mockReaddir('/path/to/directory', fileList);
+      
+      // The readdir call should return the specified file list
+      const files = await mockedFs.readdir('/path/to/directory');
+      expect(files).toEqual(fileList);
+    });
+
+    it('should support pattern matching with regular expressions', async () => {
+      // Configure all directories in a specific path to return the same content
+      mockReaddir(/^\/config\/.*$/, ['settings.json', 'environment.json']);
+      
+      // All paths matching the pattern should return the specified content
+      const files1 = await mockedFs.readdir('/config/app');
+      expect(files1).toEqual(['settings.json', 'environment.json']);
+      
+      const files2 = await mockedFs.readdir('/config/user');
+      expect(files2).toEqual(['settings.json', 'environment.json']);
+    });
+
+    it('should reject with specific errors when configured', async () => {
+      // Configure specific directory to throw an error
+      const error = createFsError('ENOENT', 'Directory not found', 'readdir', '/nonexistent/directory');
+      mockReaddir('/nonexistent/directory', error);
+      
+      // The readdir call should reject with the specified error
+      await expect(mockedFs.readdir('/nonexistent/directory')).rejects.toMatchObject({
+        code: 'ENOENT',
+        message: expect.stringContaining('Directory not found')
+      });
+    });
+
+    it('should support pattern matching for error cases', async () => {
+      // Configure all directories in a specific path to throw permission errors
+      const error = createFsError('EACCES', 'Permission denied', 'readdir', '/secure/path');
+      mockReaddir(/^\/secure\/.*$/, error);
+      
+      // Readdir calls for matching paths should reject with the specified error
+      await expect(mockedFs.readdir('/secure/folder1')).rejects.toMatchObject({
+        code: 'EACCES'
+      });
+      await expect(mockedFs.readdir('/secure/nested/folder2')).rejects.toMatchObject({
+        code: 'EACCES'
+      });
+    });
+
+    it('should fall back to default behavior for non-matching paths', async () => {
+      // Setup specific directory with content
+      mockReaddir('/specific/directory', ['file1.txt', 'file2.txt']);
+      
+      // Default behavior is an empty directory
+      const specificFiles = await mockedFs.readdir('/specific/directory');
+      expect(specificFiles).toEqual(['file1.txt', 'file2.txt']);
+      
+      // Other directories should return the default (empty array)
+      const defaultFiles = await mockedFs.readdir('/other/directory');
+      expect(defaultFiles).toEqual([]);
+    });
+
+    it('should allow overriding previously configured behavior', async () => {
+      // Initially configure a directory with files
+      mockReaddir('/config/directory', ['initial1.txt', 'initial2.txt']);
+      const initialFiles = await mockedFs.readdir('/config/directory');
+      expect(initialFiles).toEqual(['initial1.txt', 'initial2.txt']);
+      
+      // Then override with new content
+      mockReaddir('/config/directory', ['updated1.txt', 'updated2.txt']);
+      const updatedFiles = await mockedFs.readdir('/config/directory');
+      expect(updatedFiles).toEqual(['updated1.txt', 'updated2.txt']);
+      
+      // Then override with an error
+      const error = createFsError('ENOENT', 'Directory not found', 'readdir', '/config/directory');
+      mockReaddir('/config/directory', error);
+      await expect(mockedFs.readdir('/config/directory')).rejects.toHaveProperty('code', 'ENOENT');
+    });
+
+    it('should handle the withFileTypes option correctly', async () => {
+      // Mock a directory with files and subdirectories
+      mockReaddir('/mixed/directory', ['file1.txt', 'file2.js', 'subdirectory']);
+      
+      // Without withFileTypes option, it should return string array
+      const files = await mockedFs.readdir('/mixed/directory');
+      expect(Array.isArray(files)).toBe(true);
+      expect(files).toEqual(['file1.txt', 'file2.js', 'subdirectory']);
+      
+      // With withFileTypes option, it should still work but return simple strings
+      // Note: Full Dirent objects aren't supported in this implementation
+      const filesWithTypes = await mockedFs.readdir('/mixed/directory', { withFileTypes: true });
+      expect(Array.isArray(filesWithTypes)).toBe(true);
+      expect(filesWithTypes).toEqual(['file1.txt', 'file2.js', 'subdirectory']);
     });
   });
 });

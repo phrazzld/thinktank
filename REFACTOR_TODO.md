@@ -34,7 +34,7 @@
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
 
-- [ ] **Implement filesystem readdir mock helpers**
+- [x] **Implement filesystem readdir mock helpers**
   - **Action:** Add helper functions to mock fs.readdir for specific directories with file lists or errors.
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
