@@ -139,7 +139,7 @@
 
 ## Testing - E2E Tests
 
-- [ ] **Create E2E tests for CLI usage with context files**
+- [x] **Create E2E tests for CLI usage with context files**
   - **Action:** Create tests that run the actual CLI with file context arguments.
   - **Depends On:** All workflow components complete.
   - **AC Ref:** AC 7.1 - E2E tests verify CLI works with file context.
@@ -175,25 +175,3 @@
   - **Action:** Add documentation explaining how context is formatted and presented to LLMs.
   - **Depends On:** Create formatCombinedInput function.
   - **AC Ref:** AC 8.3 - Documentation explains context formatting.
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Issue/Assumption:** We will use .gitignore rules for file/directory filtering.
-  - **Context:** The plan has inconsistencies about whether to use a hardcoded ignore list or .gitignore rules.
-  - **Decision:** We will parse and respect .gitignore files to determine which files/directories to ignore during traversal. This provides a more flexible and standard approach that users will already be familiar with.
-
-- [ ] **Issue/Assumption:** The plan doesn't specify what to do if a context path doesn't exist.
-  - **Context:** In the E2E tests section (line 201), it mentions "Test with non-existent context paths (should likely warn and proceed)" but doesn't provide a clear decision.
-  - **Decision:** We'll log a warning for non-existent context paths and continue processing other valid paths.
-
-- [ ] **Issue/Assumption:** No explicit token count logic for LLM context limits
-  - **Context:** The plan acknowledges context window limits (lines 170-172 and 210-211) but defers implementing active size checking or truncation.
-  - **Decision:** Initially, we'll rely on API errors when context exceeds limits and consider adding proactive checking as a future enhancement.
-
-- [ ] **Issue/Assumption:** No maximum total size limit for combined context
-  - **Context:** While the plan includes a per-file size limit (line 93: MAX_FILE_SIZE = 10MB), it doesn't set a combined size limit.
-  - **Decision:** We'll implement the per-file limit but won't impose a total size limit initially. We'll let the LLM API handle any total size constraints.
-
-- [ ] **Issue/Assumption:** No explicit requirement to preserve file extension information
-  - **Context:** The context formatting strategy doesn't explicitly preserve file extensions, which could be useful for LLMs to understand file types.
-  - **Decision:** We'll use full relative paths in the formatting (which include extensions), so this information will be preserved.
