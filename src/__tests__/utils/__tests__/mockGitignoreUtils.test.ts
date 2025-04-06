@@ -134,4 +134,81 @@ describe('mockGitignoreUtils', () => {
       expect(filter.ignores('important.log')).toBe(false); // Should be included despite *.log pattern
     });
   });
+
+  describe('mockShouldIgnorePath', () => {
+    beforeEach(() => {
+      // Reset mocks before each test
+      resetMockGitignore();
+      
+      // Setup default behavior
+      setupMockGitignore();
+    });
+    
+    it('should configure shouldIgnorePath to return true for specific paths', async () => {
+      // Configure specific path to be ignored
+      mockShouldIgnorePath('/src/ignored-file.txt', true);
+      
+      // Verify path is ignored
+      const result = await mockedGitignoreUtils.shouldIgnorePath('/src', 'ignored-file.txt');
+      expect(result).toBe(true);
+    });
+    
+    it('should configure shouldIgnorePath to return false for specific paths', async () => {
+      // Setup default behavior to ignore all paths
+      setupMockGitignore({ defaultIgnoreBehavior: true });
+      
+      // Configure specific path to not be ignored (override default)
+      mockShouldIgnorePath('/src/important.txt', false);
+      
+      // Verify path is not ignored
+      const result = await mockedGitignoreUtils.shouldIgnorePath('/src', 'important.txt');
+      expect(result).toBe(false);
+    });
+    
+    it('should support RegExp patterns for path matching', async () => {
+      // Configure regex pattern to ignore all .log files
+      mockShouldIgnorePath(/\.log$/, true);
+      
+      // Verify .log files are ignored
+      const result1 = await mockedGitignoreUtils.shouldIgnorePath('/logs', 'app.log');
+      expect(result1).toBe(true);
+      
+      // Verify other files are not ignored
+      const result2 = await mockedGitignoreUtils.shouldIgnorePath('/src', 'app.js');
+      expect(result2).toBe(false);
+    });
+    
+    it('should give precedence to more recently added rules', async () => {
+      // First rule - ignore all .js files
+      mockShouldIgnorePath(/\.js$/, true);
+      
+      // Second rule - don't ignore specific .js file (should take precedence)
+      mockShouldIgnorePath('/src/special.js', false);
+      
+      // Verify the specific rule takes precedence
+      const result = await mockedGitignoreUtils.shouldIgnorePath('/src', 'special.js');
+      expect(result).toBe(false);
+    });
+    
+    it('should match against combined base path and file path', async () => {
+      // Configure rule for combined path
+      mockShouldIgnorePath('/base/path/file.txt', true);
+      
+      // Verify it matches when basePath and filePath combine to the pattern
+      const result = await mockedGitignoreUtils.shouldIgnorePath('/base/path', 'file.txt');
+      expect(result).toBe(true);
+    });
+    
+    it('should match against just the file path component', async () => {
+      // Configure rule for just the file name
+      mockShouldIgnorePath('secret.txt', true);
+      
+      // Verify it matches regardless of base path
+      const result1 = await mockedGitignoreUtils.shouldIgnorePath('/some/path', 'secret.txt');
+      expect(result1).toBe(true);
+      
+      const result2 = await mockedGitignoreUtils.shouldIgnorePath('/different/path', 'secret.txt');
+      expect(result2).toBe(true);
+    });
+  });
 });

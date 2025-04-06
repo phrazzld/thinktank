@@ -282,11 +282,28 @@ export function setupMockGitignore(config?: GitignoreMockConfig): void {
 
 /**
  * Configure shouldIgnorePath to return specific results for given path patterns
- * Implementation will be added in a future task
+ * @param pathPattern - Path or regex pattern to match
+ * @param ignored - Whether matching paths should be ignored
  */
 export const mockShouldIgnorePath: MockShouldIgnorePathFunction = 
-  (_pathPattern: string | RegExp, _ignored: boolean): void => {
-    // Implementation will be added in a future task
+  (pathPattern: string | RegExp, ignored: boolean): void => {
+    // Find and remove any existing rule with the same pattern
+    const existingIndex = shouldIgnorePathRules.findIndex(rule => 
+      (typeof rule.pattern === 'string' && rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+        pathPattern instanceof RegExp && 
+        rule.pattern.toString() === pathPattern.toString())
+    );
+    
+    if (existingIndex !== -1) {
+      shouldIgnorePathRules.splice(existingIndex, 1);
+    }
+    
+    // Add new rule at the beginning for higher precedence
+    shouldIgnorePathRules.unshift({
+      pattern: pathPattern,
+      ignored
+    });
   };
 
 /**

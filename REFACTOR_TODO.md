@@ -61,7 +61,7 @@
   - **Depends On:** Define gitignore mock utility interfaces.
   - **AC Ref:** AC 3.1.
 
-- [ ] **Implement shouldIgnorePath mock helper**
+- [x] **Implement shouldIgnorePath mock helper**
   - **Action:** Add helper function to mock gitignoreUtils.shouldIgnorePath with custom implementations.
   - **Depends On:** Implement core gitignore mock setup.
   - **AC Ref:** AC 3.2.
