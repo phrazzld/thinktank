@@ -44,18 +44,22 @@ expect.extend({
     } catch (error) {
       return {
         pass: false,
-        message: () => `Error checking directory ${dirPath}: ${error}`
+        message: () => `Error checking directory ${dirPath}: ${error instanceof Error ? error.message : String(error)}`
       };
     }
   }
 });
 
 // Add the matcher to TypeScript's type system
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toBeDirectoryWithFiles(expectedFiles?: string[]): Promise<R>;
-    }
+// Using module augmentation instead of namespace
+import '@jest/expect';
+
+declare module '@jest/expect' {
+  interface AsymmetricMatchers {
+    toBeDirectoryWithFiles(expectedFiles?: string[]): void;
+  }
+  interface Matchers<R> {
+    toBeDirectoryWithFiles(expectedFiles?: string[]): Promise<R>;
   }
 }
 
@@ -78,19 +82,19 @@ const MockProvider = {
 };
 
 // Helper functions for test setup and cleanup
-async function createTempDir() {
+async function createTempDir(): Promise<string> {
   const tempDir = path.join(os.tmpdir(), `thinktank-test-${Date.now()}`);
   await fs.mkdir(tempDir, { recursive: true });
   return tempDir;
 }
 
-async function createTestPrompt(tempDir: string, content = 'This is a test prompt.') {
+async function createTestPrompt(tempDir: string, content = 'This is a test prompt.'): Promise<string> {
   const promptPath = path.join(tempDir, 'test-prompt.txt');
   await fs.writeFile(promptPath, content);
   return promptPath;
 }
 
-async function createTestConfig(configDir: string) {
+async function createTestConfig(configDir: string): Promise<string> {
   // Create a minimal test config
   const config = {
     models: [
@@ -125,11 +129,11 @@ async function createTestConfig(configDir: string) {
   return configPath;
 }
 
-async function cleanupTempDir(tempDir: string) {
+async function cleanupTempDir(tempDir: string): Promise<void> {
   try {
     await fs.rm(tempDir, { recursive: true, force: true });
   } catch (error) {
-    console.error(`Error cleaning up temp directory ${tempDir}:`, error);
+    console.error(`Error cleaning up temp directory ${tempDir}:`, error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -157,7 +161,7 @@ async function listDirectoryRecursive(dirPath: string): Promise<string[]> {
       }
     }
   } catch (error) {
-    console.error(`Error listing directory ${dirPath}:`, error);
+    console.error(`Error listing directory ${dirPath}:`, error instanceof Error ? error.message : String(error));
   }
   
   return result;

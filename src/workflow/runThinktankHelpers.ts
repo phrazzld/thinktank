@@ -26,6 +26,7 @@ import {
   colors,
   styleDim
 } from '../utils/consoleUtils';
+import { logger } from '../utils/logger';
 import {
   SetupWorkflowParams,
   SetupWorkflowResult,
@@ -922,7 +923,7 @@ export function _logCompletionSummary({
   }
   
   // Log the summary to the console
-  console.log(summaryOutput);
+  logger.plain(summaryOutput);
   
   // Return empty object since this function primarily produces console output
   return {};
