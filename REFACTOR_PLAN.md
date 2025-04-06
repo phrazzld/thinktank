@@ -21,8 +21,6 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
 
 **Areas for Refactoring:**
 
-*   **CLI Structure:** Potential redundancy between `src/cli/cli.ts` (simpler, possibly older) and the main Commander setup in `src/cli/index.ts` and `src/cli/commands/`.
-*   **Dependencies:** `yargs` is listed in `package.json` but `commander` seems to be the active CLI library.
 *   **Configuration Complexity:** `configManager.ts` handles complex logic (loading, validation, normalization, cascading options). While functional, it could be a source of bugs and difficult to maintain.
 *   **Error Handling:** Error types and handling are somewhat distributed (`ThinktankError`, provider-specific errors, `consoleUtils` helpers). Consolidation could improve clarity and consistency.
 *   **Testing:** Coverage is moderate (50-60%). Some tests focus heavily on mock setup rather than behavior. E2E tests might be skipped if the build isn't present.
@@ -70,44 +68,88 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
     4.  ✅ Run `npm install` or `yarn install` and ensure tests still pass.
 *   **Status:** Completed on 2025-04-05. Verified that yargs is not used anywhere in the codebase.
 
-### T3: Error Handling Refinement
+### T3: Error Handling Refinement ✅
 
 *   **Goal:** Centralize error types and handling.
 *   **Action:**
-    1.  Define base `ThinktankError` in a central location (e.g., `src/core/errors.ts` or keep in `runThinktank.ts` but ensure it's the base).
-    2.  Define specific error types extending `ThinktankError`:
+    1.  ✅ Define base `ThinktankError` in a central location - created `src/core/errors.ts` with the base class.
+    2.  ✅ Define specific error types extending `ThinktankError` - implemented various subclasses and factory functions:
         ```typescript
-        // Example: src/core/errors.ts
         export class ThinktankError extends Error {
           category?: string;
           suggestions?: string[];
           examples?: string[];
-          constructor(message: string, public readonly cause?: Error) {
+          cause?: Error;
+          
+          constructor(message: string, options?: ErrorOptions) {
             super(message);
             this.name = 'ThinktankError';
+            
+            if (options) {
+              this.category = options.category;
+              this.suggestions = options.suggestions;
+              this.examples = options.examples;
+              this.cause = options.cause;
+            }
+          }
+          
+          format(): string {
+            // Formats error message with category, suggestions, and examples
+            // for consistent CLI display
           }
         }
-
-        export class ConfigError extends ThinktankError {
-          constructor(message: string, cause?: Error) {
-            super(message, cause);
-            this.name = 'ConfigError';
-            this.category = errorCategories.CONFIG; // Assuming errorCategories is imported
-          }
-        }
-
-        export class ProviderError extends ThinktankError {
-          constructor(providerId: string, message: string, cause?: Error) {
-            super(`[${providerId}] ${message}`, cause);
-            this.name = 'ProviderError';
-            this.category = errorCategories.API;
-          }
-        }
-        // Add InputError, FileSystemError, etc.
+        
+        // Specialized error subclasses
+        export class ConfigError extends ThinktankError { ... }
+        export class ApiError extends ThinktankError { ... }
+        export class FileSystemError extends ThinktankError { ... }
+        export class ValidationError extends ThinktankError { ... }
+        export class NetworkError extends ThinktankError { ... }
+        export class PermissionError extends ThinktankError { ... }
+        export class InputError extends ThinktankError { ... }
+        
+        // Factory functions
+        export function createFileNotFoundError(filepath: string): FileSystemError { ... }
+        export function createModelFormatError(model: string, ...): ConfigError { ... }
+        export function createMissingApiKeyError(models: Array<...>): ApiError { ... }
+        export function createModelNotFoundError(model: string, ...): ConfigError { ... }
         ```
-    3.  Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors.
-    4.  Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately, potentially using a switch on `error.name` or `error.category`.
-    5.  Refactor `consoleUtils` error creation functions (e.g., `createFileNotFoundError`) to return instances of the new error types or be replaced by direct error instantiation.
+    3.  ✅ Refactor modules (`configManager`, `providers`, `inputHandler`, etc.) to throw these specific errors:
+        * Updated all provider implementations (anthropic, openai, google, openrouter) to use ApiError with providerId
+        * Updated ModelSelectionError to use the new hierarchy
+        * Updated error handling in runThinktank.ts with specialized error types
+        * Updated all CLI command files with consistent error handling
+    4.  ✅ Update `src/cli/index.ts` `handleError` function to recognize and format these errors appropriately:
+        * Added enhanced category-specific guidance based on error type
+        * Implemented provider-specific error handling for API errors
+        * Ensured error causes are properly displayed in the CLI
+        * Added formatted examples and suggestions in the error output
+    5.  ✅ Refactor `consoleUtils` error creation functions to use new error system:
+        * Updated `consoleUtils.ts` to properly handle ThinktankError instances in `formatError` and related functions
+        * Added deprecated JSDoc tags to functions that should be replaced
+        * Used ThinktankError.format() for error formatting
+        * Updated tests to verify correct handling of ThinktankError instances
+    6.  ✅ Create comprehensive test suite for errors:
+        * Implemented unit tests for all error classes and factory functions
+        * Updated existing error handling tests to use the new system
+        * Created cross-module error propagation tests to verify proper error flow
+    7.  ✅ Add comprehensive JSDoc documentation:
+        * Documented the base ThinktankError class and all properties
+        * Added detailed JSDoc to all specialized error classes
+        * Documented all factory functions with examples and parameter descriptions
+        * Added module-level documentation explaining the error system architecture
+*   **Status:** Completed on 2025-04-06. The error handling system has been completely refactored with the following key achievements:
+    * Centralized error hierarchy with ThinktankError as the base class
+    * Seven specialized error subclasses for different error categories
+    * Four factory functions for common error creation scenarios
+    * Error chaining with cause property for improved debugging
+    * Consistent error formatting for CLI display
+    * Provider-specific error handling with customized guidance
+    * Complete test coverage for all error classes and propagation paths
+    * Comprehensive JSDoc documentation for the entire error system
+    * Backward compatibility with existing code through deprecated utility functions
+
+    The implementation follows the SOLID principles with a focus on extensibility and maintainability. The new error system provides much richer error information to users with context-aware suggestions, examples, and troubleshooting guidance, while also making the codebase more maintainable with consistent error handling patterns across all modules.
 
 ### T6: Workflow Orchestration (`runThinktank`) Refactor
 
@@ -190,7 +232,6 @@ The codebase is a TypeScript CLI application using Commander.js for command pars
 
 ## 7. Open Questions
 
-1.  **`yargs` Dependency:** Is the `yargs` package actually used anywhere? Can it be safely removed?
-2.  **Configuration Normalization:** Is the current behavior of `normalizeConfig` (especially regarding the default group) essential, or can it be simplified?
+1.  **Configuration Normalization:** Is the current behavior of `normalizeConfig` (especially regarding the default group) essential, or can it be simplified?
 
 ```

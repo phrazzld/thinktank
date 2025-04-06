@@ -6,6 +6,7 @@
 import { OpenAIProvider, OpenAIProviderError, openaiProvider } from '../openai';
 import { ModelOptions, LLMAvailableModel } from '../../core/types';
 import { clearRegistry, getProvider } from '../../core/llmRegistry';
+import { ApiError, ThinktankError } from '../../core/errors';
 import OpenAI from 'openai';
 
 // Mock OpenAI library
@@ -117,8 +118,24 @@ describe('OpenAI Provider', () => {
       
       const provider = new OpenAIProvider();
       
+      // Should still be catchable as OpenAIProviderError for backward compatibility
       await expect(provider.generate('Test', 'gpt-4')).rejects.toThrow(OpenAIProviderError);
-      await expect(provider.generate('Test', 'gpt-4')).rejects.toThrow('OpenAI API key is missing');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test', 'gpt-4')).rejects.toThrow(ApiError);
+      // And should be an instance of the base ThinktankError
+      await expect(provider.generate('Test', 'gpt-4')).rejects.toThrow(ThinktankError);
+      
+      try {
+        await provider.generate('Test', 'gpt-4');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenAIProviderError;
+        expect(typedError.message).toContain('OpenAI API key is missing');
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openai');
+        expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.length).toBeGreaterThan(0);
+      }
     });
   });
   
@@ -227,8 +244,23 @@ describe('OpenAI Provider', () => {
       // Mock an API error
       mockCreate.mockRejectedValue(new Error('API error message'));
       
+      // Should still be catchable as OpenAIProviderError for backward compatibility
       await expect(provider.generate('Test prompt', 'gpt-4')).rejects.toThrow(OpenAIProviderError);
-      await expect(provider.generate('Test prompt', 'gpt-4')).rejects.toThrow('OpenAI API error: API error message');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test prompt', 'gpt-4')).rejects.toThrow(ApiError);
+      await expect(provider.generate('Test prompt', 'gpt-4')).rejects.toThrow('[openai]');
+      
+      try {
+        await provider.generate('Test prompt', 'gpt-4');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenAIProviderError;
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openai');
+        expect(typedError.cause).toBeInstanceOf(Error);
+        expect(typedError.cause?.message).toBe('API error message');
+        expect(typedError.suggestions).toBeDefined();
+      }
     });
     
     it('should reuse the OpenAI client for multiple requests', async () => {
@@ -338,9 +370,48 @@ describe('OpenAI Provider', () => {
         }
       });
       
-      // The method should throw OpenAIProviderError
+      // Should still be catchable as OpenAIProviderError for backward compatibility
       await expect(provider.listModels('invalid-key')).rejects.toThrow(OpenAIProviderError);
-      await expect(provider.listModels('invalid-key')).rejects.toThrow('OpenAI API error when listing models');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.listModels('invalid-key')).rejects.toThrow(ApiError);
+      await expect(provider.listModels('invalid-key')).rejects.toThrow('[openai]');
+      
+      try {
+        await provider.listModels('invalid-key');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenAIProviderError;
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openai');
+        expect(typedError.cause).toBeInstanceOf(Error);
+        expect(typedError.cause?.message).toBe('Invalid API key');
+        expect(typedError.message).toContain('Invalid API key');
+        expect(typedError.suggestions).toBeDefined();
+      }
+    });
+    
+    it('should handle rate limiting errors with specific suggestions', async () => {
+      // Mock rate limit error by making the asyncIterator throw
+      mockList.mockReturnValue({
+        [Symbol.asyncIterator]: async function* () {
+          throw new Error('Rate limit exceeded');
+          yield null; // This line is unreachable but satisfies the linter
+        }
+      });
+      
+      try {
+        await provider.listModels('valid-key');
+      } catch (error) {
+        // Verify error contains specific rate limit suggestions
+        const typedError = error as OpenAIProviderError;
+        expect(typedError.suggestions).toBeDefined();
+        // Check that at least one suggestion mentions rate limiting or waiting
+        expect(typedError.suggestions?.some(suggestion => 
+          suggestion.toLowerCase().includes('rate') || 
+          suggestion.toLowerCase().includes('wait') ||
+          suggestion.toLowerCase().includes('delay')
+        )).toBe(true);
+      }
     });
   });
 });

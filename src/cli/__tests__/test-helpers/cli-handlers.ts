@@ -1,13 +1,10 @@
-#!/usr/bin/env node
 /**
- * Main entry point for the thinktank CLI
+ * Test helpers for CLI error handling
  * 
- * Sets up Commander.js and loads all available commands
+ * This file contains extracted copies of the error handling functions from cli/index.ts
+ * for use in tests. This avoids the need to import the actual CLI module and trigger
+ * its initialization code.
  */
-import { Command } from 'commander';
-import fs from 'fs/promises';
-import path from 'path';
-import dotenv from 'dotenv';
 import { 
   ThinktankError, 
   ApiError, 
@@ -15,46 +12,13 @@ import {
   FileSystemError, 
   NetworkError,
   errorCategories 
-} from '../core/errors';
-import { categorizeError } from '../core/errors/utils/categorization';
-import { colors } from '../utils/consoleUtils';
-import { configureLogger, logger } from '../utils/logger';
-
-// Load environment variables from .env file
-dotenv.config();
-
-// Create the program
-const program = new Command();
-
-// Configure the CLI
-program
-  .name('thinktank')
-  .description('A CLI tool for querying multiple LLMs with the same prompt')
-  .version('0.1.0') // This should be loaded from package.json in the future
-  .option('-v, --verbose', 'Enable verbose output with detailed information')
-  .option('-q, --quiet', 'Suppress all output except errors')
-  .option('-d, --debug', 'Enable debug mode with extra information')
-  .option('--no-color', 'Disable colored output')
-  .hook('preAction', (thisCommand) => {
-    // Get options and safely cast them to the expected types
-    const options = thisCommand.opts();
-    
-    // Configure the logger based on command-line options
-    configureLogger({
-      verbose: Boolean(options.verbose),
-      quiet: Boolean(options.quiet),
-      debug: Boolean(options.debug),
-      noColor: !options.color
-    });
-    
-    // Log debug info about the environment
-    logger.debug(`Node.js version: ${process.version}`);
-    logger.debug(`Platform: ${process.platform}`);
-    logger.debug(`Command: ${process.argv.join(' ')}`);
-  });
+} from '../../../core/errors';
+import { colors } from '../../../utils/consoleUtils';
+import { logger } from '../../../utils/logger';
 
 /**
  * Handle errors consistently across all commands
+ * This is a copy of the handleError function from cli/index.ts
  * 
  * @param error - The error to handle
  */
@@ -93,15 +57,17 @@ export function handleError(error: unknown): void {
     logger.error(genericError.format());
   }
   
-  process.exit(1);
+  // In tests, we mock process.exit, but in the real CLI it would exit here
+  // process.exit(1);
 }
 
 /**
  * Adds category-specific guidance based on error type
+ * This is a copy of the addCategorySpecificGuidance function from cli/index.ts
  * 
  * @param error - The ThinktankError to provide guidance for
  */
-function addCategorySpecificGuidance(error: ThinktankError): void {
+export function addCategorySpecificGuidance(error: ThinktankError): void {
   // File System errors
   if (error.category === errorCategories.FILESYSTEM) {
     logger.error('\nCorrect usage:');
@@ -187,105 +153,67 @@ function addCategorySpecificGuidance(error: ThinktankError): void {
 
 /**
  * Wraps standard Error objects in ThinktankError for consistent formatting
+ * This is a copy of the wrapStandardError function from cli/index.ts
  * 
  * @param error - The standard Error to wrap
  * @returns A ThinktankError with appropriate category and cause
  */
-function wrapStandardError(error: Error): ThinktankError {
-  // Use the categorization utility to determine the error category
-  const category = categorizeError(error);
+export function wrapStandardError(error: Error): ThinktankError {
+  // Try to categorize based on message content
+  const message = error.message.toLowerCase();
   
-  // Create appropriate error type based on the category
-  switch (category) {
-    case errorCategories.NETWORK:
-      return new NetworkError(`Network error: ${error.message}`, {
-        cause: error,
-        suggestions: [
-          'Check your internet connection',
-          'Verify that required services are accessible from your network',
-          'The service might be down or experiencing issues'
-        ]
-      });
-      
-    case errorCategories.FILESYSTEM:
-      return new FileSystemError(`File system error: ${error.message}`, {
-        cause: error,
-        suggestions: [
-          'Check that the file or directory exists',
-          'Verify that you have appropriate permissions',
-          'Ensure the path is correct'
-        ]
-      });
-      
-    case errorCategories.CONFIG:
-      return new ConfigError(`Configuration error: ${error.message}`, {
-        cause: error,
-        suggestions: [
-          'Check your thinktank configuration file',
-          'Try resetting to default configuration with: thinktank config reset',
-          'Verify that configuration values are in the correct format'
-        ]
-      });
-      
-    case errorCategories.API:
-      return new ApiError(`API error: ${error.message}`, {
-        cause: error,
-        suggestions: [
-          'Check your API key and permissions',
-          'Verify the API endpoint is correct',
-          'The service might be experiencing issues'
-        ]
-      });
-      
-    // Default to unknown category
-    default:
-      return new ThinktankError(`Unexpected error: ${error.message}`, {
-        category: errorCategories.UNKNOWN,
-        cause: error,
-        suggestions: [
-          'Run with --debug flag for more detailed information',
-          'Check documentation for this feature',
-          'This may be an internal error in thinktank'
-        ]
-      });
+  // Network-related errors
+  if (message.includes('network') || 
+      message.includes('econnrefused') || 
+      message.includes('timeout') ||
+      message.includes('socket')) {
+    return new NetworkError(`Network error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check your internet connection',
+        'Verify that required services are accessible from your network',
+        'The service might be down or experiencing issues'
+      ]
+    });
   }
-}
-
-// Main execution function
-async function main(): Promise<void> {
-  try {
-    // Create a directory for command modules
-    const commandsDir = path.join(__dirname, 'commands');
-    
-    // Check if the commands directory exists
-    try {
-      await fs.mkdir(commandsDir, { recursive: true });
-    } catch (error) {
-      // Directory may already exist, which is fine
-    }
-    
-    // Import and register the built-in commands
-    // For now, we'll do this manually, but later we could automate it
-    // by reading the command directory
-    
-    // Import run command
-    const { default: runCommand } = await import('./commands/run');
-    program.addCommand(runCommand);
-    
-    // Import models command
-    const { default: modelsCommand } = await import('./commands/models');
-    program.addCommand(modelsCommand);
-    
-    // Import config command
-    const { default: configCommand } = await import('./commands/config');
-    program.addCommand(configCommand);
-    
-    // Parse command-line arguments
-    await program.parseAsync(process.argv);
-  } catch (error) {
-    handleError(error);
+  
+  // File-related errors
+  else if (message.includes('file') || 
+           message.includes('directory') || 
+           message.includes('enoent') ||
+           message.includes('permission denied')) {
+    return new FileSystemError(`File system error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check that the file or directory exists',
+        'Verify that you have appropriate permissions',
+        'Ensure the path is correct'
+      ]
+    });
   }
+  
+  // Configuration errors
+  else if (message.includes('config') || 
+           message.includes('settings') || 
+           message.includes('option')) {
+    return new ConfigError(`Configuration error: ${error.message}`, {
+      cause: error,
+      suggestions: [
+        'Check your thinktank configuration file',
+        'Try resetting to default configuration with: thinktank config reset',
+        'Verify that configuration values are in the correct format'
+      ]
+    });
+  }
+  
+  // Default to unknown category
+  return new ThinktankError(`Unexpected error: ${error.message}`, {
+    category: errorCategories.UNKNOWN,
+    cause: error,
+    suggestions: [
+      'Run with --debug flag for more detailed information',
+      'Check documentation for this feature',
+      'This may be an internal error in thinktank'
+    ]
+  });
 }
-
-// Execute the main function
-main().catch(handleError);

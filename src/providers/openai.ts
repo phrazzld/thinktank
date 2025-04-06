@@ -4,16 +4,27 @@
 import OpenAI from 'openai';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
+import { ApiError } from '../core/errors';
+import { 
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderUnknownError,
+  isProviderRateLimitError,
+  isProviderTokenLimitError,
+  isProviderContentPolicyError,
+  isProviderAuthError
+} from '../core/errors/factories/provider';
 
 /**
- * OpenAI provider error class
+ * OpenAI provider error class - maintained for backward compatibility
+ * This type alias ensures existing code that checks for OpenAIProviderError
+ * will continue to work
  */
-export class OpenAIProviderError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = 'OpenAIProviderError';
-  }
-}
+export type OpenAIProviderError = ApiError;
+// Create a constructor alias that returns an ApiError
+export const OpenAIProviderError = ApiError;
 
 /**
  * Implements the LLMProvider interface for OpenAI
@@ -43,7 +54,7 @@ export class OpenAIProvider implements LLMProvider {
    * Gets or initializes the OpenAI client
    * 
    * @returns The OpenAI client instance
-   * @throws {OpenAIProviderError} If the API key is missing
+   * @throws {ApiError} If the API key is missing
    */
   private getClient(): OpenAI {
     if (this.client) {
@@ -54,7 +65,11 @@ export class OpenAIProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.OPENAI_API_KEY;
     
     if (!apiKey) {
-      throw new OpenAIProviderError('OpenAI API key is missing. Set OPENAI_API_KEY environment variable or provide it when creating the provider.');
+      throw createProviderApiKeyMissingError(
+        'openai',
+        'OpenAI',
+        'https://platform.openai.com/api-keys'
+      );
     }
     
     this.client = new OpenAI({ apiKey });
@@ -150,16 +165,77 @@ export class OpenAIProvider implements LLMProvider {
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
-        if (error instanceof OpenAIProviderError) {
-          throw error; // Re-throw our own errors
+        // Re-throw our own errors
+        if (error instanceof ApiError) {
+          throw error;
         }
         
-        // Handle OpenAI API errors
-        throw new OpenAIProviderError(`OpenAI API error: ${error.message}`, error);
+        const errorMessage = error.message.toLowerCase();
+        
+        // Use factory functions and pattern detection utilities for more consistent error handling
+        
+        // Handle rate limit errors
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('openai', 'OpenAI', error);
+        }
+        
+        // Handle API authentication errors
+        if (isProviderAuthError(errorMessage)) {
+          throw new ApiError(`API key error: ${error.message}`, {
+            providerId: 'openai',
+            cause: error,
+            suggestions: [
+              'Check that your OpenAI API key is valid and not expired',
+              'Ensure the API key has the correct permissions',
+              'Generate a new API key in the OpenAI platform if needed'
+            ],
+            examples: [
+              'export OPENAI_API_KEY=your_new_api_key'
+            ]
+          });
+        }
+        
+        // Handle model-specific errors
+        if (errorMessage.includes('model')) {
+          throw new ApiError(`Model error: ${error.message}`, {
+            providerId: 'openai',
+            cause: error,
+            suggestions: [
+              'Check that the specified model ID is correct',
+              'Verify that the model is available in your OpenAI account',
+              'Some models may require special access or fine-tuning'
+            ],
+            examples: [
+              'Use a generally available model: gpt-3.5-turbo, gpt-4o',
+              'Check available models with: await provider.listModels(apiKey)'
+            ]
+          });
+        }
+        
+        // Handle token/context length errors
+        if (isProviderTokenLimitError(errorMessage)) {
+          throw createProviderTokenLimitError('openai', 'OpenAI', error);
+        }
+        
+        // Handle content policy violations
+        if (isProviderContentPolicyError(errorMessage)) {
+          throw createProviderContentPolicyError('openai', 'OpenAI', error);
+        }
+        
+        // Generic API error for other cases
+        throw new ApiError(`${error.message}`, {
+          providerId: 'openai',
+          cause: error,
+          suggestions: [
+            'Check the OpenAI API documentation for more information',
+            'Review the OpenAI status page for any ongoing issues',
+            'Ensure your request parameters are valid'
+          ]
+        });
       }
       
-      // Handle unknown errors
-      throw new OpenAIProviderError('Unknown error occurred while generating text from OpenAI');
+      // Handle unknown errors (non-Error objects)
+      throw createProviderUnknownError('openai', 'OpenAI');
     }
   }
 
@@ -194,11 +270,48 @@ export class OpenAIProvider implements LLMProvider {
     } catch (error) {
       // Handle specific error cases
       if (error instanceof Error) {
-        throw new OpenAIProviderError(`OpenAI API error when listing models: ${error.message}`, error);
+        // Re-throw our own errors
+        if (error instanceof ApiError) {
+          throw error;
+        }
+        
+        const errorMessage = error.message.toLowerCase();
+        
+        // Handle rate limit errors
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('openai', 'OpenAI', error);
+        }
+        
+        // Handle API authentication errors
+        if (isProviderAuthError(errorMessage)) {
+          throw new ApiError(`API key error when listing models: ${error.message}`, {
+            providerId: 'openai',
+            cause: error,
+            suggestions: [
+              'Check that your OpenAI API key is valid and not expired',
+              'Ensure the API key has the correct permissions',
+              'Generate a new API key in the OpenAI platform if needed'
+            ],
+            examples: [
+              'export OPENAI_API_KEY=your_new_api_key'
+            ]
+          });
+        }
+        
+        // Generic API error for other cases
+        throw new ApiError(`Error listing OpenAI models: ${error.message}`, {
+          providerId: 'openai',
+          cause: error,
+          suggestions: [
+            'Check the OpenAI API documentation for more information',
+            'Ensure your account has access to the OpenAI API',
+            'Verify your network connection'
+          ]
+        });
       }
       
-      // Handle unknown errors
-      throw new OpenAIProviderError('Unknown error occurred while listing models from OpenAI');
+      // Handle unknown errors (non-Error objects)
+      throw createProviderUnknownError('openai', 'OpenAI');
     }
   }
 }

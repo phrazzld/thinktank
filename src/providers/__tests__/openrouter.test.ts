@@ -6,6 +6,7 @@
 import { OpenRouterProvider, OpenRouterProviderError, openrouterProvider } from '../openrouter';
 import { ModelOptions } from '../../core/types';
 import { clearRegistry, getProvider } from '../../core/llmRegistry';
+import { ApiError, ThinktankError } from '../../core/errors';
 import OpenAI from 'openai';
 import axios from 'axios';
 
@@ -137,8 +138,26 @@ describe('OpenRouter Provider', () => {
       
       const provider = new OpenRouterProvider();
       
+      // Should be catchable as OpenRouterProviderError for backward compatibility
       await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(OpenRouterProviderError);
-      await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow('OpenRouter API key is missing');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(ApiError);
+      // And should be an instance of the base ThinktankError
+      await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(ThinktankError);
+      
+      try {
+        await provider.generate('Test', 'openai/gpt-4o');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenRouterProviderError;
+        expect(typedError.message).toContain('OpenRouter API key is missing');
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openrouter');
+        expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.length).toBeGreaterThan(0);
+        expect(typedError.examples).toBeDefined();
+        expect(typedError.examples?.length).toBeGreaterThan(0);
+      }
     });
   });
   
@@ -247,8 +266,23 @@ describe('OpenRouter Provider', () => {
       // Mock an API error
       mockCreate.mockRejectedValue(new Error('API error message'));
       
+      // Should still be catchable as OpenRouterProviderError for backward compatibility
       await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow(OpenRouterProviderError);
-      await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow('OpenRouter API error: API error message');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow(ApiError);
+      
+      try {
+        await provider.generate('Test prompt', 'openai/gpt-4o');
+      } catch (error) {
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenRouterProviderError;
+        expect(typedError.message).toContain('OpenRouter API error: API error message');
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openrouter');
+        expect(typedError.cause).toBeInstanceOf(Error);
+        expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.length).toBeGreaterThan(0);
+      }
     });
     
     it('should reuse the OpenAI client for multiple requests', async () => {
@@ -347,8 +381,35 @@ describe('OpenRouter Provider', () => {
       
       mockedAxios.get.mockRejectedValue(error);
       
+      // Should still be catchable as OpenRouterProviderError for backward compatibility
       await expect(provider.listModels('invalid-key')).rejects.toThrow(OpenRouterProviderError);
-      await expect(provider.listModels('invalid-key')).rejects.toThrow('Error listing OpenRouter models');
+      // But should also be an instance of ApiError from the new system
+      await expect(provider.listModels('invalid-key')).rejects.toThrow(ApiError);
+      
+      try {
+        await provider.listModels('invalid-key');
+      } catch (err) {
+        // Debug: Log the error to see what's happening
+        const error = err as any;
+        console.log('ERROR TYPE:', error.constructor?.name);
+        console.log('ERROR DETAILS:', JSON.stringify(error, (key, value) => {
+          if (key === 'cause') return value?.message || '(cause present)';
+          return value;
+        }, 2));
+        
+        // Verify it has the expected properties from ApiError
+        const typedError = error as OpenRouterProviderError;
+        expect(typedError.message).toContain('Error listing OpenRouter models');
+        expect(typedError.category).toBe('API');
+        expect(typedError.providerId).toBe('openrouter');
+        expect(typedError.cause).toBeDefined();
+        expect(typedError.suggestions).toBeDefined();
+        expect(typedError.suggestions?.length).toBeGreaterThan(0);
+        // Check that at least one suggestion mentions API key
+        expect(typedError.suggestions?.some(suggestion => 
+          suggestion.toLowerCase().includes('api key')
+        )).toBe(true);
+      }
     });
     
     it('should throw error on invalid response format', async () => {

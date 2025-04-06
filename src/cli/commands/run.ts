@@ -6,16 +6,16 @@
 import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
-import { runThinktank, ThinktankError } from '../../workflow/runThinktank';
-
-// Interface for error objects with metadata
-interface ErrorWithMetadata {
-  message: string;
-  category?: string;
-  suggestions?: string[];
-  examples?: string[];
-}
-import { createFileNotFoundError, colors } from '../../utils/consoleUtils';
+import { runThinktank } from '../../workflow/runThinktank';
+import { 
+  ThinktankError, 
+  ApiError, 
+  ConfigError, 
+  FileSystemError,
+  createFileNotFoundError,
+  createModelFormatError
+} from '../../core/errors';
+import { colors } from '../../utils/consoleUtils';
 import { handleError } from '../index';
 import * as configManager from '../../core/configManager';
 import { logger } from '../../utils/logger';
@@ -25,49 +25,31 @@ const runCommand = new Command('run');
 
 // Configure the command
 runCommand
-  .description('Run a prompt through one or more LLM models')
-  .argument('<prompt-file>', 'Path to the file containing the prompt')
-  .option('-g, --group <name>', 'Group name to run the prompt against')
-  .option('-m, --models <models>', 'Comma-separated list of models in provider:model format (e.g., "openai:gpt-4o,anthropic:claude-3-opus-20240229")')
-  .option('-t, --thinking', 'Enable thinking capability for models that support it')
-  .option('-s, --show-thinking', 'Display thinking output in the results')
-  .option('-o, --output <path>', 'Output directory path (defaults to thinktank-output)')
+  .description('Run a prompt against LLM models')
+  .argument('<promptFile>', 'Path to the file containing the prompt')
+  .option('-m, --models <models>', 'Comma-separated list of specific models to use (e.g., openai:gpt-4o,anthropic:claude-3-opus)')
+  .option('-g, --group <group>', 'Name of a model group from config to use')
+  .option('-o, --output <directory>', 'Directory to save results to')
   .option('-c, --config <path>', 'Path to a custom config file')
-  .option('-v, --verbose', 'Show verbose output including detailed model information')
-  .option('--include-metadata', 'Include metadata in the output')
-  .option('--system-prompt <text>', 'Override system prompt for all models')
+  .option('-v, --verbose', 'Show detailed output during execution')
+  .option('--include-metadata', 'Include raw API response metadata in output')
+  .option('--system-prompt <system-prompt>', 'Custom system prompt for supported models')
   .action(async (promptFile: string, options: {
-    group?: string;
-    models?: string;
-    thinking?: boolean;
-    showThinking?: boolean;
-    output?: string;
-    config?: string;
-    verbose?: boolean;
-    includeMetadata?: boolean;
-    systemPrompt?: string;
-  }) => {
+  models?: string;
+  group?: string;
+  output?: string;
+  config?: string;
+  verbose?: boolean;
+  includeMetadata?: boolean;
+  systemPrompt?: string;
+}): Promise<void> => {
     try {
       // Validate prompt file exists
       try {
         await fs.access(promptFile);
       } catch (error) {
-        // Create a helpful file not found error using our utility
-        const errorMessage = `Input file not found: ${promptFile}`;
-        const baseError = createFileNotFoundError(promptFile, errorMessage);
-        
-        // Convert to ThinktankError for consistency
-        const fileError = new ThinktankError(baseError.message);
-        
-        // Copy properties from baseError
-        const typedError = baseError as ErrorWithMetadata;
-        if (typedError.category) {
-          fileError.category = typedError.category;
-        }
-        
-        if (typedError.suggestions) {
-          fileError.suggestions = typedError.suggestions;
-        }
+        // Use the specialized factory function to create a file not found error
+        const fileError = createFileNotFoundError(promptFile, `Input file not found: ${promptFile}`);
         
         // Customize examples for CLI usage
         const basename = path.basename(promptFile);
@@ -88,16 +70,12 @@ runCommand
         // Validate that each model follows the provider:model format
         for (const model of specificModels) {
           if (!model.includes(':')) {
-            throw new ThinktankError(
-              `Invalid model format: "${model}". Models must be in provider:modelId format (e.g., openai:gpt-4o).`
-            );
+            throw createModelFormatError(model, ['openai', 'anthropic', 'google', 'openrouter']);
           }
           
           const [provider, modelId] = model.split(':');
           if (!provider || !modelId) {
-            throw new ThinktankError(
-              `Invalid model format: "${model}". Provider and modelId must not be empty.`
-            );
+            throw createModelFormatError(model, ['openai', 'anthropic', 'google', 'openrouter']);
           }
         }
         
@@ -111,51 +89,166 @@ runCommand
         logger.info('');
       }
       
-      // Check for invalid combinations
-      if (options.group && specificModels && specificModels.length > 1) {
-        logger.warn('Both --group and --models (multiple) options were provided. ' +
-                   'The --models option will filter models within the specified group.');
-      }
-      
-      // Display thinking capability info
-      if (options.thinking) {
-        logger.info('Thinking capability enabled for models that support it (Claude models)');
-      }
-      
-      // If a specific model is requested but not yet in the config, consider adding it
-      if (specificModels && specificModels.length === 1) {
-        const [provider, modelId] = specificModels[0].split(':');
+      // Validate group exists in config if provided
+      if (options.group) {
+        const configOptions: configManager.LoadConfigOptions = options.config ? { configPath: options.config } : {};
+        const config = await configManager.loadConfig(configOptions);
+        // Define a proper interface for the config structure
+        interface ConfigWithGroups {
+          groups?: Record<string, {name: string}>;
+        }
+        // Use a type guard to handle different config formats
+        const configWithGroups = config as ConfigWithGroups;
         
-        // Load the config to check if the model exists
-        const config = await configManager.loadConfig({ configPath: options.config });
-        const modelExists = configManager.findModel(config, provider, modelId);
+        // Check if the groups object exists and if the specified group exists in it
+        const groupExists = configWithGroups.groups && configWithGroups.groups[options.group];
+        if (!groupExists) {
+          // Get available groups for error message
+          const availableGroups = configWithGroups.groups ? Object.keys(configWithGroups.groups) : [];
+          
+          throw new ConfigError(`Model group "${options.group}" not found in config`, {
+            suggestions: [
+              'Check that the group name matches exactly (case-sensitive)',
+              'Available groups: ' + (availableGroups.length > 0 
+                ? availableGroups.join(', ') 
+                : 'none defined'),
+              'Define your groups in thinktank.config.json'
+            ],
+            cause: new Error(`Model group "${options.group}" not found in config`)
+          });
+        }
         
-        if (!modelExists) {
-          logger.warn(`Model ${specificModels[0]} not found in configuration. ` +
-                    `Will attempt to use it anyway. If this fails, add it with:`);
+        // If verbose, show group models
+        if (options.verbose) {
+          // Pass correct types to this function
+          const groupModels = configManager.getEnabledModelsFromGroups(config, [options.group]);
           logger.info(
-            colors.dim(`  thinktank config models add ${provider} ${modelId} --enable`)
+            colors.cyan(`Running with model group "${options.group}" (${groupModels.length} models)`)
           );
+          if (groupModels.length > 0) {
+            groupModels.forEach((model, index) => {
+              logger.info(`  ${index + 1}. ${colors.yellow(`${model.provider}:${model.modelId}`)}`);
+            });
+            logger.info('');
+          } else {
+            logger.warn(
+              colors.yellow('Warning: Selected group has no enabled models')
+            );
+          }
         }
       }
       
-      // Call runThinktank with the parsed options
+      // Validate output directory if provided
+      if (options.output) {
+        try {
+          await fs.mkdir(options.output, { recursive: true });
+        } catch (error) {
+          throw new FileSystemError(`Failed to create output directory: ${options.output}`, {
+            cause: error instanceof Error ? error : undefined,
+            suggestions: [
+              'Check that the directory path is valid',
+              'Ensure you have write permissions to this location',
+              'Try creating the directory manually first'
+            ]
+          });
+        }
+      }
+      
+      // If systemPrompt is provided, validate it
+      let systemPrompt = options.systemPrompt;
+      if (systemPrompt) {
+        // Attempt to read from file if it starts with @ 
+        if (systemPrompt.startsWith('@')) {
+          const systemPromptFile = systemPrompt.substring(1);
+          try {
+            systemPrompt = await fs.readFile(systemPromptFile, 'utf-8');
+          } catch (error) {
+            throw new FileSystemError(`System prompt file not found: ${systemPromptFile}`, {
+              cause: error instanceof Error ? error : undefined,
+              filePath: systemPromptFile,
+              suggestions: [
+                'Check that the file exists and is accessible',
+                'Use the format --system-prompt=@path/to/prompt.txt',
+                'Or provide the system prompt directly: --system-prompt="Your prompt here"'
+              ]
+            });
+          }
+        }
+      }
+      
+      // Run the core function
       await runThinktank({
         input: promptFile,
-        configPath: options.config,
+        specificModel: specificModels ? specificModels.join(',') : undefined,
         groupName: options.group,
-        // For backward compatibility, still set specificModel if there's only one model
-        specificModel: specificModels && specificModels.length === 1 ? specificModels[0] : undefined,
-        // Always pass the models array to support multiple model selection
-        models: specificModels,
-        enableThinking: options.thinking,
-        includeThinking: options.showThinking,
         output: options.output,
+        configPath: options.config,
         includeMetadata: options.includeMetadata,
-        systemPrompt: options.systemPrompt,
-        useColors: true
+        systemPrompt
       });
+      
+      // Output completion message if verbose
+      if (options.verbose) {
+        logger.info(colors.green('\nExecution complete!'));
+        
+        if (options.output) {
+          logger.info(`Results saved to: ${options.output}`);
+        } else {
+          logger.info('Results displayed above (no output directory specified)');
+        }
+      }
+      
+      // Just return, no need to return results (void return type)
+      return;
     } catch (error) {
+      // Convert to ThinktankError if it's not already one
+      // We'll use this for error handling
+      if (!(error instanceof ThinktankError)) {
+        handleError(new ThinktankError(
+          error instanceof Error ? error.message : String(error),
+          { cause: error instanceof Error ? error : undefined }
+        ));
+        return;
+      }
+      
+      // Try to provide specific guidance for common error types
+      if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        
+        // Handle API key errors
+        if (message.includes('api') && 
+            (message.includes('key') || 
+             message.includes('token') ||
+             message.includes('authentication') ||
+             message.includes('authorization'))) {
+          handleError(new ApiError(`API error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Check your API credentials',
+              'Verify that you have the correct API keys set in your environment variables',
+              'Make sure the provider services are accessible from your network'
+            ]
+          }));
+          return;
+        }
+        
+        // Handle config-related errors
+        if (message.includes('config') || message.includes('configuration')) {
+          handleError(new ConfigError(`Configuration error: ${error.message}`, {
+            cause: error,
+            suggestions: [
+              'Ensure your configuration file is valid JSON',
+              options.config ?
+                `The specified config path was: ${options.config}` :
+                'No custom config path was provided - using default config location',
+              'Try using the default configuration by omitting the --config option'
+            ]
+          }));
+          return;
+        }
+      }
+      
+      // Default to passing the error through to the central handler
       handleError(error);
     }
   });

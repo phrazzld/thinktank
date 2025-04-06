@@ -973,7 +973,7 @@ Error message from the API
 
 ## Architecture
 
-thinktank follows a domain-oriented architecture with a clear separation of concerns:
+thinktank follows a domain-oriented architecture with a clear separation of concerns, designed for maintainability and extensibility:
 
 ```
 src/
@@ -995,6 +995,16 @@ src/
   - **ModelSelector**: Determines which models to use based on configuration and CLI flags
   - **QueryExecutor**: Manages parallel API calls with proper error handling
   - **OutputHandler**: Formats and writes results to files and console
+  
+### Architectural Principles
+
+The architecture is guided by several key principles:
+
+- **Modularity**: Each component has a single responsibility and clear interfaces
+- **Testability**: Components are designed for easy testing with dependency injection
+- **Error Handling**: Comprehensive error system with categorization and helpful messages
+- **Configuration**: Flexible, cascading configuration system with sensible defaults
+- **Extension Points**: Clear patterns for adding new providers and features
 
 ## Extending thinktank
 
@@ -1182,6 +1192,19 @@ If you're having issues with API keys:
 
 [MIT](LICENSE)
 
+## Development Philosophy
+
+thinktank is built with a focus on maintainability, reliability, and performance:
+
+- **Test-Driven Development**: We write tests first to define expected behavior clearly
+- **Type Safety**: We use TypeScript's strict type checking for reliability
+- **Clean Architecture**: Domain-oriented architecture with clear separation of concerns
+- **Pragmatic Simplicity**: We prioritize readability and maintainability
+- **Minimal Abstraction**: We avoid premature abstraction and reassess regularly
+- **Atomic Design**: Components are built from atoms→molecules→organisms→templates→runtime
+
+For more detailed information on our development approach, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -1191,3 +1214,5 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+For detailed contributor guidelines, best practices, and development philosophy, please review [CONTRIBUTING.md](CONTRIBUTING.md).

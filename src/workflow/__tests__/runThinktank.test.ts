@@ -1,7 +1,8 @@
 /**
  * Integration tests for runThinktank.ts
  */
-import { runThinktank, ThinktankError, RunOptions } from '../runThinktank';
+import { runThinktank, RunOptions } from '../runThinktank';
+import { ThinktankError } from '../../core/errors';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
 import * as llmRegistry from '../../core/llmRegistry';
@@ -12,6 +13,18 @@ import * as outputHandler from '../outputHandler';
 import * as nameGenerator from '../../utils/nameGenerator';
 import { LLMProvider, LLMResponse, ModelConfig } from '../../core/types';
 import fs from 'fs/promises';
+
+// Store module paths for restoration
+const fileReaderPath = require.resolve('../../utils/fileReader');
+const configManagerPath = require.resolve('../../core/configManager');
+const llmRegistryPath = require.resolve('../../core/llmRegistry');
+const inputHandlerPath = require.resolve('../inputHandler');
+const modelSelectorPath = require.resolve('../modelSelector');
+const queryExecutorPath = require.resolve('../queryExecutor');
+const outputHandlerPath = require.resolve('../outputHandler');
+const nameGeneratorPath = require.resolve('../../utils/nameGenerator');
+const fsPromisesPath = require.resolve('fs/promises');
+const oraPath = require.resolve('ora');
 
 // Mock dependencies
 jest.mock('../../utils/fileReader');
@@ -58,7 +71,35 @@ class MockProvider implements LLMProvider {
 describe('runThinktank', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+  
+  // Restore all mocked modules after tests
+  afterAll(() => {
+    jest.unmock('../../utils/fileReader');
+    jest.unmock('../../core/configManager');
+    jest.unmock('../../core/llmRegistry');
+    jest.unmock('../inputHandler');
+    jest.unmock('../modelSelector');
+    jest.unmock('../queryExecutor');
+    jest.unmock('../outputHandler');
+    jest.unmock('../../utils/nameGenerator');
+    jest.unmock('fs/promises');
+    jest.unmock('ora');
     
+    // Clear module cache to ensure fresh imports
+    delete require.cache[fileReaderPath];
+    delete require.cache[configManagerPath];
+    delete require.cache[llmRegistryPath];
+    delete require.cache[inputHandlerPath];
+    delete require.cache[modelSelectorPath];
+    delete require.cache[queryExecutorPath];
+    delete require.cache[outputHandlerPath];
+    delete require.cache[nameGeneratorPath];
+    delete require.cache[fsPromisesPath];
+    delete require.cache[oraPath];
+  });
+  
+  beforeEach(() => {
     // Default mock implementations
     (fileReader.readFileContent as jest.Mock).mockResolvedValue('Test prompt');
     

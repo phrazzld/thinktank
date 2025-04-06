@@ -5,16 +5,29 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { LLMProvider, LLMResponse, ModelOptions, LLMAvailableModel, SystemPrompt } from '../core/types';
 import { registerProvider } from '../core/llmRegistry';
+import { ApiError } from '../core/errors';
+import { 
+  createProviderApiKeyMissingError,
+  createProviderRateLimitError,
+  createProviderModelNotFoundError,
+  createProviderTokenLimitError,
+  createProviderContentPolicyError,
+  createProviderNetworkError,
+  createProviderUnknownError,
+  isProviderRateLimitError,
+  isProviderTokenLimitError,
+  isProviderContentPolicyError,
+  isProviderAuthError
+} from '../core/errors/factories/provider';
 
 /**
- * OpenRouter provider error class
+ * OpenRouter provider error class - maintained for backward compatibility
+ * This type alias ensures existing code that checks for OpenRouterProviderError
+ * will continue to work
  */
-export class OpenRouterProviderError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = 'OpenRouterProviderError';
-  }
-}
+export type OpenRouterProviderError = ApiError;
+// Create a constructor alias that returns an ApiError
+export const OpenRouterProviderError = ApiError;
 
 /**
  * Implements the LLMProvider interface for OpenRouter
@@ -45,7 +58,7 @@ export class OpenRouterProvider implements LLMProvider {
    * Gets or initializes the OpenAI client configured for OpenRouter
    * 
    * @returns The OpenAI client instance configured for OpenRouter
-   * @throws {OpenRouterProviderError} If the API key is missing
+   * @throws {ApiError} If the API key is missing
    */
   private getClient(): OpenAI {
     if (this.client) {
@@ -56,7 +69,11 @@ export class OpenRouterProvider implements LLMProvider {
     const apiKey = this.apiKey || process.env.OPENROUTER_API_KEY;
     
     if (!apiKey) {
-      throw new OpenRouterProviderError('OpenRouter API key is missing. Set OPENROUTER_API_KEY environment variable or provide it when creating the provider.');
+      throw createProviderApiKeyMissingError(
+        'openrouter',
+        'OpenRouter',
+        'https://openrouter.ai/keys'
+      );
     }
     
     // Create a new OpenAI client with OpenRouter configuration
@@ -170,17 +187,74 @@ export class OpenRouterProvider implements LLMProvider {
       };
     } catch (error) {
       // Handle specific error cases
+      if (error instanceof ApiError) {
+        throw error; // Re-throw our own errors
+      }
+      
       if (error instanceof Error) {
-        if (error instanceof OpenRouterProviderError) {
-          throw error; // Re-throw our own errors
+        const errorMessage = error.message.toLowerCase();
+        
+        // Handle authentication errors
+        if (isProviderAuthError(errorMessage)) {
+          throw new ApiError(`Authentication failed`, {
+            providerId: 'openrouter',
+            cause: error,
+            suggestions: [
+              'Verify your OpenRouter API key is correct and not expired',
+              'Check that your API key has access to the requested model',
+              'Ensure you have sufficient credits in your OpenRouter account',
+              'Generate a new API key if the current one is not working'
+            ],
+            examples: [
+              'export OPENROUTER_API_KEY=your_new_api_key_here',
+              'const provider = new OpenRouterProvider("your_new_api_key_here")'
+            ]
+          });
         }
         
-        // Handle OpenAI/OpenRouter API errors
-        throw new OpenRouterProviderError(`OpenRouter API error: ${error.message}`, error);
+        // Handle rate limiting errors
+        if (isProviderRateLimitError(errorMessage)) {
+          throw createProviderRateLimitError('openrouter', 'OpenRouter', error);
+        }
+        
+        // Handle model availability errors
+        if (errorMessage.includes('model') && 
+            (errorMessage.includes('not found') || errorMessage.includes('unavailable') || 
+             errorMessage.includes('invalid'))) {
+          // Extract the model ID from the error message if possible
+          let modelId = 'unknown-model';
+          const modelMatch = errorMessage.match(/([a-zA-Z0-9_-]+)/);
+          if (modelMatch && modelMatch[1]) {
+            modelId = modelMatch[1];
+          }
+          throw createProviderModelNotFoundError('openrouter', 'OpenRouter', modelId);
+        }
+        
+        // Handle content filtering/safety errors
+        if (isProviderContentPolicyError(errorMessage)) {
+          throw createProviderContentPolicyError('openrouter', 'OpenRouter', error);
+        }
+        
+        // Handle token/context errors
+        if (isProviderTokenLimitError(errorMessage)) {
+          throw createProviderTokenLimitError('openrouter', 'OpenRouter', error);
+        }
+        
+        // Generic error for unrecognized cases
+        throw new ApiError(`OpenRouter API error: ${error.message}`, {
+          providerId: 'openrouter',
+          cause: error,
+          suggestions: [
+            'Check your network connection',
+            "Verify your prompt follows the model's guidelines",
+            'Ensure the model ID is correctly formatted (provider/model)',
+            'Try with a different model or lower parameter settings'
+          ]
+        });
       }
       
       // Handle unknown errors
-      throw new OpenRouterProviderError('Unknown error occurred while generating text from OpenRouter');
+      throw createProviderUnknownError('openrouter', 'OpenRouter');
     }
   }
 
@@ -222,7 +296,14 @@ export class OpenRouterProvider implements LLMProvider {
       
       // Validate response structure
       if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
-        throw new OpenRouterProviderError('Invalid response format received from OpenRouter list models API');
+        throw new ApiError('Invalid response format received from OpenRouter list models API', {
+          providerId: 'openrouter',
+          suggestions: [
+            'Check if OpenRouter API has changed its response format',
+            'Verify if there was a version update in the OpenRouter API',
+            'Check OpenRouter documentation for any recent changes'
+          ]
+        });
       }
       
       // Map the response to LLMAvailableModel format
@@ -257,13 +338,16 @@ export class OpenRouterProvider implements LLMProvider {
         };
       });
     } catch (error) {
+      if (error instanceof ApiError) {
+        throw error; // Re-throw our own errors
+      }
+      
       // Handle axios errors
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
-        // Use a simpler approach to get error message that's type-safe
-        let message = error.message;
         
         // Extract API error message if available
+        let message = error.message;
         try {
           if (error.response?.data && 
               typeof error.response.data === 'object' && 
@@ -279,19 +363,104 @@ export class OpenRouterProvider implements LLMProvider {
           // If we can't extract the message, just use the original error message
         }
         
-        throw new OpenRouterProviderError(`OpenRouter API error listing models (Status: ${status}): ${message}`, error);
+        // Handle different HTTP status codes specifically
+        switch (status) {
+          case 401:
+            throw new ApiError(`Error listing OpenRouter models: Invalid API key`, {
+              providerId: 'openrouter',
+              cause: error,
+              suggestions: [
+                'Verify your OpenRouter API key is correct',
+                'Ensure your API key has not expired',
+                'Generate a new API key if necessary',
+                'Check that your API key has permission to list models'
+              ],
+              examples: [
+                'export OPENROUTER_API_KEY=your_new_api_key_here',
+                'Get a new key at https://openrouter.ai/keys'
+              ]
+            });
+            
+          case 403:
+            throw new ApiError(`Permission denied (Status: 403)`, {
+              providerId: 'openrouter',
+              cause: error,
+              suggestions: [
+                'Your API key does not have permission to access this resource',
+                'Check if your OpenRouter account has the required access level',
+                'Verify if your account has any restrictions or limitations',
+                'Contact OpenRouter support if you believe this is an error'
+              ]
+            });
+            
+          case 429:
+            throw createProviderRateLimitError('openrouter', 'OpenRouter', error);
+            
+          case 404:
+            throw new ApiError(`Resource not found (Status: 404)`, {
+              providerId: 'openrouter',
+              cause: error,
+              suggestions: [
+                'The endpoint URL might have changed',
+                'Check if the API version in the URL is correct',
+                'Verify that OpenRouter is available in your region'
+              ]
+            });
+            
+          case 500:
+          case 502:
+          case 503:
+          case 504:
+            throw new ApiError(`OpenRouter server error (Status: ${status})`, {
+              providerId: 'openrouter',
+              cause: error,
+              suggestions: [
+                'This is likely a temporary issue with OpenRouter\'s servers',
+                'Wait a few minutes and try again',
+                'Check OpenRouter status page for any reported outages',
+                'Try using a different model or endpoint if available'
+              ]
+            });
+            
+          default:
+            // Generic error for other status codes
+            throw new ApiError(`OpenRouter API error listing models (Status: ${status}): ${message}`, {
+              providerId: 'openrouter',
+              cause: error,
+              suggestions: [
+                'Check your network connection',
+                'Verify your API key is correctly formatted',
+                'Ensure your OpenRouter account is in good standing',
+                'Try again after a few minutes'
+              ]
+            });
+        }
       }
       
       // Handle other errors
       if (error instanceof Error) {
-        if (error instanceof OpenRouterProviderError) {
-          throw error; // Re-throw our own errors
+        // Check for network or connectivity issues
+        const errorMessage = error.message.toLowerCase();
+        
+        if (errorMessage.includes('network') || errorMessage.includes('connect') || 
+            errorMessage.includes('timeout') || errorMessage.includes('enotfound')) {
+          throw createProviderNetworkError('openrouter', 'OpenRouter', error);
         }
-        throw new OpenRouterProviderError(`Error listing OpenRouter models: ${error.message}`, error);
+        
+        // Generic error for other Error types
+        throw new ApiError(`Error listing OpenRouter models: ${error.message}`, {
+          providerId: 'openrouter',
+          cause: error,
+          suggestions: [
+            'Check your environment setup',
+            'Verify that your API key is correctly formatted',
+            'Ensure you have the correct permissions in your OpenRouter account'
+          ]
+        });
       }
       
       // Handle unknown errors
-      throw new OpenRouterProviderError('Unknown error occurred while listing models from OpenRouter');
+      throw createProviderUnknownError('openrouter', 'OpenRouter');
     }
   }
 }
