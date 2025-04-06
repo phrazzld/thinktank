@@ -29,7 +29,7 @@
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.
 
-- [ ] **Implement filesystem stat mock helpers**
+- [x] **Implement filesystem stat mock helpers**
   - **Action:** Add helper functions to mock fs.stat for specific paths with file/directory stats or errors.
   - **Depends On:** Implement core filesystem mock setup.
   - **AC Ref:** AC 2.2, AC 2.3.

@@ -67,6 +67,20 @@ interface ReadFileRule {
 const readFileRules: ReadFileRule[] = [];
 
 /**
+ * Stat rule used by the mockStat function
+ * Defines the behavior when a path matches a specific pattern
+ */
+interface StatRule {
+  /** Pattern to match against paths */
+  pattern: string | RegExp;
+  /** Stats to return or error to throw */
+  result: MockedStats | Error;
+}
+
+/** Registry of path-specific stat rules */
+const statRules: StatRule[] = [];
+
+/**
  * Resets all fs mock functions to their initial state
  * This should be called before each test to prevent test pollution
  */
@@ -84,6 +98,7 @@ export function resetMockFs(): void {
   // Clear all path-specific configurations
   accessRules.length = 0;
   readFileRules.length = 0;
+  statRules.length = 0;
 }
 
 /**
@@ -191,9 +206,35 @@ export function setupMockFs(config?: FsMockConfig): void {
   // Configure fs.writeFile
   mockedFs.writeFile.mockResolvedValue(undefined);
   
-  // Configure fs.stat with a simpler approach to avoid TypeScript issues
-  const stats = createStats(mergedConfig.defaultStats || {});
-  mockedFs.stat.mockResolvedValue(stats);
+  // Configure fs.stat with path-specific behavior support
+  mockedFs.stat.mockImplementation((path) => {
+    // Convert path to string for comparison (it could be URL, Buffer, or FileHandle)
+    const pathStr = String(path);
+    
+    // Check if we have any path-specific rules
+    for (const rule of statRules) {
+      const matches = 
+        (typeof rule.pattern === 'string' && rule.pattern === pathStr) || 
+        (rule.pattern instanceof RegExp && rule.pattern.test(pathStr));
+      
+      if (matches) {
+        // If the rule specifies an error, reject with it
+        if (rule.result instanceof Error) {
+          return Promise.reject(rule.result);
+        }
+        
+        // Otherwise, create and return stats from the provided MockedStats
+        const stats = createStats(rule.result);
+        // Cast to any to avoid TypeScript issues with BigIntStats vs Stats
+        return Promise.resolve(stats as any);
+      }
+    }
+    
+    // Fall back to default behavior if no path-specific rule matched
+    const stats = createStats(mergedConfig.defaultStats || {});
+    // Cast to any to avoid TypeScript issues with BigIntStats vs Stats
+    return Promise.resolve(stats as any);
+  });
   
   // Configure fs.readdir
   mockedFs.readdir.mockResolvedValue([]);
@@ -476,6 +517,37 @@ export const mockReadFile: MockReadFileFunction = (
   readFileRules.unshift({
     pattern: pathPattern,
     content
+  });
+};
+
+/**
+ * Configures fs.stat to return stats or throw an error for specific paths
+ * @param pathPattern - Path or regex pattern to match
+ * @param statsOrError - Stats object to return or Error to throw
+ */
+export const mockStat: MockStatFunction = (
+  pathPattern: string | RegExp,
+  statsOrError: MockedStats | Error
+): void => {
+  // Find and remove any existing rule with the same pattern
+  const existingIndex = statRules.findIndex(
+    rule => 
+      (typeof rule.pattern === 'string' && 
+       typeof pathPattern === 'string' && 
+       rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+       pathPattern instanceof RegExp && 
+       rule.pattern.source === pathPattern.source)
+  );
+  
+  if (existingIndex !== -1) {
+    statRules.splice(existingIndex, 1);
+  }
+  
+  // Add new rule at the beginning for higher precedence
+  statRules.unshift({
+    pattern: pathPattern,
+    result: statsOrError
   });
 };
 
