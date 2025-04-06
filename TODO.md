@@ -44,7 +44,7 @@
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.4 - System must handle binary files appropriately.
 
-- [ ] **Add max file size limit checks**
+- [x] **Add max file size limit checks**
   - **Action:** Implement checks for file size and skip files exceeding limit (with warning).
   - **Depends On:** Create context file reader utility function.
   - **AC Ref:** AC 2.5 - System must implement size limits for individual files.

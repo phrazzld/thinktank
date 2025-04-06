@@ -9,6 +9,12 @@ import { shouldIgnorePath } from './gitignoreUtils';
 import logger from './logger';
 
 /**
+ * Maximum file size allowed for context files (10MB)
+ * Large files can cause memory issues and exceed token limits for LLMs
+ */
+export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+/**
  * Custom error for file reading operations
  */
 export class FileReadError extends Error {
@@ -401,6 +407,23 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
         error: {
           code: 'NOT_FILE',
           message: `Path is not a file: ${filePath}`
+        }
+      };
+    }
+    
+    // Check file size before reading
+    if (stats.size > MAX_FILE_SIZE) {
+      // Calculate sizes in MB for a human-readable message
+      const fileSizeMB = Math.round(stats.size / (1024 * 1024));
+      const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+      
+      logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
+      
+      return {
+        ...result,
+        error: {
+          code: 'FILE_TOO_LARGE',
+          message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
         }
       };
     }
