@@ -8,10 +8,11 @@
   - **AC Ref:** Low-risk issue identified in PLAN.md. Reduces code clutter and maintenance overhead.
   - **Completed:** Removed redundant test files, keeping the more comprehensive and newer *Helper.test.ts versions. Build and tests pass successfully.
 
-- [ ] **Simplify Error Handling Logic**: Make error categorization more maintainable
+- [x] **Simplify Error Handling Logic**: Make error categorization more maintainable
   - **Action:** Refactor the complex error handling in `_handleWorkflowError` by creating or enhancing utility functions for error categorization.
   - **Depends On:** None.
   - **AC Ref:** Medium-risk issue identified in PLAN.md. Could lead to maintenance challenges if not addressed.
+  - **Completed:** Created a new `createContextualError` utility function in `categorization.ts` to centralize error handling, simplified the `_handleWorkflowError` function significantly. Successfully refactored to improve maintainability.
 
 - [ ] **Optimize Spinner Updates**: Reduce terminal flicker
   - **Action:** Implement debouncing or batching for spinner updates to reduce visual flicker and improve user experience.
