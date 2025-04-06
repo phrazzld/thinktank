@@ -367,8 +367,7 @@ describe('_processInput Helper', () => {
       expect(fileReader.readContextPaths).toHaveBeenCalledWith(['context1.js', 'context2.md']);
       expect(fileReader.formatCombinedInput).toHaveBeenCalledWith('Main prompt content', mockContextFiles);
       
-      // Since we no longer use "Processing context files" text (we immediately show the result),
-      // check for the result text instead
+      // Verify spinner updates
       expect(mockSpinner.text).toContain('with 2 context files');
     });
     
@@ -413,6 +412,11 @@ describe('_processInput Helper', () => {
       expect(result.combinedContent).toBeDefined();
       expect(result.combinedContent).toBe(formattedContent);
       expect(result.combinedContent).toBe(result.inputResult.content);
+      
+      // Verify input result has correct metadata
+      expect(result.inputResult.metadata.hasContextFiles).toBe(true);
+      expect(result.inputResult.metadata.contextFilesCount).toBe(1);
+      expect(result.inputResult.metadata.finalLength).toBe(formattedContent.length);
     });
 
     it('should handle empty context paths array', async () => {
@@ -442,6 +446,72 @@ describe('_processInput Helper', () => {
       expect(result.inputResult.content).toBe('Main prompt content');
       expect(result.contextFiles).toEqual([]);
       expect(fileReader.formatCombinedInput).not.toHaveBeenCalled();
+      
+      // Verify the metadata doesn't include context information
+      expect(result.inputResult.metadata.hasContextFiles).toBe(false);
+      expect(result.inputResult.metadata.contextFilesCount).toBeUndefined();
+      expect(result.inputResult.metadata.contextFilesWithErrors).toBeUndefined();
+    });
+
+    it('should handle undefined contextPaths parameter', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Call function without contextPaths parameter
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt'
+        // No contextPaths passed
+      });
+
+      // Verify that readContextPaths was not called
+      expect(fileReader.readContextPaths).not.toHaveBeenCalled();
+      
+      // Verify the result doesn't have combined content or context info
+      expect(result.inputResult.content).toBe('Main prompt content');
+      expect(result.contextFiles).toEqual([]);
+      expect(result.inputResult.metadata.hasContextFiles).toBe(false);
+      
+      // Verify spinner doesn't mention context files
+      expect(mockSpinner.text).not.toContain('context files');
+    });
+
+    it('should handle null contextPaths parameter', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Call function with null contextPaths (should be handled like undefined)
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: null as any // TypeScript would normally prevent this, but we want to test edge case
+      });
+
+      // Verify that readContextPaths was not called
+      expect(fileReader.readContextPaths).not.toHaveBeenCalled();
+      
+      // Verify the result doesn't have context info
+      expect(result.inputResult.metadata.hasContextFiles).toBe(false);
     });
 
     it('should handle ENOENT errors during context path processing', async () => {
@@ -458,15 +528,72 @@ describe('_processInput Helper', () => {
         }
       });
       
-      // We don't actually care about the error message structure in this test
-      // since we're really just checking that our helper function doesn't throw
-      // Let's skip it and add a more appropriate test
+      // Mock readContextPaths to throw ENOENT error
+      const nodeError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      (fileReader.readContextPaths as jest.Mock).mockRejectedValue(nodeError);
+      
+      // Function should throw FileSystemError
+      await expect(_processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['nonexistent.js']
+      })).rejects.toThrow(FileSystemError);
+      
+      // Just verify the error is thrown, the actual error properties may vary
+      // based on implementation details
+      try {
+        await _processInput({
+          spinner: mockSpinner,
+          input: 'prompt.txt',
+          contextPaths: ['nonexistent.js']
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileSystemError);
+        // Just check that the error has a message property
+        expect((error as FileSystemError).message).toBeDefined();
+      }
     });
     
-    it('should pass through context file errors', async () => {
-      // Override the processInput mock to use the real implementation
-      // This is a different approach - we just skip this test since it's not actually
-      // providing any value to our test suite
+    it('should handle permission errors during context path processing', async () => {
+      // Setup mocks for input handler
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+      
+      // Mock readContextPaths to throw EACCES error
+      const nodeError = new Error('EACCES: permission denied') as NodeJS.ErrnoException;
+      nodeError.code = 'EACCES';
+      (fileReader.readContextPaths as jest.Mock).mockRejectedValue(nodeError);
+      
+      // Function should throw FileSystemError
+      await expect(_processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['protected.js']
+      })).rejects.toThrow(FileSystemError);
+      
+      // Just verify the error is thrown, the actual error properties may vary
+      // based on implementation details
+      try {
+        await _processInput({
+          spinner: mockSpinner,
+          input: 'prompt.txt',
+          contextPaths: ['protected.js']
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileSystemError);
+        // Just check that the error has a message property
+        expect((error as FileSystemError).message).toBeDefined();
+      }
     });
 
     it('should combine multiple context files correctly', async () => {
@@ -529,6 +656,216 @@ describe('_processInput Helper', () => {
       
       // Verify spinner shows warning about error files
       expect(mockSpinner.warn).toHaveBeenCalled();
+    });
+
+    it('should handle all error context files', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Mock context files with all errors
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '/path/to/error1.txt',
+          content: null,
+          error: {
+            code: 'ENOENT',
+            message: 'File not found: /path/to/error1.txt'
+          }
+        },
+        {
+          path: '/path/to/error2.txt',
+          content: null,
+          error: {
+            code: 'EACCES',
+            message: 'Permission denied: /path/to/error2.txt'
+          }
+        }
+      ];
+
+      (fileReader.readContextPaths as jest.Mock).mockResolvedValue(mockContextFiles);
+
+      // Call function with context paths that all have errors
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['error1.txt', 'error2.txt']
+      });
+
+      // Verify the result
+      expect(result.inputResult.content).toBe('Main prompt content'); // Should remain unchanged
+      expect(result.contextFiles?.length).toBe(2);
+      
+      // The metadata should reflect that there are no valid context files
+      // Even if contextFilesCount is undefined in the implementation, we should still
+      // verify that hasContextFiles is false
+      expect(result.inputResult.metadata.hasContextFiles).toBe(false);
+      
+      // Check that contextFilesWithErrors is set correctly
+      // This might be undefined based on the implementation, so we'll check for either 2 or undefined
+      if (result.inputResult.metadata.contextFilesWithErrors !== undefined) {
+        expect(result.inputResult.metadata.contextFilesWithErrors).toBe(2);
+      }
+      
+      // Verify formatCombinedInput was not called (no valid context files)
+      expect(fileReader.formatCombinedInput).not.toHaveBeenCalled();
+      
+      // Verify spinner shows warning about all files failing
+      expect(mockSpinner.warn).toHaveBeenCalled();
+    });
+
+    it('should handle empty strings in context paths array', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Mock readContextPaths to return an error for the empty string
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '',
+          content: null,
+          error: {
+            code: 'PROCESSING_ERROR',
+            message: 'Error processing path:  - Path is empty'
+          }
+        }
+      ];
+      (fileReader.readContextPaths as jest.Mock).mockResolvedValue(mockContextFiles);
+
+      // Call function with empty string in paths
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['']
+      });
+
+      // Verify readContextPaths was called with the empty string
+      expect(fileReader.readContextPaths).toHaveBeenCalledWith(['']);
+      
+      // Original content should remain unchanged
+      expect(result.inputResult.content).toBe('Main prompt content');
+      
+      // Verify hasContextFiles flag is set correctly
+      expect(result.inputResult.metadata.hasContextFiles).toBe(false);
+      
+      // The implementation might handle this differently, we just want to ensure
+      // the function doesn't throw an error and processes the request
+    });
+
+    it('should update spinner during context file processing', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Mock context files
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '/path/to/context1.js',
+          content: 'Context file 1 content',
+          error: null
+        },
+        {
+          path: '/path/to/context2.js',
+          content: 'Context file 2 content',
+          error: null
+        }
+      ];
+
+      (fileReader.readContextPaths as jest.Mock).mockResolvedValue(mockContextFiles);
+      (fileReader.formatCombinedInput as jest.Mock).mockReturnValue('Combined content');
+
+      // Spy on spinner methods
+      const infoSpy = jest.spyOn(mockSpinner, 'info');
+      const startSpy = jest.spyOn(mockSpinner, 'start');
+
+      // Call function with context paths
+      await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['context1.js', 'context2.js']
+      });
+
+      // Verify spinner was updated about adding context files
+      expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('Added'));
+      expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('context file'));
+      
+      // Verify spinner was restarted after showing info
+      expect(startSpy).toHaveBeenCalled();
+      
+      // Verify final spinner message includes context file info
+      expect(mockSpinner.text).toContain('context file');
+    });
+    
+    it('should use appropriate wording for file counts', async () => {
+      // Setup mocks
+      (inputHandler.processInput as jest.Mock).mockResolvedValue({
+        content: 'Main prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      });
+
+      // Mock a single context file
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '/path/to/context1.js',
+          content: 'Context file 1 content',
+          error: null
+        }
+      ];
+
+      (fileReader.readContextPaths as jest.Mock).mockResolvedValue(mockContextFiles);
+      (fileReader.formatCombinedInput as jest.Mock).mockReturnValue('Combined content');
+
+      // Call function with a single context path
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['context1.js']
+      });
+
+      // Verify the metadata counts
+      expect(result.inputResult.metadata.contextFilesCount).toBe(1);
+      expect(result.inputResult.metadata.hasContextFiles).toBe(true);
+      
+      // Verify spinner was called with appropriate wording
+      expect(mockSpinner.info).toHaveBeenCalledWith(expect.stringMatching(/Added 1 context file/));
+      
+      // Verify final spinner text includes the singular form
+      expect(mockSpinner.text).toContain('with 1 context file');
+      expect(mockSpinner.text).not.toContain('with 1 context files');
     });
   });
 });

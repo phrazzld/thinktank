@@ -105,17 +105,17 @@
   - **Depends On:** Implement .gitignore-based filtering logic.
   - **AC Ref:** AC 5.3 - Filtering logic has test coverage.
 
-- [ ] **Create tests for binary file detection**
+- [x] **Create tests for binary file detection**
   - **Action:** Write unit tests for binary file detection logic.
   - **Depends On:** Add detection and handling of binary files.
   - **AC Ref:** AC 5.4 - Binary file handling has test coverage.
 
-- [ ] **Create tests for formatCombinedInput**
+- [x] **Create tests for formatCombinedInput**
   - **Action:** Write unit tests for the formatting function with various scenarios.
   - **Depends On:** Create formatCombinedInput function.
   - **AC Ref:** AC 5.5 - Formatting logic has test coverage.
 
-- [ ] **Create tests for _processInput changes**
+- [x] **Create tests for _processInput changes**
   - **Action:** Update or create tests for the modified _processInput helper.
   - **Depends On:** Modify _processInput helper.
   - **AC Ref:** AC 5.6 - Input processing has test coverage.
