@@ -14,6 +14,9 @@ import {
   categorizeError 
 } from '../../core/errors/utils/categorization';
 
+// Store original chalk module path for restoration
+const chalkPath = require.resolve('chalk');
+
 // Mock chalk and figures to test our styling without actually modifying strings
 jest.mock('chalk', () => {
   const mockRed: any = jest.fn((text) => `red(${text})`);
@@ -31,6 +34,14 @@ jest.mock('chalk', () => {
     },
     red: mockRed
   };
+});
+
+// Add cleanup hook to restore chalk after all tests
+afterAll(() => {
+  // Reset module registry for chalk to restore original
+  jest.unmock('chalk');
+  // Clear the module cache to ensure fresh imports
+  delete require.cache[chalkPath];
 });
 
 describe('consoleUtils', () => {
@@ -134,9 +145,21 @@ describe('consoleUtils', () => {
   });
 
   describe('error factory functions', () => {
+    // Store original process.cwd for test cases
+    let originalCwd: typeof process.cwd;
+    
+    // Save original cwd before tests that need to mock it
+    beforeEach(() => {
+      originalCwd = process.cwd;
+    });
+    
+    // Restore original cwd after tests
+    afterEach(() => {
+      process.cwd = originalCwd;
+    });
+    
     test('createFileNotFoundError should generate helpful error with suggestions', () => {
       // Mock process.cwd to return a predictable value
-      const originalCwd = process.cwd;
       process.cwd = jest.fn().mockReturnValue('/home/user/project');
       
       try {
@@ -161,8 +184,7 @@ describe('consoleUtils', () => {
         const suggestions = error.suggestions?.join(' ') || '';
         expect(suggestions).toContain('/home/user/project');
       } finally {
-        // Restore original method
-        process.cwd = originalCwd;
+        // The cleanup is now handled by afterEach, but leaving the finally block for extra safety
       }
     });
     

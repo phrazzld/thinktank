@@ -20,6 +20,17 @@ import * as outputHandlerModule from '../outputHandler';
 import * as modelSelectorModule from '../modelSelector';
 import * as queryExecutorModule from '../queryExecutor';
 
+// Store module paths for restoration
+const fileReaderPath = require.resolve('../../utils/fileReader');
+const configManagerPath = require.resolve('../../core/configManager');
+const llmRegistryPath = require.resolve('../../core/llmRegistry');
+const fsPromisesPath = require.resolve('fs/promises');
+const inputHandlerPath = require.resolve('../inputHandler');
+const modelSelectorPath = require.resolve('../modelSelector');
+const queryExecutorPath = require.resolve('../queryExecutor');
+const outputHandlerPath = require.resolve('../outputHandler');
+const oraPath = require.resolve('ora');
+
 // Mock dependencies
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
@@ -47,6 +58,30 @@ describe('runThinktank Error Handling', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+  
+  // Restore all mocked modules after tests
+  afterAll(() => {
+    jest.unmock('../../utils/fileReader');
+    jest.unmock('../../core/configManager');
+    jest.unmock('../../core/llmRegistry');
+    jest.unmock('fs/promises');
+    jest.unmock('../inputHandler');
+    jest.unmock('../modelSelector');
+    jest.unmock('../queryExecutor');
+    jest.unmock('../outputHandler');
+    jest.unmock('ora');
+    
+    // Clear module cache to ensure fresh imports
+    delete require.cache[fileReaderPath];
+    delete require.cache[configManagerPath];
+    delete require.cache[llmRegistryPath];
+    delete require.cache[fsPromisesPath];
+    delete require.cache[inputHandlerPath];
+    delete require.cache[modelSelectorPath];
+    delete require.cache[queryExecutorPath];
+    delete require.cache[outputHandlerPath];
+    delete require.cache[oraPath];
   });
 
   it('should throw FileSystemError when prompt file cannot be read', async () => {

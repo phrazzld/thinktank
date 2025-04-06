@@ -21,6 +21,9 @@ import {
 import { handleError } from './test-helpers/cli-handlers';
 import { logger } from '../../utils/logger';
 
+// Store logger module path for restoration
+const loggerPath = require.resolve('../../utils/logger');
+
 // Mock the logger to prevent actual console output during tests
 jest.mock('../../utils/logger', () => ({
   logger: {
@@ -45,6 +48,12 @@ describe('CLI Error Handling', () => {
   afterEach(() => {
     // Restore original process.exit
     process.exit = originalExit;
+  });
+  
+  // Restore original logger module after all tests
+  afterAll(() => {
+    jest.unmock('../../utils/logger');
+    delete require.cache[loggerPath];
   });
   
   test('ThinktankError with detailed information should display correctly', () => {

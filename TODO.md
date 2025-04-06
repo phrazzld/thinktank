@@ -44,7 +44,7 @@
   - **AC Ref:** AC 3.2 (Removal of documentation).
 
 ## Test Improvements
-- [ ] **Ensure proper cleanup of mocks in tests**
+- [x] **Ensure proper cleanup of mocks in tests**
   - **Action:** Review all tests that use global mocks (e.g., process.cwd) and ensure they properly restore the original state using finally blocks or afterEach hooks.
   - **Depends On:** None.
   - **AC Ref:** AC 4.1 (Global mocks in tests).

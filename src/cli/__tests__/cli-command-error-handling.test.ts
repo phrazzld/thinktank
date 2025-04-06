@@ -12,7 +12,10 @@ import {
   createModelFormatError
 } from '../../core/errors';
 
-// Mock logger
+// Store logger module path for restoration
+const loggerPath = require.resolve('../../utils/logger');
+
+// Mock logger to prevent actual console output during tests
 jest.mock('../../utils/logger', () => ({
   logger: {
     info: jest.fn(),
@@ -25,6 +28,12 @@ jest.mock('../../utils/logger', () => ({
 describe('CLI Command Error Handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+  
+  // Restore original logger module after all tests
+  afterAll(() => {
+    jest.unmock('../../utils/logger');
+    delete require.cache[loggerPath];
   });
 
   describe('Run Command Errors', () => {
