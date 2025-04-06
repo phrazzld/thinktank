@@ -17,7 +17,7 @@
   - **Depends On:** None
   - **AC Ref:** AC 1.5
 
-- [ ] **Create test migration guide**
+- [x] **Create test migration guide**
   - **Action:** Update `src/__tests__/utils/README.md` with instructions on how to use the new virtualFsUtils instead of mockFsUtils
   - **Depends On:** Create virtualFsUtils.ts utility
   - **AC Ref:** AC 1.6

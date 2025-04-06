@@ -88,4 +88,4 @@ When simulating filesystem errors in tests:
 
 # Test Migration Guide
 
-See the separate [Test Migration Guide](./TEST_MIGRATION.md) for details on moving from the old mockFsUtils approach to the new virtualFsUtils approach.
+See the test utilities README.md file (`src/__tests__/utils/README.md`) for a comprehensive guide on migrating from the old mockFsUtils approach to the new virtualFsUtils approach. It includes step-by-step instructions with code examples for all common filesystem operations.
