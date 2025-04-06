@@ -27,7 +27,7 @@ const runCommand = new Command('run');
 runCommand
   .description('Run a prompt against LLM models')
   .argument('<promptFile>', 'Path to the file containing the main prompt')
-  .argument('[contextPaths...]', 'Optional paths to files or directories to include as context')
+  .argument('[contextPaths...]', 'Optional paths to files or directories to include as context. Can be individual files, directories (which will be recursively traversed), or a mix of both. Directories respect .gitignore patterns.')
   .option('-m, --models <models>', 'Comma-separated list of specific models to use (e.g., openai:gpt-4o,anthropic:claude-3-opus)')
   .option('-g, --group <group>', 'Name of a model group from config to use')
   .option('-o, --output <directory>', 'Directory to save results to')
@@ -58,11 +58,20 @@ runCommand
         const basename = path.basename(promptFile);
         fileError.examples = [
           `thinktank run ${basename}.txt`,
+          `thinktank run ${basename}.txt path/to/context.ts`,
+          `thinktank run ${basename}.txt path/to/context-dir/`,
           `thinktank run ${basename}.txt --group=default`,
-          `thinktank run ${basename}.txt --models=openai:gpt-4o`
+          `thinktank run ${basename}.txt path/to/context.js --models=openai:gpt-4o`
         ];
         
         throw fileError;
+      }
+      
+      // Acknowledge context paths if provided and verbose is enabled
+      if (options.verbose && contextPaths.length > 0) {
+        logger.info(
+          colors.cyan(`Including ${contextPaths.length} context path${contextPaths.length === 1 ? '' : 's'}`)
+        );
       }
       
       // Parse and validate the models string if provided
@@ -200,6 +209,17 @@ runCommand
           logger.info(`Results saved to: ${options.output}`);
         } else {
           logger.info('Results displayed above (no output directory specified)');
+        }
+        
+        // Display information about context paths if they were provided
+        if (contextPaths.length > 0) {
+          logger.info(colors.cyan(`\nContext included: ${contextPaths.length} path${contextPaths.length === 1 ? '' : 's'}`));
+          contextPaths.forEach((contextPath, index) => {
+            // Determine if it's a file or directory based on path
+            const isDirectory = contextPath.endsWith('/') || contextPath.endsWith('\\');
+            const icon = isDirectory ? '📁' : '📄';
+            logger.info(`  ${icon} ${index + 1}. ${colors.yellow(contextPath)}`);
+          });
         }
       }
       

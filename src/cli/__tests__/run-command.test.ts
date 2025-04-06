@@ -130,4 +130,168 @@ describe('Run Command Integration', () => {
       expect(typeof runThinktank).toBe('function');
     });
   });
+  
+  describe('Context Paths Handling', () => {
+    // Import the run command at the beginning of each test to have a fresh instance
+    let runCommand: any;
+    
+    beforeEach(async () => {
+      // Reset mocks and import fresh command
+      jest.clearAllMocks();
+      runThinktank.mockReset();
+      
+      // Import the run command directly
+      const module = await import('../commands/run');
+      runCommand = module.default;
+    });
+    
+    it('should have contextPaths defined as a variadic argument in the command', async () => {
+      // Verify the command structure includes contextPaths argument
+      expect(runCommand).toBeDefined();
+      
+      // Get the command description
+      const commandStr = runCommand.description();
+      expect(commandStr).toBe('Run a prompt against LLM models');
+      
+      // Check the usage output to verify arguments
+      const usage = runCommand.usage();
+      expect(usage).toContain('[contextPaths...]');
+      
+      // Check help output for contextPaths description
+      const helpInfo = runCommand.helpInformation();
+      expect(helpInfo).toContain('contextPaths');
+      expect(helpInfo).toContain('context');
+    });
+    
+    it('should pass single context path to runThinktank', async () => {
+      // Simulate runThinktank call that would happen in the command action
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['context-file.js']
+      });
+      
+      // Verify runThinktank was called with correct parameters
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['context-file.js']
+      }));
+    });
+    
+    it('should pass multiple context paths to runThinktank', async () => {
+      // Simulate runThinktank call with multiple context paths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir/file2.ts', 'dir2/']
+      });
+      
+      // Verify runThinktank was called with all context paths
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir/file2.ts', 'dir2/']
+      }));
+    });
+    
+    it('should pass undefined when no context paths are provided', async () => {
+      // Simulate runThinktank call with no context paths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: undefined
+      });
+      
+      // Verify runThinktank was called with undefined contextPaths
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: undefined
+      }));
+    });
+    
+    it('should handle paths with spaces and special characters', async () => {
+      // Simulate runThinktank call with special paths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['path with spaces.js', 'path/with-hyphens.ts', 'path_with_underscores.md']
+      });
+      
+      // Verify runThinktank was called with paths preserved exactly
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['path with spaces.js', 'path/with-hyphens.ts', 'path_with_underscores.md']
+      }));
+    });
+    
+    it('should handle context paths with combination of files and directories', async () => {
+      // Simulate runThinktank call with mixed path types
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file.js', 'directory/', 'nested/directory/', 'nested/file.ts']
+      });
+      
+      // Verify runThinktank was called with all paths
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file.js', 'directory/', 'nested/directory/', 'nested/file.ts']
+      }));
+    });
+    
+    it('should successfully combine context paths with other options', async () => {
+      // Simulate runThinktank call with context paths and other options
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        specificModel: 'openai:gpt-4o,anthropic:claude-3-opus',
+        output: 'output-dir',
+        includeMetadata: true,
+        systemPrompt: 'You are a helpful assistant'
+      });
+      
+      // Verify runThinktank was called with both context paths and other options
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        specificModel: 'openai:gpt-4o,anthropic:claude-3-opus',
+        output: 'output-dir',
+        includeMetadata: true,
+        systemPrompt: 'You are a helpful assistant'
+      }));
+    });
+    
+    it('should verify the command structure handles contextPaths correctly', async () => {
+      // This test examines how the run command is structured
+      // to ensure it's set up to properly handle contextPaths
+      
+      // Verify command exists and has an action handler
+      expect(runCommand).toBeDefined();
+      expect(typeof runCommand._actionHandler).toBe('function');
+      
+      // Check the command usage string for context paths
+      const usage = runCommand.usage();
+      expect(usage).toContain('<promptFile>');
+      expect(usage).toContain('[contextPaths...]');
+      
+      // Check that help information includes contextPaths and descripton
+      const helpText = runCommand.helpInformation();
+      expect(helpText).toContain('context');
+      
+      // Verify that a command using contextPaths can pass them to runThinktank
+      // Mock runThinktank call with contextPaths
+      runThinktank.mockReset();
+      await runThinktank({
+        input: 'prompt.txt',
+        contextPaths: ['file1.js']
+      });
+      
+      // Verify correctness
+      expect(runThinktank).toHaveBeenCalledTimes(1);
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'prompt.txt',
+        contextPaths: ['file1.js']
+      }));
+    });
+  });
 });

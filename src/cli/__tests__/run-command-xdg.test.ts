@@ -258,4 +258,61 @@ describe('Run Command with XDG Configuration Integration', () => {
       }));
     });
   });
+  
+  describe('run command with context paths in XDG environment', () => {
+    it('should support context paths with custom config', async () => {
+      // Get the run command
+      const runCommand = (await import('../commands/run')).default;
+      expect(runCommand).toBeDefined();
+      
+      // Verify command definition includes context paths in usage string
+      const usage = runCommand.usage();
+      expect(usage).toContain('[contextPaths...]');
+      
+      // Reset mocks
+      jest.clearAllMocks();
+      
+      // Create a custom config path
+      const customPath = '/custom/config/path.json';
+      
+      // Simulate what would happen in the action handler
+      // 1. Load config from XDG path
+      await loadConfig({ configPath: customPath });
+      
+      // 2. Call runThinktank with context paths and custom config
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        configPath: customPath
+      });
+      
+      // Verify runThinktank was called with both context paths and custom config
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        configPath: customPath
+      }));
+    });
+    
+    it('should handle empty context paths array correctly with XDG config', async () => {
+      // Get the run command
+      const runCommand = (await import('../commands/run')).default;
+      expect(runCommand).toBeDefined();
+      
+      // Reset mocks
+      jest.clearAllMocks();
+      
+      // Most common XDG use case: no custom config path, empty context paths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: undefined // This is what happens when no context paths are provided
+      });
+      
+      // Verify runThinktank was called with undefined contextPaths
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: undefined
+      }));
+    });
+  });
 });

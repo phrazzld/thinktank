@@ -66,6 +66,9 @@ thinktank run prompt.txt --model openai:gpt-4o
 # Send a prompt to multiple specific models
 thinktank run prompt.txt --models openai:gpt-4o,anthropic:claude-3-opus
 
+# Include context files or directories with your prompt
+thinktank run prompt.txt context-file.js another-file.md path/to/directory/
+
 # List all available models
 thinktank models list
 
@@ -88,6 +91,41 @@ Send your prompt to all enabled models in the default group:
 ```bash
 thinktank run path/to/prompt.txt
 ```
+
+#### Including Context Files and Directories
+
+You can include additional files or directories as context for the prompt:
+
+```bash
+# Include a single file as context
+thinktank run prompt.txt path/to/context-file.js
+
+# Include multiple files as context
+thinktank run prompt.txt file1.js file2.md file3.txt
+
+# Include a directory (recursively reads all files in the directory)
+thinktank run prompt.txt path/to/directory/
+
+# Include a mix of files and directories
+thinktank run prompt.txt file1.js path/to/directory/ file2.md
+
+# Combine with other options
+thinktank run prompt.txt file1.js directory/ --models openai:gpt-4o --verbose
+```
+
+When directories are provided, thinktank will:
+- Recursively traverse the directory
+- Respect `.gitignore` patterns to skip ignored files
+- Skip binary files automatically
+- Apply size limits to prevent overwhelming the LLM
+
+This feature is particularly useful for:
+- Analyzing code with relevant files as context
+- Providing reference materials for complex queries
+- Including configuration files along with your prompt
+- Giving the LLM comprehensive background information
+
+For details on how context files are formatted and presented to LLMs, see [CONTEXT-FORMATTING.md](CONTEXT-FORMATTING.md).
 
 #### Running with a Specific Group
 

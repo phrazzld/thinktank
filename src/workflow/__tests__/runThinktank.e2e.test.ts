@@ -252,6 +252,42 @@ describe('runThinktank End-to-End Tests', () => {
     }, 100);
   });
   
+  /**
+   * Helper function to create a test context file with specified content
+   * @param dir - Directory to create the file in
+   * @param filename - Name of the file
+   * @param content - Content to write to the file
+   * @returns Path to the created file
+   */
+  async function createTestContextFile(dir: string, filename: string, content: string): Promise<string> {
+    const filePath = path.join(dir, filename);
+    await fs.writeFile(filePath, content);
+    return filePath;
+  }
+  
+  /**
+   * Helper function to create a test directory with multiple files
+   * @param parentDir - Parent directory to create the test directory in
+   * @param dirName - Name of the directory to create
+   * @param files - Map of filenames to content
+   * @returns Path to the created directory
+   */
+  async function createTestContextDirectory(
+    parentDir: string, 
+    dirName: string,
+    files: Record<string, string>
+  ): Promise<string> {
+    const dirPath = path.join(parentDir, dirName);
+    await fs.mkdir(dirPath, { recursive: true });
+    
+    // Create all files in the directory
+    for (const [filename, content] of Object.entries(files)) {
+      await createTestContextFile(dirPath, filename, content);
+    }
+    
+    return dirPath;
+  }
+  
   it('should process a prompt file and generate output files', async () => {
     // Define options with our test configuration
     const options: RunOptions = {
@@ -448,5 +484,336 @@ describe('runThinktank End-to-End Tests', () => {
     // Verify the result contains an error message
     expect(result).toContain('Error');
     expect(result).toContain('API connection failed');
+  });
+  
+  /**
+   * Integration tests for context paths
+   */
+  describe('Context Path Integration Tests', () => {
+    // Variables for context files and directories
+    let testContextFile: string;
+    let testMultipleFiles: string[];
+    let testContextDir: string;
+    let nonExistentPath: string;
+    let fileWithSpace: string;
+    let contextOutputDir: string;
+    
+    // Setup context test files and directories before all tests
+    beforeAll(async () => {
+      // Create a separate output directory for context tests
+      contextOutputDir = path.join(tempDir, 'context-output');
+      await fs.mkdir(contextOutputDir, { recursive: true });
+      
+      // Create a context file
+      testContextFile = await createTestContextFile(
+        tempDir, 
+        'context-file.js', 
+        'function add(a, b) {\n  return a + b;\n}\n\nmodule.exports = { add };'
+      );
+      
+      // Create multiple context files
+      testMultipleFiles = await Promise.all([
+        createTestContextFile(
+          tempDir,
+          'utils.ts',
+          'export function multiply(a: number, b: number): number {\n  return a * b;\n}'
+        ),
+        createTestContextFile(
+          tempDir,
+          'config.json',
+          '{\n  "maxItems": 100,\n  "debug": true\n}'
+        )
+      ]);
+      
+      // Create a context directory with multiple files
+      testContextDir = await createTestContextDirectory(
+        tempDir,
+        'context-dir',
+        {
+          'index.js': 'const utils = require("./utils");\nconsole.log(utils.sum(5, 10));',
+          'utils.js': 'function sum(a, b) {\n  return a + b;\n}\n\nmodule.exports = { sum };',
+          'README.md': '# Test Context Directory\n\nThis directory contains test files for context.'
+        }
+      );
+      
+      // Create a file with space in name
+      fileWithSpace = await createTestContextFile(
+        tempDir,
+        'file with spaces.txt',
+        'This is a test file with spaces in its name.'
+      );
+      
+      // Set path to a non-existent file
+      nonExistentPath = path.join(tempDir, 'non-existent-file.txt');
+    });
+    
+    // Configure mock response to include context in the response for verification
+    beforeEach(() => {
+      // Reset the mock function
+      MockProvider.generate.mockReset();
+      
+      // Mock the LLM provider to reflect the context in its output
+      MockProvider.generate.mockImplementation(async (prompt: string) => {
+        // Extract relevant parts of the context to include in mock response
+        const hasContext = prompt.includes('# CONTEXT DOCUMENTS');
+        const contextFiles = prompt.match(/## File: .*?(?=\s*^#|\s*$)/gms) || [];
+        
+        let contextSummary = '';
+        if (hasContext && contextFiles.length > 0) {
+          contextSummary = `\n\nBased on ${contextFiles.length} context file(s):\n`;
+          contextFiles.forEach((fileSection) => {
+            const fileMatch = fileSection.match(/## File: (.*?)$/m);
+            if (fileMatch && fileMatch[1]) {
+              contextSummary += `- ${path.basename(fileMatch[1])}\n`;
+            }
+          });
+        }
+        
+        return {
+          provider: 'mock',
+          modelId: 'mock-model',
+          text: `This is a mock response to your prompt${contextSummary}`,
+          metadata: {
+            usage: { total_tokens: hasContext ? 20 : 10 },
+            model: 'mock-model',
+            id: 'mock-response-id',
+          }
+        };
+      });
+    });
+    
+    it('should process a single context file and include it in the prompt', async () => {
+      // Define options with a single context file
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [testContextFile],
+        configPath: configPath,
+        output: contextOutputDir,
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Run thinktank with the context file
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context
+      expect(result).toContain('context-file.js');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(contextOutputDir);
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes context file reference
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      expect(fileContent).toContain('context-file.js');
+    });
+    
+    it('should process multiple context files and include them in the prompt', async () => {
+      // Define options with multiple context files
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: testMultipleFiles,
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'multi-file'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'multi-file'), { recursive: true });
+      
+      // Run thinktank with multiple context files
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'multi-file'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes context file references
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      expect(fileContent).toContain('utils.ts');
+      expect(fileContent).toContain('config.json');
+    });
+    
+    it('should process a directory as context and include its files in the prompt', async () => {
+      // Define options with a directory as context
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [testContextDir],
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'directory'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'directory'), { recursive: true });
+      
+      // Run thinktank with directory context
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'directory'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes context file references
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      expect(fileContent).toContain('index.js');
+      expect(fileContent).toContain('utils.js');
+      expect(fileContent).toContain('README.md');
+    });
+    
+    it('should process mixed context paths (files and directories)', async () => {
+      // Define options with mixed context paths
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [testContextFile, testContextDir],
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'mixed'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'mixed'), { recursive: true });
+      
+      // Run thinktank with mixed context paths
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'mixed'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes context file references
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      // Should include both standalone file and directory files
+      expect(fileContent).toContain('context-file.js');
+      expect(fileContent).toContain('index.js');
+    });
+    
+    it('should handle files with spaces in their names', async () => {
+      // Define options with a file that has spaces in its name
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [fileWithSpace],
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'spaces'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'spaces'), { recursive: true });
+      
+      // Run thinktank with file that has spaces in name
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'spaces'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes context file reference
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      expect(fileContent).toContain('file with spaces.txt');
+    });
+    
+    it('should continue with original prompt when context paths are invalid', async () => {
+      // Define options with a non-existent path
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [nonExistentPath],
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'invalid'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'invalid'), { recursive: true });
+      
+      // Run thinktank with invalid context path
+      const result = await runThinktank(options);
+      
+      // Verify the result doesn't mention context (should continue with original prompt)
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'invalid'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it doesn't include context file references
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).not.toContain('context file');
+    });
+    
+    it('should handle a mix of valid and invalid context paths', async () => {
+      // Define options with a mix of valid and invalid paths
+      const options: RunOptions = {
+        input: promptPath,
+        contextPaths: [testContextFile, nonExistentPath],
+        configPath: configPath,
+        output: path.join(contextOutputDir, 'mixed-valid-invalid'),
+        includeMetadata: false,
+        useColors: false
+      };
+      
+      // Create output subdirectory
+      await fs.mkdir(path.join(contextOutputDir, 'mixed-valid-invalid'), { recursive: true });
+      
+      // Run thinktank with mixed valid/invalid paths
+      const result = await runThinktank(options);
+      
+      // Verify the result mentions context (from valid path)
+      expect(result).toContain('mock-model');
+      
+      // Get output files and check content
+      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'mixed-valid-invalid'));
+      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      
+      // Check we have at least one output file
+      expect(mockFiles.length).toBeGreaterThan(0);
+      
+      // Read the file content and verify it includes valid context file references
+      const fileContent = await fs.readFile(mockFiles[0], 'utf-8');
+      expect(fileContent).toContain('context file');
+      expect(fileContent).toContain('context-file.js');
+      // Should not include invalid path
+      expect(fileContent).not.toContain('non-existent-file.txt');
+    });
   });
 });
