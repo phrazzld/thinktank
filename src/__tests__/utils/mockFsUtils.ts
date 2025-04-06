@@ -53,6 +53,20 @@ interface AccessRule {
 const accessRules: AccessRule[] = [];
 
 /**
+ * Read rule used by the mockReadFile function
+ * Defines the behavior when a path matches a specific pattern
+ */
+interface ReadFileRule {
+  /** Pattern to match against paths */
+  pattern: string | RegExp;
+  /** Content to return or error to throw */
+  content: string | Buffer | Error;
+}
+
+/** Registry of path-specific read file rules */
+const readFileRules: ReadFileRule[] = [];
+
+/**
  * Resets all fs mock functions to their initial state
  * This should be called before each test to prevent test pollution
  */
@@ -69,6 +83,7 @@ export function resetMockFs(): void {
   
   // Clear all path-specific configurations
   accessRules.length = 0;
+  readFileRules.length = 0;
 }
 
 /**
@@ -121,15 +136,56 @@ export function setupMockFs(config?: FsMockConfig): void {
     }
   });
   
-  // Configure fs.readFile
-  mockedFs.readFile.mockImplementation((path) => {
-    // If path is a FileHandle, we won't try to match it
+  // Configure fs.readFile with path-specific behavior support
+  mockedFs.readFile.mockImplementation((path, options?) => {
+    // Convert path to string for comparison (it could be URL, Buffer, or FileHandle)
+    // If path is a FileHandle, we won't try to match it with our rules
     if (typeof path !== 'string' && !(path instanceof Buffer) && !('href' in path)) {
       return Promise.resolve(mergedConfig.defaultFileContent as any);
     }
     
-    // Default behavior - return the configured content
-    return Promise.resolve(mergedConfig.defaultFileContent as any);
+    const pathStr = String(path);
+    
+    // Check if we have any path-specific rules
+    for (const rule of readFileRules) {
+      const matches = 
+        (typeof rule.pattern === 'string' && rule.pattern === pathStr) || 
+        (rule.pattern instanceof RegExp && rule.pattern.test(pathStr));
+      
+      if (matches) {
+        // If the rule specifies an error, reject with it
+        if (rule.content instanceof Error) {
+          return Promise.reject(rule.content);
+        }
+        
+        const content = rule.content;
+        
+        // Handle encoding option for string content
+        if (typeof content === 'string') {
+          // If no encoding is specified, return a Buffer
+          if (!options || (typeof options === 'object' && !options.encoding)) {
+            return Promise.resolve(Buffer.from(content));
+          }
+          // Otherwise return the string directly
+          return Promise.resolve(content);
+        }
+        
+        // For Buffer content, return it directly
+        return Promise.resolve(content);
+      }
+    }
+    
+    // Fall back to default behavior if no path-specific rule matched
+    const defaultContent = mergedConfig.defaultFileContent || '';
+    
+    // Handle encoding option for default content
+    if (typeof defaultContent === 'string') {
+      if (!options || (typeof options === 'object' && !options.encoding)) {
+        return Promise.resolve(Buffer.from(defaultContent));
+      }
+    }
+    
+    return Promise.resolve(defaultContent as any);
   });
   
   // Configure fs.writeFile
@@ -282,7 +338,7 @@ export interface MockReadFileFunction {
    * @param pathPattern - Path or regex pattern to match
    * @param content - Content to return or Error to throw
    */
-  (pathPattern: string | RegExp, content: string | Error): void;
+  (pathPattern: string | RegExp, content: string | Error | Buffer): void;
 }
 
 /**
@@ -389,6 +445,37 @@ export const mockAccess: MockAccessFunction = (
     allowed,
     errorCode: options?.errorCode,
     errorMessage: options?.errorMessage
+  });
+};
+
+/**
+ * Configures fs.readFile to return content or throw an error for specific paths
+ * @param pathPattern - Path or regex pattern to match
+ * @param content - Content to return or Error to throw
+ */
+export const mockReadFile: MockReadFileFunction = (
+  pathPattern: string | RegExp,
+  content: string | Buffer | Error
+): void => {
+  // Find and remove any existing rule with the same pattern
+  const existingIndex = readFileRules.findIndex(
+    rule => 
+      (typeof rule.pattern === 'string' && 
+       typeof pathPattern === 'string' && 
+       rule.pattern === pathPattern) ||
+      (rule.pattern instanceof RegExp && 
+       pathPattern instanceof RegExp && 
+       rule.pattern.source === pathPattern.source)
+  );
+  
+  if (existingIndex !== -1) {
+    readFileRules.splice(existingIndex, 1);
+  }
+  
+  // Add new rule at the beginning for higher precedence
+  readFileRules.unshift({
+    pattern: pathPattern,
+    content
   });
 };
 

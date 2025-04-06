@@ -9,7 +9,9 @@ import {
   setupMockFs, 
   resetMockFs, 
   FsMockConfig,
-  mockAccess
+  mockAccess,
+  mockReadFile,
+  createFsError
 } from '../mockFsUtils';
 
 // We don't mock fs/promises here because mockFsUtils already does that
@@ -206,6 +208,109 @@ describe('mockFsUtils core functions', () => {
       // The more specific path should take precedence
       await expect(mockedFs.access('/multi/regular')).rejects.toHaveProperty('code');
       await expect(mockedFs.access('/multi/special')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('mockReadFile', () => {
+    beforeEach(() => {
+      resetMockFs();
+      setupMockFs(); // Start with default configuration
+    });
+
+    it('should return specific content for exact path matches', async () => {
+      // Configure specific file to return custom content
+      mockReadFile('/path/to/file.txt', 'Custom file content');
+      
+      // The configured file should return the specified content
+      await expect(mockedFs.readFile('/path/to/file.txt', 'utf-8')).resolves.toBe('Custom file content');
+    });
+
+    it('should support pattern matching with regular expressions', async () => {
+      // Configure all JSON files to return a specific JSON content
+      mockReadFile(/\.json$/, '{"test": true}');
+      
+      // All paths matching the pattern should return the specified content
+      await expect(mockedFs.readFile('/path/to/config.json', 'utf-8')).resolves.toBe('{"test": true}');
+      await expect(mockedFs.readFile('/another/file.json', 'utf-8')).resolves.toBe('{"test": true}');
+    });
+
+    it('should reject with specific errors when configured', async () => {
+      // Configure specific file to throw an error
+      const error = createFsError('EBUSY', 'File is locked', 'readFile', '/locked/file.txt');
+      mockReadFile('/locked/file.txt', error);
+      
+      // Reading the file should reject with the specified error
+      await expect(mockedFs.readFile('/locked/file.txt', 'utf-8')).rejects.toMatchObject({
+        message: expect.stringContaining('File is locked'),
+        code: 'EBUSY'
+      });
+    });
+
+    it('should support pattern matching for error cases', async () => {
+      // Configure all files in a specific directory to throw permission errors
+      const error = createFsError('EACCES', 'Permission denied', 'readFile', '/secure/path');
+      mockReadFile(/^\/secure\/.*$/, error);
+      
+      // Reading any file in the directory should reject with the specified error
+      await expect(mockedFs.readFile('/secure/file1.txt', 'utf-8')).rejects.toMatchObject({
+        code: 'EACCES'
+      });
+      await expect(mockedFs.readFile('/secure/nested/file2.txt', 'utf-8')).rejects.toMatchObject({
+        code: 'EACCES'
+      });
+    });
+
+    it('should fall back to default behavior for non-matching paths', async () => {
+      // Setup specific file with content
+      mockReadFile('/specific/file.txt', 'Specific content');
+      
+      // Setup default content
+      setupMockFs({ defaultFileContent: 'Default content' });
+      
+      // The specific file should return its configured content
+      await expect(mockedFs.readFile('/specific/file.txt', 'utf-8')).resolves.toBe('Specific content');
+      
+      // Other files should return the default content
+      await expect(mockedFs.readFile('/other/file.txt', 'utf-8')).resolves.toBe('Default content');
+    });
+
+    it('should support Buffer return values', async () => {
+      // Configure a binary file to return a string that will be treated as Buffer
+      mockReadFile('/binary/file.bin', 'binary-content');
+      
+      // The file should return a Buffer when no encoding is specified
+      const result = await mockedFs.readFile('/binary/file.bin');
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result.toString()).toBe('binary-content');
+    });
+
+    it('should allow overriding previously configured behavior', async () => {
+      // Initially configure a file with content
+      mockReadFile('/config/file.json', '{"version": 1}');
+      await expect(mockedFs.readFile('/config/file.json', 'utf-8')).resolves.toBe('{"version": 1}');
+      
+      // Then override with new content
+      mockReadFile('/config/file.json', '{"version": 2}');
+      await expect(mockedFs.readFile('/config/file.json', 'utf-8')).resolves.toBe('{"version": 2}');
+      
+      // Then override with an error
+      const error = createFsError('ENOENT', 'File not found', 'readFile', '/config/file.json');
+      mockReadFile('/config/file.json', error);
+      await expect(mockedFs.readFile('/config/file.json', 'utf-8')).rejects.toHaveProperty('code', 'ENOENT');
+    });
+
+    it('should handle the encoding option correctly', async () => {
+      // Configure a file with content
+      mockReadFile('/test/file.txt', 'File content');
+      
+      // Test with different encoding options
+      await expect(mockedFs.readFile('/test/file.txt', 'utf-8')).resolves.toBe('File content');
+      await expect(mockedFs.readFile('/test/file.txt', { encoding: 'utf-8' })).resolves.toBe('File content');
+      
+      // Without encoding, it should return a Buffer
+      const result = await mockedFs.readFile('/test/file.txt');
+      expect(Buffer.isBuffer(result)).toBe(true);
+      expect(result.toString()).toBe('File content');
     });
   });
 });
