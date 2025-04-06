@@ -1,10 +1,14 @@
 /**
  * Comprehensive tests for binary file detection functionality
  */
-import fs from 'fs/promises';
-import { Stats } from 'fs';
 import { isBinaryFile } from '../fileReader';
 import { logger } from '../logger';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockAccess, 
+  mockStat 
+} from '../../__tests__/utils/mockFsUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
@@ -18,22 +22,28 @@ jest.mock('../logger', () => ({
   }
 }));
 
-// Access mocked functions
-const mockedFs = jest.mocked(fs);
-
 describe('Binary file detection', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset mocks before each test
+    resetMockFs();
+    setupMockFs();
     
     // Mock file system access
-    mockedFs.access.mockResolvedValue(undefined);
+    mockAccess('test-file.txt', true);
+    mockAccess('test-file.bin', true);
     
     // Mock file stats
-    mockedFs.stat.mockResolvedValue({
+    mockStat('test-file.txt', {
       isFile: () => true,
       isDirectory: () => false,
       size: 1024
-    } as Stats);
+    });
+    
+    mockStat('test-file.bin', {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
+    });
     
     // We already mocked the logger in the jest.mock call
   });
@@ -98,11 +108,11 @@ describe('Binary file detection', () => {
     });
     
     it('should handle null/undefined content as non-binary', async () => {
-      // @ts-ignore: Testing behavior with invalid input
+      // @ts-expect-error: Testing behavior with invalid input
       const result = isBinaryFile(null);
       expect(result).toBe(false);
       
-      // @ts-ignore: Testing behavior with invalid input
+      // @ts-expect-error: Testing behavior with invalid input
       const result2 = isBinaryFile(undefined);
       expect(result2).toBe(false);
     });
@@ -210,7 +220,7 @@ describe('Binary file detection', () => {
     it('should identify binary files correctly', async () => {
       // Create a utility function for testing based on direct calls to isBinaryFile
       // This tests the behavior without having to mock the complex file system operations
-      const checkBinaryDetection = (content: string, shouldBeBinary: boolean) => {
+      const checkBinaryDetection = (content: string, shouldBeBinary: boolean): void => {
         // Check if isBinaryFile correctly identifies the content
         const isBinary = isBinaryFile(content);
         expect(isBinary).toBe(shouldBeBinary);

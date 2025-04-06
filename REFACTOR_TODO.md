@@ -78,7 +78,7 @@
   - **Depends On:** Implement filesystem access mock helpers, Implement filesystem readFile mock helpers, Implement filesystem stat mock helpers, Implement filesystem mkdir mock helpers, Implement filesystem writeFile mock helpers.
   - **AC Ref:** AC 4.1, AC 4.2.
 
-- [ ] **Refactor binaryFileDetection.test.ts**
+- [x] **Refactor binaryFileDetection.test.ts**
   - **Action:** Replace direct fs mocks with calls to the new utility functions in `mockFsUtils.ts`.
   - **Depends On:** Implement filesystem access mock helpers, Implement filesystem stat mock helpers.
   - **AC Ref:** AC 4.1, AC 4.2.
