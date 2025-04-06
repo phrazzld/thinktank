@@ -118,7 +118,7 @@
   - **Depends On:** Implement filesystem readFile mock helpers, Implement shouldIgnorePath mock helper, Implement createIgnoreFilter mock helper.
   - **AC Ref:** AC 4.1, AC 4.2.
 
-- [ ] **Refactor gitignoreFilteringIntegration.test.ts**
+- [x] **Refactor gitignoreFilteringIntegration.test.ts**
   - **Action:** Replace direct fs and gitignore mocks with calls to the new utility functions.
   - **Depends On:** Implement filesystem readFile mock helpers, Implement shouldIgnorePath mock helper, Implement createIgnoreFilter mock helper.
   - **AC Ref:** AC 4.1, AC 4.2.
@@ -139,25 +139,3 @@
   - **Action:** Add documentation for the new test utilities in relevant README files or comments within the utility files.
   - **Depends On:** Run test suite to verify refactoring.
   - **AC Ref:** AC 5.2.
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Assumption: Location of test utilities**
-  - **Context:** Plan suggests `src/__tests__/utils/` but also mentions this is subject to verification ("Utility File Location: Confirm the best location (`src/__tests__/utils/` vs. a top-level `tests/utils/`)").
-  - Assuming `src/__tests__/utils/` as the standard location for now.
-
-- [ ] **Issue: Duplicate test file names**
-  - **Context:** Plan mentions both `src/utils/__tests__/gitignoreFilterIntegration.test.ts` and `src/utils/__tests__/gitignoreFilteringIntegration.test.ts`.
-  - Need to verify which file(s) actually exist and need refactoring.
-
-- [ ] **Assumption: Scope of mocking**
-  - **Context:** Plan raises questions about whether to include mocks for `os` or `logger` modules.
-  - Assuming these will be deferred for now as per the recommendation in the plan.
-
-- [ ] **Assumption: Mock reset strategy**
-  - **Context:** Plan notes the need to ensure mocks are consistently reset between tests.
-  - Assuming we'll implement explicit reset functions (`resetMockFs()`, `resetMockGitignore()`) for now.
-
-- [ ] **Assumption: Complex mock implementations**
-  - **Context:** Plan notes that some tests have complex mocks that return different values based on input paths.
-  - Assuming the utility functions will support this complexity by allowing tests to override default behavior.

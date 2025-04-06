@@ -1,76 +1,77 @@
 /**
  * Integration tests for gitignore filtering within directory traversal
  */
-import fs from 'fs/promises';
 import path from 'path';
-import { Stats } from 'fs';
 import { readDirectoryContents } from '../fileReader';
-import * as gitignoreUtils from '../gitignoreUtils';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockStat, 
+  mockReaddir,
+  mockReadFile,
+  mockAccess
+} from '../../__tests__/utils/mockFsUtils';
+import {
+  resetMockGitignore,
+  setupMockGitignore,
+  mockedGitignoreUtils
+} from '../../__tests__/utils/mockGitignoreUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
 jest.mock('../gitignoreUtils');
 
-// Access mocked functions
-const mockedFs = jest.mocked(fs);
-const mockedGitignoreUtils = jest.mocked(gitignoreUtils);
-
 describe('Gitignore Filtering Integration', () => {
   const testDirPath = '/path/to/test/directory';
   
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Reset and setup mocks
+    resetMockFs();
+    setupMockFs();
+    resetMockGitignore();
+    setupMockGitignore();
   });
   
   it('should filter files based on gitignore patterns', async () => {
     // Set up mock file system
-    mockedFs.access.mockResolvedValue(undefined);
+    mockAccess(testDirPath, true);
+    mockAccess(path.join(testDirPath, 'file1.txt'), true);
+    mockAccess(path.join(testDirPath, 'file2.md'), true);
+    mockAccess(path.join(testDirPath, 'ignored.log'), true);
+    mockAccess(path.join(testDirPath, '.gitignore'), true);
     
     // Set up mock directory structure
-    mockedFs.readdir.mockImplementation(async (dirPath) => {
-      const pathStr = String(dirPath);
-      
-      if (pathStr === testDirPath) {
-        return [
-          'file1.txt',
-          'file2.md',
-          'ignored.log',
-          '.gitignore'
-        ] as any;
-      }
-      
-      return [] as any;
-    });
+    mockReaddir(testDirPath, [
+      'file1.txt',
+      'file2.md',
+      'ignored.log',
+      '.gitignore'
+    ]);
     
     // Set up stat mock for files
-    mockedFs.stat.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr === testDirPath) {
-        return {
-          isFile: () => false,
-          isDirectory: () => true,
-          size: 4096
-        } as Stats;
-      }
-      
-      return {
-        isFile: () => true,
-        isDirectory: () => false,
-        size: 1024
-      } as Stats;
-    });
+    const dirStats = {
+      isFile: () => false,
+      isDirectory: () => true,
+      size: 4096
+    };
+    
+    const fileStats = {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
+    };
+    
+    mockStat(testDirPath, dirStats);
+    mockStat(path.join(testDirPath, 'file1.txt'), fileStats);
+    mockStat(path.join(testDirPath, 'file2.md'), fileStats);
+    mockStat(path.join(testDirPath, 'ignored.log'), fileStats);
+    mockStat(path.join(testDirPath, '.gitignore'), fileStats);
     
     // Set up file read mock
-    mockedFs.readFile.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr.endsWith('.gitignore')) {
-        return '*.log';
-      }
-      
-      return `Content of ${path.basename(filePathStr)}`;
-    });
+    mockReadFile(path.join(testDirPath, '.gitignore'), '*.log');
+    mockReadFile(path.join(testDirPath, 'file1.txt'), `Content of file1.txt`);
+    mockReadFile(path.join(testDirPath, 'file2.md'), `Content of file2.md`);
+    mockReadFile(path.join(testDirPath, 'ignored.log'), `Content of ignored.log`);
     
     // Set up gitignore filtering mock
     mockedGitignoreUtils.shouldIgnorePath.mockImplementation(async (_basePath, filePath) => {
@@ -98,58 +99,55 @@ describe('Gitignore Filtering Integration', () => {
   });
   
   it('should handle nested .gitignore files with different patterns', async () => {
+    // Set up mock access permissions
+    mockAccess(testDirPath, true);
+    mockAccess(path.join(testDirPath, 'file1.txt'), true);
+    mockAccess(path.join(testDirPath, 'subdir'), true);
+    mockAccess(path.join(testDirPath, '.gitignore'), true);
+    mockAccess(path.join(testDirPath, 'subdir/subfile.txt'), true);
+    mockAccess(path.join(testDirPath, 'subdir/ignored.spec.js'), true);
+    mockAccess(path.join(testDirPath, 'subdir/.gitignore'), true);
+    
     // Set up mock directory structure
-    mockedFs.readdir.mockImplementation(async (dirPath) => {
-      const pathStr = String(dirPath);
-      
-      if (pathStr === testDirPath) {
-        return [
-          'file1.txt',
-          'subdir',
-          '.gitignore'
-        ] as any;
-      } else if (pathStr === path.join(testDirPath, 'subdir')) {
-        return [
-          'subfile.txt',
-          'ignored.spec.js',
-          '.gitignore'
-        ] as any;
-      }
-      
-      return [] as any;
-    });
+    mockReaddir(testDirPath, [
+      'file1.txt',
+      'subdir',
+      '.gitignore'
+    ]);
+    
+    mockReaddir(path.join(testDirPath, 'subdir'), [
+      'subfile.txt',
+      'ignored.spec.js',
+      '.gitignore'
+    ]);
     
     // Set up stat mock for files and directories
-    mockedFs.stat.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr === testDirPath || filePathStr.endsWith('/subdir')) {
-        return {
-          isFile: () => false,
-          isDirectory: () => true,
-          size: 4096
-        } as Stats;
-      }
-      
-      return {
-        isFile: () => true,
-        isDirectory: () => false,
-        size: 1024
-      } as Stats;
-    });
+    const dirStats = {
+      isFile: () => false,
+      isDirectory: () => true,
+      size: 4096
+    };
+    
+    const fileStats = {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
+    };
+    
+    mockStat(testDirPath, dirStats);
+    mockStat(path.join(testDirPath, 'subdir'), dirStats);
+    mockStat(path.join(testDirPath, 'file1.txt'), fileStats);
+    mockStat(path.join(testDirPath, '.gitignore'), fileStats);
+    mockStat(path.join(testDirPath, 'subdir/subfile.txt'), fileStats);
+    mockStat(path.join(testDirPath, 'subdir/ignored.spec.js'), fileStats);
+    mockStat(path.join(testDirPath, 'subdir/.gitignore'), fileStats);
     
     // Set up file read mock for different .gitignore files
-    mockedFs.readFile.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr === path.join(testDirPath, '.gitignore')) {
-        return '*.log';
-      } else if (filePathStr === path.join(testDirPath, 'subdir', '.gitignore')) {
-        return '*.spec.js';
-      }
-      
-      return `Content of ${path.basename(filePathStr)}`;
-    });
+    mockReadFile(path.join(testDirPath, '.gitignore'), '*.log');
+    mockReadFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.spec.js');
+    mockReadFile(path.join(testDirPath, 'file1.txt'), `Content of file1.txt`);
+    mockReadFile(path.join(testDirPath, 'subdir/subfile.txt'), `Content of subfile.txt`);
+    mockReadFile(path.join(testDirPath, 'subdir/ignored.spec.js'), `Content of ignored.spec.js`);
     
     // Mock shouldIgnorePath with different behaviors for root vs subdir
     mockedGitignoreUtils.shouldIgnorePath.mockImplementation(async (basePath, filePath) => {
@@ -194,52 +192,45 @@ describe('Gitignore Filtering Integration', () => {
   });
   
   it('should respect negated patterns', async () => {
+    // Set up mock file system
+    mockAccess(testDirPath, true);
+    mockAccess(path.join(testDirPath, 'regular.txt'), true);
+    mockAccess(path.join(testDirPath, 'ignored.log'), true);
+    mockAccess(path.join(testDirPath, 'important.log'), true);
+    mockAccess(path.join(testDirPath, '.gitignore'), true);
+    
     // Set up mock directory structure
-    mockedFs.readdir.mockImplementation(async (dirPath) => {
-      const pathStr = String(dirPath);
-      
-      if (pathStr === testDirPath) {
-        return [
-          'regular.txt',
-          'ignored.log',
-          'important.log', // Should be kept despite pattern
-          '.gitignore'
-        ] as any;
-      }
-      
-      return [] as any;
-    });
+    mockReaddir(testDirPath, [
+      'regular.txt',
+      'ignored.log',
+      'important.log', // Should be kept despite pattern
+      '.gitignore'
+    ]);
     
     // Set up stat mock for files
-    mockedFs.stat.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr === testDirPath) {
-        return {
-          isFile: () => false,
-          isDirectory: () => true,
-          size: 4096
-        } as Stats;
-      }
-      
-      return {
-        isFile: () => true,
-        isDirectory: () => false,
-        size: 1024
-      } as Stats;
-    });
+    const dirStats = {
+      isFile: () => false,
+      isDirectory: () => true,
+      size: 4096
+    };
+    
+    const fileStats = {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
+    };
+    
+    mockStat(testDirPath, dirStats);
+    mockStat(path.join(testDirPath, 'regular.txt'), fileStats);
+    mockStat(path.join(testDirPath, 'ignored.log'), fileStats);
+    mockStat(path.join(testDirPath, 'important.log'), fileStats);
+    mockStat(path.join(testDirPath, '.gitignore'), fileStats);
     
     // Set up file read mock
-    mockedFs.readFile.mockImplementation(async (filePath) => {
-      const filePathStr = String(filePath);
-      
-      if (filePathStr.endsWith('.gitignore')) {
-        // Pattern with negation
-        return '*.log\n!important.log';
-      }
-      
-      return `Content of ${path.basename(filePathStr)}`;
-    });
+    mockReadFile(path.join(testDirPath, '.gitignore'), '*.log\n!important.log');
+    mockReadFile(path.join(testDirPath, 'regular.txt'), `Content of regular.txt`);
+    mockReadFile(path.join(testDirPath, 'ignored.log'), `Content of ignored.log`);
+    mockReadFile(path.join(testDirPath, 'important.log'), `Content of important.log`);
     
     // Set up gitignore filtering mock that respects negation
     mockedGitignoreUtils.shouldIgnorePath.mockImplementation(async (_basePath, filePath) => {
