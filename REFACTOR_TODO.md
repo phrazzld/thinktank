@@ -66,7 +66,7 @@
   - **Depends On:** Implement core gitignore mock setup.
   - **AC Ref:** AC 3.2.
 
-- [ ] **Implement createIgnoreFilter mock helper**
+- [x] **Implement createIgnoreFilter mock helper**
   - **Action:** Add helper function to mock gitignoreUtils.createIgnoreFilter with custom implementations.
   - **Depends On:** Implement core gitignore mock setup.
   - **AC Ref:** AC 3.2.

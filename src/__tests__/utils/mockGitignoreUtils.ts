@@ -307,10 +307,24 @@ export const mockShouldIgnorePath: MockShouldIgnorePathFunction =
   };
 
 /**
- * Configure createIgnoreFilter to use specific ignore rules
- * Implementation will be added in a future task
+ * Configure createIgnoreFilter to use specific ignore rules for a directory
+ * @param directoryPath - The directory path to configure ignore rules for
+ * @param ignorePatterns - Array of patterns to ignore, or a function that determines if a path should be ignored
  */
 export const mockCreateIgnoreFilter: MockCreateIgnoreFilterFunction =
-  (_directoryPath: string, _ignorePatterns: string[] | ((path: string) => boolean)): void => {
-    // Implementation will be added in a future task
+  (directoryPath: string, ignorePatterns: string[] | ((path: string) => boolean)): void => {
+    // Find and remove any existing rule for the same directory
+    const existingIndex = createIgnoreFilterRules.findIndex(rule => 
+      rule.directoryPath === directoryPath
+    );
+    
+    if (existingIndex !== -1) {
+      createIgnoreFilterRules.splice(existingIndex, 1);
+    }
+    
+    // Add new rule at the beginning for higher precedence
+    createIgnoreFilterRules.unshift({
+      directoryPath,
+      ignorePatterns
+    });
   };

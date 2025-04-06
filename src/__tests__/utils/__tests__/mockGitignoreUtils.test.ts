@@ -211,4 +211,120 @@ describe('mockGitignoreUtils', () => {
       expect(result2).toBe(true);
     });
   });
+  
+  describe('mockCreateIgnoreFilter', () => {
+    beforeEach(() => {
+      // Reset mocks before each test
+      resetMockGitignore();
+      
+      // Setup default behavior
+      setupMockGitignore();
+    });
+    
+    it('should configure createIgnoreFilter to use custom string array patterns', async () => {
+      // Configure specific directory to use custom ignore patterns
+      mockCreateIgnoreFilter('/custom/path', ['*.txt', 'temp']);
+      
+      // Get the filter
+      const filter = await mockedGitignoreUtils.createIgnoreFilter('/custom/path');
+      
+      // Verify custom patterns are applied
+      expect(filter.ignores('file.txt')).toBe(true);
+      expect(filter.ignores('temp/file.js')).toBe(true);
+      expect(filter.ignores('src/main.js')).toBe(false);
+    });
+    
+    it('should configure createIgnoreFilter to use custom function-based patterns', async () => {
+      // Configure specific directory to use a custom ignore function
+      mockCreateIgnoreFilter('/custom/path', (path) => {
+        return path.includes('secret') || path.endsWith('.config');
+      });
+      
+      // Get the filter
+      const filter = await mockedGitignoreUtils.createIgnoreFilter('/custom/path');
+      
+      // Verify custom function is applied
+      expect(filter.ignores('secret-file.js')).toBe(true);
+      expect(filter.ignores('app.config')).toBe(true);
+      expect(filter.ignores('src/main.js')).toBe(false);
+    });
+    
+    it('should override default patterns for specific directories', async () => {
+      // Setup default configuration with common ignore patterns
+      setupMockGitignore({
+        defaultIgnorePatterns: ['node_modules', 'dist']
+      });
+      
+      // Configure specific directory to use different patterns
+      mockCreateIgnoreFilter('/custom/path', ['*.txt']);
+      
+      // Get the filter for the custom path
+      const customFilter = await mockedGitignoreUtils.createIgnoreFilter('/custom/path');
+      
+      // Get the filter for a different path (should use defaults)
+      const defaultFilter = await mockedGitignoreUtils.createIgnoreFilter('/different/path');
+      
+      // Verify custom path uses custom patterns
+      expect(customFilter.ignores('file.txt')).toBe(true);
+      expect(customFilter.ignores('node_modules/package.json')).toBe(false); // Doesn't use default patterns
+      
+      // Verify different path uses default patterns
+      expect(defaultFilter.ignores('node_modules/package.json')).toBe(true);
+      expect(defaultFilter.ignores('file.txt')).toBe(false);
+    });
+    
+    it('should give precedence to more recently added rules', async () => {
+      // First rule
+      mockCreateIgnoreFilter('/project', ['*.js']);
+      
+      // Second rule for same directory (should take precedence)
+      mockCreateIgnoreFilter('/project', ['*.css']);
+      
+      // Get the filter
+      const filter = await mockedGitignoreUtils.createIgnoreFilter('/project');
+      
+      // Verify the second rule takes precedence
+      expect(filter.ignores('styles.css')).toBe(true);
+      expect(filter.ignores('script.js')).toBe(false); // First rule is overridden
+    });
+    
+    it('should allow other ignore filter methods to work with string array patterns', async () => {
+      // Configure specific directory
+      mockCreateIgnoreFilter('/custom/path', ['*.log']);
+      
+      // Get the filter
+      const filter = await mockedGitignoreUtils.createIgnoreFilter('/custom/path');
+      
+      // Test filter method
+      const filtered = filter.filter(['app.log', 'app.js', 'app.css']);
+      expect(filtered).toEqual(['app.js', 'app.css']);
+      
+      // Test createFilter method
+      const filterFn = filter.createFilter();
+      expect(filterFn('error.log')).toBe(false); // Returns false for ignored paths
+      expect(filterFn('main.js')).toBe(true);
+      
+      // Test test method
+      const testResult = filter.test('debug.log');
+      expect(testResult.ignored).toBe(true);
+      expect(testResult.unignored).toBe(false);
+    });
+    
+    it('should allow other ignore filter methods to work with function-based patterns', async () => {
+      // Configure specific directory with function-based pattern
+      mockCreateIgnoreFilter('/custom/path', (path) => path.startsWith('_') || path.endsWith('.temp'));
+      
+      // Get the filter
+      const filter = await mockedGitignoreUtils.createIgnoreFilter('/custom/path');
+      
+      // Test filter method
+      const filtered = filter.filter(['_hidden.js', 'visible.js', 'data.temp']);
+      expect(filtered).toEqual(['visible.js']);
+      
+      // Test createFilter method
+      const filterFn = filter.createFilter();
+      expect(filterFn('_private.css')).toBe(false); // Returns false for ignored paths
+      expect(filterFn('public.css')).toBe(true);
+    });
+  });
 });
