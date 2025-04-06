@@ -15,6 +15,90 @@ jest.mock('fs/promises');
 export const mockedFs = jest.mocked(fs);
 
 /**
+ * Default configuration values for the mock filesystem
+ */
+const DEFAULT_CONFIG: FsMockConfig = {
+  defaultAccessBehavior: true, // Access allowed by default
+  defaultFileContent: '', // Empty string by default
+  defaultStats: {
+    isFile: () => true,
+    isDirectory: () => false,
+    size: 0,
+    birthtime: new Date(),
+    mtime: new Date(),
+    atime: new Date()
+  },
+  defaultAccessErrorCode: 'ENOENT',
+  defaultReadErrorCode: 'ENOENT',
+  defaultWriteErrorCode: 'EACCES',
+  defaultStatErrorCode: 'ENOENT'
+};
+
+/**
+ * Resets all fs mock functions to their initial state
+ * This should be called before each test to prevent test pollution
+ */
+export function resetMockFs(): void {
+  jest.clearAllMocks();
+  
+  // Reset specific behavior mocks
+  mockedFs.access.mockReset();
+  mockedFs.readFile.mockReset();
+  mockedFs.writeFile.mockReset();
+  mockedFs.stat.mockReset();
+  mockedFs.readdir.mockReset();
+  mockedFs.mkdir.mockReset();
+}
+
+/**
+ * Configures the mocked fs module with default behaviors
+ * @param config - Optional configuration to customize the default behaviors
+ */
+export function setupMockFs(config?: FsMockConfig): void {
+  // Merge provided config with defaults
+  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  
+  // Configure fs.access
+  if (mergedConfig.defaultAccessBehavior) {
+    // Access allowed - resolve successfully
+    mockedFs.access.mockResolvedValue(undefined);
+  } else {
+    // Access denied - reject with error
+    const error = createFsError(
+      mergedConfig.defaultAccessErrorCode || 'ENOENT',
+      'File not found or access denied',
+      'access',
+      '/path/to/file'
+    );
+    mockedFs.access.mockRejectedValue(error);
+  }
+  
+  // Configure fs.readFile
+  mockedFs.readFile.mockImplementation((path) => {
+    // If path is a FileHandle, we won't try to match it
+    if (typeof path !== 'string' && !(path instanceof Buffer) && !('href' in path)) {
+      return Promise.resolve(mergedConfig.defaultFileContent as any);
+    }
+    
+    // Default behavior - return the configured content
+    return Promise.resolve(mergedConfig.defaultFileContent as any);
+  });
+  
+  // Configure fs.writeFile
+  mockedFs.writeFile.mockResolvedValue(undefined);
+  
+  // Configure fs.stat with a simpler approach to avoid TypeScript issues
+  const stats = createStats(mergedConfig.defaultStats || {});
+  mockedFs.stat.mockResolvedValue(stats);
+  
+  // Configure fs.readdir
+  mockedFs.readdir.mockResolvedValue([]);
+  
+  // Configure fs.mkdir
+  mockedFs.mkdir.mockResolvedValue(undefined);
+}
+
+/**
  * Interface for a mocked filesystem error
  */
 export interface MockedFsError {

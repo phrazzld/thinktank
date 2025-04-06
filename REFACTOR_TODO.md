@@ -14,7 +14,7 @@
   - **Depends On:** Create shared test utilities directory.
   - **AC Ref:** AC 2.1.
 
-- [ ] **Implement core filesystem mock setup**
+- [x] **Implement core filesystem mock setup**
   - **Action:** Create `mockFsUtils.ts` with basic mock setup and reset functions for fs/promises.
   - **Depends On:** Define filesystem mock utility interfaces.
   - **AC Ref:** AC 2.1.
