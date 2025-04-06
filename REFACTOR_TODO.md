@@ -9,7 +9,7 @@
 
 ## Filesystem Mock Utilities
 
-- [ ] **Define filesystem mock utility interfaces**
+- [x] **Define filesystem mock utility interfaces**
   - **Action:** Create TypeScript interfaces for `FsMockConfig` and other types needed by the filesystem mock utility.
   - **Depends On:** Create shared test utilities directory.
   - **AC Ref:** AC 2.1.
