@@ -1,10 +1,16 @@
 /**
  * Tests for the master readContextPaths function
  */
-import fs from 'fs/promises';
-import { Stats } from 'fs';
-import path from 'path';
 import { readContextPaths, ContextFileResult } from '../fileReader';
+import { 
+  resetMockFs, 
+  setupMockFs, 
+  mockAccess, 
+  mockStat, 
+  mockReaddir,
+  mockReadFile,
+  mockedFs
+} from '../../__tests__/utils/mockFsUtils';
 
 // Mock dependencies
 jest.mock('fs/promises');
@@ -12,15 +18,11 @@ jest.mock('../gitignoreUtils', () => ({
   shouldIgnorePath: jest.fn().mockResolvedValue(false)
 }));
 
-// Access mocked functions
-const mockedFs = jest.mocked(fs);
-
 describe('readContextPaths function', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Mock file system access
-    mockedFs.access.mockResolvedValue(undefined);
+    // Reset and setup mocks before each test
+    resetMockFs();
+    setupMockFs();
   });
   
   it('should process a mix of files and directories', async () => {
@@ -30,39 +32,44 @@ describe('readContextPaths function', () => {
       '/path/to/directory'
     ];
     
+    // Set up access for all test paths
+    mockAccess('/path/to/file.txt', true);
+    mockAccess('/path/to/directory', true);
+    mockAccess('/path/to/directory/subfile1.txt', true);
+    mockAccess('/path/to/directory/subfile2.md', true);
+    
     // Mock file stats
-    mockedFs.stat.mockImplementation(async (filePath) => {
-      if (filePath === '/path/to/file.txt') {
-        return {
-          isFile: () => true,
-          isDirectory: () => false,
-          size: 1024
-        } as Stats;
-      }
-      
-      if (filePath === '/path/to/directory') {
-        return {
-          isFile: () => false,
-          isDirectory: () => true,
-          size: 4096
-        } as Stats;
-      }
-      
-      // For subdirectory files
-      return {
-        isFile: () => true,
-        isDirectory: () => false,
-        size: 512
-      } as Stats;
+    mockStat('/path/to/file.txt', {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
+    });
+    
+    mockStat('/path/to/directory', {
+      isFile: () => false,
+      isDirectory: () => true,
+      size: 4096
+    });
+    
+    mockStat('/path/to/directory/subfile1.txt', {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 512
+    });
+    
+    mockStat('/path/to/directory/subfile2.md', {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 512
     });
     
     // Mock readdir for directory content
-    mockedFs.readdir.mockResolvedValue(['subfile1.txt', 'subfile2.md'] as any);
+    mockReaddir('/path/to/directory', ['subfile1.txt', 'subfile2.md']);
     
     // Mock file content
-    mockedFs.readFile.mockImplementation(async (filePath) => {
-      return `Content of ${path.basename(String(filePath))}`;
-    });
+    mockReadFile('/path/to/file.txt', 'Content of file.txt');
+    mockReadFile('/path/to/directory/subfile1.txt', 'Content of subfile1.txt');
+    mockReadFile('/path/to/directory/subfile2.md', 'Content of subfile2.md');
     
     // Call the function
     const results = await readContextPaths(testPaths);
@@ -94,30 +101,22 @@ describe('readContextPaths function', () => {
       '/path/to/nonexistent-file.txt'
     ];
     
-    // Mock access to throw for nonexistent file
-    mockedFs.access.mockImplementation(async (filePath) => {
-      if (String(filePath).includes('nonexistent-file.txt')) {
-        throw Object.assign(new Error('File not found'), { code: 'ENOENT' });
-      }
-      return undefined;
+    // Mock access to succeed for valid file and fail for nonexistent file
+    mockAccess('/path/to/valid-file.txt', true);
+    mockAccess('/path/to/nonexistent-file.txt', false, {
+      errorCode: 'ENOENT',
+      errorMessage: 'File not found'
     });
     
-    // Mock stat to only return for the valid file
-    mockedFs.stat.mockImplementation(async (filePath) => {
-      if (String(filePath).includes('valid-file.txt')) {
-        return {
-          isFile: () => true,
-          isDirectory: () => false,
-          size: 1024
-        } as Stats;
-      }
-      throw new Error('Should not be called for nonexistent file');
+    // Mock stat for the valid file
+    mockStat('/path/to/valid-file.txt', {
+      isFile: () => true,
+      isDirectory: () => false,
+      size: 1024
     });
     
     // Mock file content for the valid file
-    mockedFs.readFile.mockImplementation(async (filePath) => {
-      return `Content of ${path.basename(String(filePath))}`;
-    });
+    mockReadFile('/path/to/valid-file.txt', 'Content of valid-file.txt');
     
     const results = await readContextPaths(testPaths);
     

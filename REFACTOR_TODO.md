@@ -93,7 +93,7 @@
   - **Depends On:** Implement filesystem access mock helpers, Implement filesystem readFile mock helpers, Implement filesystem stat mock helpers.
   - **AC Ref:** AC 4.1, AC 4.2.
 
-- [ ] **Refactor readContextPaths.test.ts**
+- [x] **Refactor readContextPaths.test.ts**
   - **Action:** Replace direct fs mocks with calls to the new utility functions in `mockFsUtils.ts`.
   - **Depends On:** Implement filesystem access mock helpers, Implement filesystem stat mock helpers, Implement filesystem readdir mock helpers, Implement filesystem readFile mock helpers.
   - **AC Ref:** AC 4.1, AC 4.2.
