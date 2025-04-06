@@ -388,6 +388,43 @@ describe('runThinktank', () => {
     );
   });
   
+  it('should pass combined content from inputResult to _executeQueries', async () => {
+    // Setup a specific combined content value in the mock
+    const testCombinedContent = 'Test prompt with specific context content for verification';
+    (helpers._processInput as jest.Mock).mockResolvedValueOnce({
+      inputResult: {
+        content: 'Original content',
+        sourceType: 'file',
+        sourcePath: 'test-prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 15,
+          finalLength: 45,
+          normalized: true,
+          hasContextFiles: true,
+          contextFilesCount: 2
+        }
+      },
+      combinedContent: testCombinedContent
+    });
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      contextPaths: ['src/file1.js', 'src/dir1/'],
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify _executeQueries is called with the exact combinedContent from inputResult
+    expect(helpers._executeQueries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        combinedContent: testCombinedContent
+      })
+    );
+  });
+  
   it('should create output directory with custom path when provided', async () => {
     const options: RunOptions = {
       input: 'test-prompt.txt',
