@@ -15,6 +15,27 @@ import {
 import { errorCategories } from '../core/errors';
 
 /**
+ * Sanitizes control characters from a string
+ * 
+ * @param input - The input string to sanitize
+ * @returns The sanitized string with control characters removed
+ */
+function sanitizeControlChars(input: string): string {
+  let result = '';
+  for (let i = 0; i < input.length; i++) {
+    const charCode = input.charCodeAt(i);
+    if (
+      !(charCode >= 0 && charCode <= 8) &&
+      !(charCode >= 11 && charCode <= 12) &&
+      !(charCode >= 14 && charCode <= 31)
+    ) {
+      result += input[i];
+    }
+  }
+  return result;
+}
+
+/**
  * Error thrown by the OutputHandler module
  */
 export class OutputHandlerError extends Error {
@@ -384,7 +405,7 @@ export async function writeResponsesToFiles(
     try {
       // Sanitize content to handle control characters
       const sanitizedContent = typeof markdownContent === 'string' 
-        ? markdownContent.replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, '') 
+        ? sanitizeControlChars(markdownContent)
         : markdownContent;
       
       // Create parent directory if it doesn't exist (for extra safety)

@@ -180,6 +180,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
 function parseJsonSafely(content: string): AppConfig {
   try {
     // Parse the JSON content with unknown type
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const parsed = JSON.parse(content);
     
     // Type guard for basic object validation
@@ -199,7 +200,7 @@ function parseJsonSafely(content: string): AppConfig {
     // The full validation will happen with zod later
     // We're creating a proper return type without unsafe assertion
     const result: AppConfig = {
-      models: configCandidate.models
+      models: configCandidate.models as ModelConfig[]
     };
     
     // Check for groups and add it if it exists
