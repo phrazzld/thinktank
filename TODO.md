@@ -32,7 +32,7 @@
   - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
   - **AC Ref:** AC 2.1, AC 2.2
 
-- [ ] **Refactor fileSizeLimit.test.ts**
+- [x] **Refactor fileSizeLimit.test.ts**
   - **Action:** Update tests to use virtualFsUtils for simulating files of different sizes
   - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
   - **AC Ref:** AC 2.5
