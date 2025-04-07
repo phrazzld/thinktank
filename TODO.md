@@ -27,7 +27,7 @@
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Unsafe Type Assertions
 
-- [ ] **Expand Test Coverage**
+- [x] **Expand Test Coverage**
   - **Action:** Add tests for edge cases in output-directory tests.
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Incomplete Test Coverage

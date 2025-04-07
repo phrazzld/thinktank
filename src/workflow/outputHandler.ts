@@ -382,8 +382,19 @@ export async function writeResponsesToFiles(
     }
     
     try {
-      // Write file
-      await fs.writeFile(filePath, markdownContent);
+      // Sanitize content to handle control characters
+      const sanitizedContent = typeof markdownContent === 'string' 
+        ? markdownContent.replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, '') 
+        : markdownContent;
+      
+      // Create parent directory if it doesn't exist (for extra safety)
+      const parentDir = path.dirname(filePath);
+      await fs.mkdir(parentDir, { recursive: true });
+      
+      // Write file with atomic operation if possible
+      const tempPath = `${filePath}.tmp`;
+      await fs.writeFile(tempPath, sanitizedContent);
+      await fs.rename(tempPath, filePath);
       
       // Calculate duration for success case
       const endTime = Date.now();
@@ -424,6 +435,15 @@ export async function writeResponsesToFiles(
           `Failed to write file ${fileDetail.filename}: ${fileDetail.error}`,
           error instanceof Error ? error : undefined
         );
+      }
+      
+      // Clean up temp file if we failed during the rename operation
+      try {
+        const tempPath = `${filePath}.tmp`;
+        await fs.access(tempPath);
+        await fs.unlink(tempPath);
+      } catch {
+        // Ignore errors during cleanup
       }
     }
   };
