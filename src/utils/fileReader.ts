@@ -97,11 +97,13 @@ export async function readFileContent(
   } catch (error) {
     // Handle specific error types
     if (error instanceof Error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      const nodeError = error as NodeJS.ErrnoException;
+      if (nodeError.code === 'ENOENT') {
         throw new FileReadError(`File not found: ${filePath}`, error);
-      } else if ((error as NodeJS.ErrnoException).code === 'EACCES') {
+      } else if (nodeError.code === 'EACCES') {
         throw new FileReadError(`Permission denied to read file: ${filePath}`, error);
       }
+
       throw new FileReadError(`Error reading file: ${filePath}`, error);
     }
     
@@ -140,6 +142,9 @@ export async function writeFile(filePath: string, content: string): Promise<void
     
     // Write the file
     await fs.writeFile(filePath, content, { encoding: 'utf-8' });
+    
+    // If we reach here, the write was successful
+    return;
   } catch (error) {
     if (error instanceof Error) {
       // Cast to get access to error codes
@@ -204,7 +209,8 @@ export async function writeFile(filePath: string, content: string): Promise<void
       throw new FileReadError(`Failed to write file at ${filePath}: ${error.message}`, error);
     }
     
-    throw new FileReadError(`Unknown error writing file at ${filePath}`);
+    // Generic error case (should rarely be reached)
+    throw new FileReadError(`Failed to write file at ${filePath}`);
   }
 }
 
@@ -264,6 +270,11 @@ export async function getConfigDir(): Promise<string> {
     
     return configDir;
   } catch (error) {
+    if (error instanceof FileReadError) {
+      // If it's already a FileReadError, just re-throw it
+      throw error;
+    }
+    
     if (error instanceof Error) {
       const errnoError = error as NodeJS.ErrnoException;
       
@@ -288,14 +299,14 @@ export async function getConfigDir(): Promise<string> {
       if (process.platform === 'darwin') {
         if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
           throw new FileReadError(
-            `Permission denied creating config directory. On macOS, this may happen if you don't have write access to ~/Library/Preferences or if System Integrity Protection (SIP) is restricting access. Check folder permissions.`,
+            `Permission denied creating config directory. On macOS, this may happen if you don't have write access to ~/.config or if System Integrity Protection (SIP) is restricting access. Check folder permissions.`,
             error
           );
         }
         
         if (errnoError.code === 'ENOENT') {
           throw new FileReadError(
-            `Unable to create configuration directory. The Library/Preferences path may not exist or may not be accessible. Check if your user account is properly set up.`,
+            `Unable to create configuration directory. The ~/.config path may not exist or may not be accessible. Check if your user account is properly set up.`,
             error
           );
         }
@@ -314,7 +325,9 @@ export async function getConfigDir(): Promise<string> {
         error
       );
     }
-    throw new FileReadError('Unknown error accessing config directory');
+    
+    // Generic fallback for unknown error types
+    throw new FileReadError('Failed to create or access config directory');
   }
 }
 

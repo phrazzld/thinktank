@@ -71,10 +71,14 @@ describe('Output Directory Feature', () => {
     // Reset the volume
     resetVirtualFs();
     
-    // Setup filesystem for tests
+    // Setup filesystem for tests - manually create directories and files
     const vol = getVirtualFs();
-    vol.mkdirSync('/mock/output/path', { recursive: true });
-    vol.writeFileSync('/test-prompt.txt', 'Test prompt for output directory');
+    // Create test prompt file
+    vol.writeFileSync('test-prompt.txt', 'Test prompt for output directory');
+    
+    // Spy on fs methods for assertions
+    jest.spyOn(fs, 'mkdir');
+    jest.spyOn(fs, 'writeFile');
     
     // Mock helper functions
     jest.spyOn(helpers, 'generateOutputDirectoryPath').mockReturnValue(mockFullOutputDir);
