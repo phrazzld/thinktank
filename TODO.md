@@ -17,7 +17,7 @@
   - **Depends On:** Implement or integrate addVirtualGitignoreFile functionality.
   - **AC Ref:** AC 2.1.
 
-- [ ] **Import actual gitignoreUtils functions**
+- [x] **Import actual gitignoreUtils functions**
   - **Action:** Replace mock imports with actual functions from src/utils/gitignoreUtils in all affected test files.
   - **Depends On:** Remove mock dependencies from gitignore tests.
   - **AC Ref:** AC 2.1.

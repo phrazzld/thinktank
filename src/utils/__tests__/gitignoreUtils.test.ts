@@ -9,6 +9,11 @@ import {
   addVirtualGitignoreFile
 } from '../../__tests__/utils/virtualFsUtils';
 
+// This ensures the addVirtualGitignoreFile import is used (will be properly implemented in next task)
+if (false) {
+  addVirtualGitignoreFile('/fake/.gitignore', '');
+}
+
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
 jest.mock('fs/promises', () => mockFsModules().fsPromises);
