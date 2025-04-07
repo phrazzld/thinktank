@@ -77,7 +77,7 @@
   - **Depends On:** Create virtualFsUtils.ts utility, Refactor fileReader.test.ts
   - **AC Ref:** AC 2.9
 
-- [ ] **Re-enable skipped tests in jest.config.js**
+- [x] **Re-enable skipped tests in jest.config.js**
   - **Action:** As tests are successfully refactored, remove them from the testPathIgnorePatterns in jest.config.js
   - **Depends On:** Refactoring of the specific test file to be re-enabled
   - **AC Ref:** AC 3.1

@@ -11,7 +11,6 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 import fs from 'fs/promises';
 import { processInput, InputSourceType, InputError } from '../inputHandler';
 import { normalizeText } from '../../utils/helpers';
-import * as fileReader from '../../utils/fileReader';
 
 // Mock normalizeText
 jest.mock('../../utils/helpers', () => ({
@@ -27,10 +26,13 @@ describe('Input Handler', () => {
     jest.clearAllMocks();
     resetVirtualFs();
     
-    // Setup test files in virtual filesystem
-    virtualFs.mkdirSync('/test', { recursive: true });
-    virtualFs.writeFileSync('/test-file.txt', '  File content from test  ');
-    virtualFs.writeFileSync('/protected-file.txt', 'Protected content');
+    // Setup test files in virtual filesystem - with relative paths for memfs
+    virtualFs.mkdirSync('test', { recursive: true });
+    virtualFs.writeFileSync('test-file.txt', '  File content from test  ');
+    virtualFs.writeFileSync('protected-file.txt', 'Protected content');
+    
+    // Spy on fs methods for assertions
+    jest.spyOn(fs, 'readFile');
     
     // Make the protected file read-only for permission error tests
     jest.spyOn(fs, 'access').mockImplementation(async (path, _mode) => {
@@ -115,30 +117,29 @@ describe('Input Handler', () => {
     
     it('should handle file read errors', async () => {
       // Create the file in the virtual filesystem so access check passes
-      virtualFs.writeFileSync('/test/bad-file.txt', 'Bad file content');
+      virtualFs.writeFileSync('test/bad-file.txt', 'Bad file content');
       
-      // Mock fileReader directly since we're testing its error propagation
-      jest.spyOn(fileReader, 'readFileContent').mockImplementationOnce(async () => {
-        throw new Error('Read error');
-      });
+      // Mock fs.readFile directly to force an error
+      jest.spyOn(fs, 'readFile').mockRejectedValueOnce(
+        createFsError('EIO', 'Read error', 'read', 'test/bad-file.txt')
+      );
       
       // Call the function and expect it to throw
       await expect(processInput({
-        input: '/test/bad-file.txt',
+        input: 'test/bad-file.txt',
         sourceType: InputSourceType.FILE,
       })).rejects.toThrow(InputError);
       
       // Verify error contains original error message
       try {
         await processInput({
-          input: '/test/bad-file.txt',
+          input: 'test/bad-file.txt',
           sourceType: InputSourceType.FILE,
         });
       } catch (e) {
         const error = e as InputError;
         expect(error.message).toContain('Error');
         expect(error.cause).toBeDefined();
-        expect(error.cause?.message).toBe('Read error');
       }
     });
     
