@@ -1,51 +1,34 @@
 /**
  * Comprehensive tests for binary file detection functionality
  */
-import { isBinaryFile } from '../fileReader';
-import { logger } from '../logger';
-import { 
-  resetMockFs, 
-  setupMockFs, 
-  mockAccess, 
-  mockStat 
-} from '../../__tests__/utils/mockFsUtils';
+import { createVirtualFs, resetVirtualFs, mockFsModules } from '../../__tests__/utils/virtualFsUtils';
 
-// Mock dependencies
-jest.mock('fs/promises');
-jest.mock('../logger', () => ({
-  logger: {
-    warn: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-    success: jest.fn()
-  }
-}));
+// Setup mocks for fs modules
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Import modules after mocking
+import { isBinaryFile } from '../fileReader';
+import logger from '../logger';
+
+// Mock logger
+jest.mock('../logger');
+const mockedLogger = jest.mocked(logger);
 
 describe('Binary file detection', () => {
+  const textFilePath = '/path/to/test-file.txt';
+  const binaryFilePath = '/path/to/test-file.bin';
+  
   beforeEach(() => {
-    // Reset mocks before each test
-    resetMockFs();
-    setupMockFs();
+    // Reset virtual filesystem and mocks before each test
+    resetVirtualFs();
+    jest.clearAllMocks();
     
-    // Mock file system access
-    mockAccess('test-file.txt', true);
-    mockAccess('test-file.bin', true);
-    
-    // Mock file stats
-    mockStat('test-file.txt', {
-      isFile: () => true,
-      isDirectory: () => false,
-      size: 1024
+    // Create virtual files for testing
+    createVirtualFs({
+      [textFilePath]: 'This is a text file with regular content',
+      [binaryFilePath]: 'This is a binary file with a NULL byte: \0 in it'
     });
-    
-    mockStat('test-file.bin', {
-      isFile: () => true,
-      isDirectory: () => false,
-      size: 1024
-    });
-    
-    // We already mocked the logger in the jest.mock call
   });
   
   describe('isBinaryFile function - Core Detection Logic', () => {
@@ -229,17 +212,17 @@ describe('Binary file detection', () => {
         // by directly calling your binary file detection function
         if (shouldBeBinary) {
           const result = {
-            path: 'test-file.bin',
+            path: binaryFilePath,
             content: null,
             error: {
               code: 'BINARY_FILE',
-              message: 'Binary file detected: test-file.bin. Binary files are skipped to avoid sending non-text content to LLMs.'
+              message: `Binary file detected: ${binaryFilePath}. Binary files are skipped to avoid sending non-text content to LLMs.`
             }
           };
           expect(result.error?.code).toBe('BINARY_FILE');
         } else {
           const result = {
-            path: 'test-file.txt',
+            path: textFilePath,
             content: content,
             error: null
           };
@@ -294,9 +277,9 @@ describe('Binary file detection', () => {
       
       // Since we're not using actual file I/O in this test, just verify that the
       // logger.warn is called when a binary file is detected
-      logger.warn('Binary file detected and skipped: test-file.bin');
-      expect(logger.warn).toHaveBeenCalled();
-      expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Binary file detected'));
+      mockedLogger.warn('Binary file detected and skipped: test-file.bin');
+      expect(mockedLogger.warn).toHaveBeenCalled();
+      expect(mockedLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Binary file detected'));
     });
     
     it('should test error workflow for size limits before binary detection', () => {
@@ -312,7 +295,7 @@ describe('Binary file detection', () => {
       
       // 2. Check that the size error formatting contains the expected information
       const fileSizeMB = Math.round(largeFileSizeBytes / (1024 * 1024));
-      const sizeErrorMessage = `File test-file.bin (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`;
+      const sizeErrorMessage = `File ${binaryFilePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`;
       
       expect(sizeErrorMessage).toContain('exceeds the maximum allowed size');
       expect(sizeErrorMessage).toContain('15MB');

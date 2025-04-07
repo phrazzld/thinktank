@@ -10,6 +10,7 @@ module.exports = {
     // '/src/utils/__tests__/fileReader.test.ts', // Re-enabled after refactoring with virtualFsUtils
     // '/src/utils/__tests__/readContextFile.test.ts', // Re-enabled after refactoring with virtualFsUtils
     // '/src/utils/__tests__/fileSizeLimit.test.ts', // Re-enabled after refactoring with virtualFsUtils
+    // '/src/utils/__tests__/binaryFileDetection.test.ts', // Re-enabled after refactoring with virtualFsUtils
     '/src/utils/__tests__/readContextPaths.test.ts', // Skip tests that are crashing
     '/src/utils/__tests__/formatCombinedInput.test.ts', // Skip tests that are crashing Jest workers
     '/src/utils/__tests__/gitignoreFilterIntegration.test.ts', // Skip tests that are crashing Jest workers
