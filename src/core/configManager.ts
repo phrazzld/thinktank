@@ -180,21 +180,38 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<AppCo
 function parseJsonSafely(content: string): AppConfig {
   try {
     // Parse the JSON content with unknown type
-    const parsed = JSON.parse(content) as unknown;
+    const parsed = JSON.parse(content);
     
     // Type guard for basic object validation
     if (typeof parsed !== 'object' || parsed === null) {
       throw new ConfigError('Configuration must be a JSON object');
     }
     
+    // Create a type-safe way to access properties of the unknown object
+    const configCandidate = parsed as Record<string, unknown>;
+    
     // Type guard for models property
-    if (!('models' in parsed) || !Array.isArray((parsed as Record<string, unknown>).models)) {
+    if (!('models' in configCandidate) || !Array.isArray(configCandidate.models)) {
       throw new ConfigError('Configuration must contain a "models" array');
     }
     
-    // At this point we know it has a models array, so it's safe to cast
+    // At this point we know it has a models array
     // The full validation will happen with zod later
-    return parsed as AppConfig;
+    // We're creating a proper return type without unsafe assertion
+    const result: AppConfig = {
+      models: configCandidate.models
+    };
+    
+    // Check for groups and add it if it exists
+    if ('groups' in configCandidate && 
+        typeof configCandidate.groups === 'object' && 
+        configCandidate.groups !== null) {
+      // Since we've verified it's an object, we can safely add it to our result
+      // The actual validation of its structure will happen via Zod schema later
+      result.groups = configCandidate.groups as Record<string, ModelGroup>;
+    }
+    
+    return result;
   } catch (error) {
     if (error instanceof ConfigError) {
       throw error;
@@ -483,12 +500,16 @@ export async function saveConfig(config: AppConfig, configPath?: string): Promis
     
     // Handle file system errors with specific messages
     if (error instanceof Error) {
-      if ((error as NodeJS.ErrnoException).code === 'EACCES') {
-        throw new ConfigError(`Permission denied when saving configuration to ${configPath || 'default location'}. Check file permissions.`, error);
-      }
-      
-      if ((error as NodeJS.ErrnoException).code === 'ENOSPC') {
-        throw new ConfigError(`Not enough disk space to save configuration to ${configPath || 'default location'}.`, error);
+      // Type guard for NodeJS.ErrnoException
+      if ('code' in error) {
+        // Now we can safely access the code property
+        if (error.code === 'EACCES') {
+          throw new ConfigError(`Permission denied when saving configuration to ${configPath || 'default location'}. Check file permissions.`, error);
+        }
+        
+        if (error.code === 'ENOSPC') {
+          throw new ConfigError(`Not enough disk space to save configuration to ${configPath || 'default location'}.`, error);
+        }
       }
       
       // Generic error with message
