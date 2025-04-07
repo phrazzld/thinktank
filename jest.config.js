@@ -14,7 +14,7 @@ module.exports = {
     // '/src/utils/__tests__/binaryFileDetection.test.ts',
     // '/src/utils/__tests__/readContextPaths.test.ts',
     // '/src/utils/__tests__/formatCombinedInput.test.ts',
-    // '/src/utils/__tests__/gitignoreFilterIntegration.test.ts',
+    // '/src/utils/__tests__/gitignoreFilterIntegration.test.ts', // Successfully refactored
     // '/src/core/__tests__/configManager.test.ts',
     // '/src/workflow/__tests__/outputHandler.test.ts',
     // '/src/workflow/__tests__/inputHandler.test.ts',
