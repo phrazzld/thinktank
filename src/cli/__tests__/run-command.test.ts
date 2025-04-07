@@ -5,16 +5,23 @@
  * integrates with the runThinktank module to process prompts
  * through LLM models.
  */
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Now import fs after mocking
+import fs from 'fs/promises';
+
 import * as runThinktankModule from '../../workflow/runThinktank';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
-import fs from 'fs/promises';
 
 // Mock dependencies
 jest.mock('../../workflow/runThinktank');
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
-jest.mock('fs/promises');
 
 // Access the mocks
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
@@ -27,9 +34,13 @@ describe('Run Command Integration', () => {
   const originalProcessArgv = process.argv;
   const originalNodeEnv = process.env.NODE_ENV;
   
+  // Access the virtual filesystem
+  const virtualFs = getVirtualFs();
+  
   beforeEach(() => {
     jest.clearAllMocks();
     jest.resetModules();
+    resetVirtualFs();
     
     // Set NODE_ENV for testing
     process.env.NODE_ENV = 'test';
@@ -44,6 +55,13 @@ describe('Run Command Integration', () => {
     // Setup default mock behavior
     runThinktank.mockResolvedValue('Mock result content');
     fileExists.mockResolvedValue(true);
+    
+    // Setup virtual filesystem with test files
+    virtualFs.mkdirSync('/test', { recursive: true });
+    virtualFs.writeFileSync('/test-prompt.txt', 'This is a test prompt');
+    virtualFs.writeFileSync('/file1.js', 'console.log("Test file 1");');
+    virtualFs.mkdirSync('/dir1', { recursive: true });
+    virtualFs.writeFileSync('/dir1/file2.js', 'console.log("Test file 2");');
     
     // Mock configManager
     (configManager.loadConfig as jest.Mock).mockResolvedValue({
@@ -64,7 +82,14 @@ describe('Run Command Integration', () => {
     });
     
     // Mock fs access to make the prompt file appear to exist
-    (fs.access as jest.Mock).mockResolvedValue(undefined);
+    jest.spyOn(fs, 'access').mockImplementation(async (path, _mode) => {
+      const pathStr = path.toString();
+      if (virtualFs.existsSync(pathStr)) {
+        return undefined;
+      } else {
+        throw createFsError('ENOENT', 'File not found', 'access', pathStr);
+      }
+    });
   });
   
   afterEach(() => {
@@ -209,32 +234,42 @@ describe('Run Command Integration', () => {
     });
     
     it('should handle paths with spaces and special characters', async () => {
+      // Create files in the virtual filesystem with special characters
+      virtualFs.writeFileSync('/path with spaces.js', 'console.log("File with spaces");');
+      virtualFs.writeFileSync('/path-with-hyphens.ts', 'console.log("File with hyphens");');
+      virtualFs.writeFileSync('/path_with_underscores.md', '# File with underscores');
+      
       // Simulate runThinktank call with special paths
       await runThinktank({
         input: 'test-prompt.txt',
-        contextPaths: ['path with spaces.js', 'path/with-hyphens.ts', 'path_with_underscores.md']
+        contextPaths: ['path with spaces.js', 'path-with-hyphens.ts', 'path_with_underscores.md']
       });
       
       // Verify runThinktank was called with paths preserved exactly
       expect(runThinktank).toHaveBeenCalledTimes(1);
       expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
         input: 'test-prompt.txt',
-        contextPaths: ['path with spaces.js', 'path/with-hyphens.ts', 'path_with_underscores.md']
+        contextPaths: ['path with spaces.js', 'path-with-hyphens.ts', 'path_with_underscores.md']
       }));
     });
     
     it('should handle context paths with combination of files and directories', async () => {
+      // Create more complex file structure in virtual filesystem
+      virtualFs.mkdirSync('/directory', { recursive: true });
+      virtualFs.mkdirSync('/nested/directory', { recursive: true });
+      virtualFs.writeFileSync('/nested/file.ts', 'console.log("Nested file");');
+      
       // Simulate runThinktank call with mixed path types
       await runThinktank({
         input: 'test-prompt.txt',
-        contextPaths: ['file.js', 'directory/', 'nested/directory/', 'nested/file.ts']
+        contextPaths: ['file1.js', 'directory/', 'nested/directory/', 'nested/file.ts']
       });
       
       // Verify runThinktank was called with all paths
       expect(runThinktank).toHaveBeenCalledTimes(1);
       expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
         input: 'test-prompt.txt',
-        contextPaths: ['file.js', 'directory/', 'nested/directory/', 'nested/file.ts']
+        contextPaths: ['file1.js', 'directory/', 'nested/directory/', 'nested/file.ts']
       }));
     });
     

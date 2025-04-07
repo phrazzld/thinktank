@@ -72,7 +72,7 @@
   - **Depends On:** Create virtualFsUtils.ts utility
   - **AC Ref:** AC 2.8
 
-- [ ] **Review and refactor remaining tests with FS dependencies**
+- [x] **Review and refactor remaining tests with FS dependencies**
   - **Action:** Systematically identify and update all remaining tests that use filesystem operations
   - **Depends On:** Create virtualFsUtils.ts utility, Refactor fileReader.test.ts
   - **AC Ref:** AC 2.9

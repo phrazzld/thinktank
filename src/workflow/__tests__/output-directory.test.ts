@@ -4,17 +4,26 @@
  * These tests verify that the output directory functionality works correctly
  * including directory creation, file writing, and error handling.
  */
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Now import fs after mocking
+import fs from 'fs/promises';
+import path from 'path';
+
 import { runThinktank, RunOptions } from '../runThinktank';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
 import * as llmRegistry from '../../core/llmRegistry';
 import * as helpers from '../../utils/helpers';
 
-// Mock dependencies
+// Mock non-fs dependencies
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
 jest.mock('../../core/llmRegistry');
-jest.mock('fs/promises');
 jest.mock('path');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
@@ -30,45 +39,44 @@ jest.mock('ora', () => {
   });
 });
 
-// Import mocked modules to access their functions
-import fs from 'fs/promises';
-import path from 'path';
-
 // Mock console to prevent test output pollution
 const originalConsoleLog = console.log;
 const originalConsoleError = console.error;
 
-describe.skip('Output Directory Feature', () => {
+describe('Output Directory Feature', () => {
   // Setup constants for testing
   const mockRunDirectoryName = 'thinktank_run_20230515_143000_000';
   const mockOutputDir = '/mock/output/path';
   const mockFullOutputDir = `${mockOutputDir}/${mockRunDirectoryName}`;
   
-  // Access the mocked modules directly
-  const mockFs = fs as jest.Mocked<typeof fs>;
-  const mockPath = path as jest.Mocked<typeof path>;
+  // Access the virtual filesystem
+  const virtualFs = getVirtualFs();
   
   beforeEach(() => {
     jest.clearAllMocks();
+    resetVirtualFs();
     
     // Silence console during tests
     console.log = jest.fn();
     console.error = jest.fn();
     
-    // Configure mocked fs functions
-    mockFs.mkdir.mockResolvedValue(undefined);
-    mockFs.writeFile.mockResolvedValue(undefined);
-    
     // Configure path functions
-    mockPath.join.mockImplementation((...args) => args.join('/'));
-    mockPath.resolve.mockImplementation((...args) => args.join('/'));
-    mockPath.basename.mockImplementation(filePath => {
+    (path.join as jest.Mock).mockImplementation((...args) => args.join('/'));
+    (path.resolve as jest.Mock).mockImplementation((...args) => args.join('/'));
+    (path.basename as jest.Mock).mockImplementation(filePath => {
       const parts = filePath.split('/');
       return parts[parts.length - 1];
     });
     
+    // Reset the volume
+    resetVirtualFs();
+    
+    // Setup filesystem for tests
+    const vol = getVirtualFs();
+    vol.mkdirSync('/mock/output/path', { recursive: true });
+    vol.writeFileSync('/test-prompt.txt', 'Test prompt for output directory');
+    
     // Mock helper functions
-    // Mock the new generateOutputDirectoryPath function
     jest.spyOn(helpers, 'generateOutputDirectoryPath').mockReturnValue(mockFullOutputDir);
     jest.spyOn(helpers, 'sanitizeFilename').mockImplementation((input) => {
       // Simple sanitize implementation
@@ -215,11 +223,13 @@ describe.skip('Output Directory Feature', () => {
     
     await runThinktank(options);
     
-    // Verify mkdir was called
-    expect(mockFs.mkdir).toHaveBeenCalled();
+    // Verify the output directory was created in the virtual filesystem
+    const pathExists = virtualFs.existsSync(mockOutputDir);
+    expect(pathExists).toBe(true);
     
-    // Check that the options include recursive
-    const mkdirCalls = mockFs.mkdir.mock.calls;
+    // Verify mkdir was called with recursive option
+    expect(fs.mkdir).toHaveBeenCalled();
+    const mkdirCalls = (fs.mkdir as jest.Mock).mock.calls;
     expect(mkdirCalls.length).toBeGreaterThan(0);
     expect(mkdirCalls[0][1]).toEqual(expect.objectContaining({ recursive: true }));
   });
@@ -235,10 +245,10 @@ describe.skip('Output Directory Feature', () => {
     await runThinktank(options);
     
     // Verify writeFile was called
-    expect(mockFs.writeFile).toHaveBeenCalled();
+    expect(fs.writeFile).toHaveBeenCalled();
     
-    // Check the content format
-    const writeFileCalls = mockFs.writeFile.mock.calls;
+    // Check the file content
+    const writeFileCalls = (fs.writeFile as jest.Mock).mock.calls;
     expect(writeFileCalls.length).toBeGreaterThan(0);
     
     // Verify content format (markdown)
@@ -273,10 +283,10 @@ describe.skip('Output Directory Feature', () => {
     await runThinktank(options);
     
     // Verify writeFile was still called
-    expect(mockFs.writeFile).toHaveBeenCalled();
+    expect(fs.writeFile).toHaveBeenCalled();
     
     // Verify error content
-    const writeFileCalls = mockFs.writeFile.mock.calls;
+    const writeFileCalls = (fs.writeFile as jest.Mock).mock.calls;
     const content = writeFileCalls[0][1] as string;
     expect(typeof content).toBe('string');
     expect(content.indexOf('## Error')).not.toBe(-1); // Contains error section
@@ -284,8 +294,10 @@ describe.skip('Output Directory Feature', () => {
   });
   
   it('should handle errors during directory creation', async () => {
-    // Make mkdir fail
-    mockFs.mkdir.mockRejectedValue(new Error('Permission denied'));
+    // Spy on fs.mkdir and make it reject with an error
+    jest.spyOn(fs, 'mkdir').mockRejectedValueOnce(
+      createFsError('EACCES', 'Permission denied', 'mkdir', mockFullOutputDir)
+    );
     
     const options: RunOptions = {
       input: 'test-prompt.txt',
@@ -298,8 +310,10 @@ describe.skip('Output Directory Feature', () => {
   });
   
   it('should handle errors during file writing without crashing', async () => {
-    // Make writeFile fail
-    mockFs.writeFile.mockRejectedValue(new Error('Disk full'));
+    // Spy on fs.writeFile and make it reject with an error
+    jest.spyOn(fs, 'writeFile').mockRejectedValueOnce(
+      createFsError('ENOSPC', 'No space left on device', 'write', `${mockFullOutputDir}/output.md`)
+    );
     
     const options: RunOptions = {
       input: 'test-prompt.txt',

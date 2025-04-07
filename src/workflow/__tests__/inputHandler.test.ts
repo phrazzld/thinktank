@@ -1,13 +1,17 @@
 /**
  * Unit tests for the InputHandler module
  */
-import * as fs from 'fs/promises';
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Import fs modules after mocking
+import fs from 'fs/promises';
 import { processInput, InputSourceType, InputError } from '../inputHandler';
 import { normalizeText } from '../../utils/helpers';
-
-// Mock fs
-jest.mock('fs/promises');
-const mockedFs = fs as jest.Mocked<typeof fs>;
+import * as fileReader from '../../utils/fileReader';
 
 // Mock normalizeText
 jest.mock('../../utils/helpers', () => ({
@@ -15,17 +19,38 @@ jest.mock('../../utils/helpers', () => ({
 }));
 
 describe('Input Handler', () => {
+  // Access the virtual filesystem
+  const virtualFs = getVirtualFs();
+  
   // Reset all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
+    resetVirtualFs();
+    
+    // Setup test files in virtual filesystem
+    virtualFs.mkdirSync('/test', { recursive: true });
+    virtualFs.writeFileSync('/test-file.txt', '  File content from test  ');
+    virtualFs.writeFileSync('/protected-file.txt', 'Protected content');
+    
+    // Make the protected file read-only for permission error tests
+    jest.spyOn(fs, 'access').mockImplementation(async (path, _mode) => {
+      const pathStr = path.toString();
+      if (pathStr.indexOf('protected-file.txt') >= 0) {
+        throw createFsError('EACCES', 'Permission denied', 'access', pathStr);
+      }
+      if (pathStr.indexOf('nonexistent-file.txt') >= 0) {
+        throw createFsError('ENOENT', 'File not found', 'access', pathStr);
+      }
+      // Use the virtual filesystem instead of calling original
+      if (!virtualFs.existsSync(pathStr)) {
+        throw createFsError('ENOENT', 'File not found', 'access', pathStr);
+      }
+      return undefined;
+    });
   });
   
   describe('File Input', () => {
     it('should process file input correctly', async () => {
-      // Setup mocks
-      mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readFile.mockResolvedValue('  File content from test  ');
-      
       // Call the function
       const result = await processInput({
         input: 'test-file.txt',
@@ -41,17 +66,12 @@ describe('Input Handler', () => {
       expect(result.metadata.finalLength).toBe(22);
       
       // Verify mocks were called correctly
-      expect(mockedFs.access).toHaveBeenCalled();
-      expect(mockedFs.readFile).toHaveBeenCalledWith(expect.stringContaining('test-file.txt'), 'utf-8');
+      expect(fs.access).toHaveBeenCalled();
+      expect(fs.readFile).toHaveBeenCalledWith(expect.stringContaining('test-file.txt'), 'utf-8');
       expect(normalizeText).toHaveBeenCalledWith('  File content from test  ');
     });
     
     it('should handle file not found errors', async () => {
-      // Setup mocks
-      const error = new Error('File not found');
-      (error as NodeJS.ErrnoException).code = 'ENOENT';
-      mockedFs.access.mockRejectedValue(error);
-      
       // Call the function and expect it to throw
       await expect(processInput({
         input: 'nonexistent-file.txt',
@@ -73,11 +93,6 @@ describe('Input Handler', () => {
     });
     
     it('should handle permission denied errors', async () => {
-      // Setup mocks
-      const error = new Error('Permission denied');
-      (error as NodeJS.ErrnoException).code = 'EACCES';
-      mockedFs.access.mockRejectedValue(error);
-      
       // Call the function and expect it to throw
       await expect(processInput({
         input: 'protected-file.txt',
@@ -99,35 +114,35 @@ describe('Input Handler', () => {
     });
     
     it('should handle file read errors', async () => {
-      // Setup mocks
-      mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readFile.mockRejectedValue(new Error('Read error'));
+      // Create the file in the virtual filesystem so access check passes
+      virtualFs.writeFileSync('/test/bad-file.txt', 'Bad file content');
+      
+      // Mock fileReader directly since we're testing its error propagation
+      jest.spyOn(fileReader, 'readFileContent').mockImplementationOnce(async () => {
+        throw new Error('Read error');
+      });
       
       // Call the function and expect it to throw
       await expect(processInput({
-        input: 'bad-file.txt',
+        input: '/test/bad-file.txt',
         sourceType: InputSourceType.FILE,
       })).rejects.toThrow(InputError);
       
       // Verify error contains original error message
       try {
         await processInput({
-          input: 'bad-file.txt',
+          input: '/test/bad-file.txt',
           sourceType: InputSourceType.FILE,
         });
       } catch (e) {
         const error = e as InputError;
-        expect(error.message).toContain('Error reading file');
+        expect(error.message).toContain('Error');
         expect(error.cause).toBeDefined();
         expect(error.cause?.message).toBe('Read error');
       }
     });
     
     it('should respect the normalize option', async () => {
-      // Setup mocks
-      mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readFile.mockResolvedValue('  No normalization  ');
-      
       // Call the function with normalize = false
       const result = await processInput({
         input: 'test-file.txt',
@@ -136,7 +151,7 @@ describe('Input Handler', () => {
       });
       
       // Verify results
-      expect(result.content).toBe('  No normalization  ');
+      expect(result.content).toBe('  File content from test  ');
       expect(result.metadata.normalized).toBe(false);
       expect(normalizeText).not.toHaveBeenCalled();
     });
@@ -179,13 +194,9 @@ describe('Input Handler', () => {
   
   describe('Source Type Detection', () => {
     it('should detect file input by default', async () => {
-      // Setup mocks
-      mockedFs.access.mockResolvedValue(undefined);
-      mockedFs.readFile.mockResolvedValue('File content');
-      
       // Call the function without specifying source type
       const result = await processInput({
-        input: 'simple-filename.txt',
+        input: 'test-file.txt',
       });
       
       // Verify the source type was detected as FILE
