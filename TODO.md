@@ -1,108 +1,79 @@
 # TODO
 
-## Filesystem Testing Strategy Redesign
+## Filesystem Testing Refactoring
 
-- [x] **Install memfs library**
-  - **Action:** Add memfs to the project's devDependencies using `npm install --save-dev memfs`
-  - **Depends On:** None
-  - **AC Ref:** AC 1.1, AC 1.2
+- [x] **Identify Remaining Test Files Using mockFsUtils**
+  - **Action:** Scan all test files to identify those still importing from `../../__tests__/utils/mockFsUtils`.
+  - **Depends On:** None.
+  - **AC Ref:** AC 1.1 (Identify Target Test Files).
 
-- [x] **Create virtualFsUtils.ts utility**
-  - **Action:** Implement a new utility file that provides functions for creating, manipulating, and accessing an in-memory filesystem using memfs
-  - **Depends On:** Install memfs library
-  - **AC Ref:** AC 1.3, AC 1.4
+- [x] **Identify Test Files Excluded by jest.config.js**
+  - **Action:** Review `testPathIgnorePatterns` in `jest.config.js` to identify which tests are likely skipped due to pending migration to `memfs`.
+  - **Depends On:** None.
+  - **AC Ref:** AC 1.1 (Identify Target Test Files).
 
-- [x] **Remove test-specific logic from production code**
-  - **Action:** Remove any checks for `_isTestError` or similar flags from `fileReader.ts` and other production code
-  - **Depends On:** None
-  - **AC Ref:** AC 1.5
+- [ ] **Refactor src/workflow/__tests__/output-directory.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Create test migration guide**
-  - **Action:** Update `src/__tests__/utils/README.md` with instructions on how to use the new virtualFsUtils instead of mockFsUtils
-  - **Depends On:** Create virtualFsUtils.ts utility
-  - **AC Ref:** AC 1.6
+- [ ] **Refactor src/cli/__tests__/run-command.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor fileReader.test.ts**
-  - **Action:** Replace mockFsUtils usage with the new virtualFsUtils approach, ensuring all tests pass successfully
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.1
+- [ ] **Refactor src/cli/__tests__/run-command-xdg.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor readContextFile.test.ts**
-  - **Action:** Update tests to use virtualFsUtils instead of mockFsUtils, focusing on properly testing file reading behavior
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.1, AC 2.2
+- [x] **Refactor src/utils/__tests__/gitignoreUtils.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor fileSizeLimit.test.ts**
-  - **Action:** Update tests to use virtualFsUtils for simulating files of different sizes
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.5
+- [ ] **Refactor src/utils/__tests__/gitignoreFilteringIntegration.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor binaryFileDetection.test.ts**
-  - **Action:** Update tests to use virtualFsUtils for simulating file operations
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.9
+- [x] **Refactor src/utils/__tests__/gitignoreFiltering.test.ts**
+  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
+  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor readContextPaths.test.ts**
-  - **Action:** Use virtualFsUtils to set up directory structures for testing path reading functionality
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.2
+- [ ] **Ensure Error Testing Uses memfs and spies**
+  - **Action:** For each refactored test file, update error testing to use the approach recommended in PLAN_PHASE1.md - simulate errors with `createFsError` and `jest.spyOn` on specific fs functions.
+  - **Depends On:** All individual file refactoring tasks
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor formatCombinedInput.test.ts**
-  - **Action:** Review test dependencies and update any filesystem interactions to use the new approach
-  - **Depends On:** Create virtualFsUtils.ts utility
-  - **AC Ref:** AC 2.6
+- [ ] **Update jest.config.js**
+  - **Action:** For each successfully refactored test file, remove its path from the `testPathIgnorePatterns` array in `jest.config.js`.
+  - **Depends On:** All individual file refactoring tasks
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor gitignoreFilterIntegration.test.ts**
-  - **Action:** Update tests to ensure proper integration between gitignore filtering and the new filesystem virtualization
-  - **Depends On:** Create virtualFsUtils.ts utility, Refactor fileReader.test.ts
-  - **AC Ref:** AC 2.4
+- [ ] **Verify All Tests Pass**
+  - **Action:** Run tests to confirm all refactored tests pass with the new `memfs` approach.
+  - **Depends On:** "Update jest.config.js"
+  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [x] **Refactor readDirectoryContents.test.ts**
-  - **Action:** Update tests to use virtualFsUtils for testing directory reading, particularly recursive operations
-  - **Depends On:** Create virtualFsUtils.ts utility, Refactor gitignoreFilterIntegration.test.ts
-  - **AC Ref:** AC 2.3
+- [ ] **Remove Legacy mockFsUtils.ts File**
+  - **Action:** Once all tests are passing with the `memfs` implementation, delete the `src/__tests__/utils/mockFsUtils.ts` file.
+  - **Depends On:** "Verify All Tests Pass"
+  - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
 
-- [x] **Refactor configManager.test.ts**
-  - **Action:** Update tests for configuration loading, saving, and path resolution to use virtualFsUtils
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
-  - **AC Ref:** AC 2.7
+- [ ] **Clean Up test-helpers.ts**
+  - **Action:** Remove any helper functions in `src/__tests__/utils/test-helpers.ts` that are related to the old mocking strategy (like `createTestSafeError`).
+  - **Depends On:** "Remove Legacy mockFsUtils.ts File"
+  - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
 
-- [x] **Refactor outputHandler.test.ts**
-  - **Action:** Update tests for output directory creation and file writing to use virtualFsUtils
-  - **Depends On:** Create virtualFsUtils.ts utility
-  - **AC Ref:** AC 2.8
+## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
 
-- [x] **Review and refactor remaining tests with FS dependencies**
-  - **Action:** Systematically identify and update all remaining tests that use filesystem operations
-  - **Depends On:** Create virtualFsUtils.ts utility, Refactor fileReader.test.ts
-  - **AC Ref:** AC 2.9
+- [ ] **Gitignore Testing Overlap:** The plan includes refactoring gitignore-related tests as part of Phase 1, but there's a separate Phase 2 specifically for gitignore testing. I'm assuming we should still refactor the gitignore tests that directly use `mockFsUtils` in Phase 1, but leave more comprehensive changes for Phase 2.
+  - **Context:** Phase 1 focuses on removing `mockFsUtils.ts` while Phase 2 focuses on improving gitignore testing.
 
-- [x] **Re-enable skipped tests in jest.config.js**
-  - **Action:** As tests are successfully refactored, remove them from the testPathIgnorePatterns in jest.config.js
-  - **Depends On:** Refactoring of the specific test file to be re-enabled
-  - **AC Ref:** AC 3.1
+- [ ] **mockGitignoreUtils Integration:** Some tests might be using both `mockFsUtils` and `mockGitignoreUtils`. I'm assuming we should keep the `mockGitignoreUtils` parts intact for now during Phase 1 and only replace the direct `mockFsUtils` usage.
+  - **Context:** We need to maintain test functionality during incremental migration, so keeping `mockGitignoreUtils` until Phase 2 makes sense.
 
-- [x] **Fix failing tests and run full test suite**
-  - **Action:** Address any remaining failures in the test suite and ensure all tests pass without worker crashes
-  - **Depends On:** Re-enable skipped tests in jest.config.js
-  - **AC Ref:** AC 3.2
-
-- [x] **Review test coverage**
-  - **Action:** Run test coverage analysis and identify critical gaps in filesystem operation testing
-  - **Depends On:** Fix failing tests and run full test suite
-  - **AC Ref:** AC 3.3
-
-- [x] **Update testing documentation**
-  - **Action:** Update all documentation to reflect the new filesystem testing approach
-  - **Depends On:** All previous tasks completed
-  - **AC Ref:** AC 3.4
-
-- [x] **Consider refactoring mockGitignoreUtils**
-  - **Action:** Evaluate if mockGitignoreUtils needs similar simplification as mockFsUtils
-  - **Depends On:** Refactor gitignoreFilterIntegration.test.ts
-  - **AC Ref:** AC 3.5
-
-- [x] **Refactor E2E tests**
-  - **Action:** Update E2E tests to use temporary directories on the real filesystem instead of mocking
-  - **Depends On:** Update testing documentation
-  - **AC Ref:** AC 3.6
+- [ ] **outputHandler.ts Test Challenges:** The `output-directory.test.ts` file is encountering persistent issues with the virtual filesystem setup. The createOutputDirectory function appears to have challenges with the root filesystem. This file may need special handling or a different approach to mocking.
+  - **Context:** Despite multiple attempts to set up the virtual filesystem, we're still seeing errors related to root directory creation. This might require further investigation into `outputHandler.ts` or its dependencies.

@@ -21,7 +21,7 @@ module.exports = {
     
     // Tests that still need further refactoring or have issues:
     // '/src/utils/__tests__/readDirectoryContents.test.ts', // Fixed with proper path handling
-    '/src/workflow/__tests__/output-directory.test.ts',
+    '/src/workflow/__tests__/output-directory.test.ts', // Needs special handling for filesystem root access
     '/src/cli/__tests__/run-command.test.ts',
     '/src/cli/__tests__/run-command-xdg.test.ts',
     '/src/providers/__tests__/anthropic.test.ts', // Skip tests that are crashing
