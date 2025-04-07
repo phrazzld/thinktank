@@ -70,7 +70,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 3.3.
 
-- [ ] **Refactor complex mocking patterns**
+- [x] **Refactor complex mocking patterns**
   - **Action:** Identify and simplify complex mocking patterns that use `Object.defineProperty` or mock the function being tested, replacing them with cleaner approaches using the virtual filesystem setup.
   - **Depends On:** Create reusable setup for filesystem mocking
   - **AC Ref:** AC 3.4.

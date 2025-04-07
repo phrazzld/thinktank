@@ -183,7 +183,6 @@ describe('readDirectoryContents', () => {
       virtualFs.writeFileSync(path.join(windowsPath, 'file.txt'), 'File content');
       
       // Mock readFile to return the content we expect
-      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       const fsReadFileMock = jest.spyOn(fs, 'readFile');
       fsReadFileMock.mockImplementation((_path) => {
         const pathStr = String(_path);
@@ -507,43 +506,15 @@ describe('readDirectoryContents', () => {
       jest.restoreAllMocks();
     });
 
-    it.skip('should handle when path is a file, not a directory', async () => {
-      // Create a file instead of a directory
-      const virtualFs = getVirtualFs();
-      const parentDir = path.dirname(testDirPath);
-      virtualFs.mkdirSync(parentDir, { recursive: true });
-      virtualFs.writeFileSync(testDirPath, 'File content');
-      
-      // Mock stat to return a file stat object
-      const statSpy = jest.spyOn(fsPromises, 'stat');
-      statSpy.mockResolvedValue({
-        isFile: () => true,
-        isDirectory: () => false,
-        size: 1024
-      } as unknown as fs.Stats);
-      
-      // Mock readContextFile to return expected content
-      const originalReadContextFile = fileReader.readContextFile;
-      Object.defineProperty(fileReader, 'readContextFile', {
-        value: jest.fn().mockImplementation((path: any) => {
-          const filePath = String(path);
-          if (filePath === testDirPath) {
-            return Promise.resolve({
-              path: filePath,
-              content: 'File content',
-              error: null
-            });
-          }
-          return Promise.resolve({
-            path: filePath,
-            content: null,
-            error: { code: 'NOT_FOUND', message: 'File not found' }
-          });
-        }),
-        configurable: true,
-        writable: true
+    it('should handle when path is a file, not a directory', async () => {
+      // Directly set up the file in the virtual filesystem
+      // Create a virtual filesystem structure with our file
+      resetVirtualFs();
+      createVirtualFs({
+        [testDirPath]: 'File content'  // Create file at testDirPath
       });
       
+      // Run the actual function with the real implementation
       const results = await readDirectoryContents(testDirPath);
       
       // Should return the file content directly
@@ -551,94 +522,47 @@ describe('readDirectoryContents', () => {
       expect(results[0].path).toBe(testDirPath);
       expect(results[0].content).toBe('File content');
       expect(results[0].error).toBeNull();
-      
-      // Restore original implementation
-      Object.defineProperty(fileReader, 'readContextFile', {
-        value: originalReadContextFile,
-        configurable: true,
-        writable: true
-      });
-      jest.restoreAllMocks();
     });
 
-    it.skip('should handle various file types and extensions', async () => {
-      // Create directory with different file types
+    it('should handle various file types and extensions', async () => {
+      // Setup virtual filesystem with various file types
+      resetVirtualFs();
       const virtualFs = getVirtualFs();
+      
+      // Create the directory explicitly
       virtualFs.mkdirSync(testDirPath, { recursive: true });
       
       // Create different file types
-      virtualFs.writeFileSync(path.join(testDirPath, 'script.js'), 'console.log("hello");');
-      virtualFs.writeFileSync(path.join(testDirPath, 'style.css'), 'body { color: red; }');
-      virtualFs.writeFileSync(path.join(testDirPath, 'data.json'), '{"key": "value"}');
-      virtualFs.writeFileSync(path.join(testDirPath, 'document.md'), '# Heading');
+      createVirtualFs({
+        [path.join(testDirPath, 'script.js')]: 'console.log("hello");',
+        [path.join(testDirPath, 'style.css')]: 'body { color: red; }',
+        [path.join(testDirPath, 'data.json')]: '{"key": "value"}',
+        [path.join(testDirPath, 'document.md')]: '# Heading'
+      }, { reset: false });
       
-      // Mock readdir to return the file list
-      const readdirSpy = jest.spyOn(fsPromises, 'readdir');
-      // Create fake dirent objects
-      const mockDirents = ['script.js', 'style.css', 'data.json', 'document.md'].map(name => {
-        const dirent = new Object() as fs.Dirent;
-        dirent.name = name;
-        dirent.isFile = () => true;
-        dirent.isDirectory = () => false;
-        dirent.isSymbolicLink = () => false;
-        dirent.isBlockDevice = () => false;
-        dirent.isCharacterDevice = () => false;
-        dirent.isFIFO = () => false;
-        dirent.isSocket = () => false;
-        return dirent;
-      });
-      readdirSpy.mockResolvedValue(mockDirents);
-      
-      // Mock stat for directory and files
-      const statSpy = jest.spyOn(fsPromises, 'stat');
-      
-      // First call for directory itself
-      statSpy.mockResolvedValueOnce({
-        isFile: () => false,
-        isDirectory: () => true,
-        size: 4096
-      } as unknown as fs.Stats);
-      
-      // Mock for each file (4 calls)
-      for (let i = 0; i < 4; i++) {
-        statSpy.mockResolvedValueOnce({
-          isFile: () => true,
-          isDirectory: () => false,
-          size: 1024
-        } as unknown as fs.Stats);
-      }
-      
-      // Mock readFile for each file type
-      const readFileSpy = jest.spyOn(fsPromises, 'readFile');
-      readFileSpy.mockImplementation((filePath: any) => {
-        const filename = path.basename(String(filePath));
-        if (filename === 'script.js') return Promise.resolve('console.log("hello");');
-        if (filename === 'style.css') return Promise.resolve('body { color: red; }');
-        if (filename === 'data.json') return Promise.resolve('{"key": "value"}');
-        if (filename === 'document.md') return Promise.resolve('# Heading');
-        return Promise.reject(new Error('Unexpected file in test'));
-      });
-      
+      // Run the actual function being tested
       const results = await readDirectoryContents(testDirPath);
       
-      // Should have all 4 files
-      expect(results).toHaveLength(4);
+      // Verify results
+      expect(results).toHaveLength(4); // Should find all 4 files
       
-      // Check each file has the right content
+      // Verify each file was processed correctly
       const jsFile = results.find(r => r.path.endsWith('script.js'));
+      const cssFile = results.find(r => r.path.endsWith('style.css'));
+      const jsonFile = results.find(r => r.path.endsWith('data.json'));
+      const mdFile = results.find(r => r.path.endsWith('document.md'));
+      
+      expect(jsFile).toBeDefined();
       expect(jsFile?.content).toBe('console.log("hello");');
       
-      const cssFile = results.find(r => r.path.endsWith('style.css'));
+      expect(cssFile).toBeDefined();
       expect(cssFile?.content).toBe('body { color: red; }');
       
-      const jsonFile = results.find(r => r.path.endsWith('data.json'));
+      expect(jsonFile).toBeDefined();
       expect(jsonFile?.content).toBe('{"key": "value"}');
       
-      const mdFile = results.find(r => r.path.endsWith('document.md'));
+      expect(mdFile).toBeDefined();
       expect(mdFile?.content).toBe('# Heading');
-      
-      // Restore mocks
-      jest.restoreAllMocks();
     });
   });
 
@@ -657,7 +581,7 @@ describe('readDirectoryContents', () => {
       
       // Mock the gitignore functions for this test
       const shouldIgnorePathSpy = jest.spyOn(gitignoreUtils, 'shouldIgnorePath')
-        .mockImplementation((_, filePath: string): Promise<boolean> => {
+        .mockImplementation((_, filePath: string) => {
           // Simple implementation that checks if the file matches the pattern
           const fileName = path.basename(filePath);
           return Promise.resolve(fileName === 'file1.txt');
@@ -691,76 +615,22 @@ describe('readDirectoryContents', () => {
       shouldIgnorePathSpy.mockRestore();
     });
 
-    it.skip('should detect and handle binary files correctly', async () => {
-      // Create directory with binary file
+    it('should detect and handle binary files correctly', async () => {
+      // Create directory with binary file using createVirtualFs 
+      resetVirtualFs();
       const virtualFs = getVirtualFs();
+      
+      // Create the directory
       virtualFs.mkdirSync(testDirPath, { recursive: true });
       
-      // Create a binary file with null bytes
+      // Create binary content with null bytes
       const binaryContent = Buffer.from('Content with \0 null bytes');
+      
+      // Create the binary and text files
       virtualFs.writeFileSync(path.join(testDirPath, 'binary.bin'), binaryContent);
       virtualFs.writeFileSync(path.join(testDirPath, 'text.txt'), 'Normal text content');
       
-      // Mock readdir
-      const readdirSpy = jest.spyOn(fsPromises, 'readdir');
-      // Create fake dirent objects
-      const mockDirents = ['binary.bin', 'text.txt'].map(name => {
-        const dirent = new Object() as fs.Dirent;
-        dirent.name = name;
-        dirent.isFile = () => true;
-        dirent.isDirectory = () => false;
-        dirent.isSymbolicLink = () => false;
-        dirent.isBlockDevice = () => false;
-        dirent.isCharacterDevice = () => false;
-        dirent.isFIFO = () => false;
-        dirent.isSocket = () => false;
-        return dirent;
-      });
-      readdirSpy.mockResolvedValue(mockDirents);
-      
-      // Mock stat for the directory and both files
-      const statSpy = jest.spyOn(fsPromises, 'stat');
-      
-      // Directory
-      statSpy.mockResolvedValueOnce({
-        isFile: () => false,
-        isDirectory: () => true,
-        size: 4096
-      } as unknown as fs.Stats);
-      
-      // Both files are actually files (not directories)
-      for (let i = 0; i < 2; i++) {
-        statSpy.mockResolvedValueOnce({
-          isFile: () => true,
-          isDirectory: () => false,
-          size: 1024
-        } as unknown as fs.Stats);
-      }
-      
-      // Mock the readContextFile function directly
-      jest.spyOn(fileReader, 'readContextFile').mockImplementation((path: any) => {
-        const filePath = String(path);
-        if (filePath.endsWith('binary.bin')) {
-          return Promise.resolve({
-            path: filePath,
-            content: null,
-            error: { code: 'BINARY_FILE', message: 'File appears to be binary' }
-          });
-        }
-        if (filePath.endsWith('text.txt')) {
-          return Promise.resolve({
-            path: filePath,
-            content: 'Normal text content',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: filePath,
-          content: null,
-          error: { code: 'UNKNOWN', message: 'Unexpected file in test' }
-        });
-      });
-      
+      // Call the function being tested
       const results = await readDirectoryContents(testDirPath);
       
       // We expect two results: one binary and one text
@@ -778,15 +648,13 @@ describe('readDirectoryContents', () => {
       expect(textFile).toBeDefined();
       expect(textFile?.content).toBe('Normal text content');
       expect(textFile?.error).toBeNull();
-      
-      // Restore mocks
-      jest.restoreAllMocks();
     });
 
-    it.skip('should handle deep nested directory structures', async () => {
+    it('should handle deep nested directory structures', async () => {
       // Create a deep nested directory structure (5 levels)
-      const virtualFs = getVirtualFs();
       const maxDepth = 5;
+      resetVirtualFs();
+      const virtualFs = getVirtualFs();
       
       // Create root directory and file
       virtualFs.mkdirSync(testDirPath, { recursive: true });
@@ -805,73 +673,28 @@ describe('readDirectoryContents', () => {
         }
       }
       
-      // Store original implementation
-      const originalReadDirectoryContents = fileReader.readDirectoryContents;
-      
-      // Create a custom implementation that returns results directly
-      // This bypasses the need to mock every level of the nested structure
-      Object.defineProperty(fileReader, 'readDirectoryContents', {
-        value: jest.fn().mockImplementationOnce(() => {
-          // Create a mock result array with all the files at different levels
-          const mockResults = [
-            {
-              path: path.join(testDirPath, 'root.txt'),
-              content: 'Content of root.txt',
-              error: null
-            }
-          ];
-          
-          // Add files for each level
-          let mockPath = testDirPath;
-          for (let i = 1; i <= maxDepth; i++) {
-            mockPath = path.join(mockPath, `level${i}`);
-            
-            if (i < maxDepth) {
-              mockResults.push({
-                path: path.join(mockPath, `file${i}.txt`),
-                content: `Content of file${i}.txt`,
-                error: null
-              });
-            } else {
-              mockResults.push({
-                path: path.join(mockPath, 'finalfile.txt'),
-                content: 'Content of finalfile.txt',
-                error: null
-              });
-            }
-          }
-          
-          return Promise.resolve(mockResults);
-        }),
-        configurable: true,
-        writable: true
-      });
-      
+      // Call the actual function
       const results = await readDirectoryContents(testDirPath);
       
-      // Should have all the files we created
-      expect(results.length).toBe(maxDepth + 1); // root.txt + one file at each level
+      // We expect 1 + maxDepth files (root file + one file at each level)
+      expect(results.length).toBe(1 + maxDepth);
       
-      // Verify we have files from different levels
+      // Check root file
       const rootFile = results.find(r => r.path.endsWith('root.txt'));
-      const level1File = results.find(r => r.path.endsWith('file1.txt'));
-      const finalFile = results.find(r => r.path.endsWith('finalfile.txt'));
-      
       expect(rootFile).toBeDefined();
-      expect(level1File).toBeDefined();
-      expect(finalFile).toBeDefined();
-      
       expect(rootFile?.content).toBe('Content of root.txt');
-      expect(level1File?.content).toBe('Content of file1.txt');
-      expect(finalFile?.content).toBe('Content of finalfile.txt');
       
-      // Restore the original implementation
-      Object.defineProperty(fileReader, 'readDirectoryContents', {
-        value: originalReadDirectoryContents,
-        configurable: true,
-        writable: true
-      });
-      jest.restoreAllMocks();
+      // Check nested files at each level
+      for (let i = 1; i < maxDepth; i++) {
+        const levelFile = results.find(r => r.path.endsWith(`file${i}.txt`));
+        expect(levelFile).toBeDefined();
+        expect(levelFile?.content).toBe(`Content of file${i}.txt`);
+      }
+      
+      // Check the deepest file
+      const finalFile = results.find(r => r.path.endsWith('finalfile.txt'));
+      expect(finalFile).toBeDefined();
+      expect(finalFile?.content).toBe('Content of finalfile.txt');
     });
   });
 });
