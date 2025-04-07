@@ -7,7 +7,7 @@
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Unrestored Jest Spies
 
-- [ ] **Replace Hardcoded Paths**
+- [x] **Replace Hardcoded Paths**
   - **Action:** Search for and replace all Unix-style hardcoded paths with `path.join()` to ensure cross-platform compatibility.
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Hardcoded Paths

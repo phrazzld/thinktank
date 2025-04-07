@@ -3,6 +3,7 @@
  * 
  * These tests verify the output directory creation and file writing functionality.
  */
+import path from 'path';
 import { RunOptions } from '../runThinktank';
 import * as outputHandler from '../outputHandler';
 
@@ -61,7 +62,7 @@ describe('Output Directory Feature', () => {
   // Setup constants for testing
   const mockRunDirectoryName = 'thinktank_run_20230515_143000_000';
   const mockOutputDir = 'mock-output-path';
-  const mockFullOutputDir = `${mockOutputDir}/${mockRunDirectoryName}`;
+  const mockFullOutputDir = path.join(mockOutputDir, mockRunDirectoryName);
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -74,7 +75,7 @@ describe('Output Directory Feature', () => {
         {
           modelKey: 'provider-a:model-1',
           filename: 'provider-a-model-1.md',
-          filePath: `${mockFullOutputDir}/provider-a-model-1.md`,
+          filePath: path.join(mockFullOutputDir, 'provider-a-model-1.md'),
           status: 'success',
           startTime: Date.now(),
           endTime: Date.now(),
@@ -241,7 +242,7 @@ describe('Output Directory Feature', () => {
   it('should properly handle custom output paths', async () => {
     // Use a different path
     const customOutputPath = 'custom-output-path';
-    const customFullPath = `${customOutputPath}/${mockRunDirectoryName}`;
+    const customFullPath = path.join(customOutputPath, mockRunDirectoryName);
     
     // Mock to return the custom path
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(customFullPath);

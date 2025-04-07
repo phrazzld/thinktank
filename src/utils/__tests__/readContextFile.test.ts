@@ -19,7 +19,7 @@ jest.mock('../logger');
 const mockedLogger = jest.mocked(logger);
 
 describe('readContextFile', () => {
-  const testFilePath = '/path/to/test/file.txt';
+  const testFilePath = path.join('/', 'path', 'to', 'test', 'file.txt');
   const testContent = 'This is test content\nwith multiple lines.';
   
   beforeEach(() => {
@@ -65,7 +65,7 @@ describe('readContextFile', () => {
     });
 
     it('should handle paths with special characters', async () => {
-      const specialCharPath = '/path/with spaces and #special characters!.txt';
+      const specialCharPath = path.join('/', 'path', 'with spaces and #special characters!.txt');
       
       // Setup the virtual filesystem with our test file
       createVirtualFs({
@@ -135,8 +135,9 @@ describe('readContextFile', () => {
     
     it('should return error info when path is not a file', async () => {
       // Setup a directory instead of a file
+      const testDirPath = path.join('/', 'path', 'to', 'test');
       createVirtualFs({
-        '/path/to/test/': '' // Directory
+        [testDirPath]: '' // Directory
       });
       
       // Mock stat to simulate a directory
@@ -170,14 +171,14 @@ describe('readContextFile', () => {
         birthtime: new Date()
       } as fs.Stats);
       
-      const result = await readContextFile('/path/to/test');
+      const result = await readContextFile(testDirPath);
       
       expect(result).toEqual({
-        path: '/path/to/test',
+        path: testDirPath,
         content: null,
         error: {
           code: 'NOT_FILE',
-          message: 'Path is not a file: /path/to/test'
+          message: `Path is not a file: ${testDirPath}`
         }
       });
       
@@ -280,7 +281,7 @@ describe('readContextFile', () => {
     });
     
     it('should handle Unix-style absolute paths', async () => {
-      const unixPath = '/Users/user/Documents/file.txt';
+      const unixPath = path.join('/', 'Users', 'user', 'Documents', 'file.txt');
       
       // Setup the virtual filesystem with our test file
       createVirtualFs({

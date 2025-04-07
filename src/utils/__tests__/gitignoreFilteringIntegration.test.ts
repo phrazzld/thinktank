@@ -20,7 +20,7 @@ import {
 jest.mock('../gitignoreUtils');
 
 describe('Gitignore Filtering Integration', () => {
-  const testDirPath = '/path/to/test/directory';
+  const testDirPath = path.join('/', 'path', 'to', 'test', 'directory');
   
   beforeEach(() => {
     // Reset and setup mocks
