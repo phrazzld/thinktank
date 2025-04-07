@@ -32,7 +32,7 @@
   - **Depends On:** Setup virtual .gitignore file creation in tests.
   - **AC Ref:** AC 2.3.
 
-- [ ] **Add cache clearing logic in tests**
+- [x] **Add cache clearing logic in tests**
   - **Action:** Ensure gitignoreUtils.clearIgnoreCache() is called in the test setup if the implementation uses caching.
   - **Depends On:** Setup virtual .gitignore file creation in tests.
   - **AC Ref:** AC 2.2.

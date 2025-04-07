@@ -46,6 +46,9 @@ describe('readContextPaths function', () => {
     // Reset virtual filesystem and mocks before each test
     resetVirtualFs();
     jest.clearAllMocks();
+    
+    // Clear gitignore cache
+    gitignoreUtils.clearIgnoreCache();
   });
   
   it('should process a mix of files and directories', async () => {
