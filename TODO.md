@@ -57,7 +57,7 @@
   - **Depends On:** "Update jest.config.js"
   - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [ ] **Remove Legacy mockFsUtils.ts File**
+- [x] **Remove Legacy mockFsUtils.ts File**
   - **Action:** Once all tests are passing with the `memfs` implementation, delete the `src/__tests__/utils/mockFsUtils.ts` file.
   - **Depends On:** "Verify All Tests Pass"
   - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
