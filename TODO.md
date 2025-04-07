@@ -50,7 +50,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 3.1.
 
-- [ ] **Create standardized path handling helper**
+- [x] **Create standardized path handling helper**
   - **Action:** Develop a shared helper function for path normalization to ensure consistent handling of leading slashes and path separators across all tests.
   - **Depends On:** None.
   - **AC Ref:** AC 3.2.
