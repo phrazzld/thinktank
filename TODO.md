@@ -42,7 +42,7 @@
   - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
   - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [ ] **Ensure Error Testing Uses memfs and spies**
+- [x] **Ensure Error Testing Uses memfs and spies**
   - **Action:** For each refactored test file, update error testing to use the approach recommended in PLAN_PHASE1.md - simulate errors with `createFsError` and `jest.spyOn` on specific fs functions. So far, successful refactorings (gitignoreUtils.test.ts, gitignoreFiltering.test.ts, gitignoreFilteringIntegration.test.ts, run-command.test.ts) all use this approach correctly.
   - **Depends On:** All individual file refactoring tasks
   - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
