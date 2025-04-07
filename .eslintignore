@@ -1,0 +1,8 @@
+# Node modules
+node_modules/
+
+# Distribution files
+dist/
+
+# Jest examples and test files
+jest/examples/

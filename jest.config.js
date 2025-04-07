@@ -4,6 +4,10 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.e2e.test.ts'],
+  // Setup files run once before all tests
+  setupFiles: ['<rootDir>/jest/setup.js'],
+  // Setup files run before each test file
+  setupFilesAfterEnv: ['<rootDir>/jest/setupFilesAfterEnv.js'],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/dist/',
