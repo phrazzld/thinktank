@@ -23,7 +23,10 @@ jest.mock('../gitignoreUtils');
 // Import modules after mocking
 import fs from 'fs';
 import fsPromises from 'fs/promises';
-import { readDirectoryContents } from '../fileReader';
+import * as fileReader from '../fileReader';
+
+// Get the functions to use in tests
+const { readDirectoryContents } = fileReader;
 
 describe('readDirectoryContents', () => {
   // Use a relative path without leading slash for memfs compatibility
@@ -480,7 +483,7 @@ describe('readDirectoryContents', () => {
       } as unknown as fs.Stats);
       
       // Mock readContextFile to return expected content
-      jest.spyOn(require('../fileReader'), 'readContextFile').mockImplementation((path: any) => {
+      jest.spyOn(fileReader, 'readContextFile').mockImplementation((path: any) => {
         const filePath = String(path);
         if (filePath === testDirPath) {
           return Promise.resolve({
@@ -755,7 +758,7 @@ describe('readDirectoryContents', () => {
       }
       
       // Mock the readContextFile function directly
-      jest.spyOn(require('../fileReader'), 'readContextFile').mockImplementation((path: any) => {
+      jest.spyOn(fileReader, 'readContextFile').mockImplementation((path: any) => {
         const filePath = String(path);
         if (filePath.endsWith('binary.bin')) {
           return Promise.resolve({
@@ -824,7 +827,7 @@ describe('readDirectoryContents', () => {
       
       // Create a custom implementation that returns results directly
       // This bypasses the need to mock every level of the nested structure
-      jest.spyOn(require('../fileReader'), 'readDirectoryContents').mockImplementationOnce(() => {
+      jest.spyOn(fileReader, 'readDirectoryContents').mockImplementationOnce(() => {
         // Create a mock result array with all the files at different levels
         const mockResults = [
           {

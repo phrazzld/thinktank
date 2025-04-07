@@ -540,7 +540,7 @@ function findGitignoreFiles(dirPath: string, virtualFs: any): void {
     }
   } catch (error) {
     // If any unexpected error occurs, just continue
-    console.warn(`Warning: Error processing virtual directory ${dirPath}: ${error}`);
+    console.warn(`Warning: Error processing virtual directory ${dirPath}: ${String(error)}`);
   }
 }
 
