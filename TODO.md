@@ -60,12 +60,12 @@
   - **Depends On:** Create standardized path handling helper
   - **AC Ref:** AC 3.2.
 
-- [ ] **Create reusable setup for filesystem mocking**
+- [x] **Create reusable setup for filesystem mocking**
   - **Action:** Extract common patterns for setting up filesystem mocks into shared helper functions to reduce duplication across test files.
   - **Depends On:** None.
   - **AC Ref:** AC 3.3.
 
-- [ ] **Create reusable cache clearing mechanism**
+- [x] **Create reusable cache clearing mechanism**
   - **Action:** Implement a consistent approach for clearing the gitignore cache in beforeEach hooks across all tests that use gitignore functionality.
   - **Depends On:** None.
   - **AC Ref:** AC 3.3.

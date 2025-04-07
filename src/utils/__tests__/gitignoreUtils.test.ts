@@ -3,12 +3,12 @@
  */
 import { 
   mockFsModules, 
-  resetVirtualFs, 
-  createVirtualFs, 
   addVirtualGitignoreFile
 } from '../../__tests__/utils/virtualFsUtils';
-
-// No longer needed - we'll use addVirtualGitignoreFile in the tests below
+import {
+  setupBasicFiles,
+  setupGitignoreMocking
+} from '../../__tests__/utils/fsTestSetup';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -19,7 +19,6 @@ import path from 'path';
 import fs from 'fs/promises';
 import * as gitignoreUtils from '../gitignoreUtils';
 import * as fileReader from '../fileReader';
-import { getVirtualFs } from '../../__tests__/utils/virtualFsUtils';
 
 // Mock dependencies - but allow the real implementation in the module
 jest.mock('../fileReader', () => {
@@ -39,53 +38,17 @@ describe('gitignoreUtils', () => {
   const gitignorePath = path.join(testDirPath, '.gitignore');
   
   beforeEach(async () => {
-    // Reset virtual filesystem
-    resetVirtualFs();
+    // Set up gitignore mocking with our reusable helper
+    setupGitignoreMocking(gitignoreUtils, mockedFileExists);
     
-    // Clear gitignore cache
-    gitignoreUtils.clearIgnoreCache();
-    
-    // Setup virtual filesystem with base directory structure
-    createVirtualFs({
+    // Setup virtual filesystem with base directory structure and gitignore
+    setupBasicFiles({
       // Create the directory by creating a file in it
       [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
     });
     
     // Add .gitignore file using the dedicated function
     await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
-    
-    // Set up fileExists mock to use the virtual filesystem
-    // This ensures that calls to fileExists will return true for the .gitignore file
-    mockedFileExists.mockImplementation(async (filePath) => {
-      // Using imported getVirtualFs from the top of the file
-      const virtualFs = getVirtualFs();
-      try {
-        // Check if file exists in the virtual filesystem - use original path, no normalization
-        virtualFs.statSync(filePath);
-        return true;
-      } catch (error) {
-        // Just return false if the file doesn't exist
-        return false;
-      }
-    });
-    
-    // Spy on fs.readFile to track calls and log calls
-    jest.spyOn(fs, 'readFile').mockImplementation(async (filePath, options) => {
-      // Convert to string without normalization
-      const path = String(filePath);
-      
-      // Default encoding is utf8 if not specified
-      const encoding = typeof options === 'string' 
-        ? options 
-        : (options && typeof options === 'object' && 'encoding' in options && typeof options.encoding === 'string')
-          ? options.encoding
-          : 'utf8';
-        
-      // Use virtual fs readFileSync and convert to a promise for fs.readFile
-      const virtualFs = getVirtualFs();
-      const content = virtualFs.readFileSync(path, encoding as BufferEncoding);
-      return content;
-    });
   });
   
   afterEach(() => {
@@ -105,16 +68,13 @@ describe('gitignoreUtils', () => {
     });
     
     it('should use default patterns when .gitignore does not exist', async () => {
-      // Reset mocks and file system for this test
-      jest.clearAllMocks();
-      resetVirtualFs();
+      // Create a fresh setup with no gitignore file
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
       
       // Create directory but NO .gitignore file
-      createVirtualFs({
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
-      
-      // Don't add a .gitignore file for this test
       
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
@@ -127,11 +87,10 @@ describe('gitignoreUtils', () => {
     
     it('should handle errors when reading .gitignore file', async () => {
       // Create a special scenario where we'll mock a read error
-      jest.clearAllMocks();
-      resetVirtualFs();
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
       
       // Create test directory
-      createVirtualFs({
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
@@ -160,29 +119,23 @@ describe('gitignoreUtils', () => {
     });
     
     it('should cache ignore filters for the same directory', async () => {
-      // Reset and create fresh environment
-      jest.clearAllMocks();
-      resetVirtualFs();
-      gitignoreUtils.clearIgnoreCache();
+      // Create a fresh setup
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
       
-      // Create test directory and file
-      createVirtualFs({
+      // Create test directory and file with gitignore
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
-      // Add .gitignore file
       await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
       
       // First call to populate cache
       const ignoreFilter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Clear caches to ensure we're actually testing the gitignoreUtils cache
-      resetVirtualFs();
+      // Clear virtual filesystem to ensure we're testing cache
+      setupBasicFiles({});
 
-      // This would make the test fail if the cache wasn't working
-      // because the file no longer exists but should be cached
-      
-      // Second call should use cached version
+      // Second call should use cached version despite filesystem reset
       const ignoreFilter2 = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
       // Both filters should be the same instance
@@ -190,16 +143,14 @@ describe('gitignoreUtils', () => {
     });
     
     it('should create different ignore filters for different directories', async () => {
-      // Reset environment
-      jest.clearAllMocks();
-      resetVirtualFs();
-      gitignoreUtils.clearIgnoreCache();
+      // Set up a fresh environment
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
       
       const otherDirPath = '/other/dir';
       const otherGitignorePath = path.join(otherDirPath, '.gitignore');
       
       // Create test directories
-      createVirtualFs({
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists',
         [otherDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
@@ -249,13 +200,11 @@ describe('gitignoreUtils', () => {
   
   describe('clearIgnoreCache', () => {
     it('should clear the ignore filter cache', async () => {
-      // Reset environment
-      jest.clearAllMocks();
-      resetVirtualFs();
-      gitignoreUtils.clearIgnoreCache();
+      // Set up a fresh environment
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
       
       // Create test directory and file
-      createVirtualFs({
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
@@ -272,9 +221,8 @@ describe('gitignoreUtils', () => {
       // Clear cache
       gitignoreUtils.clearIgnoreCache();
 
-      // Remove the .gitignore file to confirm we're getting a new instance
-      resetVirtualFs();
-      createVirtualFs({
+      // Setup a new environment with different gitignore content
+      setupBasicFiles({
         [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       await addVirtualGitignoreFile(gitignorePath, '*.txt'); // Different content
