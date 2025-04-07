@@ -50,6 +50,10 @@ describe('Input Handler', () => {
       return undefined;
     });
   });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
   
   describe('File Input', () => {
     it('should process file input correctly', async () => {

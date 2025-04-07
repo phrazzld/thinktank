@@ -25,6 +25,10 @@ describe('_processInput Helper', () => {
     // Reset mockSpinner state
     mockSpinner.text = '';
   });
+  
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
 
   it('should successfully process input', async () => {
     // Setup mocks

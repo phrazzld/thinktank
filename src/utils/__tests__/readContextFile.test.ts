@@ -28,6 +28,10 @@ describe('readContextFile', () => {
     jest.clearAllMocks();
   });
   
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+  
   describe('Basic Functionality', () => {
     it('should read file content and return path and content together', async () => {
       // Setup the virtual filesystem with our test file

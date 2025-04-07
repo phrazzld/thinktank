@@ -47,6 +47,10 @@ describe('gitignoreUtils', () => {
     jest.spyOn(fs, 'readFile');
   });
   
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+  
   describe('createIgnoreFilter', () => {
     it('should create an ignore filter with patterns from .gitignore file', async () => {
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);

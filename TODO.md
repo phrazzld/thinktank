@@ -1,79 +1,48 @@
 # TODO
 
-## Filesystem Testing Refactoring
+## Filesystem Testing Improvements
 
-- [x] **Identify Remaining Test Files Using mockFsUtils**
-  - **Action:** Scan all test files to identify those still importing from `../../__tests__/utils/mockFsUtils`.
-  - **Depends On:** None.
-  - **AC Ref:** AC 1.1 (Identify Target Test Files).
+- [x] **Fix Unrestored Jest Spies**
+  - **Action:** Add `jest.restoreAllMocks()` in `afterEach` blocks or individual `mockRestore()` calls where spies are used but not properly restored.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Unrestored Jest Spies
 
-- [x] **Identify Test Files Excluded by jest.config.js**
-  - **Action:** Review `testPathIgnorePatterns` in `jest.config.js` to identify which tests are likely skipped due to pending migration to `memfs`.
-  - **Depends On:** None.
-  - **AC Ref:** AC 1.1 (Identify Target Test Files).
+- [ ] **Replace Hardcoded Paths**
+  - **Action:** Search for and replace all Unix-style hardcoded paths with `path.join()` to ensure cross-platform compatibility.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Hardcoded Paths
 
-- [x] **Refactor src/workflow/__tests__/output-directory.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Standardize Virtual FS Setup**
+  - **Action:** Review test files, replace direct FS calls with `createVirtualFs` helper consistently across tests.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Inconsistent Virtual FS Setup
 
-- [x] **Refactor src/cli/__tests__/run-command.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Add Missing Newlines**
+  - **Action:** Configure editor/formatter to ensure consistent file endings with newline characters.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Missing Newlines
 
-- [x] **Refactor src/cli/__tests__/run-command-xdg.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Improve Type Safety**
+  - **Action:** Replace unsafe type assertions with more type-safe approaches or helper functions.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Unsafe Type Assertions
 
-- [x] **Refactor src/utils/__tests__/gitignoreUtils.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Expand Test Coverage**
+  - **Action:** Add additional tests for edge cases, partial failures, and concurrent operations in output-directory tests.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Limited Test Coverage
 
-- [x] **Refactor src/utils/__tests__/gitignoreFilteringIntegration.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Fix Console Mock Pollution**
+  - **Action:** Review and update console mocks to use `jest.spyOn` and restore in `afterEach` blocks.
+  - **Depends On:** Fix Unrestored Jest Spies
+  - **AC Ref:** Identified Issue - Console Mock Pollution
 
-- [x] **Refactor src/utils/__tests__/gitignoreFiltering.test.ts**
-  - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
-  - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
+- [ ] **Remove Residual Legacy References**
+  - **Action:** Search for and replace any remaining references to legacy mocking utilities.
+  - **Depends On:** None
+  - **AC Ref:** Identified Issue - Residual Legacy References
 
-- [x] **Ensure Error Testing Uses memfs and spies**
-  - **Action:** For each refactored test file, update error testing to use the approach recommended in PLAN_PHASE1.md - simulate errors with `createFsError` and `jest.spyOn` on specific fs functions. So far, successful refactorings (gitignoreUtils.test.ts, gitignoreFiltering.test.ts, gitignoreFilteringIntegration.test.ts, run-command.test.ts) all use this approach correctly.
-  - **Depends On:** All individual file refactoring tasks
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
-
-- [x] **Update jest.config.js**
-  - **Action:** For each successfully refactored test file, remove its path from the `testPathIgnorePatterns` array in `jest.config.js`. This has been done incrementally for each refactored test file.
-  - **Depends On:** All individual file refactoring tasks
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
-
-- [x] **Verify All Tests Pass**
-  - **Action:** Run tests to confirm all refactored tests pass with the new `memfs` approach.
-  - **Depends On:** "Update jest.config.js"
-  - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
-
-- [x] **Remove Legacy mockFsUtils.ts File**
-  - **Action:** Once all tests are passing with the `memfs` implementation, delete the `src/__tests__/utils/mockFsUtils.ts` file.
-  - **Depends On:** "Verify All Tests Pass"
-  - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
-
-- [x] **Clean Up test-helpers.ts**
-  - **Action:** Remove any helper functions in `src/__tests__/utils/test-helpers.ts` that are related to the old mocking strategy (like `createTestSafeError`).
-  - **Depends On:** "Remove Legacy mockFsUtils.ts File"
-  - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Gitignore Testing Overlap:** The plan includes refactoring gitignore-related tests as part of Phase 1, but there's a separate Phase 2 specifically for gitignore testing. I'm assuming we should still refactor the gitignore tests that directly use `mockFsUtils` in Phase 1, but leave more comprehensive changes for Phase 2.
-  - **Context:** Phase 1 focuses on removing `mockFsUtils.ts` while Phase 2 focuses on improving gitignore testing.
-
-- [ ] **mockGitignoreUtils Integration:** Some tests might be using both `mockFsUtils` and `mockGitignoreUtils`. I'm assuming we should keep the `mockGitignoreUtils` parts intact for now during Phase 1 and only replace the direct `mockFsUtils` usage.
-  - **Context:** We need to maintain test functionality during incremental migration, so keeping `mockGitignoreUtils` until Phase 2 makes sense.
-
-- [x] **outputHandler.ts Test Challenges:** RESOLVED: The `output-directory.test.ts` file has been successfully refactored by completely mocking the runThinktank function and outputHandler methods, avoiding the need for root filesystem operations in memfs.
-  - **Context:** Rather than trying to make memfs work with root directory operations, we've refocused the tests on verifying that the correct functions are called with the right arguments.
+- [ ] **Create Centralized Mock Setup**
+  - **Action:** Develop a shared Jest setup file for common mocks to reduce duplication.
+  - **Depends On:** Fix Unrestored Jest Spies, Fix Console Mock Pollution
+  - **AC Ref:** Best Practice - Centralized Mock Setup

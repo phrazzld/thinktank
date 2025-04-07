@@ -42,7 +42,7 @@ jest.mock('ora', () => {
 describe('runThinktank Error Handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Default helper mock implementations
     const mockConfig = {
       models: [
@@ -170,6 +170,10 @@ describe('runThinktank Error Handling', () => {
     
     // Mock nameGenerator
     (nameGenerator.generateFunName as jest.Mock).mockResolvedValue('clever-meadow');
+  });
+  
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
   
   // Restore all mocked modules after tests
