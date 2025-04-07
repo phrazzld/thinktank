@@ -25,15 +25,14 @@ jest.mock('../index', () => ({
 
 // Simple test to verify that the module imports correctly
 describe('Config Command Basic Tests', () => {
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
+  // No need to store console references with jest.restoreAllMocks()
   
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Mock console methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     
     // Mock configManager methods with basic implementations
     (configManager.getActiveConfigPath as jest.Mock).mockResolvedValue('/mock/path/thinktank.config.json');
@@ -58,8 +57,7 @@ describe('Config Command Basic Tests', () => {
   });
   
   afterEach(() => {
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    jest.restoreAllMocks();
   });
 
   it('should import the config command module', async () => {

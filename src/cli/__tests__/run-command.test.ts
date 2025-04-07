@@ -40,8 +40,6 @@ const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<type
 const fileExists = fileReader.fileExists as jest.MockedFunction<typeof fileReader.fileExists>;
 
 describe('Run Command Integration', () => {
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const originalNodeEnv = process.env.NODE_ENV;
@@ -58,8 +56,8 @@ describe('Run Command Integration', () => {
     process.env.NODE_ENV = 'test';
     
     // Mock console methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     
     // Mock process.exit with proper type
     process.exit = jest.fn() as unknown as (code?: number) => never;
@@ -105,9 +103,8 @@ describe('Run Command Integration', () => {
   });
   
   afterEach(() => {
-    // Restore originals
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
     process.env.NODE_ENV = originalNodeEnv;

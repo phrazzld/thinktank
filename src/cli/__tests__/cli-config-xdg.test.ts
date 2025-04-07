@@ -38,16 +38,14 @@ const getActiveConfigPath = configManager.getActiveConfigPath as jest.MockedFunc
 
 describe('CLI Config XDG Integration Tests', () => {
   // Store original implementations
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const mockXdgPath = '/mock/xdg/config/thinktank/config.json';
   
   beforeEach(() => {
     jest.clearAllMocks();
     
     // Mock console methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     
     // Setup default mock behavior
     getConfigFilePath.mockResolvedValue(mockXdgPath);
@@ -73,9 +71,8 @@ describe('CLI Config XDG Integration Tests', () => {
   });
   
   afterEach(() => {
-    // Restore methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
   });
   
   describe('config path command', () => {

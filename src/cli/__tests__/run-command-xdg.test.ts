@@ -42,8 +42,6 @@ const loadConfig = configManager.loadConfig as jest.MockedFunction<typeof config
 
 describe('Run Command with XDG Configuration Integration', () => {
   // Store original implementations
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const mockXdgPath = '/mock/xdg/config/thinktank/config.json';
@@ -56,8 +54,8 @@ describe('Run Command with XDG Configuration Integration', () => {
     resetVirtualFs();
     
     // Mock console methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     process.exit = jest.fn() as unknown as (code?: number) => never;
     
     // Setup virtual filesystem with test files using createVirtualFs
@@ -120,9 +118,8 @@ describe('Run Command with XDG Configuration Integration', () => {
   });
   
   afterEach(() => {
-    // Restore methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
   });

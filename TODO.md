@@ -32,7 +32,7 @@
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Limited Test Coverage
 
-- [ ] **Fix Console Mock Pollution**
+- [x] **Fix Console Mock Pollution**
   - **Action:** Review and update console mocks to use `jest.spyOn` and restore in `afterEach` blocks.
   - **Depends On:** Fix Unrestored Jest Spies
   - **AC Ref:** Identified Issue - Console Mock Pollution

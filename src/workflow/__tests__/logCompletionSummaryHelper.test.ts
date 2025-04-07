@@ -7,23 +7,22 @@ import '../../utils/consoleUtils';
 import { ModelQueryStatus } from '../queryExecutor';
 import { FileOutputResult, FileWriteStatus } from '../outputHandler';
 
-// Mock the console.log function
-const originalConsoleLog = console.log;
+// Used to capture console output for testing
 let consoleOutput: string[] = [];
 
 describe('_logCompletionSummary Helper', () => {
   // Set up console.log mock before each test
   beforeEach(() => {
     consoleOutput = [];
-    console.log = jest.fn((...args) => {
+    jest.spyOn(console, 'log').mockImplementation((...args) => {
       // Capture console output for assertions
       consoleOutput.push(args.join(' '));
     });
   });
 
-  // Restore original console.log after each test
+  // Restore console mocks after each test
   afterEach(() => {
-    console.log = originalConsoleLog;
+    jest.restoreAllMocks();
   });
 
   // Sample query results for testing

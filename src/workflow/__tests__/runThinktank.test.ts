@@ -34,6 +34,10 @@ describe('runThinktank', () => {
     jest.clearAllMocks();
   });
   
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+  
   // Restore all mocked modules after tests
   afterAll(() => {
     jest.unmock('../runThinktankHelpers');
@@ -599,7 +603,7 @@ describe('runThinktank', () => {
   
   it('should display extra metadata when includeMetadata is true', async () => {
     // Mock console.log to verify it's called with metadata
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+    jest.spyOn(console, 'log').mockImplementation();
     
     const options: RunOptions = {
       input: 'test-prompt.txt',
@@ -611,9 +615,8 @@ describe('runThinktank', () => {
     
     // Verify that the completion summary was called and console.log was used
     expect(helpers._logCompletionSummary).toHaveBeenCalled();
-    expect(consoleLogSpy).toHaveBeenCalled();
+    expect(console.log).toHaveBeenCalled();
     
-    // Restore console.log
-    consoleLogSpy.mockRestore();
+    // Restoration is handled by afterEach
   });
 });

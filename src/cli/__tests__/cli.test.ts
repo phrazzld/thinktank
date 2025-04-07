@@ -21,8 +21,6 @@ const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<type
 
 describe('CLI Interface', () => {
   // Store original implementations
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const originalNodeEnv = process.env.NODE_ENV;
@@ -34,8 +32,8 @@ describe('CLI Interface', () => {
     process.env.NODE_ENV = 'test';
     
     // Mock methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     process.exit = jest.fn() as any;
     
     // Reset mocked implementations
@@ -64,9 +62,8 @@ describe('CLI Interface', () => {
   });
   
   afterEach(() => {
-    // Restore methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
     process.env.NODE_ENV = originalNodeEnv;
