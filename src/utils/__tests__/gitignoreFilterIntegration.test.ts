@@ -2,101 +2,52 @@
  * Integration tests for gitignore filtering within directory traversal
  */
 import path from 'path';
-import { readDirectoryContents } from '../fileReader';
 import { 
-  resetMockFs, 
-  setupMockFs, 
-  mockStat, 
-  mockReaddir,
-  mockReadFile,
-  mockAccess
-} from '../../__tests__/utils/mockFsUtils';
+  resetVirtualFs, 
+  getVirtualFs, 
+  mockFsModules 
+} from '../../__tests__/utils/virtualFsUtils';
 import {
   resetMockGitignore,
   setupMockGitignore,
   mockedGitignoreUtils
 } from '../../__tests__/utils/mockGitignoreUtils';
 
-// Mock dependencies
-jest.mock('fs/promises');
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
 jest.mock('../gitignoreUtils');
+
+// Import modules after mocking
+import { readDirectoryContents } from '../fileReader';
 
 describe('gitignore filtering in directory traversal', () => {
   const testDirPath = '/path/to/test/directory';
   
   beforeEach(() => {
-    // Reset and setup mocks
-    resetMockFs();
-    setupMockFs();
+    // Reset mocks
+    jest.clearAllMocks();
+    resetVirtualFs();
     resetMockGitignore();
     setupMockGitignore();
     
-    // Mock directory structure and access
-    mockAccess(testDirPath, true);
-    mockAccess(path.join(testDirPath, 'file1.txt'), true);
-    mockAccess(path.join(testDirPath, 'file2.md'), true);
-    mockAccess(path.join(testDirPath, 'subdir'), true);
-    mockAccess(path.join(testDirPath, 'node_modules'), true);
-    mockAccess(path.join(testDirPath, '.git'), true);
-    mockAccess(path.join(testDirPath, '.gitignore'), true);
-    mockAccess(path.join(testDirPath, 'ignored-by-gitignore.log'), true);
-    mockAccess(path.join(testDirPath, 'subdir/nested.txt'), true);
-    mockAccess(path.join(testDirPath, 'subdir/nested-ignored.tmp'), true);
-    mockAccess(path.join(testDirPath, 'subdir/.gitignore'), true);
+    // Get virtual filesystem reference
+    const virtualFs = getVirtualFs();
     
-    // Mock directory stats
-    const fileStats = {
-      isFile: () => true,
-      isDirectory: () => false,
-      size: 1024
-    };
+    // Create test directory structure
+    virtualFs.mkdirSync(testDirPath, { recursive: true });
+    virtualFs.mkdirSync(path.join(testDirPath, 'subdir'), { recursive: true });
+    virtualFs.mkdirSync(path.join(testDirPath, 'node_modules'), { recursive: true });
+    virtualFs.mkdirSync(path.join(testDirPath, '.git'), { recursive: true });
     
-    const dirStats = {
-      isFile: () => false,
-      isDirectory: () => true,
-      size: 4096
-    };
-    
-    // Set up stats for directories
-    mockStat(testDirPath, dirStats);
-    mockStat(path.join(testDirPath, '.git'), dirStats);
-    mockStat(path.join(testDirPath, 'node_modules'), dirStats);
-    mockStat(path.join(testDirPath, 'subdir'), dirStats);
-    
-    // Set up stats for files
-    mockStat(path.join(testDirPath, 'file1.txt'), fileStats);
-    mockStat(path.join(testDirPath, 'file2.md'), fileStats);
-    mockStat(path.join(testDirPath, '.gitignore'), fileStats);
-    mockStat(path.join(testDirPath, 'ignored-by-gitignore.log'), fileStats);
-    mockStat(path.join(testDirPath, 'subdir/nested.txt'), fileStats);
-    mockStat(path.join(testDirPath, 'subdir/nested-ignored.tmp'), fileStats);
-    mockStat(path.join(testDirPath, 'subdir/.gitignore'), fileStats);
-    
-    // Mock directory read for root and subdir
-    mockReaddir(testDirPath, [
-      'file1.txt',
-      'file2.md',
-      'subdir',
-      'node_modules',
-      '.git',
-      '.gitignore',
-      'ignored-by-gitignore.log'
-    ]);
-    
-    mockReaddir(path.join(testDirPath, 'subdir'), [
-      'nested.txt',
-      'nested-ignored.tmp',
-      '.gitignore'
-    ]);
-    
-    // Mock file content
-    mockReadFile(path.join(testDirPath, '.gitignore'), '*.log\n');
-    mockReadFile(path.join(testDirPath, 'subdir/.gitignore'), '*.tmp\n');
-    mockReadFile(path.join(testDirPath, 'file1.txt'), 'Content of file1.txt');
-    mockReadFile(path.join(testDirPath, 'file2.md'), 'Content of file2.md');
-    mockReadFile(path.join(testDirPath, 'ignored-by-gitignore.log'), 'Content of ignored-by-gitignore.log');
-    mockReadFile(path.join(testDirPath, 'subdir/nested.txt'), 'Content of nested.txt');
-    mockReadFile(path.join(testDirPath, 'subdir/nested-ignored.tmp'), 'Content of nested-ignored.tmp');
+    // Create files with content
+    virtualFs.writeFileSync(path.join(testDirPath, 'file1.txt'), 'Content of file1.txt');
+    virtualFs.writeFileSync(path.join(testDirPath, 'file2.md'), 'Content of file2.md');
+    virtualFs.writeFileSync(path.join(testDirPath, '.gitignore'), '*.log\n');
+    virtualFs.writeFileSync(path.join(testDirPath, 'ignored-by-gitignore.log'), 'Content of ignored-by-gitignore.log');
+    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/nested.txt'), 'Content of nested.txt');
+    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/nested-ignored.tmp'), 'Content of nested-ignored.tmp');
+    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/.gitignore'), '*.tmp\n');
     
     // Mock shouldIgnorePath to simulate gitignore filtering behavior
     // The function is called with (dirPath, entryPath) so we need to be specific about

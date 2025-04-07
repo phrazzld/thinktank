@@ -13,7 +13,7 @@ module.exports = {
     // '/src/utils/__tests__/binaryFileDetection.test.ts', // Re-enabled after refactoring with virtualFsUtils
     // '/src/utils/__tests__/readContextPaths.test.ts', // Re-enabled after refactoring with virtualFsUtils
     // '/src/utils/__tests__/formatCombinedInput.test.ts', // Re-enabled after refactoring with virtualFsUtils
-    '/src/utils/__tests__/gitignoreFilterIntegration.test.ts', // Skip tests that are crashing Jest workers
+    // '/src/utils/__tests__/gitignoreFilterIntegration.test.ts', // Re-enabled after refactoring with virtualFsUtils
     '/src/providers/__tests__/anthropic.test.ts', // Skip tests that are crashing
     '/src/cli/__tests__/cli.e2e.test.ts', // Skip tests that are crashing
     '/src/workflow/__tests__/handleWorkflowErrorHelper.test.ts', // Skip tests that are crashing 
