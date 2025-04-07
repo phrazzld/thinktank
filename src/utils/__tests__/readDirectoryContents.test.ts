@@ -6,19 +6,19 @@ import {
   resetVirtualFs, 
   getVirtualFs, 
   createFsError,
-  mockFsModules 
+  mockFsModules,
+  addVirtualGitignoreFile
 } from '../../__tests__/utils/virtualFsUtils';
-import {
-  resetMockGitignore,
-  setupMockGitignore,
-  mockShouldIgnorePath,
-  mockedGitignoreUtils
-} from '../../__tests__/utils/mockGitignoreUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
 jest.mock('fs/promises', () => mockFsModules().fsPromises);
-jest.mock('../gitignoreUtils');
+
+// TODO: Remove gitignoreUtils mocking - just commenting for now to prevent test failures
+// jest.mock('../gitignoreUtils');
+
+// Import actual gitignoreUtils
+import * as gitignoreUtils from '../gitignoreUtils';
 
 // Import modules after mocking
 import fs from 'fs';
@@ -36,11 +36,11 @@ describe('readDirectoryContents', () => {
     // Reset mocks
     jest.clearAllMocks();
     resetVirtualFs();
-    resetMockGitignore();
-    setupMockGitignore();
     
-    // Mock gitignore utils to not ignore anything by default
-    mockShouldIgnorePath(/.*/, false);
+    // Clear gitignore cache
+    gitignoreUtils.clearIgnoreCache();
+    
+    // TODO: Setup proper gitignore behavior using virtual filesystem in next tasks
   });
 
   describe('Basic Directory Traversal', () => {

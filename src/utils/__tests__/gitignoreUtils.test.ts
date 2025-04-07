@@ -1,7 +1,13 @@
 /**
  * Tests for gitignore utilities
  */
-import { mockFsModules, resetVirtualFs, createVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+import { 
+  mockFsModules, 
+  resetVirtualFs, 
+  createVirtualFs, 
+  createFsError,
+  addVirtualGitignoreFile
+} from '../../__tests__/utils/virtualFsUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);

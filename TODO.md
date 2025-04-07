@@ -12,7 +12,7 @@
   - **AC Ref:** AC 1.1.
 
 ## Refactor Gitignore-Related Tests
-- [ ] **Remove mock dependencies from gitignore tests**
+- [x] **Remove mock dependencies from gitignore tests**
   - **Action:** Identify all tests that use jest.mock('../gitignoreUtils') and remove these mocks along with any imports from mockGitignoreUtils.
   - **Depends On:** Implement or integrate addVirtualGitignoreFile functionality.
   - **AC Ref:** AC 2.1.

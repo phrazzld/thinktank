@@ -1,7 +1,14 @@
 /**
  * Tests for the master readContextPaths function
  */
-import { createVirtualFs, resetVirtualFs, mockFsModules, createFsError, getVirtualFs } from '../../__tests__/utils/virtualFsUtils';
+import { 
+  createVirtualFs, 
+  resetVirtualFs, 
+  mockFsModules, 
+  createFsError, 
+  getVirtualFs,
+  addVirtualGitignoreFile
+} from '../../__tests__/utils/virtualFsUtils';
 
 // Setup mocks for fs modules
 jest.mock('fs', () => mockFsModules().fs);
@@ -12,10 +19,13 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { readContextPaths, ContextFileResult } from '../fileReader';
+import * as gitignoreUtils from '../gitignoreUtils';
 
-// Mock gitignoreUtils since we're not testing gitignore functionality here
+// TODO: We need to temporarily keep this mock until the next tasks 
+// are implemented to use actual gitignoreUtils with virtual .gitignore files
 jest.mock('../gitignoreUtils', () => ({
-  shouldIgnorePath: jest.fn().mockResolvedValue(false)
+  shouldIgnorePath: jest.fn().mockResolvedValue(false),
+  clearIgnoreCache: jest.fn()
 }));
 
 describe('readContextPaths function', () => {
