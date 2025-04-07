@@ -102,6 +102,300 @@ beforeEach(() => {
 });
 ```
 
+## Advanced Testing Patterns
+
+This section covers advanced testing patterns for common scenarios you may encounter when testing filesystem operations.
+
+### Testing Cross-Platform Code
+
+When testing code that behaves differently across platforms, you can mock the platform detection:
+
+```typescript
+describe('Platform-specific code', () => {
+  const originalPlatform = process.platform;
+  
+  afterEach(() => {
+    // Always restore the original platform after tests
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform
+    });
+  });
+  
+  it('should handle Windows paths', () => {
+    // Mock process.platform to simulate Windows
+    Object.defineProperty(process, 'platform', {
+      value: 'win32'
+    });
+    
+    // Setup test filesystem
+    createVirtualFs({
+      'C:\\Users\\Test\\file.txt': 'Windows content'
+    });
+    
+    // Test Windows-specific behavior
+    // ...
+  });
+  
+  it('should handle Unix paths', () => {
+    // Mock process.platform to simulate Unix
+    Object.defineProperty(process, 'platform', {
+      value: 'linux'
+    });
+    
+    // Setup test filesystem
+    createVirtualFs({
+      'home/user/file.txt': 'Unix content'
+    });
+    
+    // Test Unix-specific behavior
+    // ...
+  });
+});
+```
+
+### Testing Binary File Detection
+
+To test binary file detection, you can create file content that contains binary data:
+
+```typescript
+describe('Binary file detection', () => {
+  beforeEach(() => {
+    resetVirtualFs();
+  });
+  
+  it('should detect binary files', async () => {
+    // Create a text file
+    createVirtualFs({
+      'text-file.txt': 'Plain text content'
+    });
+    
+    // Create a binary file with null bytes
+    const binaryContent = Buffer.from('Content with \0 null bytes').toString();
+    createVirtualFs({
+      'binary-file.bin': binaryContent
+    });
+    
+    // Get the virtual filesystem for direct access
+    const virtualFs = getVirtualFs();
+    
+    // Test binary file detection
+    const textContent = virtualFs.readFileSync('text-file.txt', 'utf8');
+    const binaryContent2 = virtualFs.readFileSync('binary-file.bin', 'utf8');
+    
+    expect(isBinaryFile(textContent)).toBe(false);
+    expect(isBinaryFile(binaryContent2)).toBe(true);
+  });
+});
+```
+
+### Testing Large Directory Structures
+
+When testing with large directory structures, generate the structure programmatically:
+
+```typescript
+describe('Large directory structures', () => {
+  beforeEach(() => {
+    resetVirtualFs();
+    
+    // Programmatically create a large directory structure
+    const structure: Record<string, string> = {};
+    
+    // Create a nested directory structure with many files
+    for (let i = 0; i < 5; i++) {
+      // Create directory
+      structure[`level-${i}/`] = '';
+      
+      // Add several files to each directory
+      for (let j = 0; j < 10; j++) {
+        structure[`level-${i}/file-${j}.txt`] = `Content for file ${j} in level ${i}`;
+      }
+      
+      // Add subdirectories
+      for (let k = 0; k < 3; k++) {
+        structure[`level-${i}/subdir-${k}/`] = '';
+        
+        // Add files to subdirectories
+        for (let m = 0; m < 5; m++) {
+          structure[`level-${i}/subdir-${k}/nested-${m}.txt`] = `Nested content ${m}`;
+        }
+      }
+    }
+    
+    createVirtualFs(structure);
+  });
+  
+  it('should handle traversing large directory structures', async () => {
+    const results = await readDirectoryContents('level-0');
+    
+    // With the structure above, we should have:
+    // - 10 files directly in level-0
+    // - 3 subdirectories, each with 5 files
+    // Total: 10 + (3 * 5) = 25 files
+    expect(results.length).toBe(25);
+  });
+});
+```
+
+### Testing Error Propagation
+
+To test how errors propagate through your code:
+
+```typescript
+describe('Error propagation', () => {
+  beforeEach(() => {
+    resetVirtualFs();
+    
+    createVirtualFs({
+      'existing.txt': 'File content'
+    });
+  });
+  
+  it('should propagate file not found errors with context', async () => {
+    // Test accessing a non-existent file
+    await expect(readContextFile('missing.txt'))
+      .resolves.toMatchObject({
+        path: 'missing.txt',
+        content: null,
+        error: {
+          code: 'ENOENT',
+          message: expect.stringContaining('File not found')
+        }
+      });
+  });
+  
+  it('should propagate permission errors', async () => {
+    // Mock a permission error using a spy
+    const accessSpy = jest.spyOn(fsPromises, 'access');
+    accessSpy.mockRejectedValueOnce(
+      createFsError('EACCES', 'Permission denied', 'access', 'existing.txt')
+    );
+    
+    await expect(readContextFile('existing.txt'))
+      .resolves.toMatchObject({
+        path: 'existing.txt',
+        content: null,
+        error: {
+          code: 'EACCES',
+          message: expect.stringContaining('Permission denied')
+        }
+      });
+    
+    accessSpy.mockRestore();
+  });
+});
+```
+
+## Testing Skipped Scenarios
+
+This section provides guidance on implementing tests for scenarios that are often skipped due to complexity.
+
+### Testing Windows-Style Paths
+
+```typescript
+describe('Windows path handling', () => {
+  const originalPlatform = process.platform;
+  const originalIsAbsolute = path.isAbsolute;
+  const originalResolve = path.resolve;
+  
+  beforeEach(() => {
+    resetVirtualFs();
+    
+    // Mock path functions to handle Windows paths
+    jest.spyOn(path, 'isAbsolute').mockImplementation((pathStr) => {
+      if (pathStr.match(/^[A-Z]:\\/i)) {
+        return true;  // Windows drive path is absolute
+      }
+      return originalIsAbsolute(pathStr);
+    });
+    
+    jest.spyOn(path, 'resolve').mockImplementation((basePath, ...segments) => {
+      if (segments[0] && segments[0].match(/^[A-Z]:\\/i)) {
+        return segments[0];  // Windows absolute path
+      }
+      return originalResolve(basePath, ...segments);
+    });
+    
+    // Simulate Windows platform
+    Object.defineProperty(process, 'platform', {
+      value: 'win32'
+    });
+    
+    // Create Windows-style virtual filesystem
+    createVirtualFs({
+      'C:\\Users\\Test\\file.txt': 'Windows content',
+      'C:\\Program Files\\App\\config.json': '{"windowsKey": "value"}'
+    });
+  });
+  
+  afterEach(() => {
+    // Restore original functions and platform
+    jest.restoreAllMocks();
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform
+    });
+  });
+  
+  it('should handle Windows paths correctly', async () => {
+    // For virtual filesystem access, convert Windows-style paths to memfs format
+    const virtualFs = getVirtualFs();
+    
+    // Test with Windows-style paths (converted for memfs)
+    const content = await fsPromises.readFile('C:\\Users\\Test\\file.txt', 'utf8');
+    expect(content).toBe('Windows content');
+    
+    // Test path.join behavior with Windows paths
+    const joinedPath = path.join('C:\\Users', 'Test', 'another.txt');
+    expect(joinedPath).toMatch(/C:\\Users\\Test\\another\.txt/i);
+  });
+});
+```
+
+### Testing Directory Access Errors
+
+```typescript
+describe('Directory access errors', () => {
+  beforeEach(() => {
+    resetVirtualFs();
+    
+    createVirtualFs({
+      'accessible/': '',
+      'accessible/file.txt': 'Accessible content',
+      'inaccessible/': ''
+    });
+  });
+  
+  it('should handle directory access errors gracefully', async () => {
+    // Mock access to throw permission denied for the inaccessible directory
+    const accessSpy = jest.spyOn(fsPromises, 'access');
+    accessSpy.mockImplementation((path, mode) => {
+      if (String(path).includes('inaccessible')) {
+        return Promise.reject(
+          createFsError('EACCES', 'Permission denied', 'access', String(path))
+        );
+      }
+      // For other paths, return success
+      return Promise.resolve();
+    });
+    
+    // Test the function with both accessible and inaccessible directories
+    const accessibleResults = await readDirectoryContents('accessible');
+    const inaccessibleResults = await readDirectoryContents('inaccessible');
+    
+    // The accessible directory should have file content
+    expect(accessibleResults.length).toBe(1);
+    expect(accessibleResults[0].content).toBe('Accessible content');
+    
+    // The inaccessible directory should return an error result
+    expect(inaccessibleResults.length).toBe(1);
+    expect(inaccessibleResults[0].path).toBe('inaccessible');
+    expect(inaccessibleResults[0].content).toBeNull();
+    expect(inaccessibleResults[0].error?.code).toBe('READ_ERROR');
+    
+    accessSpy.mockRestore();
+  });
+});
+```
+
 ## Migrating from mockFsUtils to virtualFsUtils
 
 This section provides a step-by-step guide for migrating tests from the legacy `mockFsUtils` approach to the new `virtualFsUtils` approach.
@@ -115,6 +409,8 @@ The `virtualFsUtils` approach offers several advantages:
 3. **Closer to real behavior**: Uses an actual in-memory filesystem that implements the entire Node.js fs API
 4. **Better type safety**: Provides proper TypeScript types for all filesystem operations
 5. **Cleaner tests**: Reduces the amount of boilerplate code needed for test setup
+6. **Better error simulation**: More accurate simulation of filesystem error conditions
+7. **Improved performance**: Virtual filesystem operations are generally faster than complex mock setups
 
 ### Step 1: Update Import and Setup
 
