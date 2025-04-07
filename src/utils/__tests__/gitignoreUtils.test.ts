@@ -56,8 +56,7 @@ describe('gitignoreUtils', () => {
     // Set up fileExists mock to use the virtual filesystem
     // This ensures that calls to fileExists will return true for the .gitignore file
     mockedFileExists.mockImplementation(async (filePath) => {
-      // Import here to avoid conflict with local variable name
-      const { getVirtualFs } = require('../../__tests__/utils/virtualFsUtils');
+      // Using imported getVirtualFs from the top of the file
       const virtualFs = getVirtualFs();
       const normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
       try {

@@ -83,15 +83,10 @@ describe('gitignore filtering in directory traversal', () => {
           ? options.encoding
           : 'utf8';
         
-      try {
-        const virtualFs = getVirtualFs();
-        // Use virtual fs readFileSync and convert to a promise for fs.readFile
-        const content = virtualFs.readFileSync(normalizedPath, encoding as BufferEncoding);
-        return content;
-      } catch (error) {
-        // Re-throw the error to maintain the original behavior
-        throw error;
-      }
+      const virtualFs = getVirtualFs();
+      // Use virtual fs readFileSync and convert to a promise for fs.readFile
+      const content = virtualFs.readFileSync(normalizedPath, encoding as BufferEncoding);
+      return content;
     });
   });
   

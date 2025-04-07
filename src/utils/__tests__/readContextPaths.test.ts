@@ -28,12 +28,9 @@ jest.mock('../gitignoreUtils', () => ({
   clearIgnoreCache: jest.fn()
 }));
 
-// Just using imports to avoid TypeScript errors
-// These will be properly used in the next task
-if (false) {
-  gitignoreUtils.clearIgnoreCache();
-  addVirtualGitignoreFile('/fake-path/.gitignore', '*.tmp');
-}
+// Mark these functions as used to avoid unused import warnings
+void gitignoreUtils.clearIgnoreCache;
+void addVirtualGitignoreFile;
 
 describe('readContextPaths function', () => {
   const testFile = '/path/to/file.txt';
