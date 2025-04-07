@@ -183,7 +183,7 @@ export function createFsError(
   const error = new Error(message) as NodeJS.ErrnoException;
   
   // Handle Windows path notation for memfs compatibility
-  let fixedPath = filepath.replace(/^([A-Za-z]):/, '/$1:');
+  const fixedPath = filepath.replace(/^([A-Za-z]):/, '/$1:');
   // Normalize the filepath for consistency
   const normalizedPath = normalizePath(fixedPath, true);
   
@@ -235,7 +235,7 @@ export async function addVirtualGitignoreFile(gitignorePath: string, content: st
   const virtualFs = getVirtualFs();
   
   // Handle Windows path notation for memfs compatibility
-  let fixedPath = gitignorePath.replace(/^([A-Za-z]):/, '/$1:');
+  const fixedPath = gitignorePath.replace(/^([A-Za-z]):/, '/$1:');
   // Normalize the gitignore path - memfs needs leading slash
   const normalizedPath = normalizePath(fixedPath, true);
   

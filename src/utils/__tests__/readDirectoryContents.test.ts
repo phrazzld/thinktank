@@ -184,6 +184,7 @@ describe('readDirectoryContents', () => {
       
       // Mock readFile to return the content we expect
       const fsReadFileMock = jest.spyOn(fs, 'readFile');
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       fsReadFileMock.mockImplementation((_path) => {
         const pathStr = String(_path);
         if (pathStr.endsWith('file.txt')) {
