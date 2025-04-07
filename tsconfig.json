@@ -5,7 +5,7 @@
     "module": "CommonJS",
     "lib": ["ES2020"],
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": ".",
     
     /* Module Resolution */
     "moduleResolution": "node",
@@ -37,7 +37,8 @@
     "emitDecoratorMetadata": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "jest/**/*"
   ],
   "exclude": [
     "node_modules",

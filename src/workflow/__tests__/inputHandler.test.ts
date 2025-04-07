@@ -18,15 +18,13 @@ jest.mock('../../utils/helpers', () => ({
 }));
 
 describe('Input Handler', () => {
-  // Access the virtual filesystem
-  const virtualFs = getVirtualFs();
-  
   // Reset all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
     resetVirtualFs();
     
-    // Setup test files in virtual filesystem - with relative paths for memfs
+    // Setup test files in virtual filesystem
+    const virtualFs = getVirtualFs();
     virtualFs.mkdirSync('test', { recursive: true });
     virtualFs.writeFileSync('test-file.txt', '  File content from test  ');
     virtualFs.writeFileSync('protected-file.txt', 'Protected content');
@@ -43,12 +41,17 @@ describe('Input Handler', () => {
       if (pathStr.indexOf('nonexistent-file.txt') >= 0) {
         throw createFsError('ENOENT', 'File not found', 'access', pathStr);
       }
-      // Use the virtual filesystem instead of calling original
+      // Use the virtual filesystem to check existence
+      const virtualFs = getVirtualFs();
       if (!virtualFs.existsSync(pathStr)) {
         throw createFsError('ENOENT', 'File not found', 'access', pathStr);
       }
       return undefined;
     });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
   
   describe('File Input', () => {
@@ -117,6 +120,9 @@ describe('Input Handler', () => {
     
     it('should handle file read errors', async () => {
       // Create the file in the virtual filesystem so access check passes
+      // Create parent directory first to avoid ENOTDIR error
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('test', { recursive: true });
       virtualFs.writeFileSync('test/bad-file.txt', 'Bad file content');
       
       // Mock fs.readFile directly to force an error

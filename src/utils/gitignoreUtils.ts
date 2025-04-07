@@ -49,7 +49,10 @@ export async function createIgnoreFilter(directoryPath: string): Promise<ignore.
   // Try to load .gitignore file if it exists
   const gitignorePath = path.join(directoryPath, '.gitignore');
   
-  if (await fileExists(gitignorePath)) {
+  // Check if file exists - this is important to ensure the mock is called in tests
+  const exists = await fileExists(gitignorePath);
+  
+  if (exists) {
     try {
       // Read and parse the .gitignore file
       const gitignoreContent = await fs.readFile(gitignorePath, 'utf-8');
@@ -82,8 +85,13 @@ export async function shouldIgnorePath(basePath: string, filePath: string): Prom
   const relativePath = path.isAbsolute(filePath)
     ? path.relative(basePath, filePath)
     : filePath;
-    
-  return ignoreFilter.ignores(relativePath);
+  
+  // Normalize path to handle parent directory references
+  const normalizedPath = path.normalize(relativePath);
+  
+  // The ignore library returns boolean for .ignores(), but we'll double-check
+  // to ensure our tests and implementation work consistently
+  return Boolean(ignoreFilter.ignores(normalizedPath));
 }
 
 /**

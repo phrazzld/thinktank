@@ -21,6 +21,18 @@ import * as configManager from '../../core/configManager';
 jest.mock('../../workflow/runThinktank');
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
+jest.mock('../../cli/index', () => ({
+  handleError: jest.fn()
+}));
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    plain: jest.fn()
+  }
+}));
 
 // Access the mocks
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
@@ -30,8 +42,6 @@ const loadConfig = configManager.loadConfig as jest.MockedFunction<typeof config
 
 describe('Run Command with XDG Configuration Integration', () => {
   // Store original implementations
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const mockXdgPath = '/mock/xdg/config/thinktank/config.json';
@@ -44,16 +54,11 @@ describe('Run Command with XDG Configuration Integration', () => {
     resetVirtualFs();
     
     // Mock console methods
-    console.log = jest.fn();
-    console.error = jest.fn();
-    process.exit = jest.fn() as any;
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    process.exit = jest.fn() as unknown as (code?: number) => never;
     
-    // Setup virtual filesystem with test files
-    virtualFs.mkdirSync('/mock/xdg/config/thinktank', { recursive: true });
-    virtualFs.mkdirSync('/custom/config', { recursive: true });
-    virtualFs.writeFileSync('/test-prompt.txt', 'This is an XDG test prompt');
-    
-    // Create XDG config file in virtual filesystem
+    // Setup virtual filesystem with test files using createVirtualFs
     const configContent = JSON.stringify({
       models: [
         { provider: 'openai', modelId: 'gpt-4o', enabled: true },
@@ -72,6 +77,12 @@ describe('Run Command with XDG Configuration Integration', () => {
         }
       }
     });
+    
+    // Need to create directories before creating files
+    const virtualFs = getVirtualFs();
+    virtualFs.mkdirSync('/mock/xdg/config/thinktank', { recursive: true });
+    virtualFs.mkdirSync('/custom/config', { recursive: true });
+    virtualFs.writeFileSync('/test-prompt.txt', 'This is an XDG test prompt');
     virtualFs.writeFileSync(mockXdgPath, configContent);
     virtualFs.writeFileSync('/custom/config/path.json', configContent);
     
@@ -107,9 +118,8 @@ describe('Run Command with XDG Configuration Integration', () => {
   });
   
   afterEach(() => {
-    // Restore methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
   });

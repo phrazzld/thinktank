@@ -108,8 +108,10 @@ export function formatResponse(
     const thinkingHeader = 'Thinking:';
     lines.push(useColors ? styleHeader(thinkingHeader) : thinkingHeader);
     
-    const thinking = response.metadata.thinking as { process?: string };
-    if (thinking.process) {
+    // Type guard for thinking data with a process field
+    const thinking = response.metadata.thinking;
+    if (typeof thinking === 'object' && thinking !== null && 
+        'process' in thinking && typeof thinking.process === 'string') {
       lines.push(thinking.process);
     } else {
       lines.push(JSON.stringify(thinking, null, 2));
@@ -224,29 +226,54 @@ export function formatResultsTable(
       : groupName;
     
     // Get response time if available
-    const responseTime = result.metadata?.responseTime || '-';
+    let responseTime: string | number = '-';
+    
+    if (result.metadata?.responseTime !== undefined) {
+      const metadataTime = result.metadata.responseTime;
+      // Handle different types that might be stored in responseTime
+      if (typeof metadataTime === 'number' || typeof metadataTime === 'string') {
+        responseTime = metadataTime;
+      }
+    }
     
     // Get token count if available
-    const usage = result.metadata?.usage as Record<string, number> | undefined;
-    const tokens = usage?.total_tokens || 
-                  usage?.completion_tokens || 
-                  usage?.prompt_tokens || 
-                  '-';
+    // Type guard for usage object with token properties
+    const usage = result.metadata?.usage;
+    let tokens: string | number = '-';
+    
+    if (usage && typeof usage === 'object' && usage !== null) {
+      // Check for known token properties in order of preference
+      const usageRecord = usage as Record<string, unknown>;
+      if ('total_tokens' in usageRecord && typeof usageRecord.total_tokens === 'number') {
+        tokens = usageRecord.total_tokens;
+      } else if ('completion_tokens' in usageRecord && typeof usageRecord.completion_tokens === 'number') {
+        tokens = usageRecord.completion_tokens;
+      } else if ('prompt_tokens' in usageRecord && typeof usageRecord.prompt_tokens === 'number') {
+        tokens = usageRecord.prompt_tokens;
+      }
+    }
     
     // Add to the table
-    table.push([
-      result.configKey as Cell,
-      displayGroupName as Cell,
-      statusText as Cell,
-      responseTime as Cell,
-      tokens as Cell
-    ]);
+    // Convert all values to proper Cell type for cli-table3
+    const row: Cell[] = [
+      result.configKey,
+      displayGroupName,
+      statusText,
+      responseTime,
+      tokens
+    ];
+    table.push(row);
     
     // Add to grouped results for statistics
     if (!groupedResults.has(groupName)) {
       groupedResults.set(groupName, []);
     }
-    groupedResults.get(groupName)!.push(result);
+    
+    // Since we just checked or created the entry, we know it exists
+    const groupResults = groupedResults.get(groupName);
+    if (groupResults) {
+      groupResults.push(result);
+    }
   });
   
   let output = table.toString();

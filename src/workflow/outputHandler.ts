@@ -15,6 +15,27 @@ import {
 import { errorCategories } from '../core/errors';
 
 /**
+ * Sanitizes control characters from a string
+ * 
+ * @param input - The input string to sanitize
+ * @returns The sanitized string with control characters removed
+ */
+function sanitizeControlChars(input: string): string {
+  let result = '';
+  for (let i = 0; i < input.length; i++) {
+    const charCode = input.charCodeAt(i);
+    if (
+      !(charCode >= 0 && charCode <= 8) &&
+      !(charCode >= 11 && charCode <= 12) &&
+      !(charCode >= 14 && charCode <= 31)
+    ) {
+      result += input[i];
+    }
+  }
+  return result;
+}
+
+/**
  * Error thrown by the OutputHandler module
  */
 export class OutputHandlerError extends Error {
@@ -382,8 +403,19 @@ export async function writeResponsesToFiles(
     }
     
     try {
-      // Write file
-      await fs.writeFile(filePath, markdownContent);
+      // Sanitize content to handle control characters
+      const sanitizedContent = typeof markdownContent === 'string' 
+        ? sanitizeControlChars(markdownContent)
+        : markdownContent;
+      
+      // Create parent directory if it doesn't exist (for extra safety)
+      const parentDir = path.dirname(filePath);
+      await fs.mkdir(parentDir, { recursive: true });
+      
+      // Write file with atomic operation if possible
+      const tempPath = `${filePath}.tmp`;
+      await fs.writeFile(tempPath, sanitizedContent);
+      await fs.rename(tempPath, filePath);
       
       // Calculate duration for success case
       const endTime = Date.now();
@@ -424,6 +456,15 @@ export async function writeResponsesToFiles(
           `Failed to write file ${fileDetail.filename}: ${fileDetail.error}`,
           error instanceof Error ? error : undefined
         );
+      }
+      
+      // Clean up temp file if we failed during the rename operation
+      try {
+        const tempPath = `${filePath}.tmp`;
+        await fs.access(tempPath);
+        await fs.unlink(tempPath);
+      } catch {
+        // Ignore errors during cleanup
       }
     }
   };

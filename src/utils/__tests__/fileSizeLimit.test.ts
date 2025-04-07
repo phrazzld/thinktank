@@ -36,6 +36,10 @@ describe('File size limit checks', () => {
     });
   });
   
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+  
   it('should return an error for files exceeding the size limit', async () => {
     // Mock a file that exceeds the size limit (11MB > 10MB default)
     const largeFileSize = 11 * 1024 * 1024;

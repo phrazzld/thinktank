@@ -138,15 +138,14 @@ describe('Error Conversion', () => {
 });
 
 describe('Error Propagation', () => {
-  // Mock console.error
-  const originalConsoleError = console.error;
+  // Mock console.error is restored by jest.restoreAllMocks()
   
   beforeEach(() => {
-    console.error = jest.fn();
+    jest.spyOn(console, 'error').mockImplementation(() => {});
   });
   
   afterEach(() => {
-    console.error = originalConsoleError;
+    jest.restoreAllMocks();
   });
   
   // Helpers for testing error propagation

@@ -5,24 +5,25 @@
  * It has been updated to test cli/index.ts instead, as cli.ts was removed.
  * Some tests have been commented out as they were specific to the cli.ts implementation.
  */
+import { mockFsModules } from '../../__tests__/utils/virtualFsUtils';
 import * as runThinktankModule from '../../workflow/runThinktank';
-import fs from 'fs/promises';
 import dotenv from 'dotenv';
 import { Command } from 'commander';
 
-// Mock dependencies
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
 jest.mock('../../workflow/runThinktank');
-jest.mock('fs/promises');
 jest.mock('dotenv');
 jest.mock('commander');
+
+// We no longer need to import fs since we aren't directly mocking its methods
 
 // Access the mock
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
 
 describe('CLI Interface', () => {
   // Store original implementations
-  const originalConsoleLog = console.log;
-  const originalConsoleError = console.error;
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const originalNodeEnv = process.env.NODE_ENV;
@@ -34,13 +35,14 @@ describe('CLI Interface', () => {
     process.env.NODE_ENV = 'test';
     
     // Mock methods
-    console.log = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     process.exit = jest.fn() as any;
     
     // Reset mocked implementations
     (dotenv.config as jest.Mock).mockReturnValue({});
-    (fs.access as jest.Mock).mockResolvedValue(undefined);
+    // When using virtualFsUtils, we don't mock methods directly
+    // Instead, we interact with the virtual filesystem
     runThinktank.mockResolvedValue('Mock result');
     
     // Mock Commander
@@ -64,9 +66,8 @@ describe('CLI Interface', () => {
   });
   
   afterEach(() => {
-    // Restore methods
-    console.log = originalConsoleLog;
-    console.error = originalConsoleError;
+    // Restore mocks
+    jest.restoreAllMocks();
     process.exit = originalProcessExit;
     process.argv = originalProcessArgv;
     process.env.NODE_ENV = originalNodeEnv;

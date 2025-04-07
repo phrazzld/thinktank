@@ -4,7 +4,7 @@
 import path from 'path';
 import { 
   resetVirtualFs, 
-  getVirtualFs, 
+  createVirtualFs,
   mockFsModules 
 } from '../../__tests__/utils/virtualFsUtils';
 import {
@@ -22,7 +22,7 @@ jest.mock('../gitignoreUtils');
 import { readDirectoryContents } from '../fileReader';
 
 describe('gitignore filtering in directory traversal', () => {
-  const testDirPath = '/path/to/test/directory';
+  const testDirPath = path.join('/', 'path', 'to', 'test', 'directory');
   
   beforeEach(() => {
     // Reset mocks
@@ -31,23 +31,18 @@ describe('gitignore filtering in directory traversal', () => {
     resetMockGitignore();
     setupMockGitignore();
     
-    // Get virtual filesystem reference
-    const virtualFs = getVirtualFs();
-    
-    // Create test directory structure
-    virtualFs.mkdirSync(testDirPath, { recursive: true });
-    virtualFs.mkdirSync(path.join(testDirPath, 'subdir'), { recursive: true });
-    virtualFs.mkdirSync(path.join(testDirPath, 'node_modules'), { recursive: true });
-    virtualFs.mkdirSync(path.join(testDirPath, '.git'), { recursive: true });
-    
-    // Create files with content
-    virtualFs.writeFileSync(path.join(testDirPath, 'file1.txt'), 'Content of file1.txt');
-    virtualFs.writeFileSync(path.join(testDirPath, 'file2.md'), 'Content of file2.md');
-    virtualFs.writeFileSync(path.join(testDirPath, '.gitignore'), '*.log\n');
-    virtualFs.writeFileSync(path.join(testDirPath, 'ignored-by-gitignore.log'), 'Content of ignored-by-gitignore.log');
-    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/nested.txt'), 'Content of nested.txt');
-    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/nested-ignored.tmp'), 'Content of nested-ignored.tmp');
-    virtualFs.writeFileSync(path.join(testDirPath, 'subdir/.gitignore'), '*.tmp\n');
+    // Create test directory structure using createVirtualFs
+    createVirtualFs({
+      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
+      [path.join(testDirPath, 'file2.md')]: 'Content of file2.md',
+      [path.join(testDirPath, '.gitignore')]: '*.log\n',
+      [path.join(testDirPath, 'ignored-by-gitignore.log')]: 'Content of ignored-by-gitignore.log',
+      [path.join(testDirPath, 'subdir', 'nested.txt')]: 'Content of nested.txt',
+      [path.join(testDirPath, 'subdir', 'nested-ignored.tmp')]: 'Content of nested-ignored.tmp',
+      [path.join(testDirPath, 'subdir', '.gitignore')]: '*.tmp\n',
+      [path.join(testDirPath, 'node_modules', '.placeholder')]: '', // To ensure directory is created
+      [path.join(testDirPath, '.git', '.placeholder')]: ''  // To ensure directory is created
+    });
     
     // Mock shouldIgnorePath to simulate gitignore filtering behavior
     // The function is called with (dirPath, entryPath) so we need to be specific about

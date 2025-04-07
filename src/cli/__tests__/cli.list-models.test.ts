@@ -36,14 +36,13 @@ describe('Models Command', () => {
   // Store original process.argv
   const originalArgv = process.argv;
   const originalExit = process.exit;
-  const originalConsoleLog = console.log;
   
   beforeEach(() => {
     // Mock process.exit with proper type
     process.exit = jest.fn() as unknown as (code?: number) => never;
     
     // Mock console.log
-    console.log = jest.fn();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
     
     // Reset mock state
     jest.clearAllMocks();
@@ -53,7 +52,7 @@ describe('Models Command', () => {
     // Restore originals
     process.argv = originalArgv;
     process.exit = originalExit;
-    console.log = originalConsoleLog;
+    jest.restoreAllMocks();
   });
   
   it('should call listAvailableModels when "models" command is directly executed', async () => {

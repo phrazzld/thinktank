@@ -1,15 +1,12 @@
 /**
  * Test helpers for Jest tests
  * 
- * Note: The previous createTestSafeError function has been deprecated and removed.
- * Please use the createFsError function from mockFsUtils.ts instead, or the createFsError
- * function from virtualFsUtils.ts for tests using the new in-memory filesystem approach.
- * Both create proper NodeJS.ErrnoException objects for testing.
+ * This module provides utility functions that are useful for testing, including
+ * convenience functions for working with promises and timing.
  */
 
-// Re-export the createFsError function from mockFsUtils for convenience
-// (This will be updated to use virtualFsUtils.createFsError in the future)
-import { createFsError } from './mockFsUtils';
+// Re-export the createFsError function from virtualFsUtils for convenience
+import { createFsError } from './virtualFsUtils';
 export { createFsError };
 
 /**

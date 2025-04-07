@@ -7,6 +7,7 @@
 - Lint: `npm run lint` (never disable linting or type checking)
 - Tests: `npm test` (write tests first - TDD approach)
 - Single test: `npm test -- -t "test name"`
+- Test specific files: `npm test -- path/to/file.test.ts`
 
 ## Using Architect CLI
 When facing challenging problems or planning complex features:

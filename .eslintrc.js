@@ -33,6 +33,7 @@ module.exports = {
     'prefer-const': 'error',
     'no-var': 'error',
     'eqeqeq': ['error', 'always'],
+    'eol-last': ['error', 'always'],
   },
   ignorePatterns: ['dist', 'node_modules', '*.js', '!.eslintrc.js'],
   overrides: [
