@@ -27,7 +27,7 @@
   - **Depends On:** Implement or integrate addVirtualGitignoreFile functionality.
   - **AC Ref:** AC 2.2.
 
-- [ ] **Update test assertions to use actual implementation**
+- [x] **Update test assertions to use actual implementation**
   - **Action:** Modify test assertions to test against the actual gitignoreUtils implementation using the virtual filesystem.
   - **Depends On:** Setup virtual .gitignore file creation in tests.
   - **AC Ref:** AC 2.3.

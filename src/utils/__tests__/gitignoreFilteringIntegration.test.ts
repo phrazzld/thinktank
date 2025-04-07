@@ -17,9 +17,7 @@ import path from 'path';
 import { readDirectoryContents } from '../fileReader';
 import * as gitignoreUtils from '../gitignoreUtils';
 
-// TODO: Convert to use actual gitignoreUtils implementation
-
-describe.skip('Gitignore Filtering Integration', () => {
+describe('Gitignore Filtering Integration', () => {
   const testDirPath = path.join('/', 'path', 'to', 'test', 'directory');
   
   beforeEach(async () => {
@@ -41,9 +39,6 @@ describe.skip('Gitignore Filtering Integration', () => {
   });
   
   it('should filter files based on gitignore patterns', async () => {
-    // TODO: Update test to use actual implementation
-    // Currently skipped until implementation is complete
-    
     // Run the directory traversal
     const results = await readDirectoryContents(testDirPath);
     
@@ -57,16 +52,15 @@ describe.skip('Gitignore Filtering Integration', () => {
     // Should exclude ignored files
     expect(results.some(r => r.path.includes('ignored.log'))).toBe(false);
     
-    // TODO: In the next implementation phase, we'll verify the actual gitignoreUtils behavior
-    // This assertion is specific to the mock implementation and won't be needed
+    // Verify the actual gitignoreUtils behavior directly
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'ignored.log')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'file1.txt')).toBe(false);
   });
   
   it('should handle nested .gitignore files with different patterns', async () => {
-    // TODO: Update test to use actual implementation
-    // Currently skipped until implementation is complete
-    
     // Set up virtual filesystem with nested structure
     resetVirtualFs();
+    gitignoreUtils.clearIgnoreCache();
     
     const dirStructure: Record<string, string> = {};
     
@@ -78,9 +72,9 @@ describe.skip('Gitignore Filtering Integration', () => {
     // Create the virtual filesystem
     createVirtualFs(dirStructure);
     
-    // TODO: Add virtual gitignore files with different patterns
-    // await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
-    // await addVirtualGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.spec.js');
+    // Add virtual gitignore files with different patterns
+    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
+    await addVirtualGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.spec.js');
     
     // Run the directory traversal
     const results = await readDirectoryContents(testDirPath);
@@ -96,25 +90,24 @@ describe.skip('Gitignore Filtering Integration', () => {
     // Should exclude ignored files based on the correct .gitignore
     expect(results.some(r => r.path.includes('ignored.spec.js'))).toBe(false);
     
-    // Verify gitignore filtering was called with the correct base paths
-    // TODO: In the next implementation phase, we'll implement assertions that test
-    // the actual behavior with real .gitignore files instead of checking mock calls
+    // Verify actual gitignore behavior directly
+    expect(await gitignoreUtils.shouldIgnorePath(path.join(testDirPath, 'subdir'), 'ignored.spec.js')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'file1.txt')).toBe(false);
   });
   
   it('should respect negated patterns', async () => {
-    // TODO: Update test to use actual implementation
-    // Currently skipped until implementation is complete
-    
     // Set up virtual filesystem
     resetVirtualFs();
+    gitignoreUtils.clearIgnoreCache();
+    
     createVirtualFs({
       [path.join(testDirPath, 'regular.txt')]: 'Content of regular.txt',
       [path.join(testDirPath, 'ignored.log')]: 'Content of ignored.log',
       [path.join(testDirPath, 'important.log')]: 'Content of important.log'
     });
     
-    // TODO: Add virtual gitignore file with negated pattern
-    // await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n!important.log');
+    // Add virtual gitignore file with negated pattern
+    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n!important.log');
     
     // Run the directory traversal
     const results = await readDirectoryContents(testDirPath);
@@ -128,5 +121,10 @@ describe.skip('Gitignore Filtering Integration', () => {
     
     // Should exclude ignored files
     expect(results.some(r => r.path.includes('ignored.log'))).toBe(false);
+    
+    // Verify actual gitignore behavior directly
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'ignored.log')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'important.log')).toBe(false);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'regular.txt')).toBe(false);
   });
 });
