@@ -37,6 +37,7 @@
  */
 import { Volume, createFsFromVolume } from 'memfs';
 import type { IFs } from 'memfs';
+import { normalizePath } from './pathUtils';
 
 // Create a volume that will be shared across all imports
 const vol = Volume.fromJSON({});
@@ -71,8 +72,19 @@ export function createVirtualFs(
     resetVirtualFs();
   }
   
+  // Normalize all paths in the structure
+  const normalizedStructure: Record<string, string> = {};
+  
+  Object.entries(structure).forEach(([path, content]) => {
+    // Handle Windows path notation for memfs compatibility
+    let normalizedPath = path.replace(/^([A-Za-z]):/, '/$1:');
+    // Now normalize with our function
+    normalizedPath = normalizePath(normalizedPath, true);
+    normalizedStructure[normalizedPath] = content;
+  });
+  
   // Load the structure into the volume
-  vol.fromJSON(structure);
+  vol.fromJSON(normalizedStructure);
 }
 
 /**
@@ -170,10 +182,15 @@ export function createFsError(
   // Create base error
   const error = new Error(message) as NodeJS.ErrnoException;
   
+  // Handle Windows path notation for memfs compatibility
+  let fixedPath = filepath.replace(/^([A-Za-z]):/, '/$1:');
+  // Normalize the filepath for consistency
+  const normalizedPath = normalizePath(fixedPath, true);
+  
   // Set standard properties
   error.code = code;
   error.syscall = syscall;
-  error.path = filepath;
+  error.path = normalizedPath;
   
   // Map common error codes to errno numbers for compatibility
   if (code === 'ENOENT') error.errno = -2;
@@ -217,18 +234,23 @@ export async function addVirtualGitignoreFile(gitignorePath: string, content: st
   // Get virtual filesystem reference
   const virtualFs = getVirtualFs();
   
-  // Extract the directory path
-  const dirPath = gitignorePath.substring(0, gitignorePath.lastIndexOf('/'));
+  // Handle Windows path notation for memfs compatibility
+  let fixedPath = gitignorePath.replace(/^([A-Za-z]):/, '/$1:');
+  // Normalize the gitignore path - memfs needs leading slash
+  const normalizedPath = normalizePath(fixedPath, true);
+  
+  // Extract the directory path and normalize it
+  const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
   
   // Create the parent directory explicitly using mkdir
   virtualFs.mkdirSync(dirPath, { recursive: true });
   
   // Write the file 
-  virtualFs.writeFileSync(gitignorePath, content);
+  virtualFs.writeFileSync(normalizedPath, content);
   
   // For better test error messages, verify the file was written correctly
-  const fileContents = virtualFs.readFileSync(gitignorePath, 'utf-8');
+  const fileContents = virtualFs.readFileSync(normalizedPath, 'utf-8');
   if (fileContents !== content) {
-    throw new Error(`File content verification failed for ${gitignorePath}. Expected "${content}" but got "${String(fileContents)}"`);
+    throw new Error(`File content verification failed for ${normalizedPath}. Expected "${content}" but got "${String(fileContents)}"`);
   }
 }

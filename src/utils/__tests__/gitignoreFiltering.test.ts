@@ -8,6 +8,7 @@ import {
   createFsError,
   addVirtualGitignoreFile 
 } from '../../__tests__/utils/virtualFsUtils';
+import { normalizePath } from '../../__tests__/utils/pathUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -36,8 +37,8 @@ describe('Gitignore-based Filtering Logic', () => {
   afterEach(() => {
     jest.restoreAllMocks();
   });
-  const testDirPath = '/test/dir';
-  const gitignorePath = path.join(testDirPath, '.gitignore');
+  const testDirPath = normalizePath('/test/dir', true);
+  const gitignorePath = normalizePath(path.join(testDirPath, '.gitignore'), true);
   
   beforeEach(async () => {
     // Reset virtual filesystem
@@ -95,15 +96,15 @@ describe('Gitignore-based Filtering Logic', () => {
       await addVirtualGitignoreFile(gitignorePath, '# Default test gitignore\n*.log\ntmp/\n.DS_Store');
       
       // Test with absolute paths
-      const absolutePath1 = path.join(testDirPath, 'logs/error.log');
-      const absolutePath2 = path.join(testDirPath, 'src/index.ts');
+      const absolutePath1 = normalizePath(path.join(testDirPath, 'logs/error.log'), true);
+      const absolutePath2 = normalizePath(path.join(testDirPath, 'src/index.ts'), true);
       
       expect(await gitignoreUtils.shouldIgnorePath(testDirPath, absolutePath1)).toBe(true);
       expect(await gitignoreUtils.shouldIgnorePath(testDirPath, absolutePath2)).toBe(false);
       
       // Test with paths that have parent directory references
-      expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'subdir/../info.log')).toBe(true);
-      expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'tmp/file.js')).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('subdir/../info.log'))).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('tmp/file.js'))).toBe(true);
     });
     
     it('should respect negated patterns that re-include certain paths', async () => {
@@ -261,10 +262,10 @@ describe('Gitignore-based Filtering Logic', () => {
     });
     
     it('should create separate filters for different directory paths', async () => {
-      const dir1 = '/path/one';
-      const dir2 = '/path/two';
-      const gitignorePath1 = path.join(dir1, '.gitignore');
-      const gitignorePath2 = path.join(dir2, '.gitignore');
+      const dir1 = normalizePath('/path/one', true);
+      const dir2 = normalizePath('/path/two', true);
+      const gitignorePath1 = normalizePath(path.join(dir1, '.gitignore'), true);
+      const gitignorePath2 = normalizePath(path.join(dir2, '.gitignore'), true);
       
       // Create different .gitignore files
       await addVirtualGitignoreFile(gitignorePath1, '*.log');

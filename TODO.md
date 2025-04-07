@@ -55,7 +55,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 3.2.
 
-- [ ] **Refactor tests to use standardized path handling**
+- [x] **Refactor tests to use standardized path handling**
   - **Action:** Update all test files to use the new path normalization helper function, ensuring consistent behavior across the test suite.
   - **Depends On:** Create standardized path handling helper
   - **AC Ref:** AC 3.2.

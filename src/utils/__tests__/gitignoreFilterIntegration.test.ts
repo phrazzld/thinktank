@@ -8,6 +8,7 @@ import {
   mockFsModules,
   addVirtualGitignoreFile
 } from '../../__tests__/utils/virtualFsUtils';
+import { normalizePath } from '../../__tests__/utils/pathUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -30,7 +31,7 @@ jest.mock('../fileReader', () => {
 import { readDirectoryContents } from '../fileReader';
 
 describe('gitignore filtering in directory traversal', () => {
-  const testDirPath = path.join('/', 'path', 'to', 'test', 'directory');
+  const testDirPath = normalizePath(path.join('/', 'path', 'to', 'test', 'directory'), true);
   
   beforeEach(async () => {
     // Reset mocks
@@ -42,18 +43,18 @@ describe('gitignore filtering in directory traversal', () => {
     
     // Create test directory structure using createVirtualFs, but without .gitignore files
     createVirtualFs({
-      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
-      [path.join(testDirPath, 'file2.md')]: 'Content of file2.md',
-      [path.join(testDirPath, 'ignored-by-gitignore.log')]: 'Content of ignored-by-gitignore.log',
-      [path.join(testDirPath, 'subdir', 'nested.txt')]: 'Content of nested.txt',
-      [path.join(testDirPath, 'subdir', 'nested-ignored.tmp')]: 'Content of nested-ignored.tmp',
-      [path.join(testDirPath, 'node_modules', '.placeholder')]: '', // To ensure directory is created
-      [path.join(testDirPath, '.git', '.placeholder')]: ''  // To ensure directory is created
+      [normalizePath(path.join(testDirPath, 'file1.txt'), true)]: 'Content of file1.txt',
+      [normalizePath(path.join(testDirPath, 'file2.md'), true)]: 'Content of file2.md',
+      [normalizePath(path.join(testDirPath, 'ignored-by-gitignore.log'), true)]: 'Content of ignored-by-gitignore.log',
+      [normalizePath(path.join(testDirPath, 'subdir', 'nested.txt'), true)]: 'Content of nested.txt',
+      [normalizePath(path.join(testDirPath, 'subdir', 'nested-ignored.tmp'), true)]: 'Content of nested-ignored.tmp',
+      [normalizePath(path.join(testDirPath, 'node_modules', '.placeholder'), true)]: '', // To ensure directory is created
+      [normalizePath(path.join(testDirPath, '.git', '.placeholder'), true)]: ''  // To ensure directory is created
     });
     
     // Add .gitignore files using our specialized function
-    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n');
-    await addVirtualGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.tmp\n');
+    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log\n');
+    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, 'subdir', '.gitignore'), true), '*.tmp\n');
     
     // Mock fileExists to use the virtual filesystem
     const mockedFileExists = jest.mocked(fileReader.fileExists);
@@ -72,9 +73,9 @@ describe('gitignore filtering in directory traversal', () => {
   
   it('should filter files based on gitignore rules during directory traversal', async () => {
     // Test the gitignoreUtils behavior first
-    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'ignored-by-gitignore.log')).toBe(true);
-    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'file1.txt')).toBe(false);
-    expect(await gitignoreUtils.shouldIgnorePath(path.join(testDirPath, 'subdir'), 'nested-ignored.tmp')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('ignored-by-gitignore.log'))).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('file1.txt'))).toBe(false);
+    expect(await gitignoreUtils.shouldIgnorePath(normalizePath(path.join(testDirPath, 'subdir'), true), normalizePath('nested-ignored.tmp'))).toBe(true);
     
     // Now test the integration behavior - with the actual directory traversal
     const results = await readDirectoryContents(testDirPath);
@@ -96,22 +97,22 @@ describe('gitignore filtering in directory traversal', () => {
     
     // Create test directory with a more complex structure to test directory-specific rules
     createVirtualFs({
-      [path.join(testDirPath, 'root.txt')]: 'Content of root.txt',
-      [path.join(testDirPath, 'test.md')]: 'Content of test.md',
-      [path.join(testDirPath, 'test.log')]: 'Ignored by root gitignore',
-      [path.join(testDirPath, 'dir1', 'file.txt')]: 'Content of dir1/file.txt',
-      [path.join(testDirPath, 'dir1', 'file.md')]: 'Content of dir1/file.md', // Ignored by dir1/.gitignore
-      [path.join(testDirPath, 'dir2', 'file.txt')]: 'Content of dir2/file.txt',
-      [path.join(testDirPath, 'dir2', 'test.log')]: 'Ignored by root gitignore'
+      [normalizePath(path.join(testDirPath, 'root.txt'), true)]: 'Content of root.txt',
+      [normalizePath(path.join(testDirPath, 'test.md'), true)]: 'Content of test.md',
+      [normalizePath(path.join(testDirPath, 'test.log'), true)]: 'Ignored by root gitignore',
+      [normalizePath(path.join(testDirPath, 'dir1', 'file.txt'), true)]: 'Content of dir1/file.txt',
+      [normalizePath(path.join(testDirPath, 'dir1', 'file.md'), true)]: 'Content of dir1/file.md', // Ignored by dir1/.gitignore
+      [normalizePath(path.join(testDirPath, 'dir2', 'file.txt'), true)]: 'Content of dir2/file.txt',
+      [normalizePath(path.join(testDirPath, 'dir2', 'test.log'), true)]: 'Ignored by root gitignore'
     });
     
     // Add different .gitignore files in different directories
-    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
-    await addVirtualGitignoreFile(path.join(testDirPath, 'dir1', '.gitignore'), '*.md');
+    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log');
+    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, 'dir1', '.gitignore'), true), '*.md');
     
     // Test direct gitignore behavior which is what we're primarily concerned with
     // Testing the main utility directly, not the integration with directory traversal
-    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'test.log')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('test.log'))).toBe(true);
     
     // NOTE: This test has exposed a potential issue with the gitignore implementation:
     // Rules from a parent directory's .gitignore file might not be correctly applied to subdirectories.
@@ -119,7 +120,7 @@ describe('gitignore filtering in directory traversal', () => {
     // but the implementation checks gitignore files within each subdirectory independently.
     // This is a design choice in the implementation, not necessarily a bug.
     // For now, we'll adjust our test to match the current implementation.
-    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'test.md')).toBe(false);
-    expect(await gitignoreUtils.shouldIgnorePath(path.join(testDirPath, 'dir1'), 'file.md')).toBe(true);
+    expect(await gitignoreUtils.shouldIgnorePath(testDirPath, normalizePath('test.md'))).toBe(false);
+    expect(await gitignoreUtils.shouldIgnorePath(normalizePath(path.join(testDirPath, 'dir1'), true), normalizePath('file.md'))).toBe(true);
   });
 });
