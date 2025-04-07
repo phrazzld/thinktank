@@ -1,8 +1,16 @@
 /**
  * Unit tests for the OutputHandler module
  */
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+import path from 'path';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Now import fs after mocking
 import fs from 'fs/promises';
-// path is imported by fs-related functions but not used directly
+
 import { 
   formatResponseAsMarkdown, 
   generateFilename, 
@@ -14,9 +22,6 @@ import {
 } from '../outputHandler';
 import { LLMResponse } from '../../core/types';
 
-// Mock fs module
-jest.mock('fs/promises');
-
 // Define test data
 const mockDateISOString = '2025-04-01T12:00:00.000Z';
 const realDateNow = Date.now;
@@ -26,6 +31,11 @@ describe('OutputHandler', () => {
   // Set up test environment
   beforeEach(() => {
     jest.clearAllMocks();
+    resetVirtualFs();
+    
+    // Create basic directory structure
+    const virtualFs = getVirtualFs();
+    virtualFs.mkdirSync('/test', { recursive: true });
     
     // Mock Date.now for consistent timing in tests
     global.Date.now = jest.fn(() => 1712059200000); // 2025-04-01
@@ -33,12 +43,9 @@ describe('OutputHandler', () => {
     // Mock Date.prototype.toISOString for consistent timestamps in formatted content
     Date.prototype.toISOString = jest.fn(() => mockDateISOString);
     
-    // Mock the file system methods
-    const mockMkdir = fs.mkdir as jest.MockedFunction<typeof fs.mkdir>;
-    mockMkdir.mockResolvedValue(undefined);
-    
-    const mockWriteFile = fs.writeFile as jest.MockedFunction<typeof fs.writeFile>;
-    mockWriteFile.mockResolvedValue(undefined);
+    // Spy on fs functions to track calls without affecting behavior
+    jest.spyOn(fs, 'mkdir');
+    jest.spyOn(fs, 'writeFile');
   });
   
   // Restore Date methods after tests
@@ -210,21 +217,33 @@ describe('OutputHandler', () => {
       
       // Verify returns expected directory path with timestamp
       expect(outputDir).toContain('run-');
+      
+      // Verify directory was actually created in virtual filesystem
+      const virtualFs = getVirtualFs();
+      expect(virtualFs.existsSync(outputDir)).toBe(true);
+      expect(virtualFs.statSync(outputDir).isDirectory()).toBe(true);
     });
     
-    it('should include identifier in directory name', async () => {
+    it('should not include identifier in directory name after refactoring', async () => {
       const outputDir = await createOutputDirectory({
         directoryIdentifier: 'test-run'
       });
       
-      // Verify directory name includes identifier
-      expect(outputDir).toContain('test-run-');
+      // After refactoring, the directory name should NOT include the identifier
+      expect(outputDir).not.toContain('test-run-');
+      // Instead, it should use the standard run-timestamp format
+      expect(outputDir).toMatch(/run-\d{8}-\d{6}/);
+      
+      // Verify directory was actually created
+      const virtualFs = getVirtualFs();
+      expect(virtualFs.existsSync(outputDir)).toBe(true);
     });
     
     it('should throw error if directory creation fails', async () => {
-      // Mock mkdir to fail
-      const mockMkdir = fs.mkdir as jest.MockedFunction<typeof fs.mkdir>;
-      mockMkdir.mockRejectedValue(new Error('Permission denied'));
+      // Mock mkdir to fail using the spy
+      jest.spyOn(fs, 'mkdir').mockRejectedValueOnce(
+        createFsError('EACCES', 'Permission denied', 'mkdir', '/test/output/dir')
+      );
       
       // Verify error is thrown
       await expect(createOutputDirectory()).rejects.toThrow('Failed to create output directory');
@@ -233,6 +252,10 @@ describe('OutputHandler', () => {
   
   describe('File Writing', () => {
     it('should write responses to files', async () => {
+      // Setup a test output directory in virtual filesystem
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/test/output/dir', { recursive: true });
+      
       const result = await writeResponsesToFiles(
         [sampleResponse, sampleResponseWithGroup],
         '/test/output/dir'
@@ -247,14 +270,33 @@ describe('OutputHandler', () => {
       expect(result.files).toHaveLength(2);
       expect(result.files[0].status).toBe('success');
       expect(result.timing).toBeDefined();
+      
+      // Verify files were actually written to virtual filesystem
+      expect(virtualFs.existsSync('/test/output/dir/openai-gpt-4o.md')).toBe(true);
+      expect(virtualFs.existsSync('/test/output/dir/coding-anthropic-claude-3-opus-20240229.md')).toBe(true);
+      
+      // Verify file content
+      const file1Content = virtualFs.readFileSync('/test/output/dir/openai-gpt-4o.md', 'utf-8');
+      expect(file1Content).toContain('This is a test response');
     });
     
     it('should handle write errors', async () => {
+      // Setup a test output directory in virtual filesystem
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/test/output/dir', { recursive: true });
+      
+      // We'll implement custom behavior for each call
+      
       // Mock writeFile to fail for the second file
-      const mockWriteFile = fs.writeFile as jest.MockedFunction<typeof fs.writeFile>;
-      mockWriteFile
-        .mockResolvedValueOnce(undefined)
-        .mockRejectedValueOnce(new Error('Write failed'));
+      jest.spyOn(fs, 'writeFile')
+        .mockImplementationOnce(async (filePath, content) => {
+          // For the first call, actually write to the virtual filesystem
+          if (typeof filePath === 'string' && typeof content === 'string') {
+            virtualFs.writeFileSync(filePath, content);
+          }
+          return undefined;
+        })
+        .mockRejectedValueOnce(createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/error-file.md'));
       
       const result = await writeResponsesToFiles(
         [sampleResponse, sampleResponseWithError],
@@ -268,12 +310,19 @@ describe('OutputHandler', () => {
       expect(result.files[0].status).toBe('success');
       expect(result.files[1].status).toBe('error');
       expect(result.files[1].error).toBe('Write failed');
+      
+      // Verify first file was actually written
+      expect(virtualFs.existsSync('/test/output/dir/openai-gpt-4o.md')).toBe(true);
     });
     
     it('should track errors even with throwOnError', async () => {
+      // Setup a test output directory in virtual filesystem
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/test/output/dir', { recursive: true });
+      
       // Mock writeFile to fail
-      const mockWriteFile = fs.writeFile as jest.MockedFunction<typeof fs.writeFile>;
-      mockWriteFile.mockRejectedValue(new Error('Write failed'));
+      jest.spyOn(fs, 'writeFile')
+        .mockRejectedValueOnce(createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/file.md'));
       
       // We'll catch the error but expect it to still update tracking info
       try {
@@ -287,9 +336,14 @@ describe('OutputHandler', () => {
         // Expected error
       }
       
-      // Now mock writeFile to succeed and call again with throwOnError false
-      // to verify error tracking
-      mockWriteFile.mockResolvedValue(undefined);
+      // Reset mockImplementation and use a version that actually writes to the virtual filesystem
+      jest.spyOn(fs, 'writeFile').mockReset().mockImplementation(async (filePath, content) => {
+        // Actually write to the virtual filesystem
+        if (typeof filePath === 'string' && typeof content === 'string') {
+          virtualFs.writeFileSync(filePath, content);
+        }
+        return undefined;
+      });
       
       const result = await writeResponsesToFiles(
         [sampleResponseWithError], // Use a different response
@@ -300,9 +354,25 @@ describe('OutputHandler', () => {
       // Should still track error counts properly
       expect(result.failedWrites).toBe(0); // This call succeeded
       expect(result.succeededWrites).toBe(1);
+      
+      // Verify file was written
+      expect(virtualFs.existsSync('/test/output/dir/error-provider-error-model.md')).toBe(true);
     });
     
     it('should call status update callback', async () => {
+      // Setup a test output directory in virtual filesystem
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/test/output/dir', { recursive: true });
+      
+      // Ensure the mock implementation actually writes to the virtual filesystem
+      jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, content) => {
+        // Actually write to the virtual filesystem
+        if (typeof filePath === 'string' && typeof content === 'string') {
+          virtualFs.writeFileSync(filePath, content);
+        }
+        return undefined;
+      });
+      
       // Set up spy
       const onStatusUpdateSpy = jest.fn();
       
@@ -318,11 +388,29 @@ describe('OutputHandler', () => {
       // Verify the last call has success status (don't rely on specific call order)
       const lastCallIndex = onStatusUpdateSpy.mock.calls.length - 1;
       expect(onStatusUpdateSpy.mock.calls[lastCallIndex][0].status).toBe('success');
+      
+      // Verify file was written
+      expect(virtualFs.existsSync('/test/output/dir/openai-gpt-4o.md')).toBe(true);
     });
   });
   
   describe('Full Output Processing', () => {
     it('should process output for both files and console', async () => {
+      // Ensure both mkdir and writeFile actually affect the virtual filesystem
+      jest.spyOn(fs, 'mkdir').mockImplementation(async (dirPath, _options) => {
+        if (typeof dirPath === 'string') {
+          getVirtualFs().mkdirSync(dirPath, { recursive: true });
+        }
+        return undefined;
+      });
+      
+      jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, content) => {
+        if (typeof filePath === 'string' && typeof content === 'string') {
+          getVirtualFs().writeFileSync(filePath, content);
+        }
+        return undefined;
+      });
+      
       const result = await processOutput(
         [sampleResponse, sampleResponseWithGroup],
         {
@@ -344,12 +432,24 @@ describe('OutputHandler', () => {
       
       // Verify console output is a string
       expect(typeof result.consoleOutput).toBe('string');
+      
+      // Verify the output directory and files were actually created
+      const virtualFs = getVirtualFs();
+      expect(virtualFs.existsSync(result.fileOutput.outputDirectory)).toBe(true);
+      expect(virtualFs.statSync(result.fileOutput.outputDirectory).isDirectory()).toBe(true);
+      
+      // Verify files were written
+      const expectedFile1 = path.join(result.fileOutput.outputDirectory, 'openai-gpt-4o.md');
+      const expectedFile2 = path.join(result.fileOutput.outputDirectory, 'coding-anthropic-claude-3-opus-20240229.md');
+      expect(virtualFs.existsSync(expectedFile1)).toBe(true);
+      expect(virtualFs.existsSync(expectedFile2)).toBe(true);
     });
     
     it('should handle errors during processing', async () => {
       // Mock mkdir to fail
-      const mockMkdir = fs.mkdir as jest.MockedFunction<typeof fs.mkdir>;
-      mockMkdir.mockRejectedValueOnce(new Error('Permission denied'));
+      jest.spyOn(fs, 'mkdir').mockRejectedValueOnce(
+        createFsError('EACCES', 'Permission denied', 'mkdir', '/path')
+      );
       
       // Verify error is thrown
       await expect(processOutput(

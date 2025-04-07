@@ -83,16 +83,20 @@ describe('runThinktank', () => {
     // Process input helper mock
     (helpers._processInput as jest.Mock).mockResolvedValue({
       inputResult: {
-        content: 'Test prompt',
+        content: 'Test prompt with context',
         sourceType: 'file',
         sourcePath: 'test-prompt.txt',
         metadata: {
           processingTimeMs: 5,
           originalLength: 11,
-          finalLength: 11,
-          normalized: true
+          finalLength: 25,
+          normalized: true,
+          hasContextFiles: true,
+          contextFilesCount: 1
         }
-      }
+      },
+      // Add the combinedContent property to match the updated interface
+      combinedContent: 'Test prompt with context'
     });
     
     // Select models helper mock with flattened structure
@@ -214,7 +218,7 @@ describe('runThinktank', () => {
         spinner: expect.any(Object),
         config: expect.any(Object),
         models: expect.any(Array),
-        prompt: 'Test prompt',
+        combinedContent: expect.any(String), // Now expects combinedContent instead of prompt
         options
       })
     );
@@ -261,6 +265,26 @@ describe('runThinktank', () => {
         options: expect.objectContaining({
           models: ['mock:mock-model']
         })
+      })
+    );
+  });
+  
+  it('should pass contextPaths from options to _processInput', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      contextPaths: ['src/file1.js', 'src/dir1/'],
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify contextPaths is passed to _processInput
+    expect(helpers._processInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spinner: expect.any(Object),
+        input: 'test-prompt.txt',
+        contextPaths: ['src/file1.js', 'src/dir1/']
       })
     );
   });
@@ -360,6 +384,43 @@ describe('runThinktank', () => {
         options: expect.objectContaining({
           includeMetadata: true
         })
+      })
+    );
+  });
+  
+  it('should pass combined content from inputResult to _executeQueries', async () => {
+    // Setup a specific combined content value in the mock
+    const testCombinedContent = 'Test prompt with specific context content for verification';
+    (helpers._processInput as jest.Mock).mockResolvedValueOnce({
+      inputResult: {
+        content: 'Original content',
+        sourceType: 'file',
+        sourcePath: 'test-prompt.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 15,
+          finalLength: 45,
+          normalized: true,
+          hasContextFiles: true,
+          contextFilesCount: 2
+        }
+      },
+      combinedContent: testCombinedContent
+    });
+    
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      contextPaths: ['src/file1.js', 'src/dir1/'],
+      includeMetadata: false,
+      useColors: false,
+    };
+
+    await runThinktank(options);
+    
+    // Verify _executeQueries is called with the exact combinedContent from inputResult
+    expect(helpers._executeQueries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        combinedContent: testCombinedContent
       })
     );
   });

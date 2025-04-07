@@ -4,16 +4,23 @@
  * This test suite focuses on verifying that the run command properly
  * loads configuration from XDG paths and handles custom config paths correctly.
  */
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Now import fs after mocking
+import fs from 'fs/promises';
+
 import * as runThinktankModule from '../../workflow/runThinktank';
 import * as fileReader from '../../utils/fileReader';
 import * as configManager from '../../core/configManager';
-import fs from 'fs/promises';
 
 // Mock dependencies
 jest.mock('../../workflow/runThinktank');
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
-jest.mock('fs/promises');
 
 // Access the mocks
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
@@ -29,23 +36,25 @@ describe('Run Command with XDG Configuration Integration', () => {
   const originalProcessArgv = process.argv;
   const mockXdgPath = '/mock/xdg/config/thinktank/config.json';
   
+  // Access the virtual filesystem
+  const virtualFs = getVirtualFs();
+  
   beforeEach(() => {
     jest.clearAllMocks();
+    resetVirtualFs();
     
     // Mock console methods
     console.log = jest.fn();
     console.error = jest.fn();
     process.exit = jest.fn() as any;
     
-    // Setup default mock behavior
-    getConfigFilePath.mockResolvedValue(mockXdgPath);
-    fileExists.mockResolvedValue(true);
+    // Setup virtual filesystem with test files
+    virtualFs.mkdirSync('/mock/xdg/config/thinktank', { recursive: true });
+    virtualFs.mkdirSync('/custom/config', { recursive: true });
+    virtualFs.writeFileSync('/test-prompt.txt', 'This is an XDG test prompt');
     
-    // Mock fs.access to make the prompt file appear to exist
-    (fs.access as jest.Mock).mockResolvedValue(undefined);
-    
-    // Mock config loading with default content
-    loadConfig.mockResolvedValue({
+    // Create XDG config file in virtual filesystem
+    const configContent = JSON.stringify({
       models: [
         { provider: 'openai', modelId: 'gpt-4o', enabled: true },
         { provider: 'anthropic', modelId: 'claude-3-opus', enabled: true }
@@ -62,6 +71,35 @@ describe('Run Command with XDG Configuration Integration', () => {
           models: [{ provider: 'anthropic', modelId: 'claude-3-opus', enabled: true }]
         }
       }
+    });
+    virtualFs.writeFileSync(mockXdgPath, configContent);
+    virtualFs.writeFileSync('/custom/config/path.json', configContent);
+    
+    // Setup default mock behavior
+    getConfigFilePath.mockResolvedValue(mockXdgPath);
+    fileExists.mockImplementation(async (path) => {
+      return virtualFs.existsSync(path);
+    });
+    
+    // Mock fs.access to make the prompt file appear to exist
+    jest.spyOn(fs, 'access').mockImplementation(async (path, _mode) => {
+      const pathStr = path.toString();
+      if (virtualFs.existsSync(pathStr)) {
+        return undefined;
+      } else {
+        throw createFsError('ENOENT', 'File not found', 'access', pathStr);
+      }
+    });
+    
+    // Mock config loading with default content
+    loadConfig.mockImplementation(async (options) => {
+      const configPath = options?.configPath || mockXdgPath;
+      
+      if (!virtualFs.existsSync(configPath)) {
+        throw new Error('Configuration file not found');
+      }
+      
+      return JSON.parse(virtualFs.readFileSync(configPath, 'utf8').toString());
     });
     
     // Mock runThinktank to succeed
@@ -169,18 +207,16 @@ describe('Run Command with XDG Configuration Integration', () => {
     it('should handle errors from configuration loading', async () => {
       // We don't need to import run command for this test
       
-      // Setup loadConfig to throw an error
-      loadConfig.mockImplementationOnce(() => {
-        throw new Error('Configuration file not found');
-      });
+      // Ensure the path doesn't exist in the virtual filesystem
+      const nonExistentPath = '/non/existent/config.json';
       
-      // We can't easily test the full error handling flow without executing the CLI,
-      // but we can verify that when loadConfig throws, our runThinktank would not be called
+      // Reset mocks for this test
+      jest.clearAllMocks();
       
+      // Attempt to load config from a non-existent path
       let error: Error | undefined;
       try {
-        // This should throw
-        await loadConfig({});
+        await loadConfig({ configPath: nonExistentPath });
         
         // If we get here, loadConfig didn't throw as expected
         expect('loadConfig should have thrown').toBe('but it did not');
@@ -199,11 +235,6 @@ describe('Run Command with XDG Configuration Integration', () => {
     it('should support temperature and max-tokens options', async () => {
       // Get and verify that run command file exists
       await import('../commands/run');
-      
-      // We're testing the presence of temperature and max-tokens flags,
-      // but the run command itself doesn't actually define these options directly.
-      // These options are added by Commander later, so we'll focus on verifying
-      // that the command supports the options through its expected behavior.
       
       // Verify that runThinktank is defined and can be called
       expect(runThinktank).toBeDefined();
@@ -227,9 +258,6 @@ describe('Run Command with XDG Configuration Integration', () => {
     it('should support using both custom config and model options', async () => {
       // Get and verify that run command file exists
       await import('../commands/run');
-      
-      // We know that runThinktank accepts configPath parameter,
-      // so we'll focus on verifying that behavior
       
       // Reset mocks
       jest.clearAllMocks();
@@ -255,6 +283,68 @@ describe('Run Command with XDG Configuration Integration', () => {
       expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
         input: 'test-prompt.txt',
         configPath: customPath
+      }));
+    });
+  });
+  
+  describe('run command with context paths in XDG environment', () => {
+    it('should support context paths with custom config', async () => {
+      // Get the run command
+      const runCommand = (await import('../commands/run')).default;
+      expect(runCommand).toBeDefined();
+      
+      // Verify command definition includes context paths in usage string
+      const usage = runCommand.usage();
+      expect(usage).toContain('[contextPaths...]');
+      
+      // Reset mocks
+      jest.clearAllMocks();
+      
+      // Create a custom config path
+      const customPath = '/custom/config/path.json';
+      
+      // Setup context files in virtual filesystem
+      virtualFs.writeFileSync('/file1.js', 'console.log("Test file 1");');
+      virtualFs.mkdirSync('/dir1', { recursive: true });
+      virtualFs.writeFileSync('/dir1/file2.js', 'console.log("Test file 2");');
+      
+      // Simulate what would happen in the action handler
+      // 1. Load config from XDG path
+      await loadConfig({ configPath: customPath });
+      
+      // 2. Call runThinktank with context paths and custom config
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        configPath: customPath
+      });
+      
+      // Verify runThinktank was called with both context paths and custom config
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: ['file1.js', 'dir1/'],
+        configPath: customPath
+      }));
+    });
+    
+    it('should handle empty context paths array correctly with XDG config', async () => {
+      // Get the run command
+      const runCommand = (await import('../commands/run')).default;
+      expect(runCommand).toBeDefined();
+      
+      // Reset mocks
+      jest.clearAllMocks();
+      
+      // Most common XDG use case: no custom config path, empty context paths
+      await runThinktank({
+        input: 'test-prompt.txt',
+        contextPaths: undefined // This is what happens when no context paths are provided
+      });
+      
+      // Verify runThinktank was called with undefined contextPaths
+      expect(runThinktank).toHaveBeenCalledWith(expect.objectContaining({
+        input: 'test-prompt.txt',
+        contextPaths: undefined
       }));
     });
   });

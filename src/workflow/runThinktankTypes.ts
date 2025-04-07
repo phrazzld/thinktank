@@ -178,16 +178,91 @@ export interface ProcessInputParams extends SpinnerContext {
    * The user-provided input (file path, raw text, or stdin indicator)
    */
   input: string;
+  
+  /**
+   * Optional array of paths to files or directories to include as context
+   * If provided, these will be read and combined with the prompt
+   */
+  contextPaths?: string[];
+}
+
+/**
+ * Extended metadata for input processing including context information
+ */
+export interface ExtendedInputMetadata {
+  /**
+   * Processing time in milliseconds
+   */
+  processingTimeMs: number;
+  
+  /**
+   * Original content length before any processing
+   */
+  originalLength: number;
+  
+  /**
+   * Final content length after processing
+   */
+  finalLength: number;
+  
+  /**
+   * Whether the content was normalized
+   */
+  normalized: boolean;
+  
+  /**
+   * Number of context files successfully processed (if applicable)
+   */
+  contextFilesCount?: number;
+  
+  /**
+   * Number of context files that had errors during processing (if applicable)
+   */
+  contextFilesWithErrors?: number;
+  
+  /**
+   * Whether the content includes context files
+   */
+  hasContextFiles?: boolean;
+}
+
+/**
+ * Extended input result with context information
+ */
+export interface ExtendedInputResult extends Omit<InputResult, 'metadata'> {
+  /**
+   * Extended metadata including context information
+   */
+  metadata: ExtendedInputMetadata;
 }
 
 /**
  * Result of the _processInput helper function
+ * 
+ * This interface provides both the full ExtendedInputResult with all metadata
+ * and a direct accessor for the combined content (the content field already
+ * contains prompt+context when context files are provided)
  */
 export interface ProcessInputResult {
   /**
    * Processed input with content and metadata
+   * When context files are provided, the content field contains
+   * the combined prompt+context content
    */
-  inputResult: InputResult;
+  inputResult: ExtendedInputResult;
+  
+  /**
+   * Array of context file results if contextPaths were provided
+   * Includes both successful and failed context files
+   */
+  contextFiles?: Array<import('../utils/fileReader').ContextFileResult>;
+  
+  /**
+   * Direct accessor for the combined prompt+context content
+   * This is the same as inputResult.content, provided for convenience
+   * and more explicit access by other components like executeQueries
+   */
+  combinedContent: string;
 }
 
 // ----------------------------------------
@@ -262,9 +337,11 @@ export interface ExecuteQueriesParams extends SpinnerContext {
   models: ModelConfig[];
   
   /**
-   * The processed input content
+   * The combined prompt and context content
+   * This is the formatted content that will be sent to the LLM,
+   * potentially containing both the user prompt and additional context files
    */
-  prompt: string;
+  combinedContent: string;
   
   /**
    * The user-provided run options

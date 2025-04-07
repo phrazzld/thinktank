@@ -49,6 +49,12 @@ export interface RunOptions {
   input: string;
   
   /**
+   * Array of paths to files or directories to include as context (optional)
+   * If provided, these will be read and combined with the prompt
+   */
+  contextPaths?: string[];
+  
+  /**
    * Path to the configuration file (optional)
    */
   configPath?: string;
@@ -182,7 +188,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 2. Process input: Read from file, stdin, or direct text
     const inputResult = await _processInput({
       spinner,
-      input: options.input
+      input: options.input,
+      contextPaths: options.contextPaths
     });
     
     // Update workflow state with input result
@@ -216,12 +223,12 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Restart spinner for next step
     spinner.start();
     
-    // 4. Execute queries: Query the selected models with the processed input
+    // 4. Execute queries: Query the selected models with the processed input (including context if any)
     const queryResults = await _executeQueries({
       spinner,
       config: setupResult.config,
       models: modelSelectionResult.models,
-      prompt: inputResult.inputResult.content,
+      combinedContent: inputResult.combinedContent,
       options
     });
     

@@ -89,7 +89,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with context',
       options: {
         input: 'test-prompt.txt',
         systemPrompt: 'You are a helpful assistant'
@@ -106,7 +106,7 @@ describe('_executeQueries Helper', () => {
       sampleConfig,
       testModels,
       expect.objectContaining({
-        prompt: 'Test prompt',
+        prompt: 'Test prompt with context',  // Note: Still checking for 'prompt' until we update the queryExecutor
         systemPrompt: 'You are a helpful assistant'
       })
     );
@@ -115,6 +115,54 @@ describe('_executeQueries Helper', () => {
     expect(mockSpinner.text).toContain('Query execution complete');
     expect(mockSpinner.info).toHaveBeenCalled();
     expect(mockSpinner.start).toHaveBeenCalled();
+  });
+  
+  it('should use combinedContent instead of prompt parameter', async () => {
+    // Setup mocks
+    (queryExecutor.executeQueries as jest.Mock).mockResolvedValue({
+      responses: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          text: 'Response to combined content',
+          configKey: 'mock:mock-model',
+          metadata: {}
+        }
+      ],
+      statuses: {
+        'mock:mock-model': {
+          status: 'success',
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        }
+      },
+      timing: {
+        startTime: 1,
+        endTime: 2,
+        durationMs: 1
+      }
+    });
+
+    // Call the function with combinedContent parameter
+    await _executeQueries({
+      spinner: mockSpinner,
+      config: sampleConfig,
+      models: [testModels[0]],
+      combinedContent: 'Prompt with extensive context from multiple files',
+      options: {
+        input: 'test-prompt.txt'
+      }
+    });
+
+    // Verify the executeQueries function was called with combinedContent converted to prompt
+    expect(queryExecutor.executeQueries).toHaveBeenCalledWith(
+      sampleConfig,
+      [testModels[0]],
+      expect.objectContaining({
+        prompt: 'Prompt with extensive context from multiple files' // combinedContent is converted to prompt
+      })
+    );
   });
 
   it('should handle thinking capability for Claude models', async () => {
@@ -157,7 +205,7 @@ describe('_executeQueries Helper', () => {
           enabled: true
         } as ModelConfig
       ],
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with context for thinking',
       options: {
         input: 'test-prompt.txt',
         enableThinking: true
@@ -206,7 +254,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: [testModels[0]],
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with timeout',
       options: {
         input: 'test-prompt.txt',
         timeoutMs: 60000 // 1 minute timeout
@@ -272,7 +320,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: [testModels[0]],
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with status updates',
       options: {
         input: 'test-prompt.txt'
       }
@@ -330,7 +378,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with partial failures',
       options: {
         input: 'test-prompt.txt'
       }
@@ -396,7 +444,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with all failures',
       options: {
         input: 'test-prompt.txt'
       }
@@ -423,7 +471,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with error',
       options: {
         input: 'test-prompt.txt'
       }
@@ -435,7 +483,7 @@ describe('_executeQueries Helper', () => {
         spinner: mockSpinner,
         config: sampleConfig,
         models: testModels,
-        prompt: 'Test prompt',
+        combinedContent: 'Test prompt with error handling',
         options: {
           input: 'test-prompt.txt'
         }
@@ -459,7 +507,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with API error',
       options: {
         input: 'test-prompt.txt'
       }
@@ -476,7 +524,7 @@ describe('_executeQueries Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       models: testModels,
-      prompt: 'Test prompt',
+      combinedContent: 'Test prompt with unknown error',
       options: {
         input: 'test-prompt.txt'
       }
@@ -488,7 +536,7 @@ describe('_executeQueries Helper', () => {
         spinner: mockSpinner,
         config: sampleConfig,
         models: testModels,
-        prompt: 'Test prompt',
+        combinedContent: 'Test prompt with unknown error handling',
         options: {
           input: 'test-prompt.txt'
         }
