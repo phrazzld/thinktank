@@ -55,7 +55,7 @@ describe('Run Command Integration', () => {
     // Set NODE_ENV for testing
     process.env.NODE_ENV = 'test';
     
-    // Mock console methods
+    // Mock console methods with silent implementations
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     

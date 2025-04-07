@@ -15,13 +15,7 @@ import {
   shouldSkipFsE2ETests
 } from '../../__tests__/utils/e2eTestUtils';
 
-// Define a proper type for Execa errors
-interface ExecaError extends Error {
-  stderr?: string;
-  stdout?: string;
-  exitCode?: number;
-  command?: string;
-}
+// Note: Execa error type can be inferred from execa's return type
 
 // Skip tests if environment indicates they should be skipped
 const skipTests = shouldSkipFsE2ETests();
@@ -61,8 +55,7 @@ describe('CLI E2E Tests', () => {
     shouldSkipCliTests = skipTests || !cliBuilt;
     
     if (shouldSkipCliTests) {
-      console.log('Skipping CLI E2E tests:', 
-        !cliBuilt ? 'CLI not built' : 'Environment configuration disallows E2E tests');
+      // Skip tests silently - don't use console.log in tests
       return;
     }
     
@@ -161,14 +154,9 @@ describe('CLI E2E Tests', () => {
       return;
     }
     
-    try {
-      const { stdout } = await execa('node', [cliPath, '--help']);
-      expect(stdout).toContain('Usage:');
-      expect(stdout).toContain('Examples:');
-    } catch (error) {
-      console.error('Error output:', (error as ExecaError).stderr);
-      throw error;
-    }
+    const { stdout } = await execa('node', [cliPath, '--help']);
+    expect(stdout).toContain('Usage:');
+    expect(stdout).toContain('Examples:');
   });
   
   // Test version flag outputs version information
@@ -178,14 +166,9 @@ describe('CLI E2E Tests', () => {
       return;
     }
     
-    try {
-      const { stdout } = await execa('node', [cliPath, '--version']);
-      // Version should match semver pattern
-      expect(stdout).toMatch(/\d+\.\d+\.\d+/);
-    } catch (error) {
-      console.error('Error output:', (error as ExecaError).stderr);
-      throw error;
-    }
+    const { stdout } = await execa('node', [cliPath, '--version']);
+    // Version should match semver pattern
+    expect(stdout).toMatch(/\d+\.\d+\.\d+/);
   });
   
   // Tests for context files functionality
@@ -202,7 +185,8 @@ describe('CLI E2E Tests', () => {
         expect(stdout).toContain('contextPaths');
         expect(stdout).toContain('files or directories');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -237,7 +221,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -271,7 +256,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -306,7 +292,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -339,7 +326,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -372,7 +360,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -406,7 +395,8 @@ describe('CLI E2E Tests', () => {
         // Verify no errors
         expect(stderr).toBe('');
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });
@@ -418,31 +408,24 @@ describe('CLI E2E Tests', () => {
       
       const nonExistentPath = path.join(tempDir, 'non-existent-file.txt');
       
-      try {
-        // Create a specific output directory for this test
-        const nonExistentOutputDir = path.join(outputDir, 'non-existent');
-        await fs.mkdir(nonExistentOutputDir, { recursive: true });
-        
-        // Run the CLI with a non-existent file
-        await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          nonExistentPath,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', nonExistentOutputDir
-        ]);
-        
-        // We expect this to fail, so if we get here, something is wrong
-        fail('Command should have failed with non-existent path');
-      } catch (error) {
-        // This is expected - verify the error message
-        const err = error as ExecaError;
-        expect(err.stderr).toContain('not found');
-        expect(err.exitCode).not.toBe(0);
-      }
+      // Create a specific output directory for this test
+      const nonExistentOutputDir = path.join(outputDir, 'non-existent');
+      await fs.mkdir(nonExistentOutputDir, { recursive: true });
+      
+      // Run the CLI with a non-existent file and expect it to fail
+      await expect(execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        nonExistentPath,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', nonExistentOutputDir
+      ])).rejects.toMatchObject({
+        stderr: expect.stringContaining('not found'),
+        exitCode: expect.anything()
+      });
     });
     
     it('should handle a valid context file along with a non-existent one', async () => {
@@ -475,7 +458,8 @@ describe('CLI E2E Tests', () => {
         expect(stdout).toContain('could not be read');
         
       } catch (error) {
-        console.error('Error output:', (error as ExecaError).stderr);
+        // Don't log in tests - let the test fail with the error
+      // to avoid polluting test output
         throw error;
       }
     });

@@ -24,8 +24,9 @@ jest.mock('../../utils/consoleUtils', () => ({
 
 // Mock handleError function in CLI
 jest.mock('../index', () => ({
-  handleError: jest.fn((err) => {
-    console.error(`Mocked handleError: ${err.message}`);
+  handleError: jest.fn((_err) => {
+    // Don't use console.error in tests
+    // This is a mock implementation that should be silent
   })
 }));
 

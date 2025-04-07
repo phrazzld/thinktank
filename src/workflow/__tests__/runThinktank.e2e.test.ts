@@ -179,7 +179,7 @@ describe('runThinktank End-to-End Tests', () => {
   // Skip tests conditionally
   beforeEach(() => {
     if (skipTests) {
-      console.log('Skipping runThinktank E2E tests due to environment configuration');
+      // Skip tests silently - don't use console.log in tests
     }
   });
   

@@ -170,6 +170,8 @@ describe('readDirectoryContents', () => {
       expect(results[0].content).toBe('File content');
     });
 
+    // This test is skipped due to issues with Windows path handling in the virtual filesystem
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     it.skip('should handle Windows-style paths', async () => {
       // For memfs, we need to use a path format it can handle
       // Using a simplified path format for the virtual filesystem
@@ -180,10 +182,40 @@ describe('readDirectoryContents', () => {
       virtualFs.mkdirSync(windowsPath, { recursive: true });
       virtualFs.writeFileSync(path.join(windowsPath, 'file.txt'), 'File content');
       
+      // Mock readFile to return the content we expect
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
+      const fsReadFileMock = jest.spyOn(fs, 'readFile');
+      fsReadFileMock.mockImplementation((_path) => {
+        const pathStr = String(_path);
+        if (pathStr.endsWith('file.txt')) {
+          return Promise.resolve('File content');
+        }
+        return Promise.reject(new Error(`Unexpected file: ${pathStr}`));
+      });
+      
       // Mock path.isAbsolute to make the code think this is an absolute path
       const isAbsoluteSpy = jest.spyOn(path, 'isAbsolute');
       isAbsoluteSpy.mockImplementation((pathStr) => {
         return pathStr === windowsPath || path.isAbsolute(pathStr);
+      });
+      
+      // Mock readContextFile to directly return the file content
+      // This test needs more complex mocking to work properly with the virtual filesystem
+      const readContextFileMock = jest.spyOn(fileReader, 'readContextFile');
+      readContextFileMock.mockImplementation((_path) => {
+        const pathStr = String(_path);
+        if (pathStr.endsWith('file.txt')) {
+          return Promise.resolve({
+            path: pathStr,
+            content: 'File content',
+            error: null
+          });
+        }
+        return Promise.resolve({
+          path: pathStr,
+          content: null,
+          error: { code: 'NOT_FOUND', message: 'File not found' }
+        });
       });
       
       const results = await readDirectoryContents(windowsPath);
@@ -193,8 +225,10 @@ describe('readDirectoryContents', () => {
       expect(results[0].path.endsWith('file.txt')).toBe(true);
       expect(results[0].content).toBe('File content');
       
-      // Restore the original implementation
+      // Restore the original implementations
       isAbsoluteSpy.mockRestore();
+      fsReadFileMock.mockRestore();
+      readContextFileMock.mockRestore();
     });
   });
 
@@ -609,7 +643,7 @@ describe('readDirectoryContents', () => {
   });
 
   describe('Integration with Other Features', () => {
-    it.skip('should integrate with gitignore-based filtering', async () => {
+    it('should integrate with gitignore-based filtering', async () => {
       // Reset virtual filesystem
       resetVirtualFs();
       
@@ -641,8 +675,7 @@ describe('readDirectoryContents', () => {
       // file1.txt should be ignored
       expect(file1).toBeUndefined();
       
-      // We're creating a mock result for test purposes, so let's assert
-      // that .gitignore is included in the results as the test expects
+      // .gitignore is usually included (not excluded by default)
       expect(gitignoreFile).toBeDefined();
       
       // file2.md and nested.txt should be included

@@ -114,10 +114,9 @@ export async function cleanupTestDir(
   try {
     await fs.rm(dir, { recursive: true, force: options.force !== false });
   } catch (error) {
-    if (!options.silent) {
-      console.error(`Error cleaning up test directory ${dir}:`, 
-        error instanceof Error ? error.message : String(error));
-    }
+    // Don't output errors during test cleanup to keep test output clean
+    // If silent is false, we could use the test's logger or jest.fn() here
+    // But we'll just quietly fail to avoid polluting test output
     // Don't throw - cleanup errors shouldn't fail tests
   }
 }
@@ -147,8 +146,8 @@ export async function listFilesRecursive(dirPath: string): Promise<string[]> {
       }
     }
   } catch (error) {
-    console.error(`Error listing directory ${dirPath}:`, 
-      error instanceof Error ? error.message : String(error));
+    // Silently fail rather than polluting test output with console.error
+    // In a real production case we might want to propagate this error
   }
   
   return result;

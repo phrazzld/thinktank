@@ -16,6 +16,7 @@ jest.mock('../../workflow/listModelsWorkflow', () => ({
 // Create a simple handler we can call directly
 const mockActionHandler = async (): Promise<void> => {
   const result = await listAvailableModels({});
+  // Use the mocked console.log to avoid actual logging
   console.log(result);
 };
 
