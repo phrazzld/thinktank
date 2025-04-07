@@ -32,7 +32,7 @@
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Incomplete Test Coverage
 
-- [ ] **Remove Residual Legacy References**
+- [x] **Remove Residual Legacy References**
   - **Action:** Search for and replace any remaining references to the old mocking approach.
   - **Depends On:** Standardize Virtual FS Setup
   - **AC Ref:** Identified Issue - Legacy References
