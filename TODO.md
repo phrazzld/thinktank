@@ -97,7 +97,7 @@
   - **Depends On:** All previous tasks completed
   - **AC Ref:** AC 3.4
 
-- [ ] **Consider refactoring mockGitignoreUtils**
+- [x] **Consider refactoring mockGitignoreUtils**
   - **Action:** Evaluate if mockGitignoreUtils needs similar simplification as mockFsUtils
   - **Depends On:** Refactor gitignoreFilterIntegration.test.ts
   - **AC Ref:** AC 3.5

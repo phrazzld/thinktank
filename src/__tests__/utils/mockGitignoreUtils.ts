@@ -3,11 +3,13 @@
  * 
  * This module provides utilities for mocking gitignore pattern matching and
  * directory filtering functionality, allowing tests to simulate .gitignore
- * behavior without relying on actual filesystem operations.
+ * behavior without relying on actual filesystem operations. It also provides
+ * integration with the virtual filesystem for a more realistic testing approach.
  * 
  * @module mockGitignoreUtils
  * 
  * @example
+ * Basic usage with direct mock configuration:
  * ```typescript
  * import { 
  *   resetMockGitignore, 
@@ -26,10 +28,45 @@
  *   mockCreateIgnoreFilter('/project', ['node_modules', '*.tmp']);
  * });
  * ```
+ * 
+ * Integration with virtual filesystem:
+ * ```typescript
+ * import { 
+ *   resetVirtualFs, 
+ *   createVirtualFs 
+ * } from '../../../__tests__/utils/virtualFsUtils';
+ * import { 
+ *   resetMockGitignore, 
+ *   setupMockGitignore,
+ *   configureMockGitignoreFromVirtualFs,
+ *   addVirtualGitignoreFile
+ * } from '../../../__tests__/utils/mockGitignoreUtils';
+ * 
+ * beforeEach(() => {
+ *   // Setup virtual filesystem
+ *   resetVirtualFs();
+ *   createVirtualFs({
+ *     'project/file.txt': 'content',
+ *     'project/logs/app.log': 'log content'
+ *   });
+ *   
+ *   // Reset and setup gitignore mocks
+ *   resetMockGitignore();
+ *   setupMockGitignore();
+ *   
+ *   // Add .gitignore files to virtual filesystem and configure mocks
+ *   addVirtualGitignoreFile('project/.gitignore', '*.log\ntmp/');
+ *   
+ *   // Or configure mocks from existing virtual .gitignore files
+ *   configureMockGitignoreFromVirtualFs();
+ * });
+ * ```
  */
 import { jest } from '@jest/globals';
 import * as gitignoreUtils from '../../utils/gitignoreUtils';
 import { Ignore } from 'ignore';
+import { getVirtualFs } from './virtualFsUtils';
+import path from 'path';
 
 /**
  * Interface for test results returned by ignore.test() and ignore.checkIgnore()
@@ -332,6 +369,179 @@ export function setupMockGitignore(config?: GitignoreMockConfig): void {
   mockedGitignoreUtils.clearIgnoreCache.mockImplementation(() => {
     // No actual implementation needed for most tests
   });
+}
+
+/**
+ * Helper function to normalize file paths for virtual filesystem.
+ * Removes leading slash if present, since memfs expects paths without leading slashes.
+ * 
+ * @param filePath - The file path to normalize
+ * @returns Normalized file path
+ * 
+ * @example
+ * ```typescript
+ * normalizeVirtualFsPath('/path/to/file.txt') // Returns 'path/to/file.txt'
+ * normalizeVirtualFsPath('path/to/file.txt')  // Returns 'path/to/file.txt' (unchanged)
+ * ```
+ */
+export function normalizeVirtualFsPath(filePath: string): string {
+  return filePath.startsWith('/') ? filePath.substring(1) : filePath;
+}
+
+/**
+ * Creates a .gitignore file in the virtual filesystem and configures mocks based on its content.
+ * 
+ * This function creates a .gitignore file at the specified path in the virtual
+ * filesystem and then configures the mock gitignore utilities to respect these
+ * patterns when performing ignore checks.
+ * 
+ * @param gitignorePath - Path where the .gitignore file should be created
+ * @param content - Content of the .gitignore file (ignore patterns, one per line)
+ * 
+ * @example
+ * ```typescript
+ * // Add a .gitignore file that ignores log files and the tmp directory
+ * addVirtualGitignoreFile('project/.gitignore', '*.log\ntmp/');
+ * 
+ * // Test that the patterns are respected
+ * const shouldIgnore = await gitignoreUtils.shouldIgnorePath('project', 'app.log');
+ * expect(shouldIgnore).toBe(true);
+ * ```
+ */
+export function addVirtualGitignoreFile(gitignorePath: string, content: string): void {
+  // Normalize path for the virtual filesystem
+  const normalizedPath = normalizeVirtualFsPath(gitignorePath);
+  
+  // Get virtual filesystem reference
+  const virtualFs = getVirtualFs();
+  
+  // Create the directory if it doesn't exist
+  const dirPath = path.dirname(normalizedPath);
+  virtualFs.mkdirSync(dirPath, { recursive: true });
+  
+  // Write the .gitignore file
+  virtualFs.writeFileSync(normalizedPath, content);
+  
+  // Parse the patterns
+  const patterns = content.split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('#'));
+  
+  // Configure mock for the containing directory
+  const baseDirPath = '/' + dirPath; // Add leading slash for mock config
+  
+  // Configure the mock to always return true for matched patterns
+  mockCreateIgnoreFilter(baseDirPath, patterns);
+  
+  // Explicitly configure shouldIgnorePath for each pattern
+  patterns.forEach(pattern => {
+    if (pattern.startsWith('*.')) {
+      // For file extension patterns
+      const extension = pattern.substring(1); // e.g., "*.log" -> ".log"
+      mockShouldIgnorePath(new RegExp(`\\${extension}$`), true);
+    } else if (pattern.endsWith('/')) {
+      // For directory patterns
+      const dirName = pattern.substring(0, pattern.length - 1);
+      mockShouldIgnorePath(new RegExp(`${dirName}/`), true);
+    } else {
+      // For other patterns
+      mockShouldIgnorePath(pattern, true);
+    }
+  });
+}
+
+/**
+ * Scans the virtual filesystem for .gitignore files and configures mocks based on their content.
+ * 
+ * This function finds all .gitignore files in the virtual filesystem and configures
+ * the mock gitignore utilities to respect the patterns they contain. This allows
+ * tests to use a more realistic approach to gitignore filtering by creating actual
+ * .gitignore files in the virtual filesystem.
+ * 
+ * @param rootPath - Optional root path to start scanning from (defaults to '/')
+ * 
+ * @example
+ * ```typescript
+ * // Setup virtual filesystem with .gitignore files
+ * createVirtualFs({
+ *   'project/.gitignore': '*.log\ntmp/',
+ *   'project/api/.gitignore': '*.cache',
+ * });
+ * 
+ * // Configure mocks based on these .gitignore files
+ * configureMockGitignoreFromVirtualFs();
+ * 
+ * // Test that the patterns are respected
+ * const shouldIgnore1 = await gitignoreUtils.shouldIgnorePath('project', 'app.log');
+ * expect(shouldIgnore1).toBe(true);
+ * 
+ * const shouldIgnore2 = await gitignoreUtils.shouldIgnorePath('project/api', 'data.cache');
+ * expect(shouldIgnore2).toBe(true);
+ * ```
+ */
+export function configureMockGitignoreFromVirtualFs(rootPath: string = '/'): void {
+  // Normalize root path for the virtual filesystem
+  const normalizedRootPath = normalizeVirtualFsPath(rootPath);
+  
+  // Get virtual filesystem reference
+  const virtualFs = getVirtualFs();
+  
+  // Find all .gitignore files recursively
+  findGitignoreFiles(normalizedRootPath, virtualFs);
+}
+
+/**
+ * Recursively finds .gitignore files in the virtual filesystem and configures mocks.
+ * 
+ * @param dirPath - Directory path to search in
+ * @param virtualFs - Reference to the virtual filesystem
+ */
+function findGitignoreFiles(dirPath: string, virtualFs: any): void {
+  try {
+    // Check for a .gitignore file in this directory
+    const gitignorePath = path.join(dirPath, '.gitignore');
+    
+    if (virtualFs.existsSync(gitignorePath)) {
+      try {
+        // Read the file content
+        const content = virtualFs.readFileSync(gitignorePath, 'utf-8');
+        
+        // Parse the patterns
+        const patterns = content.split('\n')
+          .map((line: string) => line.trim())
+          .filter((line: string) => line && !line.startsWith('#'));
+        
+        // Configure mock for this directory
+        mockCreateIgnoreFilter(dirPath, patterns);
+      } catch (error) {
+        // If there's an error reading the file, just continue
+        console.warn(`Warning: Could not read virtual .gitignore file at ${gitignorePath}.`);
+      }
+    }
+    
+    // Recursively check subdirectories
+    try {
+      const entries = virtualFs.readdirSync(dirPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        // Skip non-directories and common directories to ignore
+        if (!entry.isDirectory() || 
+            entry.name === 'node_modules' || 
+            entry.name === '.git') {
+          continue;
+        }
+        
+        const subdirPath = path.join(dirPath, entry.name);
+        findGitignoreFiles(subdirPath, virtualFs);
+      }
+    } catch (error) {
+      // If there's an error reading the directory, just continue
+      console.warn(`Warning: Could not read virtual directory at ${dirPath}.`);
+    }
+  } catch (error) {
+    // If any unexpected error occurs, just continue
+    console.warn(`Warning: Error processing virtual directory ${dirPath}: ${error}`);
+  }
 }
 
 /**
