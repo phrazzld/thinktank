@@ -2,7 +2,7 @@
 
 A powerful CLI tool for querying multiple Large Language Models (LLMs) with the same prompt and comparing their responses.
 
-> 📚 **Documentation**: Find our comprehensive documentation in the [docs](docs/) directory, including [testing guides](docs/testing/), [feature documentation](docs/features/), and [project planning](docs/planning/).
+> 📚 **Documentation**: The repository contains comprehensive documentation including the [testing guide](TESTING.md), [context formatting documentation](docs/features/context-formatting.md), and [project planning](docs/planning/master-plan.md).
 
 ## Overview
 

@@ -1,6 +1,6 @@
-# Context Formatting Strategy in Thinktank
+# Context Formatting Strategy in thinktank
 
-When using Thinktank with context files and directories, the tool organizes the content in a structured format that helps Large Language Models understand and work with multiple sources effectively.
+When using thinktank with context files and directories, the tool organizes the content in a structured format that helps Large Language Models understand and work with multiple sources effectively.
 
 ## How Context Files Are Formatted
 
@@ -89,4 +89,4 @@ If the file extension is not recognized, it defaults to plain text formatting.
 4. **Check File Sizes**: Very large files might be truncated - consider breaking them up if needed
 5. **Be Specific in Your Prompt**: Reference the included files by name in your prompt to direct the model's attention
 
-This formatting approach ensures that Thinktank can effectively provide LLMs with the context they need to answer complex queries accurately, whether you're analyzing code, working with configuration files, or explaining technical documentation.
+This formatting approach ensures that thinktank can effectively provide LLMs with the context they need to answer complex queries accurately, whether you're analyzing code, working with configuration files, or explaining technical documentation.
