@@ -2,6 +2,8 @@
 
 A powerful CLI tool for querying multiple Large Language Models (LLMs) with the same prompt and comparing their responses.
 
+> 📚 **Documentation**: Find our comprehensive documentation in the [docs](docs/) directory, including [testing guides](docs/testing/), [feature documentation](docs/features/), and [project planning](docs/planning/).
+
 ## Overview
 
 thinktank allows you to send the same text prompt to multiple LLM providers (like OpenAI, Anthropic, etc.) simultaneously and view their responses side-by-side. This is useful for:
@@ -125,7 +127,7 @@ This feature is particularly useful for:
 - Including configuration files along with your prompt
 - Giving the LLM comprehensive background information
 
-For details on how context files are formatted and presented to LLMs, see [CONTEXT-FORMATTING.md](CONTEXT-FORMATTING.md).
+For details on how context files are formatted and presented to LLMs, see [Context Formatting Documentation](docs/features/context-formatting.md).
 
 #### Running with a Specific Group
 
