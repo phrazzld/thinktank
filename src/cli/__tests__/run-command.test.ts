@@ -5,7 +5,7 @@
  * integrates with the runThinktank module to process prompts
  * through LLM models.
  */
-import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError, createVirtualFs } from '../../__tests__/utils/virtualFsUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -22,6 +22,18 @@ import * as configManager from '../../core/configManager';
 jest.mock('../../workflow/runThinktank');
 jest.mock('../../utils/fileReader');
 jest.mock('../../core/configManager');
+jest.mock('../../cli/index', () => ({
+  handleError: jest.fn()
+}));
+jest.mock('../../utils/logger', () => ({
+  logger: {
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+    debug: jest.fn(),
+    plain: jest.fn()
+  }
+}));
 
 // Access the mocks
 const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
@@ -56,12 +68,12 @@ describe('Run Command Integration', () => {
     runThinktank.mockResolvedValue('Mock result content');
     fileExists.mockResolvedValue(true);
     
-    // Setup virtual filesystem with test files
-    virtualFs.mkdirSync('/test', { recursive: true });
-    virtualFs.writeFileSync('/test-prompt.txt', 'This is a test prompt');
-    virtualFs.writeFileSync('/file1.js', 'console.log("Test file 1");');
-    virtualFs.mkdirSync('/dir1', { recursive: true });
-    virtualFs.writeFileSync('/dir1/file2.js', 'console.log("Test file 2");');
+    // Setup virtual filesystem with test files using createVirtualFs
+    createVirtualFs({
+      '/test-prompt.txt': 'This is a test prompt',
+      '/file1.js': 'console.log("Test file 1");',
+      '/dir1/file2.js': 'console.log("Test file 2");'
+    });
     
     // Mock configManager
     (configManager.loadConfig as jest.Mock).mockResolvedValue({
@@ -235,9 +247,11 @@ describe('Run Command Integration', () => {
     
     it('should handle paths with spaces and special characters', async () => {
       // Create files in the virtual filesystem with special characters
-      virtualFs.writeFileSync('/path with spaces.js', 'console.log("File with spaces");');
-      virtualFs.writeFileSync('/path-with-hyphens.ts', 'console.log("File with hyphens");');
-      virtualFs.writeFileSync('/path_with_underscores.md', '# File with underscores');
+      createVirtualFs({
+        '/path with spaces.js': 'console.log("File with spaces");',
+        '/path-with-hyphens.ts': 'console.log("File with hyphens");',
+        '/path_with_underscores.md': '# File with underscores'
+      }, { reset: false });
       
       // Simulate runThinktank call with special paths
       await runThinktank({
@@ -255,9 +269,11 @@ describe('Run Command Integration', () => {
     
     it('should handle context paths with combination of files and directories', async () => {
       // Create more complex file structure in virtual filesystem
-      virtualFs.mkdirSync('/directory', { recursive: true });
-      virtualFs.mkdirSync('/nested/directory', { recursive: true });
-      virtualFs.writeFileSync('/nested/file.ts', 'console.log("Nested file");');
+      createVirtualFs({
+        '/directory/': '',
+        '/nested/directory/': '',
+        '/nested/file.ts': 'console.log("Nested file");'
+      }, { reset: false });
       
       // Simulate runThinktank call with mixed path types
       await runThinktank({
