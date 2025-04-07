@@ -62,7 +62,7 @@
   - **Depends On:** "Verify All Tests Pass"
   - **AC Ref:** AC 1.3 (Remove Legacy Utilities).
 
-- [ ] **Clean Up test-helpers.ts**
+- [x] **Clean Up test-helpers.ts**
   - **Action:** Remove any helper functions in `src/__tests__/utils/test-helpers.ts` that are related to the old mocking strategy (like `createTestSafeError`).
   - **Depends On:** "Remove Legacy mockFsUtils.ts File"
   - **AC Ref:** AC 1.3 (Remove Legacy Utilities).

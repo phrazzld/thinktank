@@ -1,9 +1,8 @@
 /**
  * Test helpers for Jest tests
  * 
- * Note: The previous createTestSafeError function has been deprecated and removed.
- * Please use the createFsError function from virtualFsUtils.ts instead.
- * This creates proper NodeJS.ErrnoException objects for testing.
+ * This module provides utility functions that are useful for testing, including
+ * convenience functions for working with promises and timing.
  */
 
 // Re-export the createFsError function from virtualFsUtils for convenience
