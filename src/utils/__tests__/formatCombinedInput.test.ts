@@ -12,8 +12,15 @@
  * 5. The function handles edge cases like empty arrays and all-error files
  * 6. Various file types are properly formatted with appropriate language tags
  */
+import { createVirtualFs, resetVirtualFs, mockFsModules } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks for fs modules
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Import modules after mocking
 import path from 'path';
-import { formatCombinedInput, ContextFileResult } from '../fileReader';
+import { formatCombinedInput, ContextFileResult, readContextFile } from '../fileReader';
 
 describe('formatCombinedInput', () => {
   // Set up common test data
@@ -39,6 +46,12 @@ describe('formatCombinedInput', () => {
       }
     }
   ];
+  
+  beforeEach(() => {
+    // Reset virtual filesystem and mocks before each test
+    resetVirtualFs();
+    jest.clearAllMocks();
+  });
   
   describe('Basic Formatting', () => {
     it('should format context files and prompt with clear boundaries', () => {
@@ -317,6 +330,51 @@ describe('formatCombinedInput', () => {
       const normalizedExpected = expectedStructure.replace(/\r\n/g, '\n');
       
       expect(normalizedResult).toBe(normalizedExpected);
+    });
+  });
+  
+  describe('Integration with Virtual Filesystem', () => {
+    it('should work correctly with files from virtual filesystem', async () => {
+      // Create test files in virtual filesystem
+      createVirtualFs({
+        '/virtual/file1.js': '// Virtual JavaScript file\nconst test = true;',
+        '/virtual/file2.md': '# Virtual Markdown\n\nThis is content from a virtual file.'
+      });
+      
+      // Read files using readContextFile
+      const file1Result = await readContextFile('/virtual/file1.js');
+      const file2Result = await readContextFile('/virtual/file2.md');
+      
+      // Format the results
+      const result = formatCombinedInput('Test prompt', [file1Result, file2Result]);
+      
+      // Check for expected content
+      expect(result).toContain('# CONTEXT DOCUMENTS');
+      expect(result).toContain('# USER PROMPT');
+      expect(result).toContain('// Virtual JavaScript file');
+      expect(result).toContain('# Virtual Markdown');
+      expect(result).toContain('```javascript');
+      expect(result).toContain('```markdown');
+      expect(result).toContain('Test prompt');
+    });
+    
+    it('should handle errors from virtual filesystem correctly', async () => {
+      // Create only one file in virtual filesystem
+      createVirtualFs({
+        '/virtual/real-file.txt': 'This file exists'
+      });
+      
+      // Read both existing and non-existent files
+      const realFileResult = await readContextFile('/virtual/real-file.txt');
+      const missingFileResult = await readContextFile('/virtual/missing-file.txt');
+      
+      // Format the results
+      const result = formatCombinedInput('Test prompt', [realFileResult, missingFileResult]);
+      
+      // Check that only the real file is included
+      expect(result).toContain('/virtual/real-file.txt');
+      expect(result).toContain('This file exists');
+      expect(result).not.toContain('/virtual/missing-file.txt');
     });
   });
 });

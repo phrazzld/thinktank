@@ -47,7 +47,7 @@
   - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code  
   - **AC Ref:** AC 2.2
 
-- [ ] **Refactor formatCombinedInput.test.ts**
+- [x] **Refactor formatCombinedInput.test.ts**
   - **Action:** Review test dependencies and update any filesystem interactions to use the new approach
   - **Depends On:** Create virtualFsUtils.ts utility
   - **AC Ref:** AC 2.6
