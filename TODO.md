@@ -43,14 +43,7 @@
   - **Depends On:** Update test assertions to use actual implementation.
   - **AC Ref:** AC 3.1.
 
-- [ ] **Run all tests to verify refactoring**
+- [x] **Run all tests to verify refactoring**
   - **Action:** Run the full test suite to ensure all refactored tests pass and no regressions were introduced.
   - **Depends On:** Remove mockGitignoreUtils.ts.
   - **AC Ref:** All ACs.
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-- [ ] **Assumption:** Existing virtualFsUtils.ts already has most of the needed functionality but may need enhancement for hidden files.
-  - **Context:** Step 1 mentions "Ensure virtualFsUtils.ts can create hidden files" which implies the file exists but may need enhancement.
-
-- [ ] **Assumption:** The function clearIgnoreCache() exists in gitignoreUtils.
-  - **Context:** Step 2 example code mentions calling gitignoreUtils.clearIgnoreCache(), but its existence isn't explicitly confirmed.

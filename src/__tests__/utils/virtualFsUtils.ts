@@ -226,4 +226,16 @@ export async function addVirtualGitignoreFile(gitignorePath: string, content: st
   
   // Write the file directly
   virtualFs.writeFileSync(normalizedPath, content);
+  
+  // Verify the file exists and is readable (this helps with test failures)
+  try {
+    const fileContents = virtualFs.readFileSync(normalizedPath, 'utf-8');
+    if (fileContents !== content) {
+      // If file content doesn't match, write it again
+      virtualFs.writeFileSync(normalizedPath, content);
+    }
+  } catch (error) {
+    // If file doesn't exist, write it again
+    virtualFs.writeFileSync(normalizedPath, content);
+  }
 }

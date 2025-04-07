@@ -19,6 +19,7 @@ import path from 'path';
 import fs from 'fs/promises';
 import * as gitignoreUtils from '../gitignoreUtils';
 import * as fileReader from '../fileReader';
+import { getVirtualFs } from '../../__tests__/utils/virtualFsUtils';
 
 // Mock dependencies - but allow the real implementation in the module
 jest.mock('../fileReader', () => {
@@ -57,19 +58,44 @@ describe('gitignoreUtils', () => {
     mockedFileExists.mockImplementation(async (filePath) => {
       // Import here to avoid conflict with local variable name
       const { getVirtualFs } = require('../../__tests__/utils/virtualFsUtils');
-      const fs = getVirtualFs();
+      const virtualFs = getVirtualFs();
       const normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
       try {
         // Check if file exists in the virtual filesystem
-        fs.statSync(normalizedPath);
+        virtualFs.statSync(normalizedPath);
         return true;
       } catch (error) {
+        console.log(`File doesn't exist in the virtual filesystem: ${normalizedPath}`);
         return false;
       }
     });
     
-    // Spy on fs.readFile to track calls
-    jest.spyOn(fs, 'readFile');
+    // Spy on fs.readFile to track calls and log calls
+    jest.spyOn(fs, 'readFile').mockImplementation(async (filePath, options) => {
+      const normalizedPath = typeof filePath === 'string' && filePath.startsWith('/') 
+        ? filePath.substring(1) 
+        : String(filePath);
+      
+      // Default encoding is utf8 if not specified
+      const encoding = typeof options === 'string' 
+        ? options 
+        : (options && typeof options === 'object' && 'encoding' in options && typeof options.encoding === 'string')
+          ? options.encoding
+          : 'utf8';
+        
+      try {
+        console.log(`Reading file: ${normalizedPath}`);
+        const virtualFs = getVirtualFs();
+        // Use virtual fs readFileSync and convert to a promise for fs.readFile
+        const content = virtualFs.readFileSync(normalizedPath, encoding as BufferEncoding);
+        console.log(`Successfully read file: ${normalizedPath}, content length: ${content.length}`);
+        return content;
+      } catch (error) {
+        console.error(`Error reading file: ${normalizedPath}`, error);
+        // Re-throw the error to maintain the original behavior
+        throw error;
+      }
+    });
   });
   
   afterEach(() => {
