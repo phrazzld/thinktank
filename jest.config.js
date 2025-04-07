@@ -25,7 +25,8 @@ module.exports = {
     '/src/cli/__tests__/run-command.test.ts',
     '/src/cli/__tests__/run-command-xdg.test.ts',
     '/src/providers/__tests__/anthropic.test.ts', // Skip tests that are crashing
-    '/src/cli/__tests__/cli.e2e.test.ts', // Skip tests that are crashing
+    // '/src/cli/__tests__/cli.e2e.test.ts', // Refactored to use real filesystem
+    // '/src/workflow/__tests__/runThinktank.e2e.test.ts', // Refactored to use real filesystem
     '/src/workflow/__tests__/handleWorkflowErrorHelper.test.ts', // Skip tests that are crashing 
     '/src/workflow/__tests__/logCompletionSummaryHelper.test.ts', // Skip tests that are crashing Jest workers
     '/src/core/__tests__/errors.test.ts' // Skip tests that are crashing

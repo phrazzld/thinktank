@@ -3,15 +3,26 @@
  * 
  * These tests verify that the refactored runThinktank workflow behaves
  * correctly from an external perspective, focusing on the entire flow
- * from input to output.
+ * from input to output using the real filesystem.
  */
 import path from 'path';
 import fs from 'fs/promises';
-import os from 'os';
-import { runThinktank, RunOptions } from '../runThinktank';
+import { RunOptions, runThinktank } from '../runThinktank';
 import { ThinktankError, FileSystemError, ConfigError } from '../../core/errors';
 import * as llmRegistry from '../../core/llmRegistry';
 import * as configManager from '../../core/configManager';
+import {
+  createTempTestDir,
+  createTestFile,
+  createTestDir,
+  createTestConfig,
+  cleanupTestDir,
+  listFilesRecursive,
+  shouldSkipFsE2ETests
+} from '../../__tests__/utils/e2eTestUtils';
+
+// Skip all tests if environment indicates E2E tests should be skipped
+const skipTests = shouldSkipFsE2ETests();
 
 // Create a custom matcher to check if a directory exists and has expected files
 expect.extend({
@@ -51,7 +62,7 @@ expect.extend({
 });
 
 // Add the matcher to TypeScript's type system
-// Using module augmentation instead of namespace
+// Using module augmentation
 import '@jest/expect';
 
 declare module '@jest/expect' {
@@ -104,92 +115,6 @@ const MockProvider = {
   listModels: jest.fn().mockResolvedValue([{ id: 'mock-model', name: 'Mock Model' }])
 };
 
-// Helper functions for test setup and cleanup
-async function createTempDir(): Promise<string> {
-  const tempDir = path.join(os.tmpdir(), `thinktank-test-${Date.now()}`);
-  await fs.mkdir(tempDir, { recursive: true });
-  return tempDir;
-}
-
-async function createTestPrompt(tempDir: string, content = 'This is a test prompt.'): Promise<string> {
-  const promptPath = path.join(tempDir, 'test-prompt.txt');
-  await fs.writeFile(promptPath, content);
-  return promptPath;
-}
-
-async function createTestConfig(configDir: string): Promise<string> {
-  // Create a minimal test config
-  const config = {
-    models: [
-      {
-        provider: 'mock',
-        modelId: 'mock-model',
-        enabled: true,
-        apiKeyEnvVar: 'MOCK_API_KEY',
-        options: {
-          temperature: 0.7
-        }
-      }
-    ],
-    groups: {
-      default: {
-        name: 'default',
-        systemPrompt: { text: 'You are a helpful assistant.' },
-        models: [
-          {
-            provider: 'mock',
-            modelId: 'mock-model',
-            enabled: true,
-            apiKeyEnvVar: 'MOCK_API_KEY'
-          }
-        ]
-      }
-    }
-  };
-
-  const configPath = path.join(configDir, 'thinktank.config.json');
-  await fs.writeFile(configPath, JSON.stringify(config, null, 2));
-  return configPath;
-}
-
-async function cleanupTempDir(tempDir: string): Promise<void> {
-  try {
-    await fs.rm(tempDir, { recursive: true, force: true });
-  } catch (error) {
-    console.error(`Error cleaning up temp directory ${tempDir}:`, error instanceof Error ? error.message : String(error));
-  }
-}
-
-/**
- * Helper function to list all files in a directory and its subdirectories recursively
- * @param dirPath - The directory to list
- * @returns Array of full file paths
- */
-async function listDirectoryRecursive(dirPath: string): Promise<string[]> {
-  let result: string[] = [];
-  
-  try {
-    const entries = await fs.readdir(dirPath, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      const fullPath = path.join(dirPath, entry.name);
-      
-      if (entry.isDirectory()) {
-        // Recursively scan subdirectories
-        const subDirFiles = await listDirectoryRecursive(fullPath);
-        result = result.concat(subDirFiles);
-      } else {
-        // Add files to the result
-        result.push(fullPath);
-      }
-    }
-  } catch (error) {
-    console.error(`Error listing directory ${dirPath}:`, error instanceof Error ? error.message : String(error));
-  }
-  
-  return result;
-}
-
 describe('runThinktank End-to-End Tests', () => {
   // Test variables
   let tempDir: string;
@@ -198,6 +123,8 @@ describe('runThinktank End-to-End Tests', () => {
   let outputDir: string;
   
   beforeAll(async () => {
+    // Skip setup if tests will be skipped
+    if (skipTests) return;
     
     // Mock the registry to return our mock provider
     jest.spyOn(llmRegistry, 'getProvider').mockImplementation((providerId: string) => {
@@ -207,12 +134,11 @@ describe('runThinktank End-to-End Tests', () => {
       return undefined;
     });
     
-    // Setup test environment
-    tempDir = await createTempDir();
-    promptPath = await createTestPrompt(tempDir);
+    // Setup test environment with real filesystem
+    tempDir = await createTempTestDir();
+    promptPath = await createTestFile(tempDir, 'test-prompt.txt', 'This is a test prompt.');
     configPath = await createTestConfig(tempDir);
-    outputDir = path.join(tempDir, 'output');
-    await fs.mkdir(outputDir, { recursive: true });
+    outputDir = await createTestDir(tempDir, 'output');
     
     // Mock config loading to use our test config
     jest.spyOn(configManager, 'loadConfig').mockImplementation(async () => {
@@ -237,58 +163,29 @@ describe('runThinktank End-to-End Tests', () => {
   });
   
   afterAll(async () => {
+    // Skip cleanup if tests were skipped
+    if (skipTests) return;
+    
     // Restore original mocks
     jest.restoreAllMocks();
     
     // Clean up test directory
-    await cleanupTempDir(tempDir);
+    await cleanupTestDir(tempDir);
     
     // Clean up environment variables
     delete process.env.MOCK_API_KEY;
-    
-    // Force Jest to exit by setting a short timeout
-    setTimeout(() => {
-      process.exit(0);
-    }, 100);
   });
   
-  /**
-   * Helper function to create a test context file with specified content
-   * @param dir - Directory to create the file in
-   * @param filename - Name of the file
-   * @param content - Content to write to the file
-   * @returns Path to the created file
-   */
-  async function createTestContextFile(dir: string, filename: string, content: string): Promise<string> {
-    const filePath = path.join(dir, filename);
-    await fs.writeFile(filePath, content);
-    return filePath;
-  }
-  
-  /**
-   * Helper function to create a test directory with multiple files
-   * @param parentDir - Parent directory to create the test directory in
-   * @param dirName - Name of the directory to create
-   * @param files - Map of filenames to content
-   * @returns Path to the created directory
-   */
-  async function createTestContextDirectory(
-    parentDir: string, 
-    dirName: string,
-    files: Record<string, string>
-  ): Promise<string> {
-    const dirPath = path.join(parentDir, dirName);
-    await fs.mkdir(dirPath, { recursive: true });
-    
-    // Create all files in the directory
-    for (const [filename, content] of Object.entries(files)) {
-      await createTestContextFile(dirPath, filename, content);
+  // Skip tests conditionally
+  beforeEach(() => {
+    if (skipTests) {
+      console.log('Skipping runThinktank E2E tests due to environment configuration');
     }
-    
-    return dirPath;
-  }
+  });
   
   it('should process a prompt file and generate output files', async () => {
+    if (skipTests) return;
+    
     // Define options with our test configuration
     const options: RunOptions = {
       input: promptPath,
@@ -305,10 +202,10 @@ describe('runThinktank End-to-End Tests', () => {
     expect(result).toContain('mock-model'); // Output should mention the model
     
     // Get a directory listing recursively to see all files
-    const allFiles = await listDirectoryRecursive(outputDir);
+    const allFiles = await listFilesRecursive(outputDir);
     
     // Find any file containing 'mock' in its name
-    const mockFiles = allFiles.filter(f => f.includes('mock'));
+    const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
     
     // Check we have at least one file with 'mock' in its name
     expect(mockFiles.length).toBeGreaterThan(0);
@@ -319,6 +216,8 @@ describe('runThinktank End-to-End Tests', () => {
   });
 
   it('should handle multiple models when specified', async () => {
+    if (skipTests) return;
+    
     // Add another model to the mock provider for this test
     MockProvider.generate.mockImplementation(async (_prompt: string, modelId: string) => {
       return {
@@ -375,8 +274,7 @@ describe('runThinktank End-to-End Tests', () => {
     await fs.writeFile(configPath, JSON.stringify(multiModelConfig, null, 2));
     
     // Create a subdirectory for this test's output
-    const multiModelOutputDir = path.join(tempDir, 'multi-model-output');
-    await fs.mkdir(multiModelOutputDir, { recursive: true });
+    const multiModelOutputDir = await createTestDir(tempDir, 'multi-model-output');
     
     // Run thinktank with options specifying multiple models
     const options: RunOptions = {
@@ -395,11 +293,11 @@ describe('runThinktank End-to-End Tests', () => {
     expect(result).toContain('mock-model-2');
     
     // Get a directory listing recursively to see all files
-    const allFiles = await listDirectoryRecursive(multiModelOutputDir);
+    const allFiles = await listFilesRecursive(multiModelOutputDir);
     
     // Find files for each model
-    const model1Files = allFiles.filter(f => f.includes('mock-model-1'));
-    const model2Files = allFiles.filter(f => f.includes('mock-model-2'));
+    const model1Files = allFiles.filter(f => path.basename(f).includes('mock-model-1'));
+    const model2Files = allFiles.filter(f => path.basename(f).includes('mock-model-2'));
     
     // Verify we have files for each model
     expect(model1Files.length).toBe(1);
@@ -407,7 +305,7 @@ describe('runThinktank End-to-End Tests', () => {
     
     // Verify each file has the correct model-specific content
     for (const modelId of ['mock-model-1', 'mock-model-2']) {
-      const modelFile = allFiles.find(f => f.includes(modelId));
+      const modelFile = allFiles.find(f => path.basename(f).includes(modelId));
       if (modelFile) {
         const content = await fs.readFile(modelFile, 'utf-8');
         expect(content).toContain(`This is a response from ${modelId}`);
@@ -418,6 +316,8 @@ describe('runThinktank End-to-End Tests', () => {
   });
 
   it('should handle errors when input file does not exist', async () => {
+    if (skipTests) return;
+    
     // Define options with a non-existent input file
     const options: RunOptions = {
       input: path.join(tempDir, 'nonexistent.txt'),
@@ -446,6 +346,8 @@ describe('runThinktank End-to-End Tests', () => {
   });
 
   it('should handle errors when config is invalid', async () => {
+    if (skipTests) return;
+    
     // Write an invalid config
     await fs.writeFile(configPath, '{ invalid json }');
     
@@ -463,6 +365,8 @@ describe('runThinktank End-to-End Tests', () => {
   });
 
   it('should gracefully handle API errors', async () => {
+    if (skipTests) return;
+    
     // Make the provider throw an error for this test
     MockProvider.generate.mockRejectedValueOnce(new Error('API connection failed'));
     
@@ -500,12 +404,13 @@ describe('runThinktank End-to-End Tests', () => {
     
     // Setup context test files and directories before all tests
     beforeAll(async () => {
+      if (skipTests) return;
+      
       // Create a separate output directory for context tests
-      contextOutputDir = path.join(tempDir, 'context-output');
-      await fs.mkdir(contextOutputDir, { recursive: true });
+      contextOutputDir = await createTestDir(tempDir, 'context-output');
       
       // Create a context file
-      testContextFile = await createTestContextFile(
+      testContextFile = await createTestFile(
         tempDir, 
         'context-file.js', 
         'function add(a, b) {\n  return a + b;\n}\n\nmodule.exports = { add };'
@@ -513,12 +418,12 @@ describe('runThinktank End-to-End Tests', () => {
       
       // Create multiple context files
       testMultipleFiles = await Promise.all([
-        createTestContextFile(
+        createTestFile(
           tempDir,
           'utils.ts',
           'export function multiply(a: number, b: number): number {\n  return a * b;\n}'
         ),
-        createTestContextFile(
+        createTestFile(
           tempDir,
           'config.json',
           '{\n  "maxItems": 100,\n  "debug": true\n}'
@@ -526,7 +431,7 @@ describe('runThinktank End-to-End Tests', () => {
       ]);
       
       // Create a context directory with multiple files
-      testContextDir = await createTestContextDirectory(
+      testContextDir = await createTestDir(
         tempDir,
         'context-dir',
         {
@@ -537,7 +442,7 @@ describe('runThinktank End-to-End Tests', () => {
       );
       
       // Create a file with space in name
-      fileWithSpace = await createTestContextFile(
+      fileWithSpace = await createTestFile(
         tempDir,
         'file with spaces.txt',
         'This is a test file with spaces in its name.'
@@ -549,6 +454,8 @@ describe('runThinktank End-to-End Tests', () => {
     
     // Configure mock response to include context in the response for verification
     beforeEach(() => {
+      if (skipTests) return;
+      
       // Reset the mock function
       MockProvider.generate.mockReset();
       
@@ -583,6 +490,8 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should process a single context file and include it in the prompt', async () => {
+      if (skipTests) return;
+      
       // Define options with a single context file
       const options: RunOptions = {
         input: promptPath,
@@ -600,8 +509,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('context-file.js');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(contextOutputDir);
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(contextOutputDir);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -613,18 +522,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should process multiple context files and include them in the prompt', async () => {
+      if (skipTests) return;
+      
       // Define options with multiple context files
+      const multiFileOutputDir = await createTestDir(contextOutputDir, 'multi-file');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: testMultipleFiles,
         configPath: configPath,
-        output: path.join(contextOutputDir, 'multi-file'),
+        output: multiFileOutputDir,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'multi-file'), { recursive: true });
       
       // Run thinktank with multiple context files
       const result = await runThinktank(options);
@@ -633,8 +543,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'multi-file'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(multiFileOutputDir);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -647,18 +557,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should process a directory as context and include its files in the prompt', async () => {
+      if (skipTests) return;
+      
       // Define options with a directory as context
+      const dirOutputPath = await createTestDir(contextOutputDir, 'directory');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: [testContextDir],
         configPath: configPath,
-        output: path.join(contextOutputDir, 'directory'),
+        output: dirOutputPath,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'directory'), { recursive: true });
       
       // Run thinktank with directory context
       const result = await runThinktank(options);
@@ -667,8 +578,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'directory'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(dirOutputPath);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -682,18 +593,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should process mixed context paths (files and directories)', async () => {
+      if (skipTests) return;
+      
       // Define options with mixed context paths
+      const mixedOutputPath = await createTestDir(contextOutputDir, 'mixed');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: [testContextFile, testContextDir],
         configPath: configPath,
-        output: path.join(contextOutputDir, 'mixed'),
+        output: mixedOutputPath,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'mixed'), { recursive: true });
       
       // Run thinktank with mixed context paths
       const result = await runThinktank(options);
@@ -702,8 +614,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'mixed'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(mixedOutputPath);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -717,18 +629,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should handle files with spaces in their names', async () => {
+      if (skipTests) return;
+      
       // Define options with a file that has spaces in its name
+      const spacesOutputPath = await createTestDir(contextOutputDir, 'spaces');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: [fileWithSpace],
         configPath: configPath,
-        output: path.join(contextOutputDir, 'spaces'),
+        output: spacesOutputPath,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'spaces'), { recursive: true });
       
       // Run thinktank with file that has spaces in name
       const result = await runThinktank(options);
@@ -737,8 +650,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'spaces'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(spacesOutputPath);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -750,18 +663,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should continue with original prompt when context paths are invalid', async () => {
+      if (skipTests) return;
+      
       // Define options with a non-existent path
+      const invalidOutputPath = await createTestDir(contextOutputDir, 'invalid');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: [nonExistentPath],
         configPath: configPath,
-        output: path.join(contextOutputDir, 'invalid'),
+        output: invalidOutputPath,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'invalid'), { recursive: true });
       
       // Run thinktank with invalid context path
       const result = await runThinktank(options);
@@ -770,8 +684,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'invalid'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(invalidOutputPath);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
@@ -782,18 +696,19 @@ describe('runThinktank End-to-End Tests', () => {
     });
     
     it('should handle a mix of valid and invalid context paths', async () => {
+      if (skipTests) return;
+      
       // Define options with a mix of valid and invalid paths
+      const mixedValidInvalidPath = await createTestDir(contextOutputDir, 'mixed-valid-invalid');
+      
       const options: RunOptions = {
         input: promptPath,
         contextPaths: [testContextFile, nonExistentPath],
         configPath: configPath,
-        output: path.join(contextOutputDir, 'mixed-valid-invalid'),
+        output: mixedValidInvalidPath,
         includeMetadata: false,
         useColors: false
       };
-      
-      // Create output subdirectory
-      await fs.mkdir(path.join(contextOutputDir, 'mixed-valid-invalid'), { recursive: true });
       
       // Run thinktank with mixed valid/invalid paths
       const result = await runThinktank(options);
@@ -802,8 +717,8 @@ describe('runThinktank End-to-End Tests', () => {
       expect(result).toContain('mock-model');
       
       // Get output files and check content
-      const allFiles = await listDirectoryRecursive(path.join(contextOutputDir, 'mixed-valid-invalid'));
-      const mockFiles = allFiles.filter(f => f.includes('mock'));
+      const allFiles = await listFilesRecursive(mixedValidInvalidPath);
+      const mockFiles = allFiles.filter(f => path.basename(f).includes('mock'));
       
       // Check we have at least one output file
       expect(mockFiles.length).toBeGreaterThan(0);
