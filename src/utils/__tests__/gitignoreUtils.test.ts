@@ -1,7 +1,7 @@
 /**
  * Tests for gitignore utilities
  */
-import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+import { mockFsModules, resetVirtualFs, createVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -27,15 +27,10 @@ describe('gitignoreUtils', () => {
     // Reset virtual filesystem
     resetVirtualFs();
     
-    // Setup virtual filesystem with test files
-    const virtualFs = getVirtualFs();
-    
-    // Create directories and files manually
-    virtualFs.mkdirSync(testDirPath, { recursive: true });
-    virtualFs.writeFileSync(gitignorePath, '*.log\ntmp/\n.DS_Store');
-    
-    // Verify gitignore file exists in virtual filesystem
-    expect(virtualFs.existsSync(gitignorePath)).toBe(true);
+    // Setup virtual filesystem with test files using createVirtualFs
+    createVirtualFs({
+      [gitignorePath]: '*.log\ntmp/\n.DS_Store'
+    });
     
     // Clear gitignore cache
     gitignoreUtils.clearIgnoreCache();
@@ -72,8 +67,9 @@ describe('gitignoreUtils', () => {
       resetVirtualFs();
       
       // Create directory but NO .gitignore file
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
+      createVirtualFs({
+        [testDirPath + '/']: '' // Create just the directory
+      });
       
       // Mock that .gitignore doesn't exist
       mockedFileExists.mockResolvedValue(false);
@@ -122,9 +118,9 @@ describe('gitignoreUtils', () => {
       gitignoreUtils.clearIgnoreCache();
       
       // Create test directory and file
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '*.log\ntmp/\n.DS_Store');
+      createVirtualFs({
+        [gitignorePath]: '*.log\ntmp/\n.DS_Store'
+      });
       
       // First call to populate cache
       const ignoreFilter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
@@ -153,11 +149,10 @@ describe('gitignoreUtils', () => {
       const otherGitignorePath = path.join(otherDirPath, '.gitignore');
       
       // Create test directories and files
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '*.log\ntmp/\n.DS_Store');
-      virtualFs.mkdirSync(otherDirPath, { recursive: true });
-      // No .gitignore in the second directory
+      createVirtualFs({
+        [gitignorePath]: '*.log\ntmp/\n.DS_Store',
+        [otherDirPath + '/']: '' // Create the second directory without a .gitignore file
+      });
       
       // Set up mock for the second directory
       mockedFileExists.mockImplementation(async (path) => {

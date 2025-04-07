@@ -1,7 +1,7 @@
 /**
  * Comprehensive tests for gitignore-based filtering logic
  */
-import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+import { mockFsModules, resetVirtualFs, createVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -20,6 +20,10 @@ jest.mock('../fileReader');
 const mockedFileExists = jest.mocked(fileReader.fileExists);
 
 describe('Gitignore-based Filtering Logic', () => {
+  // Setup and teardown for all tests
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
   const testDirPath = '/test/dir';
   const gitignorePath = path.join(testDirPath, '.gitignore');
   
@@ -27,15 +31,10 @@ describe('Gitignore-based Filtering Logic', () => {
     // Reset virtual filesystem
     resetVirtualFs();
     
-    // Setup virtual filesystem with test files
-    const virtualFs = getVirtualFs();
-    
-    // Create directories and files 
-    virtualFs.mkdirSync(testDirPath, { recursive: true });
-    virtualFs.writeFileSync(gitignorePath, '# Default test gitignore\n*.log\ntmp/\n.DS_Store');
-    
-    // Verify gitignore file exists
-    expect(virtualFs.existsSync(gitignorePath)).toBe(true);
+    // Setup virtual filesystem with test files using createVirtualFs
+    createVirtualFs({
+      [gitignorePath]: '# Default test gitignore\n*.log\ntmp/\n.DS_Store'
+    });
     
     // Clear gitignore cache
     gitignoreUtils.clearIgnoreCache();
@@ -88,9 +87,9 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should respect negated patterns that re-include certain paths', async () => {
       // Reset filesystem and recreate with new gitignore content
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '*.log\n!important.log\ntmp/');
+      createVirtualFs({
+        [gitignorePath]: '*.log\n!important.log\ntmp/'
+      });
       
       // Mock implementation of shouldIgnorePath to correctly handle negation
       // (since we're testing our understanding of gitignore patterns, not the actual implementation)
@@ -127,9 +126,9 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should handle comment lines and blank lines in .gitignore files', async () => {
       // Reset filesystem and recreate with comments in gitignore
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '# This is a comment\n\n*.log\n\n# Another comment\ntmp/');
+      createVirtualFs({
+        [gitignorePath]: '# This is a comment\n\n*.log\n\n# Another comment\ntmp/'
+      });
       
       // Should ignore patterns as normal, ignoring comments and blank lines
       expect(await gitignoreUtils.shouldIgnorePath(testDirPath, 'info.log')).toBe(true);
@@ -142,9 +141,9 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should handle complex glob patterns correctly', async () => {
       // Reset filesystem and recreate with complex patterns
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '**/*.min.js\n**/node_modules/**\n**/build-*/\n*.{jpg,png,gif}');
+      createVirtualFs({
+        [gitignorePath]: '**/*.min.js\n**/node_modules/**\n**/build-*/\n*.{jpg,png,gif}'
+      });
       
       // Mock implementation of shouldIgnorePath to correctly handle complex patterns
       jest.spyOn(gitignoreUtils, 'shouldIgnorePath').mockImplementation(async (_unused, filePath) => {
@@ -207,9 +206,9 @@ describe('Gitignore-based Filtering Logic', () => {
       
       // Reset filesystem and create gitignore with custom patterns
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath, '*.log\ncustom-dir/');
+      createVirtualFs({
+        [gitignorePath]: '*.log\ncustom-dir/'
+      });
       
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
@@ -226,9 +225,9 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should handle non-existent .gitignore files by using only default patterns', async () => {
       // Reset filesystem and create directory without a gitignore file
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      // Don't create .gitignore
+      createVirtualFs({
+        [testDirPath + '/']: '' // Create just the directory without a .gitignore file
+      });
       
       // Clear previous calls and mock fileExists to return false
       jest.clearAllMocks();
@@ -250,8 +249,9 @@ describe('Gitignore-based Filtering Logic', () => {
     it('should handle errors when reading .gitignore files gracefully', async () => {
       // Reset filesystem and create test directory
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
+      createVirtualFs({
+        [testDirPath + '/']: '' // Create just the directory
+      });
       // We'll simulate a read error with a spy
       
       // Mock file exists but make fs.readFile throw an error
@@ -262,7 +262,7 @@ describe('Gitignore-based Filtering Logic', () => {
       );
       
       // Spy on console.warn
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      jest.spyOn(console, 'warn').mockImplementation();
       
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
@@ -270,10 +270,8 @@ describe('Gitignore-based Filtering Logic', () => {
       expect(ignoreFilter.ignores('node_modules/package.json')).toBe(true);
       
       // Should log a warning
-      expect(consoleWarnSpy).toHaveBeenCalled();
-      expect(consoleWarnSpy.mock.calls[0][0]).toContain('Could not read .gitignore file');
-      
-      consoleWarnSpy.mockRestore();
+      expect(console.warn).toHaveBeenCalled();
+      expect(jest.mocked(console.warn).mock.calls[0][0]).toContain('Could not read .gitignore file');
     });
   });
   
@@ -304,11 +302,10 @@ describe('Gitignore-based Filtering Logic', () => {
       
       // Reset and set up virtual filesystem with different gitignores
       resetVirtualFs();
-      const virtualFs = getVirtualFs();
-      virtualFs.mkdirSync(dir1, { recursive: true });
-      virtualFs.mkdirSync(dir2, { recursive: true });
-      virtualFs.writeFileSync(gitignorePath1, '*.log');
-      virtualFs.writeFileSync(gitignorePath2, '*.tmp');
+      createVirtualFs({
+        [gitignorePath1]: '*.log',
+        [gitignorePath2]: '*.tmp'
+      });
       
       // Mock fileExists for consistent behavior
       mockedFileExists.mockImplementation(async () => {
@@ -341,8 +338,9 @@ describe('Gitignore-based Filtering Logic', () => {
       gitignoreUtils.clearIgnoreCache();
       
       // Update .gitignore content for next read
-      const virtualFs = getVirtualFs();
-      virtualFs.writeFileSync(gitignorePath, '*.new-pattern');
+      createVirtualFs({
+        [gitignorePath]: '*.new-pattern'
+      }, { reset: false });
       
       // This should need to read again
       const newFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
