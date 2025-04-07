@@ -22,7 +22,7 @@
   - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
   - **AC Ref:** AC 1.2 (Refactor Each Target Test File).
 
-- [ ] **Refactor src/cli/__tests__/run-command-xdg.test.ts**
+- [x] **Refactor src/cli/__tests__/run-command-xdg.test.ts**
   - **Action:** Complete migration to `memfs` by ensuring it uses `virtualFsUtils.ts` correctly, includes proper Jest mocks setup before importing modules, updates assertions to check virtual filesystem state rather than function calls.
   - **Depends On:** "Identify Remaining Test Files Using mockFsUtils"
   - **AC Ref:** AC 1.2 (Refactor Each Target Test File).

@@ -23,7 +23,7 @@ module.exports = {
     // '/src/utils/__tests__/readDirectoryContents.test.ts', // Fixed with proper path handling
     '/src/workflow/__tests__/output-directory.test.ts', // Needs special handling for filesystem root access
     // '/src/cli/__tests__/run-command.test.ts', // Successfully refactored to use virtualFsUtils
-    '/src/cli/__tests__/run-command-xdg.test.ts',
+    // '/src/cli/__tests__/run-command-xdg.test.ts', // Successfully refactored to use virtualFsUtils
     '/src/providers/__tests__/anthropic.test.ts', // Skip tests that are crashing
     // '/src/cli/__tests__/cli.e2e.test.ts', // Refactored to use real filesystem
     // '/src/workflow/__tests__/runThinktank.e2e.test.ts', // Refactored to use real filesystem
