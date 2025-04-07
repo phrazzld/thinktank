@@ -10,7 +10,7 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 
 // Import test helpers (these would normally be imported from a utility module)
-const { readFile } = async (filePath: string): Promise<string> => {
+const readFile = async (filePath: string): Promise<string> => {
   try {
     return await fsPromises.readFile(filePath, 'utf-8');
   } catch (error) {

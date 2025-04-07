@@ -49,17 +49,22 @@ export async function createIgnoreFilter(directoryPath: string): Promise<ignore.
   // Try to load .gitignore file if it exists
   const gitignorePath = path.join(directoryPath, '.gitignore');
   
-  if (await fileExists(gitignorePath)) {
-    try {
-      // Read and parse the .gitignore file
-      const gitignoreContent = await fs.readFile(gitignorePath, 'utf-8');
-      
-      // Add patterns from .gitignore file
-      ignoreFilter.add(gitignoreContent);
-    } catch (error) {
-      // If there's an error reading the .gitignore file, just continue with default patterns
-      console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}. Using default ignore patterns.`);
+  try {
+    const exists = await fileExists(gitignorePath);
+    if (exists) {
+      try {
+        // Read and parse the .gitignore file
+        const gitignoreContent = await fs.readFile(gitignorePath, 'utf-8');
+        
+        // Add patterns from .gitignore file
+        ignoreFilter.add(gitignoreContent);
+      } catch (error) {
+        // If there's an error reading the .gitignore file, just continue with default patterns
+        console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}. Using default ignore patterns.`);
+      }
     }
+  } catch (error) {
+    console.warn(`Warning: Error checking if .gitignore file exists at ${gitignorePath}. Using default ignore patterns.`);
   }
   
   // Cache the ignore filter for future use
@@ -82,8 +87,11 @@ export async function shouldIgnorePath(basePath: string, filePath: string): Prom
   const relativePath = path.isAbsolute(filePath)
     ? path.relative(basePath, filePath)
     : filePath;
-    
-  return ignoreFilter.ignores(relativePath);
+  
+  // Normalize path to handle parent directory references
+  const normalizedPath = path.normalize(relativePath);
+  
+  return ignoreFilter.ignores(normalizedPath);
 }
 
 /**
