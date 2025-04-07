@@ -17,7 +17,7 @@
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Inconsistent Virtual FS Setup
 
-- [ ] **Add Missing Newlines**
+- [x] **Add Missing Newlines**
   - **Action:** Ensure all files end with a newline character, configure editor to enforce this.
   - **Depends On:** None
   - **AC Ref:** Identified Issue - Missing Newlines

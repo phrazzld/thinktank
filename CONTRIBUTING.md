@@ -33,6 +33,8 @@ Our development philosophy centers on maintainability, reliability, and scalabil
 - Never disable linting; run `npm run lint` to ensure code quality
 - Choose meaningful, self-descriptive names for clarity
 - Prioritize readability and straightforwardness over cleverness
+- Ensure all files end with a newline character (use `npm run fix:newlines` to check and fix)
+- Follow EditorConfig settings for consistent file formatting
 
 ### Architectural Guidelines
 

@@ -24,7 +24,9 @@
     "test:debug:file": "jest --runInBand --detectOpenHandles --verbose --",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
-    "test:install": "npm pack && npm install -g thinktank-*.tgz && thinktank --version"
+    "test:install": "npm pack && npm install -g thinktank-*.tgz && thinktank --version",
+    "fix:newlines": "node scripts/add-missing-newlines.js",
+    "check:newlines": "node scripts/add-missing-newlines.js"
   },
   "files": [
     "dist",
