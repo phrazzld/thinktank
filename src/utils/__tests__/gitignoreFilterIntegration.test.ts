@@ -47,12 +47,9 @@ describe.skip('gitignore filtering in directory traversal', () => {
       [path.join(testDirPath, '.git', '.placeholder')]: ''  // To ensure directory is created
     });
     
-    // Instead, we'll add .gitignore files separately using our specialized function
-    // Currently commented out but will be implemented in the next task
-    // await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n');
-    // await addVirtualGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.tmp\n');
-    
-    // NOTE: We've moved the addVirtualGitignoreFile calls up in the beforeEach function
+    // Add .gitignore files using our specialized function
+    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n');
+    await addVirtualGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.tmp\n');
   });
   
   it('should filter files based on gitignore rules during directory traversal', async () => {

@@ -36,11 +36,8 @@ describe.skip('Gitignore Filtering Integration', () => {
       [path.join(testDirPath, 'ignored.log')]: 'Content of ignored.log'
     });
     
-    // This is where we'll add the .gitignore file in the next task
-    // For now, this ensures the addVirtualGitignoreFile import is used
-    if (process.env.FAKE_ENV) {
-      await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
-    }
+    // Create .gitignore file using our dedicated function
+    await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
   });
   
   it('should filter files based on gitignore patterns', async () => {

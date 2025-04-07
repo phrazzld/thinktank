@@ -214,10 +214,16 @@ export function createFsError(
  * ```
  */
 export async function addVirtualGitignoreFile(gitignorePath: string, content: string): Promise<void> {
-  // Create a structure with just this file
-  const structure: Record<string, string> = {};
-  structure[gitignorePath] = content;
+  // Get virtual filesystem reference
+  const virtualFs = getVirtualFs();
   
-  // Add to the existing virtual filesystem without resetting
-  vol.fromJSON(structure, '/');
+  // Normalize path for memfs (remove leading slash if present)
+  const normalizedPath = gitignorePath.startsWith('/') ? gitignorePath.substring(1) : gitignorePath;
+  
+  // Create the parent directory explicitly
+  const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+  virtualFs.mkdirSync(dirPath, { recursive: true });
+  
+  // Write the file directly
+  virtualFs.writeFileSync(normalizedPath, content);
 }

@@ -691,8 +691,8 @@ describe('readDirectoryContents', () => {
         return Promise.reject(new Error('Unexpected file in test'));
       });
       
-      // TODO: Instead of mocking, we'll add a real .gitignore file
-      // await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), 'file1.txt');
+      // Add a real .gitignore file that will ignore file1.txt
+      await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), 'file1.txt');
       
       // For now, let's just move this test to skipped status:
       const results = await readDirectoryContents(testDirPath);
