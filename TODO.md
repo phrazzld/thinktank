@@ -1,49 +1,119 @@
 # TODO
 
-## Enhance Filesystem Utilities
-- [x] **Add hidden file support to virtualFsUtils.ts**
-  - **Action:** Ensure virtualFsUtils.ts can properly create and handle hidden files like .gitignore in the virtual filesystem.
+## Test Migration Completion
+
+- [x] **Enable skipped tests in virtualFsUtils.test.ts**
+  - **Action:** Review, update, and un-skip tests for the `addVirtualGitignoreFile` function to ensure proper validation of its behavior, including error handling and edge cases.
   - **Depends On:** None.
-  - **AC Ref:** AC 1.1.
+  - **AC Ref:** AC 1.1, AC 2.2.
 
-- [x] **Implement or integrate addVirtualGitignoreFile functionality**
-  - **Action:** Review the existing implementation of addVirtualGitignoreFile and either enhance it or integrate its logic into virtualFsUtils.ts for a unified approach.
-  - **Depends On:** Add hidden file support to virtualFsUtils.ts.
-  - **AC Ref:** AC 1.1.
+- [x] **Fix virtualFsUtils core function tests**
+  - **Action:** Update the implementation of `addVirtualGitignoreFile` in virtualFsUtils.ts to address any issues found during testing, ensure proper path normalization, and handle edge cases.
+  - **Depends On:** Enable skipped tests in virtualFsUtils.test.ts
+  - **AC Ref:** AC 1.1, AC 2.2.
 
-## Refactor Gitignore-Related Tests
-- [x] **Remove mock dependencies from gitignore tests**
-  - **Action:** Identify all tests that use jest.mock('../gitignoreUtils') and remove these mocks along with any imports from mockGitignoreUtils.
-  - **Depends On:** Implement or integrate addVirtualGitignoreFile functionality.
-  - **AC Ref:** AC 2.1.
+- [x] **Enable skipped tests in gitignoreFilterIntegration.test.ts**
+  - **Action:** Review, update, and un-skip integration tests that verify the gitignore filter works correctly with directory traversal, focusing on real-world file patterns and structures.
+  - **Depends On:** Fix virtualFsUtils core function tests
+  - **AC Ref:** AC 2.3, AC 2.4.
 
-- [x] **Import actual gitignoreUtils functions**
-  - **Action:** Replace mock imports with actual functions from src/utils/gitignoreUtils in all affected test files.
-  - **Depends On:** Remove mock dependencies from gitignore tests.
-  - **AC Ref:** AC 2.1.
-
-- [x] **Setup virtual .gitignore file creation in tests**
-  - **Action:** Implement beforeEach hooks to create virtual filesystem with .gitignore files for each test, following the pattern in the example.
-  - **Depends On:** Implement or integrate addVirtualGitignoreFile functionality.
-  - **AC Ref:** AC 2.2.
-
-- [x] **Update test assertions to use actual implementation**
-  - **Action:** Modify test assertions to test against the actual gitignoreUtils implementation using the virtual filesystem.
-  - **Depends On:** Setup virtual .gitignore file creation in tests.
+- [x] **Enable skipped tests in gitignoreFiltering.test.ts**
+  - **Action:** Update and un-skip tests for the gitignore pattern filtering to ensure correct behavior with the virtual filesystem approach.
+  - **Depends On:** Fix virtualFsUtils core function tests
   - **AC Ref:** AC 2.3.
 
-- [x] **Add cache clearing logic in tests**
-  - **Action:** Ensure gitignoreUtils.clearIgnoreCache() is called in the test setup if the implementation uses caching.
-  - **Depends On:** Setup virtual .gitignore file creation in tests.
-  - **AC Ref:** AC 2.2.
+- [x] **Enable skipped tests in gitignoreFilteringIntegration.test.ts**
+  - **Action:** Review, update, and un-skip integration tests that validate the gitignore filtering logic works correctly in real-world scenarios.
+  - **Depends On:** Enable skipped tests in gitignoreFiltering.test.ts
+  - **AC Ref:** AC 2.3, AC 2.4.
 
-## Cleanup
-- [x] **Remove mockGitignoreUtils.ts**
-  - **Action:** Once all tests have been refactored to use the virtual filesystem approach, delete the mockGitignoreUtils.ts file.
-  - **Depends On:** Update test assertions to use actual implementation.
+- [x] **Enable skipped tests in readDirectoryContents.test.ts**
+  - **Action:** Update and un-skip tests for the `readDirectoryContents` function to ensure it correctly interacts with the gitignore filtering mechanism using the virtual filesystem.
+  - **Depends On:** Enable skipped tests in gitignoreFilteringIntegration.test.ts
+  - **AC Ref:** AC 2.3, AC 2.4.
+  - **Note:** The core gitignore functionality tests have been enabled. Some path-handling edge cases in the directory traversal tests still need refinement in a separate task but the core integration with gitignore filtering is now tested.
+
+- [x] **Document limitations for complex gitignore patterns**
+  - **Action:** Investigate limitations with complex gitignore pattern testing identified in the skipped test in gitignoreFiltering.test.ts. If the limitation can't be resolved, document it clearly in the test and consider workarounds.
+  - **Depends On:** Enable skipped tests in gitignoreFiltering.test.ts
+  - **AC Ref:** AC 2.3, AC 2.5.
+
+## Test Code Cleanup
+
+- [ ] **Remove console.log statements from test code**
+  - **Action:** Identify and remove all `console.log` statements from test files, particularly in gitignoreFiltering.test.ts and gitignoreUtils.test.ts, to ensure clean test output.
+  - **Depends On:** None.
   - **AC Ref:** AC 3.1.
 
-- [x] **Run all tests to verify refactoring**
-  - **Action:** Run the full test suite to ensure all refactored tests pass and no regressions were introduced.
-  - **Depends On:** Remove mockGitignoreUtils.ts.
+- [x] **Complete removal of mockGitignoreUtils references**
+  - **Action:** Remove the remaining `jest.mock('../gitignoreUtils')` in readContextPaths.test.ts and update the test to use the virtual filesystem approach consistently.
+  - **Depends On:** None.
+  - **AC Ref:** AC 3.1.
+
+- [ ] **Create standardized path handling helper**
+  - **Action:** Develop a shared helper function for path normalization to ensure consistent handling of leading slashes and path separators across all tests.
+  - **Depends On:** None.
+  - **AC Ref:** AC 3.2.
+
+- [ ] **Refactor tests to use standardized path handling**
+  - **Action:** Update all test files to use the new path normalization helper function, ensuring consistent behavior across the test suite.
+  - **Depends On:** Create standardized path handling helper
+  - **AC Ref:** AC 3.2.
+
+- [ ] **Create reusable setup for filesystem mocking**
+  - **Action:** Extract common patterns for setting up filesystem mocks into shared helper functions to reduce duplication across test files.
+  - **Depends On:** None.
+  - **AC Ref:** AC 3.3.
+
+- [ ] **Create reusable cache clearing mechanism**
+  - **Action:** Implement a consistent approach for clearing the gitignore cache in beforeEach hooks across all tests that use gitignore functionality.
+  - **Depends On:** None.
+  - **AC Ref:** AC 3.3.
+
+- [ ] **Refactor complex mocking patterns**
+  - **Action:** Identify and simplify complex mocking patterns that use `Object.defineProperty` or mock the function being tested, replacing them with cleaner approaches using the virtual filesystem setup.
+  - **Depends On:** Create reusable setup for filesystem mocking
+  - **AC Ref:** AC 3.4.
+
+## Documentation Updates
+
+- [ ] **Create missing documentation files**
+  - **Action:** Create or restore essential documentation files that were removed during the refactoring, especially TESTING.md if needed.
+  - **Depends On:** None.
+  - **AC Ref:** AC 4.1.
+
+- [ ] **Fix broken links in README.md**
+  - **Action:** Update all documentation links in README.md to point to the correct locations after the documentation reorganization.
+  - **Depends On:** Create missing documentation files
+  - **AC Ref:** AC 4.1.
+
+- [ ] **Create testing guide for virtual filesystem approach**
+  - **Action:** Document the new virtual filesystem testing approach, including best practices, common patterns, and examples to help future contributors.
+  - **Depends On:** Complete all test migration and cleanup tasks
+  - **AC Ref:** AC 4.2.
+
+## Final Verification
+
+- [ ] **Run full test suite**
+  - **Action:** Ensure all tests are passing with the completed refactoring, with no skipped tests or temporary mocks remaining.
+  - **Depends On:** Enable all skipped tests, Complete removal of mockGitignoreUtils references
   - **AC Ref:** All ACs.
+
+- [ ] **Verify documentation coherence**
+  - **Action:** Review all documentation to ensure it presents a coherent and accurate picture of the codebase after the refactoring.
+  - **Depends On:** Fix broken links in README.md, Create testing guide for virtual filesystem approach
+  - **AC Ref:** AC 4.1, AC 4.2.
+
+## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
+
+- [ ] **Assumption:** The Acceptance Criteria referenced in the tasks (AC 1.1, AC 2.3, etc.) are implied from the code review, as they are not explicitly defined in the CODE_REVIEW.md file.
+  - **Context:** The code review does not explicitly list Acceptance Criteria with identifiers, so I've derived them from the issues and solutions in the review.
+
+- [ ] **Assumption:** The limitations with complex gitignore patterns in `gitignoreFiltering.test.ts` are related to the `memfs` or `ignore` library capabilities.
+  - **Context:** The code review mentions "Test Limitations for Complex Patterns" but doesn't explain the underlying technical limitation that causes the test to be skipped.
+
+- [ ] **Assumption:** All skipped tests are intended to be enabled eventually, not permanently skipped.
+  - **Context:** The code review recommends "Un-skip and fix these tests" but doesn't clarify if there are any tests that should remain skipped due to unsolvable limitations.
+
+- [ ] **Assumption:** The reorganized documentation structure is intended to have documentation files primarily in the docs/ directory rather than the root.
+  - **Context:** The review notes issues with documentation migration but doesn't explicitly state the intended final structure.

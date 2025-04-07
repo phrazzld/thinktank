@@ -217,25 +217,18 @@ export async function addVirtualGitignoreFile(gitignorePath: string, content: st
   // Get virtual filesystem reference
   const virtualFs = getVirtualFs();
   
-  // Normalize path for memfs (remove leading slash if present)
-  const normalizedPath = gitignorePath.startsWith('/') ? gitignorePath.substring(1) : gitignorePath;
+  // Extract the directory path
+  const dirPath = gitignorePath.substring(0, gitignorePath.lastIndexOf('/'));
   
-  // Create the parent directory explicitly
-  const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+  // Create the parent directory explicitly using mkdir
   virtualFs.mkdirSync(dirPath, { recursive: true });
   
-  // Write the file directly
-  virtualFs.writeFileSync(normalizedPath, content);
+  // Write the file 
+  virtualFs.writeFileSync(gitignorePath, content);
   
-  // Verify the file exists and is readable (this helps with test failures)
-  try {
-    const fileContents = virtualFs.readFileSync(normalizedPath, 'utf-8');
-    if (fileContents !== content) {
-      // If file content doesn't match, write it again
-      virtualFs.writeFileSync(normalizedPath, content);
-    }
-  } catch (error) {
-    // If file doesn't exist, write it again
-    virtualFs.writeFileSync(normalizedPath, content);
+  // For better test error messages, verify the file was written correctly
+  const fileContents = virtualFs.readFileSync(gitignorePath, 'utf-8');
+  if (fileContents !== content) {
+    throw new Error(`File content verification failed for ${gitignorePath}. Expected "${content}" but got "${String(fileContents)}"`);
   }
 }

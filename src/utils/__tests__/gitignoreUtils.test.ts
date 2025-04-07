@@ -45,9 +45,10 @@ describe('gitignoreUtils', () => {
     // Clear gitignore cache
     gitignoreUtils.clearIgnoreCache();
     
-    // Setup virtual filesystem with base directory structure but no .gitignore yet
+    // Setup virtual filesystem with base directory structure
     createVirtualFs({
-      [testDirPath + '/']: '' // Just create the directory
+      // Create the directory by creating a file in it
+      [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
     });
     
     // Add .gitignore file using the dedicated function
@@ -58,22 +59,20 @@ describe('gitignoreUtils', () => {
     mockedFileExists.mockImplementation(async (filePath) => {
       // Using imported getVirtualFs from the top of the file
       const virtualFs = getVirtualFs();
-      const normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
       try {
-        // Check if file exists in the virtual filesystem
-        virtualFs.statSync(normalizedPath);
+        // Check if file exists in the virtual filesystem - use original path, no normalization
+        virtualFs.statSync(filePath);
         return true;
       } catch (error) {
-        console.log(`File doesn't exist in the virtual filesystem: ${normalizedPath}`);
+        // Just return false if the file doesn't exist
         return false;
       }
     });
     
     // Spy on fs.readFile to track calls and log calls
     jest.spyOn(fs, 'readFile').mockImplementation(async (filePath, options) => {
-      const normalizedPath = typeof filePath === 'string' && filePath.startsWith('/') 
-        ? filePath.substring(1) 
-        : String(filePath);
+      // Convert to string without normalization
+      const path = String(filePath);
       
       // Default encoding is utf8 if not specified
       const encoding = typeof options === 'string' 
@@ -82,18 +81,10 @@ describe('gitignoreUtils', () => {
           ? options.encoding
           : 'utf8';
         
-      try {
-        console.log(`Reading file: ${normalizedPath}`);
-        const virtualFs = getVirtualFs();
-        // Use virtual fs readFileSync and convert to a promise for fs.readFile
-        const content = virtualFs.readFileSync(normalizedPath, encoding as BufferEncoding);
-        console.log(`Successfully read file: ${normalizedPath}, content length: ${content.length}`);
-        return content;
-      } catch (error) {
-        console.error(`Error reading file: ${normalizedPath}`, error);
-        // Re-throw the error to maintain the original behavior
-        throw error;
-      }
+      // Use virtual fs readFileSync and convert to a promise for fs.readFile
+      const virtualFs = getVirtualFs();
+      const content = virtualFs.readFileSync(path, encoding as BufferEncoding);
+      return content;
     });
   });
   
@@ -120,7 +111,7 @@ describe('gitignoreUtils', () => {
       
       // Create directory but NO .gitignore file
       createVirtualFs({
-        [testDirPath + '/']: '' // Create just the directory
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
       // Don't add a .gitignore file for this test
@@ -141,11 +132,11 @@ describe('gitignoreUtils', () => {
       
       // Create test directory
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
-      // Capture console warnings
-      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+      // Mock console warnings without actually outputting to console
+      const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       
       // Mock fs.readFile to simulate an error when reading a gitignore file
       const readFileSpy = jest.spyOn(fs, 'readFile');
@@ -176,7 +167,7 @@ describe('gitignoreUtils', () => {
       
       // Create test directory and file
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
       // Add .gitignore file
@@ -209,8 +200,8 @@ describe('gitignoreUtils', () => {
       
       // Create test directories
       createVirtualFs({
-        [testDirPath + '/']: '',
-        [otherDirPath + '/']: ''
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists',
+        [otherDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
       // Add different .gitignore files to the two directories
@@ -265,7 +256,7 @@ describe('gitignoreUtils', () => {
       
       // Create test directory and file
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       
       // Add .gitignore file
@@ -284,7 +275,7 @@ describe('gitignoreUtils', () => {
       // Remove the .gitignore file to confirm we're getting a new instance
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [testDirPath + '/placeholder.txt']: 'This is just to ensure directory exists'
       });
       await addVirtualGitignoreFile(gitignorePath, '*.txt'); // Different content
       
