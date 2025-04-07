@@ -1,4 +1,4 @@
-import { createVirtualFs, resetVirtualFs, getVirtualFs, mockFsModules } from '../virtualFsUtils';
+import { createVirtualFs, resetVirtualFs, getVirtualFs, mockFsModules, addVirtualGitignoreFile } from '../virtualFsUtils';
 
 // Set up mocks for fs modules outside of any test
 jest.mock('fs', () => mockFsModules().fs);
@@ -144,6 +144,59 @@ describe('virtualFsUtils', () => {
       // Test that we can modify hidden files
       await fsPromises.writeFile('/project/.gitignore', '*.log\n/dist/\n/temp/');
       expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('*.log\n/dist/\n/temp/');
+    });
+  });
+  
+  describe('addVirtualGitignoreFile', () => {
+    // This test will fail until we implement the addVirtualGitignoreFile function
+    it('should create a .gitignore file with provided patterns', async () => {
+      // Setup
+      resetVirtualFs();
+      createVirtualFs({
+        '/project/src/index.ts': 'console.log("Hello");'
+      });
+      
+      // Action
+      await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/\nnode_modules/');
+      
+      // Assert - File exists with correct content
+      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('*.log\n/dist/\nnode_modules/');
+      
+      // Directory structure should contain the file
+      const rootContents = await fsPromises.readdir('/project');
+      expect(rootContents).toContain('.gitignore');
+    });
+    
+    it('should create parent directories if they do not exist', async () => {
+      // Setup
+      resetVirtualFs();
+      
+      // Action - Create file in a directory that doesn't exist yet
+      await addVirtualGitignoreFile('/new-project/subdir/.gitignore', '*.log');
+      
+      // Assert - Both directories and file should be created
+      expect(await fsPromises.readFile('/new-project/subdir/.gitignore', 'utf-8')).toBe('*.log');
+      
+      // Verify directory structure
+      const rootContents = await fsPromises.readdir('/');
+      expect(rootContents).toContain('new-project');
+      
+      const projectContents = await fsPromises.readdir('/new-project');
+      expect(projectContents).toContain('subdir');
+    });
+    
+    it('should overwrite existing file if it already exists', async () => {
+      // Setup
+      resetVirtualFs();
+      createVirtualFs({
+        '/project/.gitignore': 'old-pattern\n*.bak'
+      });
+      
+      // Action
+      await addVirtualGitignoreFile('/project/.gitignore', 'new-pattern\n*.log');
+      
+      // Assert - Content should be replaced
+      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('new-pattern\n*.log');
     });
   });
 });

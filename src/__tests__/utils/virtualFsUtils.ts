@@ -185,3 +185,39 @@ export function createFsError(
   
   return error;
 }
+
+/**
+ * Creates a .gitignore file in the virtual filesystem.
+ * 
+ * This function creates a .gitignore file at the specified path in the virtual
+ * filesystem. It ensures that the parent directories exist and writes the
+ * specified content to the file.
+ * 
+ * @param gitignorePath - The absolute path to create the .gitignore file at
+ * @param content - The content to write to the .gitignore file
+ * @returns A Promise that resolves when the file has been created
+ * 
+ * @example
+ * ```typescript
+ * // Add a .gitignore file that ignores log files and the dist directory
+ * await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/');
+ * 
+ * // Use in test setup
+ * beforeEach(async () => {
+ *   resetVirtualFs();
+ *   createVirtualFs({
+ *     '/project/src/': '',
+ *     '/project/src/index.ts': 'console.log("Hello");'
+ *   });
+ *   await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/');
+ * });
+ * ```
+ */
+export async function addVirtualGitignoreFile(gitignorePath: string, content: string): Promise<void> {
+  // Create a structure with just this file
+  const structure: Record<string, string> = {};
+  structure[gitignorePath] = content;
+  
+  // Add to the existing virtual filesystem without resetting
+  vol.fromJSON(structure, '/');
+}
