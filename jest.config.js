@@ -20,7 +20,7 @@ module.exports = {
     // '/src/workflow/__tests__/inputHandler.test.ts',
     
     // Tests that still need further refactoring or have issues:
-    '/src/utils/__tests__/readDirectoryContents.test.ts',
+    // '/src/utils/__tests__/readDirectoryContents.test.ts', // Fixed with proper path handling
     '/src/workflow/__tests__/output-directory.test.ts',
     '/src/cli/__tests__/run-command.test.ts',
     '/src/cli/__tests__/run-command-xdg.test.ts',

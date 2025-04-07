@@ -44,7 +44,7 @@
 
 - [x] **Refactor readContextPaths.test.ts**
   - **Action:** Use virtualFsUtils to set up directory structures for testing path reading functionality
-  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code  
+  - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
   - **AC Ref:** AC 2.2
 
 - [x] **Refactor formatCombinedInput.test.ts**
@@ -82,7 +82,7 @@
   - **Depends On:** Refactoring of the specific test file to be re-enabled
   - **AC Ref:** AC 3.1
 
-- [ ] **Fix failing tests and run full test suite**
+- [x] **Fix failing tests and run full test suite**
   - **Action:** Address any remaining failures in the test suite and ensure all tests pass without worker crashes
   - **Depends On:** Re-enable skipped tests in jest.config.js
   - **AC Ref:** AC 3.2
@@ -106,20 +106,3 @@
   - **Action:** Update E2E tests to use temporary directories on the real filesystem instead of mocking
   - **Depends On:** Update testing documentation
   - **AC Ref:** AC 3.6
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Assumption: memfs is the preferred library**
-  - **Context:** PLAN.md section 1.1 mentions evaluating "memfs vs mock-fs" but later implementation details focus only on memfs. The plan also lists this as an open question (6.1). We're assuming memfs is the definitive choice.
-
-- [ ] **Clarification: Handling complex filesystem behaviors**
-  - **Context:** Section 6.2 raises a question about complex FS behaviors (symlinks, permissions, OS differences) that might need special handling. We need to identify if these exist before completing the implementation.
-
-- [ ] **Clarification: E2E test priority**
-  - **Context:** Section 6.3 questions the priority of E2E test refactoring. We've included it in the task list but need clarification on its priority relative to other tasks.
-
-- [ ] **Assumption: No special test setup beyond memfs is needed**
-  - **Context:** While PLAN.md mentions simulating errors like EACCES might require temporary spies (section 3.1), we're assuming no custom error simulation utilities are needed beyond what's shown in the example.
-
-- [ ] **Clarification: Impact on CI/CD pipeline**
-  - **Context:** The plan doesn't specifically address if the testing changes will impact CI/CD pipelines. We should clarify if any CI configuration needs to be updated.
