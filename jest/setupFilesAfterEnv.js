@@ -11,7 +11,6 @@
 
 // Import common test utilities for convenience
 const { resetVirtualFs } = require('../src/__tests__/utils/virtualFsUtils');
-const { resetMockGitignore } = require('../src/__tests__/utils/mockGitignoreUtils');
 
 // Reset mocks after each test
 afterEach(() => {

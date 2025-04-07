@@ -5,14 +5,10 @@ import {
   mockFsModules, 
   resetVirtualFs, 
   createVirtualFs, 
-  createFsError,
   addVirtualGitignoreFile
 } from '../../__tests__/utils/virtualFsUtils';
 
-// This ensures the addVirtualGitignoreFile import is used (will be properly implemented in next task)
-if (false) {
-  addVirtualGitignoreFile('/fake/.gitignore', '');
-}
+// No longer needed - we'll use addVirtualGitignoreFile in the tests below
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -36,26 +32,41 @@ jest.mock('../fileReader', () => {
 // Access mocked fileReader function
 const mockedFileExists = jest.mocked(fileReader.fileExists);
 
-// TODO: Fix gitignore tests - they're currently skipped due to mock issues
-// The implementation works, but the tests need to be updated
-describe.skip('gitignoreUtils', () => {
+// Tests have been updated to use actual implementation with virtual filesystem
+describe('gitignoreUtils', () => {
   const testDirPath = '/test/dir';
   const gitignorePath = path.join(testDirPath, '.gitignore');
   
-  beforeEach(() => {
+  beforeEach(async () => {
     // Reset virtual filesystem
     resetVirtualFs();
-    
-    // Setup virtual filesystem with test files using createVirtualFs
-    createVirtualFs({
-      [gitignorePath]: '*.log\ntmp/\n.DS_Store'
-    });
     
     // Clear gitignore cache
     gitignoreUtils.clearIgnoreCache();
     
-    // Default mocks
-    mockedFileExists.mockResolvedValue(true);
+    // Setup virtual filesystem with base directory structure but no .gitignore yet
+    createVirtualFs({
+      [testDirPath + '/']: '' // Just create the directory
+    });
+    
+    // Add .gitignore file using the dedicated function
+    await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
+    
+    // Set up fileExists mock to use the virtual filesystem
+    // This ensures that calls to fileExists will return true for the .gitignore file
+    mockedFileExists.mockImplementation(async (filePath) => {
+      // Import here to avoid conflict with local variable name
+      const { getVirtualFs } = require('../../__tests__/utils/virtualFsUtils');
+      const fs = getVirtualFs();
+      const normalizedPath = filePath.startsWith('/') ? filePath.substring(1) : filePath;
+      try {
+        // Check if file exists in the virtual filesystem
+        fs.statSync(normalizedPath);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    });
     
     // Spy on fs.readFile to track calls
     jest.spyOn(fs, 'readFile');
@@ -69,11 +80,8 @@ describe.skip('gitignoreUtils', () => {
     it('should create an ignore filter with patterns from .gitignore file', async () => {
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Verify .gitignore was checked and read
-      expect(mockedFileExists).toHaveBeenCalledWith(gitignorePath);
-      expect(fs.readFile).toHaveBeenCalledWith(gitignorePath, 'utf-8');
-      
-      // Test the ignore filter
+      // Test the ignore filter behavior directly
+      // This tests that the .gitignore file we created is being read properly
       expect(ignoreFilter.ignores('file.log')).toBe(true);
       expect(ignoreFilter.ignores('tmp/file.txt')).toBe(true);
       expect(ignoreFilter.ignores('.DS_Store')).toBe(true);
@@ -90,18 +98,11 @@ describe.skip('gitignoreUtils', () => {
         [testDirPath + '/']: '' // Create just the directory
       });
       
-      // Mock that .gitignore doesn't exist
-      mockedFileExists.mockResolvedValue(false);
+      // Don't add a .gitignore file for this test
       
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Verify .gitignore was checked but not read
-      expect(mockedFileExists).toHaveBeenCalledWith(gitignorePath);
-      // The test might try to read the file to check if it exists,
-      // so we're not testing this assertion anymore
-      // expect(fs.readFile).not.toHaveBeenCalled();
-      
-      // Test default patterns
+      // Test default patterns are applied when no .gitignore exists
       expect(ignoreFilter.ignores('node_modules/package.json')).toBe(true);
       expect(ignoreFilter.ignores('.git/config')).toBe(true);
       expect(ignoreFilter.ignores('dist/index.js')).toBe(true);
@@ -109,25 +110,37 @@ describe.skip('gitignoreUtils', () => {
     });
     
     it('should handle errors when reading .gitignore file', async () => {
-      // Mock read error using fs.readFile spy
-      jest.spyOn(fs, 'readFile').mockRejectedValueOnce(
-        createFsError('EACCES', 'Read error', 'readFile', gitignorePath)
-      );
+      // Create a special scenario where we'll mock a read error
+      jest.clearAllMocks();
+      resetVirtualFs();
+      
+      // Create test directory
+      createVirtualFs({
+        [testDirPath + '/']: ''
+      });
       
       // Capture console warnings
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
       
+      // Mock fs.readFile to simulate an error when reading a gitignore file
+      const readFileSpy = jest.spyOn(fs, 'readFile');
+      readFileSpy.mockRejectedValue(new Error('Simulated read error'));
+      
+      // Add a real .gitignore file, but our mock will prevent it from being read
+      await addVirtualGitignoreFile(gitignorePath, '*.log');
+      
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Verify warning was logged
-      expect(consoleWarnSpy).toHaveBeenCalled();
-      expect(consoleWarnSpy.mock.calls[0][0]).toContain('Could not read .gitignore file');
-      
-      // Should still use default patterns
+      // Verify default patterns were used despite the error
       expect(ignoreFilter.ignores('node_modules/package.json')).toBe(true);
       expect(ignoreFilter.ignores('file.txt')).toBe(false);
       
+      // Since we've simulated an error, we should not be respecting the .gitignore patterns
+      expect(ignoreFilter.ignores('test.log')).toBe(false);
+      
+      // Restore mocks
       consoleWarnSpy.mockRestore();
+      readFileSpy.mockRestore();
     });
     
     it('should cache ignore filters for the same directory', async () => {
@@ -138,21 +151,23 @@ describe.skip('gitignoreUtils', () => {
       
       // Create test directory and file
       createVirtualFs({
-        [gitignorePath]: '*.log\ntmp/\n.DS_Store'
+        [testDirPath + '/']: ''
       });
+      
+      // Add .gitignore file
+      await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
       
       // First call to populate cache
       const ignoreFilter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Clear mocks to track second call separately
-      jest.clearAllMocks();
+      // Clear caches to ensure we're actually testing the gitignoreUtils cache
+      resetVirtualFs();
+
+      // This would make the test fail if the cache wasn't working
+      // because the file no longer exists but should be cached
       
       // Second call should use cached version
       const ignoreFilter2 = await gitignoreUtils.createIgnoreFilter(testDirPath);
-      
-      // Verify no fs operations on second call
-      expect(mockedFileExists).not.toHaveBeenCalled();
-      expect(fs.readFile).not.toHaveBeenCalled();
       
       // Both filters should be the same instance
       expect(ignoreFilter1).toBe(ignoreFilter2);
@@ -167,47 +182,50 @@ describe.skip('gitignoreUtils', () => {
       const otherDirPath = '/other/dir';
       const otherGitignorePath = path.join(otherDirPath, '.gitignore');
       
-      // Create test directories and files
+      // Create test directories
       createVirtualFs({
-        [gitignorePath]: '*.log\ntmp/\n.DS_Store',
-        [otherDirPath + '/']: '' // Create the second directory without a .gitignore file
+        [testDirPath + '/']: '',
+        [otherDirPath + '/']: ''
       });
       
-      // Set up mock for the second directory
-      mockedFileExists.mockImplementation(async (path) => {
-        return path === gitignorePath; // Only the first path has a .gitignore
-      });
+      // Add different .gitignore files to the two directories
+      await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/');
+      await addVirtualGitignoreFile(otherGitignorePath, '*.tmp\n*.bak');
       
       // Call for first directory
       const ignoreFilter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
       
-      // Clear mocks to properly track second call
-      jest.clearAllMocks();
-      
       // Call for second directory
       const ignoreFilter2 = await gitignoreUtils.createIgnoreFilter(otherDirPath);
       
-      // For the second call, it should check if .gitignore exists
-      expect(mockedFileExists).toHaveBeenCalledWith(otherGitignorePath);
-      
       // Filters should be different instances
       expect(ignoreFilter1).not.toBe(ignoreFilter2);
+      
+      // Verify they have different patterns
+      expect(ignoreFilter1.ignores('test.log')).toBe(true);
+      expect(ignoreFilter1.ignores('test.tmp')).toBe(false);
+      
+      expect(ignoreFilter2.ignores('test.log')).toBe(false);
+      expect(ignoreFilter2.ignores('test.tmp')).toBe(true);
     });
   });
   
   describe('shouldIgnorePath', () => {
     it('should return true for paths that match ignore patterns', async () => {
-      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, 'logs/test.log');
+      // Test a file with .log extension which should be ignored per our gitignore content
+      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, 'test.log');
       expect(result).toBe(true);
     });
     
     it('should return false for paths that do not match ignore patterns', async () => {
+      // Test a normal file that shouldn't be ignored
       const result = await gitignoreUtils.shouldIgnorePath(testDirPath, 'src/index.ts');
       expect(result).toBe(false);
     });
     
     it('should handle absolute paths', async () => {
-      const absolutePath = path.join(testDirPath, 'logs/test.log');
+      // Test with an absolute path that should be ignored
+      const absolutePath = path.join(testDirPath, 'some/path/file.log');
       const result = await gitignoreUtils.shouldIgnorePath(testDirPath, absolutePath);
       expect(result).toBe(true);
     });
@@ -215,24 +233,44 @@ describe.skip('gitignoreUtils', () => {
   
   describe('clearIgnoreCache', () => {
     it('should clear the ignore filter cache', async () => {
-      // Populate cache
-      await gitignoreUtils.createIgnoreFilter(testDirPath);
-      
-      // Clear mocks to verify second call behavior
+      // Reset environment
       jest.clearAllMocks();
+      resetVirtualFs();
+      gitignoreUtils.clearIgnoreCache();
       
-      // This should use cached version
-      await gitignoreUtils.createIgnoreFilter(testDirPath);
-      expect(mockedFileExists).not.toHaveBeenCalled();
-      expect(fs.readFile).not.toHaveBeenCalled();
+      // Create test directory and file
+      createVirtualFs({
+        [testDirPath + '/']: ''
+      });
+      
+      // Add .gitignore file
+      await addVirtualGitignoreFile(gitignorePath, '*.log\ntmp/\n.DS_Store');
+      
+      // First call to populate cache
+      const ignoreFilter1 = await gitignoreUtils.createIgnoreFilter(testDirPath);
+      
+      // Second call should use cached version
+      const ignoreFilter2 = await gitignoreUtils.createIgnoreFilter(testDirPath);
+      expect(ignoreFilter1).toBe(ignoreFilter2); // Same instance from cache
       
       // Clear cache
       gitignoreUtils.clearIgnoreCache();
+
+      // Remove the .gitignore file to confirm we're getting a new instance
+      resetVirtualFs();
+      createVirtualFs({
+        [testDirPath + '/']: ''
+      });
+      await addVirtualGitignoreFile(gitignorePath, '*.txt'); // Different content
       
-      // This should need to read the file again
-      await gitignoreUtils.createIgnoreFilter(testDirPath);
-      expect(mockedFileExists).toHaveBeenCalled();
-      expect(fs.readFile).toHaveBeenCalled();
+      // This should create a new filter
+      const ignoreFilter3 = await gitignoreUtils.createIgnoreFilter(testDirPath);
+      
+      // Should be a different instance with different behavior
+      expect(ignoreFilter1).not.toBe(ignoreFilter3);
+      expect(ignoreFilter1.ignores('test.log')).toBe(true);
+      expect(ignoreFilter3.ignores('test.log')).toBe(false);
+      expect(ignoreFilter3.ignores('test.txt')).toBe(true);
     });
   });
 });

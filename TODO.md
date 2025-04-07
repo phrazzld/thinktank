@@ -38,7 +38,7 @@
   - **AC Ref:** AC 2.2.
 
 ## Cleanup
-- [ ] **Remove mockGitignoreUtils.ts**
+- [x] **Remove mockGitignoreUtils.ts**
   - **Action:** Once all tests have been refactored to use the virtual filesystem approach, delete the mockGitignoreUtils.ts file.
   - **Depends On:** Update test assertions to use actual implementation.
   - **AC Ref:** AC 3.1.
