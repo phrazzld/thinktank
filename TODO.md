@@ -62,7 +62,7 @@
   - **Depends On:** Create virtualFsUtils.ts utility, Refactor gitignoreFilterIntegration.test.ts
   - **AC Ref:** AC 2.3
 
-- [ ] **Refactor configManager.test.ts**
+- [x] **Refactor configManager.test.ts**
   - **Action:** Update tests for configuration loading, saving, and path resolution to use virtualFsUtils
   - **Depends On:** Create virtualFsUtils.ts utility, Remove test-specific logic from production code
   - **AC Ref:** AC 2.7

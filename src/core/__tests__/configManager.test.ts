@@ -1,6 +1,60 @@
 /**
  * Unit tests for configuration manager
  */
+import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
+
+// Setup mocks (must be before importing fs modules)
+jest.mock('fs', () => mockFsModules().fs);
+jest.mock('fs/promises', () => mockFsModules().fsPromises);
+
+// Mock fileReader module to proxy to our virtual filesystem
+jest.mock('../../utils/fileReader', () => {
+  const originalModule = jest.requireActual('../../utils/fileReader');
+  
+  return {
+    ...originalModule,
+    fileExists: jest.fn().mockImplementation(async (path: string) => {
+      try {
+        getVirtualFs().statSync(path);
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }),
+    readFileContent: jest.fn().mockImplementation(async (path: string) => {
+      try {
+        return getVirtualFs().readFileSync(path, 'utf-8');
+      } catch (error) {
+        throw createFsError('ENOENT', 'File not found', 'open', path);
+      }
+    }),
+    writeFile: jest.fn().mockImplementation(async (path: string, content: string) => {
+      try {
+        // Create parent directories if they don't exist
+        const dirPath = path.substring(0, path.lastIndexOf('/'));
+        if (dirPath) {
+          getVirtualFs().mkdirSync(dirPath, { recursive: true });
+        }
+        getVirtualFs().writeFileSync(path, content);
+      } catch (error) {
+        throw createFsError('EACCES', 'Permission denied', 'open', path);
+      }
+    }),
+    getConfigFilePath: jest.fn().mockResolvedValue('/test/xdg/config.json'),
+  };
+});
+
+jest.mock('../../utils/helpers');
+
+// Mock constants to override default behavior for tests
+jest.mock('../constants', () => ({
+  DEFAULT_CONFIG: {
+    models: [],
+  },
+  DEFAULT_CONFIG_TEMPLATE_PATH: '/test/default/template.json',
+}));
+
+// Import modules after mocking
 import {
   loadConfig,
   getEnabledModels,
@@ -18,24 +72,11 @@ import { fileExists, readFileContent, getConfigFilePath, writeFile } from '../..
 import { getApiKey } from '../../utils/helpers';
 import { AppConfig } from '../types';
 
-// Mock the file reader and helpers
-jest.mock('../../utils/fileReader');
-jest.mock('../../utils/helpers');
-
-// Mock constants to override default behavior for tests
-jest.mock('../constants', () => ({
-  DEFAULT_CONFIG: {
-    models: [],
-  },
-  DEFAULT_CONFIG_TEMPLATE_PATH: '/test/default/template.json',
-}));
-
+// Type the mocks
 const mockedFileExists = jest.mocked(fileExists);
 const mockedReadFileContent = jest.mocked(readFileContent);
 const mockedGetConfigFilePath = jest.mocked(getConfigFilePath);
-
-// Mock getConfigFilePath to return a test path
-mockedGetConfigFilePath.mockResolvedValue('/test/xdg/config.json');
+const mockedWriteFile = jest.mocked(writeFile);
 const mockedGetApiKey = jest.mocked(getApiKey);
 
 describe('Config Manager', () => {
@@ -51,14 +92,31 @@ describe('Config Manager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    resetVirtualFs();
     
-    // Default mock behavior
-    mockedFileExists.mockResolvedValue(true);
-    mockedReadFileContent.mockResolvedValue(validConfigContent);
+    // Setup the virtual filesystem with default structure
+    const virtualFs = getVirtualFs();
+    
+    // Create default directories
+    virtualFs.mkdirSync('/test/xdg', { recursive: true });
+    virtualFs.mkdirSync('/test/default', { recursive: true });
+    
+    // Create default template file
+    virtualFs.writeFileSync('/test/default/template.json', JSON.stringify({
+      models: [{ provider: 'template', modelId: 'model', enabled: true }]
+    }));
+    
+    // Create config file
+    virtualFs.writeFileSync('/test/xdg/config.json', validConfigContent);
   });
 
   describe('loadConfig', () => {
     it('should load configuration from specified path', async () => {
+      // Create a config file at a specific path
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/path/to', { recursive: true });
+      virtualFs.writeFileSync('/path/to/config.json', validConfigContent);
+      
       const config = await loadConfig({ 
         configPath: '/path/to/config.json'
       });
@@ -70,7 +128,8 @@ describe('Config Manager', () => {
     });
     
     it('should throw error when specified config file does not exist', async () => {
-      mockedFileExists.mockResolvedValue(false);
+      // Ensure the file doesn't exist in our virtual filesystem
+      expect(await fileExists('/nonexistent.json')).toBe(false);
       
       await expect(loadConfig({ configPath: '/nonexistent.json' }))
         .rejects.toThrow(ConfigError);
@@ -79,18 +138,7 @@ describe('Config Manager', () => {
     });
     
     it('should use XDG config path when no specific path is provided and file exists', async () => {
-      // Make the XDG path exist
-      mockedFileExists.mockImplementation(async (path) => {
-        return path === '/test/xdg/config.json';
-      });
-      
-      // Mock readFileContent to return valid content
-      mockedReadFileContent.mockImplementation(async (path) => {
-        if (path === '/test/xdg/config.json') {
-          return validConfigContent;
-        }
-        throw new Error('File not found');
-      });
+      // Config file already exists in our setup
       
       const config = await loadConfig();
       
@@ -105,22 +153,8 @@ describe('Config Manager', () => {
     });
     
     it('should create a new config file when XDG config does not exist', async () => {
-      // Make the XDG path not exist but the template exist
-      mockedFileExists.mockImplementation(async (path) => {
-        return path === '/test/default/template.json';
-      });
-      
-      // Mock readFileContent to return template content
-      const templateContent = JSON.stringify({
-        models: [{ provider: 'template', modelId: 'model', enabled: true }]
-      });
-      
-      mockedReadFileContent.mockImplementation(async (path) => {
-        if (path === '/test/default/template.json') {
-          return templateContent;
-        }
-        throw new Error('File not found');
-      });
+      // Remove the XDG config file
+      getVirtualFs().unlinkSync('/test/xdg/config.json');
       
       const config = await loadConfig();
       
@@ -133,16 +167,21 @@ describe('Config Manager', () => {
       expect(mockedReadFileContent).toHaveBeenCalledWith('/test/default/template.json');
       
       // Should have written the new config file
-      expect(writeFile).toHaveBeenCalledWith('/test/xdg/config.json', templateContent);
+      expect(mockedWriteFile).toHaveBeenCalledWith('/test/xdg/config.json', expect.any(String));
       
       // Should return the template content
       expect(config.models).toHaveLength(1);
       expect(config.models[0].provider).toBe('template');
+      
+      // Verify the file was actually written to the virtual filesystem
+      expect(getVirtualFs().existsSync('/test/xdg/config.json')).toBe(true);
     });
     
     it('should validate configuration structure', async () => {
-      // Invalid config (missing required fields)
-      mockedReadFileContent.mockResolvedValue(JSON.stringify({
+      // Write invalid config
+      const virtualFs = getVirtualFs();
+      virtualFs.mkdirSync('/path/to', { recursive: true });
+      virtualFs.writeFileSync('/path/to/config.json', JSON.stringify({
         models: [{ enabled: true }], // Missing provider and modelId
       }));
       
@@ -151,8 +190,6 @@ describe('Config Manager', () => {
       await expect(loadConfig({ configPath: '/path/to/config.json' }))
         .rejects.toThrow(/Invalid configuration/);
     });
-    
-    // Note: Config merging tests were removed since we no longer support that functionality
   });
   
   describe('getEnabledModels', () => {
@@ -535,21 +572,6 @@ describe('Config Manager', () => {
   });
   
   describe('saveConfig', () => {
-    // Mock writeFile since we didn't do it at the test setup
-    const mockedWriteFile = jest.fn();
-    const originalWriteFile = jest.requireMock('../../utils/fileReader').writeFile;
-    
-    beforeEach(() => {
-      // Set up the writeFile mock
-      jest.requireMock('../../utils/fileReader').writeFile = mockedWriteFile;
-      mockedWriteFile.mockResolvedValue(undefined);
-    });
-    
-    afterEach(() => {
-      // Restore the original function
-      jest.requireMock('../../utils/fileReader').writeFile = originalWriteFile;
-    });
-    
     it('should save configuration to specified path', async () => {
       const config: AppConfig = {
         models: [{ provider: 'test', modelId: 'model', enabled: true }]
@@ -561,10 +583,14 @@ describe('Config Manager', () => {
         '/custom/path/config.json',
         expect.any(String)
       );
+      
+      // Verify the JSON was actually written to the virtual filesystem
+      expect(getVirtualFs().existsSync('/custom/path/config.json')).toBe(true);
+      
       // Verify the JSON contains our test model
-      const jsonArg = mockedWriteFile.mock.calls[0][1];
-      expect(jsonArg).toContain('test');
-      expect(jsonArg).toContain('model');
+      const savedContent = getVirtualFs().readFileSync('/custom/path/config.json', 'utf-8');
+      expect(savedContent).toContain('test');
+      expect(savedContent).toContain('model');
     });
     
     it('should save to XDG path when no path specified', async () => {
@@ -579,6 +605,9 @@ describe('Config Manager', () => {
         '/test/xdg/config.json',
         expect.any(String)
       );
+      
+      // Verify the file was actually written to the virtual filesystem
+      expect(getVirtualFs().existsSync('/test/xdg/config.json')).toBe(true);
     });
     
     it('should throw ConfigError for invalid configuration', async () => {
