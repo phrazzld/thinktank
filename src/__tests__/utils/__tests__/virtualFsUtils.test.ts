@@ -115,4 +115,35 @@ describe('virtualFsUtils', () => {
       await expect(fsPromises.readFile('/test', 'utf-8')).rejects.toThrow();
     });
   });
+  
+  describe('hidden file support', () => {
+    it('should properly create and handle hidden files', async () => {
+      // Create a virtual filesystem with hidden files and directories
+      createVirtualFs({
+        '/project/.gitignore': '*.log\n/dist/',
+        '/project/.config/settings.json': '{"debug": true}',
+        '/project/src/app.ts': 'console.log("Hello");',
+        '/project/app.log': 'Error log content'
+      });
+      
+      // Test that hidden files are created correctly
+      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('*.log\n/dist/');
+      
+      // Test hidden directory structure
+      const rootContents = await fsPromises.readdir('/project');
+      expect(rootContents).toContain('.gitignore');
+      expect(rootContents).toContain('.config');
+      
+      // Test nested files in hidden directories
+      expect(await fsPromises.readFile('/project/.config/settings.json', 'utf-8')).toBe('{"debug": true}');
+      
+      // Test file stats for hidden files
+      const stats = await fsPromises.stat('/project/.gitignore');
+      expect(stats.isFile()).toBe(true);
+      
+      // Test that we can modify hidden files
+      await fsPromises.writeFile('/project/.gitignore', '*.log\n/dist/\n/temp/');
+      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('*.log\n/dist/\n/temp/');
+    });
+  });
 });
