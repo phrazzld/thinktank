@@ -2,12 +2,14 @@
  * File reader module for handling prompt file input and configuration files
  */
 import fs from 'fs/promises';
+import { Stats } from 'fs';
 import path from 'path';
 import os from 'os';
 import { normalizeText } from './helpers';
 import { shouldIgnorePath } from './gitignoreUtils';
 import logger from './logger';
 import { ContextFileResult, FileReadError, ReadFileOptions } from './fileReaderTypes';
+import { FileSystem } from '../core/interfaces';
 
 /**
  * Maximum file size allowed for context files (10MB)
@@ -347,9 +349,13 @@ export function isBinaryFile(content: string): boolean {
  * Instead of throwing errors, returns an object with path, content, and error information
  * 
  * @param filePath - Path to the file to read
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns Promise resolving to an object containing the file path, content, and any error information
  */
-export async function readContextFile(filePath: string): Promise<ContextFileResult> {
+export async function readContextFile(
+  filePath: string,
+  fileSystem?: FileSystem
+): Promise<ContextFileResult> {
   // Initialize the result with the provided path
   const result: ContextFileResult = {
     path: filePath,
@@ -363,40 +369,152 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
       ? filePath 
       : path.resolve(process.cwd(), filePath);
     
-    // Check if file exists and is readable
-    await fs.access(resolvedPath, fs.constants.R_OK);
+    // Create a reference to the file stats (initialized below)
+    let stats: Stats;
     
-    // Check if path is a file (not a directory or other non-file)
-    const stats = await fs.stat(resolvedPath);
-    if (!stats.isFile()) {
-      return {
-        ...result,
-        error: {
-          code: 'NOT_FILE',
-          message: `Path is not a file: ${filePath}`
-        }
-      };
+    if (fileSystem) {
+      // When using FileSystem interface
+      
+      // Check if file exists by trying to access it
+      try {
+        await fileSystem.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'ENOENT',
+            message: `File not found: ${filePath}`
+          }
+        };
+      }
+      
+      // Get stats to check if it's a file and get size
+      try {
+        stats = await fileSystem.stat(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'STAT_ERROR',
+            message: `Unable to get file stats: ${filePath}`
+          }
+        };
+      }
+      
+      if (!stats.isFile()) {
+        return {
+          ...result,
+          error: {
+            code: 'NOT_FILE',
+            message: `Path is not a file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check file size before reading
+      if (stats.size > MAX_FILE_SIZE) {
+        // Calculate sizes in MB for a human-readable message
+        const fileSizeMB = Math.round(stats.size / (1024 * 1024));
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        
+        logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
+        
+        return {
+          ...result,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
+          }
+        };
+      }
+    } else {
+      // When using direct fs operations
+      
+      // Check if file exists and is readable
+      try {
+        await fs.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        return {
+          ...result,
+          error: {
+            code: nodeError.code || 'ACCESS_ERROR',
+            message: nodeError.code === 'ENOENT' 
+              ? `File not found: ${filePath}`
+              : `Unable to access file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check if path is a file (not a directory or other non-file)
+      try {
+        stats = await fs.stat(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'STAT_ERROR',
+            message: `Unable to get file stats: ${filePath}`
+          }
+        };
+      }
+      
+      if (!stats.isFile()) {
+        return {
+          ...result,
+          error: {
+            code: 'NOT_FILE',
+            message: `Path is not a file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check file size before reading
+      if (stats.size > MAX_FILE_SIZE) {
+        // Calculate sizes in MB for a human-readable message
+        const fileSizeMB = Math.round(stats.size / (1024 * 1024));
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        
+        logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
+        
+        return {
+          ...result,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
+          }
+        };
+      }
     }
     
-    // Check file size before reading
-    if (stats.size > MAX_FILE_SIZE) {
-      // Calculate sizes in MB for a human-readable message
-      const fileSizeMB = Math.round(stats.size / (1024 * 1024));
-      const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
-      
-      logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
-      
-      return {
-        ...result,
-        error: {
-          code: 'FILE_TOO_LARGE',
-          message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
-        }
-      };
-    }
+    // Read file content using FileSystem or direct fs
+    let content: string;
     
-    // Read file content
-    const content = await fs.readFile(resolvedPath, 'utf-8');
+    if (fileSystem) {
+      try {
+        content = await fileSystem.readFileContent(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error reading file: ${filePath}`
+          }
+        };
+      }
+    } else {
+      try {
+        content = await fs.readFile(resolvedPath, 'utf-8');
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error reading file: ${filePath}`
+          }
+        };
+      }
+    }
     
     // Check if the file is binary
     if (isBinaryFile(content)) {
@@ -576,9 +694,13 @@ export function formatCombinedInput(
  * Processes each path concurrently and returns a flattened array of all results
  * 
  * @param paths - Array of file or directory paths to read
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns Promise resolving to a flattened array of ContextFileResult objects
  */
-export async function readContextPaths(paths: string[]): Promise<ContextFileResult[]> {
+export async function readContextPaths(
+  paths: string[], 
+  fileSystem?: FileSystem
+): Promise<ContextFileResult[]> {
   // Handle empty paths array
   if (!paths || paths.length === 0) {
     return [];
@@ -593,46 +715,104 @@ export async function readContextPaths(paths: string[]): Promise<ContextFileResu
           ? pathToProcess 
           : path.resolve(process.cwd(), pathToProcess);
         
-        // Check if path exists
-        try {
-          await fs.access(resolvedPath, fs.constants.R_OK);
-        } catch (error) {
-          // For access errors, use the same error format as readContextFile
-          // So we maintain consistent error codes throughout the codebase
-          const errnoError = error as NodeJS.ErrnoException;
+        // Create a function to handle access errors consistently
+        const handleAccessError = (error: unknown) => {
+          let errorCode = 'ACCESS_ERROR';
+          let errorMessage = `Unable to access path: ${pathToProcess}`;
+          
+          if (error instanceof Error) {
+            // Try to extract error code from various error types
+            if ('code' in error && typeof (error as any).code === 'string') {
+              errorCode = (error as any).code;
+              
+              if (errorCode === 'ENOENT') {
+                errorMessage = `File not found: ${pathToProcess}`;
+              }
+            }
+          }
+          
           return [{
             path: pathToProcess,
             content: null,
             error: {
-              code: errnoError.code || 'ACCESS_ERROR',
-              message: errnoError.code === 'ENOENT' 
-                ? `File not found: ${pathToProcess}`
-                : `Unable to access path: ${pathToProcess}`
+              code: errorCode,
+              message: errorMessage
             }
           }];
-        }
+        };
         
-        // Get stats to determine if it's a file or directory
-        const stats = await fs.stat(resolvedPath);
-        
-        // Process as a file or directory accordingly
-        if (stats.isFile()) {
-          // For individual files, read content using readContextFile
-          const fileResult = await readContextFile(pathToProcess);
-          return [fileResult];
-        } else if (stats.isDirectory()) {
-          // For directories, recursively read contents using readDirectoryContents
-          return readDirectoryContents(pathToProcess);
+        // Use the provided fileSystem or fall back to direct fs operations
+        if (fileSystem) {
+          // Using FileSystem interface
+          
+          try {
+            // Check if path exists and is readable
+            await fileSystem.access(resolvedPath, fs.constants.R_OK);
+          } catch (error) {
+            return handleAccessError(error);
+          }
+          
+          // Get stats to determine if it's a file or directory
+          let stats: Stats;
+          try {
+            stats = await fileSystem.stat(resolvedPath);
+          } catch (error) {
+            return handleAccessError(error);
+          }
+          
+          // Process as a file or directory accordingly
+          if (stats.isFile()) {
+            // For individual files, read content using readContextFile with the FileSystem
+            const fileResult = await readContextFile(pathToProcess, fileSystem);
+            return [fileResult];
+          } else if (stats.isDirectory()) {
+            // NOTE: Since readDirectoryContents doesn't yet support FileSystem, we use direct fs
+            // In a future update, readDirectoryContents should be refactored to use FileSystem
+            return readDirectoryContents(pathToProcess);
+          } else {
+            // Handle other types (symlinks, etc.)
+            return [{
+              path: pathToProcess,
+              content: null,
+              error: {
+                code: 'INVALID_PATH_TYPE',
+                message: `Path is neither a file nor a directory: ${pathToProcess}`
+              }
+            }];
+          }
         } else {
-          // Handle other types (symlinks, etc.)
-          return [{
-            path: pathToProcess,
-            content: null,
-            error: {
-              code: 'INVALID_PATH_TYPE',
-              message: `Path is neither a file nor a directory: ${pathToProcess}`
-            }
-          }];
+          // Using direct fs operations (original implementation)
+          
+          // Check if path exists
+          try {
+            await fs.access(resolvedPath, fs.constants.R_OK);
+          } catch (error) {
+            // For access errors, use the same error format as readContextFile
+            return handleAccessError(error);
+          }
+          
+          // Get stats to determine if it's a file or directory
+          const stats = await fs.stat(resolvedPath);
+          
+          // Process as a file or directory accordingly
+          if (stats.isFile()) {
+            // For individual files, read content using readContextFile
+            const fileResult = await readContextFile(pathToProcess);
+            return [fileResult];
+          } else if (stats.isDirectory()) {
+            // For directories, recursively read contents using readDirectoryContents
+            return readDirectoryContents(pathToProcess);
+          } else {
+            // Handle other types (symlinks, etc.)
+            return [{
+              path: pathToProcess,
+              content: null,
+              error: {
+                code: 'INVALID_PATH_TYPE',
+                message: `Path is neither a file nor a directory: ${pathToProcess}`
+              }
+            }];
+          }
         }
       } catch (error) {
         // Handle errors at the path level

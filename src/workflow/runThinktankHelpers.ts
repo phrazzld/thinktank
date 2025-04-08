@@ -203,7 +203,7 @@ export async function _setupWorkflow({
  * Handles input processing from various sources (file, stdin, or direct text),
  * processes optional context files/directories, and combines them with the main prompt.
  * 
- * @param params - Parameters containing the spinner, input string, and optional context paths
+ * @param params - Parameters containing the spinner, input string, optional context paths, and fileSystem
  * @returns An object containing the processed input result and context files
  * @throws 
  *   - FileSystemError when input processing fails due to file system issues
@@ -212,14 +212,18 @@ export async function _setupWorkflow({
 export async function _processInput({ 
   spinner, 
   input,
-  contextPaths
+  contextPaths,
+  fileSystem
 }: ProcessInputParams): Promise<ProcessInputResult> {
   try {
     // 1. Update spinner with processing status
     spinner.text = 'Processing input...';
     
-    // 2. Process the main input using inputHandler.processInput
-    const originalInputResult = await processInput({ input });
+    // 2. Process the main input using inputHandler.processInput with fileSystem
+    const originalInputResult = await processInput({ 
+      input,
+      fileSystem 
+    });
     
     // Create extended input result with proper type for metadata
     const inputResult: import('./runThinktankTypes').ExtendedInputResult = {
@@ -247,7 +251,8 @@ export async function _processInput({
     
     let contextFiles: ContextFileResult[];
     try {
-      contextFiles = await readContextPaths(contextPaths);
+      // Use the fileSystem for reading context paths
+      contextFiles = await readContextPaths(contextPaths, fileSystem);
     } catch (err) {
       // If it's already a FileSystemError, just rethrow it
       if (err instanceof FileSystemError) {

@@ -367,8 +367,8 @@ describe('_processInput Helper', () => {
       expect(result.contextFiles?.length).toBe(2);
       expect(result.inputResult.metadata.contextFilesCount).toBe(2);
       
-      // Verify mocks were called correctly
-      expect(fileReader.readContextPaths).toHaveBeenCalledWith(['context1.js', 'context2.md']);
+      // Verify mocks were called correctly - fileSystem should be undefined in this test
+      expect(fileReader.readContextPaths).toHaveBeenCalledWith(['context1.js', 'context2.md'], undefined);
       expect(fileReader.formatCombinedInput).toHaveBeenCalledWith('Main prompt content', mockContextFiles);
       
       // Verify spinner updates
@@ -761,8 +761,8 @@ describe('_processInput Helper', () => {
         contextPaths: ['']
       });
 
-      // Verify readContextPaths was called with the empty string
-      expect(fileReader.readContextPaths).toHaveBeenCalledWith(['']);
+      // Verify readContextPaths was called with the empty string - fileSystem should be undefined in this test
+      expect(fileReader.readContextPaths).toHaveBeenCalledWith([''], undefined);
       
       // Original content should remain unchanged
       expect(result.inputResult.content).toBe('Main prompt content');

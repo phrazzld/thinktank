@@ -22,10 +22,11 @@ import {
   _handleWorkflowError
 } from './runThinktankHelpers';
 
-// Import the ConcreteLLMClient and interfaces
+// Import the concrete implementations and interfaces
 import { ConcreteLLMClient } from '../core/LLMClient';
 import { ConcreteConfigManager } from '../core/ConcreteConfigManager';
-import { LLMClient, ConfigManagerInterface } from '../core/interfaces';
+import { ConcreteFileSystem } from '../core/FileSystem';
+import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
 
 // Import provider modules to ensure they're registered
 import '../providers/openai';
@@ -181,6 +182,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   try {
     // Create dependency instances for injection
     const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    const fileSystem: FileSystem = new ConcreteFileSystem();
     const llmClient: LLMClient = new ConcreteLLMClient(configManager);
     
     // 1. Setup workflow: Load configuration, generate run name, create output directory
@@ -199,7 +201,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const inputResult = await _processInput({
       spinner,
       input: options.input,
-      contextPaths: options.contextPaths
+      contextPaths: options.contextPaths,
+      fileSystem
     });
     
     // Update workflow state with input result

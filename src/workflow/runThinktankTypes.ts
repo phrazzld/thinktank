@@ -31,7 +31,7 @@ import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
-import { LLMClient, ConfigManagerInterface } from '../core/interfaces';
+import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -191,6 +191,13 @@ export interface ProcessInputParams extends SpinnerContext {
    * If provided, these will be read and combined with the prompt
    */
   contextPaths?: string[];
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   * Optional for backward compatibility with existing tests
+   */
+  fileSystem?: FileSystem;
 }
 
 /**

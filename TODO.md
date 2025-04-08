@@ -42,7 +42,7 @@
   - **Depends On:** Refactor _setupWorkflow to use ConfigManager interface.
   - **AC Ref:** AC 4
 
-- [ ] **Refactor _processInput to use FileSystem interface**
+- [x] **Refactor _processInput to use FileSystem interface**
   - **Action:** Modify the _processInput function to use the FileSystem interface instead of direct file operations.
   - **Depends On:** Create FileSystem interface implementation.
   - **AC Ref:** AC 3, AC 4
