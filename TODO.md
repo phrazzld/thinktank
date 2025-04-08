@@ -22,7 +22,7 @@
   - **Depends On:** Create Interface definitions for external dependencies.
   - **AC Ref:** AC 2, AC 3
 
-- [ ] **Refactor _executeQueries to use dependency injection**
+- [x] **Refactor _executeQueries to use dependency injection**
   - **Action:** Modify the _executeQueries function to accept and use the LLMClient interface instead of making direct API calls.
   - **Depends On:** Create LLMClient interface implementation.
   - **AC Ref:** AC 3, AC 4

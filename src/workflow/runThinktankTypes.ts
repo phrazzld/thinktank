@@ -31,6 +31,7 @@ import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
+import { LLMClient } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -347,6 +348,12 @@ export interface ExecuteQueriesParams extends SpinnerContext {
    * The user-provided run options
    */
   options: RunOptions;
+  
+  /**
+   * The LLMClient instance to use for API calls
+   * This implements the dependency injection pattern for better testability
+   */
+  llmClient: LLMClient;
 }
 
 /**

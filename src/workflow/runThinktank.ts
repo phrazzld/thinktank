@@ -22,6 +22,11 @@ import {
   _handleWorkflowError
 } from './runThinktankHelpers';
 
+// Import the ConcreteLLMClient and interfaces
+import { ConcreteLLMClient } from '../core/LLMClient';
+import { ConcreteConfigManager } from '../core/ConcreteConfigManager';
+import { LLMClient, ConfigManagerInterface } from '../core/interfaces';
+
 // Import provider modules to ensure they're registered
 import '../providers/openai';
 import '../providers/anthropic';
@@ -223,13 +228,20 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Restart spinner for next step
     spinner.start();
     
+    // Create a ConcreteConfigManager instance for injection
+    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    
+    // Create a ConcreteLLMClient instance for injection
+    const llmClient: LLMClient = new ConcreteLLMClient(configManager);
+    
     // 4. Execute queries: Query the selected models with the processed input (including context if any)
     const queryResults = await _executeQueries({
       spinner,
       config: setupResult.config,
       models: modelSelectionResult.models,
       combinedContent: inputResult.combinedContent,
-      options
+      options,
+      llmClient  // Inject the LLMClient instance
     });
     
     // Update workflow state with query results

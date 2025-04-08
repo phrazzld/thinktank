@@ -5,6 +5,7 @@
 - Dev: `npm run dev`
 - Start: `npm start`
 - Lint: `npm run lint` (never disable linting or type checking)
+- Fix newline issues: `node scripts/add-missing-newlines.js` (fixes common EOL linting errors)
 - Tests: `npm test` (write tests first - TDD approach)
 - Single test: `npm test -- -t "test name"`
 - Test specific files: `npm test -- path/to/file.test.ts`

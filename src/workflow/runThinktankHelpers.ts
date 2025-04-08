@@ -22,7 +22,7 @@
  * 
  * Error handling follows established contracts defined in runThinktankTypes.ts
  */
-import { loadConfig } from '../core/configManager';
+import { loadConfig, findModelGroup } from '../core/configManager';
 import { generateFunName } from '../utils/nameGenerator';
 import { createOutputDirectory, processOutput, OutputHandlerError } from './outputHandler';
 import { 
@@ -62,7 +62,7 @@ import {
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
 import { selectModels, ModelSelectionError } from './modelSelector';
-import { executeQueries, QueryExecutorError, ModelQueryStatus } from './queryExecutor';
+import { QueryExecutorError, ModelQueryStatus } from './queryExecutor';
 
 /**
  * Setup workflow helper function
@@ -588,15 +588,16 @@ export function _selectModels({
  * 
  * Central function for executing LLM queries against multiple models in parallel.
  * This function:
- * 1. Configures the query executor with appropriate options
- * 2. Sets up real-time progress reporting via status update callbacks
+ * 1. Uses the injected LLMClient interface for making API calls
+ * 2. Sets up real-time progress reporting via status update tracking
  * 3. Handles success and error states for each model
  * 4. Aggregates and summarizes results for reporting
  * 5. Formats spinner updates to show progress for each model
  * 
- * This function uses a status update callback to provide real-time updates to the 
- * UI spinner for each model. It supports both standard Ora spinners and enhanced
- * ThrottledSpinner instances by using feature detection with duck typing.
+ * This function uses dependency injection to receive an LLMClient instance,
+ * improving testability by decoupling from specific provider implementations.
+ * It supports both standard Ora spinners and enhanced ThrottledSpinner instances
+ * by using feature detection with duck typing.
  * 
  * After execution completes, it provides a summary of successes and failures
  * with appropriate console messages based on the outcome.
@@ -607,6 +608,7 @@ export function _selectModels({
  * @param params.models - Array of model configurations to query
  * @param params.combinedContent - The combined prompt and context content to send to models
  * @param params.options - The user-provided run options
+ * @param params.llmClient - The LLMClient interface instance for making API calls
  * @returns Promise resolving to an object containing query execution results
  * @throws {ApiError} When query execution fails due to API communication errors
  * @throws {ThinktankError} For other unexpected errors during query execution
@@ -616,46 +618,179 @@ export async function _executeQueries({
   config,
   models,
   combinedContent,
-  options
+  options,
+  llmClient
 }: ExecuteQueriesParams): Promise<ExecuteQueriesResult> {
   try {
     // 1. Update spinner with execution status
     spinner.text = `Executing queries to ${models.length} ${models.length === 1 ? 'model' : 'models'}...`;
     
-    // 2. Extract relevant options for the query executor
-    const queryOptions = {
-      prompt: combinedContent, // Use the combinedContent as the prompt for the query executor
-      systemPrompt: options.systemPrompt,
-      enableThinking: options.enableThinking,
-      // Only pass timeoutMs if it's defined in options
-      ...(options.timeoutMs !== undefined && { timeoutMs: options.timeoutMs }),
+    // 2. Initialize timing and status tracking
+    const startTime = Date.now();
+    const statuses: Record<string, ModelQueryStatus> = {};
+    
+    // Initialize status for each model
+    models.forEach(model => {
+      const modelKey = `${model.provider}:${model.modelId}`;
+      statuses[modelKey] = { status: 'pending' };
+    });
+    
+    // 3. Create an array to hold the promises for each model query
+    const queryPromises: Array<Promise<import('../core/types').LLMResponse & { configKey: string }>> = [];
+    
+    // 4. Process each model using the injected LLMClient
+    for (const model of models) {
+      const modelKey = `${model.provider}:${model.modelId}`;
       
-      // Define status update callback to update spinner with model progress
-      onStatusUpdate: (modelKey: string, status: ModelQueryStatus) => {
-        // Check if the spinner has the enhanced method
-        if ('updateForModelStatus' in spinner) {
-          spinner.updateForModelStatus(modelKey, status);
-        } else {
-          // Fallback to basic text updates
-          if (status.status === 'running') {
-            spinner.text = `Querying ${modelKey}...`;
-          } else if (status.status === 'success') {
-            spinner.text = `Received response from ${modelKey} (${status.durationMs}ms)`;
-          } else if (status.status === 'error') {
-            spinner.text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
+      // Create the promise for this model query
+      const queryPromise = (async () => {
+        // Update status to running
+        statuses[modelKey] = { 
+          status: 'running',
+          startTime: Date.now()
+        };
+        
+        // Call status update logic to update spinner
+        updateModelStatus(spinner, modelKey, statuses[modelKey], statuses);
+        
+        try {
+          // Determine which system prompt to use
+          const groupInfo = findModelGroup(config, model);
+          
+          // Determine the final system prompt (CLI override > model > group)
+          let systemPrompt = undefined;
+          if (options.systemPrompt) {
+            // Use CLI override
+            systemPrompt = {
+              text: options.systemPrompt,
+              metadata: { source: 'cli-override' }
+            };
+          } else if (model.systemPrompt) {
+            // Use model-specific system prompt
+            systemPrompt = model.systemPrompt;
+          } else if (groupInfo?.systemPrompt) {
+            // Use group system prompt
+            systemPrompt = groupInfo.systemPrompt;
           }
+          
+          // Prepare model options with thinking capability if applicable
+          const modelOptions = { ...model.options };
+          
+          // Enable thinking capability for Claude models if requested
+          if (options.enableThinking && model.provider === 'anthropic' && model.modelId.includes('claude-3')) {
+            modelOptions.thinking = {
+              type: 'enabled',
+              budget_tokens: 16000 // Default budget
+            };
+          }
+          
+          // If timeout is specified in options, add it to modelOptions
+          if (options.timeoutMs !== undefined) {
+            modelOptions.timeout = options.timeoutMs;
+          }
+          
+          // Key Change: Use the injected llmClient to generate the response
+          const response = await llmClient.generate(
+            combinedContent,
+            modelKey,
+            modelOptions,
+            systemPrompt
+          );
+          
+          // Calculate duration
+          const endTime = Date.now();
+          const durationMs = endTime - (statuses[modelKey].startTime || endTime);
+          
+          // Update status with success
+          statuses[modelKey] = { 
+            status: 'success',
+            startTime: statuses[modelKey].startTime,
+            endTime,
+            durationMs
+          };
+          
+          // Call status update logic
+          updateModelStatus(spinner, modelKey, statuses[modelKey], statuses);
+          
+          // Add config key and group information to the response
+          const responseWithKey = {
+            ...response,
+            configKey: modelKey,
+          };
+          
+          // Add group information if available and not already added by the client
+          if (groupInfo && !responseWithKey.groupInfo) {
+            responseWithKey.groupInfo = {
+              name: groupInfo.groupName,
+              systemPrompt: groupInfo.systemPrompt
+            };
+          }
+          
+          return responseWithKey;
+        } catch (error) {
+          // Calculate duration
+          const endTime = Date.now();
+          const durationMs = endTime - (statuses[modelKey].startTime || endTime);
+          
+          // Get error message and details
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          // Check if it's a ThinktankError to extract category
+          const category = (error instanceof ThinktankError) 
+            ? error.category 
+            : errorCategories.API;
+            
+          // Update status with error
+          statuses[modelKey] = { 
+            status: 'error',
+            message: errorMessage,
+            detailedError: error instanceof Error ? error : new Error(String(error)),
+            startTime: statuses[modelKey].startTime,
+            endTime,
+            durationMs
+          };
+          
+          // Call status update logic
+          updateModelStatus(spinner, modelKey, statuses[modelKey], statuses);
+          
+          // Return error response
+          return {
+            provider: model.provider,
+            modelId: model.modelId,
+            text: '',
+            error: errorMessage,
+            errorCategory: category,
+            configKey: modelKey,
+          };
         }
+      })();
+      
+      queryPromises.push(queryPromise);
+    }
+    
+    // 5. Execute all queries in parallel
+    const responses = await Promise.all(queryPromises);
+    
+    // 6. Calculate overall timing
+    const endTime = Date.now();
+    const durationMs = endTime - startTime;
+    
+    // 7. Build the query results object
+    const queryResults = {
+      responses,
+      statuses,
+      timing: {
+        startTime,
+        endTime,
+        durationMs
       }
     };
     
-    // 3. Execute queries to models
-    const queryResults = await executeQueries(config, models, queryOptions);
+    // 8. Count successes and failures
+    const successCount = responses.filter(r => !r.error).length;
+    const failureCount = responses.filter(r => !!r.error).length;
     
-    // 4. Count successes and failures
-    const successCount = queryResults.responses.filter(r => !r.error).length;
-    const failureCount = queryResults.responses.filter(r => !!r.error).length;
-    
-    // 5. Update spinner with appropriate success/warning message
+    // 9. Update spinner with appropriate success/warning message
     if (failureCount === 0) {
       // All models succeeded
       spinner.text = `Queries completed successfully: ${successCount} ${successCount === 1 ? 'model' : 'models'}`;
@@ -678,7 +813,7 @@ export async function _executeQueries({
       spinner.warn(styleWarning(`All models failed to respond (${failureCount} ${failureCount === 1 ? 'model' : 'models'})`));
       
       // Display failure details
-      const errorSummary = queryResults.responses
+      const errorSummary = responses
         .map(r => `${r.configKey}: ${r.error}`)
         .join(', ');
         
@@ -686,14 +821,14 @@ export async function _executeQueries({
       spinner.start(); // Restart spinner after info message
     }
     
-    // Set final spinner text for consistent state
+    // 10. Set final spinner text for consistent state
     if ('updateForModelSummary' in spinner) {
       spinner.updateForModelSummary(successCount, failureCount, true);
     } else {
       spinner.text = `Query execution complete: ${successCount} succeeded, ${failureCount} failed`;
     }
     
-    // 6. Return the results
+    // 11. Return the results
     return { queryResults };
   } catch (error) {
     // Handle specific error types according to the error handling contract
@@ -711,6 +846,11 @@ export async function _executeQueries({
       });
     }
     
+    // If it's a ThinktankError (but not ApiError), rethrow it
+    if (error instanceof ThinktankError) {
+      throw error;
+    }
+    
     // For unexpected errors, wrap in ApiError
     throw new ApiError('Failed to execute queries', {
       cause: error instanceof Error ? error : undefined,
@@ -720,6 +860,41 @@ export async function _executeQueries({
         'Check if the models are available and not experiencing downtime'
       ]
     });
+  }
+}
+
+/**
+ * Helper function to update the spinner with model status changes
+ * 
+ * Extracted from the original callback to make the code more modular
+ * 
+ * @param spinner - The spinner instance
+ * @param modelKey - The model identifier key ("provider:modelId")
+ * @param status - The current status for the model
+ * @param allStatuses - All model statuses
+ */
+function updateModelStatus(
+  spinner: import('./runThinktankTypes').EnhancedSpinner,
+  modelKey: string,
+  status: ModelQueryStatus,
+  allStatuses: Record<string, ModelQueryStatus>
+): void {
+  // Check if the spinner has the enhanced method
+  if ('updateForModelStatus' in spinner) {
+    // Type cast for the third parameter since we know the function exists but TypeScript doesn't recognize it
+    const enhancedSpinner = spinner as unknown as {
+      updateForModelStatus: (modelKey: string, status: ModelQueryStatus, allStatuses?: Record<string, ModelQueryStatus>) => void;
+    };
+    enhancedSpinner.updateForModelStatus(modelKey, status, allStatuses);
+  } else {
+    // Fallback to basic text updates
+    if (status.status === 'running') {
+      spinner.text = `Querying ${modelKey}...`;
+    } else if (status.status === 'success') {
+      spinner.text = `Received response from ${modelKey} (${status.durationMs}ms)`;
+    } else if (status.status === 'error') {
+      spinner.text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
+    }
   }
 }
 
