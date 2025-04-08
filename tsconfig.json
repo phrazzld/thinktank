@@ -38,7 +38,8 @@
   },
   "include": [
     "src/**/*",
-    "jest/**/*"
+    "jest/**/*",
+    "test/**/*"
   ],
   "exclude": [
     "node_modules",
