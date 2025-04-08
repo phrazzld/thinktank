@@ -45,4 +45,6 @@
 - support ad-hoc task/prompt definitions (ie passing a string instead of a filepath) [cite: 1249]
 - make it easy to write output to logfile [cite: 1249]
 - debug why claude code keeps encountering failures / interrupted by user issues when invoking thinktank (but not always??) [cite: 1249]
+- better token count handling (maybe set max allowable tokens for each configured model and prevent a request and log a warning if token count exceeds threshold)
+- estimate cost per request, log it
 
