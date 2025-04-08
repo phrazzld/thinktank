@@ -1,44 +1,98 @@
 # TODO
 
-## High Priority
+## Test Suite Refactoring - Phase 4 (Aggressive Approach)
 
-- [x] **Fix skipped tests**
-  - [x] Update `readDirectoryContents.test.ts` to work with the FileSystem interface
-  - [x] Resolve issues in `readContextFile.centralized-mock.test.ts` (renamed to readContextFile.interface.test.ts)
-  - [x] Fix any other skipped tests in the codebase (one test for empty files intentionally left skipped)
+### 1. Create Pure Data Model
 
-- [x] **Fix E2E testing**
-  - [x] Remove internal mocking from `src/workflow/__tests__/runThinktank.e2e.test.ts`
-  - [x] Replace `modelSelector` mock with CLI args or config files for controlling test behavior
-  - [x] Verify E2E tests treat the application as a true black box
+- [x] **Define result data interfaces**
+  - **Action:** Create interfaces in `src/workflow/types.ts` for all data structures returned by pure functions: `ProcessOutputResult`, `CompletionSummary`, etc.
+  - **Depends On:** None
+  - **AC Ref:** AC 2.1 (Return data structures)
 
-## Medium Priority
+- [ ] **Refactor output formatting utilities**
+  - **Action:** Convert formatting functions in `src/utils/outputFormatter.ts` to pure functions that take data and return formatted strings.
+  - **Depends On:** Define result data interfaces
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
 
-- [ ] **Refactor concrete implementation tests**
-  - [ ] Revise `src/core/__tests__/ConcreteConfigManager.test.ts` to test behavior, not implementation
-  - [ ] Update `src/core/__tests__/ConcreteFileSystem.test.ts` to use virtual filesystem
-  - [ ] Refactor `src/core/__tests__/ConcreteLLMClient.test.ts` to focus on interface contract
+### 2. Isolate I/O Layer
 
-- [ ] **Complete dependency injection adoption**
-  - [ ] Make `FileSystem` a required parameter in `src/utils/fileReader.ts`
-  - [ ] Update `src/utils/inputHandler.ts` to fully use DI without conditional branches
-  - [ ] Refactor `src/utils/outputHandler.ts` to require injected dependencies
-  - [ ] Update all call sites to provide required dependencies
+- [ ] **Create I/O interface**
+  - **Action:** Define compact I/O interface in `src/core/interfaces.ts` with clear separation of concerns.
+  - **Depends On:** None
+  - **AC Ref:** AC 3.1 (Move I/O to high-level functions)
 
-- [ ] **Simplify ConcreteLLMClient**
-  - [ ] Refactor `generate` method in `src/core/LLMClient.ts`
-  - [ ] Remove duplication with `llmRegistry.callProvider`
-  - [ ] Clarify responsibility boundaries between components
+- [ ] **Implement file system adapter**
+  - **Action:** Create adapter implementing I/O interface for file operations in `src/core/FileSystemAdapter.ts`.
+  - **Depends On:** Create I/O interface
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
-## Low Priority
+- [ ] **Implement console adapter**
+  - **Action:** Create adapter implementing I/O interface for console output in `src/core/ConsoleAdapter.ts`.
+  - **Depends On:** Create I/O interface
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
-- [ ] **Extract common error handling**
-  - [ ] Create reusable error wrapper functions for filesystem operations
-  - [ ] Create reusable error wrapper functions for configuration operations
-  - [ ] Create reusable error wrapper functions for API operations
-  - [ ] Replace repetitive error handling in concrete implementations
+### 3. Refactor Core Functions
 
-- [ ] **Remove logic duplication in fileReader.ts**
-  - [ ] Extract common logic into private helper functions
-  - [ ] Refactor `readContextFile` to use these helpers
-  - [ ] Refactor `readContextPaths` to use these helpers
+- [ ] **Refactor `_processOutput`**
+  - **Action:** Convert `_processOutput` in `src/workflow/runThinktankHelpers.ts` to return structured data instead of performing I/O.
+  - **Depends On:** Define result data interfaces
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
+
+- [ ] **Extract `_processOutput` I/O operations**
+  - **Action:** Move file writing operations from `_processOutput` to `runThinktank.ts`.
+  - **Depends On:** Refactor `_processOutput`
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+
+- [ ] **Refactor `_logCompletionSummary`**
+  - **Action:** Convert `_logCompletionSummary` in `src/workflow/runThinktankHelpers.ts` to return formatted strings instead of console logging.
+  - **Depends On:** Define result data interfaces
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
+
+- [ ] **Extract `_logCompletionSummary` I/O operations**
+  - **Action:** Move console output operations from `_logCompletionSummary` to `runThinktank.ts`.
+  - **Depends On:** Refactor `_logCompletionSummary`
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+
+- [ ] **Refactor `processOutput` in outputHandler.ts**
+  - **Action:** Convert to pure function returning data structures instead of performing I/O.
+  - **Depends On:** Define result data interfaces
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
+
+- [ ] **Refactor `writeResponsesToFiles` in outputHandler.ts**
+  - **Action:** Convert to pure function that prepares file data without actual I/O.
+  - **Depends On:** Define result data interfaces
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
+
+### 4. Restructure Workflow
+
+- [ ] **Simplify runThinktank orchestration**
+  - **Action:** Rewrite `runThinktank` in `src/workflow/runThinktank.ts` to compose pure functions and perform I/O at boundaries.
+  - **Depends On:** Refactor core functions
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+
+- [ ] **Create dedicated I/O module**
+  - **Action:** Implement centralized I/O handling in `src/workflow/io.ts` for all workflow I/O operations.
+  - **Depends On:** Implement file system adapter, Implement console adapter
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+
+### 5. Update Tests
+
+- [ ] **Create testing utilities**
+  - **Action:** Build mock implementations for I/O adapters in `src/__tests__/utils/mockFactories.ts`.
+  - **Depends On:** Implement file system adapter, Implement console adapter
+  - **AC Ref:** AC 3.1 (Improve testability)
+
+- [ ] **Create unit tests for pure functions**
+  - **Action:** Write unit tests for all refactored pure functions without I/O dependencies.
+  - **Depends On:** Refactor core functions
+  - **AC Ref:** AC 2.1 (Modify functions to return data)
+
+- [ ] **Refactor workflow integration tests**
+  - **Action:** Update integration tests to use I/O mocks consistently.
+  - **Depends On:** Create testing utilities
+  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+
+- [ ] **Simplify test setup**
+  - **Action:** Eliminate redundant test setup in workflow test files.
+  - **Depends On:** Refactor workflow integration tests
+  - **AC Ref:** AC 3.1 (Improve testability)
