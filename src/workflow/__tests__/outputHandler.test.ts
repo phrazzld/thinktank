@@ -2,7 +2,6 @@
  * Unit tests for the OutputHandler module
  */
 import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
-import path from 'path';
 import { FileSystem } from '../../core/interfaces';
 
 // Setup mocks (must be before importing fs modules)
@@ -18,8 +17,7 @@ import {
   formatForConsole,
   createOutputDirectory,
   writeResponsesToFiles,
-  processOutput,
-  OutputHandlerError
+  processOutput
 } from '../outputHandler';
 import { LLMResponse } from '../../core/types';
 
@@ -444,71 +442,71 @@ describe('OutputHandler', () => {
     });
   });
   
-  describe('Full Output Processing', () => {
-    it('should process output for both files and console', async () => {
-      // Ensure both mkdir and writeFile actually affect the virtual filesystem
-      jest.spyOn(fs, 'mkdir').mockImplementation(async (dirPath, _options) => {
-        if (typeof dirPath === 'string') {
-          getVirtualFs().mkdirSync(dirPath, { recursive: true });
-        }
-        return undefined;
-      });
-      
-      mockFileSystem.writeFile.mockImplementation(async (filePath, content) => {
-        if (typeof filePath === 'string' && typeof content === 'string') {
-          getVirtualFs().writeFileSync(filePath, content);
-        }
-        return undefined;
-      });
-      
-      const result = await processOutput(
+  describe('Pure Output Processing', () => {
+    it('should process output for both files and console without IO operations', () => {
+      const result = processOutput(
         [sampleResponse, sampleResponseWithGroup],
         {
           includeMetadata: true,
           useTable: true
-        },
-        mockFileSystem
+        }
       );
       
-      // Verify both outputs are present
-      expect(result.fileOutput).toBeDefined();
+      // Verify correct output structure
+      expect(result.files).toBeDefined();
+      expect(result.directoryPath).toBeDefined();
       expect(result.consoleOutput).toBeDefined();
       
-      // Verify directory creation and file writes were called
-      expect(mockFileSystem.mkdir).toHaveBeenCalled();
-      // 3 calls per file (tmp, final, cleanup)
-      expect(mockFileSystem.writeFile).toHaveBeenCalledTimes(6);
+      // Verify file data structure
+      expect(result.files).toHaveLength(2);
+      expect(result.files[0].filename).toBe('openai-gpt-4o.md');
+      expect(result.files[0].content).toContain('This is a test response');
+      expect(result.files[0].modelKey).toBe('openai:gpt-4o');
       
-      // Verify file output structure
-      expect(result.fileOutput.succeededWrites).toBe(2);
+      expect(result.files[1].filename).toBe('coding-anthropic-claude-3-opus-20240229.md');
+      expect(result.files[1].content).toContain('This is a test response from a group');
+      expect(result.files[1].modelKey).toBe('anthropic:claude-3-opus-20240229');
+      
+      // Verify directory path is properly generated
+      expect(result.directoryPath).toMatch(/thinktank-output\//);
       
       // Verify console output is a string
       expect(typeof result.consoleOutput).toBe('string');
       
-      // Verify the output directory and files were actually created
-      const virtualFs = getVirtualFs();
-      expect(virtualFs.existsSync(result.fileOutput.outputDirectory)).toBe(true);
-      expect(virtualFs.statSync(result.fileOutput.outputDirectory).isDirectory()).toBe(true);
-      
-      // Verify files were written
-      const expectedFile1 = path.join(result.fileOutput.outputDirectory, 'openai-gpt-4o.md');
-      const expectedFile2 = path.join(result.fileOutput.outputDirectory, 'coding-anthropic-claude-3-opus-20240229.md');
-      expect(virtualFs.existsSync(expectedFile1)).toBe(true);
-      expect(virtualFs.existsSync(expectedFile2)).toBe(true);
+      // Verify no IO operations were performed
+      expect(mockFileSystem.mkdir).not.toHaveBeenCalled();
+      expect(mockFileSystem.writeFile).not.toHaveBeenCalled();
     });
     
-    it('should handle errors during processing', async () => {
-      // Mock mockFileSystem.mkdir to fail
-      mockFileSystem.mkdir.mockRejectedValueOnce(
-        createFsError('EACCES', 'Permission denied', 'mkdir', '/path')
+    it('should respect options when formatting files and console output', () => {
+      // Test with specific options
+      const result = processOutput(
+        [sampleResponse, sampleResponseWithGroup],
+        {
+          includeMetadata: true,
+          useColors: false,
+          includeThinking: true,
+          useTable: false,
+          outputDirectory: '/custom/output/path',
+          friendlyRunName: 'test-run'
+        }
       );
       
-      // Verify error is thrown
-      await expect(processOutput(
-        [sampleResponse],
-        {},
-        mockFileSystem
-      )).rejects.toThrow(OutputHandlerError);
+      // Verify output directory uses the custom path and name
+      expect(result.directoryPath).toContain('/custom/output/path');
+      expect(result.directoryPath).toContain('test-run');
+      
+      // The test response has no metadata, so we're just checking that the content is formatted
+      // If includeMetadata was true but no metadata exists, no metadata section would be included
+      
+      // Verify proper response content formatting 
+      expect(result.files[0].content).toContain(`# ${sampleResponse.configKey}`);
+      expect(result.files[0].content).toContain(`Generated: ${mockDateISOString}`);
+      expect(result.files[0].content).toContain('## Response');
+      
+      // Verify console output options were passed through
+      // We can't check exact console output formatting without mocking formatForConsole
+      expect(typeof result.consoleOutput).toBe('string');
     });
   });
 });

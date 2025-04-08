@@ -107,6 +107,26 @@ export interface FileWriteDetail {
 }
 
 /**
+ * Represents data for a file to be written
+ */
+export interface FileData {
+  /**
+   * The filename
+   */
+  filename: string;
+  
+  /**
+   * The content to be written to the file
+   */
+  content: string;
+  
+  /**
+   * The model key (provider:modelId) associated with this file
+   */
+  modelKey: string;
+}
+
+/**
  * Options for file output
  */
 export interface FileOutputOptions {
@@ -513,56 +533,51 @@ export async function writeResponsesToFiles(
 }
 
 /**
- * Process responses for output, handling both file writing and console formatting
+ * Process responses for output, preparing both file data and console output
+ * 
+ * This is a pure function that doesn't perform I/O operations like file writing
+ * or directory creation. Instead, it returns structured data that can be used
+ * by the caller to perform those operations.
  * 
  * @param responses - Array of LLM responses with their config keys
  * @param options - Output options
- * @param fileSystem - File system interface to use for operations
- * @returns Result object with file output results and console formatted string
+ * @returns Result object with file data and console formatted string
  */
-export async function processOutput(
+export function processOutput(
   responses: Array<LLMResponse & { configKey: string }>,
-  options: FileOutputOptions & ConsoleOutputOptions = {},
-  fileSystem: FileSystem
-): Promise<{
-  fileOutput: FileOutputResult;
+  options: FileOutputOptions & ConsoleOutputOptions = {}
+): {
+  files: FileData[];
+  directoryPath: string;
   consoleOutput: string;
-}> {
-  // Use the provided output directory directly if it exists,
-  // otherwise create a new output directory
-  let outputDirectory: string;
-  
-  if (options.outputDirectory && typeof options.outputDirectory === 'string') {
-    // Ensure the directory exists
-    try {
-      await fileSystem.mkdir(options.outputDirectory, { recursive: true });
-      outputDirectory = options.outputDirectory;
-    } catch (error) {
-      throw new OutputHandlerError(
-        `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  } else {
-    // Create a new output directory if none provided
-    outputDirectory = await createOutputDirectory({
-      outputDirectory: options.outputDirectory,
-      directoryIdentifier: options.directoryIdentifier,
-      friendlyRunName: options.friendlyRunName
-    }, fileSystem);
-  }
-  
-  // Write responses to files
-  const fileOutput = await writeResponsesToFiles(
-    responses,
-    outputDirectory,
-    {
-      includeMetadata: options.includeMetadata,
-      throwOnError: options.throwOnError,
-      onStatusUpdate: options.onStatusUpdate
-    },
-    fileSystem
+} {
+  // Generate output directory path
+  const directoryPath = generateOutputDirectoryPath(
+    options.outputDirectory,
+    options.directoryIdentifier,
+    options.friendlyRunName
   );
+  
+  // Generate file data for each response
+  const files: FileData[] = responses.map(response => {
+    // Generate filename
+    const filename = generateFilename(response, {
+      // Control if group name is included based on how models were selected
+      includeGroup: true // Default behavior, caller can override if needed
+    });
+    
+    // Format content for file output
+    const content = formatResponseAsMarkdown(
+      response, 
+      options.includeMetadata
+    );
+    
+    return {
+      filename,
+      content,
+      modelKey: response.configKey,
+    };
+  });
   
   // Format for console output
   const consoleOutput = formatForConsole(
@@ -576,7 +591,8 @@ export async function processOutput(
   );
   
   return {
-    fileOutput,
+    files,
+    directoryPath,
     consoleOutput
   };
 }
