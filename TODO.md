@@ -67,8 +67,8 @@
   - **Depends On:** Refactor _processOutput to use FileSystem interface.
   - **AC Ref:** AC 4
 
-- [ ] **Integrate interfaces with runThinktank workflow**
-  - **Action:** Update the main runThinktank function to instantiate and inject the concrete implementations of the interfaces.
+- [x] **Integrate interfaces with runThinktank workflow**
+  - **Action:** Updated the main runThinktank function to instantiate and inject the concrete implementations of the interfaces.
   - **Depends On:** All refactoring of helper functions.
   - **AC Ref:** AC 1, AC 3, AC 4
 

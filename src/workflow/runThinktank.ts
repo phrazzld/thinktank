@@ -180,9 +180,12 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   spinner.start();
   
   try {
-    // Create dependency instances for injection
-    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    // Create dependency instances for injection in the correct order
+    // 1. First create FileSystem (no dependencies)
     const fileSystem: FileSystem = new ConcreteFileSystem();
+    // 2. Then create ConfigManager (conceptually uses FileSystem, but doesn't require it in constructor)
+    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    // 3. Finally create LLMClient (depends on ConfigManager)
     const llmClient: LLMClient = new ConcreteLLMClient(configManager);
     
     // 1. Setup workflow: Load configuration, generate run name, create output directory

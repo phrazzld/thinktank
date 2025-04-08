@@ -80,7 +80,8 @@ import { QueryExecutorError, ModelQueryStatus } from './queryExecutor';
 export async function _setupWorkflow({ 
   spinner, 
   options,
-  configManager 
+  configManager,
+  fileSystem
 }: SetupWorkflowParams): Promise<SetupWorkflowResult> {
   try {
     // 1. Load configuration using the injected configManager
