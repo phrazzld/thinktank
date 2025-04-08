@@ -6,7 +6,7 @@ import * as inputHandler from '../inputHandler';
 import { FileSystemError } from '../../core/errors';
 import { InputSourceType, InputError } from '../inputHandler';
 import * as fileReader from '../../utils/fileReader';
-import { ContextFileResult } from '../../utils/fileReader';
+import { ContextFileResult } from '../../utils/fileReaderTypes';
 
 // Mock dependencies
 jest.mock('../inputHandler');

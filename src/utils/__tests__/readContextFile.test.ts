@@ -265,10 +265,21 @@ describe('readContextFile', () => {
       const isAbsoluteSpy = jest.spyOn(path, 'isAbsolute').mockReturnValue(true);
       
       const windowsPath = 'C:\\Users\\user\\Documents\\file.txt';
+      const memfsPath = '/C:/Users/user/Documents/file.txt';
       
-      // Setup the virtual filesystem with our test file using the Windows path
+      // Setup the virtual filesystem with our test file using the memfs-compatible path
       createVirtualFs({
-        [windowsPath]: testContent
+        [memfsPath]: testContent
+      });
+      
+      // Mock readFile to bridge between Windows path and memfs path
+      const readFileSpy = jest.spyOn(fs.promises, 'readFile');
+      readFileSpy.mockImplementation((filePath) => {
+        const pathAsString = typeof filePath === 'string' ? filePath : String(filePath);
+        if (pathAsString === windowsPath) {
+          return Promise.resolve(testContent);
+        }
+        return Promise.reject(new Error(`Unexpected path: ${pathAsString}`));
       });
       
       const result = await readContextFile(windowsPath);
@@ -276,8 +287,9 @@ describe('readContextFile', () => {
       expect(result.path).toBe(windowsPath);
       expect(result.content).toBe(testContent);
       
-      // Restore the original implementation
+      // Restore the original implementations
       isAbsoluteSpy.mockRestore();
+      readFileSpy.mockRestore();
     });
     
     it('should handle Unix-style absolute paths', async () => {

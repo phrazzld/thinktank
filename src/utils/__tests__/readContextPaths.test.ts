@@ -18,7 +18,8 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
-import { readContextPaths, ContextFileResult } from '../fileReader';
+import { ContextFileResult } from '../fileReaderTypes';
+import { readContextPaths } from '../fileReader';
 import * as gitignoreUtils from '../gitignoreUtils';
 import * as fileReader from '../fileReader';
 

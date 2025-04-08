@@ -178,17 +178,11 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        const { stdout } = await execa('node', [cliPath, 'run', '--help']);
-        
-        // Check that the help text mentions context paths
-        expect(stdout).toContain('contextPaths');
-        expect(stdout).toContain('files or directories');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      const { stdout } = await execa('node', [cliPath, 'run', '--help']);
+      
+      // Check that the help text mentions context paths
+      expect(stdout).toContain('contextPaths');
+      expect(stdout).toContain('files or directories');
     });
     
     it('should accept a single context file', async () => {
@@ -196,35 +190,29 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const singleOutputDir = path.join(outputDir, 'single-file');
-        await fs.mkdir(singleOutputDir, { recursive: true });
-        
-        // Run the CLI with a single context file
-        // Using --dry-run to prevent actual API calls
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          contextFile,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', singleOutputDir
-        ]);
-        
-        // Check that the output mentions the context file
-        expect(stdout).toContain('context.txt');
-        expect(stdout).toContain('context file');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const singleOutputDir = path.join(outputDir, 'single-file');
+      await fs.mkdir(singleOutputDir, { recursive: true });
+      
+      // Run the CLI with a single context file
+      // Using --dry-run to prevent actual API calls
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        contextFile,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', singleOutputDir
+      ]);
+      
+      // Check that the output mentions the context file
+      expect(stdout).toContain('context.txt');
+      expect(stdout).toContain('context file');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle code files as context', async () => {
@@ -232,34 +220,28 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const codeOutputDir = path.join(outputDir, 'code-file');
-        await fs.mkdir(codeOutputDir, { recursive: true });
-        
-        // Run the CLI with a code file as context
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          codeContextFile,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', codeOutputDir
-        ]);
-        
-        // Check that the output mentions the context file
-        expect(stdout).toContain('example.js');
-        expect(stdout).toContain('context file');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const codeOutputDir = path.join(outputDir, 'code-file');
+      await fs.mkdir(codeOutputDir, { recursive: true });
+      
+      // Run the CLI with a code file as context
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        codeContextFile,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', codeOutputDir
+      ]);
+      
+      // Check that the output mentions the context file
+      expect(stdout).toContain('example.js');
+      expect(stdout).toContain('context file');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle multiple context files', async () => {
@@ -267,35 +249,29 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const multiOutputDir = path.join(outputDir, 'multiple-files');
-        await fs.mkdir(multiOutputDir, { recursive: true });
-        
-        // Run the CLI with multiple context files
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          ...multipleContextFiles,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', multiOutputDir
-        ]);
-        
-        // Check that the output mentions all context files
-        expect(stdout).toContain('utils.ts');
-        expect(stdout).toContain('config.json');
-        expect(stdout).toContain('context files');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const multiOutputDir = path.join(outputDir, 'multiple-files');
+      await fs.mkdir(multiOutputDir, { recursive: true });
+      
+      // Run the CLI with multiple context files
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        ...multipleContextFiles,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', multiOutputDir
+      ]);
+      
+      // Check that the output mentions all context files
+      expect(stdout).toContain('utils.ts');
+      expect(stdout).toContain('config.json');
+      expect(stdout).toContain('context files');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle directory as context', async () => {
@@ -303,33 +279,27 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const dirOutputDir = path.join(outputDir, 'directory');
-        await fs.mkdir(dirOutputDir, { recursive: true });
-        
-        // Run the CLI with a directory as context
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          contextDir,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', dirOutputDir
-        ]);
-        
-        // Check that the output mentions the context directory
-        expect(stdout).toContain('context files');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const dirOutputDir = path.join(outputDir, 'directory');
+      await fs.mkdir(dirOutputDir, { recursive: true });
+      
+      // Run the CLI with a directory as context
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        contextDir,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', dirOutputDir
+      ]);
+      
+      // Check that the output mentions the context directory
+      expect(stdout).toContain('context files');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle file paths with spaces', async () => {
@@ -337,33 +307,27 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const spacesOutputDir = path.join(outputDir, 'spaces');
-        await fs.mkdir(spacesOutputDir, { recursive: true });
-        
-        // Run the CLI with a file that has spaces in its name
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          fileWithSpaces,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', spacesOutputDir
-        ]);
-        
-        // Check that the output mentions the context file
-        expect(stdout).toContain('context file');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const spacesOutputDir = path.join(outputDir, 'spaces');
+      await fs.mkdir(spacesOutputDir, { recursive: true });
+      
+      // Run the CLI with a file that has spaces in its name
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        fileWithSpaces,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', spacesOutputDir
+      ]);
+      
+      // Check that the output mentions the context file
+      expect(stdout).toContain('context file');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle mixed files and directories as context', async () => {
@@ -371,34 +335,28 @@ describe('CLI E2E Tests', () => {
         return;
       }
       
-      try {
-        // Create a specific output directory for this test
-        const mixedOutputDir = path.join(outputDir, 'mixed');
-        await fs.mkdir(mixedOutputDir, { recursive: true });
-        
-        // Run the CLI with a mix of files and directories
-        const { stdout, stderr } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          contextFile,
-          contextDir,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', mixedOutputDir
-        ]);
-        
-        // Check that the output mentions the context
-        expect(stdout).toContain('context files');
-        
-        // Verify no errors
-        expect(stderr).toBe('');
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const mixedOutputDir = path.join(outputDir, 'mixed');
+      await fs.mkdir(mixedOutputDir, { recursive: true });
+      
+      // Run the CLI with a mix of files and directories
+      const { stdout, stderr } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        contextFile,
+        contextDir,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', mixedOutputDir
+      ]);
+      
+      // Check that the output mentions the context
+      expect(stdout).toContain('context files');
+      
+      // Verify no errors
+      expect(stderr).toBe('');
     });
     
     it('should handle non-existent context paths gracefully', async () => {
@@ -435,33 +393,26 @@ describe('CLI E2E Tests', () => {
       
       const nonExistentPath = path.join(tempDir, 'non-existent-file.txt');
       
-      try {
-        // Create a specific output directory for this test
-        const mixedValidInvalidDir = path.join(outputDir, 'mixed-valid-invalid');
-        await fs.mkdir(mixedValidInvalidDir, { recursive: true });
-        
-        // Run the CLI with one valid and one non-existent file
-        const { stdout } = await execa('node', [
-          cliPath,
-          'run',
-          promptPath,
-          contextFile,
-          nonExistentPath,
-          '--config', configPath,
-          '--verbose',
-          '--dry-run',
-          '--output', mixedValidInvalidDir
-        ]);
-        
-        // When one file exists and one doesn't, the CLI should continue with a warning
-        expect(stdout).toContain('context.txt');
-        expect(stdout).toContain('could not be read');
-        
-      } catch (error) {
-        // Don't log in tests - let the test fail with the error
-      // to avoid polluting test output
-        throw error;
-      }
+      // Create a specific output directory for this test
+      const mixedValidInvalidDir = path.join(outputDir, 'mixed-valid-invalid');
+      await fs.mkdir(mixedValidInvalidDir, { recursive: true });
+      
+      // Run the CLI with one valid and one non-existent file
+      const { stdout } = await execa('node', [
+        cliPath,
+        'run',
+        promptPath,
+        contextFile,
+        nonExistentPath,
+        '--config', configPath,
+        '--verbose',
+        '--dry-run',
+        '--output', mixedValidInvalidDir
+      ]);
+      
+      // When one file exists and one doesn't, the CLI should continue with a warning
+      expect(stdout).toContain('context.txt');
+      expect(stdout).toContain('could not be read');
     });
   });
 });

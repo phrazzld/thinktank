@@ -17,3 +17,4 @@
 	* show progress indicator for each running model, spinners when in progress -> checkmarks or green circles when completed
 	* fix "double i" problem (two i icons showing for a lot of the info messages)
 - support ad-hoc task/prompt definitions (ie passing a string instead of a filepath)
+- make it easy to write output to logfile

@@ -20,7 +20,8 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 
 // Import modules after mocking
 import path from 'path';
-import { formatCombinedInput, ContextFileResult, readContextFile } from '../fileReader';
+import { ContextFileResult } from '../fileReaderTypes';
+import { formatCombinedInput, readContextFile } from '../fileReader';
 
 describe('formatCombinedInput', () => {
   // Set up common test data

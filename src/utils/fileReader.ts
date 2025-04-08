@@ -7,6 +7,7 @@ import os from 'os';
 import { normalizeText } from './helpers';
 import { shouldIgnorePath } from './gitignoreUtils';
 import logger from './logger';
+import { ContextFileResult, FileReadError, ReadFileOptions } from './fileReaderTypes';
 
 /**
  * Maximum file size allowed for context files (10MB)
@@ -15,56 +16,9 @@ import logger from './logger';
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 /**
- * Custom error for file reading operations
- */
-export class FileReadError extends Error {
-  constructor(message: string, public readonly cause?: Error) {
-    super(message);
-    this.name = 'FileReadError';
-  }
-}
-
-/**
- * Result of reading a context file
- */
-export interface ContextFileResult {
-  /**
-   * Path to the file that was read (original path provided)
-   */
-  path: string;
-  
-  /**
-   * Content of the file, or null if there was an error
-   */
-  content: string | null;
-  
-  /**
-   * Error information if reading failed, or null if successful
-   */
-  error: {
-    /**
-     * Error code (e.g., 'ENOENT', 'EACCES', 'NOT_FILE', etc.)
-     */
-    code: string;
-    
-    /**
-     * Human-readable error message
-     */
-    message: string;
-  } | null;
-}
-
-/**
  * Application name used for XDG paths
  */
 const APP_NAME = 'thinktank';
-
-/**
- * Options for reading file content
- */
-export interface ReadFileOptions {
-  normalize?: boolean;
-}
 
 /**
  * Reads content from a file at the specified path

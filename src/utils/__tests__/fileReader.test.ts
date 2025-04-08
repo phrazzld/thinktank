@@ -11,7 +11,8 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 import fsPromises from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { readFileContent, fileExists, writeFile, FileReadError, getConfigDir, getConfigFilePath } from '../fileReader';
+import { FileReadError } from '../fileReaderTypes';
+import { readFileContent, fileExists, writeFile, getConfigDir, getConfigFilePath } from '../fileReader';
 
 // Mock os module
 jest.mock('os');
