@@ -603,7 +603,7 @@ describe('runThinktank', () => {
   
   it('should display extra metadata when includeMetadata is true', async () => {
     // Mock console.log to verify it's called with metadata
-    jest.spyOn(console, 'log').mockImplementation();
+    jest.spyOn(console, 'log').mockImplementation(() => {});
     
     const options: RunOptions = {
       input: 'test-prompt.txt',

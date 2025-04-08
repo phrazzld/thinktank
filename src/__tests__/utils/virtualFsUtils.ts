@@ -37,12 +37,71 @@
  */
 import { Volume, createFsFromVolume } from 'memfs';
 import type { IFs } from 'memfs';
+import * as nodeFs from 'fs';
+import path from 'path';
 
 // Create a volume that will be shared across all imports
 const vol = Volume.fromJSON({});
 
 // Create a filesystem based on this volume
 const fs = createFsFromVolume(vol);
+
+/**
+ * Normalizes a path for use with memfs.
+ * 
+ * This function ensures path compatibility with the memfs virtual filesystem by:
+ * 1. Converting backslashes to forward slashes
+ * 2. Ensuring a leading slash
+ * 3. Handling Windows drive letters (C:\ to /C:/)
+ * 4. Normalizing . and .. segments
+ * 
+ * @param inputPath - The path to normalize
+ * @returns A normalized path compatible with memfs
+ * 
+ * @example
+ * // Unix-style path
+ * normalizePathForMemfs('/path/to/file.txt') // returns '/path/to/file.txt'
+ * 
+ * @example
+ * // Windows-style path with drive letter
+ * normalizePathForMemfs('C:\\path\\to\\file.txt') // returns '/C:/path/to/file.txt'
+ * 
+ * @example
+ * // Relative path (gets leading slash added)
+ * normalizePathForMemfs('path/to/file.txt') // returns '/path/to/file.txt'
+ */
+export function normalizePathForMemfs(inputPath: string): string {
+  // Handle empty paths
+  if (!inputPath) return '/';
+  
+  // Handle special cases for dot paths
+  if (inputPath === '.') return '/.';
+  if (inputPath === './') return '/';
+  
+  let normalizedPath = inputPath;
+  
+  // Handle Windows-style paths (C:\path\to\file)
+  if (/^[A-Za-z]:[/\\]/.test(normalizedPath)) {
+    // Convert C:\path to /C:/path format
+    normalizedPath = '/' + normalizedPath.charAt(0) + ':' + normalizedPath.slice(2).replace(/\\/g, '/');
+  } else {
+    // For other paths, ensure they have a leading slash and use forward slashes
+    normalizedPath = normalizedPath.replace(/\\/g, '/');
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = '/' + normalizedPath;
+    }
+  }
+  
+  // Normalize using path.posix to handle . and .. segments
+  normalizedPath = path.posix.normalize(normalizedPath);
+  
+  // Ensure leading slash is preserved
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
+  }
+  
+  return normalizedPath;
+}
 
 /**
  * Creates a virtual filesystem with the specified structure.
@@ -71,8 +130,54 @@ export function createVirtualFs(
     resetVirtualFs();
   }
   
-  // Load the structure into the volume
-  vol.fromJSON(structure);
+  // First, create all directories to avoid ENOTDIR errors
+  const dirPathsToCreate = new Set<string>();
+  
+  Object.entries(structure).forEach(([path, content]) => {
+    // Normalize path for memfs
+    const normalizedPath = normalizePathForMemfs(path);
+    
+    // If this is explicitly a directory entry (content is empty string)
+    if (content === '') {
+      let dirPath = normalizedPath;
+      if (!dirPath.endsWith('/')) {
+        dirPath += '/';
+      }
+      dirPathsToCreate.add(dirPath);
+    } else {
+      // For files, we need to ensure their parent directories exist
+      const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/') + 1);
+      if (dirPath && dirPath !== '/') {
+        dirPathsToCreate.add(dirPath);
+      }
+    }
+  });
+  
+  // Create all required directories first
+  dirPathsToCreate.forEach(dirPath => {
+    try {
+      vol.mkdirSync(dirPath, { recursive: true });
+    } catch (error) {
+      // If the directory already exists, that's fine
+      if (!(error instanceof Error && (error as NodeJS.ErrnoException).code === 'EEXIST')) {
+        throw error;
+      }
+    }
+  });
+  
+  // Now create all files, now that parent directories are guaranteed to exist
+  Object.entries(structure).forEach(([path, content]) => {
+    // Skip directory entries (empty content), as they're already created
+    if (content === '') {
+      return;
+    }
+    
+    // Normalize path for memfs
+    const normalizedPath = normalizePathForMemfs(path);
+    
+    // Write the file content
+    vol.writeFileSync(normalizedPath, content);
+  });
 }
 
 /**
@@ -170,10 +275,13 @@ export function createFsError(
   // Create base error
   const error = new Error(message) as NodeJS.ErrnoException;
   
+  // Normalize the filepath for memfs compatibility
+  const normalizedPath = normalizePathForMemfs(filepath);
+  
   // Set standard properties
   error.code = code;
   error.syscall = syscall;
-  error.path = filepath;
+  error.path = normalizedPath;
   
   // Map common error codes to errno numbers for compatibility
   if (code === 'ENOENT') error.errno = -2;
@@ -184,4 +292,111 @@ export function createFsError(
   else if (code === 'EMFILE') error.errno = -24;
   
   return error;
+}
+
+/**
+ * Creates a .gitignore file in the virtual filesystem.
+ * 
+ * This function creates a .gitignore file at the specified path in the virtual
+ * filesystem. It ensures that the parent directories exist and writes the
+ * specified content to the file.
+ * 
+ * @param gitignorePath - The absolute path to create the .gitignore file at
+ * @param content - The content to write to the .gitignore file
+ * @returns A Promise that resolves when the file has been created
+ * 
+ * @example
+ * ```typescript
+ * // Add a .gitignore file that ignores log files and the dist directory
+ * await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/');
+ * 
+ * // Use in test setup
+ * beforeEach(async () => {
+ *   resetVirtualFs();
+ *   createVirtualFs({
+ *     '/project/src/': '',
+ *     '/project/src/index.ts': 'console.log("Hello");'
+ *   });
+ *   await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/');
+ * });
+ * ```
+ */
+export async function addVirtualGitignoreFile(gitignorePath: string, content: string): Promise<void> {
+  // Get virtual filesystem reference
+  const virtualFs = getVirtualFs();
+  
+  // Normalize the gitignore path for memfs compatibility
+  const normalizedPath = normalizePathForMemfs(gitignorePath);
+  
+  // Extract the directory path and normalize it
+  const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
+  
+  // Create the parent directory explicitly using mkdir
+  virtualFs.mkdirSync(dirPath, { recursive: true });
+  
+  // Write the file 
+  virtualFs.writeFileSync(normalizedPath, content);
+  
+  // For better test error messages, verify the file was written correctly
+  const fileContents = virtualFs.readFileSync(normalizedPath, 'utf-8');
+  if (fileContents !== content) {
+    throw new Error(`File content verification failed for ${normalizedPath}. Expected "${content}" but got "${String(fileContents)}"`);
+  }
+}
+
+/**
+ * Creates a standard mock stats object for testing fs.Stats results
+ * 
+ * @param isFile - Whether the stat is for a file (true) or directory (false)
+ * @param size - The size in bytes to report
+ * @returns A mock fs.Stats object that can be used in tests
+ */
+export function createMockStats(isFile: boolean, size: number = isFile ? 1024 : 4096): nodeFs.Stats {
+  return {
+    isFile: () => isFile,
+    isDirectory: () => !isFile,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    isSymbolicLink: () => false,
+    size,
+    dev: 0, 
+    ino: 0, 
+    mode: 0, 
+    nlink: 0, 
+    uid: 0, 
+    gid: 0, 
+    rdev: 0,
+    blksize: 0, 
+    blocks: 0, 
+    atimeMs: 0, 
+    mtimeMs: 0, 
+    ctimeMs: 0, 
+    birthtimeMs: 0,
+    atime: new Date(), 
+    mtime: new Date(), 
+    ctime: new Date(), 
+    birthtime: new Date()
+  } as nodeFs.Stats;
+}
+
+/**
+ * Creates a standard mock directory entry (Dirent) for testing fs.readdir results
+ * 
+ * @param name - Name of the file or directory
+ * @param isFile - Whether this is a file (true) or directory (false)
+ * @returns A mock fs.Dirent object that can be used in tests
+ */
+export function createMockDirent(name: string, isFile: boolean): nodeFs.Dirent {
+  return {
+    name,
+    isFile: () => isFile,
+    isDirectory: () => !isFile,
+    isBlockDevice: () => false,
+    isCharacterDevice: () => false,
+    isFIFO: () => false,
+    isSocket: () => false,
+    isSymbolicLink: () => false
+  } as nodeFs.Dirent;
 }

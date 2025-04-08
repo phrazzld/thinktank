@@ -8,6 +8,7 @@ import fs from 'fs/promises';
 import path from 'path';
 import ignore from 'ignore';
 import { fileExists } from './fileReader';
+import { normalizePathForGitignore } from './pathUtils';
 
 // Cache of parsed gitignore patterns by directory path
 // This avoids re-reading and re-parsing gitignore files for the same directories
@@ -81,13 +82,8 @@ export async function createIgnoreFilter(directoryPath: string): Promise<ignore.
 export async function shouldIgnorePath(basePath: string, filePath: string): Promise<boolean> {
   const ignoreFilter = await createIgnoreFilter(basePath);
   
-  // Convert to relative path if it's absolute
-  const relativePath = path.isAbsolute(filePath)
-    ? path.relative(basePath, filePath)
-    : filePath;
-  
-  // Normalize path to handle parent directory references
-  const normalizedPath = path.normalize(relativePath);
+  // Use dedicated utility to normalize path for gitignore pattern matching
+  const normalizedPath = normalizePathForGitignore(filePath, basePath);
   
   // The ignore library returns boolean for .ignores(), but we'll double-check
   // to ensure our tests and implementation work consistently

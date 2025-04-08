@@ -178,9 +178,7 @@ describe('runThinktank End-to-End Tests', () => {
   
   // Skip tests conditionally
   beforeEach(() => {
-    if (skipTests) {
-      console.log('Skipping runThinktank E2E tests due to environment configuration');
-    }
+    // This is intentionally empty to skip tests when needed
   });
   
   it('should process a prompt file and generate output files', async () => {

@@ -255,7 +255,7 @@ export interface ProcessInputResult {
    * Array of context file results if contextPaths were provided
    * Includes both successful and failed context files
    */
-  contextFiles?: Array<import('../utils/fileReader').ContextFileResult>;
+  contextFiles?: Array<import('../utils/fileReaderTypes').ContextFileResult>;
   
   /**
    * Direct accessor for the combined prompt+context content

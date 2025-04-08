@@ -1,55 +1,78 @@
 /**
  * Gitignore utility mock setup for Jest
  * 
- * This file sets up the basic mocking for gitignore utility functions
- * using the mockGitignoreUtils implementation.
+ * This file sets up the standard mocking for gitignore utility functions
+ * to ensure consistent testing of gitignore-related functionality.
  * 
- * Tests should import the mock utilities from src/__tests__/utils/mockGitignoreUtils
- * to configure specific gitignore behaviors.
+ * PREFERRED APPROACH: Import these helpers directly rather than using manual mocks or
+ * setting up your own gitignore mocking to ensure consistent test behavior.
  */
 
-// Import the mock module to ensure it's available
-const mockGitignoreUtils = require('../../src/__tests__/utils/mockGitignoreUtils');
-
-// Mock the gitignore utilities
-jest.mock('../../src/utils/gitignoreUtils');
+// Import the virtualFsUtils and gitignoreUtils
+const { addVirtualGitignoreFile } = require('../../src/__tests__/utils/virtualFsUtils');
+const gitignoreUtils = require('../../src/utils/gitignoreUtils');
 
 // Export helper functions for convenience (available by importing from './jest/setupFiles/gitignore')
 module.exports = {
   /**
-   * Sets up basic gitignore mocking with standard ignored patterns
-   * @param {Object} config - Configuration options for mock setup
-   */
-  setupBasicGitignore: function(config = {}) {
-    const { resetMockGitignore, setupMockGitignore } = require('../../src/__tests__/utils/mockGitignoreUtils');
-    
-    resetMockGitignore();
-    setupMockGitignore(config);
-  },
-
-  /**
-   * Configures gitignore mocking based on virtual filesystem .gitignore files
-   * @param {string} rootPath - Root path to start scanning from
-   */
-  setupGitignoreFromVirtualFs: function(rootPath = '/') {
-    const {
-      resetMockGitignore,
-      setupMockGitignore,
-      configureMockGitignoreFromVirtualFs
-    } = require('../../src/__tests__/utils/mockGitignoreUtils');
-    
-    resetMockGitignore();
-    setupMockGitignore();
-    configureMockGitignoreFromVirtualFs(rootPath);
-  },
-
-  /**
-   * Creates a virtual .gitignore file and configures mocks based on its content
+   * Creates a virtual .gitignore file
+   * 
    * @param {string} gitignorePath - Path where the .gitignore file should be created
    * @param {string} content - Content of the .gitignore file
+   * 
+   * @example
+   * addGitignoreFile('/project/.gitignore', '*.log\n/node_modules/');
    */
   addGitignoreFile: function(gitignorePath, content) {
-    const { addVirtualGitignoreFile } = require('../../src/__tests__/utils/mockGitignoreUtils');
-    addVirtualGitignoreFile(gitignorePath, content);
+    return addVirtualGitignoreFile(gitignorePath, content);
+  },
+  
+  /**
+   * Sets up a basic gitignore environment in the virtual filesystem
+   * 
+   * This function creates a default project structure with a .gitignore file
+   * containing common patterns. It's a convenience wrapper to quickly set up
+   * a standard gitignore testing environment.
+   * 
+   * @param {string} [projectPath='/project'] - Base path for the project
+   * @param {string} [patterns='node_modules/\n*.log\n.DS_Store\n/dist/'] - Default gitignore patterns
+   * 
+   * @example
+   * setupBasicGitignore();
+   * // or
+   * setupBasicGitignore('/custom/path', '*.txt\n/build/');
+   */
+  setupBasicGitignore: function(projectPath = '/project', patterns = 'node_modules/\n*.log\n.DS_Store\n/dist/') {
+    return addVirtualGitignoreFile(`${projectPath}/.gitignore`, patterns);
+  },
+  
+  /**
+   * Clears the gitignore cache to ensure test isolation
+   * 
+   * This should be called in beforeEach to prevent test interdependencies
+   * 
+   * @example
+   * beforeEach(() => {
+   *   clearGitignoreCache();
+   * });
+   */
+  clearGitignoreCache: function() {
+    if (gitignoreUtils.clearIgnoreCache) {
+      gitignoreUtils.clearIgnoreCache();
+    }
+  },
+  
+  /**
+   * Creates a mock gitignore result for a path
+   * 
+   * @param {boolean} shouldIgnore - Whether the path should be ignored
+   * @returns {Function} A mock function that returns the specified result
+   * 
+   * @example
+   * const mockIgnore = createGitignoreMock(true);
+   * jest.spyOn(gitignoreUtils, 'shouldIgnorePath').mockImplementation(mockIgnore);
+   */
+  createGitignoreMock: function(shouldIgnore = true) {
+    return jest.fn().mockResolvedValue(shouldIgnore);
   }
 };

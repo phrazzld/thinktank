@@ -11,7 +11,8 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 import fsPromises from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { readFileContent, fileExists, writeFile, FileReadError, getConfigDir, getConfigFilePath } from '../fileReader';
+import { FileReadError } from '../fileReaderTypes';
+import { readFileContent, fileExists, writeFile, getConfigDir, getConfigFilePath } from '../fileReader';
 
 // Mock os module
 jest.mock('os');
@@ -293,11 +294,11 @@ describe('File Reader', () => {
       });
       
       // Set up spy to simulate permission error
-      // Important: The fs module has to be mocked *each time* it's called
+      // Using createFsError helper to create standardized error objects
       const accessSpy = jest.spyOn(fsPromises, 'access');
-      accessSpy.mockImplementation(() => {
-        throw createFsError('EACCES', 'Permission denied', 'access', testFilePath);
-      });
+      accessSpy.mockRejectedValueOnce(
+        createFsError('EACCES', 'Permission denied', 'access', testFilePath)
+      );
       
       await expect(readFileContent(testFilePath)).rejects.toThrow(FileReadError);
       await expect(readFileContent(testFilePath)).rejects.toThrow(/Permission denied/);
@@ -313,11 +314,11 @@ describe('File Reader', () => {
       });
       
       // Set up spy to simulate a generic error
-      // Important: The fs module has to be mocked *each time* it's called
+      // Using createFsError helper to create standardized error objects
       const accessSpy = jest.spyOn(fsPromises, 'access');
-      accessSpy.mockImplementation(() => {
-        throw createFsError('EINVAL', 'Invalid argument', 'access', testFilePath);
-      });
+      accessSpy.mockRejectedValueOnce(
+        createFsError('EINVAL', 'Invalid argument', 'access', testFilePath)
+      );
       
       await expect(readFileContent(testFilePath)).rejects.toThrow(FileReadError);
       await expect(readFileContent(testFilePath)).rejects.toThrow(/Error reading file/);

@@ -24,3 +24,9 @@ coverage/
 
 # Output directories
 thinktank-output/
+
+# Plan and task files
+*-plan.md
+*-PLAN.md
+*-task.md
+*-TASK.md

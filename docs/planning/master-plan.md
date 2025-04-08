@@ -1,5 +1,7 @@
 # Thinktank Test Suite and Architecture Refactoring Plan
 
+> **Note:** This plan outlines the architectural refactoring approach for testing. For current development tasks and priorities, see [BACKLOG.md](/BACKLOG.md).
+
 **Goal:** Refactor the test suite and application architecture to improve simplicity, maintainability, robustness, and extensibility, focusing on completing the migration to modern testing approaches and decoupling components for better testability.
 
 ## Phase 1: Complete `memfs` Migration for Filesystem Tests

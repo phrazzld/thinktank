@@ -43,7 +43,8 @@ import {
   styleDim
 } from '../utils/consoleUtils';
 import { logger } from '../utils/logger';
-import { readContextPaths, formatCombinedInput, ContextFileResult } from '../utils/fileReader';
+import { readContextPaths, formatCombinedInput } from '../utils/fileReader';
+import { ContextFileResult } from '../utils/fileReaderTypes';
 import {
   SetupWorkflowParams,
   SetupWorkflowResult,
@@ -264,7 +265,10 @@ export async function _processInput({
     }
     
     // 5. Count successful and error context files
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const successfulContextFiles = contextFiles.filter(file => file.error === null && file.content !== null);
+    
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     const errorContextFiles = contextFiles.filter(file => file.error !== null || file.content === null);
     
     // 6. Show warning for context files with errors
@@ -272,7 +276,9 @@ export async function _processInput({
       spinner.warn(styleWarning(`${errorContextFiles.length} of ${contextFiles.length} context files could not be read and will be skipped.`));
       
       // Log detailed information about each error file
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
       errorContextFiles.forEach(file => {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         logger.debug(`Context file error - ${file.path}: ${file.error?.message || 'Unknown error'}`);
       });
       
@@ -283,6 +289,7 @@ export async function _processInput({
     // 7. Combine context content with prompt if we have successful context files
     if (successfulContextFiles.length > 0) {
       // Use formatCombinedInput to merge the prompt with context files
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const combinedContent = formatCombinedInput(inputResult.content, contextFiles);
       
       // Update input result with the combined content

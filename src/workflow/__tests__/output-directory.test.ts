@@ -214,8 +214,8 @@ describe('Output Directory Feature', () => {
           outputDirPath
         );
       } catch (error) {
-        // Log the error but don't throw - simulate error handling
-        console.error('Error writing files:', error);
+        // Simulate error handling without actual console logging
+        // Don't log errors in tests to keep output clean
         // Continue execution
       }
       
