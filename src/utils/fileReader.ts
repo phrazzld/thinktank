@@ -638,7 +638,8 @@ export async function readContextPaths(
           if (error instanceof Error) {
             // Try to extract error code from various error types
             if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
-              errorCode = (error as NodeJS.ErrnoException).code;
+              // Make sure errorCode is never undefined
+              errorCode = (error as NodeJS.ErrnoException).code || 'UNKNOWN';
               
               if (errorCode === 'ENOENT') {
                 errorMessage = `File not found: ${pathToProcess}`;
@@ -791,7 +792,8 @@ export async function readDirectoryContents(
       if (error instanceof Error) {
         // Try to extract error code from various error types
         if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
-          errorCode = (error as NodeJS.ErrnoException).code;
+          // Make sure errorCode is never undefined
+          errorCode = (error as NodeJS.ErrnoException).code || 'UNKNOWN';
           
           if (errorCode === 'ENOENT') {
             errorMessage = `Directory not found: ${dirPath}`;

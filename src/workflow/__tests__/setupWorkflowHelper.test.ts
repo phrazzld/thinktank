@@ -106,11 +106,14 @@ describe('_setupWorkflow Helper', () => {
     // Verify mocks were called correctly
     expect(mockConfigManager.loadConfig).toHaveBeenCalledWith({ configPath: undefined });
     expect(nameGenerator.generateFunName).toHaveBeenCalled();
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith({
-      outputDirectory: undefined,
-      directoryIdentifier: undefined,
-      friendlyRunName: 'clever-meadow'
-    });
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+      {
+        outputDirectory: undefined,
+        directoryIdentifier: undefined,
+        friendlyRunName: 'clever-meadow'
+      },
+      mockFileSystem
+    );
 
     // Verify spinner interactions
     expect(mockSpinner.info).toHaveBeenCalledTimes(2);

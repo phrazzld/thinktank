@@ -250,7 +250,7 @@ describe('OutputHandler', () => {
       const outputDir = await createOutputDirectory({}, mockFileSystem);
       
       // Verify directory creation was called
-      expect(fs.mkdir).toHaveBeenCalled();
+      expect(mockFileSystem.mkdir).toHaveBeenCalled();
       
       // Verify returns expected directory path with timestamp
       expect(outputDir).toContain('run-');
@@ -326,16 +326,23 @@ describe('OutputHandler', () => {
       
       // We'll implement custom behavior for each call
       
-      // Mock writeFile to fail for the second file
-      jest.spyOn(fs, 'writeFile')
-        .mockImplementationOnce(async (filePath, content) => {
-          // For the first call, actually write to the virtual filesystem
+      // Mock writeFile in mockFileSystem with a counter to fail on the third call
+      // (The implementation calls writeFile twice for the first file - once for temp file and once for the actual file)
+      let writeCounter = 0;
+      mockFileSystem.writeFile = jest.fn().mockImplementation(async (filePath, content) => {
+        writeCounter++;
+        
+        // First two calls (for first file) succeed
+        if (writeCounter <= 2) {
           if (typeof filePath === 'string' && typeof content === 'string') {
             virtualFs.writeFileSync(filePath, content);
           }
           return undefined;
-        })
-        .mockRejectedValueOnce(createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/error-file.md'));
+        }
+        
+        // Third call (for second file) fails
+        throw createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/error-file.md');
+      });
       
       const result = await writeResponsesToFiles(
         [sampleResponse, sampleResponseWithError],

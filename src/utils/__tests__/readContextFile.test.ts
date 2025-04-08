@@ -12,6 +12,7 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { readContextFile, MAX_FILE_SIZE, isBinaryFile } from '../fileReader';
+import { ContextFileResult } from '../fileReaderTypes';
 import { ConcreteFileSystem } from '../../core/FileSystem';
 import logger from '../logger';
 
