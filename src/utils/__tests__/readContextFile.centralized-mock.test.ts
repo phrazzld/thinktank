@@ -27,6 +27,11 @@ describe('readContextFile with Centralized Mocks', () => {
     // Reset virtual filesystem and logger mocks
     resetVirtualFs();
     jest.clearAllMocks();
+    
+    // Setup mock implementations for logger methods
+    mockedLogger.warn.mockImplementation(message => {
+      console.warn(message);
+    });
   });
   
   afterEach(() => {
