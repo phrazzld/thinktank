@@ -184,13 +184,17 @@ describe('gitignoreUtils', () => {
   describe('shouldIgnorePath', () => {
     it('should return true for paths that match ignore patterns', async () => {
       // Test a file with .log extension which should be ignored per our gitignore content
-      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, 'test.log');
+      // Using a path that is within the test directory
+      const testLogPath = path.join(testDirPath, 'test.log');
+      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, testLogPath);
       expect(result).toBe(true);
     });
     
     it('should return false for paths that do not match ignore patterns', async () => {
       // Test a normal file that shouldn't be ignored
-      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, 'src/index.ts');
+      // Using a path that is within the test directory
+      const srcPath = path.join(testDirPath, 'src/index.ts');
+      const result = await gitignoreUtils.shouldIgnorePath(testDirPath, srcPath);
       expect(result).toBe(false);
     });
     
