@@ -26,7 +26,7 @@
   - **Depends On:** Create I/O interface
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
-- [ ] **Implement console adapter**
+- [x] **Implement console adapter**
   - **Action:** Create adapter implementing I/O interface for console output in `src/core/ConsoleAdapter.ts`.
   - **Depends On:** Create I/O interface
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
