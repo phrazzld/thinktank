@@ -27,17 +27,17 @@
   - **Depends On:** Create LLMClient interface implementation.
   - **AC Ref:** AC 3, AC 4
 
-- [ ] **Update unit tests for _executeQueries**
+- [x] **Update unit tests for _executeQueries**
   - **Action:** Modify the executeQueriesHelper.test.ts to use mock implementations of the LLMClient interface.
   - **Depends On:** Refactor _executeQueries to use dependency injection.
   - **AC Ref:** AC 4
 
-- [ ] **Refactor _setupWorkflow to use ConfigManager interface**
+- [x] **Refactor _setupWorkflow to use ConfigManager interface**
   - **Action:** Modify the _setupWorkflow function to accept and use the ConfigManagerInterface instead of direct config operations.
   - **Depends On:** Create ConfigManager interface implementation.
   - **AC Ref:** AC 3, AC 4
 
-- [ ] **Update unit tests for _setupWorkflow**
+- [x] **Update unit tests for _setupWorkflow**
   - **Action:** Modify the setupWorkflowHelper.test.ts to use mock implementations of the ConfigManagerInterface.
   - **Depends On:** Refactor _setupWorkflow to use ConfigManager interface.
   - **AC Ref:** AC 4

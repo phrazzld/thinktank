@@ -31,7 +31,7 @@ import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
-import { LLMClient } from '../core/interfaces';
+import { LLMClient, ConfigManagerInterface } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -139,6 +139,12 @@ export interface SetupWorkflowParams extends SpinnerContext {
    * The user-provided run options
    */
   options: RunOptions;
+  
+  /**
+   * Configuration manager for loading and saving application configuration
+   * Used for dependency injection to improve testability
+   */
+  configManager: ConfigManagerInterface;
 }
 
 /**

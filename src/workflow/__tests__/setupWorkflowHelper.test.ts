@@ -2,15 +2,23 @@
  * Unit tests for the _setupWorkflow helper function
  */
 import { _setupWorkflow } from '../runThinktankHelpers';
-import * as configManager from '../../core/configManager';
 import * as nameGenerator from '../../utils/nameGenerator';
 import * as outputHandler from '../outputHandler';
 import { ConfigError, FileSystemError, PermissionError } from '../../core/errors';
+import { ConfigManagerInterface } from '../../core/interfaces';
 
 // Mock dependencies
 jest.mock('../../core/configManager');
 jest.mock('../../utils/nameGenerator');
 jest.mock('../outputHandler');
+
+// Create a mock ConfigManagerInterface for testing
+class MockConfigManager implements ConfigManagerInterface {
+  loadConfig = jest.fn();
+  saveConfig = jest.fn();
+  getActiveConfigPath = jest.fn();
+  getDefaultConfigPath = jest.fn();
+}
 
 // Import spinner helper
 import { createMockSpinner } from './oraTestHelper';
@@ -20,10 +28,15 @@ const mockSpinner = createMockSpinner();
 
 describe('_setupWorkflow Helper', () => {
   // Reset all mocks before each test
+  // Create mockConfigManager before each test
+  let mockConfigManager: MockConfigManager;
+  
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset mockSpinner state
     mockSpinner.text = '';
+    // Create a fresh mockConfigManager for each test
+    mockConfigManager = new MockConfigManager();
   });
 
   // Sample app config for tests
@@ -46,7 +59,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should successfully set up the workflow', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
 
@@ -55,7 +68,8 @@ describe('_setupWorkflow Helper', () => {
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt'
-      }
+      },
+      configManager: mockConfigManager
     });
 
     // Verify the result
@@ -66,7 +80,7 @@ describe('_setupWorkflow Helper', () => {
     });
 
     // Verify mocks were called correctly
-    expect(configManager.loadConfig).toHaveBeenCalledWith({ configPath: undefined });
+    expect(mockConfigManager.loadConfig).toHaveBeenCalledWith({ configPath: undefined });
     expect(nameGenerator.generateFunName).toHaveBeenCalled();
     expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith({
       outputDirectory: undefined,
@@ -82,7 +96,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should use provided config path', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
 
@@ -92,16 +106,17 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt',
         configPath: '/custom/config.json'
-      }
+      },
+      configManager: mockConfigManager
     });
 
     // Verify configPath was passed
-    expect(configManager.loadConfig).toHaveBeenCalledWith({ configPath: '/custom/config.json' });
+    expect(mockConfigManager.loadConfig).toHaveBeenCalledWith({ configPath: '/custom/config.json' });
   });
 
   it('should use provided output directory', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/custom/output/dir/clever-meadow');
 
@@ -111,7 +126,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt',
         output: '/custom/output/dir'
-      }
+      },
+      configManager: mockConfigManager
     });
 
     // Verify output directory was passed
@@ -124,7 +140,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should use model identifier for directory naming', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
 
@@ -134,7 +150,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt',
         specificModel: 'mock:model'
-      }
+      },
+      configManager: mockConfigManager
     });
 
     // Verify directoryIdentifier was passed
@@ -147,7 +164,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should use group name for directory naming when provided', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
 
@@ -157,7 +174,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt',
         groupName: 'coding'
-      }
+      },
+      configManager: mockConfigManager
     });
 
     // Verify directoryIdentifier was passed
@@ -173,14 +191,15 @@ describe('_setupWorkflow Helper', () => {
     const configError = new ConfigError('Configuration loading failed', {
       suggestions: ['Check your config file']
     });
-    (configManager.loadConfig as jest.Mock).mockRejectedValue(configError);
+    mockConfigManager.loadConfig.mockRejectedValue(configError);
 
     // Call the function and expect it to throw
     await expect(_setupWorkflow({
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt'
-      }
+      },
+      configManager: mockConfigManager
     })).rejects.toThrow(ConfigError);
 
     // Verify spinner had the right text
@@ -189,7 +208,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should handle directory creation errors', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     
     const fsError = new Error('Directory creation failed');
@@ -201,7 +220,8 @@ describe('_setupWorkflow Helper', () => {
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt'
-      }
+      },
+      configManager: mockConfigManager
     })).rejects.toThrow(PermissionError);
 
     // Verify spinner had the right text
@@ -210,7 +230,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should handle ENOENT errors', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     
     const fsError = new Error('File or directory not found');
@@ -222,7 +242,8 @@ describe('_setupWorkflow Helper', () => {
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt'
-      }
+      },
+      configManager: mockConfigManager
     })).rejects.toThrow(FileSystemError);
 
     // Verify it produces the expected error message
@@ -231,7 +252,8 @@ describe('_setupWorkflow Helper', () => {
         spinner: mockSpinner,
         options: {
           input: 'test-prompt.txt'
-        }
+        },
+        configManager: mockConfigManager
       });
     } catch (error) {
       if (error instanceof FileSystemError) {
@@ -244,7 +266,7 @@ describe('_setupWorkflow Helper', () => {
 
   it('should handle generic errors with appropriate wrapping', async () => {
     // Setup mocks
-    (configManager.loadConfig as jest.Mock).mockResolvedValue(sampleConfig);
+    mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
     (outputHandler.createOutputDirectory as jest.Mock).mockRejectedValue(new Error('Unknown error'));
 
@@ -253,7 +275,8 @@ describe('_setupWorkflow Helper', () => {
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt'
-      }
+      },
+      configManager: mockConfigManager
     })).rejects.toThrow(FileSystemError);
 
     // Verify error is properly wrapped
@@ -262,7 +285,8 @@ describe('_setupWorkflow Helper', () => {
         spinner: mockSpinner,
         options: {
           input: 'test-prompt.txt'
-        }
+        },
+        configManager: mockConfigManager
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);

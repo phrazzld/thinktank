@@ -22,7 +22,7 @@
  * 
  * Error handling follows established contracts defined in runThinktankTypes.ts
  */
-import { loadConfig, findModelGroup } from '../core/configManager';
+import { findModelGroup } from '../core/configManager';
 import { generateFunName } from '../utils/nameGenerator';
 import { createOutputDirectory, processOutput, OutputHandlerError } from './outputHandler';
 import { 
@@ -70,7 +70,7 @@ import { QueryExecutorError, ModelQueryStatus } from './queryExecutor';
  * Handles configuration loading, run name generation, and output directory creation
  * with proper error handling and spinner updates.
  * 
- * @param params - Parameters containing the spinner and options
+ * @param params - Parameters containing the spinner, options, and configManager
  * @returns An object containing the configuration, run name, and output directory path
  * @throws 
  *   - ConfigError when config loading fails
@@ -79,12 +79,13 @@ import { QueryExecutorError, ModelQueryStatus } from './queryExecutor';
  */
 export async function _setupWorkflow({ 
   spinner, 
-  options 
+  options,
+  configManager 
 }: SetupWorkflowParams): Promise<SetupWorkflowResult> {
   try {
-    // 1. Load configuration
+    // 1. Load configuration using the injected configManager
     spinner.text = 'Loading configuration...';
-    const config = await loadConfig({ configPath: options.configPath });
+    const config = await configManager.loadConfig({ configPath: options.configPath });
     spinner.text = 'Configuration loaded successfully';
     
     // 2. Generate a friendly run name

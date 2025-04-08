@@ -179,10 +179,15 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   spinner.start();
   
   try {
+    // Create dependency instances for injection
+    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    const llmClient: LLMClient = new ConcreteLLMClient(configManager);
+    
     // 1. Setup workflow: Load configuration, generate run name, create output directory
     const setupResult = await _setupWorkflow({
       spinner,
-      options
+      options,
+      configManager
     });
     
     // Update workflow state with setup results
@@ -227,12 +232,6 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     logger.plain(modelList);
     // Restart spinner for next step
     spinner.start();
-    
-    // Create a ConcreteConfigManager instance for injection
-    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
-    
-    // Create a ConcreteLLMClient instance for injection
-    const llmClient: LLMClient = new ConcreteLLMClient(configManager);
     
     // 4. Execute queries: Query the selected models with the processed input (including context if any)
     const queryResults = await _executeQueries({
