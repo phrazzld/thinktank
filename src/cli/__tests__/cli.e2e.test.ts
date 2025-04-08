@@ -55,7 +55,6 @@ describe('CLI E2E Tests', () => {
     shouldSkipCliTests = skipTests || !cliBuilt;
     
     if (shouldSkipCliTests) {
-      // Skip tests silently - don't use console.log in tests
       return;
     }
     

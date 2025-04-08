@@ -53,7 +53,7 @@
 
 ## Code Cleanup
 
-- [ ] **Remove debugging code from tests**
+- [x] **Remove debugging code from tests**
   - **Action:** Remove all console.log statements and other debugging code from test files to reduce noise during test execution.
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 7.

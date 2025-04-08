@@ -100,8 +100,6 @@ describe('Google Provider', () => {
         await provider.listModels('invalid-key');
         fail('Expected error to be thrown');
       } catch (error) {
-        console.log('Error details:', JSON.stringify(error, null, 2));
-        
         // Verify error is an ApiError and ThinktankError
         expect(error).toBeInstanceOf(ApiError);
         expect(error).toBeInstanceOf(ThinktankError);

@@ -1,4 +1,11 @@
-import { createVirtualFs, resetVirtualFs, getVirtualFs, mockFsModules, addVirtualGitignoreFile } from '../virtualFsUtils';
+import { 
+  createVirtualFs, 
+  resetVirtualFs, 
+  getVirtualFs, 
+  mockFsModules, 
+  addVirtualGitignoreFile,
+  normalizePathForMemfs
+} from '../virtualFsUtils';
 
 // Set up mocks for fs modules outside of any test
 jest.mock('fs', () => mockFsModules().fs);
@@ -12,6 +19,38 @@ describe('virtualFsUtils', () => {
   beforeEach(() => {
     // Reset the virtual filesystem before each test
     resetVirtualFs();
+  });
+  
+  describe('normalizePathForMemfs', () => {
+    it('adds leading slash to paths', () => {
+      expect(normalizePathForMemfs('path/to/file')).toBe('/path/to/file');
+      expect(normalizePathForMemfs('/path/to/file')).toBe('/path/to/file');
+    });
+
+    it('converts backslashes to forward slashes', () => {
+      expect(normalizePathForMemfs('path\\to\\file')).toBe('/path/to/file');
+    });
+
+    it('handles Windows-style paths with drive letters', () => {
+      expect(normalizePathForMemfs('C:\\path\\to\\file')).toBe('/C:/path/to/file');
+      expect(normalizePathForMemfs('C:/path/to/file')).toBe('/C:/path/to/file');
+    });
+
+    it('normalizes directory traversal', () => {
+      expect(normalizePathForMemfs('/path/to/../other/file')).toBe('/path/other/file');
+      expect(normalizePathForMemfs('path/./to/file')).toBe('/path/to/file');
+    });
+
+    it('handles empty paths', () => {
+      expect(normalizePathForMemfs('')).toBe('/');
+      expect(normalizePathForMemfs(null as unknown as string)).toBe('/');
+      expect(normalizePathForMemfs(undefined as unknown as string)).toBe('/');
+    });
+
+    it('handles dot paths', () => {
+      expect(normalizePathForMemfs('.')).toBe('/.');
+      expect(normalizePathForMemfs('./')).toBe('/');
+    });
   });
   
   describe('createVirtualFs', () => {

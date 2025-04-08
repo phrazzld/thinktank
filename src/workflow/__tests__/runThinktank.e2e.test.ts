@@ -178,9 +178,7 @@ describe('runThinktank End-to-End Tests', () => {
   
   // Skip tests conditionally
   beforeEach(() => {
-    if (skipTests) {
-      // Skip tests silently - don't use console.log in tests
-    }
+    // This is intentionally empty to skip tests when needed
   });
   
   it('should process a prompt file and generate output files', async () => {
