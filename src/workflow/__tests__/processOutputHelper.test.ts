@@ -82,9 +82,9 @@ describe('_processOutput Helper', () => {
     includeMetadata: true
   };
 
-  it('should generate file data for each response', async () => {
+  it('should generate file data for each response', () => {
     // Act
-    const result = await _processOutput({
+    const result = _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
       options: sampleOptions
@@ -127,7 +127,7 @@ describe('_processOutput Helper', () => {
     };
 
     // Act
-    const result = await _processOutput({
+    const result = _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
       options
@@ -158,9 +158,9 @@ describe('_processOutput Helper', () => {
     );
   });
 
-  it('should update the spinner with processing information', async () => {
+  it('should update the spinner with processing information', () => {
     // Act
-    await _processOutput({
+    _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
       options: sampleOptions
@@ -178,11 +178,11 @@ describe('_processOutput Helper', () => {
     });
 
     // Act & Assert
-    await expect(_processOutput({
+    expect(() => _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
       options: sampleOptions
-    })).rejects.toThrow(ThinktankError);
+    })).toThrow(ThinktankError);
     
     // Reset the mock and make it throw again for the second test
     (outputHandler.formatResponseAsMarkdown as jest.Mock).mockImplementationOnce(() => {
@@ -190,10 +190,10 @@ describe('_processOutput Helper', () => {
     });
     
     // Verify the error message
-    await expect(_processOutput({
+    expect(() => _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
       options: sampleOptions
-    })).rejects.toThrow('Error formatting output: Formatting error');
+    })).toThrow('Error formatting output: Formatting error');
   });
 });

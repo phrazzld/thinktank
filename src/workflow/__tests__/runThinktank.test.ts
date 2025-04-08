@@ -566,14 +566,15 @@ describe('runThinktank with Interface Mocks', () => {
     });
     
     // Mock formatCompletionSummary to return known value
-    const formatCompletionSummary = require('../../utils/formatCompletionSummary').formatCompletionSummary;
+    // Use jest.requireMock to get mocked version
+    const formatCompletionSummary = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
     formatCompletionSummary.mockReturnValue({
       summaryText: 'Mock summary text',
       errorDetails: []
     });
     
-    // Make sure mock returns a known value
-    const mockFormatCompletionSummary = require('../../utils/formatCompletionSummary').formatCompletionSummary;
+    // Make sure mock returns a known value (using jest.requireMock)
+    const mockFormatCompletionSummary = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
     mockFormatCompletionSummary.mockReturnValue({
       summaryText: 'Mock summary text',
       errorDetails: []

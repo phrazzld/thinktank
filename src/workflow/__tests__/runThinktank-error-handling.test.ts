@@ -632,7 +632,8 @@ describe('runThinktank Error Handling', () => {
     );
     
     // Verify the formatCompletionSummary was called
-    const formatCompletionSummary = require('../../utils/formatCompletionSummary').formatCompletionSummary;
+    // Need to use jest.requireMock here to get the mocked version
+    const formatCompletionSummary = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
     expect(formatCompletionSummary).toHaveBeenCalledWith(
       expect.objectContaining({
         successCount: 1,

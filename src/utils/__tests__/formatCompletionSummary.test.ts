@@ -6,20 +6,20 @@ import { CompletionSummaryData } from '../../workflow/types';
 
 // Mock these to prevent styles in tests
 jest.mock('../consoleUtils', () => {
-  const red = (text: string) => `RED(${text})`;
-  red.bold = (text: string) => `RED_BOLD(${text})`;
+  const red = (text: string): string => `RED(${text})`;
+  red.bold = (text: string): string => `RED_BOLD(${text})`;
   
   return {
     colors: {
       // Simple implementation of functions
-      blue: (text: string) => `BLUE(${text})`,
-      green: (text: string) => `GREEN(${text})`,
-      yellow: (text: string) => `YELLOW(${text})`,
+      blue: (text: string): string => `BLUE(${text})`,
+      green: (text: string): string => `GREEN(${text})`,
+      yellow: (text: string): string => `YELLOW(${text})`,
       red
     },
-    styleSuccess: (text: string) => `SUCCESS(${text})`,
-    styleError: (text: string) => `ERROR(${text})`,
-    styleDim: (text: string) => `DIM(${text})`
+    styleSuccess: (text: string): string => `SUCCESS(${text})`,
+    styleError: (text: string): string => `ERROR(${text})`,
+    styleDim: (text: string): string => `DIM(${text})`
   };
 });
 

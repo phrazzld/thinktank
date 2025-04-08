@@ -921,11 +921,11 @@ function updateModelStatus(
  * @throws 
  *   - ThinktankError for unexpected errors during formatting
  */
-export async function _processOutput({
+export function _processOutput({
   spinner,
   queryResults,
   options,
-}: ProcessOutputParams): Promise<PureProcessOutputResult> {
+}: ProcessOutputParams): PureProcessOutputResult {
   try {
     // 1. Update spinner with processing status
     spinner.text = 'Formatting results...';

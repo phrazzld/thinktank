@@ -262,7 +262,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     workflowState.queryResults = queryResults.queryResults;
     
     // 5. Process output: Generate structured data for file and console output
-    const processedOutput = await _processOutput({
+    const processedOutput = _processOutput({
       spinner,
       queryResults: queryResults.queryResults,
       options,
