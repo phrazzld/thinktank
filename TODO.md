@@ -29,19 +29,9 @@
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 3.
 
-- [ ] **Restore or relocate essential documentation**
-  - **Action:** Restore or relocate essential documentation that was deleted (TESTING.md, MASTER_PLAN.md, etc.) to maintain accessibility for users and contributors. Create a dedicated TESTING.md guide for practical testing instructions complementing TESTING_PHILOSOPHY.md, and consider a dedicated context-formatting.md document.
-  - **Depends On:** None.
-  - **AC Ref:** Critical Issue 3.
-
-- [ ] **Create testing approach documentation**
-  - **Action:** Create comprehensive documentation on the virtual filesystem testing approach, including examples and best practices for future contributors.
-  - **Depends On:** Fix skipped tests in readDirectoryContents.test.ts, Complete gitignore integration tests.
-  - **AC Ref:** Recommendation 7.
-
 ## Standardize Testing Infrastructure
 
-- [ ] **Implement consistent path normalization**
+- [x] **Implement consistent path normalization**
   - **Action:** Create and consistently use a standard path normalization utility across all tests to handle both Unix and Windows-style paths correctly.
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 5, Recommendation 6.
@@ -84,20 +74,3 @@
   - **Action:** Run test coverage analysis to ensure adequate coverage of all components, especially those affected by the refactoring.
   - **Depends On:** Fix skipped tests in readDirectoryContents.test.ts, Complete gitignore integration tests, Fix remaining skipped tests in other files.
   - **AC Ref:** Recommendation 2.
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Issue/Assumption:** Specific limitations of virtual filesystem for complex gitignore patterns
-  - **Context:** The code review mentions that tests for complex glob patterns were replaced with simpler tests due to limitations, but doesn't specify what these limitations are.
-
-- [ ] **Issue/Assumption:** Extent of remaining mocks
-  - **Context:** While the review identifies inconsistent mocking strategies, it's unclear how many files still use the old approach vs. the new virtual filesystem approach.
-
-- [ ] **Issue/Assumption:** Testing cross-platform behavior
-  - **Context:** The review mentions inconsistent path handling between Unix and Windows-style paths, but it's unclear if tests need to run on multiple platforms or if normalization utilities are sufficient.
-
-- [ ] **Issue/Assumption:** Documentation organization strategy
-  - **Context:** The review mentions deleted documentation files, but doesn't specify whether these should be restored in their original locations or reorganized into a new structure.
-
-- [ ] **Issue/Assumption:** Test isolation requirements
-  - **Context:** While the gitignore cache clearing issue is noted, it's unclear if there are other state-related issues that might affect test isolation.

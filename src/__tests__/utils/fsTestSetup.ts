@@ -11,7 +11,7 @@ import {
   createVirtualFs, 
   addVirtualGitignoreFile
 } from './virtualFsUtils';
-import { normalizePath } from './pathUtils';
+import { normalizePathGeneral } from '../../utils/pathUtils';
 
 /**
  * Sets up a basic filesystem with the specified file structure
@@ -58,14 +58,14 @@ export function setupProjectStructure(
   files: Record<string, string>
 ): void {
   // Normalize the base path
-  const normalizedBasePath = normalizePath(basePath, true);
+  const normalizedBasePath = normalizePathGeneral(basePath, true);
   
   // Create structure object with full paths
   const structure: Record<string, string> = {};
   
   // Add files with full paths
   Object.entries(files).forEach(([relativePath, content]) => {
-    const fullPath = normalizePath(path.join(normalizedBasePath, relativePath), true);
+    const fullPath = normalizePathGeneral(path.join(normalizedBasePath, relativePath), true);
     structure[fullPath] = content;
   });
   
@@ -103,7 +103,7 @@ export async function setupWithGitignore(
   setupProjectStructure(dirPath, files);
   
   // Add .gitignore file
-  const gitignorePath = normalizePath(path.join(dirPath, '.gitignore'), true);
+  const gitignorePath = normalizePathGeneral(path.join(dirPath, '.gitignore'), true);
   await addVirtualGitignoreFile(gitignorePath, gitignoreContent);
 }
 

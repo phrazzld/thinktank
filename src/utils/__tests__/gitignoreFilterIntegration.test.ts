@@ -8,7 +8,7 @@ import {
   resetVirtualFs,
   createVirtualFs
 } from '../../__tests__/utils/virtualFsUtils';
-import { normalizePath } from '../../__tests__/utils/pathUtils';
+import { normalizePathGeneral } from '../../utils/pathUtils';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -35,7 +35,7 @@ import * as gitignoreUtils from '../gitignoreUtils';
 import { readDirectoryContents } from '../fileReader';
 
 describe('gitignore filtering in directory traversal', () => {
-  const testDirPath = normalizePath(path.join('/', 'path', 'to', 'test', 'directory'), true);
+  const testDirPath = normalizePathGeneral(path.join('/', 'path', 'to', 'test', 'directory'), true);
   
   beforeEach(async () => {
     // Reset mocks and clear caches

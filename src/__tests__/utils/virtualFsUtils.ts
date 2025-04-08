@@ -38,6 +38,7 @@
 import { Volume, createFsFromVolume } from 'memfs';
 import type { IFs } from 'memfs';
 import * as nodeFs from 'fs';
+import path from 'path';
 
 // Create a volume that will be shared across all imports
 const vol = Volume.fromJSON({});
@@ -46,27 +47,57 @@ const vol = Volume.fromJSON({});
 const fs = createFsFromVolume(vol);
 
 /**
- * Normalizes a path for use with memfs
+ * Normalizes a path for use with memfs.
+ * 
+ * This function ensures path compatibility with the memfs virtual filesystem by:
+ * 1. Converting backslashes to forward slashes
+ * 2. Ensuring a leading slash
+ * 3. Handling Windows drive letters (C:\ to /C:/)
+ * 4. Normalizing . and .. segments
  * 
  * @param inputPath - The path to normalize
  * @returns A normalized path compatible with memfs
+ * 
+ * @example
+ * // Unix-style path
+ * normalizePathForMemfs('/path/to/file.txt') // returns '/path/to/file.txt'
+ * 
+ * @example
+ * // Windows-style path with drive letter
+ * normalizePathForMemfs('C:\\path\\to\\file.txt') // returns '/C:/path/to/file.txt'
+ * 
+ * @example
+ * // Relative path (gets leading slash added)
+ * normalizePathForMemfs('path/to/file.txt') // returns '/path/to/file.txt'
  */
 export function normalizePathForMemfs(inputPath: string): string {
   // Handle empty paths
   if (!inputPath) return '/';
   
+  // Handle special cases for dot paths
+  if (inputPath === '.') return '/.';
+  if (inputPath === './') return '/';
+  
   let normalizedPath = inputPath;
   
   // Handle Windows-style paths (C:\path\to\file)
-  if (/^[A-Za-z]:[/\\]/.test(inputPath)) {
+  if (/^[A-Za-z]:[/\\]/.test(normalizedPath)) {
     // Convert C:\path to /C:/path format
-    normalizedPath = '/' + inputPath.charAt(0) + ':' + inputPath.slice(2).replace(/\\/g, '/');
+    normalizedPath = '/' + normalizedPath.charAt(0) + ':' + normalizedPath.slice(2).replace(/\\/g, '/');
   } else {
     // For other paths, ensure they have a leading slash and use forward slashes
     normalizedPath = normalizedPath.replace(/\\/g, '/');
     if (!normalizedPath.startsWith('/')) {
       normalizedPath = '/' + normalizedPath;
     }
+  }
+  
+  // Normalize using path.posix to handle . and .. segments
+  normalizedPath = path.posix.normalize(normalizedPath);
+  
+  // Ensure leading slash is preserved
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
   }
   
   return normalizedPath;
