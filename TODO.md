@@ -58,7 +58,7 @@
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 7.
 
-- [ ] **Replace jest.spyOn with memfs helpers**
+- [x] **Replace jest.spyOn with memfs helpers**
   - **Action:** Refactor tests to use memfs helpers like createVirtualFs and createFsError instead of jest.spyOn where appropriate.
   - **Depends On:** Standardize mocking approach.
   - **AC Ref:** Additional Issue 6.

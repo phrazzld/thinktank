@@ -3,7 +3,8 @@
  */
 import { 
   mockFsModules, 
-  addVirtualGitignoreFile
+  addVirtualGitignoreFile,
+  createFsError
 } from '../../__tests__/utils/virtualFsUtils';
 import {
   setupBasicFiles,
@@ -98,8 +99,11 @@ describe('gitignoreUtils', () => {
       const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
       
       // Mock fs.readFile to simulate an error when reading a gitignore file
+      // Using createFsError helper to create a standardized error object
       const readFileSpy = jest.spyOn(fs, 'readFile');
-      readFileSpy.mockRejectedValue(new Error('Simulated read error'));
+      readFileSpy.mockRejectedValue(
+        createFsError('EACCES', 'Simulated read error', 'readFile', gitignorePath)
+      );
       
       // Add a real .gitignore file, but our mock will prevent it from being read
       await addVirtualGitignoreFile(gitignorePath, '*.log');
