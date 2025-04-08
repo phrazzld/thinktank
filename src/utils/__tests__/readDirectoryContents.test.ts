@@ -47,16 +47,9 @@ describe('readDirectoryContents', () => {
   // Use a relative path without leading slash for memfs compatibility
   const testDirPath = 'path/to/test/directory';
   
-  // Mock the implementation of readDirectoryContents to use our test mocks
-  // This is necessary because the actual implementation uses the real file system
-  // even though we've mocked fs/promises modules
-  const originalReadDirectoryContents = fileReader.readDirectoryContents;
-  beforeEach(() => {
-    // For each test, we'll customize the mocked readDirectoryContents implementation
-    // This is a hybrid approach - we're keeping the jest.spyOn for the readDirectoryContents function
-    // but using virtual filesystem for setup and state
-    jest.spyOn(fileReader, 'readDirectoryContents').mockImplementation(originalReadDirectoryContents);
-  });
+    // Instead of trying to mock and then implement with the original function,
+  // we'll just make sure our mocks for fs and fs/promises are properly set up
+  // and let the actual implementation use those mocks
   
   afterAll(() => {
     jest.restoreAllMocks();

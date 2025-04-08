@@ -2,6 +2,11 @@
 
 This backlog tracks planned work for the `thinktank` project, categorized by focus area.
 
+## PRIORITY
+* **[DX]** Migrate from npm to pnpm. Delete node_modules/ and run `pnpm install`. Probably need to delete `package-lock.json` and modify some stuff in `package.json` and maybe `README.md` and `CLAUDE.md` and `CONTRIBUTING.md` too.
+* **[DX]** Tidy up generated file structure / format. Don't include group name, for instance.
+* **[Feature]** Allow users to add a final *synthesize* step, sending all model outputs to a chosen model for summarization.
+
 ## 🧪 Testing & Testability Refactoring
 
 * **[Testing]** Fix skipped tests using Hybrid Virtual FS + Targeted Spies approach:
@@ -35,7 +40,6 @@ This backlog tracks planned work for the `thinktank` project, categorized by foc
 
 * **[Feature]** Allow users to save task prompts in their config file.
 * **[Feature]** Allow users to define an arbitrary number of steps in their task (e.g., Plan -> Critique -> Revise Plan).
-* **[Feature]** Allow users to add a final *synthesize* step, sending all model outputs to a chosen model for summarization.
 * **[Feature]** Support ad-hoc task/prompt definitions (passing a string instead of a filepath).
 * **[Feature]** Make it easy to write output to a logfile.
 * **[Feature]** Estimate cost per LLM request and log it. Integrate with provider cost APIs if possible.

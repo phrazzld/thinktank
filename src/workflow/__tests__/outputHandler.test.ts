@@ -3,6 +3,7 @@
  */
 import { mockFsModules, resetVirtualFs, getVirtualFs, createFsError } from '../../__tests__/utils/virtualFsUtils';
 import path from 'path';
+import { FileSystem } from '../../core/interfaces';
 
 // Setup mocks (must be before importing fs modules)
 jest.mock('fs', () => mockFsModules().fs);
@@ -28,6 +29,35 @@ const realDateNow = Date.now;
 const realDateToISOString = Date.prototype.toISOString;
 
 describe('OutputHandler', () => {
+  // Set up mock FileSystem implementation
+  const mockFileSystem: jest.Mocked<FileSystem> = {
+    readFileContent: jest.fn().mockResolvedValue('Test file content'),
+    writeFile: jest.fn().mockImplementation(async (filePath, content) => {
+      await fs.writeFile(filePath, content);
+    }),
+    fileExists: jest.fn().mockImplementation(async (filePath) => {
+      try {
+        await fs.access(filePath);
+        return true;
+      } catch {
+        return false;
+      }
+    }),
+    mkdir: jest.fn().mockImplementation(async (dirPath, options?) => {
+      await fs.mkdir(dirPath, options);
+    }),
+    readdir: jest.fn().mockResolvedValue(['file1.txt', 'file2.txt']),
+    stat: jest.fn().mockImplementation(async (path) => {
+      const stats = await fs.stat(path);
+      return stats;
+    }),
+    access: jest.fn().mockImplementation(async (path) => {
+      await fs.access(path);
+    }),
+    getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
+    getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+  };
+
   // Set up test environment
   beforeEach(() => {
     jest.clearAllMocks();
@@ -43,9 +73,16 @@ describe('OutputHandler', () => {
     // Mock Date.prototype.toISOString for consistent timestamps in formatted content
     Date.prototype.toISOString = jest.fn(() => mockDateISOString);
     
-    // Spy on fs functions to track calls without affecting behavior
-    jest.spyOn(fs, 'mkdir');
-    jest.spyOn(fs, 'writeFile');
+    // Reset mockFileSystem methods
+    Object.values(mockFileSystem).forEach(method => {
+      if (jest.isMockFunction(method)) {
+        method.mockClear();
+      }
+    });
+    
+    // Spy on mockFileSystem functions to track calls
+    jest.spyOn(mockFileSystem, 'mkdir');
+    jest.spyOn(mockFileSystem, 'writeFile');
   });
   
   // Restore Date methods after tests
@@ -210,7 +247,7 @@ describe('OutputHandler', () => {
   
   describe('Directory Creation', () => {
     it('should create output directory', async () => {
-      const outputDir = await createOutputDirectory();
+      const outputDir = await createOutputDirectory({}, mockFileSystem);
       
       // Verify directory creation was called
       expect(fs.mkdir).toHaveBeenCalled();
@@ -227,7 +264,7 @@ describe('OutputHandler', () => {
     it('should not include identifier in directory name after refactoring', async () => {
       const outputDir = await createOutputDirectory({
         directoryIdentifier: 'test-run'
-      });
+      }, mockFileSystem);
       
       // After refactoring, the directory name should NOT include the identifier
       expect(outputDir).not.toContain('test-run-');
@@ -246,7 +283,7 @@ describe('OutputHandler', () => {
       );
       
       // Verify error is thrown
-      await expect(createOutputDirectory()).rejects.toThrow('Failed to create output directory');
+      await expect(createOutputDirectory({}, mockFileSystem)).rejects.toThrow('Failed to create output directory');
     });
   });
   
@@ -258,11 +295,13 @@ describe('OutputHandler', () => {
       
       const result = await writeResponsesToFiles(
         [sampleResponse, sampleResponseWithGroup],
-        '/test/output/dir'
+        '/test/output/dir',
+        {},
+        mockFileSystem
       );
       
-      // Verify writes were called
-      expect(fs.writeFile).toHaveBeenCalledTimes(2);
+      // Verify writes were called - 3 writes per file (tmp, final, cleanup)
+      expect(mockFileSystem.writeFile).toHaveBeenCalledTimes(6);
       
       // Verify result structure
       expect(result.succeededWrites).toBe(2);
@@ -301,7 +340,8 @@ describe('OutputHandler', () => {
       const result = await writeResponsesToFiles(
         [sampleResponse, sampleResponseWithError],
         '/test/output/dir',
-        { throwOnError: false }
+        { throwOnError: false },
+        mockFileSystem
       );
       
       // Verify one success, one failure
@@ -320,8 +360,8 @@ describe('OutputHandler', () => {
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
       
-      // Mock writeFile to fail
-      jest.spyOn(fs, 'writeFile')
+      // Mock mockFileSystem.writeFile to fail
+      mockFileSystem.writeFile
         .mockRejectedValueOnce(createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/file.md'));
       
       // We'll catch the error but expect it to still update tracking info
@@ -329,15 +369,16 @@ describe('OutputHandler', () => {
         await writeResponsesToFiles(
           [sampleResponse],
           '/test/output/dir',
-          { throwOnError: true }
+          { throwOnError: true },
+          mockFileSystem
         );
         fail('Error should have been thrown');
       } catch (error) {
         // Expected error
       }
       
-      // Reset mockImplementation and use a version that actually writes to the virtual filesystem
-      jest.spyOn(fs, 'writeFile').mockReset().mockImplementation(async (filePath, content) => {
+      // Reset mockFileSystem.writeFile implementation to write to the virtual filesystem
+      mockFileSystem.writeFile.mockReset().mockImplementation(async (filePath, content) => {
         // Actually write to the virtual filesystem
         if (typeof filePath === 'string' && typeof content === 'string') {
           virtualFs.writeFileSync(filePath, content);
@@ -348,7 +389,8 @@ describe('OutputHandler', () => {
       const result = await writeResponsesToFiles(
         [sampleResponseWithError], // Use a different response
         '/test/output/dir',
-        { throwOnError: false }
+        { throwOnError: false },
+        mockFileSystem
       );
       
       // Should still track error counts properly
@@ -364,8 +406,8 @@ describe('OutputHandler', () => {
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
       
-      // Ensure the mock implementation actually writes to the virtual filesystem
-      jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, content) => {
+      // Ensure the mockFileSystem.writeFile implementation writes to the virtual filesystem
+      mockFileSystem.writeFile.mockImplementation(async (filePath, content) => {
         // Actually write to the virtual filesystem
         if (typeof filePath === 'string' && typeof content === 'string') {
           virtualFs.writeFileSync(filePath, content);
@@ -379,7 +421,8 @@ describe('OutputHandler', () => {
       await writeResponsesToFiles(
         [sampleResponse],
         '/test/output/dir',
-        { onStatusUpdate: onStatusUpdateSpy }
+        { onStatusUpdate: onStatusUpdateSpy },
+        mockFileSystem
       );
       
       // Verify callback was called at least once
@@ -404,7 +447,7 @@ describe('OutputHandler', () => {
         return undefined;
       });
       
-      jest.spyOn(fs, 'writeFile').mockImplementation(async (filePath, content) => {
+      mockFileSystem.writeFile.mockImplementation(async (filePath, content) => {
         if (typeof filePath === 'string' && typeof content === 'string') {
           getVirtualFs().writeFileSync(filePath, content);
         }
@@ -416,7 +459,8 @@ describe('OutputHandler', () => {
         {
           includeMetadata: true,
           useTable: true
-        }
+        },
+        mockFileSystem
       );
       
       // Verify both outputs are present
@@ -424,8 +468,9 @@ describe('OutputHandler', () => {
       expect(result.consoleOutput).toBeDefined();
       
       // Verify directory creation and file writes were called
-      expect(fs.mkdir).toHaveBeenCalled();
-      expect(fs.writeFile).toHaveBeenCalledTimes(2);
+      expect(mockFileSystem.mkdir).toHaveBeenCalled();
+      // 3 calls per file (tmp, final, cleanup)
+      expect(mockFileSystem.writeFile).toHaveBeenCalledTimes(6);
       
       // Verify file output structure
       expect(result.fileOutput.succeededWrites).toBe(2);
@@ -446,15 +491,16 @@ describe('OutputHandler', () => {
     });
     
     it('should handle errors during processing', async () => {
-      // Mock mkdir to fail
-      jest.spyOn(fs, 'mkdir').mockRejectedValueOnce(
+      // Mock mockFileSystem.mkdir to fail
+      mockFileSystem.mkdir.mockRejectedValueOnce(
         createFsError('EACCES', 'Permission denied', 'mkdir', '/path')
       );
       
       // Verify error is thrown
       await expect(processOutput(
         [sampleResponse],
-        {}
+        {},
+        mockFileSystem
       )).rejects.toThrow(OutputHandlerError);
     });
   });

@@ -134,6 +134,28 @@ describe('runThinktank End-to-End Tests', () => {
       return undefined;
     });
     
+    // Mock the modelSelector module to bypass API key validation and return default mocked models
+    jest.mock('../modelSelector', () => {
+      return {
+        selectModels: jest.fn().mockImplementation(() => {
+          // Return a valid selection result with our test models
+          return {
+            models: [
+              {
+                provider: 'mock',
+                modelId: 'mock-model',
+                enabled: true,
+                options: { temperature: 0.7 }
+              }
+            ],
+            missingApiKeyModels: [],
+            disabledModels: [],
+            warnings: []
+          };
+        })
+      };
+    });
+    
     // Setup test environment with real filesystem
     tempDir = await createTempTestDir();
     promptPath = await createTestFile(tempDir, 'test-prompt.txt', 'This is a test prompt.');

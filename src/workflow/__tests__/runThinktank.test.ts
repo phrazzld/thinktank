@@ -476,7 +476,8 @@ describe('runThinktank with Interface Mocks', () => {
     emptyModelSelectionResult.modelSelectionResult = emptyModelSelectionResult;
     
     // Import the actual modelSelector module to override just its method
-    const modelSelector = require('../modelSelector');
+    // Get reference to the mocked modelSelector
+    const modelSelector = jest.requireMock('../modelSelector');
     const originalSelectModels = modelSelector.selectModels;
     
     // Replace with our empty model selection implementation

@@ -5,7 +5,8 @@ import { _setupWorkflow } from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
 import * as outputHandler from '../outputHandler';
 import { ConfigError, FileSystemError, PermissionError } from '../../core/errors';
-import { ConfigManagerInterface } from '../../core/interfaces';
+import { ConfigManagerInterface, FileSystem } from '../../core/interfaces';
+import { Stats } from 'fs';
 
 // Mock dependencies
 jest.mock('../../core/configManager');
@@ -19,6 +20,22 @@ class MockConfigManager implements ConfigManagerInterface {
   getActiveConfigPath = jest.fn();
   getDefaultConfigPath = jest.fn();
 }
+
+// Create a mock FileSystem for testing
+const mockFileSystem: jest.Mocked<FileSystem> = {
+  readFileContent: jest.fn().mockResolvedValue('Test file content'),
+  writeFile: jest.fn().mockResolvedValue(undefined),
+  fileExists: jest.fn().mockResolvedValue(true),
+  mkdir: jest.fn().mockResolvedValue(undefined),
+  readdir: jest.fn().mockResolvedValue(['file1.txt', 'file2.txt']),
+  stat: jest.fn().mockResolvedValue({ 
+    isFile: () => true,
+    isDirectory: () => false 
+  } as unknown as Stats),
+  access: jest.fn().mockResolvedValue(undefined),
+  getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
+  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+};
 
 // Import spinner helper
 import { createMockSpinner } from './oraTestHelper';
@@ -37,6 +54,12 @@ describe('_setupWorkflow Helper', () => {
     mockSpinner.text = '';
     // Create a fresh mockConfigManager for each test
     mockConfigManager = new MockConfigManager();
+    // Reset mockFileSystem methods
+    Object.values(mockFileSystem).forEach(method => {
+      if (jest.isMockFunction(method)) {
+        method.mockClear();
+      }
+    });
   });
 
   // Sample app config for tests
@@ -69,7 +92,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     });
 
     // Verify the result
@@ -107,7 +131,8 @@ describe('_setupWorkflow Helper', () => {
         input: 'test-prompt.txt',
         configPath: '/custom/config.json'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     });
 
     // Verify configPath was passed
@@ -127,15 +152,19 @@ describe('_setupWorkflow Helper', () => {
         input: 'test-prompt.txt',
         output: '/custom/output/dir'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     });
 
-    // Verify output directory was passed
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith({
-      outputDirectory: '/custom/output/dir',
-      directoryIdentifier: undefined,
-      friendlyRunName: 'clever-meadow'
-    });
+    // Verify output directory was passed, with the fileSystem parameter
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+      {
+        outputDirectory: '/custom/output/dir',
+        directoryIdentifier: undefined,
+        friendlyRunName: 'clever-meadow'
+      },
+      mockFileSystem
+    );
   });
 
   it('should use model identifier for directory naming', async () => {
@@ -151,15 +180,19 @@ describe('_setupWorkflow Helper', () => {
         input: 'test-prompt.txt',
         specificModel: 'mock:model'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     });
 
     // Verify directoryIdentifier was passed
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith({
-      outputDirectory: undefined,
-      directoryIdentifier: 'mock:model',
-      friendlyRunName: 'clever-meadow'
-    });
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+      {
+        outputDirectory: undefined,
+        directoryIdentifier: 'mock:model',
+        friendlyRunName: 'clever-meadow'
+      },
+      mockFileSystem
+    );
   });
 
   it('should use group name for directory naming when provided', async () => {
@@ -175,15 +208,19 @@ describe('_setupWorkflow Helper', () => {
         input: 'test-prompt.txt',
         groupName: 'coding'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     });
 
     // Verify directoryIdentifier was passed
-    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith({
-      outputDirectory: undefined,
-      directoryIdentifier: 'coding',
-      friendlyRunName: 'clever-meadow'
-    });
+    expect(outputHandler.createOutputDirectory).toHaveBeenCalledWith(
+      {
+        outputDirectory: undefined,
+        directoryIdentifier: 'coding',
+        friendlyRunName: 'clever-meadow'
+      },
+      mockFileSystem
+    );
   });
 
   it('should handle config loading errors', async () => {
@@ -199,7 +236,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     })).rejects.toThrow(ConfigError);
 
     // Verify spinner had the right text
@@ -221,7 +259,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     })).rejects.toThrow(PermissionError);
 
     // Verify spinner had the right text
@@ -243,7 +282,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     })).rejects.toThrow(FileSystemError);
 
     // Verify it produces the expected error message
@@ -253,7 +293,8 @@ describe('_setupWorkflow Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        configManager: mockConfigManager
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       if (error instanceof FileSystemError) {
@@ -276,7 +317,8 @@ describe('_setupWorkflow Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      configManager: mockConfigManager
+      configManager: mockConfigManager,
+      fileSystem: mockFileSystem
     })).rejects.toThrow(FileSystemError);
 
     // Verify error is properly wrapped
@@ -286,7 +328,8 @@ describe('_setupWorkflow Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        configManager: mockConfigManager
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);
