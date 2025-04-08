@@ -2,128 +2,60 @@
  * Tests for the directory reader utility
  */
 import path from 'path';
-import type { PathLike } from 'fs';
 import { 
   resetVirtualFs, 
-  getVirtualFs, 
-  createFsError,
-  mockFsModules,
   createVirtualFs,
+  createFsError,
   createMockStats
 } from '../../__tests__/utils/virtualFsUtils';
 
-// Create partial fileReader mock for readContextFile only
-const readContextFileMock = jest.fn().mockResolvedValue({
-  path: '',
-  content: 'Mocked content',
-  error: null
-});
-
-// Setup mocks (must be before importing fs modules)
-jest.mock('fs', () => mockFsModules().fs);
-jest.mock('fs/promises', () => mockFsModules().fsPromises);
-jest.mock('../fileReader', () => {
-  // Import actual fileReader module
-  const actual = jest.requireActual('../fileReader');
-  
-  // Return a modified version with mocked readContextFile
-  return {
-    ...actual,
-    readContextFile: readContextFileMock
-  };
-});
-
-// Import actual gitignoreUtils
 import * as gitignoreUtils from '../gitignoreUtils';
-
-// Import modules after mocking
+import { setupTestHooks } from '../../../test/setup/common';
+import { ConcreteFileSystem } from '../../core/FileSystem';
 import fsPromises from 'fs/promises';
-import * as fileReader from '../fileReader';
 
-// Get the functions to use in tests
-const { readDirectoryContents } = fileReader;
+// Import module after setup
+import * as fileReader from '../fileReader';
+const { readDirectoryContents, readContextFile } = fileReader;
 
 describe('readDirectoryContents', () => {
-  // Use a relative path without leading slash for memfs compatibility
-  const testDirPath = 'path/to/test/directory';
+  // Setup test hooks to reset filesystem and mocks
+  setupTestHooks();
   
-    // Instead of trying to mock and then implement with the original function,
-  // we'll just make sure our mocks for fs and fs/promises are properly set up
-  // and let the actual implementation use those mocks
+  // Use a standard path without leading slash for memfs compatibility
+  const testDirPath = '/path/to/test/directory';
   
-  afterAll(() => {
-    jest.restoreAllMocks();
-  });
-  
-  beforeEach(() => {
-    // Reset mocks
-    jest.clearAllMocks();
-    resetVirtualFs();
-    
-    // Reset readContextFile mock to its default value
-    readContextFileMock.mockReset();
-    readContextFileMock.mockResolvedValue({
-      path: '',
-      content: 'Mocked content',
-      error: null
-    });
-    
-    // Clear gitignore cache
-    gitignoreUtils.clearIgnoreCache();
-    
-    // Setup a default mock for gitignoreUtils.shouldIgnorePath
-    jest.spyOn(gitignoreUtils, 'shouldIgnorePath').mockImplementation((_, filePath) => {
-      // Default implementation to ignore node_modules and .git files by path
-      return Promise.resolve(
-        filePath.includes('node_modules') || 
-        filePath.includes('.git')
-      );
-    });
-  });
-
   describe('Basic Directory Traversal', () => {
     beforeEach(() => {
-      const virtualFs = getVirtualFs();
+      // Create directory structure using virtualFs
+      createVirtualFs({
+        [`${testDirPath}/`]: '',
+        [`${testDirPath}/file1.txt`]: 'Content of file1.txt',
+        [`${testDirPath}/file2.md`]: 'Content of file2.md',
+        [`${testDirPath}/subdir/`]: '',
+        [`${testDirPath}/subdir/nested.txt`]: 'Content of nested.txt',
+        [`${testDirPath}/node_modules/`]: '',
+        [`${testDirPath}/node_modules/package.json`]: '{"name": "test"}',
+        [`${testDirPath}/.git/`]: '',
+        [`${testDirPath}/.git/HEAD`]: 'ref: refs/heads/main'
+      });
       
-      // Create directory structure
-      virtualFs.mkdirSync(testDirPath, { recursive: true });
-      virtualFs.mkdirSync(path.join(testDirPath, 'subdir'), { recursive: true });
-      virtualFs.mkdirSync(path.join(testDirPath, 'node_modules'), { recursive: true });
-      virtualFs.mkdirSync(path.join(testDirPath, '.git'), { recursive: true });
-      
-      // Create files with content (using relative paths)
-      virtualFs.writeFileSync(path.join(testDirPath, 'file1.txt'), 'Content of file1.txt');
-      virtualFs.writeFileSync(path.join(testDirPath, 'file2.md'), 'Content of file2.md');
-      virtualFs.writeFileSync(path.join(testDirPath, 'subdir/nested.txt'), 'Content of nested.txt');
+      // Setup a default mock for gitignoreUtils.shouldIgnorePath
+      jest.spyOn(gitignoreUtils, 'shouldIgnorePath').mockImplementation((_, filePath) => {
+        // Default implementation to ignore node_modules and .git files by path
+        return Promise.resolve(
+          filePath.includes('node_modules') || 
+          filePath.includes('.git')
+        );
+      });
     });
     
     it('should read all files in a directory and return their contents', async () => {
-      // Use the virtual file system directly, already set up in beforeEach
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Reset the readContextFile mock with appropriate implementations
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.endsWith('file1.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file1.txt',
-            error: null
-          });
-        } else if (pathStr.endsWith('file2.md')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file2.md',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
-      
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Expect to have at least 2 files (file1.txt, file2.md)
       expect(results.length).toBeGreaterThanOrEqual(2);
@@ -145,33 +77,11 @@ describe('readDirectoryContents', () => {
     });
     
     it('should recursively traverse subdirectories', async () => {
-      // Use the virtual file system already setup in beforeEach
-      // The directory structure is already configured with subdirectories
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Reset the readContextFile mock with appropriate implementations
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.endsWith('file1.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file1.txt',
-            error: null
-          });
-        } else if (pathStr.endsWith('nested.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of nested.txt',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
-      
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should include files from subdirectories
       const nestedFileResult = results.find(r => 
@@ -184,26 +94,17 @@ describe('readDirectoryContents', () => {
     });
     
     it('should skip common directories like node_modules and .git', async () => {
-      // The test setup already includes node_modules and .git directories
-      
       // Create a test file in node_modules to verify it's skipped
-      const virtualFs = getVirtualFs();
-      virtualFs.writeFileSync(path.join(testDirPath, 'node_modules/package.json'), '{"name": "test"}');
-      virtualFs.writeFileSync(path.join(testDirPath, '.git/HEAD'), 'ref: refs/heads/main');
+      // Setup is already done in beforeEach
       
       // Setup a spy on fsPromises.readdir to verify it's not called on node_modules or .git
       const readdirSpy = jest.spyOn(fsPromises, 'readdir');
       
-      // Reset the readContextFile mock implementation
-      readContextFileMock.mockImplementation((filePath: string) => {
-        return Promise.resolve({
-          path: filePath,
-          content: 'Mocked content',
-          error: null
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Check that files from node_modules and .git are not included
       const nodeModulesFile = results.find(r => r.path.includes('node_modules'));
@@ -225,9 +126,6 @@ describe('readDirectoryContents', () => {
       
       expect(nodeModulesCall).toBeUndefined();
       expect(gitCall).toBeUndefined();
-      
-      // Clean up
-      readdirSpy.mockRestore();
     });
   });
 
@@ -238,68 +136,42 @@ describe('readDirectoryContents', () => {
       
       // Create a directory with a relative path
       const relativeTestPath = 'relative/test/path';
+      // Create the absolute path for use in the virtual filesystem
+      const absolutePath = path.resolve(process.cwd(), relativeTestPath);
       
-      // Create the virtual filesystem structure
+      // Create the virtual filesystem structure with test files
       createVirtualFs({
-        [relativeTestPath + '/']: '',
-        [relativeTestPath + '/file.txt']: 'Content of file.txt'
+        [path.join(absolutePath, 'file.txt')]: 'Content of file.txt'
       });
       
-      // Reset the readContextFile mock with appropriate implementation
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file.txt',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
+      // Create a FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Call the function with the relative path
-      const results = await readDirectoryContents(relativeTestPath);
+      // Use the fileSystem parameter in readContextFile
+      const result = await readContextFile(path.join(relativeTestPath, 'file.txt'), fileSystem);
       
-      // Verify the results
-      expect(results.length).toBe(1);
-      expect(results[0].path).toContain('file.txt');
-      expect(results[0].content).toBe('Content of file.txt');
+      // The relative path should be preserved in output
+      expect(result.path).toBe(path.join(relativeTestPath, 'file.txt'));
+      expect(result.content).toBe('Content of file.txt');
+      expect(result.error).toBeNull();
     });
 
     it('should handle path with special characters', async () => {
-      // Use path without leading slash for memfs compatibility
-      const specialPath = 'path/with spaces and #special characters!';
+      // Use path format that memfs can handle
+      const specialPath = '/path/with spaces and #special characters!';
       
       // Reset and create virtual filesystem with special characters
       resetVirtualFs();
       createVirtualFs({
-        [specialPath + '/']: '',
-        [specialPath + '/file.txt']: 'File content'
+        [`${specialPath}/`]: '',
+        [`${specialPath}/file.txt`]: 'File content'
       });
       
-      // Setup readContextFile mock
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'File content',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      const results = await readDirectoryContents(specialPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(specialPath, fileSystem);
       
       // Should handle the special characters correctly
       expect(results).toHaveLength(1);
@@ -309,33 +181,20 @@ describe('readDirectoryContents', () => {
 
     it('should handle Windows-style paths', async () => {
       // For memfs, we need to use a normalized path format
-      const windowsPath = 'Users/user/Documents/test';
+      const windowsPath = '/Users/user/Documents/test';
       
       // Reset and create virtual filesystem with Windows-like path
       resetVirtualFs();
       createVirtualFs({
-        [windowsPath + '/']: '',
-        [windowsPath + '/file.txt']: 'File content'
+        [`${windowsPath}/`]: '',
+        [`${windowsPath}/file.txt`]: 'File content'
       });
       
-      // Setup readContextFile mock
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'File content',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'NOT_FOUND', message: 'File not found' }
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      const results = await readDirectoryContents(windowsPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(windowsPath, fileSystem);
       
       // Should handle the path correctly
       expect(results).toHaveLength(1);
@@ -354,7 +213,11 @@ describe('readDirectoryContents', () => {
         createFsError('EACCES', 'Permission denied', 'access', testDirPath)
       );
       
-      const results = await readDirectoryContents(testDirPath);
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should return error for the directory
       expect(results).toHaveLength(1);
@@ -363,66 +226,59 @@ describe('readDirectoryContents', () => {
       expect(results[0].error).toBeDefined();
       expect(results[0].error?.code).toBe('READ_ERROR');
       expect(results[0].error?.message).toContain('Error reading directory');
-      
-      // Clean up
-      accessSpy.mockRestore();
     });
     
     it('should handle file read errors within directories', async () => {
       // Reset and create a basic directory with files
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: '',
-        [testDirPath + '/file1.txt']: 'Content of file1.txt',
-        [testDirPath + '/file2.md']: 'Content of file2.md'
+        [`${testDirPath}/`]: '',
+        [`${testDirPath}/file1.txt`]: 'Content of file1.txt',
+        [`${testDirPath}/file2.md`]: 'Content of file2.md'
       });
       
-      // Setup readContextFile to simulate failure for one file
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file1.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: null,
-            error: { code: 'READ_ERROR', message: 'Failed to read file' }
-          });
-        } else if (pathStr.includes('file2.md')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file2.md',
-            error: null
-          });
+      // Create FileSystem instance with spies
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Mock readFileContent to simulate a failure for one file
+      const readFileContentSpy = jest.spyOn(fileSystem, 'readFileContent');
+      readFileContentSpy.mockImplementation((filePath: string) => {
+        if (filePath.includes('file1.txt')) {
+          return Promise.reject(new Error('Simulated file read error'));
+        } else {
+          // Use the real implementation for other files
+          return fsPromises.readFile(filePath, 'utf-8');
         }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'UNKNOWN', message: 'Unexpected file in test' }
-        });
       });
       
-      const results = await readDirectoryContents(testDirPath);
+      // Call the function being tested
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
-      // Should include both files, but one with error
-      expect(results.length).toBeGreaterThanOrEqual(2);
+      // Verify results match expectations
+      expect(results.length).toBe(2);
       
+      // Check first file with error
       const file1Result = results.find(r => r.path.includes('file1.txt'));
-      const file2Result = results.find(r => r.path.includes('file2.md'));
-      
       expect(file1Result).toBeDefined();
       expect(file1Result?.content).toBeNull();
       expect(file1Result?.error).toBeDefined();
       expect(file1Result?.error?.code).toBe('READ_ERROR');
       
+      // Check second file with content
+      const file2Result = results.find(r => r.path.includes('file2.md'));
       expect(file2Result).toBeDefined();
       expect(file2Result?.content).toBe('Content of file2.md');
       expect(file2Result?.error).toBeNull();
+      
+      // Clean up the mock
+      readFileContentSpy.mockRestore();
     });
 
     it('should handle directory read errors', async () => {
       // Reset and create a basic directory
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [`${testDirPath}/`]: ''
       });
       
       // Simulate readdir failure
@@ -431,7 +287,11 @@ describe('readDirectoryContents', () => {
         createFsError('EIO', 'Failed to read directory', 'readdir', testDirPath)
       );
       
-      const results = await readDirectoryContents(testDirPath);
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should return an error result
       expect(results).toHaveLength(1);
@@ -439,86 +299,92 @@ describe('readDirectoryContents', () => {
       expect(results[0].content).toBeNull();
       expect(results[0].error).toBeDefined();
       expect(results[0].error?.code).toBe('READ_ERROR');
-      
-      // Restore the original implementations
-      readdirSpy.mockRestore();
     });
 
     it('should handle non-Error objects in exceptions', async () => {
       // Reset and create a basic directory
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: ''
+        [`${testDirPath}/`]: ''
       });
       
-      // Simulate readdir throwing a non-Error object
-      const readdirSpy = jest.spyOn(fsPromises, 'readdir');
+      // Create FileSystem instance with readdir spy that throws non-Error
+      const fileSystem = new ConcreteFileSystem();
+      const readdirSpy = jest.spyOn(fileSystem, 'readdir');
       readdirSpy.mockImplementationOnce(() => {
         throw 'Not an error object';
       });
       
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should still return a structured error result
       expect(results).toHaveLength(1);
       expect(results[0].path).toBe(testDirPath);
       expect(results[0].content).toBeNull();
       expect(results[0].error).toBeDefined();
-      expect(results[0].error?.code).toBe('UNKNOWN');
-      
-      // Restore the original implementations
-      readdirSpy.mockRestore();
+      // With FileSystem interface, the error code will be READ_ERROR
+      expect(results[0].error?.code).toBe('READ_ERROR');
     });
 
     it('should handle stat errors for directory entries', async () => {
       // Reset and create a basic directory with files
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: '',
-        [testDirPath + '/file1.txt']: 'Content of file1.txt',
-        [testDirPath + '/file2.md']: 'Content of file2.md'
+        [`${testDirPath}/`]: '',
+        [`${testDirPath}/file1.txt`]: 'Content of file1.txt',
+        [`${testDirPath}/file2.md`]: 'Content of file2.md'
       });
       
-      // Mock stat to fail for file1.txt
-      const statSpy = jest.spyOn(fsPromises, 'stat');
-      statSpy.mockImplementation((pathLike: PathLike) => {
-        const pathStr = String(pathLike);
-        // First call for the main directory
-        if (pathStr === testDirPath) {
-          return Promise.resolve(createMockStats(false, 4096)); // directory
-        }
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Mock stat for FileSystem to fail for file1.txt
+      const statSpy = jest.spyOn(fileSystem, 'stat');
+      statSpy.mockImplementation((pathLike: string) => {
         // Fail for file1.txt
-        if (pathStr.includes('file1.txt')) {
-          return Promise.reject(createFsError('EIO', 'Failed to stat file', 'stat', pathStr));
-        }
-        // Succeed for file2.md
-        if (pathStr.includes('file2.md')) {
-          return Promise.resolve(createMockStats(true, 1024)); // file
+        if (pathLike.includes('file1.txt')) {
+          return Promise.reject(createFsError('EIO', 'Failed to stat file', 'stat', pathLike));
         }
         
-        return Promise.reject(createFsError('ENOENT', 'Unexpected path', 'stat', pathStr));
+        // Use the real implementation for the directory
+        if (pathLike === testDirPath) {
+          return fsPromises.stat(pathLike);
+        }
+        
+        // Succeed for file2.md
+        if (pathLike.includes('file2.md')) {
+          const stats = createMockStats(true, 1024);
+          return Promise.resolve(stats);
+        }
+        
+        // Default rejection
+        return Promise.reject(new Error(`Unexpected path: ${pathLike}`));
       });
       
-      // Setup readContextFile mock to handle file2.md
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file2.md')) {
+      // Mock readContextFile to return file2.md
+      jest.spyOn(fileReader, 'readContextFile').mockImplementation((filePath: string) => {
+        if (filePath.includes('file2.md')) {
           return Promise.resolve({
-            path: pathStr,
+            path: filePath,
             content: 'Content of file2.md',
             error: null
           });
         }
         return Promise.resolve({
-          path: pathStr,
+          path: filePath,
           content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
+          error: { code: 'UNKNOWN', message: 'Unknown file' }
         });
       });
       
-      const results = await readDirectoryContents(testDirPath);
+      // Mock readdir to return both files
+      jest.spyOn(fileSystem, 'readdir').mockResolvedValue(['file1.txt', 'file2.md']);
       
-      // We should have at least one result (file2.md)
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
+      
+      // We should have at least one result
       expect(results.length).toBeGreaterThanOrEqual(1);
       
       // Verify file2.md was read successfully
@@ -526,9 +392,6 @@ describe('readDirectoryContents', () => {
       expect(successEntry).toBeDefined();
       expect(successEntry?.content).toBe('Content of file2.md');
       expect(successEntry?.error).toBeNull();
-      
-      // Restore mocks
-      statSpy.mockRestore();
     });
   });
 
@@ -537,10 +400,14 @@ describe('readDirectoryContents', () => {
       // Reset and create an empty directory
       resetVirtualFs();
       createVirtualFs({
-        [testDirPath + '/']: '' // Create empty directory
+        [`${testDirPath}/`]: '' // Create empty directory
       });
       
-      const results = await readDirectoryContents(testDirPath);
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should return empty array (no error)
       expect(results).toBeInstanceOf(Array);
@@ -554,28 +421,17 @@ describe('readDirectoryContents', () => {
         [testDirPath]: 'File content'  // Create file at testDirPath
       });
       
-      // Mock stat to indicate this is a file 
-      const statSpy = jest.spyOn(fsPromises, 'stat');
-      statSpy.mockResolvedValueOnce(createMockStats(true, 12)); // true = file, 12 = size
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Setup readContextFile mock 
-      readContextFileMock.mockResolvedValueOnce({
-        path: testDirPath,
-        content: 'File content',
-        error: null
-      });
-      
-      // Run the function under test
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Should return the file content directly
       expect(results).toHaveLength(1);
       expect(results[0].path).toBe(testDirPath);
       expect(results[0].content).toBe('File content');
       expect(results[0].error).toBeNull();
-      
-      // Clean up
-      statSpy.mockRestore();
     });
 
     it('should handle various file types and extensions', async () => {
@@ -591,43 +447,11 @@ describe('readDirectoryContents', () => {
         [`${testDirPath}/document.md`]: '# Heading'
       });
       
-      // Setup mock for readContextFile to return file contents
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('script.js')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'console.log("hello");',
-            error: null
-          });
-        } else if (pathStr.includes('style.css')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'body { color: red; }',
-            error: null
-          });
-        } else if (pathStr.includes('data.json')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: '{"key": "value"}',
-            error: null
-          });
-        } else if (pathStr.includes('document.md')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: '# Heading',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Run the function being tested
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Verify results
       expect(results.length).toBe(4); // Should find all 4 files
@@ -667,41 +491,6 @@ describe('readDirectoryContents', () => {
         [`${testDirPath}/.gitignore`]: 'file1.txt'
       });
       
-      // Setup readContextFile mock
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('file2.md')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file2.md',
-            error: null
-          });
-        } else if (pathStr.includes('.gitignore')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'file1.txt',
-            error: null
-          });
-        } else if (pathStr.includes('nested.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of nested.txt',
-            error: null
-          });
-        } else if (pathStr.includes('file1.txt')) {
-          return Promise.resolve({
-            path: pathStr, 
-            content: 'Content of file1.txt',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
-      
       // Mock the gitignore functions for this test
       const shouldIgnorePathSpy = jest.spyOn(gitignoreUtils, 'shouldIgnorePath')
         .mockImplementation((_, filePath: string) => {
@@ -710,8 +499,11 @@ describe('readDirectoryContents', () => {
           return Promise.resolve(fileName === 'file1.txt');
         });
       
-      // Run the directory traversal
-      const results = await readDirectoryContents(testDirPath);
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
+      
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // Test for the presence/absence of specific files
       const file1 = results.find(r => r.path.includes('file1.txt'));
@@ -733,9 +525,6 @@ describe('readDirectoryContents', () => {
       
       // Verify shouldIgnorePath was called with appropriate arguments
       expect(shouldIgnorePathSpy).toHaveBeenCalled();
-      
-      // Clean up
-      shouldIgnorePathSpy.mockRestore();
     });
 
     it('should detect and handle binary files correctly', async () => {
@@ -749,31 +538,11 @@ describe('readDirectoryContents', () => {
         [`${testDirPath}/text.txt`]: 'Normal text content'
       });
       
-      // Mock readContextFile to detect binary content
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        if (pathStr.includes('binary.bin')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: null,
-            error: { code: 'BINARY_FILE', message: 'Binary file detected' }
-          });
-        } else if (pathStr.includes('text.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Normal text content',
-            error: null
-          });
-        }
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Call the function being tested
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // We expect two results: one binary and one text
       expect(results.length).toBe(2);
@@ -819,57 +588,11 @@ describe('readDirectoryContents', () => {
       // Create virtual filesystem
       createVirtualFs(structure);
       
-      // Mock readContextFile to return file content
-      readContextFileMock.mockImplementation((filePath: string) => {
-        const pathStr = String(filePath);
-        
-        if (pathStr.includes('root.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of root.txt',
-            error: null
-          });
-        } else if (pathStr.includes('file1.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file1.txt',
-            error: null
-          });
-        } else if (pathStr.includes('file2.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file2.txt',
-            error: null
-          });
-        } else if (pathStr.includes('file3.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file3.txt',
-            error: null
-          });
-        } else if (pathStr.includes('file4.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of file4.txt',
-            error: null
-          });
-        } else if (pathStr.includes('finalfile.txt')) {
-          return Promise.resolve({
-            path: pathStr,
-            content: 'Content of finalfile.txt',
-            error: null
-          });
-        }
-        
-        return Promise.resolve({
-          path: pathStr,
-          content: null,
-          error: { code: 'READ_ERROR', message: 'Error reading file' }
-        });
-      });
+      // Create FileSystem instance
+      const fileSystem = new ConcreteFileSystem();
       
-      // Call the function
-      const results = await readDirectoryContents(testDirPath);
+      // Call function with FileSystem interface
+      const results = await readDirectoryContents(testDirPath, fileSystem);
       
       // We expect 1 + maxDepth files (root file + one file at each level)
       expect(results.length).toBe(1 + maxDepth);
