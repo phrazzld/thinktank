@@ -37,7 +37,7 @@ import { ContextFileResult } from '../../utils/fileReaderTypes';
  * @deprecated Use setupBasicFs and other helpers from jest/setupFiles/fs instead
  * @returns Object containing mock functions matching the fileReader module interface
  */
-export const createFileReaderMocks = (): ReturnType<typeof jest.fn> & { [key: string]: any } => {
+export const createFileReaderMocks = (): { [key: string]: jest.Mock | number } => {
   const mockFileReadError = jest.fn().mockImplementation((message: string, cause?: Error) => {
     const error = new Error(message);
     Object.defineProperty(error, 'name', { value: 'FileReadError' });

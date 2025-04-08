@@ -26,17 +26,18 @@ export function createMockLlmResponse(
   error?: Error | null
 ): LLMResponse {
   return {
+    provider: providerId,
     modelId,
-    providerId,
-    response: responseText,
-    rawResponse: { text: responseText },
-    error: error || null,
-    usage: {
-      promptTokens: 100,
-      completionTokens: 50,
-      totalTokens: 150
-    },
-    timestamp: new Date().toISOString()
+    text: responseText,
+    error: error ? error.message : undefined,
+    metadata: {
+      usage: {
+        promptTokens: 100,
+        completionTokens: 50,
+        totalTokens: 150
+      },
+      timestamp: new Date().toISOString()
+    }
   };
 }
 

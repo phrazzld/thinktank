@@ -41,13 +41,25 @@ export function createMinimalConfig(): AppConfig {
 export function createRealisticConfig(customConfig: Partial<AppConfig> = {}): AppConfig {
   const defaultConfig: AppConfig = {
     models: [
-      { id: 'openai:gpt-4o' },
-      { id: 'anthropic:claude-3-7-sonnet-20240229' },
-      { id: 'google:gemini-pro' }
+      { provider: 'openai', modelId: 'gpt-4o', enabled: true },
+      { provider: 'anthropic', modelId: 'claude-3-7-sonnet-20240229', enabled: true },
+      { provider: 'google', modelId: 'gemini-pro', enabled: true }
     ],
     groups: {
-      default: ['openai:gpt-4o'],
-      faves: ['openai:gpt-4o', 'anthropic:claude-3-7-sonnet-20240229', 'google:gemini-pro']
+      default: { 
+        name: 'default',
+        systemPrompt: { text: 'Default system prompt' },
+        models: [{ provider: 'openai', modelId: 'gpt-4o', enabled: true }]
+      },
+      faves: { 
+        name: 'faves',
+        systemPrompt: { text: 'Favorite models prompt' },
+        models: [
+          { provider: 'openai', modelId: 'gpt-4o', enabled: true },
+          { provider: 'anthropic', modelId: 'claude-3-7-sonnet-20240229', enabled: true },
+          { provider: 'google', modelId: 'gemini-pro', enabled: true }
+        ]
+      }
     }
   };
   
@@ -132,8 +144,8 @@ export function setupConfigPrecedenceTest(baseDir: string = '/project'): {
   
   // Create configs with different settings to test precedence
   const defaultConfig = createMinimalConfig();
-  const userConfig = createRealisticConfig({ models: [{ id: 'user:model' }] });
-  const xdgConfig = createRealisticConfig({ models: [{ id: 'xdg:model' }] });
+  const userConfig = createRealisticConfig({ models: [{ provider: 'user', modelId: 'model', enabled: true }] });
+  const xdgConfig = createRealisticConfig({ models: [{ provider: 'xdg', modelId: 'model', enabled: true }] });
   
   // Create all relevant files
   setupBasicFs({

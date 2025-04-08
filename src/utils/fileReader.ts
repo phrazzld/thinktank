@@ -410,10 +410,10 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
       };
     }
     
-    // Return successful result with content
+    // Return successful result with content (ensure empty string for empty files, not null)
     return {
       ...result,
-      content,
+      content: content || "", // Handle empty files consistently
       error: null
     };
   } catch (error) {

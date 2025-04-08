@@ -7,6 +7,10 @@
  * 
  * PREFERRED APPROACH: Import these helpers directly rather than using manual mocks or
  * mockFactories.ts to ensure consistent test behavior.
+ * 
+ * PATH HANDLING: Always use normalizePath() for all paths used with the virtual filesystem.
+ * This ensures paths are consistently normalized across operating systems. When setting up
+ * test files or asserting paths, always normalize both the expected and actual paths.
  */
 
 // Import the mock utilities
@@ -40,6 +44,10 @@ module.exports = {
    *   '/path/to/file.txt': 'File content',
    *   '/path/to/dir/file.js': 'console.log("Hello");'
    * });
+   * 
+   * NOTE: All paths in the structure will be automatically normalized to ensure consistency 
+   * across operating systems. It's still recommended to use the normalizePath() helper 
+   * for path keys in the structure to make the normalization explicit.
    */
   setupBasicFs: function(structure = {}, options = { reset: true }) {
     if (options.reset) {
@@ -128,5 +136,87 @@ module.exports = {
    */
   normalizePath: function(path) {
     return normalizePathForMemfs(path);
+  },
+
+  /**
+   * Normalizes a relative path from the virtual root
+   * 
+   * @param {string} relativePath - The relative path from virtual root
+   * @returns {string} The normalized absolute path
+   * 
+   * @example
+   * // Returns '/project/src/file.txt' (normalized for memfs)
+   * const path = normalizeTestPath('project/src/file.txt');
+   */
+  normalizeTestPath: function(relativePath) {
+    const pathModule = require('path');
+    return normalizePathForMemfs(pathModule.join('/', relativePath));
+  },
+
+  /**
+   * Inspects the current state of the virtual filesystem for debugging
+   * 
+   * @param {string} inspectPath - The path to inspect (defaults to root)
+   * @returns {Object} JSON representation of the virtual filesystem
+   * 
+   * @example
+   * // Log the entire virtual filesystem
+   * console.log(inspectVirtualFs());
+   * 
+   * // Log a specific directory
+   * console.log(inspectVirtualFs('/project'));
+   */
+  inspectVirtualFs: function(inspectPath = '/') {
+    const fs = getVirtualFs();
+    const fsState = fs.toJSON(inspectPath);
+    return fsState;
+  },
+
+  /**
+   * Creates a platform-specific test environment
+   * 
+   * @param {string} platform - The platform to simulate ('win32', 'darwin', 'linux')
+   * @param {Object} envVars - Environment variables to set
+   * @returns {Function} Function to restore the original environment
+   * 
+   * @example
+   * const restore = setupPlatformEnv('win32', { APPDATA: 'C:\\Users\\Test\\AppData\\Roaming' });
+   * // Run your tests...
+   * restore(); // Restore original environment
+   */
+  setupPlatformEnv: function(platform, envVars = {}) {
+    const originalPlatform = process.platform;
+    const originalEnvVars = {};
+
+    // Save original environment variables
+    Object.keys(envVars).forEach(key => {
+      originalEnvVars[key] = process.env[key];
+    });
+
+    // Set platform
+    Object.defineProperty(process, 'platform', { 
+      value: platform, 
+      configurable: true 
+    });
+
+    // Set environment variables
+    Object.keys(envVars).forEach(key => {
+      process.env[key] = envVars[key];
+    });
+
+    // Return function to restore original values
+    return function restoreEnv() {
+      Object.defineProperty(process, 'platform', { 
+        value: originalPlatform,
+        configurable: true 
+      });
+      Object.keys(originalEnvVars).forEach(key => {
+        if (originalEnvVars[key] === undefined) {
+          delete process.env[key];
+        } else {
+          process.env[key] = originalEnvVars[key];
+        }
+      });
+    };
   }
 };
