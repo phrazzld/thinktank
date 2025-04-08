@@ -52,12 +52,17 @@
   - **Depends On:** Refactor _processInput to use FileSystem interface.
   - **AC Ref:** AC 4
 
-- [ ] **Refactor _processOutput to use FileSystem interface**
+- [x] **Refactor _processOutput to use FileSystem interface**
   - **Action:** Modify the _processOutput function to use the FileSystem interface for writing output files.
   - **Depends On:** Create FileSystem interface implementation.
   - **AC Ref:** AC 3, AC 4
 
-- [ ] **Update unit tests for _processOutput**
+- [ ] **Change default query timeout (in milliseconds) to five minutes**
+  - **Action:** Create a named constant for this value and use it throughout, instead of the current ad-hoc 120000 approach
+  - **Depends On:** Nothing
+  - **AC Ref:** None
+
+- [x] **Update unit tests for _processOutput**
   - **Action:** Update the processOutputHelper.test.ts to use mock implementations of the FileSystem interface.
   - **Depends On:** Refactor _processOutput to use FileSystem interface.
   - **AC Ref:** AC 4

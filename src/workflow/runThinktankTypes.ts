@@ -145,6 +145,12 @@ export interface SetupWorkflowParams extends SpinnerContext {
    * Used for dependency injection to improve testability
    */
   configManager: ConfigManagerInterface;
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   */
+  fileSystem: FileSystem;
 }
 
 /**
@@ -412,6 +418,12 @@ export interface ProcessOutputParams extends SpinnerContext {
    * Friendly run name for display and reference
    */
   friendlyRunName: string;
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   */
+  fileSystem: FileSystem;
 }
 
 /**

@@ -189,7 +189,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const setupResult = await _setupWorkflow({
       spinner,
       options,
-      configManager
+      configManager,
+      fileSystem
     });
     
     // Update workflow state with setup results
@@ -255,7 +256,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       queryResults: queryResults.queryResults,
       outputDirectoryPath: setupResult.outputDirectoryPath,
       options,
-      friendlyRunName: setupResult.friendlyRunName
+      friendlyRunName: setupResult.friendlyRunName,
+      fileSystem  // Pass the FileSystem instance
     });
     
     // Update workflow state with output results

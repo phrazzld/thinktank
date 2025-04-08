@@ -6,6 +6,7 @@ import * as outputHandler from '../outputHandler';
 import { FileSystemError, PermissionError, ThinktankError } from '../../core/errors';
 import { OutputHandlerError } from '../outputHandler';
 import { ModelQueryStatus } from '../queryExecutor';
+import { FileSystem } from '../../core/interfaces';
 
 // Mock dependencies
 jest.mock('../outputHandler');
@@ -13,10 +14,28 @@ jest.mock('../outputHandler');
 // Import spinner helper
 import { createMockSpinner } from './oraTestHelper';
 
+// Create mock FileSystem
+const createMockFileSystem = (): jest.Mocked<FileSystem> => {
+  return {
+    readFileContent: jest.fn(),
+    writeFile: jest.fn(),
+    fileExists: jest.fn(),
+    mkdir: jest.fn(),
+    readdir: jest.fn(),
+    stat: jest.fn(),
+    access: jest.fn(),
+    getConfigDir: jest.fn(),
+    getConfigFilePath: jest.fn()
+  };
+};
+
 // Create a mock spinner
 const mockSpinner = createMockSpinner();
 
 describe('_processOutput Helper', () => {
+  // Create a mock FileSystem
+  const mockFileSystem = createMockFileSystem();
+  
   // Reset all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
@@ -88,7 +107,8 @@ describe('_processOutput Helper', () => {
         input: 'test-prompt.txt',
         includeMetadata: true
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     });
 
     // Verify the result
@@ -110,7 +130,8 @@ describe('_processOutput Helper', () => {
         outputDirectory: '/path/to/output/dir',
         friendlyRunName: 'clever-meadow',
         includeMetadata: true
-      })
+      }),
+      mockFileSystem
     );
 
     // Verify spinner interactions
@@ -163,7 +184,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     });
 
     // Verify spinner text updates from status updates
@@ -199,7 +221,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     });
 
     // Verify the result reflects partial success
@@ -246,7 +269,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     });
 
     // Verify the result shows all failures
@@ -272,7 +296,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(FileSystemError);
 
     // Verify proper error wrapping
@@ -284,7 +309,8 @@ describe('_processOutput Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);
@@ -310,7 +336,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(fsError);
   });
 
@@ -327,7 +354,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(permError);
   });
 
@@ -345,7 +373,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(PermissionError);
 
     // Verify proper error transformation
@@ -357,7 +386,8 @@ describe('_processOutput Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect(error).toBeInstanceOf(PermissionError);
@@ -383,7 +413,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(FileSystemError);
 
     // Verify proper error transformation
@@ -395,7 +426,8 @@ describe('_processOutput Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);
@@ -421,7 +453,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow(FileSystemError);
 
     // Verify error has appropriate message and suggestions
@@ -433,7 +466,8 @@ describe('_processOutput Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);
@@ -458,7 +492,8 @@ describe('_processOutput Helper', () => {
       options: {
         input: 'test-prompt.txt'
       },
-      friendlyRunName: 'clever-meadow'
+      friendlyRunName: 'clever-meadow',
+      fileSystem: mockFileSystem
     })).rejects.toThrow();
 
     // Verify proper error wrapping
@@ -470,7 +505,8 @@ describe('_processOutput Helper', () => {
         options: {
           input: 'test-prompt.txt'
         },
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
+        fileSystem: mockFileSystem
       });
     } catch (error) {
       expect((error as ThinktankError).message).toContain('Error processing output');

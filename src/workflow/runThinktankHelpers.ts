@@ -102,7 +102,7 @@ export async function _setupWorkflow({
       outputDirectory: options.output,
       directoryIdentifier,
       friendlyRunName
-    });
+    }, fileSystem); // Use the shared fileSystem instance
     spinner.info(styleInfo(`Output directory: ${outputDirectoryPath} (Run: ${friendlyRunName})`));
     spinner.start(); // Restart spinner for next step
     
@@ -922,7 +922,8 @@ export async function _processOutput({
   queryResults,
   outputDirectoryPath,
   options,
-  friendlyRunName
+  friendlyRunName,
+  fileSystem
 }: ProcessOutputParams): Promise<ProcessOutputResult> {
   try {
     // 1. Update spinner with processing status
@@ -976,7 +977,8 @@ export async function _processOutput({
     }));
     
     // 4. Process output (both file writing and console formatting)
-    const outputResult = await processOutput(responses, outputOptions);
+    // Pass the injected fileSystem to the outputHandler
+    const outputResult = await processOutput(responses, outputOptions, fileSystem);
     
     // 5. Update spinner with success/warning information based on results
     const { succeededWrites, failedWrites } = outputResult.fileOutput;
