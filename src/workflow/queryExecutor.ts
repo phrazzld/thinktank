@@ -17,6 +17,7 @@ import {
   ThinktankError,
   errorCategories
 } from '../core/errors';
+import { DEFAULT_QUERY_TIMEOUT_MS } from '../core/constants';
 
 /**
  * Error thrown by the QueryExecutor module
@@ -105,7 +106,7 @@ export interface QueryExecutionOptions {
   enableThinking?: boolean;
   
   /**
-   * Timeout in milliseconds for each query (default: 120000)
+   * Timeout in milliseconds for each query (default: 300000 - 5 minutes)
    */
   timeoutMs?: number;
   
@@ -280,6 +281,9 @@ export async function executeQueries(
     // Create a controller for the fetch abort
     const controller = new AbortController();
     
+    // Determine timeout value to use
+    const timeoutDuration = options.timeoutMs || DEFAULT_QUERY_TIMEOUT_MS;
+    
     // Create the promise for this model
     const queryPromise = Promise.race([
       provider.generate(options.prompt, model.modelId, modelOptions, systemPrompt),
@@ -288,11 +292,11 @@ export async function executeQueries(
         const timeoutId = setTimeout(() => {
           // Abort any ongoing fetch requests
           controller.abort();
-          reject(new Error(`Model ${modelKey} timed out after ${options.timeoutMs || 120000}ms. The API might be unresponsive.`));
-        }, options.timeoutMs || 120000); // Default to 2 minute timeout if not specified
+          reject(new Error(`Model ${modelKey} timed out after ${timeoutDuration}ms. The API might be unresponsive.`));
+        }, timeoutDuration); // Use the configured timeout duration
         
         // Clean up the timeout if the main promise resolves or rejects
-        setTimeout(() => clearTimeout(timeoutId), options.timeoutMs || 120000);
+        setTimeout(() => clearTimeout(timeoutId), timeoutDuration);
       })
     ])
       .then(response => {

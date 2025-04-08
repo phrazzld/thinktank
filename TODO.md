@@ -57,8 +57,8 @@
   - **Depends On:** Create FileSystem interface implementation.
   - **AC Ref:** AC 3, AC 4
 
-- [ ] **Change default query timeout (in milliseconds) to five minutes**
-  - **Action:** Create a named constant for this value and use it throughout, instead of the current ad-hoc 120000 approach
+- [x] **Change default query timeout (in milliseconds) to five minutes**
+  - **Action:** Created DEFAULT_QUERY_TIMEOUT_MS constant in src/core/constants.ts and updated all occurrences of 120000 to use this constant
   - **Depends On:** Nothing
   - **AC Ref:** None
 
