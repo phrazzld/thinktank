@@ -2,7 +2,7 @@
 
 ## Decouple Dependencies with Interfaces
 
-- [ ] **Create Interface definitions for external dependencies**
+- [x] **Create Interface definitions for external dependencies**
   - **Action:** Define interfaces for LLMClient, ConfigManagerInterface, and FileSystem in a new `src/core/interfaces.ts` file.
   - **Depends On:** None.
   - **AC Ref:** AC 2

@@ -11,9 +11,7 @@ import type {
   LLMResponse, 
   ModelOptions, 
   SystemPrompt, 
-  AppConfig,
-  ModelConfig, 
-  ModelGroup
+  AppConfig
 } from './types';
 import type { LoadConfigOptions } from './configManager';
 
