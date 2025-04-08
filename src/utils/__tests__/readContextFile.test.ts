@@ -24,7 +24,7 @@ describe('readContextFile', () => {
   const testContent = 'This is test content\nwith multiple lines.';
   
   // Create a helper function to simplify testing with the required FileSystem parameter
-  async function readFile(filePath: string) {
+  async function readFile(filePath: string): Promise<ContextFileResult> {
     const fileSystem = new ConcreteFileSystem();
     return readContextFile(filePath, fileSystem);
   }

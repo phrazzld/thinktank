@@ -118,7 +118,7 @@ export function createMockFetchFailure(errorMessage: string): jest.Mock {
  */
 export function setupProviderMock(providerId: string, responseText: string): {
   mockFetch: jest.Mock;
-  mockResponse: any;
+  mockResponse: Record<string, unknown>;
 } {
   let mockResponse;
   

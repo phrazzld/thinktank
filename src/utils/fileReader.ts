@@ -631,14 +631,14 @@ export async function readContextPaths(
           : path.resolve(process.cwd(), pathToProcess);
         
         // Create a function to handle access errors consistently
-        const handleAccessError = (error: unknown) => {
+        const handleAccessError = (error: unknown): ContextFileResult[] => {
           let errorCode = 'ACCESS_ERROR';
           let errorMessage = `Unable to access path: ${pathToProcess}`;
           
           if (error instanceof Error) {
             // Try to extract error code from various error types
-            if ('code' in error && typeof (error as any).code === 'string') {
-              errorCode = (error as any).code;
+            if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
+              errorCode = (error as NodeJS.ErrnoException).code;
               
               if (errorCode === 'ENOENT') {
                 errorMessage = `File not found: ${pathToProcess}`;
@@ -784,14 +784,14 @@ export async function readDirectoryContents(
       : path.resolve(process.cwd(), dirPath);
     
     // Create a function to handle access errors consistently
-    const handleAccessError = (error: unknown) => {
+    const handleAccessError = (error: unknown): ContextFileResult[] => {
       let errorCode = 'ACCESS_ERROR';
       let errorMessage = `Unable to access path: ${dirPath}`;
       
       if (error instanceof Error) {
         // Try to extract error code from various error types
-        if ('code' in error && typeof (error as any).code === 'string') {
-          errorCode = (error as any).code;
+        if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
+          errorCode = (error as NodeJS.ErrnoException).code;
           
           if (errorCode === 'ENOENT') {
             errorMessage = `Directory not found: ${dirPath}`;

@@ -94,9 +94,13 @@ export function mockConsoleOutput(): {
   mockWarn: jest.Mock;
   restore: () => void;
 } {
+  // eslint-disable-next-line no-console
   const originalLog = console.log;
+  // eslint-disable-next-line no-console
   const originalError = console.error;
+  // eslint-disable-next-line no-console
   const originalInfo = console.info;
+  // eslint-disable-next-line no-console
   const originalWarn = console.warn;
   
   const mockLog = jest.fn();
@@ -104,9 +108,13 @@ export function mockConsoleOutput(): {
   const mockInfo = jest.fn();
   const mockWarn = jest.fn();
   
+  // eslint-disable-next-line no-console
   console.log = mockLog;
+  // eslint-disable-next-line no-console
   console.error = mockError;
+  // eslint-disable-next-line no-console
   console.info = mockInfo;
+  // eslint-disable-next-line no-console
   console.warn = mockWarn;
   
   return {
@@ -115,9 +123,13 @@ export function mockConsoleOutput(): {
     mockInfo,
     mockWarn,
     restore: () => {
+      // eslint-disable-next-line no-console
       console.log = originalLog;
+      // eslint-disable-next-line no-console
       console.error = originalError;
+      // eslint-disable-next-line no-console
       console.info = originalInfo;
+      // eslint-disable-next-line no-console
       console.warn = originalWarn;
     }
   };
