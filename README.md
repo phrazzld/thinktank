@@ -2,7 +2,7 @@
 
 A powerful CLI tool for querying multiple Large Language Models (LLMs) with the same prompt and comparing their responses.
 
-> 📚 **Documentation**: The repository contains comprehensive documentation including the [testing guide](TESTING.md), [context formatting documentation](docs/features/context-formatting.md), and [project planning](docs/planning/master-plan.md).
+> 📚 **Documentation**: The repository contains comprehensive documentation including the [testing philosophy](TESTING_PHILOSOPHY.md), [context formatting](#including-context-files-and-directories), and [project planning](docs/planning/master-plan.md).
 
 ## Overview
 
@@ -127,7 +127,7 @@ This feature is particularly useful for:
 - Including configuration files along with your prompt
 - Giving the LLM comprehensive background information
 
-For details on how context files are formatted and presented to LLMs, see [Context Formatting Documentation](docs/features/context-formatting.md).
+For details on how context files are formatted and presented to LLMs, see the [section above](#including-context-files-and-directories).
 
 #### Running with a Specific Group
 

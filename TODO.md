@@ -24,13 +24,13 @@
 
 ## Fix Documentation Issues
 
-- [ ] **Update README.md links**
+- [x] **Update README.md links**
   - **Action:** Fix broken links in README.md, ensuring they point to valid documentation resources.
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 3.
 
 - [ ] **Restore or relocate essential documentation**
-  - **Action:** Restore or relocate essential documentation that was deleted (TESTING.md, MASTER_PLAN.md, etc.) to maintain accessibility for users and contributors.
+  - **Action:** Restore or relocate essential documentation that was deleted (TESTING.md, MASTER_PLAN.md, etc.) to maintain accessibility for users and contributors. Create a dedicated TESTING.md guide for practical testing instructions complementing TESTING_PHILOSOPHY.md, and consider a dedicated context-formatting.md document.
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 3.
 
