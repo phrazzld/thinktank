@@ -8,7 +8,6 @@ import { runThinktank, RunOptions } from '../runThinktank';
 import { ApiError } from '../../core/errors';
 import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
-import { FileWriteStatus } from '../outputHandler';
 import { FileSystem, ConfigManagerInterface, LLMClient } from '../../core/interfaces';
 import { AppConfig, LLMResponse } from '../../core/types';
 import { Stats } from 'fs';
@@ -180,18 +179,11 @@ const mockQueryResult: ExecuteQueriesResult = {
 };
 
 const mockOutputResult = {
-  fileOutputResult: {
-    outputDirectory: '/mock/output/clever-meadow',
-    files: [{ 
-      modelKey: 'mock:mock-model', 
-      filename: 'mock-model.md', 
-      status: 'success' as FileWriteStatus,
-      filePath: '/mock/output/clever-meadow/mock-model.md'
-    }],
-    succeededWrites: 1,
-    failedWrites: 0,
-    timing: { startTime: 1, endTime: 2, durationMs: 1 }
-  },
+  files: [{ 
+    modelKey: 'mock:mock-model', 
+    filename: 'mock-model.md', 
+    content: 'Mock content'
+  }],
   consoleOutput: 'Mock console output'
 };
 
@@ -313,10 +305,10 @@ describe('runThinktank with Interface Mocks', () => {
     
     expect(processOutputSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        fileSystem: mockFileSystem,
         spinner: expect.any(Object),
         queryResults: expect.any(Object),
-        outputDirectoryPath: '/mock/output/clever-meadow'
+        options: expect.any(Object),
+        friendlyRunName: 'clever-meadow'
       })
     );
     
@@ -367,10 +359,8 @@ describe('runThinktank with Interface Mocks', () => {
     // Clear previous calls
     mockFileSystem.writeFile.mockClear();
 
-    // Override the processOutput spy to call the real FileSystem.writeFile method
-    processOutputSpy.mockImplementationOnce(async ({ fileSystem }) => {
-      // Actually call the mock FileSystem to verify it's properly passed
-      await fileSystem.writeFile('/mock/output/clever-meadow/mock-model.md', 'File content');
+    // Override the processOutput spy to return a valid mock
+    processOutputSpy.mockImplementationOnce(async () => {
       return mockOutputResult;
     });
 
@@ -409,8 +399,8 @@ describe('runThinktank with Interface Mocks', () => {
       input: 'test-prompt.txt'
     };
 
-    // Setup FileSystem method to throw an error when file doesn't exist
-    mockFileSystem.fileExists.mockResolvedValueOnce(false);
+    // Setup FileSystem method to throw an error
+    mockFileSystem.mkdir.mockRejectedValueOnce(new Error('Directory creation failed'));
     
     // Make sure our process step has sensible default behavior
     processInputSpy.mockResolvedValue(mockInputResult);
@@ -419,7 +409,7 @@ describe('runThinktank with Interface Mocks', () => {
     await runThinktank(options);
     
     // Just verify the function was called
-    expect(mockFileSystem.fileExists).toHaveBeenCalled();
+    expect(mockFileSystem.mkdir).toHaveBeenCalled();
   });
 
   it('should handle errors from the ConfigManager interface', async () => {
@@ -430,8 +420,11 @@ describe('runThinktank with Interface Mocks', () => {
     // Setup ConfigManager method to throw an error
     mockConfigManager.loadConfig.mockRejectedValueOnce(new Error('Config loading failed'));
     
-    // Let our setup spy continue to return a valid setup result
-    setupWorkflowSpy.mockResolvedValue(mockSetupResult);
+    // Force setup spy to handle the error and continue
+    setupWorkflowSpy.mockImplementationOnce(async () => {
+      // Handle the error gracefully for the test
+      return mockSetupResult;
+    });
 
     // The function will handle the error and keep going in our test environment
     await runThinktank(options);
@@ -533,6 +526,13 @@ describe('runThinktank with Interface Mocks', () => {
       useColors: true,
       output: '/custom/output'
     };
+    
+    // Override processOutputSpy to return a consistent console output
+    processOutputSpy.mockReset();
+    processOutputSpy.mockResolvedValue({
+      files: mockOutputResult.files,
+      consoleOutput: 'Mock console output'
+    });
     
     // Directly verify runThinktank returns expected value 
     const result = await runThinktank(options);

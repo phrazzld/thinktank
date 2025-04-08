@@ -30,6 +30,7 @@ export const errorCategories = {
   PERMISSION: 'Permission',
   VALIDATION: 'Validation',
   INPUT: 'Input',
+  OUTPUT_FORMATTING: 'Output Formatting',
   UNKNOWN: 'Unknown',
 };
 

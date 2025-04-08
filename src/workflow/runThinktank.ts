@@ -4,6 +4,7 @@
  * This module brings together all the specialized components and orchestrates the 
  * workflow, acting as the primary integration point for the application.
  */
+import path from 'path';
 import { 
   styleHeader,
   styleDim,
@@ -12,6 +13,7 @@ import {
 import { logger } from '../utils/logger';
 import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
 import { WorkflowState, EnhancedSpinner } from './runThinktankTypes';
+import { FileWriteDetail } from './outputHandler';
 import {
   _setupWorkflow,
   _processInput,
@@ -138,6 +140,11 @@ export interface RunOptions {
   enableThinking?: boolean;
   
   /**
+   * Whether to use a tabular format for displaying results
+   */
+  useTable?: boolean;
+  
+  /**
    * Timeout in milliseconds for each model query
    */
   timeoutMs?: number;
@@ -253,26 +260,104 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // Update workflow state with query results
     workflowState.queryResults = queryResults.queryResults;
     
-    // 5. Process output: Write results to files and format for console
-    const outputResult = await _processOutput({
+    // 5. Process output: Generate structured data for file and console output
+    const processedOutput = await _processOutput({
       spinner,
       queryResults: queryResults.queryResults,
-      outputDirectoryPath: setupResult.outputDirectoryPath,
       options,
-      friendlyRunName: setupResult.friendlyRunName,
-      fileSystem  // Pass the FileSystem instance
+      friendlyRunName: setupResult.friendlyRunName
     });
     
+    // Write the files to disk
+    spinner.text = 'Writing files to disk...';
+    
+    // Start timing for file operations
+    const fileWriteStartTime = Date.now();
+    
+    // Track file write stats
+    let succeededWrites = 0;
+    let failedWrites = 0;
+    const fileDetails: FileWriteDetail[] = [];
+    
+    // Process each file
+    for (const file of processedOutput.files) {
+      const filePath = path.join(setupResult.outputDirectoryPath, file.filename);
+      
+      // Create file detail for tracking
+      const fileDetail: FileWriteDetail = {
+        modelKey: file.modelKey,
+        filename: file.filename,
+        filePath,
+        status: 'pending',
+        startTime: Date.now()
+      };
+      
+      fileDetails.push(fileDetail);
+      
+      try {
+        // Create parent directory if it doesn't exist (for extra safety)
+        const parentDir = path.dirname(filePath);
+        await fileSystem.mkdir(parentDir, { recursive: true });
+        
+        // Write the file
+        await fileSystem.writeFile(filePath, file.content);
+        
+        // Update stats
+        succeededWrites++;
+        
+        // Mark as success
+        fileDetail.status = 'success';
+        fileDetail.endTime = Date.now();
+        fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
+        
+        // Update spinner text
+        spinner.text = `Written file: ${file.filename}`;
+      } catch (error) {
+        // Update stats
+        failedWrites++;
+        
+        // Mark as error
+        fileDetail.status = 'error';
+        fileDetail.error = error instanceof Error ? error.message : String(error);
+        fileDetail.endTime = Date.now();
+        fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
+        
+        // Update spinner with warning
+        spinner.warn(`Failed to write file: ${file.filename} - ${fileDetail.error}`);
+        spinner.start(); // Restart spinner after warning
+      }
+    }
+    
+    // Calculate overall timing
+    const fileWriteEndTime = Date.now();
+    const fileWriteDurationMs = fileWriteEndTime - fileWriteStartTime;
+    
+    // Create file output result object
+    const fileOutputResult = {
+      outputDirectory: setupResult.outputDirectoryPath,
+      files: fileDetails,
+      succeededWrites,
+      failedWrites,
+      timing: {
+        startTime: fileWriteStartTime,
+        endTime: fileWriteEndTime,
+        durationMs: fileWriteDurationMs
+      }
+    };
+    
+    // Update spinner with final status
+    spinner.text = `Files written: ${succeededWrites} succeeded, ${failedWrites} failed`;
+    
     // Update workflow state with output results
-    workflowState.fileOutputResult = outputResult.fileOutputResult;
-    workflowState.consoleOutput = outputResult.consoleOutput;
+    workflowState.fileOutputResult = fileOutputResult;
+    workflowState.consoleOutput = processedOutput.consoleOutput;
     
     // 6. Log completion summary: Display a summary of the executed queries
     // Stop spinner before showing completion summary to avoid visual conflicts
     spinner.stop();
     _logCompletionSummary({
       queryResults: queryResults.queryResults,
-      fileOutputResult: outputResult.fileOutputResult,
+      fileOutputResult: fileOutputResult,
       options: { ...options, friendlyRunName: setupResult.friendlyRunName },
       outputDirectoryPath: setupResult.outputDirectoryPath
     });
@@ -283,10 +368,10 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       // Display timing information
       logger.plain('\n' + styleHeader('Execution timing:'));
       
-      const totalTime = queryResults.queryResults.timing.durationMs + outputResult.fileOutputResult.timing.durationMs;
+      const totalTime = queryResults.queryResults.timing.durationMs + fileOutputResult.timing.durationMs;
       
       logger.plain(styleDim(`  Total API calls:    ${queryResults.queryResults.timing.durationMs}ms`));
-      logger.plain(styleDim(`  File writing:       ${outputResult.fileOutputResult.timing.durationMs}ms`));
+      logger.plain(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
       logger.plain(styleDim(`  Total execution:    ${totalTime}ms`));
       
       // Additional model-specific timing information
@@ -303,7 +388,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     }
     
     // Return the formatted console output for display
-    return outputResult.consoleOutput;
+    return processedOutput.consoleOutput;
   } catch (error) {
     // Use the error handling helper to process and rethrow the error
     return _handleWorkflowError({

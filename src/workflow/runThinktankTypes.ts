@@ -405,25 +405,51 @@ export interface ProcessOutputParams extends SpinnerContext {
   queryResults: QueryExecutionResult;
   
   /**
-   * The output directory path to write files to
-   */
-  outputDirectoryPath: string;
-  
-  /**
    * The user-provided run options
    */
   options: RunOptions;
   
   /**
    * Friendly run name for display and reference
+   * This property is optional because it's not directly used in the pure implementation
    */
-  friendlyRunName: string;
+  friendlyRunName?: string;
+}
+
+/**
+ * Represents data for a file to be written
+ */
+export interface FileData {
+  /**
+   * The filename for this output file
+   */
+  filename: string;
   
   /**
-   * File system interface for file operations
-   * Used for dependency injection to improve testability
+   * The content to be written to the file
    */
-  fileSystem: FileSystem;
+  content: string;
+  
+  /**
+   * The model key (provider:modelId) associated with this file
+   */
+  modelKey: string;
+}
+
+/**
+ * Pure result of the refactored _processOutput helper function
+ * with no I/O operations
+ */
+export interface PureProcessOutputResult {
+  /**
+   * Array of file data objects that can be written to disk
+   */
+  files: FileData[];
+  
+  /**
+   * Formatted console output string
+   */
+  consoleOutput: string;
 }
 
 /**
