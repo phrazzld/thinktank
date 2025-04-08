@@ -105,7 +105,7 @@ jest.mock('../../utils/spinnerFactory', () => {
 });
 
 // Mock classes
-jest.mock('../../core/FileSystemAdapter');
+jest.mock('../../core/FileSystem');
 jest.mock('../../core/ConcreteConfigManager');
 jest.mock('../../core/LLMClient');
 

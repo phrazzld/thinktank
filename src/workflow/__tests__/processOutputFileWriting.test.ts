@@ -11,7 +11,7 @@ import { LLMResponse } from '../../core/types';
 import { FileData, PureProcessOutputResult } from '../runThinktankTypes';
 
 // Mocks
-jest.mock('../../core/FileSystemAdapter');
+jest.mock('../../core/FileSystem');
 jest.mock('../../core/ConcreteConfigManager');
 jest.mock('../../core/LLMClient');
 jest.mock('../runThinktankHelpers');

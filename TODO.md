@@ -21,8 +21,8 @@
   - **Depends On:** None
   - **AC Ref:** AC 3.1 (Move I/O to high-level functions)
 
-- [ ] **Implement file system adapter**
-  - **Action:** Create adapter implementing I/O interface for file operations in `src/core/FileSystemAdapter.ts`.
+- [x] **Implement file system adapter**
+  - **Action:** Create adapter implementing I/O interface for file operations in `src/core/FileSystem.ts`.
   - **Depends On:** Create I/O interface
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
