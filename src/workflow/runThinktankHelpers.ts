@@ -790,7 +790,8 @@ export async function _executeQueries({
         startTime,
         endTime,
         durationMs
-      }
+      },
+      combinedContent // Include the original combined content
     };
     
     // 8. Count successes and failures

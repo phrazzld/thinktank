@@ -1,7 +1,7 @@
 /**
- * Tests for ConcreteFileSystem implementation
+ * Tests for FileSystemAdapter implementation
  */
-import { ConcreteFileSystem } from '../FileSystem';
+import { FileSystemAdapter } from '../FileSystemAdapter';
 import * as fileReader from '../../utils/fileReader';
 import { FileReadError } from '../../utils/fileReaderTypes';
 import { setupBasicFs, resetFs } from '../../../jest/setupFiles/fs';
@@ -9,8 +9,8 @@ import { setupBasicFs, resetFs } from '../../../jest/setupFiles/fs';
 // Mock fileReader module
 jest.mock('../../utils/fileReader');
 
-describe('ConcreteFileSystem', () => {
-  let fileSystem: ConcreteFileSystem;
+describe('FileSystemAdapter', () => {
+  let fileSystem: FileSystemAdapter;
   const mockedFileReader = fileReader as jest.Mocked<typeof fileReader>;
 
   beforeEach(() => {
@@ -26,7 +26,7 @@ describe('ConcreteFileSystem', () => {
       '/path/to/dir/file2.txt': 'another nested file'
     });
     
-    fileSystem = new ConcreteFileSystem();
+    fileSystem = new FileSystemAdapter();
   });
 
   describe('readFileContent', () => {

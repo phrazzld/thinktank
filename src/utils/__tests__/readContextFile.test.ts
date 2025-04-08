@@ -13,7 +13,7 @@ import fsPromises from 'fs/promises';
 import path from 'path';
 import { readContextFile, MAX_FILE_SIZE, isBinaryFile } from '../fileReader';
 import { ContextFileResult } from '../fileReaderTypes';
-import { ConcreteFileSystem } from '../../core/FileSystem';
+import { FileSystemAdapter } from '../../core/FileSystemAdapter';
 import logger from '../logger';
 
 // Mock logger
@@ -26,7 +26,7 @@ describe('readContextFile', () => {
   
   // Create a helper function to simplify testing with the required FileSystem parameter
   async function readFile(filePath: string): Promise<ContextFileResult> {
-    const fileSystem = new ConcreteFileSystem();
+    const fileSystem = new FileSystemAdapter();
     return readContextFile(filePath, fileSystem);
   }
   

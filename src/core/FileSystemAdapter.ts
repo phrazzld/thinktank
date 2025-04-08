@@ -1,5 +1,5 @@
 /**
- * Concrete implementation of the FileSystem interface
+ * Adapter implementation of the FileSystem interface
  * Wraps existing file operations from fileReader.ts
  */
 // Core Node.js modules
@@ -10,11 +10,11 @@ import * as fileReader from '../utils/fileReader';
 import { FileReadError, ReadFileOptions } from '../utils/fileReaderTypes';
 
 /**
- * Concrete implementation of the FileSystem interface that wraps
+ * FileSystemAdapter implementation of the FileSystem interface that wraps
  * existing file operations from fileReader.ts where available,
  * and falls back to direct fs/promises calls as needed.
  */
-export class ConcreteFileSystem implements FileSystem {
+export class FileSystemAdapter implements FileSystem {
   /**
    * Reads the content of a file
    * @param filePath - The path to the file

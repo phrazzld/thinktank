@@ -11,7 +11,7 @@ import {
 
 import * as gitignoreUtils from '../gitignoreUtils';
 import { setupTestHooks } from '../../../test/setup/common';
-import { ConcreteFileSystem } from '../../core/FileSystem';
+import { FileSystemAdapter } from '../../core/FileSystemAdapter';
 import fsPromises from 'fs/promises';
 
 // Import module after setup
@@ -52,7 +52,7 @@ describe('readDirectoryContents', () => {
     
     it('should read all files in a directory and return their contents', async () => {
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -78,7 +78,7 @@ describe('readDirectoryContents', () => {
     
     it('should recursively traverse subdirectories', async () => {
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -101,7 +101,7 @@ describe('readDirectoryContents', () => {
       const readdirSpy = jest.spyOn(fsPromises, 'readdir');
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -145,7 +145,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create a FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Use the fileSystem parameter in readContextFile
       const result = await readContextFile(path.join(relativeTestPath, 'file.txt'), fileSystem);
@@ -168,7 +168,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(specialPath, fileSystem);
@@ -191,7 +191,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(windowsPath, fileSystem);
@@ -214,7 +214,7 @@ describe('readDirectoryContents', () => {
       );
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -238,7 +238,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance with spies
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Mock readFileContent to simulate a failure for one file
       const readFileContentSpy = jest.spyOn(fileSystem, 'readFileContent');
@@ -288,7 +288,7 @@ describe('readDirectoryContents', () => {
       );
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -309,7 +309,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance with readdir spy that throws non-Error
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       const readdirSpy = jest.spyOn(fileSystem, 'readdir');
       readdirSpy.mockImplementationOnce(() => {
         throw 'Not an error object';
@@ -337,7 +337,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Mock stat for FileSystem to fail for file1.txt
       const statSpy = jest.spyOn(fileSystem, 'stat');
@@ -404,7 +404,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -422,7 +422,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -448,7 +448,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -500,7 +500,7 @@ describe('readDirectoryContents', () => {
         });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -539,7 +539,7 @@ describe('readDirectoryContents', () => {
       });
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);
@@ -589,7 +589,7 @@ describe('readDirectoryContents', () => {
       createVirtualFs(structure);
       
       // Create FileSystem instance
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with FileSystem interface
       const results = await readDirectoryContents(testDirPath, fileSystem);

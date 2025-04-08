@@ -5,7 +5,7 @@
 import path from 'path';
 import { createVirtualFs, createFsError, createMockStats, resetVirtualFs } from '../../__tests__/utils/virtualFsUtils';
 import { setupTestHooks } from '../../../test/setup/common';
-import { ConcreteFileSystem } from '../../core/FileSystem';
+import { FileSystemAdapter } from '../../core/FileSystemAdapter';
 import * as fileReader from '../fileReader';
 const { readContextFile, isBinaryFile } = fileReader;
 import logger from '../logger';
@@ -39,7 +39,7 @@ describe('readContextFile with FileSystem Interface', () => {
     
     it('should read file content and return path and content together', async () => {
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(testFilePath, fileSystem);
@@ -62,7 +62,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(relativePath, fileSystem);
@@ -82,7 +82,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(specialCharPath, fileSystem);
@@ -105,7 +105,7 @@ describe('readContextFile with FileSystem Interface', () => {
       createVirtualFs({}); // Empty filesystem
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(testFilePath, fileSystem);
@@ -127,7 +127,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Mock the 'access' method on the fileSystem instance to fail with permission error
       const accessSpy = jest.spyOn(fileSystem, 'access');
@@ -159,12 +159,12 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(testDirPath, fileSystem);
       
-      // ConcreteFileSystem.stat on the virtual FS will report it's a directory
+      // FileSystemAdapter.stat on the virtual FS will report it's a directory
       expect(result.path).toBe(testDirPath);
       expect(result.content).toBeNull();
       expect(result.error).toEqual({
@@ -183,7 +183,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(testFilePath, fileSystem);
@@ -222,7 +222,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Call function with the FileSystem interface
       const result = await readContextFile(testFilePath, fileSystem);
@@ -238,7 +238,7 @@ describe('readContextFile with FileSystem Interface', () => {
       });
       
       // Create concrete implementation of FileSystem
-      const fileSystem = new ConcreteFileSystem();
+      const fileSystem = new FileSystemAdapter();
       
       // Mock the stat method on the fileSystem instance
       const statSpy = jest.spyOn(fileSystem, 'stat');

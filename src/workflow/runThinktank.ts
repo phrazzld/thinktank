@@ -25,7 +25,7 @@ import {
 // Import the concrete implementations and interfaces
 import { ConcreteLLMClient } from '../core/LLMClient';
 import { ConcreteConfigManager } from '../core/ConcreteConfigManager';
-import { ConcreteFileSystem } from '../core/FileSystem';
+import { FileSystemAdapter } from '../core/FileSystemAdapter';
 import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
 
 // Import provider modules to ensure they're registered
@@ -182,7 +182,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   try {
     // Create dependency instances for injection in the correct order
     // 1. First create FileSystem (no dependencies)
-    const fileSystem: FileSystem = new ConcreteFileSystem();
+    const fileSystem: FileSystem = new FileSystemAdapter();
     // 2. Then create ConfigManager (conceptually uses FileSystem, but doesn't require it in constructor)
     const configManager: ConfigManagerInterface = new ConcreteConfigManager();
     // 3. Finally create LLMClient (depends on ConfigManager)
