@@ -46,7 +46,7 @@
   - **Depends On:** Standardize mocking approach, Implement consistent path normalization.
   - **AC Ref:** Recommendation 5.
 
-- [ ] **Ensure consistent gitignore cache clearing**
+- [x] **Ensure consistent gitignore cache clearing**
   - **Action:** Add gitignoreUtils.clearIgnoreCache() to all relevant beforeEach hooks in test files to prevent test interdependencies.
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 8.

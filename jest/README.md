@@ -331,6 +331,8 @@ describe('My Test', () => {
 
 5. **Minimize mocking** of internal components - use the virtual filesystem to test real code paths when possible.
 
+6. **Always clear the gitignore cache properly** in tests that interact with gitignore functionality. See the [Gitignore Cache Clearing Guidelines](../docs/test-gitignore-cache-guidelines.md) for details.
+
 ## Example Tests
 
 For complete examples, see:
