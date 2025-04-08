@@ -4,13 +4,29 @@ This directory contains centralized Jest configuration and setup files that stan
 
 ## Overview
 
-We use a centralized approach to Jest configuration to:
+We use a centralized approach to Jest configuration and mocking to:
 - Reduce code duplication across test files
 - Ensure consistent mock behavior
 - Simplify the process of writing new tests
 - Provide standardized mock utilities for common operations
+- Align with our testing philosophy of minimal mocking and focusing on behavior
 
-## Structure
+## The Standard Mocking Approach
+
+**PREFERRED APPROACH:** Use the centralized mock setup from `jest/setupFiles/` for all new tests and when refactoring existing tests.
+
+The codebase has historically used multiple approaches to mocking:
+1. ~~Manual mocks in `src/utils/__mocks__/`~~ (Deprecated)
+2. ~~Factory functions in `src/__tests__/utils/mockFactories.ts`~~ (Deprecated)
+3. **Centralized setup helpers in `jest/setupFiles/`** (Preferred)
+
+The centralized approach based on the virtual filesystem (memfs) is now the standard. This approach:
+- Aligns better with our testing philosophy
+- Provides more realistic behavior testing
+- Reduces brittle implementation-specific mocks
+- Simplifies test setup and maintenance
+
+## Directory Structure
 
 - `setup.js` - Global setup file that runs once before all tests
 - `setupFilesAfterEnv.js` - Setup file that runs before each test file
@@ -18,113 +34,235 @@ We use a centralized approach to Jest configuration to:
   - `fs.js` - Mock setup for filesystem operations
   - `gitignore.js` - Mock setup for gitignore utilities
   - `testHelpers.js` - Common test helper functions
+- `examples/` - Example test files showing how to use the standardized setup
 
-## Usage Examples
+## Standard Setup Helpers
 
-### Basic Test File with FS Mocks
+### Filesystem Testing (`setupFiles/fs.js`)
 
 ```typescript
-// Import the test utilities you need
-import { resetVirtualFs, createVirtualFs } from '../../__tests__/utils/virtualFsUtils';
+import { 
+  setupBasicFs,
+  resetFs,
+  createFsError,
+  getFs,
+  createStats,
+  createDirent,
+  normalizePath
+} from '../../../jest/setupFiles/fs';
 
-// No need to mock fs/promises or fs - it's already done in the global setup
-
-describe('Your Test Suite', () => {
+describe('Filesystem Testing', () => {
   beforeEach(() => {
-    // Reset the virtual filesystem
-    resetVirtualFs();
-    
-    // Create test files and directories
-    createVirtualFs({
+    // Set up a virtual filesystem with test files
+    setupBasicFs({
       '/path/to/file.txt': 'File content',
       '/path/to/dir/nested.txt': 'Nested content'
     });
   });
 
   it('should read file content', async () => {
-    // Import fs after the mocks are set up
     const fs = await import('fs/promises');
     const content = await fs.readFile('/path/to/file.txt', 'utf-8');
     expect(content).toBe('File content');
   });
+  
+  it('should handle file errors', async () => {
+    // Create a standard filesystem error
+    const error = createFsError('ENOENT', 'File not found', 'open', '/missing.txt');
+    
+    // Use the error in your tests
+    expect(error.code).toBe('ENOENT');
+    expect(error.path).toBe('/missing.txt');
+  });
 });
 ```
 
-### Using the Helper Functions
+### Gitignore Testing (`setupFiles/gitignore.js`)
 
 ```typescript
-// Import the helper functions from the setup files
-import { setupBasicFs, createFsError } from '../../../jest/setupFiles/fs';
-import { setupBasicGitignore, addGitignoreFile } from '../../../jest/setupFiles/gitignore';
+import { 
+  setupBasicGitignore,
+  addGitignoreFile,
+  clearGitignoreCache,
+  createGitignoreMock
+} from '../../../jest/setupFiles/gitignore';
 
-describe('Your Test Suite', () => {
+describe('Gitignore Testing', () => {
   beforeEach(() => {
-    // Set up a basic filesystem
-    setupBasicFs({
-      '/path/to/file.txt': 'File content',
-      '/path/to/dir/nested.txt': 'Nested content'
-    });
+    // Clear the cache between tests for isolation
+    clearGitignoreCache();
     
-    // Set up basic gitignore filtering
+    // Set up a basic gitignore environment
     setupBasicGitignore();
     
-    // Add a .gitignore file
-    addGitignoreFile('/path/to/.gitignore', '*.log\nnode_modules/');
+    // Or create a custom gitignore file
+    addGitignoreFile('/project/custom/.gitignore', '*.log\n/build/');
   });
 
-  it('should handle filesystem errors', async () => {
-    // Create an fs error
-    const error = createFsError('ENOENT', 'File not found', 'open', '/path/to/missing.txt');
+  it('should properly ignore specified patterns', async () => {
+    // The actual gitignoreUtils module works with our virtual filesystem
+    const { shouldIgnorePath } = await import('../../src/utils/gitignoreUtils');
     
-    // Test error handling
-    // ...
+    const result = await shouldIgnorePath('/project', '/project/node_modules/file.js');
+    expect(result).toBe(true);
   });
 });
 ```
 
-## Common Test Patterns
-
-### Testing Input/Output Operations
+### General Testing Helpers (`setupFiles/testHelpers.js`)
 
 ```typescript
-// Import the setup helpers
-import { setupBasicFs } from '../../../jest/setupFiles/fs';
-import { resetVirtualFs } from '../../__tests__/utils/virtualFsUtils';
+import { 
+  promisify,
+  wait,
+  createMockObject,
+  createMockSpinner,
+  createNetworkMock,
+  createNetworkErrorMock,
+  createLlmResponseMock
+} from '../../../jest/setupFiles/testHelpers';
 
-describe('File Processing', () => {
-  beforeEach(() => {
-    resetVirtualFs();
-    setupBasicFs({
-      '/input/file.txt': 'Input content',
-      '/input/file2.txt': 'More input'
+describe('Using Test Helpers', () => {
+  it('should create mock objects', async () => {
+    // Create a mock API object
+    const mockApi = createMockObject({
+      getData: () => ({ result: 'test' }),
+      processData: (data) => data.toUpperCase()
     });
+    
+    // Use the mock in tests
+    const result = mockApi.getData();
+    expect(result).toEqual({ result: 'test' });
+    expect(mockApi.getData).toHaveBeenCalled();
   });
-
-  it('should process files and write output', async () => {
-    // Call your function that processes files
-    await processFiles('/input', '/output');
+  
+  it('should create network mocks', async () => {
+    // Mock a successful network response
+    const fetchMock = createNetworkMock({ data: 'success' }, 200);
+    global.fetch = fetchMock;
     
-    // Verify the output using the fs module (which is already mocked)
-    const fs = await import('fs/promises');
+    // Use the mock in tests
+    const response = await fetch('https://api.example.com');
+    const data = await response.json();
+    expect(data).toEqual({ data: 'success' });
+  });
+  
+  it('should mock LLM responses', () => {
+    // Create a mock LLM response
+    const mockResponse = createLlmResponseMock({ text: 'Generated text' });
     
-    // Check if output files were created
-    const outputExists = await fs.access('/output/file.txt')
-      .then(() => true)
-      .catch(() => false);
-    
-    expect(outputExists).toBe(true);
-    
-    // Check file content
-    const content = await fs.readFile('/output/file.txt', 'utf-8');
-    expect(content).toContain('Processed content');
+    // Use the mock in tests
+    expect(mockResponse.providerId).toBe('mock-provider');
+    expect(mockResponse.response).toBe('Generated text');
+    expect(mockResponse.error).toBeNull();
   });
 });
 ```
 
-## Adding New Mocks
+## Migration Guide
 
-If you need to add new mock configurations:
+### Converting from Manual Mocks
 
-1. Create a new file in the `setupFiles/` directory
-2. Export the necessary mock functions and utilities
-3. Import and use the file in your tests or add it to the global `setup.js` if needed
+If you're currently using manual mocks from `src/utils/__mocks__/`, convert to the centralized approach:
+
+Before:
+```typescript
+// Using manual mocks
+jest.mock('../../utils/fileReader');
+import { readContextFile } from '../../utils/fileReader';
+
+// Later in test
+readContextFile.mockResolvedValueOnce({ 
+  path: '/test.txt', 
+  content: 'mocked content',
+  error: null 
+});
+```
+
+After:
+```typescript
+// Using centralized setup
+import { setupBasicFs } from '../../../jest/setupFiles/fs';
+
+beforeEach(() => {
+  setupBasicFs({
+    '/test.txt': 'mocked content'
+  });
+});
+
+// Later in test
+const { readContextFile } = await import('../../utils/fileReader');
+const result = await readContextFile('/test.txt');
+```
+
+### Converting from mockFactories
+
+If you're currently using `mockFactories.ts`, convert to the centralized approach:
+
+Before:
+```typescript
+import { createFileReaderMocks } from '../mockFactories';
+
+const mocks = createFileReaderMocks();
+jest.spyOn(fileReader, 'readContextFile').mockImplementation(mocks.readContextFile);
+```
+
+After:
+```typescript
+import { setupBasicFs } from '../../../jest/setupFiles/fs';
+
+beforeEach(() => {
+  setupBasicFs({
+    '/test.txt': 'mocked content'
+  });
+});
+```
+
+## Best Practices
+
+1. **Clear the gitignore cache** in beforeEach to prevent test interdependencies:
+   ```typescript
+   import { clearGitignoreCache } from '../../../jest/setupFiles/gitignore';
+   
+   beforeEach(() => {
+     clearGitignoreCache();
+   });
+   ```
+
+2. **Reset the filesystem** between tests for isolation:
+   ```typescript
+   import { resetFs } from '../../../jest/setupFiles/fs';
+   
+   beforeEach(() => {
+     resetFs();
+   });
+   ```
+
+3. **Use the provided helpers** instead of creating your own utility functions:
+   ```typescript
+   // Good - uses standard helpers
+   import { createNetworkMock } from '../../../jest/setupFiles/testHelpers';
+   const fetchMock = createNetworkMock({ data: 'test' });
+   
+   // Not recommended - custom implementation may diverge from standards
+   const customMock = jest.fn().mockResolvedValue({ 
+     json: () => Promise.resolve({ data: 'test' }) 
+   });
+   ```
+
+4. **Test real behavior** rather than implementation details:
+   ```typescript
+   // Good - tests behavior through the API
+   const result = await readContextFile('/test.txt');
+   expect(result.content).toBe('mocked content');
+   
+   // Not recommended - tests implementation details
+   expect(readFileContent).toHaveBeenCalledWith('/test.txt');
+   ```
+
+5. **Minimize mocking** of internal components - use the virtual filesystem to test real code paths when possible.
+
+## Example Tests
+
+For complete examples, see the `examples/` directory:
+- `centralized-mock-example.test.ts` - Basic usage of the centralized mock setup

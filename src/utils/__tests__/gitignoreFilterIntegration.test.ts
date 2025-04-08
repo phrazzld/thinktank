@@ -1,37 +1,17 @@
 /**
  * Integration tests for gitignore filtering within directory traversal
+ * Using the standardized mock approach
  */
 import path from 'path';
-import { 
-  mockFsModules,
-  addVirtualGitignoreFile,
-  resetVirtualFs,
-  createVirtualFs
-} from '../../__tests__/utils/virtualFsUtils';
 import { normalizePathGeneral } from '../../utils/pathUtils';
 
-// Setup mocks (must be before importing fs modules)
-jest.mock('fs', () => mockFsModules().fs);
-jest.mock('fs/promises', () => mockFsModules().fsPromises);
+// Import centralized mock setup helpers
+import { setupBasicFs, resetFs } from '../../../jest/setupFiles/fs';
+import { addGitignoreFile } from '../../../jest/setupFiles/gitignore';
 
-// Override fileExists to work with virtual filesystem
-jest.mock('../fileReader', () => {
-  const originalModule = jest.requireActual('../fileReader');
-  return {
-    ...originalModule,
-    fileExists: async (filePath: string) => {
-      try {
-        await require('fs/promises').access(filePath);
-        return true;
-      } catch (error) {
-        return false;
-      }
-    }
-  };
-});
-
-// Import modules after mocking
-import * as gitignoreUtils from '../gitignoreUtils';
+// Import modules under test
+// Import clearIgnoreCache function directly
+import { clearIgnoreCache } from '../gitignoreUtils';
 import { readDirectoryContents } from '../fileReader';
 
 describe('gitignore filtering in directory traversal', () => {
@@ -40,25 +20,25 @@ describe('gitignore filtering in directory traversal', () => {
   beforeEach(async () => {
     // Reset mocks and clear caches
     jest.clearAllMocks();
-    resetVirtualFs();
-    gitignoreUtils.clearIgnoreCache();
+    resetFs();
+    clearIgnoreCache();
   });
   
   it('should filter files based on gitignore rules during directory traversal', async () => {
-    // Create test directory structure
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'file1.txt'), true)]: 'Content of file1.txt',
-      [normalizePath(path.join(testDirPath, 'file2.md'), true)]: 'Content of file2.md',
-      [normalizePath(path.join(testDirPath, 'ignored-by-gitignore.log'), true)]: 'Content of ignored-by-gitignore.log',
-      [normalizePath(path.join(testDirPath, 'subdir', 'nested.txt'), true)]: 'Content of nested.txt',
-      [normalizePath(path.join(testDirPath, 'subdir', 'nested-ignored.tmp'), true)]: 'Content of nested-ignored.tmp',
-      [normalizePath(path.join(testDirPath, 'node_modules', '.placeholder'), true)]: '', // To ensure directory is created
-      [normalizePath(path.join(testDirPath, '.git', '.placeholder'), true)]: ''  // To ensure directory is created
+    // Create test directory structure using standardized helper
+    setupBasicFs({
+      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
+      [path.join(testDirPath, 'file2.md')]: 'Content of file2.md',
+      [path.join(testDirPath, 'ignored-by-gitignore.log')]: 'Content of ignored-by-gitignore.log',
+      [path.join(testDirPath, 'subdir', 'nested.txt')]: 'Content of nested.txt',
+      [path.join(testDirPath, 'subdir', 'nested-ignored.tmp')]: 'Content of nested-ignored.tmp',
+      [path.join(testDirPath, 'node_modules', '.placeholder')]: '', // To ensure directory is created
+      [path.join(testDirPath, '.git', '.placeholder')]: ''  // To ensure directory is created
     });
     
-    // Add .gitignore files using our specialized function
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log\n');
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, 'subdir', '.gitignore'), true), '*.tmp\n');
+    // Add .gitignore files using standardized helper
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n');
+    await addGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.tmp\n');
     
     // Run the directory traversal with gitignore filtering
     const results = await readDirectoryContents(testDirPath);
@@ -78,19 +58,19 @@ describe('gitignore filtering in directory traversal', () => {
   
   it('should apply directory-specific gitignore rules correctly', async () => {
     // Create test directory with a more complex structure to test directory-specific rules
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'root.txt'), true)]: 'Content of root.txt',
-      [normalizePath(path.join(testDirPath, 'test.md'), true)]: 'Content of test.md',
-      [normalizePath(path.join(testDirPath, 'test.log'), true)]: 'Ignored by root gitignore',
-      [normalizePath(path.join(testDirPath, 'dir1', 'file.txt'), true)]: 'Content of dir1/file.txt',
-      [normalizePath(path.join(testDirPath, 'dir1', 'file.md'), true)]: 'Content of dir1/file.md', // Ignored by dir1/.gitignore
-      [normalizePath(path.join(testDirPath, 'dir2', 'file.txt'), true)]: 'Content of dir2/file.txt',
-      [normalizePath(path.join(testDirPath, 'dir2', 'test.log'), true)]: 'Ignored by root gitignore'
+    setupBasicFs({
+      [path.join(testDirPath, 'root.txt')]: 'Content of root.txt',
+      [path.join(testDirPath, 'test.md')]: 'Content of test.md',
+      [path.join(testDirPath, 'test.log')]: 'Ignored by root gitignore',
+      [path.join(testDirPath, 'dir1', 'file.txt')]: 'Content of dir1/file.txt',
+      [path.join(testDirPath, 'dir1', 'file.md')]: 'Content of dir1/file.md', // Ignored by dir1/.gitignore
+      [path.join(testDirPath, 'dir2', 'file.txt')]: 'Content of dir2/file.txt',
+      [path.join(testDirPath, 'dir2', 'test.log')]: 'Ignored by root gitignore'
     });
     
     // Add different .gitignore files in different directories
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log');
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, 'dir1', '.gitignore'), true), '*.md');
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
+    await addGitignoreFile(path.join(testDirPath, 'dir1', '.gitignore'), '*.md');
     
     // Run the directory traversal with gitignore filtering
     const results = await readDirectoryContents(testDirPath);
@@ -110,19 +90,19 @@ describe('gitignore filtering in directory traversal', () => {
   
   it('should handle complex gitignore patterns with pattern negation', async () => {
     // Create test directory structure with files that match various patterns
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'regular.txt'), true)]: 'Regular text file',
-      [normalizePath(path.join(testDirPath, 'build.log'), true)]: 'Build log (should be ignored)',
-      [normalizePath(path.join(testDirPath, 'error.log'), true)]: 'Error log (should be ignored)',
-      [normalizePath(path.join(testDirPath, 'important.log'), true)]: 'Important log (should NOT be ignored)',
-      [normalizePath(path.join(testDirPath, 'logs', 'app.log'), true)]: 'App log in logs dir (should be ignored)',
-      [normalizePath(path.join(testDirPath, 'logs', 'critical.log'), true)]: 'Critical log in logs dir (should NOT be ignored)',
-      [normalizePath(path.join(testDirPath, 'logs', 'debug.txt'), true)]: 'Debug text file in logs dir (should be included)'
+    setupBasicFs({
+      [path.join(testDirPath, 'regular.txt')]: 'Regular text file',
+      [path.join(testDirPath, 'build.log')]: 'Build log (should be ignored)',
+      [path.join(testDirPath, 'error.log')]: 'Error log (should be ignored)',
+      [path.join(testDirPath, 'important.log')]: 'Important log (should NOT be ignored)',
+      [path.join(testDirPath, 'logs', 'app.log')]: 'App log in logs dir (should be ignored)',
+      [path.join(testDirPath, 'logs', 'critical.log')]: 'Critical log in logs dir (should NOT be ignored)',
+      [path.join(testDirPath, 'logs', 'debug.txt')]: 'Debug text file in logs dir (should be included)'
     });
     
     // Add a .gitignore file with pattern negation
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, '.gitignore'),
       '# Ignore all log files\n*.log\n\n# But not important logs\n!important.log\n!**/critical.log'
     );
     
@@ -144,23 +124,23 @@ describe('gitignore filtering in directory traversal', () => {
   
   it('should handle multiple pattern formats in gitignore files', async () => {
     // Create test directory structure with various file types and directories
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'main.js'), true)]: 'Main JavaScript file',
-      [normalizePath(path.join(testDirPath, 'main.css'), true)]: 'Main CSS file',
-      [normalizePath(path.join(testDirPath, 'main.ts'), true)]: 'Main TypeScript file',
-      [normalizePath(path.join(testDirPath, 'temp', 'temp1.js'), true)]: 'Temp JavaScript file',
-      [normalizePath(path.join(testDirPath, 'temp', 'temp2.ts'), true)]: 'Temp TypeScript file',
-      [normalizePath(path.join(testDirPath, 'temp', 'data.json'), true)]: 'Temp JSON file',
-      [normalizePath(path.join(testDirPath, 'dist', 'bundle.js'), true)]: 'Bundled JavaScript file',
-      [normalizePath(path.join(testDirPath, 'dist', 'styles.css'), true)]: 'Bundled CSS file',
-      [normalizePath(path.join(testDirPath, 'logs', 'test.log'), true)]: 'Test log file',
-      [normalizePath(path.join(testDirPath, 'logs', 'prod.log'), true)]: 'Production log file',
-      [normalizePath(path.join(testDirPath, 'docs', 'readme.md'), true)]: 'Documentation file'
+    setupBasicFs({
+      [path.join(testDirPath, 'main.js')]: 'Main JavaScript file',
+      [path.join(testDirPath, 'main.css')]: 'Main CSS file',
+      [path.join(testDirPath, 'main.ts')]: 'Main TypeScript file',
+      [path.join(testDirPath, 'temp', 'temp1.js')]: 'Temp JavaScript file',
+      [path.join(testDirPath, 'temp', 'temp2.ts')]: 'Temp TypeScript file',
+      [path.join(testDirPath, 'temp', 'data.json')]: 'Temp JSON file',
+      [path.join(testDirPath, 'dist', 'bundle.js')]: 'Bundled JavaScript file',
+      [path.join(testDirPath, 'dist', 'styles.css')]: 'Bundled CSS file',
+      [path.join(testDirPath, 'logs', 'test.log')]: 'Test log file',
+      [path.join(testDirPath, 'logs', 'prod.log')]: 'Production log file',
+      [path.join(testDirPath, 'docs', 'readme.md')]: 'Documentation file'
     });
     
     // Add a .gitignore file with multiple pattern formats
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, '.gitignore'),
       `# Comment line
        # Ignore all JavaScript files
        *.js
@@ -190,14 +170,14 @@ describe('gitignore filtering in directory traversal', () => {
   
   it('should handle empty gitignore files correctly', async () => {
     // Create test directory structure
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'file1.txt'), true)]: 'Content of file1.txt',
-      [normalizePath(path.join(testDirPath, 'file1.log'), true)]: 'Content of file1.log',
-      [normalizePath(path.join(testDirPath, 'node_modules', '.placeholder'), true)]: '', // Should still be ignored by default
+    setupBasicFs({
+      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
+      [path.join(testDirPath, 'file1.log')]: 'Content of file1.log',
+      [path.join(testDirPath, 'node_modules', '.placeholder')]: '', // Should still be ignored by default
     });
     
     // Add an empty .gitignore file
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '');
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '');
     
     // Run the directory traversal with gitignore filtering
     const results = await readDirectoryContents(testDirPath);

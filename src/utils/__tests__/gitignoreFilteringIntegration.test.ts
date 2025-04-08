@@ -1,61 +1,41 @@
 /**
  * Integration tests for gitignore filtering within directory traversal
+ * Using the standardized mock approach
  */
-import { 
-  mockFsModules, 
-  resetVirtualFs, 
-  createVirtualFs,
-  addVirtualGitignoreFile
-} from '../../__tests__/utils/virtualFsUtils';
-import { normalizePath } from '../../__tests__/utils/pathUtils';
-
-// Setup mocks (must be before importing fs modules)
-jest.mock('fs', () => mockFsModules().fs);
-jest.mock('fs/promises', () => mockFsModules().fsPromises);
-
-// Override fileExists to work with virtual filesystem
-jest.mock('../fileReader', () => {
-  const actualModule = jest.requireActual('../fileReader');
-  return {
-    ...actualModule,
-    fileExists: async (filePath: string) => {
-      try {
-        await require('fs/promises').access(filePath);
-        return true;
-      } catch (error) {
-        return false;
-      }
-    }
-  };
-});
-
-// Import modules after mocking
 import path from 'path';
+import { normalizePathGeneral } from '../../utils/pathUtils';
+
+// Import centralized mock setup helpers
+import { setupBasicFs, resetFs } from '../../../jest/setupFiles/fs';
+import { addGitignoreFile } from '../../../jest/setupFiles/gitignore';
+
+// Import modules under test
 import { readDirectoryContents } from '../fileReader';
-import * as gitignoreUtils from '../gitignoreUtils';
+// Import clearIgnoreCache function directly
+import { clearIgnoreCache } from '../gitignoreUtils';
 
 describe('Gitignore Filtering Integration', () => {
   // Use a consistent path format as the other test file
-  const testDirPath = normalizePath(path.join('/', 'test', 'dir'), true);
+  const testDirPath = normalizePathGeneral(path.join('/', 'test', 'dir'), true);
   
   beforeEach(async () => {
     // Reset virtual filesystem
-    resetVirtualFs();
+    resetFs();
     
     // Clear gitignore cache
-    gitignoreUtils.clearIgnoreCache();
+    clearIgnoreCache();
   });
   
   it('should integrate with directory traversal for simple patterns', async () => {
     // Setup virtual filesystem with test files
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'file1.txt'), true)]: 'Content of file1.txt',
-      [normalizePath(path.join(testDirPath, 'file2.md'), true)]: 'Content of file2.md',
-      [normalizePath(path.join(testDirPath, 'ignored.log'), true)]: 'Content of ignored.log'
+    setupBasicFs({
+      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
+      [path.join(testDirPath, 'file2.md')]: 'Content of file2.md',
+      [path.join(testDirPath, 'ignored.log')]: 'Content of ignored.log'
     });
     
-    // Create .gitignore file using our dedicated function
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log');
+    // Create .gitignore file using standardized helper
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
     
     // Run the directory traversal with gitignore filtering
     const results = await readDirectoryContents(testDirPath);
@@ -74,15 +54,15 @@ describe('Gitignore Filtering Integration', () => {
   
   it('should handle nested directories in traversal', async () => {
     // Create the virtual filesystem with a nested structure
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'file1.txt'), true)]: 'Content of file1.txt',
-      [normalizePath(path.join(testDirPath, 'subdir', 'subfile.txt'), true)]: 'Content of subfile.txt',
-      [normalizePath(path.join(testDirPath, 'subdir', 'ignored.spec.js'), true)]: 'Content of ignored.spec.js'
+    setupBasicFs({
+      [path.join(testDirPath, 'file1.txt')]: 'Content of file1.txt',
+      [path.join(testDirPath, 'subdir', 'subfile.txt')]: 'Content of subfile.txt',
+      [path.join(testDirPath, 'subdir', 'ignored.spec.js')]: 'Content of ignored.spec.js'
     });
     
-    // Add virtual gitignore files with different patterns
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log');
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, 'subdir', '.gitignore'), true), '*.spec.js');
+    // Add gitignore files with different patterns using standardized helper
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log');
+    await addGitignoreFile(path.join(testDirPath, 'subdir', '.gitignore'), '*.spec.js');
     
     // Run the directory traversal with gitignore filtering
     const results = await readDirectoryContents(testDirPath);
@@ -97,15 +77,15 @@ describe('Gitignore Filtering Integration', () => {
   
   it('should handle complex gitignore patterns with negation', async () => {
     // Create a more complex scenario with pattern negation
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'regular.txt'), true)]: 'Content of regular.txt',
-      [normalizePath(path.join(testDirPath, 'ignored.log'), true)]: 'Content of ignored.log',
-      [normalizePath(path.join(testDirPath, 'important.log'), true)]: 'Content of important.log'
+    setupBasicFs({
+      [path.join(testDirPath, 'regular.txt')]: 'Content of regular.txt',
+      [path.join(testDirPath, 'ignored.log')]: 'Content of ignored.log',
+      [path.join(testDirPath, 'important.log')]: 'Content of important.log'
     });
     
-    // Add virtual gitignore file with a pattern that includes negation
+    // Add gitignore file with a pattern that includes negation
     // This will ignore all .log files EXCEPT for important.log
-    await addVirtualGitignoreFile(normalizePath(path.join(testDirPath, '.gitignore'), true), '*.log\n!important.log');
+    await addGitignoreFile(path.join(testDirPath, '.gitignore'), '*.log\n!important.log');
     
     // Run the directory traversal
     const results = await readDirectoryContents(testDirPath);
@@ -119,19 +99,19 @@ describe('Gitignore Filtering Integration', () => {
   });
   
   it('should support commented lines and blank lines in gitignore files', async () => {
-    // Create test virtual filesystem
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'main.js'), true)]: 'Main JS file',
-      [normalizePath(path.join(testDirPath, 'utilities.js'), true)]: 'Utilities JS file',
-      [normalizePath(path.join(testDirPath, 'test.spec.js'), true)]: 'Test JS file',
-      [normalizePath(path.join(testDirPath, 'test.config.js'), true)]: 'Test config JS file',
-      [normalizePath(path.join(testDirPath, 'settings.json'), true)]: 'Settings JSON file',
+    // Create test filesystem
+    setupBasicFs({
+      [path.join(testDirPath, 'main.js')]: 'Main JS file',
+      [path.join(testDirPath, 'utilities.js')]: 'Utilities JS file',
+      [path.join(testDirPath, 'test.spec.js')]: 'Test JS file',
+      [path.join(testDirPath, 'test.config.js')]: 'Test config JS file',
+      [path.join(testDirPath, 'settings.json')]: 'Settings JSON file',
     });
     
     // Add a gitignore file with comments and blank lines
     // Using cleaner format to avoid leading whitespace issues with template literals
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, '.gitignore'),
       "# This is a comment and should be ignored\n\n" +
       "# Ignore test files\n" +
       "*.spec.js\n\n" +
@@ -157,56 +137,56 @@ describe('Gitignore Filtering Integration', () => {
   
   it('should handle multiple levels of directory traversal with multiple gitignore files', async () => {
     // Create a multi-level directory structure
-    createVirtualFs({
+    setupBasicFs({
       // Root level files
-      [normalizePath(path.join(testDirPath, 'root.txt'), true)]: 'Root level file',
-      [normalizePath(path.join(testDirPath, 'root.log'), true)]: 'Root level log file',
+      [path.join(testDirPath, 'root.txt')]: 'Root level file',
+      [path.join(testDirPath, 'root.log')]: 'Root level log file',
       
       // First level directory - frontend
-      [normalizePath(path.join(testDirPath, 'frontend', 'index.html'), true)]: 'Frontend index',
-      [normalizePath(path.join(testDirPath, 'frontend', 'styles.css'), true)]: 'Frontend styles',
-      [normalizePath(path.join(testDirPath, 'frontend', 'bundle.js'), true)]: 'Frontend bundle',
-      [normalizePath(path.join(testDirPath, 'frontend', 'source.map'), true)]: 'Frontend source map',
+      [path.join(testDirPath, 'frontend', 'index.html')]: 'Frontend index',
+      [path.join(testDirPath, 'frontend', 'styles.css')]: 'Frontend styles',
+      [path.join(testDirPath, 'frontend', 'bundle.js')]: 'Frontend bundle',
+      [path.join(testDirPath, 'frontend', 'source.map')]: 'Frontend source map',
       
       // Second level directory - frontend/components
-      [normalizePath(path.join(testDirPath, 'frontend', 'components', 'button.js'), true)]: 'Button component',
-      [normalizePath(path.join(testDirPath, 'frontend', 'components', 'form.js'), true)]: 'Form component',
-      [normalizePath(path.join(testDirPath, 'frontend', 'components', 'form.test.js'), true)]: 'Form test',
+      [path.join(testDirPath, 'frontend', 'components', 'button.js')]: 'Button component',
+      [path.join(testDirPath, 'frontend', 'components', 'form.js')]: 'Form component',
+      [path.join(testDirPath, 'frontend', 'components', 'form.test.js')]: 'Form test',
       
       // First level directory - backend
-      [normalizePath(path.join(testDirPath, 'backend', 'server.js'), true)]: 'Backend server',
-      [normalizePath(path.join(testDirPath, 'backend', 'database.js'), true)]: 'Backend database',
-      [normalizePath(path.join(testDirPath, 'backend', 'database.log'), true)]: 'Backend database log',
+      [path.join(testDirPath, 'backend', 'server.js')]: 'Backend server',
+      [path.join(testDirPath, 'backend', 'database.js')]: 'Backend database',
+      [path.join(testDirPath, 'backend', 'database.log')]: 'Backend database log',
       
       // Second level directory - backend/utils
-      [normalizePath(path.join(testDirPath, 'backend', 'utils', 'helpers.js'), true)]: 'Backend helpers',
-      [normalizePath(path.join(testDirPath, 'backend', 'utils', 'validation.js'), true)]: 'Backend validation',
-      [normalizePath(path.join(testDirPath, 'backend', 'utils', 'debug.log'), true)]: 'Backend debug log',
+      [path.join(testDirPath, 'backend', 'utils', 'helpers.js')]: 'Backend helpers',
+      [path.join(testDirPath, 'backend', 'utils', 'validation.js')]: 'Backend validation',
+      [path.join(testDirPath, 'backend', 'utils', 'debug.log')]: 'Backend debug log',
     });
     
     // Create gitignore files at different levels with different rules
     
     // Root gitignore - ignore all log files
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, '.gitignore'),
       '*.log'
     );
     
     // Frontend gitignore - ignore source maps and dist directory
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, 'frontend', '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, 'frontend', '.gitignore'),
       '*.map'
     );
     
     // Frontend/components gitignore - ignore test files
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, 'frontend', 'components', '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, 'frontend', 'components', '.gitignore'),
       '*.test.js'
     );
     
     // Backend gitignore - custom rule
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, 'backend', '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, 'backend', '.gitignore'),
       'database.*'
     );
     
@@ -238,21 +218,21 @@ describe('Gitignore Filtering Integration', () => {
   
   it('should handle gitignore files with brace expansion patterns', async () => {
     // Create test file structure
-    createVirtualFs({
-      [normalizePath(path.join(testDirPath, 'doc.txt'), true)]: 'Text document',
-      [normalizePath(path.join(testDirPath, 'doc.pdf'), true)]: 'PDF document',
-      [normalizePath(path.join(testDirPath, 'doc.doc'), true)]: 'Word document',
-      [normalizePath(path.join(testDirPath, 'data.csv'), true)]: 'CSV data file',
-      [normalizePath(path.join(testDirPath, 'data.json'), true)]: 'JSON data file',
-      [normalizePath(path.join(testDirPath, 'data.xml'), true)]: 'XML data file',
-      [normalizePath(path.join(testDirPath, 'image.png'), true)]: 'PNG image',
-      [normalizePath(path.join(testDirPath, 'image.jpg'), true)]: 'JPG image',
+    setupBasicFs({
+      [path.join(testDirPath, 'doc.txt')]: 'Text document',
+      [path.join(testDirPath, 'doc.pdf')]: 'PDF document',
+      [path.join(testDirPath, 'doc.doc')]: 'Word document',
+      [path.join(testDirPath, 'data.csv')]: 'CSV data file',
+      [path.join(testDirPath, 'data.json')]: 'JSON data file',
+      [path.join(testDirPath, 'data.xml')]: 'XML data file',
+      [path.join(testDirPath, 'image.png')]: 'PNG image',
+      [path.join(testDirPath, 'image.jpg')]: 'JPG image',
     });
     
     // Add gitignore with brace expansion pattern
     // This syntax will ignore pdf and doc files, and all image files
-    await addVirtualGitignoreFile(
-      normalizePath(path.join(testDirPath, '.gitignore'), true),
+    await addGitignoreFile(
+      path.join(testDirPath, '.gitignore'),
       '*.{pdf,doc}\n*.{png,jpg,jpeg,gif}'
     );
     

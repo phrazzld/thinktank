@@ -36,7 +36,7 @@
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 5, Recommendation 6.
 
-- [ ] **Standardize mocking approach**
+- [x] **Standardize mocking approach**
   - **Action:** Choose a consistent approach between mockFactories.ts and manual mocks in src/utils/__mocks__/, refactoring tests to follow the chosen pattern.
   - **Depends On:** None.
   - **AC Ref:** Additional Issue 6, Recommendation 5.

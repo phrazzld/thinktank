@@ -2,14 +2,24 @@
  * Filesystem mock setup for Jest
  * 
  * This file sets up the basic mocking for filesystem modules (fs, fs/promises)
- * using the virtualFsUtils implementation.
+ * using the virtualFsUtils implementation for a standardized approach to testing
+ * filesystem operations.
  * 
- * Tests should import the mock utilities from src/__tests__/utils/virtualFsUtils
- * to create specific filesystem configurations.
+ * PREFERRED APPROACH: Import these helpers directly rather than using manual mocks or
+ * mockFactories.ts to ensure consistent test behavior.
  */
 
 // Import the mock utilities
-const { mockFsModules } = require('../../src/__tests__/utils/virtualFsUtils');
+const { 
+  mockFsModules, 
+  resetVirtualFs, 
+  createVirtualFs, 
+  createFsError: createFsErrorUtil,
+  getVirtualFs,
+  normalizePathForMemfs,
+  createMockStats,
+  createMockDirent
+} = require('../../src/__tests__/utils/virtualFsUtils');
 
 // Mock the fs module
 jest.mock('fs', () => mockFsModules().fs);
@@ -21,25 +31,102 @@ jest.mock('fs/promises', () => mockFsModules().fsPromises);
 module.exports = {
   /**
    * Sets up a basic filesystem structure for tests
+   * 
    * @param {Object} structure - Object mapping file paths to content
+   * @param {Object} options - Additional options (reset: boolean)
+   * 
+   * @example
+   * setupBasicFs({
+   *   '/path/to/file.txt': 'File content',
+   *   '/path/to/dir/file.js': 'console.log("Hello");'
+   * });
    */
-  setupBasicFs: function(structure = {}) {
-    const { resetVirtualFs, createVirtualFs } = require('../../src/__tests__/utils/virtualFsUtils');
-    
+  setupBasicFs: function(structure = {}, options = { reset: true }) {
+    if (options.reset) {
+      resetVirtualFs();
+    }
+    createVirtualFs(structure, { reset: false });
+  },
+
+  /**
+   * Resets the virtual filesystem, removing all files and directories.
+   * 
+   * @example
+   * resetFs();
+   */
+  resetFs: function() {
     resetVirtualFs();
-    createVirtualFs(structure);
   },
 
   /**
    * Creates a standardized filesystem error
+   * 
    * @param {string} code - Error code (e.g., 'ENOENT', 'EACCES')
    * @param {string} message - Error message
    * @param {string} syscall - System call that failed
    * @param {string} filepath - Path that caused the error
    * @returns {NodeJS.ErrnoException} A properly formatted filesystem error
+   * 
+   * @example
+   * const error = createFsError('ENOENT', 'File not found', 'open', '/missing.txt');
    */
   createFsError: function(code, message, syscall, filepath) {
-    const { createFsError } = require('../../src/__tests__/utils/virtualFsUtils');
-    return createFsError(code, message, syscall, filepath);
+    return createFsErrorUtil(code, message, syscall, filepath);
+  },
+
+  /**
+   * Gets direct access to the virtual filesystem for advanced operations
+   * 
+   * @returns {Object} The virtual filesystem instance
+   * 
+   * @example
+   * const vfs = getFs();
+   * vfs.writeFileSync('/path/to/file.txt', 'content');
+   */
+  getFs: function() {
+    return getVirtualFs();
+  },
+
+  /**
+   * Creates a mock fs.Stats object for testing
+   * 
+   * @param {boolean} isFile - Whether this represents a file (true) or directory (false)
+   * @param {number} size - Size in bytes
+   * @returns {Object} A mock Stats object
+   * 
+   * @example
+   * const fileStats = createStats(true, 1024);
+   * const dirStats = createStats(false);
+   */
+  createStats: function(isFile, size) {
+    return createMockStats(isFile, size);
+  },
+
+  /**
+   * Creates a mock fs.Dirent object for testing directory entries
+   * 
+   * @param {string} name - Name of the file or directory
+   * @param {boolean} isFile - Whether this represents a file (true) or directory (false)
+   * @returns {Object} A mock Dirent object
+   * 
+   * @example
+   * const fileDirent = createDirent('file.txt', true);
+   * const dirDirent = createDirent('folder', false);
+   */
+  createDirent: function(name, isFile) {
+    return createMockDirent(name, isFile);
+  },
+
+  /**
+   * Normalizes a path for use with the virtual filesystem
+   * 
+   * @param {string} path - The path to normalize
+   * @returns {string} The normalized path
+   * 
+   * @example
+   * const path = normalizePath('C:\path\to\file.txt'); // returns '/C:/path/to/file.txt'
+   */
+  normalizePath: function(path) {
+    return normalizePathForMemfs(path);
   }
 };
