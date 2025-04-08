@@ -21,16 +21,6 @@ import path from 'path';
 import { ContextFileResult } from '../fileReaderTypes';
 import { readContextPaths } from '../fileReader';
 import * as gitignoreUtils from '../gitignoreUtils';
-import * as fileReader from '../fileReader';
-
-// Only mock fileExists from fileReader
-jest.mock('../fileReader', () => {
-  const originalModule = jest.requireActual('../fileReader');
-  return {
-    ...originalModule,
-    fileExists: jest.fn()
-  };
-});
 
 describe('readContextPaths function', () => {
   const testFile = '/path/to/file.txt';
@@ -46,18 +36,6 @@ describe('readContextPaths function', () => {
     
     // Clear gitignore cache
     gitignoreUtils.clearIgnoreCache();
-    
-    // Mock fileExists to use the virtual filesystem
-    const mockedFileExists = jest.mocked(fileReader.fileExists);
-    mockedFileExists.mockImplementation(async (filePath) => {
-      try {
-        // Use fs.access which is properly mocked by memfs
-        await fsPromises.access(filePath);
-        return true;
-      } catch (error) {
-        return false;
-      }
-    });
   });
   
   it('should process a mix of files and directories', async () => {
@@ -250,7 +228,7 @@ describe('readContextPaths function', () => {
     expect(results[0].error).toBeNull();
   });
   
-  it('should respect gitignore patterns', async () => {
+  it('should respect simple gitignore patterns', async () => {
     // Test directory with various files
     const gitignoreDir = '/test-gitignore';
     const gitignorePath = path.join(gitignoreDir, '.gitignore');
@@ -271,26 +249,7 @@ describe('readContextPaths function', () => {
     // Add .gitignore file to ignore *.log files
     await addVirtualGitignoreFile(gitignorePath, '*.log');
     
-    // We need to spy on the shouldIgnorePath function to ensure it's working properly
-    const shouldIgnorePathSpy = jest.spyOn(gitignoreUtils, 'shouldIgnorePath');
-    
-    // For testing purposes, we'll make it ignore *.log files
-    shouldIgnorePathSpy.mockImplementation(async (_basePath, filePath) => {
-      // Always ignore node_modules
-      if (path.basename(path.dirname(filePath)) === 'node_modules' || 
-          path.basename(filePath) === 'node_modules') {
-        return true;
-      }
-      
-      // Check if file has .log extension
-      if (filePath.endsWith('.log')) {
-        return true;
-      }
-      
-      return false;
-    });
-    
-    // Read the directory
+    // Read the directory - using the real gitignoreUtils functionality
     const results = await readContextPaths([gitignoreDir]);
     
     // Should include the regular files
@@ -302,8 +261,60 @@ describe('readContextPaths function', () => {
     
     // Default patterns should also work (node_modules should be ignored)
     expect(results.some(r => r.path.includes('node_modules'))).toBe(false);
+  });
+  
+  it('should respect specific gitignore patterns directly', async () => {
+    // Test if the gitignoreUtils.shouldIgnorePath function works properly
+    // with the virtual filesystem
     
-    // Cleanup
-    shouldIgnorePathSpy.mockRestore();
+    const testDir = '/test-gitignore-direct';
+    const gitignorePath = path.join(testDir, '.gitignore');
+    
+    // Create directory and .gitignore file
+    const virtualFs = getVirtualFs();
+    virtualFs.mkdirSync(testDir, { recursive: true });
+    
+    // Add .gitignore file with various patterns
+    await addVirtualGitignoreFile(gitignorePath, 
+      '# Environment variables\n' +
+      '.env\n' +
+      '\n' +
+      '# Logs\n' +
+      'logs/\n' +
+      '*.log\n' +
+      '\n' +
+      '# Build directory\n' +
+      'build/\n' +
+      '\n' +
+      '# Test artifacts\n' +
+      'tests/artifacts/\n' +
+      '\n' +
+      '# Temporary files\n' +
+      '*.tmp\n' +
+      '\n' +
+      '# Dependencies\n' +
+      'node_modules/'
+    );
+    
+    // Clear cache to ensure our .gitignore file is read fresh
+    gitignoreUtils.clearIgnoreCache();
+    
+    // Now test individual paths directly against shouldIgnorePath
+    const filesToTest = [
+      { path: path.join(testDir, 'app.js'), shouldBeIgnored: false },
+      { path: path.join(testDir, 'src', 'utils.js'), shouldBeIgnored: false },
+      { path: path.join(testDir, '.env'), shouldBeIgnored: true },
+      { path: path.join(testDir, 'logs', 'error.log'), shouldBeIgnored: true },
+      { path: path.join(testDir, 'build', 'bundle.js'), shouldBeIgnored: true },
+      { path: path.join(testDir, 'tests', 'artifacts', 'report.html'), shouldBeIgnored: true },
+      { path: path.join(testDir, 'node_modules', 'lodash', 'index.js'), shouldBeIgnored: true },
+      { path: path.join(testDir, 'src', 'temp.tmp'), shouldBeIgnored: true }
+    ];
+    
+    // Test each file path directly
+    for (const fileTest of filesToTest) {
+      const isIgnored = await gitignoreUtils.shouldIgnorePath(testDir, fileTest.path);
+      expect(isIgnored).toBe(fileTest.shouldBeIgnored);
+    }
   });
 });

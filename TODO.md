@@ -12,7 +12,7 @@
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 2.
 
-- [ ] **Fix readContextPaths.test.ts mock implementation**
+- [x] **Fix readContextPaths.test.ts mock implementation**
   - **Action:** Replace the mock implementation of gitignoreUtils.shouldIgnorePath with the actual integration against virtual filesystem.
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 2.
