@@ -120,21 +120,18 @@ describe('Gitignore-based Filtering Logic', () => {
     
     // This test verifies basic glob patterns.
     // 
-    // KNOWN LIMITATIONS:
-    // When testing with a virtual filesystem environment, there are some limitations
-    // with how complex gitignore patterns work compared to a real filesystem:
+    // NOTE: Complex gitignore patterns are now tested in a dedicated test file:
+    // gitignoreComplexPatterns.test.ts, which includes tests for:
     // 
-    // 1. Double-asterisk patterns (**) for deep directory matching have inconsistent
-    //    behavior in the virtual filesystem compared to a real filesystem.
-    // 
+    // 1. Double-asterisk patterns (**) for deep directory matching
     // 2. Patterns with curly braces for multiple extensions (e.g., *.{jpg,png,gif})
-    //    may not work as expected in the virtual environment.
-    // 
-    // 3. Patterns with prefix wildcards (e.g., build-*/) may behave differently.
-    // 
-    // For reliable testing in the virtual filesystem, we focus on the most common
-    // and reliable patterns. More complex patterns should be tested in integration
-    // tests against a real filesystem.
+    // 3. Patterns with prefix wildcards (e.g., build-*/)
+    // 4. Negated nested patterns (*.log + !important/*.log)
+    // 5. Character range patterns ([0-9]*.js)
+    //
+    // The complex patterns test suite includes both integration tests with the virtual
+    // filesystem and direct tests of the ignore library's pattern matching functionality
+    // to ensure comprehensive coverage.
     it('should handle basic glob patterns correctly', async () => {
       // Create .gitignore with basic but useful patterns
       await setupWithGitignore(testDirPath, '*.min.js\nnode_modules\n*.jpg\n*.png\n*.gif', {});

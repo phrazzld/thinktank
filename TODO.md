@@ -17,7 +17,7 @@
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 2.
 
-- [ ] **Restore complex gitignore pattern tests**
+- [x] **Restore complex gitignore pattern tests**
   - **Action:** Investigate and fix the limitations in testing complex glob patterns in gitignoreFiltering.test.ts. If not fully possible, document the limitations and create alternative tests.
   - **Depends On:** None.
   - **AC Ref:** Critical Issue 4.
