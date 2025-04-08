@@ -2,15 +2,15 @@
 
 ## High Priority
 
-- [ ] **Fix skipped tests**
-  - [ ] Update `readDirectoryContents.test.ts` to work with the FileSystem interface
-  - [ ] Resolve issues in `readContextFile.centralized-mock.test.ts`
-  - [ ] Fix any other skipped tests in the codebase
+- [x] **Fix skipped tests**
+  - [x] Update `readDirectoryContents.test.ts` to work with the FileSystem interface
+  - [x] Resolve issues in `readContextFile.centralized-mock.test.ts` (renamed to readContextFile.interface.test.ts)
+  - [x] Fix any other skipped tests in the codebase (one test for empty files intentionally left skipped)
 
-- [ ] **Fix E2E testing**
-  - [ ] Remove internal mocking from `src/workflow/__tests__/runThinktank.e2e.test.ts`
-  - [ ] Replace `modelSelector` mock with CLI args or config files for controlling test behavior
-  - [ ] Verify E2E tests treat the application as a true black box
+- [x] **Fix E2E testing**
+  - [x] Remove internal mocking from `src/workflow/__tests__/runThinktank.e2e.test.ts`
+  - [x] Replace `modelSelector` mock with CLI args or config files for controlling test behavior
+  - [x] Verify E2E tests treat the application as a true black box
 
 ## Medium Priority
 
