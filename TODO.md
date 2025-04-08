@@ -9,7 +9,7 @@
   - **Depends On:** None
   - **AC Ref:** AC 2.1 (Return data structures)
 
-- [ ] **Refactor output formatting utilities**
+- [x] **Refactor output formatting utilities**
   - **Action:** Convert formatting functions in `src/utils/outputFormatter.ts` to pure functions that take data and return formatted strings.
   - **Depends On:** Define result data interfaces
   - **AC Ref:** AC 2.1 (Modify functions to return data)

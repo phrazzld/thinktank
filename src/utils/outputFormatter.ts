@@ -1,5 +1,9 @@
 /**
  * Output formatter for displaying LLM responses in a readable format
+ * 
+ * Functions in this module are pure - they take data structures as input
+ * and return formatted strings as output. They do not perform any direct I/O
+ * operations or modify global state.
  */
 
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -14,6 +18,8 @@ import {
   styleHeader 
 } from './consoleUtils';
 import { LLMResponse, LLMAvailableModel } from '../core/types';
+// Import types from workflow/types when needed in refactored functions
+import { formatCompletionSummary } from './formatCompletionSummary';
 
 /**
  * Format options for the output
@@ -69,72 +75,96 @@ const DEFAULT_FORMAT_OPTIONS: FormatOptions = {
 };
 
 /**
- * Formats a single LLM response
+ * Formats a single LLM response for output to markdown file
  * 
  * @param response - The LLM response to format
  * @param options - Format options
- * @returns The formatted response as a string
+ * @returns The formatted response as a markdown string
  */
-export function formatResponse(
+export function formatResponseForMarkdownFile(
   response: LLMResponse, 
   options: FormatOptions = {}
 ): string {
   // Merge with default options
   const opts = { ...DEFAULT_FORMAT_OPTIONS, ...options };
-  const { useColors, includeMetadata, includeText, includeErrors, includeThinking } = opts;
+  const { includeMetadata, includeText, includeErrors, includeThinking } = opts;
   
   const configKey = `${response.provider}:${response.modelId}`;
   const lines: string[] = [];
   
   // Format the header with provider and model info
-  const header = `Model: ${configKey}`;
-  lines.push(useColors ? styleHeader(header) : header);
+  const header = `# Model: ${configKey}`;
+  lines.push(header);
+  
+  // Include group information if available
+  if (response.groupInfo && response.groupInfo.name !== 'default') {
+    const groupLine = `Group: ${response.groupInfo.name}`;
+    lines.push(groupLine);
+  }
+  
+  // Add timestamp
+  const timestamp = new Date().toISOString();
+  lines.push(`Generated: ${timestamp}`);
+  lines.push('');
   
   // Include error if present and requested
   if (response.error && includeErrors) {
-    const errorText = `Error: ${response.error}`;
-    lines.push(useColors ? styleError(errorText) : errorText);
+    lines.push(`## Error\n\n\`\`\`\n${response.error}\n\`\`\`\n`);
   }
   
   // Include the response text if requested and available
   if (includeText && response.text) {
-    lines.push('');
+    lines.push('## Response\n');
     lines.push(response.text);
   }
   
   // Include thinking output if requested and available
   if (includeThinking && response.metadata?.thinking) {
-    lines.push('');
-    const thinkingHeader = 'Thinking:';
-    lines.push(useColors ? styleHeader(thinkingHeader) : thinkingHeader);
+    lines.push('\n## Thinking\n');
     
     // Type guard for thinking data with a process field
     const thinking = response.metadata.thinking;
     if (typeof thinking === 'object' && thinking !== null && 
         'process' in thinking && typeof thinking.process === 'string') {
+      lines.push('```text');
       lines.push(thinking.process);
+      lines.push('```');
     } else {
+      lines.push('```json');
       lines.push(JSON.stringify(thinking, null, 2));
+      lines.push('```');
     }
   }
   
   // Include metadata if requested and available
   if (includeMetadata && response.metadata) {
-    lines.push('');
-    const metadataHeader = 'Metadata:';
-    lines.push(useColors ? styleDim(metadataHeader) : metadataHeader);
+    lines.push('\n## Metadata\n');
+    lines.push('```json');
     
-    // Format each metadata entry
-    Object.entries(response.metadata).forEach(([key, value]) => {
-      // Skip thinking in metadata if we've already displayed it separately
-      if (key === 'thinking' && includeThinking) return;
-      
-      const metadataLine = `  ${key}: ${JSON.stringify(value)}`;
-      lines.push(useColors ? styleDim(metadataLine) : metadataLine);
-    });
+    // Create a copy of metadata to modify safely
+    const metadataCopy = { ...response.metadata };
+    
+    // Skip thinking in metadata if we've already displayed it separately
+    if (includeThinking && 'thinking' in metadataCopy) {
+      delete metadataCopy.thinking;
+    }
+    
+    lines.push(JSON.stringify(metadataCopy, null, 2));
+    lines.push('```');
   }
   
   return lines.join('\n');
+}
+
+/**
+ * Formats a single LLM response (alias for backwards compatibility)
+ * @deprecated Use formatResponseForMarkdownFile instead
+ */
+export function formatResponse(
+  response: LLMResponse, 
+  options: FormatOptions = {}
+): string {
+  return formatResponseForMarkdownFile(response, options);
 }
 
 /**
@@ -352,12 +382,49 @@ export function formatResults(
       modelId: modelId || result.modelId,
     };
     
-    return formatResponse(response, opts);
+    return formatResponseForMarkdownFile(response, opts);
   });
   
   // Join with separator
   return formattedResults.join(opts.separator);
 }
+
+/**
+ * Formats LLM responses for console display
+ * 
+ * This is a specialized function for formatting results specifically for
+ * console output. It acts as a thin wrapper around formatResults or formatResultsTable
+ * depending on the options.
+ * 
+ * @param results - Array of LLM responses with their config keys
+ * @param options - Format options
+ * @returns The formatted console output as a string
+ */
+export function formatResultsForConsole(
+  results: Array<LLMResponse & { configKey: string }>,
+  options: FormatOptions = {}
+): string {
+  // Set up specific options for console output
+  const consoleOptions: FormatOptions = {
+    ...options,
+    includeMetadata: options.includeMetadata ?? false,
+    useColors: options.useColors ?? true,
+    includeText: options.includeText ?? true,
+    includeErrors: options.includeErrors ?? true,
+  };
+  
+  return formatResults(results, consoleOptions);
+}
+
+/**
+ * Formats a list of available models grouped by provider
+ * 
+ * @param modelsByProvider - Record mapping provider ID to array of models or error
+ * @param options - Format options
+ * @returns The formatted model list as a string
+ */
+// Re-export formatCompletionSummary from the separate module
+export { formatCompletionSummary };
 
 /**
  * Formats a list of available models grouped by provider

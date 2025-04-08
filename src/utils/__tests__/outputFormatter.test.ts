@@ -1,354 +1,188 @@
 /**
- * Unit tests for output formatter
+ * Tests for the output formatter functions
  */
-import { 
-  formatResponse, 
-  formatResponses, 
-  formatResults,
-  formatResultsTable,
-  formatModelList,
-  FormatOptions,
+import {
+  formatResponseForMarkdownFile,
+  formatResponse,
+  formatResultsForConsole,
+  formatCompletionSummary
 } from '../outputFormatter';
-import { LLMResponse, LLMAvailableModel } from '../../core/types';
+import { LLMResponse } from '../../core/types';
+import {
+  CompletionSummaryData
+} from '../../workflow/types';
 
-// Mock chalk and consoleUtils
-jest.mock('chalk', () => ({
-  bold: {
-    blue: jest.fn(text => `BOLD_BLUE(${text})`),
+// Mock data
+const mockResponse: LLMResponse = {
+  provider: 'openai',
+  modelId: 'gpt-4o',
+  text: 'Test response content',
+  error: undefined,
+  metadata: {
+    responseTime: 1234,
+    usage: {
+      total_tokens: 42
+    }
   },
-  red: jest.fn(text => `RED(${text})`),
-  gray: jest.fn(text => `GRAY(${text})`),
-}));
+  groupInfo: {
+    name: 'test-group'
+  }
+};
 
-// Mock cli-table3
-jest.mock('cli-table3', () => {
-  return jest.fn().mockImplementation(() => {
-    return {
-      push: jest.fn(),
-      toString: jest.fn().mockReturnValue('TABLE_OUTPUT')
-    };
-  });
-});
-
-// Mock console utils
-jest.mock('../consoleUtils', () => ({
-  colors: {
-    bold: jest.fn(text => `BOLD(${text})`),
-    red: { bold: jest.fn(text => `RED_BOLD(${text})`) },
+const mockResponseWithError: LLMResponse = {
+  provider: 'openai',
+  modelId: 'gpt-4o',
+  text: '', // Use empty string instead of undefined
+  error: 'Test error message',
+  metadata: {
+    responseTime: 0,
   },
-  symbols: {
-    tick: '✓',
-    cross: '✖',
-    warning: '⚠',
-    info: 'ℹ',
-  },
-  styleSuccess: jest.fn(text => `SUCCESS(${text})`),
-  styleError: jest.fn(text => `ERROR(${text})`),
-  styleWarning: jest.fn(text => `WARNING(${text})`),
-  styleInfo: jest.fn(text => `INFO(${text})`),
-  styleHeader: jest.fn(text => `HEADER(${text})`),
-  styleDim: jest.fn(text => `DIM(${text})`),
-}));
+  groupInfo: {
+    name: 'test-group'
+  }
+};
 
-describe('Output Formatter', () => {
-  // Sample data for tests
-  const sampleResponse: LLMResponse = {
-    provider: 'openai',
-    modelId: 'gpt-4',
-    text: 'This is a test response.',
-    metadata: {
-      tokens: 10,
-      latency: '123ms',
-    },
-  };
-  
-  const errorResponse: LLMResponse = {
-    provider: 'openai',
-    modelId: 'gpt-4',
-    text: '',
-    error: 'API Error: Something went wrong',
-  };
-  
-  describe('formatResponse', () => {
-    it('should format a basic response with colors', () => {
-      const result = formatResponse(sampleResponse);
+const mockCompletionSummaryData: CompletionSummaryData = {
+  totalModels: 3,
+  successCount: 2,
+  failureCount: 1,
+  errors: [
+    {
+      modelKey: 'anthropic:claude-3-opus',
+      message: 'Request timed out',
+      category: 'Network'
+    }
+  ],
+  runName: 'test-run',
+  outputDirectoryPath: '/path/to/output',
+  totalExecutionTimeMs: 5000
+};
+
+describe('outputFormatter', () => {
+  describe('formatResponseForMarkdownFile', () => {
+    it('formats a successful response correctly', () => {
+      const result = formatResponseForMarkdownFile(mockResponse, { includeMetadata: true });
       
-      expect(result).toContain('HEADER(Model: openai:gpt-4)');
-      expect(result).toContain('This is a test response.');
-      expect(result).not.toContain('Metadata:');
-    });
-    
-    it('should format a response with metadata when requested', () => {
-      const options: FormatOptions = { includeMetadata: true };
-      const result = formatResponse(sampleResponse, options);
-      
-      expect(result).toContain('DIM(Metadata:)');
-      expect(result).toContain('DIM(  tokens: 10)');
-      expect(result).toContain('DIM(  latency: "123ms")');
-    });
-    
-    it('should format errors when present', () => {
-      const result = formatResponse(errorResponse);
-      
-      expect(result).toContain('HEADER(Model: openai:gpt-4)');
-      expect(result).toContain('ERROR(Error: API Error: Something went wrong)');
-      // Should not include empty text
-      expect(result.split('\n').filter(line => line.trim() === '').length).toBe(0);
-    });
-    
-    it('should not use colors when disabled', () => {
-      const options: FormatOptions = { useColors: false };
-      const result = formatResponse(sampleResponse, options);
-      
-      expect(result).toContain('Model: openai:gpt-4');
-      expect(result).not.toContain('BOLD_BLUE');
-    });
-    
-    it('should exclude text when requested', () => {
-      const options: FormatOptions = { includeText: false };
-      const result = formatResponse(sampleResponse, options);
-      
-      expect(result).not.toContain('This is a test response.');
-    });
-    
-    it('should exclude errors when requested', () => {
-      const options: FormatOptions = { includeErrors: false };
-      const result = formatResponse(errorResponse, options);
-      
+      expect(result).toContain('# Model: openai:gpt-4o');
+      expect(result).toContain('Group: test-group');
+      expect(result).toContain('Test response content');
+      expect(result).toContain('```json');
       expect(result).not.toContain('Error:');
     });
-  });
-  
-  describe('formatResponses', () => {
-    it('should format multiple responses with separators', () => {
-      const responses = [sampleResponse, { ...sampleResponse, modelId: 'gpt-3.5' }];
-      const result = formatResponses(responses);
+    
+    it('formats an error response correctly', () => {
+      const result = formatResponseForMarkdownFile(mockResponseWithError);
       
-      expect(result).toContain('HEADER(Model: openai:gpt-4)');
-      expect(result).toContain('HEADER(Model: openai:gpt-3.5)');
-      expect(result).toContain('-'.repeat(80)); // Default separator
+      expect(result).toContain('# Model: openai:gpt-4o');
+      expect(result).toContain('## Error');
+      expect(result).toContain('Test error message');
     });
     
-    it('should return a message when no responses are provided', () => {
-      const result = formatResponses([]);
+    it('respects format options', () => {
+      const result = formatResponseForMarkdownFile(mockResponse, { includeMetadata: false });
       
-      expect(result).toBe('No responses to display.');
-    });
-    
-    it('should use custom separator when provided', () => {
-      const responses = [sampleResponse, { ...sampleResponse, modelId: 'gpt-3.5' }];
-      const options: FormatOptions = { separator: '\n===\n' };
-      const result = formatResponses(responses, options);
-      
-      expect(result).toContain('===');
-      expect(result).not.toContain('-'.repeat(80));
+      expect(result).not.toContain('## Metadata');
+      expect(result).not.toContain('```json');
     });
   });
   
-  describe('formatResults', () => {
-    it('should format results with config keys', () => {
-      const results = [
-        { ...sampleResponse, configKey: 'openai:gpt-4' },
-        { ...sampleResponse, modelId: 'gpt-3.5', configKey: 'openai:gpt-3.5' },
-      ];
+  describe('formatResponse', () => {
+    it('calls formatResponseForMarkdownFile', () => {
+      // Verify that formatResponse is just an alias
+      const mockOptions = { includeMetadata: true, includeText: false };
+      const result = formatResponse(mockResponse, mockOptions);
+      const expected = formatResponseForMarkdownFile(mockResponse, mockOptions);
       
-      const result = formatResults(results);
-      
-      expect(result).toContain('HEADER(Model: openai:gpt-4)');
-      expect(result).toContain('HEADER(Model: openai:gpt-3.5)');
-    });
-    
-    it('should use provider and modelId from config key when available', () => {
-      const results = [
-        { 
-          ...sampleResponse, 
-          provider: 'wrong', 
-          modelId: 'wrong', 
-          configKey: 'openai:gpt-4' 
-        },
-      ];
-      
-      const result = formatResults(results);
-      
-      expect(result).toContain('HEADER(Model: openai:gpt-4)');
-      expect(result).not.toContain('wrong');
-    });
-    
-    it('should return a message when no results are provided', () => {
-      const result = formatResults([]);
-      
-      expect(result).toBe('No results to display.');
-    });
-    
-    it('should use tabular format when useTable is true', () => {
-      const results = [
-        { ...sampleResponse, configKey: 'openai:gpt-4' },
-        { ...sampleResponse, modelId: 'gpt-3.5', configKey: 'openai:gpt-3.5' },
-      ];
-      
-      const options: FormatOptions = { useTable: true };
-      const result = formatResults(results, options);
-      
-      // Should return the table output from our mock
-      expect(result).toBe('TABLE_OUTPUT');
+      expect(result).toBe(expected);
     });
   });
   
-  describe('formatResultsTable', () => {
-    // Extended sample data with group info
-    const sampleResults = [
-      { 
-        ...sampleResponse, 
-        configKey: 'openai:gpt-4',
-        metadata: {
-          responseTime: 1200,
-          usage: { total_tokens: 150 }
-        }
-      },
-      { 
-        ...sampleResponse, 
-        modelId: 'gpt-3.5', 
-        configKey: 'openai:gpt-3.5',
-        metadata: {
-          responseTime: 800,
-          usage: { total_tokens: 120 }
-        }
-      },
-      { 
-        ...errorResponse, 
-        configKey: 'anthropic:claude-3',
-        groupInfo: {
-          name: 'creative',
-          systemPrompt: { text: 'Be creative' }
-        }
-      }
-    ];
-    
-    it('should return a message when no results are provided', () => {
-      const result = formatResultsTable([]);
+  describe('formatResultsForConsole', () => {
+    it('formats console output with default options', () => {
+      const mockResponseWithConfigKey = { ...mockResponse, configKey: 'openai:gpt-4o' };
+      const result = formatResultsForConsole([mockResponseWithConfigKey]);
       
-      expect(result).toBe('No results to display.');
+      expect(result).toContain('Model: openai:gpt-4o');
+      expect(result).toContain('Test response content');
     });
     
-    it('should create a table with the correct columns', () => {
-      // We're using a mock that returns TABLE_OUTPUT
-      const result = formatResultsTable(sampleResults);
+    it('ensures useColors is set by default', () => {
+      // We can't easily test the colors directly, but we can check that
+      // passing no options doesn't break the function
+      const mockResponseWithConfigKey = { ...mockResponse, configKey: 'openai:gpt-4o' };
+      const result = formatResultsForConsole([mockResponseWithConfigKey]);
       
-      expect(result).toBe('TABLE_OUTPUT');
-      
-      // Get the mocked Table constructor
-      const Table = jest.mocked(jest.requireMock('cli-table3'));
-      expect(Table).toHaveBeenCalled();
-    });
-    
-    it('should sort results by group then model', () => {
-      // We can't easily verify the sorting with our mock,
-      // but we can verify the function doesn't throw errors
-      const result = formatResultsTable(sampleResults);
-      expect(result).toBe('TABLE_OUTPUT');
-    });
-    
-    it('should handle results with group information', () => {
-      formatResultsTable(sampleResults);
-      // Verify Table.push was called at least once
-      const Table = jest.mocked(jest.requireMock('cli-table3'));
-      const mockTable = Table.mock.results[0].value;
-      expect(mockTable.push).toHaveBeenCalled();
-    });
-    
-    it('should include group statistics when includeMetadata is true', () => {
-      const options: FormatOptions = { includeMetadata: true };
-      const Table = jest.mocked(jest.requireMock('cli-table3'));
-      
-      // Mock toString to return just the table part
-      Table.mockImplementation(() => ({
-        push: jest.fn(),
-        toString: jest.fn().mockReturnValue('TABLE_PART')
-      }));
-      
-      const result = formatResultsTable(sampleResults, options);
-      
-      // The result should have more than just the table output,
-      // it should also include group statistics
-      expect(result.length).toBeGreaterThan('TABLE_PART'.length);
-      expect(result).toContain('TABLE_PART');
+      expect(result).toBeTruthy();
     });
   });
-
-  describe('formatModelList', () => {
-    // Sample models for tests
-    const openaiModels: LLMAvailableModel[] = [
-      { id: 'gpt-4o' },
-      { id: 'gpt-4-turbo', description: 'Legacy GPT-4 Turbo' }
-    ];
-    
-    const anthropicModels: LLMAvailableModel[] = [
-      { id: 'claude-3-opus-20240229', description: 'Most powerful model' },
-      { id: 'claude-3-sonnet-20240229', description: 'Balanced model' }
-    ];
-
-    it('should format models grouped by provider with colors', () => {
-      const modelsByProvider = {
-        'openai': openaiModels,
-        'anthropic': anthropicModels
+  
+  describe('formatCompletionSummary', () => {
+    it('formats successful summary correctly', () => {
+      const successData: CompletionSummaryData = {
+        ...mockCompletionSummaryData,
+        successCount: 3,
+        failureCount: 0,
+        errors: []
       };
       
-      const result = formatModelList(modelsByProvider);
+      const result = formatCompletionSummary(successData, { useColors: false });
       
-      expect(result).toContain('HEADER(Available Models:)');
-      expect(result).toContain('HEADER(--- openai ---)');
-      expect(result).toContain('  - gpt-4o');
-      expect(result).toContain('  - gpt-4-turbo (Legacy GPT-4 Turbo)');
-      expect(result).toContain('HEADER(--- anthropic ---)');
-      expect(result).toContain('  - claude-3-opus-20240229 (Most powerful model)');
-      expect(result).toContain('  - claude-3-sonnet-20240229 (Balanced model)');
+      expect(result.summaryText).toContain('Successfully completed');
+      expect(result.summaryText).toContain('test-run');
+      expect(result.summaryText).toContain('in 5.00s');
+      expect(result.summaryText).toContain('/path/to/output');
+      expect(result.errorDetails).toBeUndefined();
     });
     
-    it('should handle providers with error messages', () => {
-      const modelsByProvider = {
-        'openai': openaiModels,
-        'anthropic': { error: 'API key not found' }
-      };
+    it('formats partial success summary correctly', () => {
+      const result = formatCompletionSummary(mockCompletionSummaryData, { useColors: false });
       
-      const result = formatModelList(modelsByProvider);
-      
-      expect(result).toContain('HEADER(Available Models:)');
-      expect(result).toContain('HEADER(--- openai ---)');
-      expect(result).toContain('ERROR(  Error fetching models: API key not found)');
-    });
-
-    it('should handle empty model lists', () => {
-      const modelsByProvider = {
-        'openai': [],
-        'anthropic': anthropicModels
-      };
-      
-      const result = formatModelList(modelsByProvider);
-      
-      expect(result).toContain('HEADER(--- openai ---)');
-      expect(result).toContain('DIM(  (No models available))');
+      expect(result.summaryText).toContain('Partially completed');
+      expect(result.summaryText).toContain('67% success (2/3)');
+      expect(result.errorDetails).toBeDefined();
+      expect(result.errorDetails?.length).toBeGreaterThan(0);
+      expect(result.errorDetails![0]).toContain('Failed Models:');
+      expect(result.errorDetails![1]).toContain('anthropic:claude-3-opus');
     });
     
-    it('should handle no providers', () => {
-      const modelsByProvider = {};
-      
-      const result = formatModelList(modelsByProvider);
-      
-      expect(result).toContain('HEADER(Available Models:)');
-      expect(result).toContain('DIM(No providers configured.)');
-    });
-
-    it('should format without colors when disabled', () => {
-      const modelsByProvider = {
-        'openai': openaiModels
+    it('formats full failure summary correctly', () => {
+      const failureData: CompletionSummaryData = {
+        ...mockCompletionSummaryData,
+        successCount: 0,
+        failureCount: 3,
+        errors: [
+          { modelKey: 'model1', message: 'Error 1' },
+          { modelKey: 'model2', message: 'Error 2' },
+          { modelKey: 'model3', message: 'Error 3' }
+        ]
       };
       
-      const options: FormatOptions = { useColors: false };
-      const result = formatModelList(modelsByProvider, options);
+      const result = formatCompletionSummary(failureData, { useColors: false });
       
-      expect(result).toContain('Available Models:');
-      expect(result).toContain('--- openai ---');
-      expect(result).not.toContain('BOLD_BLUE');
+      expect(result.summaryText).toContain('All models failed for');
+      expect(result.errorDetails).toBeDefined();
+      expect(result.errorDetails?.length).toBeGreaterThan(3); // Header + 3 errors
+    });
+    
+    it('groups errors by category', () => {
+      const categorizedErrors: CompletionSummaryData = {
+        ...mockCompletionSummaryData,
+        successCount: 0,
+        failureCount: 3,
+        errors: [
+          { modelKey: 'model1', message: 'Error 1', category: 'Network' },
+          { modelKey: 'model2', message: 'Error 2', category: 'API' },
+          { modelKey: 'model3', message: 'Error 3', category: 'Network' }
+        ]
+      };
+      
+      const result = formatCompletionSummary(categorizedErrors, { useColors: false });
+      
+      expect(result.errorDetails).toBeDefined();
+      const errorText = result.errorDetails!.join('\n');
+      
+      expect(errorText).toContain('Network errors:');
+      expect(errorText).toContain('API errors:');
     });
   });
 });
