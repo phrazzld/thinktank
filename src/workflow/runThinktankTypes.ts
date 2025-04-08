@@ -477,38 +477,7 @@ export interface ProcessOutputResult {
  * to the user about the outcome of their request.
  */
 
-/**
- * Parameters for the _logCompletionSummary helper function
- */
-export interface LogCompletionSummaryParams {
-  /**
-   * The query execution results
-   */
-  queryResults: QueryExecutionResult;
-  
-  /**
-   * The file output result
-   */
-  fileOutputResult: FileOutputResult;
-  
-  /**
-   * The user-provided run options with run name
-   */
-  options: RunOptions & { friendlyRunName: string };
-  
-  /**
-   * The output directory path
-   */
-  outputDirectoryPath: string;
-}
-
-/**
- * Result of the _logCompletionSummary helper function
- * No specific return value since this function primarily logs to the console
- */
-export interface LogCompletionSummaryResult {
-  // Empty - function primarily produces side effects (logging)
-}
+// _logCompletionSummary has been refactored out; these interfaces are no longer needed
 
 // ----------------------------------------
 // 7. Handle Workflow Error Helper

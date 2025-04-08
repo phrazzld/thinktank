@@ -33,22 +33,22 @@
 
 ### 3. Refactor Core Functions
 
-- [ ] **Refactor `_processOutput`**
+- [x] **Refactor `_processOutput`**
   - **Action:** Convert `_processOutput` in `src/workflow/runThinktankHelpers.ts` to return structured data instead of performing I/O.
   - **Depends On:** Define result data interfaces
   - **AC Ref:** AC 2.1 (Modify functions to return data)
 
-- [ ] **Extract `_processOutput` I/O operations**
+- [x] **Extract `_processOutput` I/O operations**
   - **Action:** Move file writing operations from `_processOutput` to `runThinktank.ts`.
   - **Depends On:** Refactor `_processOutput`
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
-- [ ] **Refactor `_logCompletionSummary`**
+- [x] **Refactor `_logCompletionSummary`**
   - **Action:** Convert `_logCompletionSummary` in `src/workflow/runThinktankHelpers.ts` to return formatted strings instead of console logging.
   - **Depends On:** Define result data interfaces
   - **AC Ref:** AC 2.1 (Modify functions to return data)
 
-- [ ] **Extract `_logCompletionSummary` I/O operations**
+- [x] **Extract `_logCompletionSummary` I/O operations**
   - **Action:** Move console output operations from `_logCompletionSummary` to `runThinktank.ts`.
   - **Depends On:** Refactor `_logCompletionSummary`
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)

@@ -43,9 +43,7 @@ import { createContextualError } from '../core/errors/utils/categorization';
 import { 
   styleInfo, 
   styleSuccess, 
-  styleWarning, 
-  colors,
-  styleDim
+  styleWarning
 } from '../utils/consoleUtils';
 import { logger } from '../utils/logger';
 import { readContextPaths, formatCombinedInput } from '../utils/fileReader';
@@ -62,8 +60,6 @@ import {
   ProcessOutputParams,
   PureProcessOutputResult,
   FileData,
-  LogCompletionSummaryParams,
-  LogCompletionSummaryResult,
   HandleWorkflowErrorParams
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
@@ -994,181 +990,6 @@ export async function _processOutput({
   }
 }
 
-/**
- * Completion summary helper function
- * 
- * Formats and logs the completion summary, handling both success and partial failure scenarios.
- * 
- * @param params - Parameters containing query results, file results, options, and output path
- * @returns Empty result object since this function primarily produces console output
- */
-export function _logCompletionSummary({
-  queryResults,
-  fileOutputResult,
-  options,
-  outputDirectoryPath
-}: LogCompletionSummaryParams): LogCompletionSummaryResult {
-  // Extract important data for the summary
-  const { responses, statuses } = queryResults;
-  
-  // Count successes and failures
-  const successCount = Object.values(statuses).filter(s => s.status === 'success').length;
-  const errorCount = Object.values(statuses).filter(s => s.status === 'error').length;
-  
-  // Create mode-specific completion message based on options
-  let completionMessage = '';
-  if (options.specificModel) {
-    completionMessage = options.specificModel;
-  } else if (options.groupName) {
-    completionMessage = `${options.groupName} group (${responses.length} model${responses.length === 1 ? '' : 's'})`;
-  } else {
-    completionMessage = `${responses.length} model${responses.length === 1 ? '' : 's'}`;
-  }
-  
-  // Add the run name if available
-  if (options.friendlyRunName) {
-    completionMessage = `'${options.friendlyRunName}' (${completionMessage})`;
-  }
-  
-  // Format completion time
-  const elapsedTime = queryResults.timing.durationMs;
-  const completionTimeText = elapsedTime > 1000 
-    ? `${(elapsedTime / 1000).toFixed(2)}s` 
-    : `${elapsedTime}ms`;
-  
-  // Calculate success percentage
-  const percentage = successCount > 0 
-    ? Math.round((successCount / responses.length) * 100) 
-    : 0;
-  
-  // Create the summary text
-  let summaryOutput = '';
-  
-  // Add file output summary
-  const { succeededWrites, failedWrites } = fileOutputResult;
-  const totalFiles = succeededWrites + failedWrites;
-  
-  if (failedWrites > 0) {
-    const fileStatusText = failedWrites === totalFiles 
-      ? 'No output files were written'
-      : `${succeededWrites} of ${totalFiles} output files were written`;
-    
-    summaryOutput += styleWarning(`${fileStatusText} to: ${outputDirectoryPath}\n`);
-  } else {
-    summaryOutput += styleSuccess(`Output saved to: ${outputDirectoryPath}\n`);
-  }
-  
-  // Model results summary section
-  if (errorCount > 0) {
-    // Format partial success message
-    summaryOutput += styleWarning(
-      `Processing complete for ${completionMessage} - ${percentage}% of models completed successfully\n`
-    );
-    
-    // Group errors by category for better display
-    const errorsByCategory: Record<string, Array<{ model: string, message: string }>> = {};
-    
-    Object.entries(statuses)
-      .filter(([_, status]) => status.status === 'error')
-      .forEach(([model, status]) => {
-        // Determine error category
-        let category = errorCategories.UNKNOWN;
-        const message = status.message || 'Unknown error';
-        
-        // Try to extract category from the error message or error object
-        if (status.detailedError && 'category' in status.detailedError) {
-          category = (status.detailedError as { category?: string }).category || errorCategories.UNKNOWN;
-        } else {
-          // Try to extract from message
-          Object.values(errorCategories).forEach(cat => {
-            if (message.includes(cat)) {
-              category = cat;
-            }
-          });
-        }
-        
-        if (!errorsByCategory[category]) {
-          errorsByCategory[category] = [];
-        }
-        
-        errorsByCategory[category].push({ 
-          model, 
-          message
-        });
-      });
-    
-    // Create a nice tree-style summary
-    summaryOutput += `\n${colors.blue('Results Summary:')}\n`;
-    summaryOutput += `${styleDim('│')}\n`;
-    
-    // First show successful models
-    if (successCount > 0) {
-      summaryOutput += `${styleDim('├')} ${colors.green('+')} Successful Models (${successCount}):\n`;
-      const successModels = Object.entries(statuses)
-        .filter(([_, status]) => status.status === 'success')
-        .map(([model]) => model);
-        
-      successModels.forEach((model, i) => {
-        const isLast = i === successModels.length - 1;
-        const prefix = isLast ? `${styleDim('│  └')}` : `${styleDim('│  ├')}`;
-        summaryOutput += `${prefix} ${model}\n`;
-      });
-    }
-    
-    // Then show failed models by category
-    summaryOutput += `${styleDim('├')} ${colors.red('x')} Failed Models (${errorCount}):\n`;
-    
-    // Display errors by category
-    Object.entries(errorsByCategory).forEach(([category, errors], categoryIndex, categories) => {
-      const isLastCategory = categoryIndex === categories.length - 1;
-      const categoryPrefix = isLastCategory ? `${styleDim('│  └')}` : `${styleDim('│  ├')}`;
-      
-      summaryOutput += `${categoryPrefix} ${colors.yellow(category)} errors (${errors.length}):\n`;
-      
-      errors.forEach(({ model, message }, errorIndex) => {
-        const isLastError = errorIndex === errors.length - 1;
-        const errorPrefix = isLastCategory 
-          ? (isLastError ? `${styleDim('│     └')}` : `${styleDim('│     ├')}`)
-          : (isLastError ? `${styleDim('│  │  └')}` : `${styleDim('│  │  ├')}`);
-          
-        summaryOutput += `${errorPrefix} ${colors.red(model)}\n`;
-        
-        // Add indented error message
-        const messagePrefix = isLastCategory
-          ? (isLastError ? `${styleDim('│      ')}` : `${styleDim('│     │')}`)
-          : (isLastError ? `${styleDim('│  │   ')}` : `${styleDim('│  │  │')}`);
-          
-        summaryOutput += `${messagePrefix} ${styleDim('→')} ${message}\n`;
-      });
-    });
-    
-    summaryOutput += `${styleDim('└')} Completed in ${completionTimeText}\n`;
-  } else {
-    // Format complete success message
-    summaryOutput += styleSuccess(`Successfully completed ${completionMessage} in ${completionTimeText}\n`);
-    
-    // Display a nice tree-style summary for successful models
-    summaryOutput += `\n${colors.blue('Results Summary:')}\n`;
-    summaryOutput += `${styleDim('│')}\n`;
-    
-    const successModels = Object.keys(statuses);
-    successModels.forEach((model, i) => {
-      const isLast = i === successModels.length - 1;
-      const prefix = isLast ? `${styleDim('└')}` : `${styleDim('├')}`;
-      summaryOutput += `${prefix} ${i+1}. ${model} - ${colors.green('+')} Success\n`;
-    });
-    
-    if (successModels.length === 0) {
-      summaryOutput += `${styleDim('└')} No models were queried.\n`;
-    }
-  }
-  
-  // Log the summary to the console
-  logger.plain(summaryOutput);
-  
-  // Return empty object since this function primarily produces console output
-  return {};
-}
 
 /**
  * Error handling helper function

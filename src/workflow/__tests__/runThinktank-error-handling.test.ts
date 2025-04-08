@@ -160,13 +160,20 @@ describe('runThinktank Error Handling', () => {
       consoleOutput: 'Mock console output'
     });
     
-    // Log completion summary helper mock - success by default
-    (helpers._logCompletionSummary as jest.Mock).mockReturnValue({});
+    // formatCompletionSummary is now used directly in runThinktank.ts
+    jest.mock('../../utils/formatCompletionSummary', () => ({
+      formatCompletionSummary: jest.fn().mockReturnValue({
+        summaryText: 'Mock summary text',
+        errorDetails: []
+      })
+    }));
     
     // Convert the error handler to a simple function that rethrows the error
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementation((params: any) => {
       throw params.error;
     });
+    
+    // No reusable error handler needed since the default mock already rethrows the error
     
     // Mock nameGenerator
     (nameGenerator.generateFunName as jest.Mock).mockResolvedValue('clever-meadow');
@@ -624,14 +631,17 @@ describe('runThinktank Error Handling', () => {
       })
     );
     
-    // Verify the completion summary was called with the mixed results
-    expect(helpers._logCompletionSummary).toHaveBeenCalledWith(
+    // Verify the formatCompletionSummary was called
+    const formatCompletionSummary = require('../../utils/formatCompletionSummary').formatCompletionSummary;
+    expect(formatCompletionSummary).toHaveBeenCalledWith(
       expect.objectContaining({
-        queryResults: expect.any(Object),
-        fileOutputResult: expect.objectContaining({
-          succeededWrites: 1,
-          failedWrites: 1
-        })
+        successCount: 1,
+        failureCount: 1,
+        runName: 'clever-meadow',
+        outputDirectoryPath: '/fake/output/dir'
+      }),
+      expect.objectContaining({
+        useColors: true
       })
     );
   });

@@ -14,13 +14,14 @@ import { logger } from '../utils/logger';
 import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
 import { WorkflowState, EnhancedSpinner } from './runThinktankTypes';
 import { FileWriteDetail } from './outputHandler';
+import { formatCompletionSummary } from '../utils/formatCompletionSummary';
+import { CompletionSummaryData } from './types';
 import {
   _setupWorkflow,
   _processInput,
   _selectModels,
   _executeQueries,
   _processOutput,
-  _logCompletionSummary,
   _handleWorkflowError
 } from './runThinktankHelpers';
 
@@ -355,12 +356,37 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     // 6. Log completion summary: Display a summary of the executed queries
     // Stop spinner before showing completion summary to avoid visual conflicts
     spinner.stop();
-    _logCompletionSummary({
-      queryResults: queryResults.queryResults,
-      fileOutputResult: fileOutputResult,
-      options: { ...options, friendlyRunName: setupResult.friendlyRunName },
-      outputDirectoryPath: setupResult.outputDirectoryPath
+    
+    // Prepare data for the completion summary
+    const summaryData: CompletionSummaryData = {
+      totalModels: queryResults.queryResults.responses.length,
+      successCount: Object.values(queryResults.queryResults.statuses).filter(s => s.status === 'success').length,
+      failureCount: Object.values(queryResults.queryResults.statuses).filter(s => s.status === 'error').length,
+      errors: Object.entries(queryResults.queryResults.statuses)
+        .filter(([_, status]) => status.status === 'error')
+        .map(([modelKey, status]) => ({
+          modelKey,
+          message: status.message || 'Unknown error',
+          // Extract category from detailedError if available
+          category: (status.detailedError && 'category' in status.detailedError) 
+            ? (status.detailedError as { category?: string }).category 
+            : undefined
+        })),
+      runName: setupResult.friendlyRunName,
+      outputDirectoryPath: setupResult.outputDirectoryPath,
+      totalExecutionTimeMs: queryResults.queryResults.timing.durationMs + fileOutputResult.timing.durationMs
+    };
+    
+    // Format the summary data
+    const formattedSummary = formatCompletionSummary(summaryData, { 
+      useColors: options.useColors !== false // Default to true
     });
+    
+    // Log the formatted summary
+    logger.plain(formattedSummary.summaryText);
+    if (formattedSummary.errorDetails) {
+      formattedSummary.errorDetails.forEach(line => logger.plain(line));
+    }
     
     // 7. Show additional metadata if requested
     if (options.includeMetadata) {
