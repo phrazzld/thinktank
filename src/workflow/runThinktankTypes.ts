@@ -31,6 +31,7 @@ import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
+import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -138,6 +139,18 @@ export interface SetupWorkflowParams extends SpinnerContext {
    * The user-provided run options
    */
   options: RunOptions;
+  
+  /**
+   * Configuration manager for loading and saving application configuration
+   * Used for dependency injection to improve testability
+   */
+  configManager: ConfigManagerInterface;
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   */
+  fileSystem: FileSystem;
 }
 
 /**
@@ -184,6 +197,13 @@ export interface ProcessInputParams extends SpinnerContext {
    * If provided, these will be read and combined with the prompt
    */
   contextPaths?: string[];
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   * Optional for backward compatibility with existing tests
+   */
+  fileSystem?: FileSystem;
 }
 
 /**
@@ -347,6 +367,12 @@ export interface ExecuteQueriesParams extends SpinnerContext {
    * The user-provided run options
    */
   options: RunOptions;
+  
+  /**
+   * The LLMClient instance to use for API calls
+   * This implements the dependency injection pattern for better testability
+   */
+  llmClient: LLMClient;
 }
 
 /**
@@ -392,6 +418,12 @@ export interface ProcessOutputParams extends SpinnerContext {
    * Friendly run name for display and reference
    */
   friendlyRunName: string;
+  
+  /**
+   * File system interface for file operations
+   * Used for dependency injection to improve testability
+   */
+  fileSystem: FileSystem;
 }
 
 /**

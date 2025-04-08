@@ -131,3 +131,8 @@ export const DEFAULT_CONFIG: AppConfig = {
  * This is used to initialize a new configuration file if none exists
  */
 export const DEFAULT_CONFIG_TEMPLATE_PATH = path.resolve(__dirname, '../../config/thinktank.config.default.json');
+
+/**
+ * Default timeout for individual LLM queries in milliseconds (5 minutes).
+ */
+export const DEFAULT_QUERY_TIMEOUT_MS = 300000;

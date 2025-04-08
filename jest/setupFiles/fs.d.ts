@@ -33,7 +33,7 @@ export function createFsError(
  * Gets direct access to the virtual filesystem for advanced operations
  * @returns The virtual filesystem instance
  */
-export function getFs(): any;
+export function getFs(): Record<string, unknown>;
 
 /**
  * Creates a mock fs.Stats object for testing
@@ -41,7 +41,7 @@ export function getFs(): any;
  * @param size - Size in bytes
  * @returns A mock Stats object
  */
-export function createStats(isFile: boolean, size?: number): any;
+export function createStats(isFile: boolean, size?: number): Record<string, unknown>;
 
 /**
  * Creates a mock fs.Dirent object for testing directory entries
@@ -49,7 +49,7 @@ export function createStats(isFile: boolean, size?: number): any;
  * @param isFile - Whether this represents a file (true) or directory (false)
  * @returns A mock Dirent object
  */
-export function createDirent(name: string, isFile: boolean): any;
+export function createDirent(name: string, isFile: boolean): Record<string, unknown>;
 
 /**
  * Normalizes a path for use with the virtual filesystem

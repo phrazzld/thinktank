@@ -2,12 +2,14 @@
  * File reader module for handling prompt file input and configuration files
  */
 import fs from 'fs/promises';
+import { Stats } from 'fs';
 import path from 'path';
 import os from 'os';
 import { normalizeText } from './helpers';
 import { shouldIgnorePath } from './gitignoreUtils';
 import logger from './logger';
 import { ContextFileResult, FileReadError, ReadFileOptions } from './fileReaderTypes';
+import { FileSystem } from '../core/interfaces';
 
 /**
  * Maximum file size allowed for context files (10MB)
@@ -146,150 +148,65 @@ export async function writeFile(filePath: string, content: string): Promise<void
         
         if (errnoError.code === 'EROFS') {
           throw new FileReadError(
-            `Failed to write file at ${filePath}: The file system is read-only. On macOS, check if your disk is mounted with write permissions.`,
-            error
-          );
-        }
-        
-        if (errnoError.code === 'EMFILE') {
-          throw new FileReadError(
-            `Failed to write file at ${filePath}: Too many open files. On macOS, you may need to increase the open file limit or close some applications.`,
+            `Failed to write file at ${filePath}: The filesystem is read-only. This may happen if the file is on a mounted disk image with read-only permissions.`,
             error
           );
         }
       }
       
-      // Generic error for all platforms
-      throw new FileReadError(`Failed to write file at ${filePath}: ${error.message}`, error);
+      // Handle Linux-specific write errors
+      if (process.platform === 'linux') {
+        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
+          throw new FileReadError(
+            `Permission denied writing file at ${filePath}. Check file and directory permissions (use 'ls -la' to view permissions).`,
+            error
+          );
+        }
+        
+        if (errnoError.code === 'ENOSPC') {
+          throw new FileReadError(
+            `Failed to write file at ${filePath}: No space left on device. Free up disk space and try again.`,
+            error
+          );
+        }
+      }
+      
+      // Generic error handling (works on all platforms)
+      throw new FileReadError(`Failed to write file at ${filePath}: ${errnoError.message}`, error);
     }
     
-    // Generic error case (should rarely be reached)
-    throw new FileReadError(`Failed to write file at ${filePath}`);
+    // Non-Error exceptions (should be rare, but handle gracefully)
+    throw new FileReadError(`Failed to write file at ${filePath}: Unknown error`, 
+      error instanceof Error ? error : undefined
+    );
   }
 }
 
 /**
- * Gets the config directory path following platform-specific conventions:
- * 
- * - Windows: '%APPDATA%\thinktank' or '%USERPROFILE%\AppData\Roaming\thinktank'
- *   - Uses APPDATA environment variable if available
- *   - Falls back to homedir/AppData/Roaming if APPDATA is not set
- * 
- * - Unix-like systems (Linux, macOS): '~/.config/thinktank'
- *   - Uses $XDG_CONFIG_HOME/thinktank if XDG_CONFIG_HOME environment variable is set
- *   - Falls back to ~/.config/thinktank for both Linux and macOS for consistency
- * 
- * Note: While macOS traditionally uses ~/Library/Preferences for app configs,
- * we've chosen to use ~/.config for consistency across Unix-like platforms.
- * 
- * @returns Promise resolving to the platform-specific config directory path
- * @throws {FileReadError} If directory creation fails with platform-specific error details
+ * Gets the path to the application's config directory according to XDG Base Directory spec
+ * @returns The absolute path to the config directory
  */
 export async function getConfigDir(): Promise<string> {
+  const configBasePath = process.env.XDG_CONFIG_HOME || 
+    path.join(os.homedir(), '.config');
+  
+  const appConfigDir = path.join(configBasePath, APP_NAME);
+  
   try {
-    let configDir: string;
-    
-    // Check for XDG_CONFIG_HOME environment variable (Linux/Unix/macOS)
-    if (process.env.XDG_CONFIG_HOME && process.env.XDG_CONFIG_HOME.trim() !== '') {
-      configDir = path.join(process.env.XDG_CONFIG_HOME, APP_NAME);
-    } 
-    // Windows: %APPDATA%\thinktank or %USERPROFILE%\AppData\Roaming\thinktank
-    else if (process.platform === 'win32') {
-      // Check for the APPDATA environment variable
-      const appDataEnv = process.env.APPDATA;
-      
-      // Use APPDATA if it exists and is not empty, otherwise construct from homedir
-      if (appDataEnv && appDataEnv.trim() !== '') {
-        configDir = path.join(appDataEnv, APP_NAME);
-      } else {
-        // Use the standard Windows AppData location as fallback
-        configDir = path.join(os.homedir(), 'AppData', 'Roaming', APP_NAME);
-      }
-    }
-    // Unix-like systems (Linux, macOS): ~/.config/thinktank
-    else {
-      const homeDir = os.homedir();
-      
-      // Ensure the home directory path is valid
-      if (!homeDir || homeDir.trim() === '') {
-        throw new FileReadError('Unable to determine home directory. Check user environment.');
-      }
-      
-      // Use the same path for both Linux and macOS for consistency
-      configDir = path.join(homeDir, '.config', APP_NAME);
-    }
-    
-    // Ensure the directory exists
-    await fs.mkdir(configDir, { recursive: true });
-    
-    return configDir;
+    // Create the directory if it doesn't exist
+    await fs.mkdir(appConfigDir, { recursive: true });
+    return appConfigDir;
   } catch (error) {
-    if (error instanceof FileReadError) {
-      // If it's already a FileReadError, just re-throw it
-      throw error;
-    }
-    
     if (error instanceof Error) {
-      const errnoError = error as NodeJS.ErrnoException;
-      
-      // Handle Windows-specific error codes
-      if (process.platform === 'win32') {
-        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
-          throw new FileReadError(
-            `Permission denied creating config directory. On Windows, this may happen if you don't have administrator rights or the folder is read-only. Try running the application with administrative privileges.`,
-            error
-          );
-        }
-        
-        if (errnoError.code === 'ENOENT') {
-          throw new FileReadError(
-            `Unable to create configuration directory. The AppData folder may not exist or may not be accessible.`,
-            error
-          );
-        }
-      }
-      
-      // Handle macOS-specific error codes
-      if (process.platform === 'darwin') {
-        if (errnoError.code === 'EPERM' || errnoError.code === 'EACCES') {
-          throw new FileReadError(
-            `Permission denied creating config directory. On macOS, this may happen if you don't have write access to ~/.config or if System Integrity Protection (SIP) is restricting access. Check folder permissions.`,
-            error
-          );
-        }
-        
-        if (errnoError.code === 'ENOENT') {
-          throw new FileReadError(
-            `Unable to create configuration directory. The ~/.config path may not exist or may not be accessible. Check if your user account is properly set up.`,
-            error
-          );
-        }
-        
-        if (errnoError.code === 'EROFS') {
-          throw new FileReadError(
-            `Configuration directory is on a read-only file system. On macOS, this may happen if your disk is mounted read-only or if System Integrity Protection is restricting write access.`,
-            error
-          );
-        }
-      }
-      
-      // Generic error with message for all platforms
-      throw new FileReadError(
-        `Failed to create or access config directory: ${error.message}`, 
-        error
-      );
+      throw new FileReadError(`Failed to access or create config directory: ${error.message}`, error);
     }
-    
-    // Generic fallback for unknown error types
-    throw new FileReadError('Failed to create or access config directory');
+    throw new FileReadError('Failed to access or create config directory');
   }
 }
 
 /**
- * Gets the full path to the configuration file
- * 
- * @returns Promise resolving to the full config file path
- * @throws {FileReadError} If directory creation fails
+ * Gets the full path to the config file
+ * @returns The absolute path to the config file
  */
 export async function getConfigFilePath(): Promise<string> {
   const configDir = await getConfigDir();
@@ -347,9 +264,13 @@ export function isBinaryFile(content: string): boolean {
  * Instead of throwing errors, returns an object with path, content, and error information
  * 
  * @param filePath - Path to the file to read
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns Promise resolving to an object containing the file path, content, and any error information
  */
-export async function readContextFile(filePath: string): Promise<ContextFileResult> {
+export async function readContextFile(
+  filePath: string,
+  fileSystem?: FileSystem
+): Promise<ContextFileResult> {
   // Initialize the result with the provided path
   const result: ContextFileResult = {
     path: filePath,
@@ -363,40 +284,152 @@ export async function readContextFile(filePath: string): Promise<ContextFileResu
       ? filePath 
       : path.resolve(process.cwd(), filePath);
     
-    // Check if file exists and is readable
-    await fs.access(resolvedPath, fs.constants.R_OK);
+    // Create a reference to the file stats (initialized below)
+    let stats: Stats;
     
-    // Check if path is a file (not a directory or other non-file)
-    const stats = await fs.stat(resolvedPath);
-    if (!stats.isFile()) {
-      return {
-        ...result,
-        error: {
-          code: 'NOT_FILE',
-          message: `Path is not a file: ${filePath}`
-        }
-      };
+    if (fileSystem) {
+      // When using FileSystem interface
+      
+      // Check if file exists by trying to access it
+      try {
+        await fileSystem.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'ENOENT',
+            message: `File not found: ${filePath}`
+          }
+        };
+      }
+      
+      // Get stats to check if it's a file and get size
+      try {
+        stats = await fileSystem.stat(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'STAT_ERROR',
+            message: `Unable to get file stats: ${filePath}`
+          }
+        };
+      }
+      
+      if (!stats.isFile()) {
+        return {
+          ...result,
+          error: {
+            code: 'NOT_FILE',
+            message: `Path is not a file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check file size before reading
+      if (stats.size > MAX_FILE_SIZE) {
+        // Calculate sizes in MB for a human-readable message
+        const fileSizeMB = Math.round(stats.size / (1024 * 1024));
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        
+        logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
+        
+        return {
+          ...result,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
+          }
+        };
+      }
+    } else {
+      // When using direct fs operations
+      
+      // Check if file exists and is readable
+      try {
+        await fs.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        const nodeError = error as NodeJS.ErrnoException;
+        return {
+          ...result,
+          error: {
+            code: nodeError.code || 'ACCESS_ERROR',
+            message: nodeError.code === 'ENOENT' 
+              ? `File not found: ${filePath}`
+              : `Unable to access file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check if path is a file (not a directory or other non-file)
+      try {
+        stats = await fs.stat(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'STAT_ERROR',
+            message: `Unable to get file stats: ${filePath}`
+          }
+        };
+      }
+      
+      if (!stats.isFile()) {
+        return {
+          ...result,
+          error: {
+            code: 'NOT_FILE',
+            message: `Path is not a file: ${filePath}`
+          }
+        };
+      }
+      
+      // Check file size before reading
+      if (stats.size > MAX_FILE_SIZE) {
+        // Calculate sizes in MB for a human-readable message
+        const fileSizeMB = Math.round(stats.size / (1024 * 1024));
+        const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
+        
+        logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
+        
+        return {
+          ...result,
+          error: {
+            code: 'FILE_TOO_LARGE',
+            message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
+          }
+        };
+      }
     }
     
-    // Check file size before reading
-    if (stats.size > MAX_FILE_SIZE) {
-      // Calculate sizes in MB for a human-readable message
-      const fileSizeMB = Math.round(stats.size / (1024 * 1024));
-      const maxSizeMB = MAX_FILE_SIZE / (1024 * 1024);
-      
-      logger.warn(`File size exceeds limit and is skipped: ${filePath} (${fileSizeMB}MB > ${maxSizeMB}MB)`);
-      
-      return {
-        ...result,
-        error: {
-          code: 'FILE_TOO_LARGE',
-          message: `File ${filePath} (${fileSizeMB}MB) exceeds the maximum allowed size of ${maxSizeMB}MB. Large files are skipped to avoid memory issues.`
-        }
-      };
-    }
+    // Read file content using FileSystem or direct fs
+    let content: string;
     
-    // Read file content
-    const content = await fs.readFile(resolvedPath, 'utf-8');
+    if (fileSystem) {
+      try {
+        content = await fileSystem.readFileContent(resolvedPath);
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error reading file: ${filePath}`
+          }
+        };
+      }
+    } else {
+      try {
+        content = await fs.readFile(resolvedPath, 'utf-8');
+      } catch (error) {
+        return {
+          ...result,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error reading file: ${filePath}`
+          }
+        };
+      }
+    }
     
     // Check if the file is binary
     if (isBinaryFile(content)) {
@@ -576,9 +609,13 @@ export function formatCombinedInput(
  * Processes each path concurrently and returns a flattened array of all results
  * 
  * @param paths - Array of file or directory paths to read
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns Promise resolving to a flattened array of ContextFileResult objects
  */
-export async function readContextPaths(paths: string[]): Promise<ContextFileResult[]> {
+export async function readContextPaths(
+  paths: string[], 
+  fileSystem?: FileSystem
+): Promise<ContextFileResult[]> {
   // Handle empty paths array
   if (!paths || paths.length === 0) {
     return [];
@@ -593,46 +630,104 @@ export async function readContextPaths(paths: string[]): Promise<ContextFileResu
           ? pathToProcess 
           : path.resolve(process.cwd(), pathToProcess);
         
-        // Check if path exists
-        try {
-          await fs.access(resolvedPath, fs.constants.R_OK);
-        } catch (error) {
-          // For access errors, use the same error format as readContextFile
-          // So we maintain consistent error codes throughout the codebase
-          const errnoError = error as NodeJS.ErrnoException;
+        // Create a function to handle access errors consistently
+        const handleAccessError = (error: unknown): ContextFileResult[] => {
+          let errorCode = 'ACCESS_ERROR';
+          let errorMessage = `Unable to access path: ${pathToProcess}`;
+          
+          if (error instanceof Error) {
+            // Try to extract error code from various error types
+            if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
+              // Make sure errorCode is never undefined
+              errorCode = (error as NodeJS.ErrnoException).code || 'UNKNOWN';
+              
+              if (errorCode === 'ENOENT') {
+                errorMessage = `File not found: ${pathToProcess}`;
+              }
+            }
+          }
+          
           return [{
             path: pathToProcess,
             content: null,
             error: {
-              code: errnoError.code || 'ACCESS_ERROR',
-              message: errnoError.code === 'ENOENT' 
-                ? `File not found: ${pathToProcess}`
-                : `Unable to access path: ${pathToProcess}`
+              code: errorCode,
+              message: errorMessage
             }
           }];
-        }
+        };
         
-        // Get stats to determine if it's a file or directory
-        const stats = await fs.stat(resolvedPath);
-        
-        // Process as a file or directory accordingly
-        if (stats.isFile()) {
-          // For individual files, read content using readContextFile
-          const fileResult = await readContextFile(pathToProcess);
-          return [fileResult];
-        } else if (stats.isDirectory()) {
-          // For directories, recursively read contents using readDirectoryContents
-          return readDirectoryContents(pathToProcess);
+        // Use the provided fileSystem or fall back to direct fs operations
+        if (fileSystem) {
+          // Using FileSystem interface
+          
+          try {
+            // Check if path exists and is readable
+            await fileSystem.access(resolvedPath, fs.constants.R_OK);
+          } catch (error) {
+            return handleAccessError(error);
+          }
+          
+          // Get stats to determine if it's a file or directory
+          let stats: Stats;
+          try {
+            stats = await fileSystem.stat(resolvedPath);
+          } catch (error) {
+            return handleAccessError(error);
+          }
+          
+          // Process as a file or directory accordingly
+          if (stats.isFile()) {
+            // For individual files, read content using readContextFile with the FileSystem
+            const fileResult = await readContextFile(pathToProcess, fileSystem);
+            return [fileResult];
+          } else if (stats.isDirectory()) {
+            // For directories, recursively read contents using readDirectoryContents
+            return readDirectoryContents(pathToProcess, fileSystem);
+          } else {
+            // Handle other types (symlinks, etc.)
+            return [{
+              path: pathToProcess,
+              content: null,
+              error: {
+                code: 'INVALID_PATH_TYPE',
+                message: `Path is neither a file nor a directory: ${pathToProcess}`
+              }
+            }];
+          }
         } else {
-          // Handle other types (symlinks, etc.)
-          return [{
-            path: pathToProcess,
-            content: null,
-            error: {
-              code: 'INVALID_PATH_TYPE',
-              message: `Path is neither a file nor a directory: ${pathToProcess}`
-            }
-          }];
+          // Using direct fs operations (original implementation)
+          
+          // Check if path exists
+          try {
+            await fs.access(resolvedPath, fs.constants.R_OK);
+          } catch (error) {
+            // For access errors, use the same error format as readContextFile
+            return handleAccessError(error);
+          }
+          
+          // Get stats to determine if it's a file or directory
+          const stats = await fs.stat(resolvedPath);
+          
+          // Process as a file or directory accordingly
+          if (stats.isFile()) {
+            // For individual files, read content using readContextFile
+            const fileResult = await readContextFile(pathToProcess);
+            return [fileResult];
+          } else if (stats.isDirectory()) {
+            // For directories, recursively read contents using readDirectoryContents
+            return readDirectoryContents(pathToProcess);
+          } else {
+            // Handle other types (symlinks, etc.)
+            return [{
+              path: pathToProcess,
+              content: null,
+              error: {
+                code: 'INVALID_PATH_TYPE',
+                message: `Path is neither a file nor a directory: ${pathToProcess}`
+              }
+            }];
+          }
         }
       } catch (error) {
         // Handle errors at the path level
@@ -674,9 +769,13 @@ const DEFAULT_IGNORED_DIRECTORIES = [
  * Recursively reads all files in a directory and its subdirectories
  * 
  * @param dirPath - Path to the directory to read
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns Promise resolving to an array of ContextFileResult objects
  */
-export async function readDirectoryContents(dirPath: string): Promise<ContextFileResult[]> {
+export async function readDirectoryContents(
+  dirPath: string,
+  fileSystem?: FileSystem
+): Promise<ContextFileResult[]> {
   const results: ContextFileResult[] = [];
   
   try {
@@ -685,89 +784,230 @@ export async function readDirectoryContents(dirPath: string): Promise<ContextFil
       ? dirPath 
       : path.resolve(process.cwd(), dirPath);
     
-    // Check if directory exists and is readable
-    await fs.access(resolvedPath, fs.constants.R_OK);
-    
-    // Check if path is a directory
-    const stats = await fs.stat(resolvedPath);
-    if (!stats.isDirectory()) {
-      // If it's a file, just read it and return the result
-      const fileResult = await readContextFile(dirPath);
-      return [fileResult];
-    }
-    
-    // Read directory contents
-    const entries = await fs.readdir(resolvedPath);
-    
-    // Process each entry
-    for (const entry of entries) {
-      const entryPath = path.join(dirPath, entry);
+    // Create a function to handle access errors consistently
+    const handleAccessError = (error: unknown): ContextFileResult[] => {
+      let errorCode = 'ACCESS_ERROR';
+      let errorMessage = `Unable to access path: ${dirPath}`;
       
-      try {
-        const entryStats = await fs.stat(entryPath);
-        
-        if (entryStats.isFile()) {
-          // Check if the file should be ignored based on gitignore rules
-          if (await shouldIgnorePath(dirPath, entryPath)) {
-            continue;
+      if (error instanceof Error) {
+        // Try to extract error code from various error types
+        if ('code' in error && typeof (error as NodeJS.ErrnoException).code === 'string') {
+          // Make sure errorCode is never undefined
+          errorCode = (error as NodeJS.ErrnoException).code || 'UNKNOWN';
+          
+          if (errorCode === 'ENOENT') {
+            errorMessage = `Directory not found: ${dirPath}`;
+          } else if (errorCode === 'EACCES') {
+            errorMessage = `Permission denied accessing directory: ${dirPath}`;
           }
-          
-          // If not ignored, read the file and add to results
-          const fileResult = await readContextFile(entryPath);
-          
-          // For binary files, we already log a warning in readContextFile
-          // Just add the result with the binary file error
-          results.push(fileResult);
-        } else if (entryStats.isDirectory()) {
-          // Always skip certain critical directories regardless of gitignore rules
-          if (DEFAULT_IGNORED_DIRECTORIES.includes(entry)) {
-            continue;
-          }
-          
-          // Check if the directory should be ignored based on gitignore rules
-          if (await shouldIgnorePath(dirPath, entryPath)) {
-            continue;
-          }
-          
-          // If it's a directory and not ignored, recursively read its contents
-          const subdirResults = await readDirectoryContents(entryPath);
-          results.push(...subdirResults);
         }
-        // Skip other types (symlinks, etc.)
-      } catch (error) {
-        // If we can't process an entry, add an error result for it
-        results.push({
-          path: entryPath,
-          content: null,
-          error: {
-            code: 'READ_ERROR',
-            message: `Error processing directory entry: ${entryPath}`
-          }
-        });
       }
-    }
-    
-    return results;
-  } catch (error) {
-    // Handle directory access errors
-    if (error instanceof Error) {
+      
       return [{
         path: dirPath,
         content: null,
         error: {
           code: 'READ_ERROR',
-          message: `Error reading directory: ${dirPath} - ${error.message}`
+          message: `Error reading directory: ${dirPath} - ${errorMessage}`
+        }
+      }];
+    };
+    
+    if (fileSystem) {
+      // Using FileSystem interface
+      try {
+        // Check if path exists and is readable
+        await fileSystem.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        return handleAccessError(error);
+      }
+      
+      // Get stats to determine if it's a file or directory
+      let stats: Stats;
+      try {
+        stats = await fileSystem.stat(resolvedPath);
+      } catch (error) {
+        return handleAccessError(error);
+      }
+      
+      if (!stats.isDirectory()) {
+        // If it's a file, just read it and return the result
+        const fileResult = await readContextFile(dirPath, fileSystem);
+        return [fileResult];
+      }
+      
+      // Read directory contents
+      let entries: string[];
+      try {
+        entries = await fileSystem.readdir(resolvedPath);
+      } catch (error) {
+        return [{
+          path: dirPath,
+          content: null,
+          error: {
+            code: 'READ_ERROR',
+            message: `Error reading directory: ${dirPath}`
+          }
+        }];
+      }
+      
+      // Process each entry
+      for (const entry of entries) {
+        const entryPath = path.join(dirPath, entry);
+        
+        try {
+          const entryStats = await fileSystem.stat(entryPath);
+          
+          if (entryStats.isFile()) {
+            // Check if the file should be ignored based on gitignore rules
+            if (await shouldIgnorePath(dirPath, entryPath)) {
+              continue;
+            }
+            
+            // If not ignored, read the file and add to results
+            const fileResult = await readContextFile(entryPath, fileSystem);
+            
+            // For binary files, we already log a warning in readContextFile
+            // Just add the result with the binary file error
+            results.push(fileResult);
+          } else if (entryStats.isDirectory()) {
+            // Always skip certain critical directories regardless of gitignore rules
+            if (DEFAULT_IGNORED_DIRECTORIES.includes(entry)) {
+              continue;
+            }
+            
+            // Check if the directory should be ignored based on gitignore rules
+            if (await shouldIgnorePath(dirPath, entryPath)) {
+              continue;
+            }
+            
+            // If it's a directory and not ignored, recursively read its contents
+            const subdirResults = await readDirectoryContents(entryPath, fileSystem);
+            results.push(...subdirResults);
+          }
+          // Skip other types (symlinks, etc.)
+        } catch (error) {
+          // If we can't process an entry, add an error result for it
+          results.push({
+            path: entryPath,
+            content: null,
+            error: {
+              code: 'READ_ERROR',
+              message: `Error processing directory entry: ${entryPath}`
+            }
+          });
+        }
+      }
+    } else {
+      // Using direct fs operations (original implementation)
+      try {
+        // Check if directory exists and is readable
+        await fs.access(resolvedPath, fs.constants.R_OK);
+        
+        // Check if path is a directory
+        const stats = await fs.stat(resolvedPath);
+        if (!stats.isDirectory()) {
+          // If it's a file, just read it and return the result
+          const fileResult = await readContextFile(dirPath);
+          return [fileResult];
+        }
+        
+        // Read directory contents
+        const entries = await fs.readdir(resolvedPath);
+        
+        // Process each entry
+        for (const entry of entries) {
+          const entryPath = path.join(dirPath, entry);
+          
+          try {
+            const entryStats = await fs.stat(entryPath);
+            
+            if (entryStats.isFile()) {
+              // Check if the file should be ignored based on gitignore rules
+              if (await shouldIgnorePath(dirPath, entryPath)) {
+                continue;
+              }
+              
+              // If not ignored, read the file and add to results
+              const fileResult = await readContextFile(entryPath);
+              
+              // For binary files, we already log a warning in readContextFile
+              // Just add the result with the binary file error
+              results.push(fileResult);
+            } else if (entryStats.isDirectory()) {
+              // Always skip certain critical directories regardless of gitignore rules
+              if (DEFAULT_IGNORED_DIRECTORIES.includes(entry)) {
+                continue;
+              }
+              
+              // Check if the directory should be ignored based on gitignore rules
+              if (await shouldIgnorePath(dirPath, entryPath)) {
+                continue;
+              }
+              
+              // If it's a directory and not ignored, recursively read its contents
+              const subdirResults = await readDirectoryContents(entryPath);
+              results.push(...subdirResults);
+            }
+            // Skip other types (symlinks, etc.)
+          } catch (error) {
+            // If we can't process an entry, add an error result for it
+            results.push({
+              path: entryPath,
+              content: null,
+              error: {
+                code: 'READ_ERROR',
+                message: `Error processing directory entry: ${entryPath}`
+              }
+            });
+          }
+        }
+      } catch (error) {
+        // Handle directory access errors
+        if (error instanceof Error) {
+          return [{
+            path: dirPath,
+            content: null,
+            error: {
+              code: 'READ_ERROR',
+              message: `Error reading directory: ${dirPath} - ${error.message}`
+            }
+          }];
+        }
+        
+        // Unknown error type
+        return [{
+          path: dirPath,
+          content: null,
+          error: {
+            code: 'UNKNOWN',
+            message: `Unknown error reading directory: ${dirPath}`
+          }
+        }];
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    // Handle any other unhandled errors
+    if (error instanceof Error) {
+      return [{
+        path: dirPath,
+        content: null,
+        error: {
+          code: 'UNKNOWN',
+          message: `Unexpected error reading directory: ${dirPath} - ${error.message}`
         }
       }];
     }
     
-    // Unknown error type
+    // Truly unknown error
     return [{
       path: dirPath,
       content: null,
       error: {
         code: 'UNKNOWN',
-        message: `Unknown error reading directory: ${dirPath}`
+        message: `Unexpected error reading directory: ${dirPath}`
       }
     }];
   }

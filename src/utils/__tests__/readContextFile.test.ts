@@ -12,6 +12,8 @@ import fs from 'fs';
 import fsPromises from 'fs/promises';
 import path from 'path';
 import { readContextFile, MAX_FILE_SIZE, isBinaryFile } from '../fileReader';
+import { ContextFileResult } from '../fileReaderTypes';
+import { ConcreteFileSystem } from '../../core/FileSystem';
 import logger from '../logger';
 
 // Mock logger
@@ -21,6 +23,12 @@ const mockedLogger = jest.mocked(logger);
 describe('readContextFile', () => {
   const testFilePath = path.join('/', 'path', 'to', 'test', 'file.txt');
   const testContent = 'This is test content\nwith multiple lines.';
+  
+  // Create a helper function to simplify testing with the required FileSystem parameter
+  async function readFile(filePath: string): Promise<ContextFileResult> {
+    const fileSystem = new ConcreteFileSystem();
+    return readContextFile(filePath, fileSystem);
+  }
   
   beforeEach(() => {
     // Reset virtual filesystem and logger mocks
@@ -57,7 +65,7 @@ describe('readContextFile', () => {
         [absolutePath]: testContent
       });
       
-      const result = await readContextFile(relativePath);
+      const result = await readFile(relativePath);
       
       expect(result.path).toBe(relativePath); // Original path is preserved in the result
       expect(result.content).toBe(testContent);
@@ -72,7 +80,7 @@ describe('readContextFile', () => {
         [specialCharPath]: testContent
       });
       
-      const result = await readContextFile(specialCharPath);
+      const result = await readFile(specialCharPath);
       
       expect(result.path).toBe(specialCharPath);
       expect(result.content).toBe(testContent);
@@ -171,7 +179,7 @@ describe('readContextFile', () => {
         birthtime: new Date()
       } as fs.Stats);
       
-      const result = await readContextFile(testDirPath);
+      const result = await readFile(testDirPath);
       
       expect(result).toEqual({
         path: testDirPath,
@@ -282,7 +290,7 @@ describe('readContextFile', () => {
         return Promise.reject(new Error(`Unexpected path: ${pathAsString}`));
       });
       
-      const result = await readContextFile(windowsPath);
+      const result = await readFile(windowsPath);
       
       expect(result.path).toBe(windowsPath);
       expect(result.content).toBe(testContent);
@@ -300,7 +308,7 @@ describe('readContextFile', () => {
         [unixPath]: testContent
       });
       
-      const result = await readContextFile(unixPath);
+      const result = await readFile(unixPath);
       
       expect(result.path).toBe(unixPath);
       expect(result.content).toBe(testContent);

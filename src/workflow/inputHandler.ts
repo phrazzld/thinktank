@@ -7,6 +7,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { normalizeText } from '../utils/helpers';
+import { FileSystem } from '../core/interfaces';
 // Create a local error class to avoid circular dependencies
 export class ThinktankError extends Error {
   /**
@@ -66,6 +67,12 @@ export interface InputOptions {
    * Defaults to 30000 (30 seconds)
    */
   stdinTimeout?: number;
+  
+  /**
+   * Optional FileSystem interface for file operations
+   * If provided, it will be used instead of direct fs operations
+   */
+  fileSystem?: FileSystem;
 }
 
 /**
@@ -129,12 +136,14 @@ export class InputError extends ThinktankError {
  * 
  * @param filePath - Path to the file to read
  * @param normalize - Whether to normalize the content
+ * @param fileSystem - Optional FileSystem interface for file operations
  * @returns The processed content and metadata
  * @throws {InputError} If the file cannot be read
  */
 async function processFileInput(
   filePath: string, 
-  normalize = true
+  normalize = true,
+  fileSystem?: FileSystem
 ): Promise<InputResult> {
   // Track processing time
   const startTime = Date.now();
@@ -145,39 +154,71 @@ async function processFileInput(
       ? filePath 
       : path.resolve(process.cwd(), filePath);
     
-    // Check if file exists and is readable
-    try {
-      await fs.access(resolvedPath, fs.constants.R_OK);
-    } catch (error) {
-      // Handle specific file access errors
-      const nodeError = error as NodeJS.ErrnoException;
-      if (nodeError.code === 'ENOENT') {
-        const inputError = new InputError(`Input file not found: ${filePath}`);
-        inputError.suggestions = [
-          'Check that the file exists and the path is correct',
-          'Use an absolute path if you are not in the same directory',
-          `Current working directory: ${process.cwd()}`
-        ];
-        throw inputError;
-      } else if (nodeError.code === 'EACCES') {
-        const inputError = new InputError(`Permission denied to read file: ${filePath}`);
-        inputError.suggestions = [
-          'Check that you have read permissions for the file',
-          'Try running the command with elevated permissions'
-        ];
-        throw inputError;
+    // Read file content using the provided FileSystem or direct fs operations
+    let content: string;
+    
+    if (fileSystem) {
+      try {
+        // Use the FileSystem interface if provided
+        content = await fileSystem.readFileContent(resolvedPath, { normalize: false });
+      } catch (error) {
+        // Convert FileSystem errors to InputError for consistent handling
+        if (error instanceof Error) {
+          if (error.message.includes('not found') || error.message.includes('ENOENT')) {
+            const inputError = new InputError(`Input file not found: ${filePath}`);
+            inputError.suggestions = [
+              'Check that the file exists and the path is correct',
+              'Use an absolute path if you are not in the same directory',
+              `Current working directory: ${process.cwd()}`
+            ];
+            throw inputError;
+          } else if (error.message.includes('permission') || error.message.includes('EACCES')) {
+            const inputError = new InputError(`Permission denied to read file: ${filePath}`);
+            inputError.suggestions = [
+              'Check that you have read permissions for the file',
+              'Try running the command with elevated permissions'
+            ];
+            throw inputError;
+          }
+        }
+        
+        throw new InputError(`Error reading file: ${filePath}`, error instanceof Error ? error : undefined);
+      }
+    } else {
+      // Fall back to direct fs operations when no FileSystem is provided
+      try {
+        // Check if file exists and is readable
+        await fs.access(resolvedPath, fs.constants.R_OK);
+      } catch (error) {
+        // Handle specific file access errors
+        const nodeError = error as NodeJS.ErrnoException;
+        if (nodeError.code === 'ENOENT') {
+          const inputError = new InputError(`Input file not found: ${filePath}`);
+          inputError.suggestions = [
+            'Check that the file exists and the path is correct',
+            'Use an absolute path if you are not in the same directory',
+            `Current working directory: ${process.cwd()}`
+          ];
+          throw inputError;
+        } else if (nodeError.code === 'EACCES') {
+          const inputError = new InputError(`Permission denied to read file: ${filePath}`);
+          inputError.suggestions = [
+            'Check that you have read permissions for the file',
+            'Try running the command with elevated permissions'
+          ];
+          throw inputError;
+        }
+        
+        // Generic error case
+        throw new InputError(`Error accessing file: ${filePath}`, error instanceof Error ? error : undefined);
       }
       
-      // Generic error case
-      throw new InputError(`Error accessing file: ${filePath}`, error instanceof Error ? error : undefined);
-    }
-    
-    // Read file content
-    let content: string;
-    try {
-      content = await fs.readFile(resolvedPath, 'utf-8');
-    } catch (error) {
-      throw new InputError(`Error reading file: ${filePath}`, error instanceof Error ? error : undefined);
+      // Read file content
+      try {
+        content = await fs.readFile(resolvedPath, 'utf-8');
+      } catch (error) {
+        throw new InputError(`Error reading file: ${filePath}`, error instanceof Error ? error : undefined);
+      }
     }
     
     // Track original length before any processing
@@ -371,7 +412,8 @@ export async function processInput(options: InputOptions): Promise<InputResult> 
     input, 
     normalize = true, 
     sourceType: explicitSourceType,
-    stdinTimeout = 30000
+    stdinTimeout = 30000,
+    fileSystem
   } = options;
   
   // Validate input
@@ -385,7 +427,7 @@ export async function processInput(options: InputOptions): Promise<InputResult> 
   // Process based on source type
   switch (sourceType) {
     case InputSourceType.FILE:
-      return processFileInput(input, normalize);
+      return processFileInput(input, normalize, fileSystem);
     
     case InputSourceType.STDIN:
       return processStdinInput(stdinTimeout, normalize);

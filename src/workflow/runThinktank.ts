@@ -22,6 +22,12 @@ import {
   _handleWorkflowError
 } from './runThinktankHelpers';
 
+// Import the concrete implementations and interfaces
+import { ConcreteLLMClient } from '../core/LLMClient';
+import { ConcreteConfigManager } from '../core/ConcreteConfigManager';
+import { ConcreteFileSystem } from '../core/FileSystem';
+import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
+
 // Import provider modules to ensure they're registered
 import '../providers/openai';
 import '../providers/anthropic';
@@ -174,10 +180,20 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   spinner.start();
   
   try {
+    // Create dependency instances for injection in the correct order
+    // 1. First create FileSystem (no dependencies)
+    const fileSystem: FileSystem = new ConcreteFileSystem();
+    // 2. Then create ConfigManager (conceptually uses FileSystem, but doesn't require it in constructor)
+    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
+    // 3. Finally create LLMClient (depends on ConfigManager)
+    const llmClient: LLMClient = new ConcreteLLMClient(configManager);
+    
     // 1. Setup workflow: Load configuration, generate run name, create output directory
     const setupResult = await _setupWorkflow({
       spinner,
-      options
+      options,
+      configManager,
+      fileSystem
     });
     
     // Update workflow state with setup results
@@ -189,7 +205,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     const inputResult = await _processInput({
       spinner,
       input: options.input,
-      contextPaths: options.contextPaths
+      contextPaths: options.contextPaths,
+      fileSystem
     });
     
     // Update workflow state with input result
@@ -229,7 +246,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       config: setupResult.config,
       models: modelSelectionResult.models,
       combinedContent: inputResult.combinedContent,
-      options
+      options,
+      llmClient  // Inject the LLMClient instance
     });
     
     // Update workflow state with query results
@@ -241,7 +259,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       queryResults: queryResults.queryResults,
       outputDirectoryPath: setupResult.outputDirectoryPath,
       options,
-      friendlyRunName: setupResult.friendlyRunName
+      friendlyRunName: setupResult.friendlyRunName,
+      fileSystem  // Pass the FileSystem instance
     });
     
     // Update workflow state with output results

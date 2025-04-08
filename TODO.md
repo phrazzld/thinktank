@@ -1,73 +1,44 @@
 # TODO
 
-## Decouple Dependencies with Interfaces
+## High Priority
 
-- [x] **Create Interface definitions for external dependencies**
-  - **Action:** Define interfaces for LLMClient, ConfigManagerInterface, and FileSystem in a new `src/core/interfaces.ts` file.
-  - **Depends On:** None.
-  - **AC Ref:** AC 2
+- [x] **Fix skipped tests**
+  - [x] Update `readDirectoryContents.test.ts` to work with the FileSystem interface
+  - [x] Resolve issues in `readContextFile.centralized-mock.test.ts` (renamed to readContextFile.interface.test.ts)
+  - [x] Fix any other skipped tests in the codebase (one test for empty files intentionally left skipped)
 
-- [ ] **Create FileSystem interface implementation**
-  - **Action:** Implement a concrete FileSystem interface that wraps the existing file operations in fileReader.ts.
-  - **Depends On:** Create Interface definitions for external dependencies.
-  - **AC Ref:** AC 2, AC 3
+- [x] **Fix E2E testing**
+  - [x] Remove internal mocking from `src/workflow/__tests__/runThinktank.e2e.test.ts`
+  - [x] Replace `modelSelector` mock with CLI args or config files for controlling test behavior
+  - [x] Verify E2E tests treat the application as a true black box
 
-- [ ] **Create LLMClient interface implementation**
-  - **Action:** Create a concrete implementation of LLMClient that wraps the existing provider logic.
-  - **Depends On:** Create Interface definitions for external dependencies.
-  - **AC Ref:** AC 2, AC 3
+## Medium Priority
 
-- [ ] **Create ConfigManager interface implementation**
-  - **Action:** Implement a concrete ConfigManagerInterface that wraps the existing configManager functionality.
-  - **Depends On:** Create Interface definitions for external dependencies.
-  - **AC Ref:** AC 2, AC 3
+- [ ] **Refactor concrete implementation tests**
+  - [ ] Revise `src/core/__tests__/ConcreteConfigManager.test.ts` to test behavior, not implementation
+  - [ ] Update `src/core/__tests__/ConcreteFileSystem.test.ts` to use virtual filesystem
+  - [ ] Refactor `src/core/__tests__/ConcreteLLMClient.test.ts` to focus on interface contract
 
-- [ ] **Refactor _executeQueries to use dependency injection**
-  - **Action:** Modify the _executeQueries function to accept and use the LLMClient interface instead of making direct API calls.
-  - **Depends On:** Create LLMClient interface implementation.
-  - **AC Ref:** AC 3, AC 4
+- [ ] **Complete dependency injection adoption**
+  - [ ] Make `FileSystem` a required parameter in `src/utils/fileReader.ts`
+  - [ ] Update `src/utils/inputHandler.ts` to fully use DI without conditional branches
+  - [ ] Refactor `src/utils/outputHandler.ts` to require injected dependencies
+  - [ ] Update all call sites to provide required dependencies
 
-- [ ] **Update unit tests for _executeQueries**
-  - **Action:** Modify the executeQueriesHelper.test.ts to use mock implementations of the LLMClient interface.
-  - **Depends On:** Refactor _executeQueries to use dependency injection.
-  - **AC Ref:** AC 4
+- [ ] **Simplify ConcreteLLMClient**
+  - [ ] Refactor `generate` method in `src/core/LLMClient.ts`
+  - [ ] Remove duplication with `llmRegistry.callProvider`
+  - [ ] Clarify responsibility boundaries between components
 
-- [ ] **Refactor _setupWorkflow to use ConfigManager interface**
-  - **Action:** Modify the _setupWorkflow function to accept and use the ConfigManagerInterface instead of direct config operations.
-  - **Depends On:** Create ConfigManager interface implementation.
-  - **AC Ref:** AC 3, AC 4
+## Low Priority
 
-- [ ] **Update unit tests for _setupWorkflow**
-  - **Action:** Modify the setupWorkflowHelper.test.ts to use mock implementations of the ConfigManagerInterface.
-  - **Depends On:** Refactor _setupWorkflow to use ConfigManager interface.
-  - **AC Ref:** AC 4
+- [ ] **Extract common error handling**
+  - [ ] Create reusable error wrapper functions for filesystem operations
+  - [ ] Create reusable error wrapper functions for configuration operations
+  - [ ] Create reusable error wrapper functions for API operations
+  - [ ] Replace repetitive error handling in concrete implementations
 
-- [ ] **Refactor _processInput to use FileSystem interface**
-  - **Action:** Modify the _processInput function to use the FileSystem interface instead of direct file operations.
-  - **Depends On:** Create FileSystem interface implementation.
-  - **AC Ref:** AC 3, AC 4
-
-- [ ] **Update unit tests for _processInput**
-  - **Action:** Update the processInputHelper.test.ts to use mock implementations of the FileSystem interface.
-  - **Depends On:** Refactor _processInput to use FileSystem interface.
-  - **AC Ref:** AC 4
-
-- [ ] **Refactor _processOutput to use FileSystem interface**
-  - **Action:** Modify the _processOutput function to use the FileSystem interface for writing output files.
-  - **Depends On:** Create FileSystem interface implementation.
-  - **AC Ref:** AC 3, AC 4
-
-- [ ] **Update unit tests for _processOutput**
-  - **Action:** Update the processOutputHelper.test.ts to use mock implementations of the FileSystem interface.
-  - **Depends On:** Refactor _processOutput to use FileSystem interface.
-  - **AC Ref:** AC 4
-
-- [ ] **Integrate interfaces with runThinktank workflow**
-  - **Action:** Update the main runThinktank function to instantiate and inject the concrete implementations of the interfaces.
-  - **Depends On:** All refactoring of helper functions.
-  - **AC Ref:** AC 1, AC 3, AC 4
-
-- [ ] **Update runThinktank.test.ts to use interface mocks**
-  - **Action:** Modify the runThinktank tests to use mock implementations of all three interfaces.
-  - **Depends On:** Integrate interfaces with runThinktank workflow.
-  - **AC Ref:** AC 4
+- [ ] **Remove logic duplication in fileReader.ts**
+  - [ ] Extract common logic into private helper functions
+  - [ ] Refactor `readContextFile` to use these helpers
+  - [ ] Refactor `readContextPaths` to use these helpers

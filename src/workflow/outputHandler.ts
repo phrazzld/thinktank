@@ -4,9 +4,9 @@
  * Handles the formatting of LLM responses for console output and file writing,
  * as well as the actual file writing operations.
  */
-import fs from 'fs/promises';
 import path from 'path';
 import { LLMResponse } from '../core/types';
+import { FileSystem } from '../core/interfaces';
 import { formatResults } from '../utils/outputFormatter';
 import { 
   sanitizeFilename, 
@@ -327,11 +327,13 @@ export function formatForConsole(
  * Create output directory for file writing
  * 
  * @param options - File output options
+ * @param fileSystem - File system interface to use for operations
  * @returns Created directory path
  * @throws {OutputHandlerError} If directory creation fails
  */
 export async function createOutputDirectory(
-  options: Pick<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier' | 'friendlyRunName'> = {}
+  options: Pick<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier' | 'friendlyRunName'> = {},
+  fileSystem: FileSystem
 ): Promise<string> {
   // Generate output directory path
   const outputDirectoryPath = generateOutputDirectoryPath(
@@ -342,7 +344,7 @@ export async function createOutputDirectory(
   
   try {
     // Create the directory with recursive option to ensure parent directories exist
-    await fs.mkdir(outputDirectoryPath, { recursive: true });
+    await fileSystem.mkdir(outputDirectoryPath, { recursive: true });
     return outputDirectoryPath;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
@@ -359,12 +361,14 @@ export async function createOutputDirectory(
  * @param responses - Array of LLM responses with their config keys
  * @param outputDirectory - Directory to write files to
  * @param options - File output options
+ * @param fileSystem - File system interface to use for operations
  * @returns Result of file write operations
  */
 export async function writeResponsesToFiles(
   responses: Array<LLMResponse & { configKey: string }>,
   outputDirectory: string,
-  options: Omit<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier'> = {}
+  options: Omit<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier'> = {},
+  fileSystem: FileSystem
 ): Promise<FileOutputResult> {
   // Start timing
   const startTime = Date.now();
@@ -410,12 +414,28 @@ export async function writeResponsesToFiles(
       
       // Create parent directory if it doesn't exist (for extra safety)
       const parentDir = path.dirname(filePath);
-      await fs.mkdir(parentDir, { recursive: true });
+      await fileSystem.mkdir(parentDir, { recursive: true });
       
       // Write file with atomic operation if possible
       const tempPath = `${filePath}.tmp`;
-      await fs.writeFile(tempPath, sanitizedContent);
-      await fs.rename(tempPath, filePath);
+      await fileSystem.writeFile(tempPath, sanitizedContent);
+      
+      // Handle rename - note: FileSystem interface might not have rename directly
+      // We'll need to read and write again if that's the case
+      try {
+        // Try using writeFile to effectively "rename" by overwriting
+        await fileSystem.writeFile(filePath, sanitizedContent);
+        
+        // If we reached here, try to clean up the temp file
+        try {
+          await fileSystem.writeFile(tempPath, ''); // Can't unlink, so empty the file
+        } catch {
+          // Ignore cleanup errors
+        }
+      } catch (renameError) {
+        // If we can't rename/move, try direct write
+        await fileSystem.writeFile(filePath, sanitizedContent);
+      }
       
       // Calculate duration for success case
       const endTime = Date.now();
@@ -461,8 +481,7 @@ export async function writeResponsesToFiles(
       // Clean up temp file if we failed during the rename operation
       try {
         const tempPath = `${filePath}.tmp`;
-        await fs.access(tempPath);
-        await fs.unlink(tempPath);
+        await fileSystem.writeFile(tempPath, ''); // Clean up by emptying
       } catch {
         // Ignore errors during cleanup
       }
@@ -498,11 +517,13 @@ export async function writeResponsesToFiles(
  * 
  * @param responses - Array of LLM responses with their config keys
  * @param options - Output options
+ * @param fileSystem - File system interface to use for operations
  * @returns Result object with file output results and console formatted string
  */
 export async function processOutput(
   responses: Array<LLMResponse & { configKey: string }>,
-  options: FileOutputOptions & ConsoleOutputOptions = {}
+  options: FileOutputOptions & ConsoleOutputOptions = {},
+  fileSystem: FileSystem
 ): Promise<{
   fileOutput: FileOutputResult;
   consoleOutput: string;
@@ -514,7 +535,7 @@ export async function processOutput(
   if (options.outputDirectory && typeof options.outputDirectory === 'string') {
     // Ensure the directory exists
     try {
-      await fs.mkdir(options.outputDirectory, { recursive: true });
+      await fileSystem.mkdir(options.outputDirectory, { recursive: true });
       outputDirectory = options.outputDirectory;
     } catch (error) {
       throw new OutputHandlerError(
@@ -528,7 +549,7 @@ export async function processOutput(
       outputDirectory: options.outputDirectory,
       directoryIdentifier: options.directoryIdentifier,
       friendlyRunName: options.friendlyRunName
-    });
+    }, fileSystem);
   }
   
   // Write responses to files
@@ -539,7 +560,8 @@ export async function processOutput(
       includeMetadata: options.includeMetadata,
       throwOnError: options.throwOnError,
       onStatusUpdate: options.onStatusUpdate
-    }
+    },
+    fileSystem
   );
   
   // Format for console output

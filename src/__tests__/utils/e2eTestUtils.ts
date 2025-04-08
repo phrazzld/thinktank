@@ -64,13 +64,15 @@ export async function createTestDir(
  * 
  * @param dir - Directory to create the config file in
  * @param customConfig - Optional custom configuration to use instead of default
+ * @param filename - Optional custom filename for the config file (defaults to 'thinktank.config.json')
  * @returns Path to the created config file
  */
 export async function createTestConfig(
   dir: string, 
-  customConfig?: Record<string, any>
+  customConfig?: Record<string, any>,
+  filename: string = 'thinktank.config.json'
 ): Promise<string> {
-  const configPath = path.join(dir, 'thinktank.config.json');
+  const configPath = path.join(dir, filename);
   
   // Default minimal config if no custom config provided
   const config = customConfig || {
