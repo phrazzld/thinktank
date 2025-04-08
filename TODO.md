@@ -47,7 +47,7 @@
   - **Depends On:** Create FileSystem interface implementation.
   - **AC Ref:** AC 3, AC 4
 
-- [ ] **Update unit tests for _processInput**
+- [x] **Update unit tests for _processInput**
   - **Action:** Update the processInputHelper.test.ts to use mock implementations of the FileSystem interface.
   - **Depends On:** Refactor _processInput to use FileSystem interface.
   - **AC Ref:** AC 4

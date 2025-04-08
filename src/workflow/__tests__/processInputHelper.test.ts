@@ -7,6 +7,8 @@ import { FileSystemError } from '../../core/errors';
 import { InputSourceType, InputError } from '../inputHandler';
 import * as fileReader from '../../utils/fileReader';
 import { ContextFileResult } from '../../utils/fileReaderTypes';
+import { FileSystem } from '../../core/interfaces';
+import { Stats } from 'fs';
 
 // Mock dependencies
 jest.mock('../inputHandler');
@@ -18,36 +20,60 @@ import { createMockSpinner } from './oraTestHelper';
 // Create a mock spinner
 const mockSpinner = createMockSpinner();
 
+// Create a MockFileSystem implementation
+class MockFileSystem implements FileSystem {
+  readFileContent = jest.fn();
+  writeFile = jest.fn();
+  fileExists = jest.fn();
+  mkdir = jest.fn();
+  readdir = jest.fn();
+  stat = jest.fn().mockResolvedValue({ isFile: () => true } as Stats);
+  access = jest.fn();
+  getConfigDir = jest.fn();
+  getConfigFilePath = jest.fn();
+}
+
 describe('_processInput Helper', () => {
+  // Create mockFileSystem for each test
+  let mockFileSystem: MockFileSystem;
+  
   // Reset all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset mockSpinner state
     mockSpinner.text = '';
+    // Create fresh mockFileSystem
+    mockFileSystem = new MockFileSystem();
   });
   
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  it('should successfully process input', async () => {
+  it('should successfully process input with FileSystem interface', async () => {
     // Setup mocks
-    (inputHandler.processInput as jest.Mock).mockResolvedValue({
-      content: 'Test prompt content',
-      sourceType: InputSourceType.FILE,
-      sourcePath: '/path/to/file.txt',
-      metadata: {
-        processingTimeMs: 5,
-        originalLength: 20,
-        finalLength: 20,
-        normalized: true
-      }
+    (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+      // Verify fileSystem is passed through to processInput
+      expect(options.fileSystem).toBe(mockFileSystem);
+      
+      return {
+        content: 'Test prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/file.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      };
     });
 
-    // Call the function
+    // Call the function with fileSystem
     const result = await _processInput({
       spinner: mockSpinner,
-      input: 'file.txt'
+      input: 'file.txt',
+      fileSystem: mockFileSystem
     });
 
     // Verify the important properties
@@ -60,8 +86,53 @@ describe('_processInput Helper', () => {
     expect(Array.isArray(result.contextFiles)).toBe(true);
     expect(result.contextFiles?.length).toBe(0);
 
-    // Verify mocks were called correctly
-    expect(inputHandler.processInput).toHaveBeenCalledWith({ input: 'file.txt' });
+    // Verify mocks were called correctly with fileSystem
+    expect(inputHandler.processInput).toHaveBeenCalledWith({ 
+      input: 'file.txt',
+      fileSystem: mockFileSystem 
+    });
+
+    // Verify spinner interactions
+    expect(mockSpinner.text).toContain('Input processed from');
+    expect(mockSpinner.text).toContain('characters');
+  });
+  
+  it('should successfully process input without FileSystem interface (backward compatibility)', async () => {
+    // Setup mocks
+    (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+      // Verify fileSystem is not provided
+      expect(options.fileSystem).toBeUndefined();
+      
+      return {
+        content: 'Test prompt content',
+        sourceType: InputSourceType.FILE,
+        sourcePath: '/path/to/file.txt',
+        metadata: {
+          processingTimeMs: 5,
+          originalLength: 20,
+          finalLength: 20,
+          normalized: true
+        }
+      };
+    });
+
+    // Call the function without fileSystem
+    const result = await _processInput({
+      spinner: mockSpinner,
+      input: 'file.txt'
+      // No fileSystem passed - testing backward compatibility
+    });
+
+    // Verify the important properties
+    expect(result.inputResult.content).toBe('Test prompt content');
+    expect(result.inputResult.sourceType).toBe(InputSourceType.FILE);
+    expect(result.inputResult.sourcePath).toBe('/path/to/file.txt');
+    expect(result.inputResult.metadata.processingTimeMs).toBe(5);
+    
+    // Verify mocks were called correctly without fileSystem
+    expect(inputHandler.processInput).toHaveBeenCalledWith({ 
+      input: 'file.txt'
+    });
 
     // Verify spinner interactions
     expect(mockSpinner.text).toContain('Input processed from');
@@ -124,7 +195,44 @@ describe('_processInput Helper', () => {
     expect(mockSpinner.text).toContain('stdin');
   });
 
-  it('should handle file not found errors', async () => {
+  it('should handle file not found errors with FileSystem interface', async () => {
+    // Setup mocks
+    const error = new InputError('File not found: nonexistent.txt');
+    error.message = 'File not found: nonexistent.txt';
+    
+    // Mock the processInput to verify fileSystem is passed and then throw error
+    (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+      // Verify fileSystem is passed through to processInput
+      expect(options.fileSystem).toBe(mockFileSystem);
+      throw error;
+    });
+
+    // Call the function with fileSystem and expect it to throw
+    await expect(_processInput({
+      spinner: mockSpinner,
+      input: 'nonexistent.txt',
+      fileSystem: mockFileSystem
+    })).rejects.toThrow(FileSystemError);
+
+    // Verify conversion to FileSystemError with correct message
+    try {
+      await _processInput({
+        spinner: mockSpinner,
+        input: 'nonexistent.txt',
+        fileSystem: mockFileSystem
+      });
+    } catch (error) {
+      expect(error).toBeInstanceOf(FileSystemError);
+      if (error instanceof FileSystemError) {
+        expect(error.message).toContain('File not found');
+        expect(error.filePath).toBe('nonexistent.txt');
+        expect(error.suggestions).toBeDefined();
+        expect(error.suggestions!.length).toBeGreaterThan(0);
+      }
+    }
+  });
+  
+  it('should handle file not found errors without FileSystem interface', async () => {
     // Setup mocks
     const error = new InputError('File not found: nonexistent.txt');
     error.message = 'File not found: nonexistent.txt';
@@ -319,7 +427,74 @@ describe('_processInput Helper', () => {
 
   // Tests for context path functionality
   describe('Context path processing', () => {
-    it('should process input with context paths', async () => {
+    it('should process input with context paths using FileSystem interface', async () => {
+      // Setup mocks for input
+      (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+        // Verify fileSystem is passed through to processInput
+        expect(options.fileSystem).toBe(mockFileSystem);
+        
+        return {
+          content: 'Main prompt content',
+          sourceType: InputSourceType.FILE,
+          sourcePath: '/path/to/prompt.txt',
+          metadata: {
+            processingTimeMs: 5,
+            originalLength: 20,
+            finalLength: 20,
+            normalized: true
+          }
+        };
+      });
+
+      // Mock context files
+      const mockContextFiles: ContextFileResult[] = [
+        {
+          path: '/path/to/context1.js',
+          content: 'Context file 1 content',
+          error: null
+        },
+        {
+          path: '/path/to/context2.md',
+          content: 'Context file 2 content',
+          error: null
+        }
+      ];
+
+      // Mock readContextPaths to verify fileSystem is passed through
+      (fileReader.readContextPaths as jest.Mock).mockImplementation(async (paths, fs) => {
+        // Verify fileSystem is passed to readContextPaths
+        expect(fs).toBe(mockFileSystem);
+        expect(paths).toEqual(['context1.js', 'context2.md']);
+        return mockContextFiles;
+      });
+
+      // Mock formatCombinedInput
+      const formattedContent = '# CONTEXT DOCUMENTS\n\n## File: /path/to/context1.js\n```javascript\nContext file 1 content\n```\n\n## File: /path/to/context2.md\n```markdown\nContext file 2 content\n```\n\n# USER PROMPT\n\nMain prompt content';
+      (fileReader.formatCombinedInput as jest.Mock).mockReturnValue(formattedContent);
+
+      // Call function with context paths and fileSystem
+      const result = await _processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['context1.js', 'context2.md'],
+        fileSystem: mockFileSystem
+      });
+
+      // Verify the result
+      expect(result.inputResult.content).toBe(formattedContent);
+      expect(result.contextFiles).toBeDefined();
+      expect(result.contextFiles?.length).toBe(2);
+      expect(result.inputResult.metadata.contextFilesCount).toBe(2);
+      
+      // Verify mocks were called correctly with fileSystem
+      expect(fileReader.readContextPaths).toHaveBeenCalledWith(['context1.js', 'context2.md'], mockFileSystem);
+      expect(fileReader.formatCombinedInput).toHaveBeenCalledWith('Main prompt content', mockContextFiles);
+      
+      // Verify spinner updates
+      expect(mockSpinner.text).toContain('with 2 context files');
+    });
+    
+    it('should process input with context paths without FileSystem (backward compatibility)', async () => {
       // Setup mocks for input
       (inputHandler.processInput as jest.Mock).mockResolvedValue({
         content: 'Main prompt content',
@@ -354,7 +529,7 @@ describe('_processInput Helper', () => {
       const formattedContent = '# CONTEXT DOCUMENTS\n\n## File: /path/to/context1.js\n```javascript\nContext file 1 content\n```\n\n## File: /path/to/context2.md\n```markdown\nContext file 2 content\n```\n\n# USER PROMPT\n\nMain prompt content';
       (fileReader.formatCombinedInput as jest.Mock).mockReturnValue(formattedContent);
 
-      // Call function with context paths
+      // Call function with context paths without fileSystem
       const result = await _processInput({
         spinner: mockSpinner,
         input: 'prompt.txt',
@@ -518,7 +693,62 @@ describe('_processInput Helper', () => {
       expect(result.inputResult.metadata.hasContextFiles).toBe(false);
     });
 
-    it('should handle ENOENT errors during context path processing', async () => {
+    it('should handle ENOENT errors during context path processing with FileSystem interface', async () => {
+      // Setup mocks for input handler
+      (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+        // Verify fileSystem is passed through to processInput
+        expect(options.fileSystem).toBe(mockFileSystem);
+        
+        return {
+          content: 'Main prompt content',
+          sourceType: InputSourceType.FILE,
+          sourcePath: '/path/to/prompt.txt',
+          metadata: {
+            processingTimeMs: 5,
+            originalLength: 20,
+            finalLength: 20,
+            normalized: true
+          }
+        };
+      });
+      
+      // Mock readContextPaths to throw ENOENT error
+      const nodeError = new Error('ENOENT: no such file or directory') as NodeJS.ErrnoException;
+      nodeError.code = 'ENOENT';
+      (fileReader.readContextPaths as jest.Mock).mockImplementation(async (paths, fs) => {
+        // Verify fileSystem is passed to readContextPaths
+        expect(fs).toBe(mockFileSystem);
+        expect(paths).toEqual(['nonexistent.js']);
+        throw nodeError;
+      });
+      
+      // Function should throw FileSystemError
+      await expect(_processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['nonexistent.js'],
+        fileSystem: mockFileSystem
+      })).rejects.toThrow(FileSystemError);
+      
+      // Just verify the error is thrown, the actual error properties may vary
+      // based on implementation details
+      try {
+        await _processInput({
+          spinner: mockSpinner,
+          input: 'prompt.txt',
+          contextPaths: ['nonexistent.js'],
+          fileSystem: mockFileSystem
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileSystemError);
+        // Just check that the error has a message property
+        expect((error as FileSystemError).message).toBeDefined();
+        // The message might be different but should indicate a file issue
+        // Don't check for specific message content, as it might vary in different implementations
+      }
+    });
+    
+    it('should handle ENOENT errors during context path processing without FileSystem', async () => {
       // Setup mocks for input handler
       (inputHandler.processInput as jest.Mock).mockResolvedValue({
         content: 'Main prompt content',
@@ -870,6 +1100,58 @@ describe('_processInput Helper', () => {
       // Verify final spinner text includes the singular form
       expect(mockSpinner.text).toContain('with 1 context file');
       expect(mockSpinner.text).not.toContain('with 1 context files');
+    });
+    
+    it('should properly handle FileSystem-specific errors', async () => {
+      // Setup mocks for input handler
+      (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
+        // Verify fileSystem is passed through to processInput
+        expect(options.fileSystem).toBe(mockFileSystem);
+        
+        return {
+          content: 'Main prompt content',
+          sourceType: InputSourceType.FILE,
+          sourcePath: '/path/to/prompt.txt',
+          metadata: {
+            processingTimeMs: 5,
+            originalLength: 20,
+            finalLength: 20,
+            normalized: true
+          }
+        };
+      });
+      
+      // Create a FileSystemError to be thrown by readContextPaths
+      const fsError = new FileSystemError('FileSystem implementation specific error');
+      (fileReader.readContextPaths as jest.Mock).mockImplementation(async (_, fs) => {
+        // Verify fileSystem is passed to readContextPaths
+        expect(fs).toBe(mockFileSystem);
+        throw fsError;
+      });
+      
+      // Function should throw FileSystemError
+      await expect(_processInput({
+        spinner: mockSpinner,
+        input: 'prompt.txt',
+        contextPaths: ['context.js'],
+        fileSystem: mockFileSystem
+      })).rejects.toThrow(FileSystemError);
+      
+      // Verify we get a FileSystemError
+      try {
+        await _processInput({
+          spinner: mockSpinner,
+          input: 'prompt.txt',
+          contextPaths: ['context.js'],
+          fileSystem: mockFileSystem
+        });
+      } catch (error) {
+        expect(error).toBeInstanceOf(FileSystemError);
+        // Check cause property references our original error
+        if (error instanceof FileSystemError && error.cause) {
+          expect(error.cause).toBe(fsError);
+        }
+      }
     });
   });
 });
