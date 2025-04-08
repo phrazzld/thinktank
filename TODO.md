@@ -16,7 +16,7 @@
 
 ### 2. Isolate I/O Layer
 
-- [ ] **Create I/O interface**
+- [x] **Create I/O interface**
   - **Action:** Define compact I/O interface in `src/core/interfaces.ts` with clear separation of concerns.
   - **Depends On:** None
   - **AC Ref:** AC 3.1 (Move I/O to high-level functions)
