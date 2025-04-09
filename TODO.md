@@ -28,7 +28,7 @@
   - **Depends On:** None.
   - **AC Ref:** Example Tests (Opportunity 3).
 
-- [ ] **Improve Error Handling in ConcreteFileSystem**
+- [x] **Improve Error Handling in ConcreteFileSystem**
   - **Action:** Extract common error wrapping logic in `src/core/FileSystem.ts` into private helper methods within the class to reduce repetition.
   - **Depends On:** None.
   - **AC Ref:** Repetitive Error Wrapping.
@@ -38,7 +38,7 @@
   - **Depends On:** None.
   - **AC Ref:** Inconsistent logger usage.
 
-- [ ] **Update Testing Documentation**
+- [x] **Update Testing Documentation**
   - **Action:** Update docs in `jest/README.md` and `src/__tests__/utils/README.md` to reflect `test/setup/` as standard, document new factories/helpers, and deprecate old patterns.
   - **Depends On:** All other tasks.
   - **AC Ref:** Testing documentation needs update.

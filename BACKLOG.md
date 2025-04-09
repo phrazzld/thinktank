@@ -3,7 +3,7 @@
 This backlog tracks planned work for the `thinktank` project, categorized by focus area.
 
 ## PRIORITY
-* **[DX]** Migrate from npm to pnpm. Delete node_modules/ and run `pnpm install`. Probably need to delete `package-lock.json` and modify some stuff in `package.json` and maybe `README.md` and `CLAUDE.md` and `CONTRIBUTING.md` too.
+* **[Infra]** Set up GitHub Actions for CI/CD (linting, testing, building).
 * **[DX]** Tidy up generated file structure / format. Don't include group name, for instance.
 * **[Feature]** Allow users to add a final *synthesize* step, sending all model outputs to a chosen model for summarization.
 
@@ -74,7 +74,6 @@ This backlog tracks planned work for the `thinktank` project, categorized by foc
 
 ## 📚 Documentation & Process
 
-* **[Docs]** Integrate `TESTING_PHILOSOPHY.md` content into AI agent instructions (`plan.md`, `execute.md`, `review.md`).
 * **[Docs]** Fix broken documentation links in `README.md`.
 * **[Docs]** Create/update `TESTING.md` based on `TESTING_PHILOSOPHY.md` and new testing approach (`memfs`/DI).
 * **[Docs]** Update `CONTRIBUTING.md` with new testing standards.
@@ -84,5 +83,4 @@ This backlog tracks planned work for the `thinktank` project, categorized by foc
 
 ## ⚙️ Infrastructure & Maintenance
 
-* **[Infra]** Set up GitHub Actions for CI/CD (linting, testing, building).
 * **[Maintenance]** Perform a dependency audit for security and outdated packages.
