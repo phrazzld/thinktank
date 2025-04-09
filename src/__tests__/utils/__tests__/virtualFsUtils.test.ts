@@ -194,56 +194,219 @@ describe('virtualFsUtils', () => {
   });
 
   describe('addVirtualGitignoreFile', () => {
-    it('should create a .gitignore file with provided patterns', async () => {
-      // Setup
+    // Reset virtualFs before each test
+    beforeEach(() => {
       resetVirtualFs();
-      createVirtualFs({
-        '/project/src/index.ts': 'console.log("Hello");',
-      });
-
-      // Action
-      await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/\nnode_modules/');
-
-      // Assert - File exists with correct content
-      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe(
-        '*.log\n/dist/\nnode_modules/'
-      );
-
-      // Directory structure should contain the file
-      const rootContents = await fsPromises.readdir('/project');
-      expect(rootContents).toContain('.gitignore');
     });
 
-    it('should create parent directories if they do not exist', async () => {
-      // Setup
-      resetVirtualFs();
+    describe('Basic Creation & Overwriting', () => {
+      it('should create a .gitignore file with provided patterns', async () => {
+        // Setup
+        createVirtualFs({
+          '/project/src/index.ts': 'console.log("Hello");',
+        });
 
-      // Action - Create file in a directory that doesn't exist yet
-      await addVirtualGitignoreFile('/new-project/subdir/.gitignore', '*.log');
+        // Action
+        await addVirtualGitignoreFile('/project/.gitignore', '*.log\n/dist/\nnode_modules/');
 
-      // Assert - Both directories and file should be created
-      expect(await fsPromises.readFile('/new-project/subdir/.gitignore', 'utf-8')).toBe('*.log');
+        // Assert - File exists with correct content
+        expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe(
+          '*.log\n/dist/\nnode_modules/'
+        );
 
-      // Verify directory structure
-      const rootContents = await fsPromises.readdir('/');
-      expect(rootContents).toContain('new-project');
-
-      const projectContents = await fsPromises.readdir('/new-project');
-      expect(projectContents).toContain('subdir');
-    });
-
-    it('should overwrite existing file if it already exists', async () => {
-      // Setup
-      resetVirtualFs();
-      createVirtualFs({
-        '/project/.gitignore': 'old-pattern\n*.bak',
+        // Directory structure should contain the file
+        const rootContents = await fsPromises.readdir('/project');
+        expect(rootContents).toContain('.gitignore');
       });
 
-      // Action
-      await addVirtualGitignoreFile('/project/.gitignore', 'new-pattern\n*.log');
+      it('should overwrite existing file if it already exists', async () => {
+        // Setup
+        createVirtualFs({
+          '/project/.gitignore': 'old-pattern\n*.bak',
+        });
 
-      // Assert - Content should be replaced
-      expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('new-pattern\n*.log');
+        // Action
+        await addVirtualGitignoreFile('/project/.gitignore', 'new-pattern\n*.log');
+
+        // Assert - Content should be replaced
+        expect(await fsPromises.readFile('/project/.gitignore', 'utf-8')).toBe('new-pattern\n*.log');
+      });
+    });
+
+    describe('Directory Creation', () => {
+      it('should create parent directories if they do not exist', async () => {
+        // Action - Create file in a directory that doesn't exist yet
+        await addVirtualGitignoreFile('/new-project/subdir/.gitignore', '*.log');
+
+        // Assert - Both directories and file should be created
+        expect(await fsPromises.readFile('/new-project/subdir/.gitignore', 'utf-8')).toBe('*.log');
+
+        // Verify directory structure
+        const rootContents = await fsPromises.readdir('/');
+        expect(rootContents).toContain('new-project');
+
+        const projectContents = await fsPromises.readdir('/new-project');
+        expect(projectContents).toContain('subdir');
+      });
+
+      it('should create deeply nested parent directories', async () => {
+        // Action
+        await addVirtualGitignoreFile('/deep/nested/structure/project/.gitignore', '*.log');
+
+        // Assert directory structure was created
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/deep/nested/structure/project')).toBe(true);
+        
+        // Assert file was created
+        expect(virtualFs.existsSync('/deep/nested/structure/project/.gitignore')).toBe(true);
+        expect(virtualFs.readFileSync('/deep/nested/structure/project/.gitignore', 'utf8')).toBe('*.log');
+      });
+
+      it('should work when some parent directories already exist', async () => {
+        // Setup - Create partial directory structure
+        createVirtualFs({
+          '/existing/': '' // Create only the top-level directory
+        });
+
+        // Action
+        await addVirtualGitignoreFile('/existing/nested/sub/.gitignore', '*.log');
+
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/existing/nested/sub/.gitignore')).toBe(true);
+        expect(virtualFs.readFileSync('/existing/nested/sub/.gitignore', 'utf8')).toBe('*.log');
+      });
+    });
+
+    describe('Path Handling', () => {
+      it('should handle Unix-style absolute paths', async () => {
+        // Action
+        await addVirtualGitignoreFile('/unix/style/path/.gitignore', '*.log');
+        
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/unix/style/path/.gitignore')).toBe(true);
+      });
+
+      it('should handle Windows-style absolute paths via normalization', async () => {
+        // Action
+        await addVirtualGitignoreFile('C:\\windows\\style\\path\\.gitignore', '*.log');
+        
+        // Assert - should be normalized to memfs path format
+        const virtualFs = getVirtualFs();
+        const expectedPath = normalizePathForMemfs('C:\\windows\\style\\path\\.gitignore');
+        expect(virtualFs.existsSync(expectedPath)).toBe(true);
+        expect(expectedPath).toBe('/C:/windows/style/path/.gitignore');
+      });
+
+      it('should handle paths with spaces', async () => {
+        // Action
+        await addVirtualGitignoreFile('/path with spaces/sub dir/.gitignore', '*.log');
+        
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/path with spaces/sub dir/.gitignore')).toBe(true);
+      });
+
+      it('should handle paths needing normalization (.. or .)', async () => {
+        // Action
+        await addVirtualGitignoreFile('/a/../b/./c/.gitignore', '*.log');
+        
+        // Assert - path should be normalized
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/b/c/.gitignore')).toBe(true);
+      });
+
+      it('should treat relative paths as absolute from root due to normalization', async () => {
+        // Action
+        await addVirtualGitignoreFile('relative/path/.gitignore', '*.log');
+        
+        // Assert - should be normalized with leading slash
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/relative/path/.gitignore')).toBe(true);
+      });
+
+      it('should fail when path ends with a trailing slash', async () => {
+        // Action & Assert
+        // The function doesn't append ".gitignore" to directory paths that end with a slash
+        // so it tries to write to the directory itself, which should fail
+        await expect(addVirtualGitignoreFile('/trailing/slash/', '*.log')).rejects.toThrow();
+      });
+    });
+
+    describe('Content Handling', () => {
+      it('should create an empty file for empty content', async () => {
+        // Action
+        await addVirtualGitignoreFile('/empty/.gitignore', '');
+        
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/empty/.gitignore')).toBe(true);
+        expect(virtualFs.readFileSync('/empty/.gitignore', 'utf8')).toBe('');
+      });
+
+      it('should handle content with LF line endings', async () => {
+        const content = 'line1\nline2\nline3';
+        
+        // Action
+        await addVirtualGitignoreFile('/lf-endings/.gitignore', content);
+        
+        // Assert - content should be preserved exactly
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.readFileSync('/lf-endings/.gitignore', 'utf8')).toBe(content);
+      });
+
+      it('should handle content with CRLF line endings', async () => {
+        const content = 'line1\r\nline2\r\nline3';
+        
+        // Action
+        await addVirtualGitignoreFile('/crlf-endings/.gitignore', content);
+        
+        // Assert - content should be preserved exactly
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.readFileSync('/crlf-endings/.gitignore', 'utf8')).toBe(content);
+      });
+
+      it('should handle content with comments and blank lines', async () => {
+        const content = '# This is a comment\n\n*.log\n\n# Another comment\n*.tmp';
+        
+        // Action
+        await addVirtualGitignoreFile('/comments/.gitignore', content);
+        
+        // Assert - content should be preserved exactly
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.readFileSync('/comments/.gitignore', 'utf8')).toBe(content);
+      });
+    });
+
+    describe('Edge Cases', () => {
+      it('should throw an error when trying to create a file at a path that is a directory', async () => {
+        // Setup - Create a directory
+        createVirtualFs({
+          '/existing-dir/': '' // Empty string creates a directory
+        });
+        
+        // Action & Assert - Trying to use the directory path should throw
+        await expect(addVirtualGitignoreFile('/existing-dir', '*.log')).rejects.toThrow();
+      });
+
+      it('should handle unusual characters in the path', async () => {
+        // Action
+        await addVirtualGitignoreFile('/path-with-$pecial-@chars#/.gitignore', '*.log');
+        
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/path-with-$pecial-@chars#/.gitignore')).toBe(true);
+      });
+
+      it('should work with just a filename in the root path', async () => {
+        // Action
+        await addVirtualGitignoreFile('/.gitignore', '*.log');
+        
+        // Assert
+        const virtualFs = getVirtualFs();
+        expect(virtualFs.existsSync('/.gitignore')).toBe(true);
+      });
     });
   });
 
