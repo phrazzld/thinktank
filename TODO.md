@@ -153,7 +153,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Migrate all tests using legacy FS mocking.
   - **AC Ref:** AC 1.4.
 
-- [ ] **Update test README files with new patterns**
+- [x] **Update test README files with new patterns**
   - **Action:** Update `jest/README.md` and `src/__tests__/utils/README.md` to document the virtual filesystem testing approach.
   - **Technical Details:**
     - Add detailed explanation of the `memfs`-based testing strategy.
