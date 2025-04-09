@@ -1,10 +1,10 @@
 {
   "name": "thinktank",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CLI tool for querying multiple LLMs with the same prompt",
-  "main": "dist/cli/index.js",
+  "main": "dist/src/cli/index.js",
   "bin": {
-    "thinktank": "dist/cli/index.js"
+    "thinktank": "dist/src/cli/index.js"
   },
   "type": "commonjs",
   "engines": {
@@ -13,7 +13,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node src/cli/index.ts",
-    "start": "node dist/cli/index.js",
+    "start": "node dist/src/cli/index.js",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",

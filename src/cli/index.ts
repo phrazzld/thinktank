@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import fs from 'fs/promises';
 import path from 'path';
 import dotenv from 'dotenv';
+import packageJson from '../../package.json';
 import {
   ThinktankError,
   ApiError,
@@ -30,7 +31,8 @@ const program = new Command();
 program
   .name('thinktank')
   .description('A CLI tool for querying multiple LLMs with the same prompt')
-  .version('0.1.0') // This should be loaded from package.json in the future
+  // Use imported package.json for version
+  .version(packageJson.version)
   .option('-v, --verbose', 'Enable verbose output with detailed information')
   .option('-q, --quiet', 'Suppress all output except errors')
   .option('-d, --debug', 'Enable debug mode with extra information')
