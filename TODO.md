@@ -11,19 +11,19 @@
 
 ### Medium Priority
 
-- [ ] **Refactor ConcreteFileSystem Tests**
+- [x] **Refactor ConcreteFileSystem Tests**
   - **Action:** Refactor tests in `src/core/__tests__/FileSystem.test.ts` to use virtual FS (`memfs`) via `test/setup/fs.ts` instead of mocking internal dependency. Test behavior and error wrapping, not just delegation.
   - **Depends On:** None.
   - **AC Ref:** Interface-Based Mocking (Key Strength 4).
 
-- [ ] **Add Tests for I/O Module**
+- [x] **Add Tests for I/O Module**
   - **Action:** Create new test file `src/workflow/__tests__/io.test.ts` that properly tests the I/O module by mocking `FileSystem`/`ConsoleLogger`/`UISpinner`.
   - **Depends On:** None.
   - **AC Ref:** Test Coverage for `io.ts` (Opportunity 2).
 
 ### Low Priority
 
-- [ ] **Fix Example Tests**
+- [x] **Fix Example Tests**
   - **Action:** Address failing assertions in example test files to serve as proper reference implementation.
   - **Depends On:** None.
   - **AC Ref:** Example Tests (Opportunity 3).
