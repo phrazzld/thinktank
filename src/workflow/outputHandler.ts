@@ -107,6 +107,26 @@ export interface FileWriteDetail {
 }
 
 /**
+ * Represents data for a file to be written
+ */
+export interface FileData {
+  /**
+   * The filename
+   */
+  filename: string;
+  
+  /**
+   * The content to be written to the file
+   */
+  content: string;
+  
+  /**
+   * The model key (provider:modelId) associated with this file
+   */
+  modelKey: string;
+}
+
+/**
  * Options for file output
  */
 export interface FileOutputOptions {
@@ -356,16 +376,59 @@ export async function createOutputDirectory(
 }
 
 /**
- * Write LLM responses to files
+ * Prepare file data from LLM responses without performing any I/O
+ * 
+ * This is a pure function that prepares data for file writing without
+ * actually writing files. It returns an array of FileData objects
+ * containing the filename, content, and modelKey for each response.
  * 
  * @param responses - Array of LLM responses with their config keys
+ * @param outputDirectory - Directory to write files to (used only for path construction)
+ * @param options - File output options
+ * @returns Array of FileData objects ready for writing
+ */
+export function writeResponsesToFiles(
+  responses: Array<LLMResponse & { configKey: string }>,
+  _outputDirectory: string, // Using underscore prefix to indicate it's not used in the function
+  options: Omit<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier'> = {}
+): FileData[] {
+  // Map each response to a FileData object
+  return responses.map(response => {
+    // Generate filename
+    const filename = generateFilename(response);
+    
+    // Format the response as Markdown
+    const markdownContent = formatResponseAsMarkdown(response, options.includeMetadata);
+    
+    // Sanitize content to handle control characters
+    const content = typeof markdownContent === 'string' 
+      ? sanitizeControlChars(markdownContent)
+      : markdownContent;
+    
+    // Return FileData object with all necessary information for writing
+    return {
+      filename,
+      content,
+      modelKey: response.configKey
+    };
+  });
+}
+
+/**
+ * Write prepared file data to the filesystem
+ * 
+ * This function takes an array of FileData objects and writes them to disk
+ * using the provided FileSystem interface. It tracks success/failure and
+ * timing information for each file write operation.
+ * 
+ * @param files - Array of FileData objects to write
  * @param outputDirectory - Directory to write files to
  * @param options - File output options
  * @param fileSystem - File system interface to use for operations
  * @returns Result of file write operations
  */
-export async function writeResponsesToFiles(
-  responses: Array<LLMResponse & { configKey: string }>,
+export async function writeFilesToDisk(
+  files: FileData[],
   outputDirectory: string,
   options: Omit<FileOutputOptions, 'outputDirectory' | 'directoryIdentifier'> = {},
   fileSystem: FileSystem
@@ -378,21 +441,15 @@ export async function writeResponsesToFiles(
   let succeededWrites = 0;
   let failedWrites = 0;
   
-  // Process each response
-  const processFile = async (response: LLMResponse & { configKey: string }): Promise<void> => {
-    // Generate filename
-    const filename = generateFilename(response);
-    
+  // Process each file
+  const processFile = async (fileData: FileData): Promise<void> => {
     // Create file path
-    const filePath = path.join(outputDirectory, filename);
-    
-    // Format the response as Markdown
-    const markdownContent = formatResponseAsMarkdown(response, options.includeMetadata);
+    const filePath = path.join(outputDirectory, fileData.filename);
     
     // Create file detail object for tracking
     const fileDetail: FileWriteDetail = {
-      modelKey: response.configKey,
-      filename,
+      modelKey: fileData.modelKey,
+      filename: fileData.filename,
       filePath,
       status: 'pending',
       startTime: Date.now()
@@ -407,24 +464,19 @@ export async function writeResponsesToFiles(
     }
     
     try {
-      // Sanitize content to handle control characters
-      const sanitizedContent = typeof markdownContent === 'string' 
-        ? sanitizeControlChars(markdownContent)
-        : markdownContent;
-      
       // Create parent directory if it doesn't exist (for extra safety)
       const parentDir = path.dirname(filePath);
       await fileSystem.mkdir(parentDir, { recursive: true });
       
       // Write file with atomic operation if possible
       const tempPath = `${filePath}.tmp`;
-      await fileSystem.writeFile(tempPath, sanitizedContent);
+      await fileSystem.writeFile(tempPath, fileData.content);
       
       // Handle rename - note: FileSystem interface might not have rename directly
       // We'll need to read and write again if that's the case
       try {
         // Try using writeFile to effectively "rename" by overwriting
-        await fileSystem.writeFile(filePath, sanitizedContent);
+        await fileSystem.writeFile(filePath, fileData.content);
         
         // If we reached here, try to clean up the temp file
         try {
@@ -434,7 +486,7 @@ export async function writeResponsesToFiles(
         }
       } catch (renameError) {
         // If we can't rename/move, try direct write
-        await fileSystem.writeFile(filePath, sanitizedContent);
+        await fileSystem.writeFile(filePath, fileData.content);
       }
       
       // Calculate duration for success case
@@ -489,7 +541,7 @@ export async function writeResponsesToFiles(
   };
   
   // Create promises for all files
-  const fileWritePromises = responses.map(response => processFile(response));
+  const fileWritePromises = files.map(fileData => processFile(fileData));
   
   // Wait for all file writes to complete
   await Promise.allSettled(fileWritePromises);
@@ -513,56 +565,51 @@ export async function writeResponsesToFiles(
 }
 
 /**
- * Process responses for output, handling both file writing and console formatting
+ * Process responses for output, preparing both file data and console output
+ * 
+ * This is a pure function that doesn't perform I/O operations like file writing
+ * or directory creation. Instead, it returns structured data that can be used
+ * by the caller to perform those operations.
  * 
  * @param responses - Array of LLM responses with their config keys
  * @param options - Output options
- * @param fileSystem - File system interface to use for operations
- * @returns Result object with file output results and console formatted string
+ * @returns Result object with file data and console formatted string
  */
-export async function processOutput(
+export function processOutput(
   responses: Array<LLMResponse & { configKey: string }>,
-  options: FileOutputOptions & ConsoleOutputOptions = {},
-  fileSystem: FileSystem
-): Promise<{
-  fileOutput: FileOutputResult;
+  options: FileOutputOptions & ConsoleOutputOptions = {}
+): {
+  files: FileData[];
+  directoryPath: string;
   consoleOutput: string;
-}> {
-  // Use the provided output directory directly if it exists,
-  // otherwise create a new output directory
-  let outputDirectory: string;
-  
-  if (options.outputDirectory && typeof options.outputDirectory === 'string') {
-    // Ensure the directory exists
-    try {
-      await fileSystem.mkdir(options.outputDirectory, { recursive: true });
-      outputDirectory = options.outputDirectory;
-    } catch (error) {
-      throw new OutputHandlerError(
-        `Failed to create output directory: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error : undefined
-      );
-    }
-  } else {
-    // Create a new output directory if none provided
-    outputDirectory = await createOutputDirectory({
-      outputDirectory: options.outputDirectory,
-      directoryIdentifier: options.directoryIdentifier,
-      friendlyRunName: options.friendlyRunName
-    }, fileSystem);
-  }
-  
-  // Write responses to files
-  const fileOutput = await writeResponsesToFiles(
-    responses,
-    outputDirectory,
-    {
-      includeMetadata: options.includeMetadata,
-      throwOnError: options.throwOnError,
-      onStatusUpdate: options.onStatusUpdate
-    },
-    fileSystem
+} {
+  // Generate output directory path
+  const directoryPath = generateOutputDirectoryPath(
+    options.outputDirectory,
+    options.directoryIdentifier,
+    options.friendlyRunName
   );
+  
+  // Generate file data for each response
+  const files: FileData[] = responses.map(response => {
+    // Generate filename
+    const filename = generateFilename(response, {
+      // Control if group name is included based on how models were selected
+      includeGroup: true // Default behavior, caller can override if needed
+    });
+    
+    // Format content for file output
+    const content = formatResponseAsMarkdown(
+      response, 
+      options.includeMetadata
+    );
+    
+    return {
+      filename,
+      content,
+      modelKey: response.configKey,
+    };
+  });
   
   // Format for console output
   const consoleOutput = formatForConsole(
@@ -576,7 +623,8 @@ export async function processOutput(
   );
   
   return {
-    fileOutput,
+    files,
+    directoryPath,
     consoleOutput
   };
 }

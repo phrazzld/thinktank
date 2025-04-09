@@ -164,7 +164,7 @@ describe('readContextFile with FileSystem Interface', () => {
       // Call function with the FileSystem interface
       const result = await readContextFile(testDirPath, fileSystem);
       
-      // ConcreteFileSystem.stat on the virtual FS will report it's a directory
+      // FileSystemAdapter.stat on the virtual FS will report it's a directory
       expect(result.path).toBe(testDirPath);
       expect(result.content).toBeNull();
       expect(result.error).toEqual({

@@ -6,13 +6,16 @@
  */
 import path from 'path';
 import fs from 'fs/promises';
+import { Stats } from 'fs';
 import { 
   resetVirtualFs, 
   createVirtualFs, 
   getVirtualFs,
-  createFsError as createFsErrorUtil
+  createFsError as createFsErrorUtil,
+  normalizePathForMemfs
 } from '../../src/__tests__/utils/virtualFsUtils';
 import { normalizePathGeneral } from '../../src/utils/pathUtils';
+import { FileSystem } from '../../src/core/interfaces';
 
 /**
  * Sets up a basic filesystem with the specified file structure
@@ -167,4 +170,111 @@ export function mockFileExists(mockFn: jest.Mock): void {
       return false;
     }
   });
+}
+
+/**
+ * Creates a mock FileSystem implementation backed by memfs.
+ * This provides a Jest-mocked object that implements the FileSystem interface
+ * while delegating actual operations to the virtual filesystem.
+ * 
+ * @returns A Jest-mocked FileSystem object
+ * 
+ * Usage:
+ * ```typescript
+ * const mockFileSystem = createMockFileSystem();
+ * // Configure specific behaviors if needed:
+ * mockFileSystem.readFileContent.mockResolvedValueOnce('Custom content');
+ * ```
+ */
+export function createMockFileSystem(): jest.Mocked<FileSystem> {
+  const vfs = getVirtualFs(); // Get the memfs instance
+
+  // Create mock methods that delegate to vfs
+  const mockMethods = {
+    readFileContent: jest.fn().mockImplementation((filePath: string, _options?: { normalize?: boolean }) => {
+      try {
+        const normPath = normalizePathForMemfs(filePath);
+        return Promise.resolve(vfs.readFileSync(normPath, 'utf8') as string);
+      } catch (e) {
+        return Promise.reject(createFsErrorUtil('ENOENT', `File not found: ${filePath}`, 'readFile', filePath));
+      }
+    }),
+
+    writeFile: jest.fn().mockImplementation((filePath: string, content: string) => {
+      try {
+        const normPath = normalizePathForMemfs(filePath);
+        const dir = path.dirname(normPath);
+        if (dir) {
+          vfs.mkdirSync(dir, { recursive: true });
+        }
+        vfs.writeFileSync(normPath, content);
+        return Promise.resolve();
+      } catch (e) {
+        const nodeError = e as NodeJS.ErrnoException;
+        if (nodeError.code === 'EACCES') {
+          return Promise.reject(createFsErrorUtil('EACCES', `Permission denied: ${filePath}`, 'writeFile', filePath));
+        }
+        return Promise.reject(createFsErrorUtil('UNKNOWN', `Failed to write file: ${filePath}`, 'writeFile', filePath));
+      }
+    }),
+
+    fileExists: jest.fn().mockImplementation((filePath: string) => {
+      const normPath = normalizePathForMemfs(filePath);
+      return Promise.resolve(vfs.existsSync(normPath));
+    }),
+
+    mkdir: jest.fn().mockImplementation((dirPath: string, options?: { recursive?: boolean }) => {
+      try {
+        const normPath = normalizePathForMemfs(dirPath);
+        vfs.mkdirSync(normPath, options);
+        return Promise.resolve();
+      } catch (e) {
+        const nodeError = e as NodeJS.ErrnoException;
+        if (nodeError.code === 'EACCES') {
+          return Promise.reject(createFsErrorUtil('EACCES', `Permission denied: ${dirPath}`, 'mkdir', dirPath));
+        }
+        return Promise.reject(createFsErrorUtil('UNKNOWN', `Failed to create directory: ${dirPath}`, 'mkdir', dirPath));
+      }
+    }),
+
+    readdir: jest.fn().mockImplementation((dirPath: string) => {
+      try {
+        const normPath = normalizePathForMemfs(dirPath);
+        return Promise.resolve(vfs.readdirSync(normPath) as string[]);
+      } catch (e) {
+        return Promise.reject(createFsErrorUtil('ENOENT', `Directory not found: ${dirPath}`, 'readdir', dirPath));
+      }
+    }),
+
+    stat: jest.fn().mockImplementation((filePath: string) => {
+      try {
+        const normPath = normalizePathForMemfs(filePath);
+        return Promise.resolve(vfs.statSync(normPath) as Stats);
+      } catch (e) {
+        return Promise.reject(createFsErrorUtil('ENOENT', `Path not found: ${filePath}`, 'stat', filePath));
+      }
+    }),
+
+    access: jest.fn().mockImplementation((filePath: string, _mode?: number) => {
+      try {
+        const normPath = normalizePathForMemfs(filePath);
+        // memfs doesn't fully implement access, use statSync as a proxy
+        vfs.statSync(normPath);
+        return Promise.resolve();
+      } catch (e) {
+        const nodeError = e as NodeJS.ErrnoException;
+        if (nodeError.code === 'ENOENT') {
+          return Promise.reject(createFsErrorUtil('ENOENT', `Path not found: ${filePath}`, 'access', filePath));
+        }
+        return Promise.reject(createFsErrorUtil('EACCES', `Permission denied: ${filePath}`, 'access', filePath));
+      }
+    }),
+
+    // Mock config path methods
+    getConfigDir: jest.fn().mockResolvedValue('/mock/.config/thinktank'),
+    getConfigFilePath: jest.fn().mockResolvedValue('/mock/.config/thinktank/config.json'),
+  };
+
+  // Cast to FileSystem with jest.Mocked type
+  return mockMethods as unknown as jest.Mocked<FileSystem>;
 }

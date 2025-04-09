@@ -29,9 +29,10 @@ import { InputResult } from './inputHandler';
 import { ModelSelectionResult } from './modelSelector';
 import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
+export { FileOutputResult };
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
-import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
+import { LLMClient, ConfigManagerInterface, FileSystem, ConsoleLogger } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -405,25 +406,51 @@ export interface ProcessOutputParams extends SpinnerContext {
   queryResults: QueryExecutionResult;
   
   /**
-   * The output directory path to write files to
-   */
-  outputDirectoryPath: string;
-  
-  /**
    * The user-provided run options
    */
   options: RunOptions;
   
   /**
    * Friendly run name for display and reference
+   * This property is optional because it's not directly used in the pure implementation
    */
-  friendlyRunName: string;
+  friendlyRunName?: string;
+}
+
+/**
+ * Represents data for a file to be written
+ */
+export interface FileData {
+  /**
+   * The filename for this output file
+   */
+  filename: string;
   
   /**
-   * File system interface for file operations
-   * Used for dependency injection to improve testability
+   * The content to be written to the file
    */
-  fileSystem: FileSystem;
+  content: string;
+  
+  /**
+   * The model key (provider:modelId) associated with this file
+   */
+  modelKey: string;
+}
+
+/**
+ * Pure result of the refactored _processOutput helper function
+ * with no I/O operations
+ */
+export interface PureProcessOutputResult {
+  /**
+   * Array of file data objects that can be written to disk
+   */
+  files: FileData[];
+  
+  /**
+   * Formatted console output string
+   */
+  consoleOutput: string;
 }
 
 /**
@@ -451,38 +478,7 @@ export interface ProcessOutputResult {
  * to the user about the outcome of their request.
  */
 
-/**
- * Parameters for the _logCompletionSummary helper function
- */
-export interface LogCompletionSummaryParams {
-  /**
-   * The query execution results
-   */
-  queryResults: QueryExecutionResult;
-  
-  /**
-   * The file output result
-   */
-  fileOutputResult: FileOutputResult;
-  
-  /**
-   * The user-provided run options with run name
-   */
-  options: RunOptions & { friendlyRunName: string };
-  
-  /**
-   * The output directory path
-   */
-  outputDirectoryPath: string;
-}
-
-/**
- * Result of the _logCompletionSummary helper function
- * No specific return value since this function primarily logs to the console
- */
-export interface LogCompletionSummaryResult {
-  // Empty - function primarily produces side effects (logging)
-}
+// _logCompletionSummary has been refactored out; these interfaces are no longer needed
 
 // ----------------------------------------
 // 7. Handle Workflow Error Helper
@@ -512,6 +508,11 @@ export interface HandleWorkflowErrorParams extends SpinnerContext {
    * The current state of the workflow when the error occurred
    */
   workflowState: Partial<WorkflowState>;
+  
+  /**
+   * ConsoleLogger implementation for logging errors
+   */
+  consoleLogger?: ConsoleLogger;
 }
 
 /**

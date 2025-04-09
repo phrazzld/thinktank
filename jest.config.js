@@ -2,8 +2,13 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/jest'],
-  testMatch: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.e2e.test.ts', '**/__tests__/**/*.test.js'],
+  roots: ['<rootDir>/src', '<rootDir>/jest', '<rootDir>/test'],
+  testMatch: [
+    '**/__tests__/**/*.test.ts', 
+    '**/__tests__/**/*.e2e.test.ts', 
+    '**/__tests__/**/*.test.js',
+    '<rootDir>/test/**/*.test.ts'
+  ],
   // Setup files run once before all tests
   setupFiles: ['<rootDir>/jest/setup.js'],
   // Setup files run before each test file

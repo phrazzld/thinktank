@@ -155,6 +155,13 @@ export interface QueryExecutionResult {
      */
     durationMs: number;
   };
+  
+  /**
+   * The combined prompt and context content that was sent to the models
+   * This is preserved to allow access to the original prompt in subsequent operations
+   * and especially helpful for testing.
+   */
+  combinedContent?: string;
 }
 
 /**
@@ -396,6 +403,7 @@ export async function executeQueries(
       startTime,
       endTime,
       durationMs
-    }
+    },
+    combinedContent: options.prompt
   };
 }

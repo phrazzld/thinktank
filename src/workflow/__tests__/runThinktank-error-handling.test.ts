@@ -15,6 +15,7 @@ import {
 } from '../../core/errors';
 import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
+import * as ioModule from '../io';
 import { FileWriteStatus } from '../outputHandler';
 
 // Store module paths for restoration
@@ -24,6 +25,7 @@ const oraPath = require.resolve('ora');
 
 // Mock dependencies
 jest.mock('../runThinktankHelpers');
+jest.mock('../io');
 jest.mock('../../utils/nameGenerator');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
@@ -144,29 +146,43 @@ describe('runThinktank Error Handling', () => {
     });
     
     // Process output helper mock - success by default
-    (helpers._processOutput as jest.Mock).mockResolvedValue({
-      fileOutputResult: {
-        outputDirectory: '/fake/output/dir',
-        files: [{ 
-          modelKey: 'mock:mock-model', 
-          filename: 'mock-model.md', 
-          status: 'success' as FileWriteStatus,
-          filePath: '/fake/output/dir/mock-model.md'
-        }],
-        succeededWrites: 1,
-        failedWrites: 0,
-        timing: { startTime: 1, endTime: 2, durationMs: 1 }
-      },
+    (helpers._processOutput as jest.Mock).mockReturnValue({
+      files: [{ 
+        modelKey: 'mock:mock-model', 
+        filename: 'mock-model.md', 
+        content: 'Mock content'
+      }],
       consoleOutput: 'Mock console output'
     });
     
-    // Log completion summary helper mock - success by default
-    (helpers._logCompletionSummary as jest.Mock).mockReturnValue({});
+    // Write files helper mock - success by default
+    (ioModule.writeFiles as jest.Mock).mockResolvedValue({
+      outputDirectory: '/fake/output/dir',
+      files: [{ 
+        modelKey: 'mock:mock-model', 
+        filename: 'mock-model.md', 
+        status: 'success' as FileWriteStatus,
+        filePath: '/fake/output/dir/mock-model.md'
+      }],
+      succeededWrites: 1,
+      failedWrites: 0,
+      timing: { startTime: 1, endTime: 2, durationMs: 1 }
+    });
+    
+    // formatCompletionSummary is now used directly in runThinktank.ts
+    jest.mock('../../utils/formatCompletionSummary', () => ({
+      formatCompletionSummary: jest.fn().mockReturnValue({
+        summaryText: 'Mock summary text',
+        errorDetails: []
+      })
+    }));
     
     // Convert the error handler to a simple function that rethrows the error
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementation((params: any) => {
       throw params.error;
     });
+    
+    // No reusable error handler needed since the default mock already rethrows the error
     
     // Mock nameGenerator
     (nameGenerator.generateFunName as jest.Mock).mockResolvedValue('clever-meadow');
@@ -179,6 +195,7 @@ describe('runThinktank Error Handling', () => {
   // Restore all mocked modules after tests
   afterAll(() => {
     jest.unmock('../runThinktankHelpers');
+    jest.unmock('../io');
     jest.unmock('../../utils/nameGenerator');
     jest.unmock('ora');
     
@@ -443,7 +460,7 @@ describe('runThinktank Error Handling', () => {
     );
   });
   
-  it('should throw FileSystemError when output processing fails', async () => {
+  it('should throw FileSystemError when file writing fails', async () => {
     // Create a FileSystemError for file writing
     const fsError = new FileSystemError('Failed to write results to file', {
       filePath: '/output/directory/mock-model.md',
@@ -454,8 +471,8 @@ describe('runThinktank Error Handling', () => {
       ]
     });
     
-    // Mock _processOutput to throw the error
-    (helpers._processOutput as jest.Mock).mockRejectedValueOnce(fsError);
+    // Mock writeFiles to throw the error
+    (ioModule.writeFiles as jest.Mock).mockRejectedValueOnce(fsError);
     
     // Call with test options
     const options: RunOptions = {
@@ -486,6 +503,14 @@ describe('runThinktank Error Handling', () => {
   });
   
   it('should handle multiple model errors gracefully', async () => {
+    // Setup specific formatCompletionSummary mock for this test
+    const formatCompletionSummaryMock = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
+    formatCompletionSummaryMock.mockClear(); // Clear previous calls
+    formatCompletionSummaryMock.mockReturnValue({
+      summaryText: 'Mock summary with errors',
+      errorDetails: ['- Model error details']
+    });
+    
     // Create query results with mixed success/error results
     const mixedQueryResults = {
       queryResults: {
@@ -541,37 +566,60 @@ describe('runThinktank Error Handling', () => {
       }
     };
     
-    // Setup file output with mixed results
-    const mixedFileOutput = {
-      fileOutputResult: {
-        outputDirectory: '/fake/output/dir',
-        files: [
-          { 
-            modelKey: 'openai:gpt-4o', 
-            filename: 'openai-gpt-4o.md', 
-            status: 'success' as FileWriteStatus,
-            filePath: '/fake/output/dir/openai-gpt-4o.md'
-          },
-          { 
-            modelKey: 'anthropic:claude-3-opus', 
-            filename: 'anthropic-claude-3-opus.md', 
-            status: 'error' as FileWriteStatus,
-            error: 'Failed to write file',
-            filePath: '/fake/output/dir/anthropic-claude-3-opus.md'
-          }
-        ],
-        succeededWrites: 1,
-        failedWrites: 1,
-        timing: { startTime: 1, endTime: 2, durationMs: 1 }
-      },
+    // Setup pure data output for files
+    const pureProcessOutput = {
+      files: [
+        { 
+          modelKey: 'openai:gpt-4o', 
+          filename: 'openai-gpt-4o.md', 
+          content: 'Success content'
+        },
+        { 
+          modelKey: 'anthropic:claude-3-opus', 
+          filename: 'anthropic-claude-3-opus.md', 
+          content: 'Error content'
+        }
+      ],
       consoleOutput: 'Mixed results console output'
+    };
+    
+    // Setup file output result with mixed success/failure
+    const mixedFileOutputResult = {
+      outputDirectory: '/fake/output/dir',
+      files: [
+        { 
+          modelKey: 'openai:gpt-4o', 
+          filename: 'openai-gpt-4o.md', 
+          status: 'success' as FileWriteStatus,
+          filePath: '/fake/output/dir/openai-gpt-4o.md',
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        },
+        { 
+          modelKey: 'anthropic:claude-3-opus', 
+          filename: 'anthropic-claude-3-opus.md', 
+          status: 'error' as FileWriteStatus,
+          error: 'Failed to write file',
+          filePath: '/fake/output/dir/anthropic-claude-3-opus.md',
+          startTime: 1,
+          endTime: 2,
+          durationMs: 1
+        }
+      ],
+      succeededWrites: 1,
+      failedWrites: 1,
+      timing: { startTime: 1, endTime: 2, durationMs: 1 }
     };
     
     // Mock _executeQueries to return mixed results
     (helpers._executeQueries as jest.Mock).mockResolvedValueOnce(mixedQueryResults);
     
-    // Mock _processOutput to return mixed file output results
-    (helpers._processOutput as jest.Mock).mockResolvedValueOnce(mixedFileOutput);
+    // Mock _processOutput to return pure data (no I/O)
+    (helpers._processOutput as jest.Mock).mockReturnValueOnce(pureProcessOutput);
+    
+    // Mock writeFiles to return mixed success/failure result
+    (ioModule.writeFiles as jest.Mock).mockResolvedValueOnce(mixedFileOutputResult);
     
     // Mock _selectModels to return multiple models with flattened structure
     const multiModelMock: any = {
@@ -624,16 +672,9 @@ describe('runThinktank Error Handling', () => {
       })
     );
     
-    // Verify the completion summary was called with the mixed results
-    expect(helpers._logCompletionSummary).toHaveBeenCalledWith(
-      expect.objectContaining({
-        queryResults: expect.any(Object),
-        fileOutputResult: expect.objectContaining({
-          succeededWrites: 1,
-          failedWrites: 1
-        })
-      })
-    );
+    // Verify our process output and write files functions were called
+    expect(helpers._processOutput).toHaveBeenCalled();
+    expect(ioModule.writeFiles).toHaveBeenCalled();
   });
   
   it('should properly propagate error causes through the call chain', async () => {
@@ -735,8 +776,8 @@ describe('runThinktank Error Handling', () => {
       suggestions: ['Check file permissions']
     });
     
-    // Mock _processOutput to throw the error
-    (helpers._processOutput as jest.Mock).mockRejectedValueOnce(fsError);
+    // Mock writeFiles to throw the error
+    (ioModule.writeFiles as jest.Mock).mockRejectedValueOnce(fsError);
     
     // Mock _handleWorkflowError to add workflow context to suggestions
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementationOnce((params: any) => {

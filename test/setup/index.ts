@@ -6,7 +6,7 @@
  * 
  * Usage:
  * ```typescript
- * import { setupTestHooks, setupBasicFs } from '../../../test/setup';
+ * import { setupTestHooks, setupBasicFs, createMockConsoleLogger, setupWorkflowTestEnvironment } from '../../../test/setup';
  * ```
  */
 
@@ -27,3 +27,9 @@ export * from './cli';
 
 // Provider test utilities
 export * from './providers';
+
+// I/O utilities (ConsoleLogger, UISpinner)
+export * from './io';
+
+// Workflow test utilities
+export * from './workflow';

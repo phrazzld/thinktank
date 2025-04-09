@@ -18,6 +18,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Debug tests: `pnpm run test:debug`
 - Debug specific test file: `pnpm run test:debug:file path/to/file.test.ts`
 
+## Using thinktank
+When facing challenging problems or planning complex features, get help from thinktank. Write your task or request to TASK.md. Then run:
+```
+thinktank run --group faves TASK.md ./
+```
+- Identify the output directory. Read all the files in there. Synthesize their outputs into an answer or plan.
+- If you encounter any errors running thinktank, append those errors to thinktank-errors.log.
+- Note: `GEMINI_API_KEY` environment variable is already set.
+
 ## Code Style
 - **TypeScript**: Use strictest settings; avoid `any` or vague types
 - **Imports**: Group by (1)core, (2)libraries, (3)local with blank lines between
