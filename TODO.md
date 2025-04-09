@@ -17,7 +17,7 @@
   - **Depends On:** Identify all spinner usage in main.go.
   - **AC Ref:** Key Step 1.
 
-- [ ] **Replace spinner error handling with logger in main.go**
+- [x] **Replace spinner error handling with logger in main.go**
   - **Action:** Replace all `spinnerInstance.StopFail(msg)` calls with equivalent `logger.Error(msg)` calls in main.go to preserve error reporting.
   - **Depends On:** Identify all spinner usage in main.go.
   - **AC Ref:** Key Step 1.

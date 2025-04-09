@@ -132,8 +132,8 @@ func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration
 
 // clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
 func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Initialize spinner (will be removed in a future task)
+	_ = initSpinner(config, logger)
 
 	// Original task description
 	originalTask := config.TaskDescription
@@ -146,7 +146,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	clarifyPrompt, err := promptManager.BuildPrompt("clarify.tmpl", data)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build clarification prompt: %v", err))
 		logger.Error("Failed to build clarification prompt: %v", err)
 		return originalTask
 	}
@@ -155,7 +154,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	logger.Info("Generating clarification questions...")
 	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Error generating clarification questions: %v", err))
 		logger.Error("Error generating clarification questions: %v", err)
 		return originalTask
 	}
@@ -169,7 +167,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Parse JSON response - must be valid JSON as requested in the prompt
 	err = json.Unmarshal([]byte(result.Content), &clarificationData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to parse clarification response: %v", err))
 		logger.Error("Failed to parse clarification response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
 		return originalTask
@@ -212,7 +209,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	refinePrompt, err := promptManager.BuildPrompt("refine.tmpl", refineData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build refinement prompt: %v", err))
 		logger.Error("Failed to build refinement prompt: %v", err)
 		return originalTask
 	}
@@ -220,7 +216,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Call Gemini to generate refined task
 	result, err = geminiClient.GenerateContent(ctx, refinePrompt)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Error generating refined task: %v", err))
 		logger.Error("Error generating refined task: %v", err)
 		return originalTask
 	}
@@ -234,7 +229,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Parse JSON response
 	err = json.Unmarshal([]byte(result.Content), &refinementData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to parse refinement response: %v", err))
 		logger.Error("Failed to parse refinement response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
 		return originalTask
@@ -426,8 +420,8 @@ func initGeminiClient(ctx context.Context, config *Configuration, logger logutil
 
 // gatherContext collects and processes files based on configuration
 func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Initialize spinner (will be removed in a future task)
+	_ = initSpinner(config, logger)
 
 	// Log appropriate message based on mode and start spinner
 	if config.DryRun {
@@ -453,7 +447,7 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 	// Gather project context
 	projectContext, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed during project context gathering: %v", err))
+		logger.Error("Failed during project context gathering: %v", err)
 		logger.Fatal("Failed during project context gathering: %v", err)
 	}
 
@@ -564,14 +558,14 @@ func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, g
 func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
 
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Initialize spinner (will be removed in a future task)
+	_ = initSpinner(config, logger)
 
 	// Construct prompt using the provided prompt manager
 	logger.Info("Building prompt template...")
 	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build prompt: %v", err))
+		logger.Error("Failed to build prompt: %v", err)
 		logger.Fatal("Failed to build prompt: %v", err)
 	}
 	logger.Info("Prompt template built successfully")
@@ -586,7 +580,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	logger.Info("Checking token limits...")
 	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
 	if err != nil {
-		spinnerInstance.StopFail("Token count check failed")
+		logger.Error("Token count check failed")
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
@@ -608,7 +602,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// If token limit is exceeded, abort
 	if tokenInfo.exceedsLimit {
-		spinnerInstance.StopFail("Token limit exceeded")
+		logger.Error("Token limit exceeded")
 		logger.Error("Token limit exceeded: %s", tokenInfo.limitError)
 		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		logger.Fatal("Aborting generation to prevent API errors")
@@ -634,7 +628,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	logger.Info("Generating plan using model %s...", config.ModelName)
 	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
-		spinnerInstance.StopFail("Generation failed")
+		logger.Error("Generation failed")
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
