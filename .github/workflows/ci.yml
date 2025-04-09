@@ -1,2 +1,8 @@
 # .github/workflows/ci.yml
 name: CI
+
+on:
+  push:
+    branches: [ main ] # Trigger only on pushes to the main branch
+  pull_request:
+    branches: [ main ] # Trigger only on PRs targeting the main branch
