@@ -52,7 +52,7 @@
   - **Depends On:** Add dependency installation step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 77-78), Key Goals 1 (PLAN.md line 9), Success Criteria 2 (PLAN.md line 136)
 
-- [ ] **Add testing step**
+- [x] **Add testing step**
   - **Action:** Add the step to run tests using `pnpm test`.
   - **Depends On:** Add linting step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 80-84), Key Goals 2 (PLAN.md line 10), Success Criteria 3 (PLAN.md line 137)

@@ -44,4 +44,7 @@ jobs:
 
       - name: Run linter                   # Step to run code linting
         run: pnpm run lint                 # Execute the lint script defined in package.json
+
+      - name: Run tests                    # Step to run tests
+        run: pnpm test                     # Execute the test script defined in package.json
       # Subsequent steps will be added in following tasks
