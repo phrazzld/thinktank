@@ -1,10 +1,10 @@
 /**
  * Interface definitions for external dependencies used within thinktank.
- * 
+ *
  * These interfaces define the contracts for interacting with external systems
  * like LLM APIs, the filesystem, console logging, UI spinners, and configuration management,
  * facilitating dependency injection and testability.
- * 
+ *
  * By abstracting external I/O operations, we can:
  * 1. Move actual I/O operations to higher-level orchestration functions
  * 2. Easily mock these dependencies during testing
@@ -12,12 +12,7 @@
  */
 
 import type { Stats } from 'fs';
-import type { 
-  LLMResponse, 
-  ModelOptions, 
-  SystemPrompt, 
-  AppConfig
-} from './types';
+import type { LLMResponse, ModelOptions, SystemPrompt, AppConfig } from './types';
 import type { LoadConfigOptions } from './configManager';
 
 // --- Filesystem Interface ---
@@ -60,7 +55,7 @@ export interface FileSystem {
    * @throws {FileSystemError} If creation fails.
    */
   mkdir(dirPath: string, options?: { recursive?: boolean }): Promise<void>;
-  
+
   /**
    * Reads the names of entries in a directory.
    * @param dirPath - The path to the directory.
@@ -102,7 +97,7 @@ export interface FileSystem {
 
 /**
  * Interface abstracting interactions with a Large Language Model provider API.
- * 
+ *
  * Note: This interface is similar to the existing LLMProvider interface in types.ts
  * We're creating a separate interface for abstraction purposes, but with the intention
  * that concrete implementations may satisfy both interfaces.
@@ -132,38 +127,38 @@ export interface LLMClient {
  * Allows for injecting different logging implementations (e.g., standard console, test logger).
  */
 export interface ConsoleLogger {
-  /** 
+  /**
    * Log an error message (highest severity).
    * @param message - The error message to log.
    * @param error - Optional error object for additional context.
    */
   error(message: string, error?: Error): void;
-  
-  /** 
+
+  /**
    * Log a warning message (high severity).
    * @param message - The warning message to log.
    */
   warn(message: string): void;
-  
-  /** 
+
+  /**
    * Log an informational message (normal priority).
    * @param message - The informational message to log.
    */
   info(message: string): void;
-  
-  /** 
+
+  /**
    * Log a success message (styled appropriately).
    * @param message - The success message to log.
    */
   success(message: string): void;
-  
-  /** 
+
+  /**
    * Log a debug message (lower priority, often conditionally displayed).
    * @param message - The debug message to log.
    */
   debug(message: string): void;
-  
-  /** 
+
+  /**
    * Log a plain message without any specific level or styling.
    * @param message - The plain message to log.
    */
@@ -177,60 +172,60 @@ export interface ConsoleLogger {
  * Allows for injecting different spinner implementations or mocks for testing.
  */
 export interface UISpinner {
-  /** 
+  /**
    * Start the spinner with optional text.
    * @param text - Optional text to display with the spinner.
    * @returns The spinner instance for chaining.
    */
   start(text?: string): UISpinner;
-  
-  /** 
+
+  /**
    * Stop the spinner.
    * @returns The spinner instance for chaining.
    */
   stop(): UISpinner;
-  
-  /** 
+
+  /**
    * Mark the spinner as succeeded with optional text.
    * @param text - Optional text to display with the success state.
    * @returns The spinner instance for chaining.
    */
   succeed(text?: string): UISpinner;
-  
-  /** 
+
+  /**
    * Mark the spinner as failed with optional text.
    * @param text - Optional text to display with the fail state.
    * @returns The spinner instance for chaining.
    */
   fail(text?: string): UISpinner;
-  
-  /** 
+
+  /**
    * Mark the spinner as warning with optional text.
    * @param text - Optional text to display with the warning state.
    * @returns The spinner instance for chaining.
    */
   warn(text?: string): UISpinner;
-  
-  /** 
+
+  /**
    * Mark the spinner as info with optional text.
    * @param text - Optional text to display with the info state.
    * @returns The spinner instance for chaining.
    */
   info(text?: string): UISpinner;
-  
-  /** 
+
+  /**
    * Update the spinner text.
    * @param text - The new text to display.
    * @returns The spinner instance for chaining.
    */
   setText(text: string): UISpinner;
-  
-  /** 
+
+  /**
    * Get or set the current text.
    */
   text: string;
-  
-  /** 
+
+  /**
    * Check if the spinner is currently spinning.
    */
   isSpinning: boolean;

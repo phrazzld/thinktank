@@ -2,14 +2,14 @@
  * Unit tests for the updated _handleWorkflowError helper function
  */
 import { _handleWorkflowError } from '../runThinktankHelpers';
-import { 
-  ThinktankError, 
-  ConfigError, 
-  ApiError, 
-  FileSystemError, 
+import {
+  ThinktankError,
+  ConfigError,
+  ApiError,
+  FileSystemError,
   PermissionError,
   NetworkError,
-  errorCategories
+  errorCategories,
 } from '../../core/errors';
 import * as categorization from '../../core/errors/utils/categorization';
 
@@ -28,63 +28,51 @@ jest.mock('../../core/errors/utils/categorization', () => {
       if (error instanceof ThinktankError) {
         return error;
       }
-      
+
       // For testing we'll return specific error types based on the error message
       const message = error instanceof Error ? error.message : String(error);
-      
+
       if (message.includes('File not found')) {
         return new FileSystemError(message, {
           cause: error instanceof Error ? error : undefined,
           filePath: context.input,
           suggestions: [
             `Check that the file exists at the specified path`,
-            `Current working directory: ${context.cwd}`
-          ]
+            `Current working directory: ${context.cwd}`,
+          ],
         });
       } else if (message.includes('Permission')) {
         return new PermissionError(message, {
           cause: error instanceof Error ? error : undefined,
-          suggestions: [
-            'Check file permissions',
-            'Try using a different location'
-          ]
+          suggestions: ['Check file permissions', 'Try using a different location'],
         });
       } else if (message.includes('API key')) {
         return new ApiError(message, {
           cause: error instanceof Error ? error : undefined,
           suggestions: [
             'Check that you have set the correct environment variables',
-            'Verify your API key is valid'
-          ]
+            'Verify your API key is valid',
+          ],
         });
       } else if (message.includes('Network')) {
         return new NetworkError(message, {
           cause: error instanceof Error ? error : undefined,
-          suggestions: [
-            'Check your internet connection',
-            'Verify the service is online'
-          ]
+          suggestions: ['Check your internet connection', 'Verify the service is online'],
         });
       } else if (message.includes('Config')) {
         return new ConfigError(message, {
           cause: error instanceof Error ? error : undefined,
-          suggestions: [
-            'Check your configuration file',
-            'Verify the configuration values'
-          ]
+          suggestions: ['Check your configuration file', 'Verify the configuration values'],
         });
       }
-      
+
       // Default to ThinktankError for unknown cases
       return new ThinktankError(`Unknown error: ${message}`, {
         cause: error instanceof Error ? error : undefined,
         category: errorCategories.UNKNOWN,
-        suggestions: [
-          'This is an unexpected error',
-          'Please report this issue'
-        ]
+        suggestions: ['This is an unexpected error', 'Please report this issue'],
       });
-    })
+    }),
   };
 });
 
@@ -99,7 +87,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   });
 
   const options = {
-    input: 'test-prompt.txt'
+    input: 'test-prompt.txt',
   };
 
   it('should call createContextualError with correct context', () => {
@@ -107,21 +95,21 @@ describe('_handleWorkflowError Helper (Updated)', () => {
     const error = new Error('File not found: test-prompt.txt');
     const state = {
       outputDirectoryPath: '/test/output',
-      friendlyRunName: 'test-run'
+      friendlyRunName: 'test-run',
     };
-    
+
     // Act - this will throw, so wrap in try-catch
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options,
-        workflowState: state
+        workflowState: state,
       });
     } catch (e) {
       // We expect this to throw, ignore
     }
-    
+
     // Assert
     expect(categorization.createContextualError).toHaveBeenCalledWith(
       error,
@@ -129,7 +117,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
         cwd: expect.any(String),
         input: 'test-prompt.txt',
         outputDirectory: '/test/output',
-        runName: 'test-run'
+        runName: 'test-run',
       })
     );
   });
@@ -137,14 +125,14 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle file not found errors', () => {
     // Arrange
     const error = new Error('File not found: nonexistent.txt');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options: { input: 'nonexistent.txt' },
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -157,7 +145,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -165,7 +153,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle permission errors', () => {
     // Arrange
     const error = new Error('Permission denied when writing file');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
@@ -173,8 +161,8 @@ describe('_handleWorkflowError Helper (Updated)', () => {
         spinner: mockSpinner as any,
         options,
         workflowState: {
-          outputDirectoryPath: '/test/output'
-        }
+          outputDirectoryPath: '/test/output',
+        },
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -186,7 +174,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -194,7 +182,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle API key errors', () => {
     // Arrange
     const error = new Error('Invalid API key provided');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
@@ -202,9 +190,9 @@ describe('_handleWorkflowError Helper (Updated)', () => {
         spinner: mockSpinner as any,
         options: {
           ...options,
-          specificModel: 'openai:gpt-4o'
+          specificModel: 'openai:gpt-4o',
         },
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -216,7 +204,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -224,14 +212,14 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle network errors', () => {
     // Arrange
     const error = new Error('Network connection failed');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options,
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -243,7 +231,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -251,14 +239,14 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle configuration errors', () => {
     // Arrange
     const error = new Error('Config error: Invalid model format');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options,
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -270,7 +258,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -278,14 +266,14 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle unknown errors', () => {
     // Arrange
     const error = new Error('Some unexpected error');
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options,
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -297,7 +285,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -305,9 +293,9 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should pass through existing ThinktankErrors', () => {
     // Arrange
     const originalError = new ApiError('API Rate limit exceeded', {
-      suggestions: ['Wait and try again later']
+      suggestions: ['Wait and try again later'],
     });
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
@@ -315,8 +303,8 @@ describe('_handleWorkflowError Helper (Updated)', () => {
         spinner: mockSpinner as any,
         options,
         workflowState: {
-          friendlyRunName: 'test-run'
-        }
+          friendlyRunName: 'test-run',
+        },
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -326,7 +314,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err).toBe(originalError); // Should be the same instance
       expect(err.suggestions).toContain('Wait and try again later');
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });
@@ -334,14 +322,14 @@ describe('_handleWorkflowError Helper (Updated)', () => {
   it('should handle non-Error objects', () => {
     // Arrange
     const error = 'just a string error';
-    
+
     // Act & Assert
     try {
       _handleWorkflowError({
         error,
         spinner: mockSpinner as any,
         options,
-        workflowState: {}
+        workflowState: {},
       });
       fail('Function should throw an error');
     } catch (err) {
@@ -353,7 +341,7 @@ describe('_handleWorkflowError Helper (Updated)', () => {
       expect(err.suggestions).toBeDefined();
       expect(err.suggestions!.length).toBeGreaterThan(0);
     }
-    
+
     // Check that spinner fail was called
     expect(mockSpinner.fail).toHaveBeenCalled();
   });

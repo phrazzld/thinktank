@@ -1,6 +1,6 @@
 /**
  * Integration tests for CLI interface
- * 
+ *
  * Note: This test file previously tested the legacy cli.ts implementation.
  * It has been updated to test cli/index.ts instead, as cli.ts was removed.
  * Some tests have been commented out as they were specific to the cli.ts implementation.
@@ -20,31 +20,33 @@ jest.mock('commander');
 // We no longer need to import fs since we aren't directly mocking its methods
 
 // Access the mock
-const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<typeof runThinktankModule.runThinktank>;
+const runThinktank = runThinktankModule.runThinktank as jest.MockedFunction<
+  typeof runThinktankModule.runThinktank
+>;
 
 describe('CLI Interface', () => {
   // Store original implementations
   const originalProcessExit = process.exit;
   const originalProcessArgv = process.argv;
   const originalNodeEnv = process.env.NODE_ENV;
-  
+
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Set NODE_ENV for testing
     process.env.NODE_ENV = 'test';
-    
+
     // Mock methods
     jest.spyOn(console, 'log').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
     process.exit = jest.fn() as any;
-    
+
     // Reset mocked implementations
     (dotenv.config as jest.Mock).mockReturnValue({});
     // When using virtualFsUtils, we don't mock methods directly
     // Instead, we interact with the virtual filesystem
     runThinktank.mockResolvedValue('Mock result');
-    
+
     // Mock Commander
     const mockCommand = {
       name: jest.fn().mockReturnThis(),
@@ -58,13 +60,13 @@ describe('CLI Interface', () => {
         verbose: false,
         quiet: false,
         debug: false,
-        color: true
-      })
+        color: true,
+      }),
     };
-    
+
     (Command as unknown as jest.Mock).mockImplementation(() => mockCommand);
   });
-  
+
   afterEach(() => {
     // Restore mocks
     jest.restoreAllMocks();
@@ -72,10 +74,10 @@ describe('CLI Interface', () => {
     process.argv = originalProcessArgv;
     process.env.NODE_ENV = originalNodeEnv;
   });
-  
+
   // This function is no longer used, so we'll remove it
   // Since we're now testing the CLI commands directly instead of through cli.ts
-  
+
   // We'll check command existence without importing the entire module
   it('should have the required command modules', () => {
     // Verify the command files exist without importing them
@@ -84,7 +86,7 @@ describe('CLI Interface', () => {
     expect(require.resolve('../commands/models')).toBeTruthy();
     expect(require.resolve('../commands/config')).toBeTruthy();
   });
-  
+
   // Note: The remaining tests from the original test file are not applicable
   // as they were testing the specific implementation of cli.ts
   // which has now been removed in favor of the Commander-based index.ts implementation.

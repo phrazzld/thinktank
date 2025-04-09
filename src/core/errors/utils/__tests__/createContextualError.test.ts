@@ -2,15 +2,15 @@
  * Tests for the createContextualError utility function
  */
 import { createContextualError } from '../categorization';
-import { 
-  ThinktankError, 
-  ConfigError, 
-  ApiError, 
-  FileSystemError, 
+import {
+  ThinktankError,
+  ConfigError,
+  ApiError,
+  FileSystemError,
   PermissionError,
   NetworkError,
   ValidationError,
-  errorCategories
+  errorCategories,
 } from '../../index';
 
 describe('createContextualError', () => {
@@ -20,7 +20,7 @@ describe('createContextualError', () => {
     outputDirectory: '/test/output',
     specificModel: 'openai:gpt-4o',
     modelsList: ['openai:gpt-4o', 'anthropic:claude-3'],
-    runName: 'test-run'
+    runName: 'test-run',
   };
 
   it('should properly categorize file not found errors', () => {
@@ -145,7 +145,7 @@ describe('createContextualError', () => {
     // Arrange
     const originalError = new ThinktankError('Already categorized error', {
       category: errorCategories.API,
-      suggestions: ['Original suggestion']
+      suggestions: ['Original suggestion'],
     });
 
     // Act

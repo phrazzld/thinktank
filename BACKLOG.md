@@ -3,7 +3,6 @@
 This backlog tracks planned work for the `thinktank` project, categorized by focus area.
 
 ## PRIORITY
-* **[Infra]** Set up GitHub Actions for CI/CD (linting, testing, building).
 * **[DX]** Tidy up generated file structure / format. Don't include group name, for instance.
 * **[Feature]** Allow users to add a final *synthesize* step, sending all model outputs to a chosen model for summarization.
 
@@ -80,7 +79,3 @@ This backlog tracks planned work for the `thinktank` project, categorized by foc
 * **[Docs]** Add detailed API documentation for extending the tool (new providers, etc.).
 * **[Docs]** Create a configuration deep-dive document with advanced examples.
 * **[Docs]** Expand the troubleshooting section in `README.md`.
-
-## ⚙️ Infrastructure & Maintenance
-
-* **[Maintenance]** Perform a dependency audit for security and outdated packages.

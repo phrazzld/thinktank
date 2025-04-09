@@ -1,6 +1,6 @@
 /**
  * Tests for ConcreteFileSystem implementation
- * 
+ *
  * These tests verify the behavior of the ConcreteFileSystem class using a
  * virtual file system (memfs) rather than mocking internal dependencies.
  */
@@ -24,7 +24,7 @@ describe('ConcreteFileSystem', () => {
     it('should read content from a file', async () => {
       // Set up test file in virtual FS
       setupBasicFs({
-        [testFile]: testContent
+        [testFile]: testContent,
       });
 
       // Act
@@ -36,16 +36,16 @@ describe('ConcreteFileSystem', () => {
 
     it('should pass options to readFileContent', async () => {
       const rawContent = 'content with line endings';
-      
+
       // Set up test file in virtual FS
       setupBasicFs({
-        [testFile]: rawContent
+        [testFile]: rawContent,
       });
-      
+
       // Test with different normalization options
       const normalizedResult = await fileSystem.readFileContent(testFile);
       const rawResult = await fileSystem.readFileContent(testFile, { normalize: false });
-      
+
       // Basic checks
       expect(normalizedResult).toBe(rawContent);
       expect(rawResult).toBe(rawContent);
@@ -53,13 +53,11 @@ describe('ConcreteFileSystem', () => {
 
     it('should throw FileSystemError when file not found', async () => {
       const nonExistentFile = '/nonexistent/file.txt';
-      
+
       // Act & Assert
-      await expect(fileSystem.readFileContent(nonExistentFile))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.readFileContent(nonExistentFile))
-        .rejects.toThrow(/not found/);
+      await expect(fileSystem.readFileContent(nonExistentFile)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.readFileContent(nonExistentFile)).rejects.toThrow(/not found/);
     });
   });
 
@@ -70,7 +68,7 @@ describe('ConcreteFileSystem', () => {
     it('should write content to a file', async () => {
       // Act
       await fileSystem.writeFile(testFile, testContent);
-      
+
       // Assert
       const vfs = getFs();
       expect(vfs.existsSync(testFile)).toBe(true);
@@ -79,10 +77,10 @@ describe('ConcreteFileSystem', () => {
 
     it('should create parent directories if needed', async () => {
       const nestedFile = '/path/to/nested/dir/output.txt';
-      
+
       // Act
       await fileSystem.writeFile(nestedFile, testContent);
-      
+
       // Assert
       const vfs = getFs();
       expect(vfs.existsSync(nestedFile)).toBe(true);
@@ -94,25 +92,25 @@ describe('ConcreteFileSystem', () => {
   describe('fileExists', () => {
     it('should return true for existing file', async () => {
       const testFile = '/path/to/file.txt';
-      
+
       // Set up test file
       setupBasicFs({
-        [testFile]: 'content'
+        [testFile]: 'content',
       });
-      
+
       // Act
       const result = await fileSystem.fileExists(testFile);
-      
+
       // Assert
       expect(result).toBe(true);
     });
 
     it('should return false for non-existent file', async () => {
       const nonExistentFile = '/nonexistent/file.txt';
-      
+
       // Act
       const result = await fileSystem.fileExists(nonExistentFile);
-      
+
       // Assert
       expect(result).toBe(false);
     });
@@ -124,12 +122,12 @@ describe('ConcreteFileSystem', () => {
     it('should create a directory', async () => {
       // Create parent directories first
       setupBasicFs({
-        '/path/to/': ''
+        '/path/to/': '',
       });
-      
+
       // Act
       await fileSystem.mkdir(testDir);
-      
+
       // Assert
       const vfs = getFs();
       expect(vfs.existsSync(testDir)).toBe(true);
@@ -138,10 +136,10 @@ describe('ConcreteFileSystem', () => {
 
     it('should create nested directories with recursive flag', async () => {
       const nestedDir = '/path/to/nested/dir';
-      
+
       // Act
       await fileSystem.mkdir(nestedDir, { recursive: true });
-      
+
       // Assert
       const vfs = getFs();
       expect(vfs.existsSync(nestedDir)).toBe(true);
@@ -152,30 +150,27 @@ describe('ConcreteFileSystem', () => {
     it('should handle directory already exists', async () => {
       // Set up existing directory
       setupBasicFs({
-        [testDir]: ''
+        [testDir]: '',
       });
-      
+
       // Act & Assert - should throw without recursive
-      await expect(fileSystem.mkdir(testDir))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.mkdir(testDir))
-        .rejects.toThrow(/already exists/);
-      
+      await expect(fileSystem.mkdir(testDir)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.mkdir(testDir)).rejects.toThrow(/already exists/);
+
       // Should NOT throw with recursive
-      await expect(fileSystem.mkdir(testDir, { recursive: true }))
-        .resolves.not.toThrow();
+      await expect(fileSystem.mkdir(testDir, { recursive: true })).resolves.not.toThrow();
     });
 
     it('should throw FileSystemError when parent directory missing', async () => {
       const nestedDir = '/nonexistent/parent/dir';
-      
+
       // Act & Assert
-      await expect(fileSystem.mkdir(nestedDir))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.mkdir(nestedDir))
-        .rejects.toThrow(/parent directory does not exist|Failed to create directory/);
+      await expect(fileSystem.mkdir(nestedDir)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.mkdir(nestedDir)).rejects.toThrow(
+        /parent directory does not exist|Failed to create directory/
+      );
     });
   });
 
@@ -186,20 +181,20 @@ describe('ConcreteFileSystem', () => {
     beforeEach(() => {
       // Set up test directory with files
       const fsSetup: Record<string, string> = {
-        [testDir]: ''
+        [testDir]: '',
       };
-      
+
       testFiles.forEach(file => {
         fsSetup[`${testDir}/${file}`] = `content of ${file}`;
       });
-      
+
       setupBasicFs(fsSetup);
     });
 
     it('should list files in a directory', async () => {
       // Act
       const files = await fileSystem.readdir(testDir);
-      
+
       // Assert
       expect(files).toHaveLength(testFiles.length);
       testFiles.forEach(file => {
@@ -209,13 +204,11 @@ describe('ConcreteFileSystem', () => {
 
     it('should throw FileSystemError when directory not found', async () => {
       const nonExistentDir = '/nonexistent/dir';
-      
+
       // Act & Assert
-      await expect(fileSystem.readdir(nonExistentDir))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.readdir(nonExistentDir))
-        .rejects.toThrow(/not found|directory/i);
+      await expect(fileSystem.readdir(nonExistentDir)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.readdir(nonExistentDir)).rejects.toThrow(/not found|directory/i);
     });
   });
 
@@ -227,14 +220,14 @@ describe('ConcreteFileSystem', () => {
       // Set up test file and directory
       setupBasicFs({
         [testFile]: 'content',
-        [testDir]: ''
+        [testDir]: '',
       });
     });
 
     it('should return stats for a file', async () => {
       // Act
       const stats = await fileSystem.stat(testFile);
-      
+
       // Assert
       expect(stats).toBeInstanceOf(Stats);
       expect(stats.isFile()).toBe(true);
@@ -244,7 +237,7 @@ describe('ConcreteFileSystem', () => {
     it('should return stats for a directory', async () => {
       // Act
       const stats = await fileSystem.stat(testDir);
-      
+
       // Assert
       expect(stats).toBeInstanceOf(Stats);
       expect(stats.isDirectory()).toBe(true);
@@ -253,13 +246,11 @@ describe('ConcreteFileSystem', () => {
 
     it('should throw FileSystemError when path not found', async () => {
       const nonExistentPath = '/nonexistent/path';
-      
+
       // Act & Assert
-      await expect(fileSystem.stat(nonExistentPath))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.stat(nonExistentPath))
-        .rejects.toThrow(/not found/);
+      await expect(fileSystem.stat(nonExistentPath)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.stat(nonExistentPath)).rejects.toThrow(/not found/);
     });
   });
 
@@ -269,25 +260,22 @@ describe('ConcreteFileSystem', () => {
     beforeEach(() => {
       // Set up test file
       setupBasicFs({
-        [testFile]: 'content'
+        [testFile]: 'content',
       });
     });
 
     it('should resolve for existing file with access', async () => {
       // Act & Assert
-      await expect(fileSystem.access(testFile))
-        .resolves.not.toThrow();
+      await expect(fileSystem.access(testFile)).resolves.not.toThrow();
     });
 
     it('should throw FileSystemError when file not found', async () => {
       const nonExistentFile = '/nonexistent/file.txt';
-      
+
       // Act & Assert
-      await expect(fileSystem.access(nonExistentFile))
-        .rejects.toThrow(FileSystemError);
-      
-      await expect(fileSystem.access(nonExistentFile))
-        .rejects.toThrow(/not found/);
+      await expect(fileSystem.access(nonExistentFile)).rejects.toThrow(FileSystemError);
+
+      await expect(fileSystem.access(nonExistentFile)).rejects.toThrow(/not found/);
     });
   });
 
@@ -295,7 +283,7 @@ describe('ConcreteFileSystem', () => {
     it('should return a valid config directory path', async () => {
       // Act
       const result = await fileSystem.getConfigDir();
-      
+
       // Assert - just check it returns a string ending with thinktank
       expect(typeof result).toBe('string');
       expect(result.endsWith('thinktank')).toBe(true);
@@ -306,7 +294,7 @@ describe('ConcreteFileSystem', () => {
     it('should return a valid config file path', async () => {
       // Act
       const result = await fileSystem.getConfigFilePath();
-      
+
       // Assert - check it returns a string ending with config.json
       expect(typeof result).toBe('string');
       expect(result.endsWith('config.json')).toBe(true);

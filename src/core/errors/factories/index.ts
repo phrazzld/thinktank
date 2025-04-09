@@ -1,6 +1,6 @@
 /**
  * Re-exports all error factory functions
- * 
+ *
  * This module provides a single entry point for importing all error factory functions
  * defined in the error factories directory.
  */
@@ -22,5 +22,5 @@ export {
   isProviderTokenLimitError,
   isProviderContentPolicyError,
   isProviderAuthError,
-  isProviderNetworkError
+  isProviderNetworkError,
 } from './provider';

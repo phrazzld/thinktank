@@ -1,6 +1,6 @@
 /**
  * Concrete implementation of the ConfigManagerInterface.
- * 
+ *
  * This module provides a concrete implementation of the ConfigManagerInterface
  * that wraps the existing configManager functionality.
  */
@@ -18,7 +18,7 @@ import { ConfigError, ThinktankError } from './errors';
 export class ConcreteConfigManager implements ConfigManagerInterface {
   /**
    * Loads the application configuration.
-   * 
+   *
    * @param options - Options for loading, such as a specific config path
    * @returns Promise resolving to the loaded and validated AppConfig
    * @throws {ConfigError} If loading or validation fails
@@ -32,7 +32,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
       if (error instanceof ThinktankError) {
         throw error;
       }
-      
+
       // Wrap other errors with context
       const message = `Failed to load configuration: ${error instanceof Error ? error.message : String(error)}`;
       throw new ConfigError(message, { cause: error instanceof Error ? error : undefined });
@@ -41,7 +41,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Saves the application configuration to the appropriate location.
-   * 
+   *
    * @param config - The configuration object to save
    * @param configPath - Optional specific path to save to
    * @returns Promise resolving when the save is complete
@@ -56,7 +56,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
       if (error instanceof ThinktankError) {
         throw error;
       }
-      
+
       // Wrap other errors with context
       const message = `Failed to save configuration: ${error instanceof Error ? error.message : String(error)}`;
       throw new ConfigError(message, { cause: error instanceof Error ? error : undefined });
@@ -65,7 +65,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Gets the active configuration file path (typically the XDG path).
-   * 
+   *
    * @returns Promise resolving to the absolute path of the active config file
    * @throws {ConfigError} If the config directory cannot be determined or accessed
    */
@@ -78,7 +78,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
       if (error instanceof ThinktankError) {
         throw error;
       }
-      
+
       // Wrap other errors with context
       const message = `Failed to get active config path: ${error instanceof Error ? error.message : String(error)}`;
       throw new ConfigError(message, { cause: error instanceof Error ? error : undefined });
@@ -87,7 +87,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Gets the default project-local configuration file path.
-   * 
+   *
    * @returns The absolute path to the default project-local config file
    */
   getDefaultConfigPath(): string {
@@ -97,7 +97,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Adds or updates a model in the configuration.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param model - The model to add or update
    * @returns The updated configuration
@@ -108,7 +108,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Removes a model from the configuration.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param provider - The provider ID
    * @param modelId - The model ID
@@ -120,15 +120,15 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Adds or updates a group in the configuration.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param groupName - The name of the group
    * @param groupDetails - The group details
    * @returns The updated configuration
    */
   addOrUpdateGroup(
-    config: AppConfig, 
-    groupName: string, 
+    config: AppConfig,
+    groupName: string,
     groupDetails: Partial<Omit<ModelGroup, 'name'>>
   ): AppConfig {
     return configFns.addOrUpdateGroup(config, groupName, groupDetails);
@@ -136,7 +136,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Removes a group from the configuration.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param groupName - The name of the group to remove
    * @returns The updated configuration
@@ -147,7 +147,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Adds a model to a group.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param groupName - The name of the group
    * @param provider - The provider ID
@@ -165,7 +165,7 @@ export class ConcreteConfigManager implements ConfigManagerInterface {
 
   /**
    * Removes a model from a group.
-   * 
+   *
    * @param config - The application configuration to modify
    * @param groupName - The name of the group
    * @param provider - The provider ID

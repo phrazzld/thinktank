@@ -36,7 +36,7 @@ describe('Interface Definitions', () => {
     it('can be used for dependency injection', () => {
       // Create a function that uses the ConsoleLogger interface
       function logMessage(logger: ConsoleLogger, level: string, message: string): void {
-        switch(level) {
+        switch (level) {
           case 'info':
             logger.info(message);
             break;
@@ -91,7 +91,8 @@ describe('Interface Definitions', () => {
       };
 
       // Use the mock implementation with chaining
-      mockSpinner.start('Starting process')
+      mockSpinner
+        .start('Starting process')
         .setText('Processing item 1')
         .setText('Processing item 2')
         .succeed('Process completed');
@@ -107,12 +108,12 @@ describe('Interface Definitions', () => {
       // Create a function that uses the UISpinner interface
       function runProcessWithProgress(spinner: UISpinner, items: string[]): void {
         spinner.start('Starting process');
-        
+
         items.forEach(item => {
           spinner.setText(`Processing ${item}`);
           // Process the item...
         });
-        
+
         spinner.succeed('Process completed');
       }
 

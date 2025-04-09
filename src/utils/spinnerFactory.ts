@@ -1,6 +1,6 @@
 /**
  * Spinner Factory
- * 
+ *
  * Provides a configurable factory for creating either regular or throttled spinners.
  */
 
@@ -22,7 +22,7 @@ interface SpinnerFactoryConfig {
  */
 const DEFAULT_CONFIG: SpinnerFactoryConfig = {
   useThrottledSpinner: true,
-  defaultThrottleInterval: 200
+  defaultThrottleInterval: 200,
 };
 
 /**
@@ -32,7 +32,7 @@ let currentConfig: SpinnerFactoryConfig = { ...DEFAULT_CONFIG };
 
 /**
  * Updates the spinner factory configuration
- * 
+ *
  * @param config - New configuration options
  */
 export function configureSpinnerFactory(config: Partial<SpinnerFactoryConfig>): void {
@@ -41,7 +41,7 @@ export function configureSpinnerFactory(config: Partial<SpinnerFactoryConfig>): 
 
 /**
  * Creates a spinner with the current factory configuration
- * 
+ *
  * @param options - Text or options for the spinner
  * @returns Either an Ora spinner or a ThrottledSpinner, depending on configuration
  */
@@ -53,12 +53,12 @@ export function createSpinner(
     if (typeof options === 'string') {
       return new ThrottledSpinner({
         initialText: options,
-        throttleInterval: currentConfig.defaultThrottleInterval
+        throttleInterval: currentConfig.defaultThrottleInterval,
       });
     } else if (options) {
       const throttledOptions: ThrottledSpinnerOptions = {
         initialText: (options as { text?: string }).text || '',
-        throttleInterval: currentConfig.defaultThrottleInterval
+        throttleInterval: currentConfig.defaultThrottleInterval,
       };
       return new ThrottledSpinner(throttledOptions);
     }
@@ -78,7 +78,7 @@ export function resetSpinnerFactoryConfig(): void {
 
 /**
  * Get the current spinner factory configuration
- * 
+ *
  * @returns The current configuration
  */
 export function getSpinnerFactoryConfig(): SpinnerFactoryConfig {

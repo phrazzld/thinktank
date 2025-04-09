@@ -4,11 +4,11 @@
  * This module contains tests specifically for complex gitignore patterns that may
  * have limitations in the virtual filesystem environment.
  */
-import { 
-  mockFsModules, 
+import {
+  mockFsModules,
   addVirtualGitignoreFile,
   getVirtualFs,
-  resetVirtualFs
+  resetVirtualFs,
 } from '../../__tests__/utils/virtualFsUtils';
 import { normalizePath } from '../../__tests__/utils/pathUtils';
 
@@ -27,7 +27,7 @@ jest.mock('../fileReader', () => {
   const originalModule = jest.requireActual('../fileReader');
   return {
     ...originalModule,
-    fileExists: jest.fn()
+    fileExists: jest.fn(),
   };
 });
 
@@ -35,8 +35,8 @@ const mockedFileExists = jest.mocked(fileReader.fileExists);
 
 // Helper function to set up paths with specified gitignore patterns and files
 async function setupPatternTest(
-  testDirPath: string, 
-  gitignoreContent: string, 
+  testDirPath: string,
+  gitignoreContent: string,
   paths: string[]
 ): Promise<void> {
   const virtualFs = getVirtualFs();
@@ -54,10 +54,10 @@ async function setupPatternTest(
     const fullPath = path.join(normalizedDirPath, filePath);
     const normalizedPath = normalizePath(fullPath, true);
     const dirPath = normalizedPath.substring(0, normalizedPath.lastIndexOf('/'));
-    
+
     // Create directory
     virtualFs.mkdirSync(dirPath, { recursive: true });
-    
+
     // Create file
     virtualFs.writeFileSync(normalizedPath, `Test content for ${filePath}`);
   }
@@ -66,10 +66,8 @@ async function setupPatternTest(
 // Helper function to normalize path relative to basePath as the ignore lib would see it
 function asIgnorePath(basePath: string, filePath: string): string {
   // Convert to relative path if it's absolute
-  const relativePath = path.isAbsolute(filePath) 
-    ? path.relative(basePath, filePath)
-    : filePath;
-  
+  const relativePath = path.isAbsolute(filePath) ? path.relative(basePath, filePath) : filePath;
+
   // Normalize path to handle parent directory references
   return path.normalize(relativePath);
 }
@@ -80,9 +78,9 @@ describe('Complex Gitignore Pattern Tests', () => {
     resetVirtualFs();
     jest.clearAllMocks();
     gitignoreUtils.clearIgnoreCache();
-    
+
     // Mock fileExists to use virtual filesystem
-    mockedFileExists.mockImplementation(async (filePath) => {
+    mockedFileExists.mockImplementation(async filePath => {
       try {
         await fs.access(filePath);
         return true;
@@ -102,7 +100,7 @@ describe('Complex Gitignore Pattern Tests', () => {
         'src/nested/file.js',
         'src/deeply/nested/file.js',
         'src/file.txt',
-        'file.js' // at root
+        'file.js', // at root
       ];
 
       await setupPatternTest(testDirPath, '**/*.js', paths);
@@ -111,10 +109,10 @@ describe('Complex Gitignore Pattern Tests', () => {
       for (const filePath of paths) {
         const shouldBeIgnored = filePath.endsWith('.js');
         const fullPath = path.join(testDirPath, filePath);
-        
+
         // Get the result from the gitignore utility
         const result = await gitignoreUtils.shouldIgnorePath(testDirPath, fullPath);
-        
+
         // Check against expected behavior, with specific error messages
         if (shouldBeIgnored) {
           expect(result).toBe(true);
@@ -129,38 +127,37 @@ describe('Complex Gitignore Pattern Tests', () => {
     // Test in direct pattern test mode instead
     it('should document brace expansion pattern behavior with the ignore library', async () => {
       const testDirPath = normalizePath('/direct-test', true);
-      
+
       // Create a .gitignore file with separate patterns instead of brace expansion
       // since brace expansion doesn't work reliably with the ignore library
-      await addVirtualGitignoreFile(
-        path.join(testDirPath, '.gitignore'),
-        '*.jpg\n*.png'
-      );
-      
+      await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), '*.jpg\n*.png');
+
       // Create a fresh ignore filter
       gitignoreUtils.clearIgnoreCache();
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
-      
+
       // Define files that should be ignored
       const shouldBeIgnored = ['image.jpg', 'image.png'];
       const shouldNotBeIgnored = ['image.gif', 'image.svg', 'document.txt'];
-      
+
       // Test files that should be ignored
       for (const file of shouldBeIgnored) {
         const ignorePath = asIgnorePath(testDirPath, file);
         expect(ignoreFilter.ignores(ignorePath)).toBe(true);
       }
-      
+
       // Test files that should NOT be ignored
       for (const file of shouldNotBeIgnored) {
         const ignorePath = asIgnorePath(testDirPath, file);
         expect(ignoreFilter.ignores(ignorePath)).toBe(false);
       }
-      
+
       // Document that brace expansion syntax does not work as expected
       const braceExpansionPattern = '*.{jpg,png}';
-      console.log(`Note: Brace expansion pattern "${braceExpansionPattern}" is not directly supported ` +
-                  'by the ignore library. Use separate patterns instead.');
+      console.log(
+        `Note: Brace expansion pattern "${braceExpansionPattern}" is not directly supported ` +
+          'by the ignore library. Use separate patterns instead.'
+      );
     });
 
     // Known limitation: Prefix wildcard patterns like build-*/ are not reliably
@@ -168,7 +165,7 @@ describe('Complex Gitignore Pattern Tests', () => {
     // Test in direct pattern test mode instead
     it('should document prefix wildcard patterns behavior for directories', async () => {
       const testDirPath = normalizePath('/direct-test-prefix', true);
-      
+
       // This test documents how directory prefix patterns work in the ignore library
       await addVirtualGitignoreFile(
         path.join(testDirPath, '.gitignore'),
@@ -177,35 +174,37 @@ describe('Complex Gitignore Pattern Tests', () => {
 build*/
 build-*/`
       );
-      
+
       // Create a fresh ignore filter
       gitignoreUtils.clearIgnoreCache();
       const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
-      
+
       // Define expectations based on actual ignore library behavior
       // Both "build" and "build-" prefixed directories should be ignored
       const shouldBeIgnored = [
         'build-output/file.txt',
         'build-debug/file.txt',
         'build/file.txt',
-        'building/stuff.txt'
+        'building/stuff.txt',
       ];
       const shouldNotBeIgnored = ['other-dir/file.txt'];
-      
+
       // Verify the behavior
       for (const file of shouldBeIgnored) {
         const ignorePath = asIgnorePath(testDirPath, file);
         expect(ignoreFilter.ignores(ignorePath)).toBe(true);
       }
-      
+
       for (const file of shouldNotBeIgnored) {
         const ignorePath = asIgnorePath(testDirPath, file);
         expect(ignoreFilter.ignores(ignorePath)).toBe(false);
       }
-      
+
       // Document alternative patterns
-      console.log('Note: For directory prefix patterns, both "build*/" and "build-*/" ' +
-                 'effectively match any directory starting with "build"');
+      console.log(
+        'Note: For directory prefix patterns, both "build*/" and "build-*/" ' +
+          'effectively match any directory starting with "build"'
+      );
     });
 
     it('should handle negated nested patterns', async () => {
@@ -215,7 +214,7 @@ build-*/`
         'service.log',
         'important/critical.log',
         'important/info.log',
-        'other/debug.log'
+        'other/debug.log',
       ];
 
       // The pattern ignores all .log files except those in the important directory
@@ -225,10 +224,10 @@ build-*/`
       for (const filePath of paths) {
         const fullPath = path.join(testDirPath, filePath);
         const result = await gitignoreUtils.shouldIgnorePath(testDirPath, fullPath);
-        
+
         // Should ignore all .log files except those in the important directory
         const shouldBeIgnored = filePath.endsWith('.log') && !filePath.startsWith('important/');
-        
+
         if (shouldBeIgnored) {
           expect(result).toBe(true);
         } else {
@@ -239,13 +238,7 @@ build-*/`
 
     it('should handle character range patterns', async () => {
       // Setup paths for this test
-      const paths = [
-        '1script.js',
-        '2script.js',
-        '9script.js',
-        'script.js',
-        'ascript.js'
-      ];
+      const paths = ['1script.js', '2script.js', '9script.js', 'script.js', 'ascript.js'];
 
       await setupPatternTest(testDirPath, '[0-9]*.js', paths);
 
@@ -253,10 +246,10 @@ build-*/`
       for (const filePath of paths) {
         const fullPath = path.join(testDirPath, filePath);
         const result = await gitignoreUtils.shouldIgnorePath(testDirPath, fullPath);
-        
+
         // Should ignore files that start with a digit
         const shouldBeIgnored = /^[0-9]/.test(filePath);
-        
+
         if (shouldBeIgnored) {
           expect(result).toBe(true);
         } else {
@@ -273,7 +266,7 @@ build-*/`
     // but skips tests that would fail in the virtual filesystem context
     it('should directly test ignore library behavior for complex patterns', async () => {
       const testDirPath = normalizePath('/direct-test', true);
-      
+
       // Sample files to test against patterns
       const testFiles = [
         'src/file.js',
@@ -285,7 +278,7 @@ build-*/`
         'important/critical.log',
         'debug.log',
         '1script.js',
-        'ascript.js'
+        'ascript.js',
       ];
 
       // Test patterns
@@ -293,7 +286,7 @@ build-*/`
         {
           pattern: '**/*.js',
           shouldIgnore: ['src/file.js', 'src/nested/file.js', '1script.js', 'ascript.js'],
-          description: 'Double-asterisk pattern'
+          description: 'Double-asterisk pattern',
         },
         // Brace expansion patterns don't work reliably in the virtual filesystem
         // {
@@ -311,28 +304,25 @@ build-*/`
           pattern: '*.log\n!important/*.log',
           shouldIgnore: ['debug.log'],
           shouldNotIgnore: ['important/critical.log'],
-          description: 'Negated nested pattern'
+          description: 'Negated nested pattern',
         },
         {
           pattern: '[0-9]*.js',
           shouldIgnore: ['1script.js'],
           shouldNotIgnore: ['ascript.js'],
-          description: 'Character range pattern'
-        }
+          description: 'Character range pattern',
+        },
       ];
 
       // Create an ignore filter for each pattern and test it
       for (const test of patternTests) {
         // Create a new .gitignore file
-        await addVirtualGitignoreFile(
-          path.join(testDirPath, '.gitignore'),
-          test.pattern
-        );
-        
+        await addVirtualGitignoreFile(path.join(testDirPath, '.gitignore'), test.pattern);
+
         // Get a fresh ignore filter
         gitignoreUtils.clearIgnoreCache();
         const ignoreFilter = await gitignoreUtils.createIgnoreFilter(testDirPath);
-        
+
         // Test files that should be ignored
         if (test.shouldIgnore) {
           for (const file of test.shouldIgnore) {
@@ -340,7 +330,7 @@ build-*/`
             expect(ignoreFilter.ignores(ignorePath)).toBe(true);
           }
         }
-        
+
         // Test files that should NOT be ignored
         if (test.shouldNotIgnore) {
           for (const file of test.shouldNotIgnore) {
@@ -348,13 +338,14 @@ build-*/`
             expect(ignoreFilter.ignores(ignorePath)).toBe(false);
           }
         }
-        
+
         // Also check that files not in the shouldIgnore list are not ignored
         const shouldNotIgnore = testFiles.filter(
-          file => !(test.shouldIgnore || []).includes(file) && 
-                 !(test.shouldNotIgnore || []).includes(file)
+          file =>
+            !(test.shouldIgnore || []).includes(file) &&
+            !(test.shouldNotIgnore || []).includes(file)
         );
-        
+
         for (const file of shouldNotIgnore) {
           const ignorePath = asIgnorePath(testDirPath, file);
           // Only assert on files that clearly don't match the pattern

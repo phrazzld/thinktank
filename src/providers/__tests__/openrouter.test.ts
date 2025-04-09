@@ -1,6 +1,6 @@
 /**
  * Unit tests for OpenRouter provider
- * 
+ *
  * Note: We import the provider first to trigger its auto-registration
  */
 import { OpenRouterProvider, OpenRouterProviderError, openrouterProvider } from '../openrouter';
@@ -20,21 +20,21 @@ const mockedAxios = jest.mocked(axios);
 
 describe('OpenRouter Provider', () => {
   const originalEnv = process.env;
-  
+
   beforeEach(() => {
     // Reset environment
     process.env = { ...originalEnv };
-    
+
     // Reset mocks
     jest.clearAllMocks();
-    
+
     // Clear registry
     clearRegistry();
-    
+
     // Reset mock implementation
     MockedOpenAI.mockClear();
     mockedAxios.get.mockClear();
-    
+
     // Re-register the provider because we cleared the registry
     try {
       openrouterProvider.providerId; // Access a property to ensure the module is initialized
@@ -42,26 +42,26 @@ describe('OpenRouter Provider', () => {
       // Ignore errors
     }
   });
-  
+
   afterAll(() => {
     // Restore original environment
     process.env = originalEnv;
   });
-  
+
   describe('initialization', () => {
     it('should register with the registry', () => {
       // Register manually for testing
       clearRegistry();
       new OpenRouterProvider(); // This should trigger registration
-      
+
       const provider = getProvider('openrouter');
       expect(provider).toBeDefined();
       expect(provider?.providerId).toBe('openrouter');
     });
-    
+
     it('should use API key from constructor', async () => {
       const provider = new OpenRouterProvider('test-api-key');
-      
+
       // Prepare mock for client creation
       const mockCreate = jest.fn().mockResolvedValue({
         choices: [{ message: { content: 'Test response' } }],
@@ -70,7 +70,7 @@ describe('OpenRouter Provider', () => {
         id: 'test-id',
         created: 123456789,
       });
-      
+
       MockedOpenAI.mockImplementation(() => {
         return {
           chat: {
@@ -80,25 +80,27 @@ describe('OpenRouter Provider', () => {
           },
         } as unknown as OpenAI;
       });
-      
+
       // Generate should cause client creation
       try {
         await provider.generate('Test prompt', 'openai/gpt-4o');
       } catch (error) {
         // Ignore errors for this test
       }
-      
+
       // Verify API key and OpenRouter-specific config was used
-      expect(MockedOpenAI).toHaveBeenCalledWith(expect.objectContaining({
-        apiKey: 'test-api-key',
-        baseURL: 'https://openrouter.ai/api/v1',
-      }));
+      expect(MockedOpenAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiKey: 'test-api-key',
+          baseURL: 'https://openrouter.ai/api/v1',
+        })
+      );
     });
-    
+
     it('should use API key from environment', async () => {
       process.env.OPENROUTER_API_KEY = 'env-api-key';
       const provider = new OpenRouterProvider();
-      
+
       // Prepare mock for client creation
       const mockCreate = jest.fn().mockResolvedValue({
         choices: [{ message: { content: 'Test response' } }],
@@ -107,7 +109,7 @@ describe('OpenRouter Provider', () => {
         id: 'test-id',
         created: 123456789,
       });
-      
+
       MockedOpenAI.mockImplementation(() => {
         return {
           chat: {
@@ -117,34 +119,38 @@ describe('OpenRouter Provider', () => {
           },
         } as unknown as OpenAI;
       });
-      
+
       // Generate should cause client creation
       try {
         await provider.generate('Test prompt', 'openai/gpt-4o');
       } catch (error) {
         // Ignore errors for this test
       }
-      
+
       // Verify environment API key was used
-      expect(MockedOpenAI).toHaveBeenCalledWith(expect.objectContaining({
-        apiKey: 'env-api-key',
-        baseURL: 'https://openrouter.ai/api/v1',
-      }));
+      expect(MockedOpenAI).toHaveBeenCalledWith(
+        expect.objectContaining({
+          apiKey: 'env-api-key',
+          baseURL: 'https://openrouter.ai/api/v1',
+        })
+      );
     });
-    
+
     it('should throw error if API key is missing', async () => {
       // Ensure OPENROUTER_API_KEY is not set
       delete process.env.OPENROUTER_API_KEY;
-      
+
       const provider = new OpenRouterProvider();
-      
+
       // Should be catchable as OpenRouterProviderError for backward compatibility
-      await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(OpenRouterProviderError);
+      await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(
+        OpenRouterProviderError
+      );
       // But should also be an instance of ApiError from the new system
       await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(ApiError);
       // And should be an instance of the base ThinktankError
       await expect(provider.generate('Test', 'openai/gpt-4o')).rejects.toThrow(ThinktankError);
-      
+
       try {
         await provider.generate('Test', 'openai/gpt-4o');
       } catch (error) {
@@ -160,15 +166,15 @@ describe('OpenRouter Provider', () => {
       }
     });
   });
-  
+
   describe('generate', () => {
     // Create a valid provider with API key
     let provider: OpenRouterProvider;
     let mockCreate: jest.Mock;
-    
+
     beforeEach(() => {
       provider = new OpenRouterProvider('test-api-key');
-      
+
       // Prepare mock for API response
       mockCreate = jest.fn().mockResolvedValue({
         choices: [{ message: { content: 'Test response' } }],
@@ -177,7 +183,7 @@ describe('OpenRouter Provider', () => {
         id: 'test-id',
         created: 123456789,
       });
-      
+
       MockedOpenAI.mockImplementation(() => {
         return {
           chat: {
@@ -188,25 +194,25 @@ describe('OpenRouter Provider', () => {
         } as unknown as OpenAI;
       });
     });
-    
+
     it('should call OpenRouter API with the correct parameters', async () => {
       await provider.generate('Test prompt', 'openai/gpt-4o');
-      
+
       expect(mockCreate).toHaveBeenCalledWith({
         model: 'openai/gpt-4o',
         messages: [{ role: 'user', content: 'Test prompt' }],
       });
     });
-    
+
     it('should map ModelOptions to OpenRouter parameters', async () => {
       const options: ModelOptions = {
         temperature: 0.7,
         maxTokens: 500,
         topP: 0.9, // Additional option
       };
-      
+
       await provider.generate('Test prompt', 'openai/gpt-4o', options);
-      
+
       expect(mockCreate).toHaveBeenCalledWith({
         model: 'openai/gpt-4o',
         messages: [{ role: 'user', content: 'Test prompt' }],
@@ -215,10 +221,10 @@ describe('OpenRouter Provider', () => {
         topP: 0.9,
       });
     });
-    
+
     it('should return a properly formatted LLMResponse', async () => {
       const response = await provider.generate('Test prompt', 'openai/gpt-4o');
-      
+
       expect(response).toEqual({
         provider: 'openrouter',
         modelId: 'openai/gpt-4o',
@@ -231,7 +237,7 @@ describe('OpenRouter Provider', () => {
         }),
       });
     });
-    
+
     it('should handle empty response gracefully', async () => {
       // Mock an API response with no content
       mockCreate.mockResolvedValue({
@@ -241,12 +247,12 @@ describe('OpenRouter Provider', () => {
         id: 'test-id',
         created: 123456789,
       });
-      
+
       const response = await provider.generate('Test prompt', 'openai/gpt-4o');
-      
+
       expect(response.text).toBe('');
     });
-    
+
     it('should handle missing choice gracefully', async () => {
       // Mock an API response with no choices
       mockCreate.mockResolvedValue({
@@ -256,21 +262,23 @@ describe('OpenRouter Provider', () => {
         id: 'test-id',
         created: 123456789,
       });
-      
+
       const response = await provider.generate('Test prompt', 'openai/gpt-4o');
-      
+
       expect(response.text).toBe('');
     });
-    
+
     it('should handle API errors correctly', async () => {
       // Mock an API error
       mockCreate.mockRejectedValue(new Error('API error message'));
-      
+
       // Should still be catchable as OpenRouterProviderError for backward compatibility
-      await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow(OpenRouterProviderError);
+      await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow(
+        OpenRouterProviderError
+      );
       // But should also be an instance of ApiError from the new system
       await expect(provider.generate('Test prompt', 'openai/gpt-4o')).rejects.toThrow(ApiError);
-      
+
       try {
         await provider.generate('Test prompt', 'openai/gpt-4o');
       } catch (error) {
@@ -284,26 +292,26 @@ describe('OpenRouter Provider', () => {
         expect(typedError.suggestions?.length).toBeGreaterThan(0);
       }
     });
-    
+
     it('should reuse the OpenAI client for multiple requests', async () => {
       await provider.generate('Test prompt 1', 'openai/gpt-4o');
       await provider.generate('Test prompt 2', 'openai/gpt-4o');
-      
+
       // Should only create the client once
       expect(MockedOpenAI).toHaveBeenCalledTimes(1);
-      
+
       // But should make two API calls
       expect(mockCreate).toHaveBeenCalledTimes(2);
     });
   });
-  
+
   describe('listModels', () => {
     // Create a valid provider with API key
     let provider: OpenRouterProvider;
-    
+
     beforeEach(() => {
       provider = new OpenRouterProvider('test-api-key');
-      
+
       // Mock axios response
       mockedAxios.get.mockResolvedValue({
         data: {
@@ -314,8 +322,8 @@ describe('OpenRouter Provider', () => {
               context_length: 128000,
               pricing: {
                 prompt: 5,
-                completion: 15
-              }
+                completion: 15,
+              },
             },
             {
               id: 'anthropic/claude-3-opus-20240229',
@@ -323,49 +331,49 @@ describe('OpenRouter Provider', () => {
               context_length: 200000,
               pricing: {
                 prompt: 15,
-                completion: 75
-              }
-            }
-          ]
-        }
+                completion: 75,
+              },
+            },
+          ],
+        },
       });
     });
-    
+
     it('should call OpenRouter API with the correct parameters', async () => {
       await provider.listModels('test-api-key');
-      
+
       // Check URL and headers
       expect(mockedAxios.get).toHaveBeenCalledWith(
         'https://openrouter.ai/api/v1/models',
         expect.objectContaining({
           headers: expect.objectContaining({
-            'Authorization': 'Bearer test-api-key',
+            Authorization: 'Bearer test-api-key',
             'HTTP-Referer': 'https://github.com/phrazzld/thinktank',
             'X-Title': 'thinktank CLI',
-          })
+          }),
         })
       );
     });
-    
+
     it('should return properly formatted LLMAvailableModel array', async () => {
       const models = await provider.listModels('test-api-key');
-      
+
       // Check models array
       expect(models).toHaveLength(2);
-      
+
       // Check first model
       expect(models[0]).toEqual({
         id: 'openai/gpt-4o',
         description: expect.stringContaining('GPT-4o'),
       });
-      
+
       // Check second model
       expect(models[1]).toEqual({
         id: 'anthropic/claude-3-opus-20240229',
         description: expect.stringContaining('Claude 3 Opus'),
       });
     });
-    
+
     it('should handle API errors correctly', async () => {
       // Mock API error response
       const error = new Error('API error message');
@@ -374,18 +382,18 @@ describe('OpenRouter Provider', () => {
         status: 401,
         data: {
           error: {
-            message: 'Invalid API key'
-          }
-        }
+            message: 'Invalid API key',
+          },
+        },
       };
-      
+
       mockedAxios.get.mockRejectedValue(error);
-      
+
       // Should still be catchable as OpenRouterProviderError for backward compatibility
       await expect(provider.listModels('invalid-key')).rejects.toThrow(OpenRouterProviderError);
       // But should also be an instance of ApiError from the new system
       await expect(provider.listModels('invalid-key')).rejects.toThrow(ApiError);
-      
+
       try {
         await provider.listModels('invalid-key');
       } catch (err) {
@@ -398,21 +406,21 @@ describe('OpenRouter Provider', () => {
         expect(typedError.suggestions).toBeDefined();
         expect(typedError.suggestions?.length).toBeGreaterThan(0);
         // Check that at least one suggestion mentions API key
-        expect(typedError.suggestions?.some(suggestion => 
-          suggestion.toLowerCase().includes('api key')
-        )).toBe(true);
+        expect(
+          typedError.suggestions?.some(suggestion => suggestion.toLowerCase().includes('api key'))
+        ).toBe(true);
       }
     });
-    
+
     it('should throw error on invalid response format', async () => {
       // Mock an invalid API response
       mockedAxios.get.mockResolvedValue({
         data: {
           // Missing 'data' property
-          models: []
-        }
+          models: [],
+        },
       });
-      
+
       await expect(provider.listModels('test-api-key')).rejects.toThrow(OpenRouterProviderError);
       await expect(provider.listModels('test-api-key')).rejects.toThrow('Invalid response format');
     });

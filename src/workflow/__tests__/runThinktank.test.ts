@@ -1,6 +1,6 @@
 /**
  * Integration tests for runThinktank.ts
- * 
+ *
  * This file tests the runThinktank function using mocked interfaces instead of
  * directly mocking the helper functions.
  */
@@ -8,7 +8,12 @@ import { runThinktank, RunOptions } from '../runThinktank';
 import { ApiError } from '../../core/errors';
 import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
-import { FileSystem, ConfigManagerInterface, LLMClient, ConsoleLogger } from '../../core/interfaces';
+import {
+  FileSystem,
+  ConfigManagerInterface,
+  LLMClient,
+  ConsoleLogger,
+} from '../../core/interfaces';
 import { AppConfig, LLMResponse } from '../../core/types';
 import { Stats } from 'fs';
 import { InputSourceType } from '../inputHandler';
@@ -22,13 +27,13 @@ const mockFileSystem: jest.Mocked<FileSystem> = {
   fileExists: jest.fn().mockResolvedValue(true),
   mkdir: jest.fn().mockResolvedValue(undefined),
   readdir: jest.fn().mockResolvedValue(['file1.txt', 'file2.txt']),
-  stat: jest.fn().mockResolvedValue({ 
+  stat: jest.fn().mockResolvedValue({
     isFile: () => true,
-    isDirectory: () => false 
+    isDirectory: () => false,
   } as unknown as Stats),
   access: jest.fn().mockResolvedValue(undefined),
   getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
-  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json'),
 };
 
 // Sample AppConfig
@@ -38,8 +43,8 @@ const mockConfig: AppConfig = {
       provider: 'mock',
       modelId: 'mock-model',
       enabled: true,
-      options: { temperature: 0.7 }
-    }
+      options: { temperature: 0.7 },
+    },
   ],
   groups: {
     default: {
@@ -50,18 +55,18 @@ const mockConfig: AppConfig = {
           provider: 'mock',
           modelId: 'mock-model',
           enabled: true,
-          options: { temperature: 0.7 }
-        }
-      ]
-    }
-  }
+          options: { temperature: 0.7 },
+        },
+      ],
+    },
+  },
 };
 
 const mockConfigManager: jest.Mocked<ConfigManagerInterface> = {
   loadConfig: jest.fn().mockResolvedValue(mockConfig),
   saveConfig: jest.fn().mockResolvedValue(undefined),
   getActiveConfigPath: jest.fn().mockResolvedValue('/mock/config/file.json'),
-  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config.json')
+  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config.json'),
 };
 
 // Create a response that includes the required configKey property
@@ -74,11 +79,11 @@ const mockLLMResponse: LLMResponse & { configKey: string } = {
     usage: { total_tokens: 10 },
     model: 'mock-model',
     id: 'mock-response-id',
-  }
+  },
 };
 
 const mockLLMClient: jest.Mocked<LLMClient> = {
-  generate: jest.fn().mockResolvedValue(mockLLMResponse)
+  generate: jest.fn().mockResolvedValue(mockLLMResponse),
 };
 
 // Create a mock for ConsoleLogger
@@ -88,29 +93,27 @@ const mockConsoleLogger: jest.Mocked<ConsoleLogger> = {
   info: jest.fn(),
   success: jest.fn(),
   debug: jest.fn(),
-  plain: jest.fn()
+  plain: jest.fn(),
 };
 
 // Mock the concrete class constructors
 jest.mock('../../core/FileSystem', () => ({
-  ConcreteFileSystem: jest.fn(() => mockFileSystem)
+  ConcreteFileSystem: jest.fn(() => mockFileSystem),
 }));
 
 jest.mock('../../core/ConcreteConfigManager', () => ({
-  ConcreteConfigManager: jest.fn(() => mockConfigManager)
+  ConcreteConfigManager: jest.fn(() => mockConfigManager),
 }));
 
 jest.mock('../../core/LLMClient', () => ({
-  ConcreteLLMClient: jest.fn(() => mockLLMClient)
+  ConcreteLLMClient: jest.fn(() => mockLLMClient),
 }));
 
 // Mock io module
 jest.mock('../io', () => {
   return {
-    writeFiles: jest.fn().mockImplementation(
-      () => Promise.resolve(mockFileOutputResult)
-    ),
-    updateSpinnerWithFileOutput: jest.fn()
+    writeFiles: jest.fn().mockImplementation(() => Promise.resolve(mockFileOutputResult)),
+    updateSpinnerWithFileOutput: jest.fn(),
   };
 });
 
@@ -125,14 +128,14 @@ jest.mock('../modelSelector', () => {
             provider: 'mock',
             modelId: 'mock-model',
             enabled: true,
-            options: { temperature: 0.7 }
-          }
+            options: { temperature: 0.7 },
+          },
         ],
         missingApiKeyModels: [],
         disabledModels: [],
-        warnings: []
+        warnings: [],
       };
-    })
+    }),
   };
 });
 
@@ -140,7 +143,7 @@ jest.mock('../modelSelector', () => {
 const mockSetupResult = {
   config: mockConfig,
   friendlyRunName: 'clever-meadow',
-  outputDirectoryPath: '/mock/output/clever-meadow'
+  outputDirectoryPath: '/mock/output/clever-meadow',
 };
 
 const mockInputResult: ProcessInputResult = {
@@ -154,11 +157,11 @@ const mockInputResult: ProcessInputResult = {
       finalLength: 25,
       normalized: true,
       hasContextFiles: true,
-      contextFilesCount: 1
-    }
+      contextFilesCount: 1,
+    },
   },
   combinedContent: 'Test prompt with context',
-  contextFiles: []
+  contextFiles: [],
 };
 
 const mockSelectionResult: any = {
@@ -167,13 +170,13 @@ const mockSelectionResult: any = {
       provider: 'mock',
       modelId: 'mock-model',
       enabled: true,
-      options: { temperature: 0.7 }
-    }
+      options: { temperature: 0.7 },
+    },
   ],
   missingApiKeyModels: [],
   disabledModels: [],
   warnings: [],
-  modeDescription: 'All enabled models'
+  modeDescription: 'All enabled models',
 };
 // Add self-reference for backward compatibility
 mockSelectionResult.modelSelectionResult = mockSelectionResult;
@@ -182,50 +185,54 @@ const mockQueryResult: ExecuteQueriesResult = {
   queryResults: {
     responses: [mockLLMResponse],
     statuses: {
-      'mock:mock-model': { 
+      'mock:mock-model': {
         status: 'success',
         startTime: 1,
         endTime: 2,
-        durationMs: 1
-      }
+        durationMs: 1,
+      },
     },
     timing: {
       startTime: 1,
       endTime: 2,
-      durationMs: 1
+      durationMs: 1,
     },
     // Add the combinedContent property to the mock query result to match test expectation
-    combinedContent: 'Test prompt with context'
-  }
+    combinedContent: 'Test prompt with context',
+  },
 };
 
 const mockOutputResult: import('../runThinktankTypes').PureProcessOutputResult = {
-  files: [{ 
-    modelKey: 'mock:mock-model', 
-    filename: 'mock-model.md', 
-    content: 'Mock content'
-  }],
-  consoleOutput: 'Mock console output'
+  files: [
+    {
+      modelKey: 'mock:mock-model',
+      filename: 'mock-model.md',
+      content: 'Mock content',
+    },
+  ],
+  consoleOutput: 'Mock console output',
 };
 
 const mockFileOutputResult = {
   outputDirectory: '/mock/output/clever-meadow',
-  files: [{
-    modelKey: 'mock:mock-model',
-    filename: 'mock-model.md',
-    filePath: '/mock/output/clever-meadow/mock-model.md',
-    status: 'success' as FileWriteStatus,
-    startTime: 1,
-    endTime: 2,
-    durationMs: 1
-  }] as FileWriteDetail[],
+  files: [
+    {
+      modelKey: 'mock:mock-model',
+      filename: 'mock-model.md',
+      filePath: '/mock/output/clever-meadow/mock-model.md',
+      status: 'success' as FileWriteStatus,
+      startTime: 1,
+      endTime: 2,
+      durationMs: 1,
+    },
+  ] as FileWriteDetail[],
   succeededWrites: 1,
   failedWrites: 0,
   timing: {
     startTime: 1,
     endTime: 2,
-    durationMs: 1
-  }
+    durationMs: 1,
+  },
 };
 
 // Mock ora spinner
@@ -239,11 +246,11 @@ jest.mock('../../utils/spinnerFactory', () => {
     info: jest.fn().mockReturnThis(),
     text: '',
   };
-  
+
   return {
     __esModule: true,
     default: jest.fn(() => mockSpinner),
-    configureSpinnerFactory: jest.fn()
+    configureSpinnerFactory: jest.fn(),
   };
 });
 
@@ -271,15 +278,15 @@ const handleWorkflowErrorSpy = jest.spyOn(helpers, '_handleWorkflowError');
 jest.mock('../../utils/formatCompletionSummary', () => ({
   formatCompletionSummary: jest.fn().mockReturnValue({
     summaryText: 'Mock summary text',
-    errorDetails: []
-  })
+    errorDetails: [],
+  }),
 }));
 
 describe('runThinktank with Interface Mocks', () => {
   beforeEach(() => {
     // Clear all mocks to start fresh
     jest.clearAllMocks();
-    
+
     // Setup spies to return fake values rather than executing real functions
     setupWorkflowSpy.mockResolvedValue(mockSetupResult);
     processInputSpy.mockResolvedValue(mockInputResult);
@@ -287,31 +294,31 @@ describe('runThinktank with Interface Mocks', () => {
     executeQueriesSpy.mockResolvedValue(mockQueryResult);
     processOutputSpy.mockReturnValue(mockOutputResult);
     writeFilesSpy.mockResolvedValue(mockFileOutputResult);
-    
+
     // The error handler should just return something to avoid exceptions
-    handleWorkflowErrorSpy.mockImplementation(() => { 
-      return "Mock console output with error" as unknown as never; 
+    handleWorkflowErrorSpy.mockImplementation(() => {
+      return 'Mock console output with error' as unknown as never;
     });
-    
+
     // Mock nameGenerator for consistent run names
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    
+
     // Reset LLMClient mocks
     mockLLMClient.generate.mockClear();
     mockLLMClient.generate.mockResolvedValue(mockLLMResponse);
-    
+
     // Reset FileSystem mocks
     mockFileSystem.readFileContent.mockResolvedValue('Test prompt content');
     mockFileSystem.writeFile.mockResolvedValue(undefined);
     mockFileSystem.fileExists.mockResolvedValue(true);
   });
-  
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
-  
+
   // Restore all mocked modules after tests
-  afterAll(() => {    
+  afterAll(() => {
     // Clear module cache to ensure fresh imports
     delete require.cache[helpersPath];
     delete require.cache[nameGeneratorPath];
@@ -332,57 +339,57 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify helpers were called with the correct mocked interfaces
     expect(setupWorkflowSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         configManager: mockConfigManager,
         fileSystem: mockFileSystem,
         spinner: expect.any(Object),
-        options
+        options,
       })
     );
-    
+
     expect(processInputSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         fileSystem: mockFileSystem,
         spinner: expect.any(Object),
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       })
     );
-    
+
     expect(executeQueriesSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         llmClient: mockLLMClient,
         spinner: expect.any(Object),
         models: expect.any(Array),
-        combinedContent: expect.any(String)
+        combinedContent: expect.any(String),
       })
     );
-    
+
     expect(processOutputSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         spinner: expect.any(Object),
         queryResults: expect.any(Object),
         options: expect.any(Object),
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
       })
     );
-    
+
     expect(writeFilesSpy).toHaveBeenCalledWith(
       mockOutputResult.files,
       mockSetupResult.outputDirectoryPath,
       mockFileSystem,
       expect.any(Object)
     );
-    
+
     // Verify the result is the formatted console output
     expect(result).toBe('Mock console output');
   });
 
   it('should verify that the LLMClient.generate method is called', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Set up the mocked LLMClient.generate to provide arguments we expect
@@ -391,7 +398,7 @@ describe('runThinktank with Interface Mocks', () => {
     });
 
     // Override processInputSpy to ensure it sets the expected combinedContent
-    processInputSpy.mockImplementationOnce((_params) => {
+    processInputSpy.mockImplementationOnce(_params => {
       return Promise.resolve({
         inputResult: {
           content: 'Test prompt with context',
@@ -401,11 +408,11 @@ describe('runThinktank with Interface Mocks', () => {
             processingTimeMs: 5,
             originalLength: 20,
             finalLength: 23,
-            normalized: true
-          }
+            normalized: true,
+          },
         },
         combinedContent: 'Test prompt with context',
-        contextFiles: []
+        contextFiles: [],
       });
     });
 
@@ -416,14 +423,14 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Simply verify the mock was called - the implementation doesn't guarantee param values
     expect(mockLLMClient.generate).toHaveBeenCalled();
   });
 
   it('should verify that writeFiles is called for file output', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Clear previous calls
@@ -436,7 +443,7 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify the writeFiles method was called during execution
     expect(writeFilesSpy).toHaveBeenCalled();
   });
@@ -444,7 +451,7 @@ describe('runThinktank with Interface Mocks', () => {
   it('should verify that ConfigManager.loadConfig is called by setupWorkflow', async () => {
     const options: RunOptions = {
       input: 'test-prompt.txt',
-      configPath: '/custom/config.json'
+      configPath: '/custom/config.json',
     };
 
     // Override the setupWorkflow spy to call the real ConfigManager.loadConfig method
@@ -461,19 +468,19 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify that the ConfigManager.loadConfig method was called
     expect(mockConfigManager.loadConfig).toHaveBeenCalledTimes(1);
     expect(mockConfigManager.loadConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        configPath: '/custom/config.json'
+        configPath: '/custom/config.json',
       })
     );
   });
 
   it('should pass ConsoleLogger to the error handler', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Setup to cause an error
@@ -481,13 +488,13 @@ describe('runThinktank with Interface Mocks', () => {
     setupWorkflowSpy.mockImplementationOnce(async () => {
       throw new Error('Test error for ConsoleLogger');
     });
-    
+
     // Spy on _handleWorkflowError to check that consoleLogger is passed
     const handleWorkflowErrorSpy = jest.spyOn(helpers, '_handleWorkflowError');
     handleWorkflowErrorSpy.mockImplementationOnce(() => {
-      return "ConsoleLogger test error" as unknown as never;
+      return 'ConsoleLogger test error' as unknown as never;
     });
-    
+
     // Run the function
     await runThinktank(
       options,
@@ -496,37 +503,37 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify that _handleWorkflowError was called with consoleLogger
     expect(handleWorkflowErrorSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        consoleLogger: mockConsoleLogger
+        consoleLogger: mockConsoleLogger,
       })
     );
-    
+
     // Restore original implementation
     handleWorkflowErrorSpy.mockRestore();
   });
 
   it('should handle errors from the FileSystem interface', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Setup FileSystem method to throw an error
     mockFileSystem.mkdir.mockRejectedValueOnce(new Error('Directory creation failed'));
-    
+
     // Override the setupWorkflow spy to handle the error and continue
     setupWorkflowSpy.mockImplementationOnce(async () => {
       throw new Error('Directory creation failed');
     });
-    
+
     // Mock the spinner and error handler to avoid real errors
     const originalHandleWorkflowError = helpers._handleWorkflowError;
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementationOnce(() => {
-      return "Error occurred" as unknown as never;
+      return 'Error occurred' as unknown as never;
     });
-    
+
     // Invoke the function
     const result = await runThinktank(
       options,
@@ -535,33 +542,33 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify we got the error message from the handler
-    expect(result).toBe("Error occurred");
-    
+    expect(result).toBe('Error occurred');
+
     // Restore original implementation for other tests
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementation(originalHandleWorkflowError);
   });
 
   it('should handle errors from the ConfigManager interface', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Setup ConfigManager method to throw an error
     mockConfigManager.loadConfig.mockRejectedValueOnce(new Error('Config loading failed'));
-    
+
     // Override the setupWorkflow spy to throw the config error
     setupWorkflowSpy.mockImplementationOnce(async () => {
       throw new Error('Config loading failed');
     });
-    
+
     // Mock the error handler to avoid real errors
     const originalHandleWorkflowError = helpers._handleWorkflowError;
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementationOnce(() => {
-      return "Config error occurred" as unknown as never;
+      return 'Config error occurred' as unknown as never;
     });
-    
+
     // The function will handle the error through our mock
     const result = await runThinktank(
       options,
@@ -570,61 +577,63 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify we got the error message
-    expect(result).toBe("Config error occurred");
-    
+    expect(result).toBe('Config error occurred');
+
     // Restore original implementation for other tests
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementation(originalHandleWorkflowError);
   });
 
   it('should handle errors from the LLMClient interface', async () => {
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Setup LLMClient method to throw an error
     const apiError = new ApiError('API call failed');
     mockLLMClient.generate.mockRejectedValueOnce(apiError);
-    
+
     // Instead of having the execute queries call through to LLMClient.generate,
     // have it return a result that includes an error
     executeQueriesSpy.mockResolvedValueOnce({
       queryResults: {
-        responses: [{
-          provider: 'mock',
-          modelId: 'mock-model',
-          text: '',
-          error: 'API call failed',
-          configKey: 'mock:mock-model',
-        }],
+        responses: [
+          {
+            provider: 'mock',
+            modelId: 'mock-model',
+            text: '',
+            error: 'API call failed',
+            configKey: 'mock:mock-model',
+          },
+        ],
         statuses: {
-          'mock:mock-model': { 
+          'mock:mock-model': {
             status: 'error',
             startTime: 1,
             endTime: 2,
             durationMs: 1,
-            message: 'API call failed'
-          }
+            message: 'API call failed',
+          },
         },
         timing: {
           startTime: 1,
           endTime: 2,
-          durationMs: 1
+          durationMs: 1,
         },
-        combinedContent: 'Test prompt with context'
-      }
+        combinedContent: 'Test prompt with context',
+      },
     });
 
     // Mock the console output to contain the error for testing
     processOutputSpy.mockReturnValue({
       files: mockOutputResult.files,
-      consoleOutput: 'Mock output with API call failed'
+      consoleOutput: 'Mock output with API call failed',
     } as import('../runThinktankTypes').PureProcessOutputResult);
-    
+
     // Mock the writeFiles function
     writeFilesSpy.mockResolvedValue(mockFileOutputResult);
-    
+
     // With our mocked implementation, this won't actually throw an error
     const result = await runThinktank(
       options,
@@ -633,7 +642,7 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify that we get a result with an error message
     expect(result).toContain('API call failed');
   });
@@ -646,21 +655,21 @@ describe('runThinktank with Interface Mocks', () => {
       missingApiKeyModels: [],
       disabledModels: [],
       warnings: [],
-      modeDescription: 'All enabled models'
+      modeDescription: 'All enabled models',
     };
     // Add self-reference for backward compatibility
     emptyModelSelectionResult.modelSelectionResult = emptyModelSelectionResult;
-    
+
     // Import the actual modelSelector module to override just its method
     // Get reference to the mocked modelSelector
     const modelSelector = jest.requireMock('../modelSelector');
     const originalSelectModels = modelSelector.selectModels;
-    
+
     // Replace with our empty model selection implementation
     modelSelector.selectModels = jest.fn().mockReturnValue(emptyModelSelectionResult);
-    
+
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     const result = await runThinktank(
@@ -670,13 +679,13 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify that the execute queries helper was not called
     expect(executeQueriesSpy).not.toHaveBeenCalled();
-    
+
     // Verify that a warning message was returned
     expect(result).toContain('No models available');
-    
+
     // Restore the original mock implementation
     modelSelector.selectModels = originalSelectModels;
   });
@@ -687,10 +696,10 @@ describe('runThinktank with Interface Mocks', () => {
       includeMetadata: false,
       useColors: false,
     };
-    
+
     // Clear previous calls on the mock console logger
     mockConsoleLogger.plain.mockClear();
-    
+
     await runThinktank(
       options,
       mockFileSystem,
@@ -698,7 +707,7 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // Verify the injected ConsoleLogger was called for output
     expect(mockConsoleLogger.plain).toHaveBeenCalled();
   });
@@ -712,31 +721,35 @@ describe('runThinktank with Interface Mocks', () => {
       enableThinking: true,
       includeMetadata: true,
       useColors: true,
-      output: '/custom/output'
+      output: '/custom/output',
     };
-    
+
     // Override processOutputSpy to return a consistent console output
     processOutputSpy.mockReset();
     processOutputSpy.mockReturnValue({
       files: mockOutputResult.files,
-      consoleOutput: 'Mock console output'
+      consoleOutput: 'Mock console output',
     } as import('../runThinktankTypes').PureProcessOutputResult);
-    
+
     // Mock formatCompletionSummary to return known value
     // Use jest.requireMock to get mocked version
-    const formatCompletionSummary = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
+    const formatCompletionSummary = jest.requireMock(
+      '../../utils/formatCompletionSummary'
+    ).formatCompletionSummary;
     formatCompletionSummary.mockReturnValue({
       summaryText: 'Mock summary text',
-      errorDetails: []
+      errorDetails: [],
     });
-    
+
     // Make sure mock returns a known value (using jest.requireMock)
-    const mockFormatCompletionSummary = jest.requireMock('../../utils/formatCompletionSummary').formatCompletionSummary;
+    const mockFormatCompletionSummary = jest.requireMock(
+      '../../utils/formatCompletionSummary'
+    ).formatCompletionSummary;
     mockFormatCompletionSummary.mockReturnValue({
       summaryText: 'Mock summary text',
-      errorDetails: []
+      errorDetails: [],
     });
-    
+
     // Override runThinktank steps that would read model output
     executeQueriesSpy.mockResolvedValue({
       queryResults: {
@@ -746,16 +759,16 @@ describe('runThinktank with Interface Mocks', () => {
             modelId: 'mock-model',
             text: 'Basic mock response',
             configKey: 'mock:mock-model',
-          }
+          },
         ],
         statuses: {
-          'mock:mock-model': { status: 'success', durationMs: 1 }
+          'mock:mock-model': { status: 'success', durationMs: 1 },
         },
-        timing: { startTime: 1, endTime: 2, durationMs: 1 }
-      }
+        timing: { startTime: 1, endTime: 2, durationMs: 1 },
+      },
     });
-    
-    // Directly verify runThinktank returns expected value 
+
+    // Directly verify runThinktank returns expected value
     const result = await runThinktank(
       options,
       mockFileSystem,
@@ -763,7 +776,7 @@ describe('runThinktank with Interface Mocks', () => {
       mockLLMClient,
       mockConsoleLogger
     );
-    
+
     // In this test we just make sure it completes - the exact output will vary
     expect(typeof result).toBe('string');
   });

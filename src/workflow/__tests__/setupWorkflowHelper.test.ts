@@ -28,13 +28,13 @@ const mockFileSystem: jest.Mocked<FileSystem> = {
   fileExists: jest.fn().mockResolvedValue(true),
   mkdir: jest.fn().mockResolvedValue(undefined),
   readdir: jest.fn().mockResolvedValue(['file1.txt', 'file2.txt']),
-  stat: jest.fn().mockResolvedValue({ 
+  stat: jest.fn().mockResolvedValue({
     isFile: () => true,
-    isDirectory: () => false 
+    isDirectory: () => false,
   } as unknown as Stats),
   access: jest.fn().mockResolvedValue(undefined),
   getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
-  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json'),
 };
 
 // Import spinner helper
@@ -47,7 +47,7 @@ describe('_setupWorkflow Helper', () => {
   // Reset all mocks before each test
   // Create mockConfigManager before each test
   let mockConfigManager: MockConfigManager;
-  
+
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset mockSpinner state
@@ -68,39 +68,41 @@ describe('_setupWorkflow Helper', () => {
       {
         provider: 'mock',
         modelId: 'mock-model',
-        enabled: true
-      }
+        enabled: true,
+      },
     ],
     groups: {
       default: {
         name: 'default',
         systemPrompt: { text: 'You are a helpful assistant.' },
-        models: []
-      }
-    }
+        models: [],
+      },
+    },
   };
 
   it('should successfully set up the workflow', async () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(
+      '/fake/output/dir/clever-meadow'
+    );
 
     // Call the function
     const result = await _setupWorkflow({
       spinner: mockSpinner,
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
       configManager: mockConfigManager,
-      fileSystem: mockFileSystem
+      fileSystem: mockFileSystem,
     });
 
     // Verify the result
     expect(result).toEqual({
       config: sampleConfig,
       friendlyRunName: 'clever-meadow',
-      outputDirectoryPath: '/fake/output/dir/clever-meadow'
+      outputDirectoryPath: '/fake/output/dir/clever-meadow',
     });
 
     // Verify mocks were called correctly
@@ -110,7 +112,7 @@ describe('_setupWorkflow Helper', () => {
       {
         outputDirectory: undefined,
         directoryIdentifier: undefined,
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
       },
       mockFileSystem
     );
@@ -125,38 +127,44 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(
+      '/fake/output/dir/clever-meadow'
+    );
 
     // Call the function with configPath
     await _setupWorkflow({
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt',
-        configPath: '/custom/config.json'
+        configPath: '/custom/config.json',
       },
       configManager: mockConfigManager,
-      fileSystem: mockFileSystem
+      fileSystem: mockFileSystem,
     });
 
     // Verify configPath was passed
-    expect(mockConfigManager.loadConfig).toHaveBeenCalledWith({ configPath: '/custom/config.json' });
+    expect(mockConfigManager.loadConfig).toHaveBeenCalledWith({
+      configPath: '/custom/config.json',
+    });
   });
 
   it('should use provided output directory', async () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/custom/output/dir/clever-meadow');
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(
+      '/custom/output/dir/clever-meadow'
+    );
 
     // Call the function with output
     await _setupWorkflow({
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt',
-        output: '/custom/output/dir'
+        output: '/custom/output/dir',
       },
       configManager: mockConfigManager,
-      fileSystem: mockFileSystem
+      fileSystem: mockFileSystem,
     });
 
     // Verify output directory was passed, with the fileSystem parameter
@@ -164,7 +172,7 @@ describe('_setupWorkflow Helper', () => {
       {
         outputDirectory: '/custom/output/dir',
         directoryIdentifier: undefined,
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
       },
       mockFileSystem
     );
@@ -174,17 +182,19 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(
+      '/fake/output/dir/clever-meadow'
+    );
 
     // Call the function with specificModel
     await _setupWorkflow({
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt',
-        specificModel: 'mock:model'
+        specificModel: 'mock:model',
       },
       configManager: mockConfigManager,
-      fileSystem: mockFileSystem
+      fileSystem: mockFileSystem,
     });
 
     // Verify directoryIdentifier was passed
@@ -192,7 +202,7 @@ describe('_setupWorkflow Helper', () => {
       {
         outputDirectory: undefined,
         directoryIdentifier: 'mock:model',
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
       },
       mockFileSystem
     );
@@ -202,17 +212,19 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue('/fake/output/dir/clever-meadow');
+    (outputHandler.createOutputDirectory as jest.Mock).mockResolvedValue(
+      '/fake/output/dir/clever-meadow'
+    );
 
     // Call the function with groupName
     await _setupWorkflow({
       spinner: mockSpinner,
       options: {
         input: 'test-prompt.txt',
-        groupName: 'coding'
+        groupName: 'coding',
       },
       configManager: mockConfigManager,
-      fileSystem: mockFileSystem
+      fileSystem: mockFileSystem,
     });
 
     // Verify directoryIdentifier was passed
@@ -220,7 +232,7 @@ describe('_setupWorkflow Helper', () => {
       {
         outputDirectory: undefined,
         directoryIdentifier: 'coding',
-        friendlyRunName: 'clever-meadow'
+        friendlyRunName: 'clever-meadow',
       },
       mockFileSystem
     );
@@ -229,19 +241,21 @@ describe('_setupWorkflow Helper', () => {
   it('should handle config loading errors', async () => {
     // Setup mocks
     const configError = new ConfigError('Configuration loading failed', {
-      suggestions: ['Check your config file']
+      suggestions: ['Check your config file'],
     });
     mockConfigManager.loadConfig.mockRejectedValue(configError);
 
     // Call the function and expect it to throw
-    await expect(_setupWorkflow({
-      spinner: mockSpinner,
-      options: {
-        input: 'test-prompt.txt'
-      },
-      configManager: mockConfigManager,
-      fileSystem: mockFileSystem
-    })).rejects.toThrow(ConfigError);
+    await expect(
+      _setupWorkflow({
+        spinner: mockSpinner,
+        options: {
+          input: 'test-prompt.txt',
+        },
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem,
+      })
+    ).rejects.toThrow(ConfigError);
 
     // Verify spinner had the right text
     expect(mockSpinner.text).toBe('Loading configuration...');
@@ -251,20 +265,22 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    
+
     const fsError = new Error('Directory creation failed');
     (fsError as NodeJS.ErrnoException).code = 'EACCES';
     (outputHandler.createOutputDirectory as jest.Mock).mockRejectedValue(fsError);
 
     // Call the function and expect it to throw
-    await expect(_setupWorkflow({
-      spinner: mockSpinner,
-      options: {
-        input: 'test-prompt.txt'
-      },
-      configManager: mockConfigManager,
-      fileSystem: mockFileSystem
-    })).rejects.toThrow(PermissionError);
+    await expect(
+      _setupWorkflow({
+        spinner: mockSpinner,
+        options: {
+          input: 'test-prompt.txt',
+        },
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem,
+      })
+    ).rejects.toThrow(PermissionError);
 
     // Verify spinner had the right text
     expect(mockSpinner.text).toBe('Creating output directory...');
@@ -274,30 +290,32 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    
+
     const fsError = new Error('File or directory not found');
     (fsError as NodeJS.ErrnoException).code = 'ENOENT';
     (outputHandler.createOutputDirectory as jest.Mock).mockRejectedValue(fsError);
 
     // Call the function and expect it to throw
-    await expect(_setupWorkflow({
-      spinner: mockSpinner,
-      options: {
-        input: 'test-prompt.txt'
-      },
-      configManager: mockConfigManager,
-      fileSystem: mockFileSystem
-    })).rejects.toThrow(FileSystemError);
+    await expect(
+      _setupWorkflow({
+        spinner: mockSpinner,
+        options: {
+          input: 'test-prompt.txt',
+        },
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem,
+      })
+    ).rejects.toThrow(FileSystemError);
 
     // Verify it produces the expected error message
     try {
       await _setupWorkflow({
         spinner: mockSpinner,
         options: {
-          input: 'test-prompt.txt'
+          input: 'test-prompt.txt',
         },
         configManager: mockConfigManager,
-        fileSystem: mockFileSystem
+        fileSystem: mockFileSystem,
       });
     } catch (error) {
       if (error instanceof FileSystemError) {
@@ -312,27 +330,31 @@ describe('_setupWorkflow Helper', () => {
     // Setup mocks
     mockConfigManager.loadConfig.mockResolvedValue(sampleConfig);
     (nameGenerator.generateFunName as jest.Mock).mockReturnValue('clever-meadow');
-    (outputHandler.createOutputDirectory as jest.Mock).mockRejectedValue(new Error('Unknown error'));
+    (outputHandler.createOutputDirectory as jest.Mock).mockRejectedValue(
+      new Error('Unknown error')
+    );
 
     // Call the function and expect it to throw
-    await expect(_setupWorkflow({
-      spinner: mockSpinner,
-      options: {
-        input: 'test-prompt.txt'
-      },
-      configManager: mockConfigManager,
-      fileSystem: mockFileSystem
-    })).rejects.toThrow(FileSystemError);
+    await expect(
+      _setupWorkflow({
+        spinner: mockSpinner,
+        options: {
+          input: 'test-prompt.txt',
+        },
+        configManager: mockConfigManager,
+        fileSystem: mockFileSystem,
+      })
+    ).rejects.toThrow(FileSystemError);
 
     // Verify error is properly wrapped
     try {
       await _setupWorkflow({
         spinner: mockSpinner,
         options: {
-          input: 'test-prompt.txt'
+          input: 'test-prompt.txt',
         },
         configManager: mockConfigManager,
-        fileSystem: mockFileSystem
+        fileSystem: mockFileSystem,
       });
     } catch (error) {
       expect(error).toBeInstanceOf(FileSystemError);

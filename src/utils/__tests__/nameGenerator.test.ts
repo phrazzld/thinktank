@@ -13,10 +13,10 @@ describe('nameGenerator', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.resetAllMocks();
-    
+
     // Reset process.env
     process.env = { ...originalEnv };
-    
+
     // Mock the logger to avoid console output during tests
     jest.spyOn(console, 'debug').mockImplementation(() => {});
     jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -36,7 +36,7 @@ describe('nameGenerator', () => {
     it('should select words from the predefined lists', () => {
       const name = generateFunName();
       const [adjective, noun] = name.split('-');
-      
+
       expect(ADJECTIVES).toContain(adjective);
       expect(NOUNS).toContain(noun);
     });
@@ -50,9 +50,9 @@ describe('nameGenerator', () => {
         generateFunName(),
         generateFunName(),
         generateFunName(),
-        generateFunName()
+        generateFunName(),
       ]);
-      
+
       // We should have at least 2 unique names out of 5 attempts
       expect(names.size).toBeGreaterThan(1);
     });
@@ -68,7 +68,7 @@ describe('nameGenerator', () => {
   describe('generateFallbackName', () => {
     it('should generate a timestamp-based name in the correct format', () => {
       const result = generateFallbackName();
-      
+
       // Check that it matches the expected pattern: run-YYYYMMDD-HHmmss
       expect(result).toMatch(/^run-\d{8}-\d{6}$/);
     });
