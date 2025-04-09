@@ -20,9 +20,9 @@ import {
   _selectModels,
   _executeQueries,
   _processOutput,
-  _handleWorkflowError,
-  _writeOutputFiles
+  _handleWorkflowError
 } from './runThinktankHelpers';
+import { writeFiles, updateSpinnerWithFileOutput } from './io';
 
 // Import the concrete implementations and interfaces
 import { ConcreteLLMClient } from '../core/LLMClient';
@@ -268,19 +268,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       friendlyRunName: setupResult.friendlyRunName
     });
     
-    // Write files to disk using the dedicated helper function
+    // Write files to disk using the dedicated I/O module
     spinner.text = 'Writing files to disk...';
     
-    // Call the helper function to handle all file I/O operations
-    const fileOutputResult = await _writeOutputFiles(
+    // Call the I/O module to handle all file I/O operations
+    const fileOutputResult = await writeFiles(
       processedOutput.files,
       setupResult.outputDirectoryPath,
       fileSystem,
-      options
+      { throwOnError: false }
     );
     
-    // Update spinner with final status
-    spinner.text = `Files written: ${fileOutputResult.succeededWrites} succeeded, ${fileOutputResult.failedWrites} failed`;
+    // Update spinner with final status using the I/O module
+    updateSpinnerWithFileOutput(fileOutputResult, spinner);
     
     // Update workflow state with output results
     workflowState.fileOutputResult = fileOutputResult;
