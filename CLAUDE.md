@@ -1,14 +1,22 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # thinktank Development Guidelines
 
 ## Commands
-- Build: `npm run build`
-- Dev: `npm run dev`
-- Start: `npm start`
-- Lint: `npm run lint` (never disable linting or type checking)
-- Fix newline issues: `node scripts/add-missing-newlines.js` (fixes common EOL linting errors)
-- Tests: `npm test` (write tests first - TDD approach)
-- Single test: `npm test -- -t "test name"`
-- Test specific files: `npm test -- path/to/file.test.ts`
+- Build: `pnpm run build`
+- Dev: `pnpm run dev`
+- Start: `pnpm start`
+- Lint: `pnpm run lint` (never disable linting or type checking)
+- Fix lint: `pnpm run lint:fix`
+- Format: `pnpm run format`
+- Fix newline issues: `pnpm run fix:newlines` (fixes common EOL linting errors)
+- Tests: `pnpm test` (write tests first - TDD approach)
+- Single test: `pnpm test -- -t "test name"`
+- Test specific files: `pnpm test -- path/to/file.test.ts`
+- Debug tests: `pnpm run test:debug`
+- Debug specific test file: `pnpm run test:debug:file path/to/file.test.ts`
 
 ## Using thinktank
 When facing challenging problems or planning complex features, get help from thinktank. Write your task or request to TASK.md. Then run:
@@ -26,15 +34,14 @@ thinktank run --group faves TASK.md ./
 - **Naming**: Choose meaningful, self-descriptive names for clarity
 - **Models**: Use `provider:modelId` convention (e.g., `openai:gpt-4o`)
 - **Error Handling**: Try/catch for async; populate `error` field in `LLMResponse`
+- **Testing**: Focus on behavior over implementation; minimize mocking
 - **Commits**: Use conventional commit labels (feat, fix, refactor); keep atomic
 
 ## Architecture
-- **Atomic Design**: atoms→molecules→organisms→templates→runtime
-- **Core Types**: Define in `atoms/types.ts` (ModelConfig, LLMResponse, etc.)
-- **Providers**: Implement `LLMProvider` interface with `providerId` and `generate()`
 - **Functional Style**: Favor pure functions with minimal side effects
 - **Immutability**: Prefer immutable data to simplify debugging
 - **Abstractions**: Avoid premature abstraction; abstract only after patterns emerge
 - **Simplicity**: Prioritize readability and maintainability (KISS)
+- **Providers**: Implement `LLMProvider` interface with `providerId` and `generate()`
 - **Dependencies**: Limit external dependencies to those adding clear value
 - **Performance**: Write clear, efficient code; optimize only after profiling
