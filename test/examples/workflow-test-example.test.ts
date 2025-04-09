@@ -10,6 +10,7 @@ import {
   ApiError
 } from '../../src/core/errors';
 import * as helpers from '../../src/workflow/runThinktankHelpers';
+import { HandleWorkflowErrorParams } from '../../src/workflow/runThinktankTypes';
 import { 
   setupTestHooks, 
   setupWorkflowTestEnvironment,
@@ -24,6 +25,19 @@ import {
   createLlmResponse,
   createRunOptions
 } from '../factories';
+
+// Mock the concrete implementations that will be instantiated by runThinktank
+jest.mock('../../src/core/FileSystem', () => ({
+  ConcreteFileSystem: jest.fn()
+}));
+
+jest.mock('../../src/core/ConcreteConfigManager', () => ({
+  ConcreteConfigManager: jest.fn()
+}));
+
+jest.mock('../../src/core/LLMClient', () => ({
+  ConcreteLLMClient: jest.fn()
+}));
 
 /**
  * Example workflow test suite using the new helpers
@@ -43,9 +57,19 @@ describe('Example Workflow Test', () => {
     mocks = setupWorkflowTestEnvironment();
     
     // Set up default spy behavior for _handleWorkflowError
-    jest.spyOn(helpers, '_handleWorkflowError').mockImplementation((params: any) => {
+    jest.spyOn(helpers, '_handleWorkflowError').mockImplementation((params: HandleWorkflowErrorParams) => {
       throw params.error;
     });
+    
+    // Configure our mocked concrete implementations to use our test mocks
+    const { ConcreteFileSystem } = require('../../src/core/FileSystem');
+    const { ConcreteConfigManager } = require('../../src/core/ConcreteConfigManager');
+    const { ConcreteLLMClient } = require('../../src/core/LLMClient');
+    
+    // Make the concrete implementations return our mocked versions
+    ConcreteFileSystem.mockImplementation(() => mocks.mockFileSystem);
+    ConcreteConfigManager.mockImplementation(() => mocks.mockConfigManager);
+    ConcreteLLMClient.mockImplementation(() => mocks.mockLLMClient);
   });
   
   describe('successful workflow', () => {
@@ -63,30 +87,37 @@ describe('Example Workflow Test', () => {
     
     it('should complete workflow and return formatted output', async () => {
       // Use factory to create run options
-      const options = createRunOptions({ input: 'prompt.txt' });
+      const options = createRunOptions({ 
+        input: 'prompt.txt'
+      });
       
       // Run the workflow
       const result = await runThinktank(options);
       
       // Verify expected interactions with mocks
-      expect(mocks.mockFileSystem.writeFile).toHaveBeenCalled();
-      expect(mocks.mockSpinner.succeed).toHaveBeenCalled();
+      // Using .mock property is the correct way to assert on mock functions
+      expect(mocks.mockFileSystem.writeFile.mock.calls.length).toBeGreaterThan(0);
+      expect(mocks.mockSpinner.succeed.mock.calls.length).toBeGreaterThan(0);
       expect(result).toBeDefined();
     });
     
     it('should handle custom options', async () => {
       const options = createRunOptions({ 
         input: 'prompt.txt',
-        includeMetadata: true 
+        includeMetadata: true
       });
       
       await runThinktank(options);
       
       // Specific assertions for this test case
-      expect(mocks.mockFileSystem.writeFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('metadata')
-      );
+      // Mock calls can be accessed via the .mock property
+      const writeFileCalls = mocks.mockFileSystem.writeFile.mock.calls;
+      expect(writeFileCalls.length).toBeGreaterThan(0);
+      
+      // Check the arguments of the most recent call
+      const lastCall = writeFileCalls[writeFileCalls.length - 1];
+      expect(lastCall[0]).toEqual(expect.any(String));
+      expect(lastCall[1]).toEqual(expect.stringContaining('metadata'));
     });
   });
   
@@ -99,14 +130,17 @@ describe('Example Workflow Test', () => {
       );
       
       // Use factory to create run options
-      const options = createRunOptions({ input: 'missing.txt' });
+      const options = createRunOptions({ 
+        input: 'missing.txt'
+      });
       
       // Expect error to be thrown
       await expect(runThinktank(options)).rejects.toThrow(FileSystemError);
       
-      // Verify error handler was called
-      expect(helpers._handleWorkflowError).toHaveBeenCalled();
-      expect(mocks.mockSpinner.fail).toHaveBeenCalled();
+      // Verify error handler was called by checking the mock
+      const handleErrorMock = jest.spyOn(helpers, '_handleWorkflowError');
+      expect(handleErrorMock.mock.calls.length).toBeGreaterThan(0);
+      expect(mocks.mockSpinner.fail.mock.calls.length).toBeGreaterThan(0);
     });
     
     it('should throw ApiError when API call fails', async () => {
@@ -117,14 +151,17 @@ describe('Example Workflow Test', () => {
       );
       
       // Use factory to create run options
-      const options = createRunOptions();
+      const options = createRunOptions({
+        input: 'test-prompt.txt'
+      });
       
       // Expect error to be thrown
       await expect(runThinktank(options)).rejects.toThrow(ApiError);
       
-      // Verify error handler was called
-      expect(helpers._handleWorkflowError).toHaveBeenCalled();
-      expect(mocks.mockSpinner.fail).toHaveBeenCalled();
+      // Verify error handler was called by checking the mock
+      const handleErrorMock = jest.spyOn(helpers, '_handleWorkflowError');
+      expect(handleErrorMock.mock.calls.length).toBeGreaterThan(0);
+      expect(mocks.mockSpinner.fail.mock.calls.length).toBeGreaterThan(0);
     });
   });
 });
