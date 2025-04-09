@@ -9,8 +9,8 @@ import * as formatUtils from '../../utils/formatCompletionSummary';
 import * as logger from '../../utils/logger';
 
 // Mock implementations
-jest.mock('../../utils/logger', () => ({
-  logger: {
+jest.mock('../../utils/logger', () => {
+  const mockLogger = {
     plain: jest.fn(),
     error: jest.fn(),
     info: jest.fn(),
@@ -21,8 +21,12 @@ jest.mock('../../utils/logger', () => ({
     setLevel: jest.fn(),
     getLevel: jest.fn(),
     configure: jest.fn()
-  }
-}));
+  };
+  return {
+    logger: mockLogger,
+    Logger: jest.fn().mockImplementation(() => mockLogger)
+  };
+});
 
 // Mock formatCompletionSummary
 jest.mock('../../utils/formatCompletionSummary', () => ({
@@ -147,10 +151,10 @@ describe('runThinktank Completion Summary Integration', () => {
     // Run the function
     await runThinktank(options);
 
-    // Verify logger.plain was called with summary text and error details
-    expect(logger.plain).toHaveBeenCalledWith('Mock summary text');
-    expect(logger.plain).toHaveBeenCalledWith('Mock error detail 1');
-    expect(logger.plain).toHaveBeenCalledWith('Mock error detail 2');
+    // Verify logger.logger.plain was called with summary text and error details
+    expect(logger.logger.plain).toHaveBeenCalledWith('Mock summary text');
+    expect(logger.logger.plain).toHaveBeenCalledWith('Mock error detail 1');
+    expect(logger.logger.plain).toHaveBeenCalledWith('Mock error detail 2');
   });
 
   it('should pass useColors option from options', async () => {
