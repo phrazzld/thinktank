@@ -87,7 +87,7 @@
   - **Depends On:** Refactor core functions
   - **AC Ref:** AC 2.1 (Modify functions to return data)
 
-- [ ] **Refactor workflow integration tests**
+- [x] **Refactor workflow integration tests**
   - **Action:** Update integration tests to use I/O mocks consistently.
   - **Depends On:** Create testing utilities
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)

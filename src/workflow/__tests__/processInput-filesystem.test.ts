@@ -7,53 +7,36 @@ import { FileSystemError } from '../../core/errors';
 import { InputSourceType } from '../inputHandler';
 import * as fileReader from '../../utils/fileReader';
 import { ContextFileResult } from '../../utils/fileReaderTypes';
-import { FileSystem } from '../../core/interfaces';
+import { setupTestHooks, setupWorkflowTestEnvironment, WorkflowTestMocks } from '../../../test/setup';
+import { createMockSpinner } from './oraTestHelper';
 
 // Mock dependencies
 jest.mock('../inputHandler');
 jest.mock('../../utils/fileReader');
 
-// Import spinner helper
-import { createMockSpinner } from './oraTestHelper';
-
-// Create a mock spinner
-const mockSpinner = createMockSpinner();
-
-// Create a mock FileSystem for testing
-class MockFileSystem implements FileSystem {
-  readFileContent = jest.fn();
-  writeFile = jest.fn();
-  fileExists = jest.fn();
-  mkdir = jest.fn();
-  readdir = jest.fn();
-  stat = jest.fn();
-  access = jest.fn();
-  getConfigDir = jest.fn();
-  getConfigFilePath = jest.fn();
-}
-
 describe('_processInput Helper with FileSystem Interface', () => {
-  // Create mockFileSystem for each test
-  let mockFileSystem: MockFileSystem;
+  // Set up test hooks
+  setupTestHooks();
+  
+  // Create mocks for each test
+  let mocks: WorkflowTestMocks;
+  // Create a mock spinner that implements Ora interface
+  const mockSpinner = createMockSpinner();
   
   // Reset all mocks before each test
   beforeEach(() => {
-    jest.clearAllMocks();
+    // Set up workflow test environment with all required mocks
+    mocks = setupWorkflowTestEnvironment();
+    
     // Reset mockSpinner state
-    mockSpinner.text = '';
-    // Create fresh mockFileSystem
-    mockFileSystem = new MockFileSystem();
-  });
-  
-  afterEach(() => {
-    jest.restoreAllMocks();
+    jest.resetAllMocks();
   });
 
   it('should successfully process input using the FileSystem interface', async () => {
     // Setup mocks
     (inputHandler.processInput as jest.Mock).mockImplementation(async (options) => {
       // Verify fileSystem is passed through to processInput
-      expect(options.fileSystem).toBe(mockFileSystem);
+      expect(options.fileSystem).toBe(mocks.mockFileSystem);
       
       return {
         content: 'Test prompt content',
@@ -72,7 +55,7 @@ describe('_processInput Helper with FileSystem Interface', () => {
     const result = await _processInput({
       spinner: mockSpinner,
       input: 'file.txt',
-      fileSystem: mockFileSystem
+      fileSystem: mocks.mockFileSystem
     });
 
     // Verify the important properties
@@ -83,7 +66,7 @@ describe('_processInput Helper with FileSystem Interface', () => {
     // Verify inputHandler.processInput was called with fileSystem
     expect(inputHandler.processInput).toHaveBeenCalledWith({ 
       input: 'file.txt',
-      fileSystem: mockFileSystem 
+      fileSystem: mocks.mockFileSystem 
     });
   });
 
@@ -118,7 +101,7 @@ describe('_processInput Helper with FileSystem Interface', () => {
     // Mock readContextPaths to verify fileSystem is passed through
     (fileReader.readContextPaths as jest.Mock).mockImplementation(async (_paths, fs) => {
       // Verify fileSystem is passed to readContextPaths
-      expect(fs).toBe(mockFileSystem);
+      expect(fs).toBe(mocks.mockFileSystem);
       return mockContextFiles;
     });
 
@@ -131,7 +114,7 @@ describe('_processInput Helper with FileSystem Interface', () => {
       spinner: mockSpinner,
       input: 'prompt.txt',
       contextPaths: ['context1.js', 'context2.md'],
-      fileSystem: mockFileSystem
+      fileSystem: mocks.mockFileSystem
     });
 
     // Verify the result
@@ -142,7 +125,7 @@ describe('_processInput Helper with FileSystem Interface', () => {
     // Verify fileSystem was passed to readContextPaths
     expect(fileReader.readContextPaths).toHaveBeenCalledWith(
       ['context1.js', 'context2.md'], 
-      mockFileSystem
+      mocks.mockFileSystem
     );
   });
 
@@ -169,13 +152,13 @@ describe('_processInput Helper with FileSystem Interface', () => {
       spinner: mockSpinner,
       input: 'prompt.txt',
       contextPaths: ['context1.js'],
-      fileSystem: mockFileSystem
+      fileSystem: mocks.mockFileSystem
     })).rejects.toThrow(FileSystemError);
     
     // Verify fileSystem was passed to readContextPaths before error
     expect(fileReader.readContextPaths).toHaveBeenCalledWith(
       ['context1.js'], 
-      mockFileSystem
+      mocks.mockFileSystem
     );
   });
 });
