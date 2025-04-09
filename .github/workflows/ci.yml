@@ -14,4 +14,9 @@ jobs:
     steps:                     # Steps start here
       - name: Checkout code    # Step to checkout the repository code
         uses: actions/checkout@v4 # Use the official checkout action v4
+
+      - name: Set up Node.js   # Step to setup Node.js environment
+        uses: actions/setup-node@v4 # Use the official setup-node action v4
+        with:
+          node-version: '20'   # Specify Node.js LTS version 20
       # Subsequent steps will be added in following tasks
