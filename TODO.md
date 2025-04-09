@@ -242,7 +242,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Refactor gitignoreFiltering.test.ts.
   - **AC Ref:** AC 2.2.
 
-- [ ] **Investigate complex gitignore pattern support**
+- [x] **Investigate complex gitignore pattern support**
   - **Action:** Examine issues with complex gitignore patterns in `gitignoreComplexPatterns.test.ts`.
   - **Technical Details:**
     - Identify which complex patterns are problematic (brace expansion, wildcards).
@@ -253,17 +253,18 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Refactor gitignoreFiltering.test.ts.
   - **AC Ref:** AC 2.3.
 
-- [ ] **Fix or document complex pattern limitations**
-  - **Action:** Either implement fixes for complex pattern support or document limitations.
+- [x] **Fix or document complex pattern limitations**
+  - **Action:** Documented limitations and implemented a helper for brace expansion patterns.
   - **Technical Details:**
-    - If fixing:
-      - Enhance pattern handling in `gitignoreUtils.ts`.
-      - Add tests for each complex pattern type.
-    - If documenting:
-      - Update `gitignoreUtils.ts` with clear JSDoc comments about limitations.
-      - Add warnings for unsupported patterns.
-      - Document in `TESTING.md` and READMEs.
-  - **Success Criteria:** Either fixed support for complex patterns or clear documentation of limitations.
+    - Documented:
+      - Updated `gitignoreUtils.ts` with clear JSDoc comments about limitations.
+      - Added detailed documentation about limitations in test/setup/README.md.
+      - Verified and documented the exact behavior with test cases.
+    - Fixed:
+      - Added `expandBracePattern` helper function to handle brace expansion patterns.
+      - Added comprehensive tests for the helper function.
+      - Created an example script showing how to use the helper.
+  - **Success Criteria:** ✅ Clear documentation of limitations with workarounds provided.
   - **Depends On:** Investigate complex gitignore pattern support.
   - **AC Ref:** AC 2.3.
 

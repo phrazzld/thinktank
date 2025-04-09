@@ -33,9 +33,10 @@ module.exports = {
     '/src/workflow/__tests__/logCompletionSummaryHelper.test.ts',
     '/src/core/__tests__/errors.test.ts',
     
-    // Gitignore-related tests with path handling issues
-    // '/src/utils/__tests__/gitignoreFiltering.test.ts', // Re-enabled after refactoring to use virtual filesystem helpers
-    // '/src/utils/__tests__/gitignoreFilteringIntegration.test.ts' // Re-enabled after refactoring to use virtual filesystem helpers
+    // Gitignore-related tests - all re-enabled after refactoring to use virtual filesystem helpers
+    // '/src/utils/__tests__/gitignoreFiltering.test.ts', 
+    // '/src/utils/__tests__/gitignoreFilteringIntegration.test.ts',
+    // '/src/utils/__tests__/gitignoreComplexPatterns.test.ts'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',
