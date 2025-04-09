@@ -12,7 +12,7 @@
   - **Depends On:** Identify all spinner usage in main.go.
   - **AC Ref:** Key Step 1.
 
-- [ ] **Replace spinner update message calls with logger in main.go**
+- [x] **Replace spinner update message calls with logger in main.go**
   - **Action:** Replace all `spinnerInstance.UpdateMessage(msg)` calls with equivalent `logger.Info(msg)` calls in main.go, maintaining the same level of user feedback.
   - **Depends On:** Identify all spinner usage in main.go.
   - **AC Ref:** Key Step 1.

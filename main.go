@@ -152,7 +152,7 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	}
 
 	// Call Gemini to generate clarification questions
-	spinnerInstance.UpdateMessage("Generating clarification questions...")
+	logger.Info("Generating clarification questions...")
 	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
 	if err != nil {
 		spinnerInstance.StopFail(fmt.Sprintf("Error generating clarification questions: %v", err))
@@ -465,7 +465,7 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 	}
 
 	// Update spinner message and calculate statistics
-	spinnerInstance.UpdateMessage("Calculating token statistics...")
+	logger.Info("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, geminiClient, projectContext, logger)
 
 	// Handle dry run mode specific output
