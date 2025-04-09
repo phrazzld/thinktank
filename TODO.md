@@ -13,7 +13,7 @@
   - **AC Ref:** Implementation Steps 2 (PLAN.md line 125), Basic GitHub Actions Workflow (PLAN.md lines 16-34)
 
 - [x] **Configure workflow triggers**
-  - **Action:** Add the trigger configuration for push and pull requests to the main branch.
+  - **Action:** Add the trigger configuration for push and pull requests to the master branch.
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Workflow Triggers (PLAN.md lines 21-34), Success Criteria 1 (PLAN.md line 135)
 

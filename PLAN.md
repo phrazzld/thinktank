@@ -1,63 +1,148 @@
-# Code Review: Test Simplification & Phase 4 Refactoring
+# GitHub Actions CI/CD Implementation Plan
 
-## Summary
+## Overview
 
-The recent changes represent a successful implementation of Phase 4 ("Isolate Side Effects") refactoring, introducing test factories and scenario helpers to simplify test setup while correctly separating pure logic from I/O operations. The changes align well with the project's testing philosophy by:
+This document outlines the plan for implementing GitHub Actions for CI/CD (linting, testing, building) for the thinktank project. The implementation will follow a single-job sequential workflow approach, with the potential to evolve to more complex workflows as needed.
 
-1. Improving test maintainability through centralized, reusable test helpers
-2. Properly testing behavior over implementation through interface-based mocking
-3. Following the "minimize mocking" principle with appropriate abstractions at external boundaries
-4. Creating clearer separation between unit tests (pure functions) and integration tests (orchestration)
+## Key Goals
 
-## Key Strengths
+1. Automate code quality checks (linting)
+2. Ensure code correctness through automated testing
+3. Verify build process success
+4. Establish consistent CI practices aligned with project standards
 
-1. **Effective I/O Separation**: Successfully separated pure data transformation logic from I/O operations (filesystem writes, console logs) across the codebase.
+## Implementation Plan
 
-2. **Comprehensive Test Infrastructure**:
-   - Introduced standardized mock factories (`createMockFileSystem`, `createMockConsoleLogger`, etc.)
-   - Added scenario-based mock configuration helpers (`setupMocksForSuccessfulRun`, etc.)
-   - Created data factories (`createAppConfig`, `createModelConfig`, etc.)
-   - Centralized setup in `test/setup/` and `test/factories/` directories
-   
-3. **Pure Function Testing**: New unit tests correctly verify pure functions by asserting return values based on inputs without complex mocking.
+### 1. Create Basic GitHub Actions Workflow
 
-4. **Interface-Based Mocking**: Integration tests now use standardized mock implementations for injected I/O interfaces, correctly testing interactions at designated external boundaries.
+**File Structure:**
+- Create `.github/workflows/ci.yml` to define the CI pipeline
 
-5. **Reduced Test Boilerplate**: The new test helpers significantly reduce repetitive test setup code, improving readability and maintainability.
+**Workflow Triggers:**
+- On push to main branch
+- On pull requests targeting main branch
 
-## Issues & Recommendations
+```yaml
+# .github/workflows/ci.yml
+name: CI
 
-| Issue Description | Location (File:Line) | Suggested Solution / Improvement | Risk Assessment |
-|:------------------|:---------------------|:--------------------------------|:----------------|
-| **Duplicated File Writing Logic** | `runThinktankHelpers.ts` vs `io.ts` | Delete `_writeOutputFiles` from `runThinktankHelpers.ts`. Use only `io.writeFiles`. | **High** |
-| `ConcreteFileSystem` test mocks internal dependency | `src/core/__tests__/FileSystem.test.ts` | Refactor test to use virtual FS (`memfs`) via `test/setup/fs.ts`. Test behavior and error wrapping, not just delegation. | Medium |
-| Missing tests for new I/O module | `src/workflow/io.ts` | Add new test file `src/workflow/__tests__/io.test.ts` mocking `FileSystem`/`ConsoleLogger`/`UISpinner`. | Medium |
-| Inconsistent logger usage (singleton vs. DI) | `src/workflow/runThinktank.ts` | (Optional) Inject `ConsoleLogger` instead of using singleton `logger` for final summary logging. | Low |
-| Repetitive Error Wrapping in `ConcreteFileSystem` | `src/core/FileSystem.ts` (Multiple methods) | Extract common error wrapping logic into private helper methods within the class. | Low |
-| Testing documentation needs update | `jest/README.md`, `src/__tests__/utils/README.md` | Update docs to reflect `test/setup/` as standard, document new factories/helpers, deprecate old patterns. | Low |
+on:
+  push:
+    branches: [ main ] # Adjust if your main branch has a different name
+  pull_request:
+    branches: [ main ] # Adjust if your main branch has a different name
+```
 
-## Test Quality Analysis
+### 2. Define Single Job Workflow
 
-### Adherence to TESTING_PHILOSOPHY.MD
+Implement a single job that performs all checks sequentially:
 
-1. **Guiding Principles**:
-   - ✅ **Simplicity & Clarity**: The new test helpers significantly simplify test setup and improve readability.
-   - ✅ **Behavior Over Implementation**: Tests properly verify behavior through public interfaces rather than implementation details.
-   - ✅ **Testability as Design Goal**: The refactoring demonstrates a commitment to designing for testability by properly separating concerns.
+```yaml
+jobs:
+  ci:
+    name: Lint, Test, Build
+    runs-on: ubuntu-latest
 
-2. **Mocking Policy**:
-   - ✅ **Minimize Mocking**: Mocks are appropriately used only at external boundaries.
-   - ✅ **Mock External Boundaries**: The new architecture correctly identifies and mocks file system, console output, and spinner UI as external boundaries.
-   - ✅ **Abstract First**: Tests use well-defined abstractions (`FileSystem`, `ConsoleLogger`, `UISpinner`) for external dependencies.
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-### Opportunities for Further Improvement
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Or match package.json engines field more precisely
 
-1. **`ConcreteFileSystem` Testing**: The current test relies too heavily on mocking the internal `fileReader` module instead of testing the adapter's interaction with a filesystem environment using virtual filesystem (`memfs`). This tests delegation rather than contract fulfillment.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest # Or pin to a specific version
 
-2. **Test Coverage for `io.ts`**: The new I/O module lacks corresponding unit/integration tests to verify its interaction with the `FileSystem` interface and its status/error reporting.
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
-3. **Example Tests**: While an example test file was created, it still has failing assertions that need to be addressed to serve as a proper reference implementation.
+      - name: Setup pnpm cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
-## Conclusion
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-This refactoring represents a significant improvement in the codebase's architecture and testability. The separation of concerns between pure data processing and I/O operations is well executed, and the new test infrastructure provides an excellent foundation for maintaining and expanding the test suite. Addressing the duplicated file writing logic and adding proper tests for the new I/O module should be prioritized for immediate follow-up.
+      - name: Run linter
+        run: pnpm run lint
+
+      - name: Run tests
+        run: pnpm test
+        # Add environment variables for tests if needed, e.g., API keys for integration tests
+        # env:
+        #   SOME_API_KEY: ${{ secrets.SOME_API_KEY }}
+
+      - name: Build project
+        run: pnpm run build
+```
+
+## Rationale for Chosen Approach
+
+### Single Job Sequential Workflow
+
+1. **Simplicity & Maintainability:** The single workflow file is easier to manage and understand, making it more maintainable in the long term.
+
+2. **Alignment with Local Workflow:** The sequential execution mirrors how a developer would check things locally (lint → test → build), making the CI process intuitive.
+
+3. **Testability:** This approach directly executes the core project scripts in a clean environment, strongly aligning with the project's testing philosophy of focusing on behavior, not implementation details. It avoids complex CI-specific logic that would require its own testing.
+
+4. **Fail-Fast:** Lint errors will prevent running tests and building, saving CI resources and providing quicker feedback.
+
+5. **Lower Initial Complexity:** Avoids the overhead of managing artifacts or caching strategies across parallel jobs.
+
+### Caching Strategy
+
+The workflow will use GitHub's caching action to cache the pnpm store, which will significantly improve build times by reusing dependencies across workflow runs when possible.
+
+## Potential Future Enhancements
+
+After establishing the basic CI workflow, we can consider the following enhancements:
+
+1. **Multiple Jobs:** If the workflow becomes slow, we can refactor to use parallel jobs for lint, test, and build steps.
+
+2. **Matrix Testing:** Add matrix-based testing to verify compatibility across multiple Node.js versions or operating systems.
+
+3. **Environment-Specific Testing:** Configure environment variables for testing different provider configurations.
+
+4. **Code Coverage Reporting:** Add a step to generate and publish code coverage reports.
+
+5. **Continuous Deployment:** Extend the workflow to automatically deploy the built code to staging or production environments.
+
+## Implementation Steps
+
+1. Create the `.github/workflows` directory
+2. Create the `ci.yml` file with the defined workflow
+3. Push changes to a feature branch
+4. Create a PR to trigger the workflow
+5. Review and iterate on the workflow configuration as needed
+6. Merge to main once working correctly
+
+## Success Criteria
+
+The CI workflow will be considered successful if:
+
+1. It correctly runs on both push to main and pull requests
+2. It correctly identifies lint errors
+3. It correctly runs tests and reports failures
+4. It successfully builds the project
+5. It completes in a reasonable time (<5 minutes)
+
+## Testing the CI Workflow
+
+To test the CI workflow:
+
+1. Create a branch with a deliberate lint error and verify that CI fails at the lint step
+2. Create a branch with a failing test and verify that CI fails at the test step
+3. Create a branch with a build error and verify that CI fails at the build step
+4. Create a clean branch and verify that CI passes all checks

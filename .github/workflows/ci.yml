@@ -3,13 +3,13 @@ name: CI
 
 on:
   push:
-    branches: [ main ] # Trigger only on pushes to the main branch
+    branches: [ master ]
   pull_request:
-    branches: [ main ] # Trigger only on PRs targeting the main branch
+    branches: [ master ]
 
 jobs:
   ci:                          # Job ID
-    name: Lint, Test, Build    # Job Name 
+    name: Lint, Test, Build    # Job Name
     runs-on: ubuntu-latest     # Runner Specification
     steps:                     # Steps start here
       - name: Checkout code    # Step to checkout the repository code
