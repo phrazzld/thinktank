@@ -3,6 +3,10 @@
  * 
  * This module provides a centralized setup helper for workflow integration tests,
  * creating and configuring all common mocks needed for testing workflow components.
+ * 
+ * It includes:
+ * - Basic mock creation via setupWorkflowTestEnvironment()
+ * - Higher-level scenario mock configuration helpers for common test cases
  */
 import { 
   FileSystem, 
@@ -13,7 +17,11 @@ import {
 } from '../../src/core/interfaces';
 import { createMockFileSystem } from './fs';
 import { createMockConsoleLogger, createMockUISpinner } from './io';
-import { AppConfig } from '../../src/core/types';
+import { AppConfig, LLMResponse } from '../../src/core/types';
+import { 
+  createAppConfig, 
+  createLlmResponse 
+} from '../factories';
 
 /**
  * Creates a mock ConfigManager implementation for testing
@@ -128,4 +136,178 @@ export function setupWorkflowTestEnvironment(): WorkflowTestMocks {
     mockConfigManager,
     mockLLMClient
   };
+}
+
+/**
+ * Options for configuring the successful run scenario
+ */
+export interface SuccessfulRunOptions {
+  /**
+   * App configuration to use for the test
+   * If not provided, a default will be used
+   */
+  config?: AppConfig;
+  
+  /**
+   * Content to return when reading the prompt file
+   * If not provided, a default will be used
+   */
+  promptContent?: string;
+  
+  /**
+   * LLM response to return from the generate method
+   * If not provided, a default will be used
+   */
+  llmResponse?: LLMResponse;
+}
+
+/**
+ * Configures mocks for a successful workflow run scenario
+ * 
+ * Sets up all mocks to simulate a complete successful workflow run,
+ * including successful config loading, file operations, and LLM API calls.
+ * 
+ * @param mocks - The WorkflowTestMocks object from setupWorkflowTestEnvironment
+ * @param options - Optional configuration for the scenario
+ * @returns The same mocks object, configured for this scenario
+ * 
+ * @example
+ * ```typescript
+ * const mocks = setupWorkflowTestEnvironment();
+ * setupMocksForSuccessfulRun(mocks, {
+ *   promptContent: 'Custom prompt'
+ * });
+ * ```
+ */
+export function setupMocksForSuccessfulRun(
+  mocks: WorkflowTestMocks,
+  options: SuccessfulRunOptions = {}
+): WorkflowTestMocks {
+  // Use defaults from test factories if not provided
+  const config = options.config || createAppConfig();
+  const promptContent = options.promptContent || 'Default test prompt content';
+  const llmResponse = options.llmResponse || createLlmResponse();
+  
+  // Configure ConfigManager
+  mocks.mockConfigManager.loadConfig.mockResolvedValue(config);
+  
+  // Configure FileSystem
+  mocks.mockFileSystem.fileExists.mockResolvedValue(true);
+  mocks.mockFileSystem.readFileContent.mockResolvedValue(promptContent);
+  mocks.mockFileSystem.mkdir.mockResolvedValue(undefined);
+  mocks.mockFileSystem.writeFile.mockResolvedValue(undefined);
+  
+  // Configure LLMClient
+  mocks.mockLLMClient.generate.mockResolvedValue(llmResponse);
+  
+  // Configure UI elements
+  mocks.mockSpinner.succeed.mockReturnThis();
+  mocks.mockLogger.success.mockReturnValue(undefined);
+  
+  return mocks;
+}
+
+/**
+ * Configures mocks for a workflow scenario where config loading fails
+ * 
+ * @param mocks - The WorkflowTestMocks object from setupWorkflowTestEnvironment
+ * @param error - The error to throw during config loading
+ * @returns The same mocks object, configured for this scenario
+ * 
+ * @example
+ * ```typescript
+ * const mocks = setupWorkflowTestEnvironment();
+ * setupMocksForConfigError(mocks, new Error('Config not found'));
+ * ```
+ */
+export function setupMocksForConfigError(
+  mocks: WorkflowTestMocks,
+  error: Error = new Error('Failed to load config')
+): WorkflowTestMocks {
+  mocks.mockConfigManager.loadConfig.mockRejectedValue(error);
+  mocks.mockSpinner.fail.mockReturnThis();
+  
+  return mocks;
+}
+
+/**
+ * Configures mocks for a workflow scenario where the LLM API call fails
+ * 
+ * Sets up a scenario where config loads and file operations succeed,
+ * but the LLM API call fails with an error.
+ * 
+ * @param mocks - The WorkflowTestMocks object from setupWorkflowTestEnvironment
+ * @param error - The error to throw during the LLM API call
+ * @param options - Optional configuration for the successful parts
+ * @returns The same mocks object, configured for this scenario
+ * 
+ * @example
+ * ```typescript
+ * const mocks = setupWorkflowTestEnvironment();
+ * setupMocksForApiError(mocks, new Error('Rate limit exceeded'));
+ * ```
+ */
+export function setupMocksForApiError(
+  mocks: WorkflowTestMocks,
+  error: Error = new Error('API error'),
+  options: Omit<SuccessfulRunOptions, 'llmResponse'> = {}
+): WorkflowTestMocks {
+  // Configure for successful setup steps
+  const config = options.config || createAppConfig();
+  const promptContent = options.promptContent || 'Default test prompt content';
+  
+  // Configure ConfigManager
+  mocks.mockConfigManager.loadConfig.mockResolvedValue(config);
+  
+  // Configure FileSystem for successful operations
+  mocks.mockFileSystem.fileExists.mockResolvedValue(true);
+  mocks.mockFileSystem.readFileContent.mockResolvedValue(promptContent);
+  
+  // Configure LLMClient to fail
+  mocks.mockLLMClient.generate.mockRejectedValue(error);
+  
+  // Configure UI elements for failure
+  mocks.mockSpinner.fail.mockReturnThis();
+  mocks.mockLogger.error.mockReturnValue(undefined);
+  
+  return mocks;
+}
+
+/**
+ * Configures mocks for a workflow scenario where file reading fails
+ * 
+ * Sets up a scenario where config loads successfully, but reading the
+ * input file fails with an error.
+ * 
+ * @param mocks - The WorkflowTestMocks object from setupWorkflowTestEnvironment
+ * @param error - The error to throw during file reading
+ * @param options - Optional configuration for the successful parts
+ * @returns The same mocks object, configured for this scenario
+ * 
+ * @example
+ * ```typescript
+ * const mocks = setupWorkflowTestEnvironment();
+ * setupMocksForFileReadError(mocks, new Error('File not found'));
+ * ```
+ */
+export function setupMocksForFileReadError(
+  mocks: WorkflowTestMocks,
+  error: Error = new Error('File read error'),
+  options: Omit<SuccessfulRunOptions, 'promptContent'> = {}
+): WorkflowTestMocks {
+  // Configure for successful config loading
+  const config = options.config || createAppConfig();
+  
+  // Configure ConfigManager
+  mocks.mockConfigManager.loadConfig.mockResolvedValue(config);
+  
+  // Configure FileSystem to fail reading
+  mocks.mockFileSystem.fileExists.mockResolvedValue(true); // File exists but can't be read
+  mocks.mockFileSystem.readFileContent.mockRejectedValue(error);
+  
+  // Configure UI elements for failure
+  mocks.mockSpinner.fail.mockReturnThis();
+  mocks.mockLogger.error.mockReturnValue(undefined);
+  
+  return mocks;
 }

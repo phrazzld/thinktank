@@ -92,7 +92,7 @@
   - **Depends On:** Create testing utilities
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
 
-- [ ] **Simplify test setup**
+- [x] **Simplify test setup**
   - **Action:** Eliminate redundant test setup in workflow test files.
   - **Depends On:** Refactor workflow integration tests
   - **AC Ref:** AC 3.1 (Improve testability)
