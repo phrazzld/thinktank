@@ -17,7 +17,6 @@ import (
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/prompt"
-	"github.com/phrazzld/architect/internal/spinner"
 )
 
 // Constants referencing the config package defaults
@@ -46,7 +45,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	NoSpinner       bool
 	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
@@ -132,30 +130,29 @@ func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration
 
 // clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
 func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Original task description
 	originalTask := config.TaskDescription
 
 	// Build prompt for clarification (template loading is handled internally)
-	spinnerInstance.Start("Analyzing task description...")
+	logger.Info("Analyzing task description...")
+	logger.Debug("Analyzing task description...")
 	data := &prompt.TemplateData{
 		Task: originalTask,
 	}
 
 	clarifyPrompt, err := promptManager.BuildPrompt("clarify.tmpl", data)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build clarification prompt: %v", err))
 		logger.Error("Failed to build clarification prompt: %v", err)
 		return originalTask
 	}
 
 	// Call Gemini to generate clarification questions
-	spinnerInstance.UpdateMessage("Generating clarification questions...")
+	logger.Info("Generating clarification questions...")
+	logger.Debug("Generating clarification questions...")
 	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Error generating clarification questions: %v", err))
 		logger.Error("Error generating clarification questions: %v", err)
 		return originalTask
 	}
@@ -169,14 +166,13 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Parse JSON response - must be valid JSON as requested in the prompt
 	err = json.Unmarshal([]byte(result.Content), &clarificationData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to parse clarification response: %v", err))
 		logger.Error("Failed to parse clarification response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
 		return originalTask
 	}
 
 	// Stop spinner and start the interactive clarification process
-	spinnerInstance.Stop("Task analysis complete")
+	logger.Info("Task analysis complete")
 
 	// Show the analysis to the user
 	logger.Info("Task Analysis: %s", clarificationData.Analysis)
@@ -202,7 +198,8 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	}
 
 	// Now refine the task with the answers
-	spinnerInstance.Start("Refining task description...")
+	logger.Info("Refining task description...")
+	logger.Debug("Refining task description...")
 
 	// Build prompt for refinement (template loading is handled internally)
 	refineData := &prompt.TemplateData{
@@ -212,7 +209,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	refinePrompt, err := promptManager.BuildPrompt("refine.tmpl", refineData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build refinement prompt: %v", err))
 		logger.Error("Failed to build refinement prompt: %v", err)
 		return originalTask
 	}
@@ -220,7 +216,6 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Call Gemini to generate refined task
 	result, err = geminiClient.GenerateContent(ctx, refinePrompt)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Error generating refined task: %v", err))
 		logger.Error("Error generating refined task: %v", err)
 		return originalTask
 	}
@@ -234,14 +229,13 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	// Parse JSON response
 	err = json.Unmarshal([]byte(result.Content), &refinementData)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to parse refinement response: %v", err))
 		logger.Error("Failed to parse refinement response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
 		return originalTask
 	}
 
 	// Stop spinner and show the refined task
-	spinnerInstance.Stop("Task refinement complete")
+	logger.Info("Task refinement complete")
 
 	// Show the refinement results
 	fmt.Println("\n✨ Refined Task Description:")
@@ -278,7 +272,6 @@ func parseFlags() *Configuration {
 	dryRunFlag := flag.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	noSpinnerFlag := flag.Bool("no-spinner", false, "Disable spinner animation during API calls")
 	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
 
 	// Set custom usage message
@@ -308,7 +301,6 @@ func parseFlags() *Configuration {
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
-	config.NoSpinner = *noSpinnerFlag
 	config.ClarifyTask = *clarifyTaskFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv(apiKeyEnvVar)
@@ -426,16 +418,16 @@ func initGeminiClient(ctx context.Context, config *Configuration, logger logutil
 
 // gatherContext collects and processes files based on configuration
 func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Log appropriate message based on mode and start spinner
 	if config.DryRun {
-		spinnerInstance.Start("Gathering files that would be included in context...")
+		logger.Info("Gathering files that would be included in context...")
+		logger.Debug("Gathering files that would be included in context...")
 		logger.Info("Dry run mode: gathering files that would be included in context...")
 	} else {
-		spinnerInstance.Start("Gathering project context...")
 		logger.Info("Gathering project context...")
+		logger.Debug("Gathering project context...")
 	}
 
 	// Setup file processing configuration
@@ -454,30 +446,31 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 	// Gather project context
 	projectContext, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed during project context gathering: %v", err))
+		logger.Error("Failed during project context gathering: %v", err)
 		logger.Fatal("Failed during project context gathering: %v", err)
 	}
 
 	// Log warning if no files were processed
 	if processedFilesCount == 0 {
-		spinnerInstance.Stop("No files were processed for context. Check paths and filters.")
+		logger.Info("No files were processed for context. Check paths and filters.")
 		logger.Warn("No files were processed for context. Check paths and filters.")
 		return projectContext
 	}
 
 	// Update spinner message and calculate statistics
-	spinnerInstance.UpdateMessage("Calculating token statistics...")
+	logger.Info("Calculating token statistics...")
+	logger.Debug("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, geminiClient, projectContext, logger)
 
 	// Handle dry run mode specific output
 	if config.DryRun {
-		spinnerInstance.Stop(fmt.Sprintf("Context gathered: %d files, %d lines, %d chars, %d tokens",
-			processedFilesCount, lineCount, charCount, tokenCount))
+		logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
+			processedFilesCount, lineCount, charCount, tokenCount)
 		displayDryRunInfo(charCount, lineCount, tokenCount, processedFilesCount, processedFiles, ctx, geminiClient, logger)
 	} else if config.LogLevel == logutil.DebugLevel || processedFilesCount > 0 {
 		// Normal run mode
-		spinnerInstance.Stop(fmt.Sprintf("Context gathered: %d files, %d lines, %d chars, %d tokens",
-			processedFilesCount, lineCount, charCount, tokenCount))
+		logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
+			processedFilesCount, lineCount, charCount, tokenCount)
 		logger.Info("Context gathered: %d files processed, %d lines, %d chars, %d tokens.",
 			processedFilesCount, lineCount, charCount, tokenCount)
 	}
@@ -565,17 +558,17 @@ func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, g
 func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
 
-	// Initialize spinner
-	spinnerInstance := initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Construct prompt using the provided prompt manager
-	spinnerInstance.Start("Building prompt template...")
+	logger.Info("Building prompt template...")
+	logger.Debug("Building prompt template...")
 	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
 	if err != nil {
-		spinnerInstance.StopFail(fmt.Sprintf("Failed to build prompt: %v", err))
+		logger.Error("Failed to build prompt: %v", err)
 		logger.Fatal("Failed to build prompt: %v", err)
 	}
-	spinnerInstance.Stop("Prompt template built successfully")
+	logger.Info("Prompt template built successfully")
 
 	// Debug logging of prompt details
 	if config.LogLevel == logutil.DebugLevel {
@@ -584,10 +577,11 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	}
 
 	// Get token count for confirmation and limit checking
-	spinnerInstance.Start("Checking token limits...")
+	logger.Info("Checking token limits...")
+	logger.Debug("Checking token limits...")
 	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
 	if err != nil {
-		spinnerInstance.StopFail("Token count check failed")
+		logger.Error("Token count check failed")
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
@@ -609,13 +603,13 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// If token limit is exceeded, abort
 	if tokenInfo.exceedsLimit {
-		spinnerInstance.StopFail("Token limit exceeded")
+		logger.Error("Token limit exceeded")
 		logger.Error("Token limit exceeded: %s", tokenInfo.limitError)
 		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		logger.Fatal("Aborting generation to prevent API errors")
 	}
-	spinnerInstance.Stop(fmt.Sprintf("Token check passed: %d / %d (%.1f%%)",
-		tokenInfo.tokenCount, tokenInfo.inputLimit, tokenInfo.percentage))
+	logger.Info("Token check passed: %d / %d (%.1f%%)",
+		tokenInfo.tokenCount, tokenInfo.inputLimit, tokenInfo.percentage)
 
 	// Log token usage for regular (non-debug) mode
 	if config.LogLevel != logutil.DebugLevel {
@@ -632,10 +626,11 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	}
 
 	// Call Gemini API
-	spinnerInstance.Start(fmt.Sprintf("Generating plan using model %s...", config.ModelName))
+	logger.Info("Generating plan using model %s...", config.ModelName)
+	logger.Debug("Generating plan using model %s...", config.ModelName)
 	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
-		spinnerInstance.StopFail("Generation failed")
+		logger.Error("Generation failed")
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
@@ -656,7 +651,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Process API response
 	generatedPlan := processApiResponse(result, logger)
-	spinnerInstance.Stop("Plan generated successfully")
+	logger.Info("Plan generated successfully")
 
 	// Debug logging of results
 	if config.LogLevel == logutil.DebugLevel {
@@ -667,9 +662,10 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	}
 
 	// Write the plan to file
-	spinnerInstance.Start(fmt.Sprintf("Writing plan to %s...", config.OutputFile))
+	logger.Info("Writing plan to %s...", config.OutputFile)
+	logger.Debug("Writing plan to %s...", config.OutputFile)
 	saveToFile(generatedPlan, config.OutputFile, logger)
-	spinnerInstance.Stop(fmt.Sprintf("Plan saved to %s", config.OutputFile))
+	logger.Info("Plan saved to %s", config.OutputFile)
 }
 
 // processApiResponse extracts content from the API response and handles errors
@@ -730,26 +726,7 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 	logger.Info("Successfully generated plan and saved to %s", outputPath)
 }
 
-// initSpinner creates and configures a spinner instance based on config
-func initSpinner(config *Configuration, logger logutil.LoggerInterface) *spinner.Spinner {
-	// Configure spinner options based on user preferences
-	spinnerOptions := &spinner.Options{
-		Enabled:     !config.NoSpinner,
-		CharSet:     14,  // Use circle dots by default
-		RefreshRate: 100, // ms
-		Output:      os.Stdout,
-		Prefix:      " ",
-		Suffix:      " ",
-	}
-
-	// If debug mode, disable spinner to avoid cluttering logs
-	if config.LogLevel == logutil.DebugLevel {
-		spinnerOptions.Enabled = false
-	}
-
-	// Create spinner instance
-	return spinner.New(logger, spinnerOptions)
-}
+// initSpinner function removed
 
 // promptForConfirmation asks for user confirmation to proceed
 func promptForConfirmation(tokenCount int32, threshold int, logger logutil.LoggerInterface) bool {
@@ -876,7 +853,6 @@ func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 		"clarify_task":        cliConfig.ClarifyTask,
 		"dry_run":             cliConfig.DryRun,
 		"confirm_tokens":      cliConfig.ConfirmTokens,
-		"no_spinner":          cliConfig.NoSpinner,
 		"paths":               cliConfig.Paths,
 		"api_key":             cliConfig.ApiKey,
 		"templates.default":   cliConfig.PromptTemplate, // Map prompt template to config format
@@ -917,9 +893,6 @@ func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.App
 	}
 	if !isFlagSet("confirm-tokens") {
 		config.ConfirmTokens = appConfig.ConfirmTokens
-	}
-	if !isFlagSet("no-spinner") {
-		config.NoSpinner = appConfig.NoSpinner
 	}
 	if !isFlagSet("clarify") {
 		config.ClarifyTask = appConfig.ClarifyTask
