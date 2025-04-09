@@ -6,35 +6,57 @@
  */
 import { runThinktank, RunOptions } from '../runThinktank';
 import * as formatUtils from '../../utils/formatCompletionSummary';
-import * as logger from '../../utils/logger';
+import { ConsoleLogger } from '../../core/interfaces';
+import { FileSystem } from '../../core/interfaces';
+import { ConfigManagerInterface } from '../../core/interfaces';
+import { LLMClient } from '../../core/interfaces';
 
-// Mock implementations
-jest.mock('../../utils/logger', () => {
-  const mockLogger = {
-    plain: jest.fn(),
-    error: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-    warn: jest.fn(),
-    success: jest.fn(),
-    verbose: jest.fn(),
-    setLevel: jest.fn(),
-    getLevel: jest.fn(),
-    configure: jest.fn()
-  };
+// Mock the formatCompletionSummary function
+jest.mock('../../utils/formatCompletionSummary', () => {
   return {
-    logger: mockLogger,
-    Logger: jest.fn().mockImplementation(() => mockLogger)
+    formatCompletionSummary: jest.fn().mockReturnValue({
+      summaryText: 'Mock summary text',
+      errorDetails: ['Mock error detail 1', 'Mock error detail 2']
+    })
   };
 });
 
-// Mock formatCompletionSummary
-jest.mock('../../utils/formatCompletionSummary', () => ({
-  formatCompletionSummary: jest.fn().mockReturnValue({
-    summaryText: 'Mock summary text',
-    errorDetails: ['Mock error detail 1', 'Mock error detail 2']
+// Create mock implementations for dependencies
+const mockFileSystem: jest.Mocked<FileSystem> = {
+  readFileContent: jest.fn().mockResolvedValue(''),
+  writeFile: jest.fn().mockResolvedValue(undefined),
+  fileExists: jest.fn().mockResolvedValue(true),
+  mkdir: jest.fn().mockResolvedValue(undefined),
+  readdir: jest.fn().mockResolvedValue([]),
+  stat: jest.fn().mockResolvedValue({} as any),
+  access: jest.fn().mockResolvedValue(undefined),
+  getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
+  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+};
+
+const mockConfigManager: jest.Mocked<ConfigManagerInterface> = {
+  loadConfig: jest.fn().mockResolvedValue({}),
+  saveConfig: jest.fn().mockResolvedValue(undefined),
+  getActiveConfigPath: jest.fn().mockResolvedValue('/mock/config/path'),
+  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config/path')
+};
+
+const mockLlmClient: jest.Mocked<LLMClient> = {
+  generate: jest.fn().mockResolvedValue({
+    model: 'mock:model',
+    response: 'Mock response',
+    error: null
   })
-}));
+};
+
+const mockConsoleLogger: jest.Mocked<ConsoleLogger> = {
+  plain: jest.fn(),
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  success: jest.fn(),
+  debug: jest.fn()
+};
 
 // Mock other functions called by runThinktank
 jest.mock('../runThinktankHelpers', () => ({
@@ -108,10 +130,15 @@ jest.mock('../../utils/spinnerFactory', () => {
   };
 });
 
-// Mock classes
-jest.mock('../../core/FileSystem');
-jest.mock('../../core/ConcreteConfigManager');
-jest.mock('../../core/LLMClient');
+// Mock write files functions
+jest.mock('../io', () => ({
+  writeFiles: jest.fn().mockResolvedValue({
+    successCount: 1,
+    errorCount: 0,
+    timing: { startTime: 1, endTime: 2, durationMs: 1 }
+  }),
+  updateSpinnerWithFileOutput: jest.fn()
+}));
 
 describe('runThinktank Completion Summary Integration', () => {
   // Reset all mocks before each test
@@ -126,7 +153,13 @@ describe('runThinktank Completion Summary Integration', () => {
     };
 
     // Run the function
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLlmClient,
+      mockConsoleLogger
+    );
 
     // Verify formatCompletionSummary was called with expected data
     expect(formatUtils.formatCompletionSummary).toHaveBeenCalledTimes(1);
@@ -149,12 +182,18 @@ describe('runThinktank Completion Summary Integration', () => {
     };
 
     // Run the function
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLlmClient,
+      mockConsoleLogger
+    );
 
-    // Verify logger.logger.plain was called with summary text and error details
-    expect(logger.logger.plain).toHaveBeenCalledWith('Mock summary text');
-    expect(logger.logger.plain).toHaveBeenCalledWith('Mock error detail 1');
-    expect(logger.logger.plain).toHaveBeenCalledWith('Mock error detail 2');
+    // Verify the mock ConsoleLogger was called with summary text and error details
+    expect(mockConsoleLogger.plain).toHaveBeenCalledWith('Mock summary text');
+    expect(mockConsoleLogger.plain).toHaveBeenCalledWith('Mock error detail 1');
+    expect(mockConsoleLogger.plain).toHaveBeenCalledWith('Mock error detail 2');
   });
 
   it('should pass useColors option from options', async () => {
@@ -165,7 +204,13 @@ describe('runThinktank Completion Summary Integration', () => {
     };
 
     // Run the function
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLlmClient,
+      mockConsoleLogger
+    );
 
     // Verify formatCompletionSummary was called with useColors: false
     expect(formatUtils.formatCompletionSummary).toHaveBeenCalledWith(
