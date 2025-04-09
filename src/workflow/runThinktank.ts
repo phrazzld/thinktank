@@ -151,6 +151,13 @@ export interface RunOptions {
    * Set internally during run execution - not meant to be provided by users
    */
   friendlyRunName?: string;
+
+  /**
+   * Whether to validate API keys for the selected models
+   * Default: true in normal operation, can be set to false in tests
+   * This is primarily used to bypass API key validation in test environments
+   */
+  validateApiKeys?: boolean;
 }
 
 // ThinktankError class is now imported from src/core/errors.ts

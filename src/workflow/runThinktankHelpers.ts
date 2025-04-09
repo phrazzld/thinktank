@@ -508,8 +508,8 @@ export function _selectModels({
       groupName: options.groupName,
       models: options.models,
       groups: options.groups,
-      includeDisabled: true, // Always include disabled models in results
-      validateApiKeys: true, // Always validate API keys
+      includeDisabled: true,  // Always include disabled models in results
+      validateApiKeys: options.validateApiKeys !== false  // Respect validateApiKeys option from RunOptions, defaulting to true
     });
 
     // 4. Display warnings if any

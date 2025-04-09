@@ -1,0 +1,52 @@
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  ci:                          # Job ID
+    name: Lint, Test, Build    # Job Name
+    runs-on: ubuntu-latest     # Runner Specification
+    steps:                     # Steps start here
+      - name: Checkout code    # Step to checkout the repository code
+        uses: actions/checkout@v4 # Use the official checkout action v4
+
+      - name: Set up Node.js   # Step to setup Node.js environment
+        uses: actions/setup-node@v4 # Use the official setup-node action v4
+        with:
+          node-version: '20'   # Specify Node.js LTS version 20
+
+      - name: Set up pnpm      # Step to setup pnpm
+        uses: pnpm/action-setup@v4 # Use the official pnpm setup action v4
+        with:
+          version: latest      # Use the latest stable version of pnpm
+
+      - name: Get pnpm store directory     # Step to get pnpm store path for caching
+        id: pnpm-cache                     # ID to reference this step
+        shell: bash                        # Specify bash shell
+        run: |                             # Run command to get store path
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Setup pnpm cache             # Step to setup cache for pnpm store
+        uses: actions/cache@v4             # Use the official cache action v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}    # Cache the pnpm store
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}    # Primary cache key
+          restore-keys: |                  # Fallback cache keys
+            ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies         # Step to install project dependencies
+        run: pnpm install --frozen-lockfile  # Use frozen lockfile for consistent installations
+
+      - name: Run linter                   # Step to run code linting
+        run: pnpm run lint                 # Execute the lint script defined in package.json
+
+      - name: Run tests                    # Step to run tests
+        run: pnpm test                     # Execute the test script defined in package.json
+
+      - name: Build project                # Step to build the project
+        run: pnpm run build                # Execute the build script defined in package.json
