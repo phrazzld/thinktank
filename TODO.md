@@ -58,7 +58,7 @@
   - **Depends On:** Define result data interfaces
   - **AC Ref:** AC 2.1 (Modify functions to return data)
 
-- [ ] **Refactor `writeResponsesToFiles` in outputHandler.ts**
+- [x] **Refactor `writeResponsesToFiles` in outputHandler.ts**
   - **Action:** Convert to pure function that prepares file data without actual I/O.
   - **Depends On:** Define result data interfaces
   - **AC Ref:** AC 2.1 (Modify functions to return data)

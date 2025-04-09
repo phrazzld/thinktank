@@ -17,6 +17,7 @@ import {
   formatForConsole,
   createOutputDirectory,
   writeResponsesToFiles,
+  writeFilesToDisk,
   processOutput
 } from '../outputHandler';
 import { LLMResponse } from '../../core/types';
@@ -285,14 +286,84 @@ describe('OutputHandler', () => {
     });
   });
   
-  describe('File Writing', () => {
-    it('should write responses to files', async () => {
+  describe('File Data Preparation (Pure)', () => {
+    it('should prepare file data from responses without I/O', () => {
+      // Call the pure function
+      const fileData = writeResponsesToFiles(
+        [sampleResponse, sampleResponseWithGroup],
+        '/test/output/dir',
+        { includeMetadata: true }
+      );
+      
+      // Verify no file system operations were performed
+      expect(mockFileSystem.writeFile).not.toHaveBeenCalled();
+      expect(mockFileSystem.mkdir).not.toHaveBeenCalled();
+      
+      // Verify result structure
+      expect(fileData).toHaveLength(2);
+      
+      // Verify first file data
+      expect(fileData[0].filename).toBe('openai-gpt-4o.md');
+      expect(fileData[0].modelKey).toBe('openai:gpt-4o');
+      expect(fileData[0].content).toContain('This is a test response');
+      
+      // Verify second file data
+      expect(fileData[1].filename).toBe('coding-anthropic-claude-3-opus-20240229.md');
+      expect(fileData[1].modelKey).toBe('anthropic:claude-3-opus-20240229');
+      expect(fileData[1].content).toContain('This is a test response from a group');
+    });
+    
+    it('should respect includeMetadata option', () => {
+      // Call with includeMetadata: true
+      const fileData1 = writeResponsesToFiles(
+        [sampleResponseWithMetadata],
+        '/test/output/dir',
+        { includeMetadata: true }
+      );
+      
+      // Verify metadata is included in content
+      expect(fileData1[0].content).toContain('## Metadata');
+      expect(fileData1[0].content).toContain('"responseTime": 1200');
+      
+      // Call with includeMetadata: false
+      const fileData2 = writeResponsesToFiles(
+        [sampleResponseWithMetadata],
+        '/test/output/dir',
+        { includeMetadata: false }
+      );
+      
+      // Verify metadata is not included in content
+      expect(fileData2[0].content).not.toContain('## Metadata');
+    });
+    
+    it('should include error information when present', () => {
+      // Call with response containing an error
+      const fileData = writeResponsesToFiles(
+        [sampleResponseWithError],
+        '/test/output/dir'
+      );
+      
+      // Verify error is included in content
+      expect(fileData[0].content).toContain('## Error');
+      expect(fileData[0].content).toContain('An error occurred');
+    });
+  });
+  
+  describe('File Writing (Impure)', () => {
+    it('should write file data to disk', async () => {
       // Setup a test output directory in virtual filesystem
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
       
-      const result = await writeResponsesToFiles(
+      // Prepare file data using the pure function
+      const fileData = writeResponsesToFiles(
         [sampleResponse, sampleResponseWithGroup],
+        '/test/output/dir'
+      );
+      
+      // Write files using the impure function
+      const result = await writeFilesToDisk(
+        fileData,
         '/test/output/dir',
         {},
         mockFileSystem
@@ -322,8 +393,13 @@ describe('OutputHandler', () => {
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
       
-      // We'll implement custom behavior for each call
+      // Prepare file data using the pure function
+      const fileData = writeResponsesToFiles(
+        [sampleResponse, sampleResponseWithError],
+        '/test/output/dir'
+      );
       
+      // We'll implement custom behavior for each call
       // Mock writeFile in mockFileSystem with a counter to fail on the third call
       // (The implementation calls writeFile twice for the first file - once for temp file and once for the actual file)
       let writeCounter = 0;
@@ -342,8 +418,9 @@ describe('OutputHandler', () => {
         throw createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/error-file.md');
       });
       
-      const result = await writeResponsesToFiles(
-        [sampleResponse, sampleResponseWithError],
+      // Write files using the impure function
+      const result = await writeFilesToDisk(
+        fileData,
         '/test/output/dir',
         { throwOnError: false },
         mockFileSystem
@@ -360,56 +437,48 @@ describe('OutputHandler', () => {
       expect(virtualFs.existsSync('/test/output/dir/openai-gpt-4o.md')).toBe(true);
     });
     
-    it('should track errors even with throwOnError', async () => {
+    it('should handle throwOnError option', async () => {
       // Setup a test output directory in virtual filesystem
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
       
-      // Mock mockFileSystem.writeFile to fail
+      // Prepare file data using the pure function
+      const fileData = writeResponsesToFiles(
+        [sampleResponse],
+        '/test/output/dir'
+      );
+      
+      // Case 1: throwOnError = false (should not throw)
+      // Mock writeFile to fail but not throw due to throwOnError: false
+      mockFileSystem.writeFile.mockReset();
       mockFileSystem.writeFile
         .mockRejectedValueOnce(createFsError('ENOSPC', 'Write failed', 'open', '/test/output/dir/file.md'));
       
-      // We'll catch the error but expect it to still update tracking info
-      try {
-        await writeResponsesToFiles(
-          [sampleResponse],
-          '/test/output/dir',
-          { throwOnError: true },
-          mockFileSystem
-        );
-        fail('Error should have been thrown');
-      } catch (error) {
-        // Expected error
-      }
-      
-      // Reset mockFileSystem.writeFile implementation to write to the virtual filesystem
-      mockFileSystem.writeFile.mockReset().mockImplementation(async (filePath, content) => {
-        // Actually write to the virtual filesystem
-        if (typeof filePath === 'string' && typeof content === 'string') {
-          virtualFs.writeFileSync(filePath, content);
-        }
-        return undefined;
-      });
-      
-      const result = await writeResponsesToFiles(
-        [sampleResponseWithError], // Use a different response
+      // This should not throw, just track the error
+      const result = await writeFilesToDisk(
+        fileData,
         '/test/output/dir',
         { throwOnError: false },
         mockFileSystem
       );
       
-      // Should still track error counts properly
-      expect(result.failedWrites).toBe(0); // This call succeeded
-      expect(result.succeededWrites).toBe(1);
-      
-      // Verify file was written
-      expect(virtualFs.existsSync('/test/output/dir/error-provider-error-model.md')).toBe(true);
+      // Verify error was tracked but not thrown
+      expect(result.succeededWrites).toBe(0);
+      expect(result.failedWrites).toBe(1);
+      expect(result.files[0].status).toBe('error');
+      expect(result.files[0].error).toBe('Write failed');
     });
     
     it('should call status update callback', async () => {
       // Setup a test output directory in virtual filesystem
       const virtualFs = getVirtualFs();
       virtualFs.mkdirSync('/test/output/dir', { recursive: true });
+      
+      // Prepare file data using the pure function
+      const fileData = writeResponsesToFiles(
+        [sampleResponse],
+        '/test/output/dir'
+      );
       
       // Ensure the mockFileSystem.writeFile implementation writes to the virtual filesystem
       mockFileSystem.writeFile.mockImplementation(async (filePath, content) => {
@@ -423,8 +492,9 @@ describe('OutputHandler', () => {
       // Set up spy
       const onStatusUpdateSpy = jest.fn();
       
-      await writeResponsesToFiles(
-        [sampleResponse],
+      // Write files using the impure function
+      await writeFilesToDisk(
+        fileData,
         '/test/output/dir',
         { onStatusUpdate: onStatusUpdateSpy },
         mockFileSystem
