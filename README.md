@@ -20,7 +20,7 @@ Built with TypeScript and designed with extensibility in mind, thinktank provide
 ### Prerequisites
 
 - Node.js 18.x or higher
-- npm or yarn
+- pnpm ([installation instructions](https://pnpm.io/installation))
 
 ### Install from source
 
@@ -30,13 +30,13 @@ git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 
 # Install dependencies
-npm install
+pnpm install
 
 # Build the project
-npm run build
+pnpm run build
 
 # Install globally
-npm install -g .
+pnpm add -g .
 ```
 
 ### Environment Variables
