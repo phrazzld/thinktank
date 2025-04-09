@@ -17,6 +17,7 @@ import {
 import {
   setupBasicFs,
   setupWithSingleFile,
+  normalizePathForMemfs
 } from '../../../test/setup/fs';
 import fsPromises from 'fs/promises';
 
@@ -27,7 +28,8 @@ const mockedOs = jest.mocked(os);
 
 describe('File Reader', () => {
   describe('writeFile', () => {
-    const testFilePath = '/path/to/test/file.txt';
+    // Use normalizePathForMemfs to properly handle memfs paths
+    const testFilePath = normalizePathForMemfs('/path/to/test/file.txt');
     const testContent = 'Test content to write';
 
     beforeEach(() => {
@@ -226,7 +228,8 @@ describe('File Reader', () => {
   });
 
   describe('readFileContent', () => {
-    const testFilePath = '/path/to/test/file.txt';
+    // Use normalizePathForMemfs to properly handle memfs paths
+    const testFilePath = normalizePathForMemfs('/path/to/test/file.txt');
     const testContent = 'This is a test content\nwith multiple lines.';
 
     beforeEach(() => {
@@ -299,7 +302,8 @@ describe('File Reader', () => {
   });
 
   describe('fileExists', () => {
-    const testFilePath = '/path/to/test/file.txt';
+    // Use normalizePathForMemfs to properly handle memfs paths
+    const testFilePath = normalizePathForMemfs('/path/to/test/file.txt');
     const testContent = 'This is a test content\nwith multiple lines.';
 
     beforeEach(() => {
@@ -316,7 +320,8 @@ describe('File Reader', () => {
     });
 
     it('should return false when file does not exist', async () => {
-      const result = await fileExists('/nonexistent/file.txt');
+      const nonexistentFile = normalizePathForMemfs('/nonexistent/file.txt');
+      const result = await fileExists(nonexistentFile);
 
       expect(result).toBe(false);
     });

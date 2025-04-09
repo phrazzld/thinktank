@@ -86,7 +86,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** None.
   - **AC Ref:** AC 1.1.
 
-- [ ] **Refactor FileSystem.test.ts for behavior testing**
+- [x] **Refactor FileSystem.test.ts for behavior testing**
   - **Action:** Rewrite `src/core/__tests__/FileSystem.test.ts` to test behavior using the virtual filesystem.
   - **Technical Details:**
     - Remove mocking of internal `fileReader` calls.
@@ -121,7 +121,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** None.
   - **AC Ref:** AC 1.2.
 
-- [ ] **Audit and standardize path normalization across tests**
+- [x] **Audit and standardize path normalization across tests**
   - **Action:** Ensure all tests consistently use the correct path normalization functions.
   - **Technical Details:**
     - Search for string paths in test files, especially Windows-style paths (`\\`).
@@ -133,7 +133,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** None.
   - **AC Ref:** AC 1.3.
 
-- [ ] **Create path normalization testing guide**
+- [x] **Create path normalization testing guide**
   - **Action:** Document the path normalization strategy for tests in READMEs.
   - **Technical Details:**
     - Add a section to `jest/README.md` explaining when to use each normalizer.

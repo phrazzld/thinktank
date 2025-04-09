@@ -12,8 +12,11 @@ import {
   createVirtualFs, 
   getVirtualFs,
   createFsError as createFsErrorUtil,
-  normalizePathForMemfs
+  normalizePathForMemfs as normalizePathForMemfsImpl
 } from '../../src/__tests__/utils/virtualFsUtils';
+
+// Re-export normalizePathForMemfs for convenient use in tests
+export const normalizePathForMemfs = normalizePathForMemfsImpl;
 import { normalizePathGeneral } from '../../src/utils/pathUtils';
 import { FileSystem } from '../../src/core/interfaces';
 

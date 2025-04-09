@@ -93,3 +93,78 @@ For existing tests using these patterns, consider migrating them to the new appr
 ## Migration Guide
 
 If you're migrating from older testing patterns, see the [Migration Guide](../test/setup/README.md#migration-from-legacy-patterns) in the Test Setup Helpers documentation.
+
+## Path Normalization in Tests
+
+To ensure cross-platform compatibility in tests, always use path normalization functions when interacting with file paths. This is especially important when testing with the virtual file system (memfs).
+
+### When to Use Which Normalizer
+
+thinktank provides two main path normalization functions for different contexts:
+
+1. **`normalizePathForMemfs`**: Use this when working with the virtual filesystem (memfs).
+
+   - For all paths passed to/from memfs operations
+   - When creating file structures with `setupBasicFs` or `createVirtualFs` 
+   - When interacting with the `FileSystem` interface in tests
+
+   ```typescript
+   // Good examples:
+   const testFilePath = normalizePathForMemfs('/path/to/file.txt');
+   
+   // For keys in the structure object passed to setupBasicFs:
+   setupBasicFs({
+     [normalizePathForMemfs('/path/to/file.txt')]: 'File content',
+     [normalizePathForMemfs(path.join(baseDir, 'config.json'))]: '{"setting": true}'
+   });
+   
+   // When accessing files through the virtual filesystem:
+   const vfs = getVirtualFs();
+   vfs.mkdirSync(normalizePathForMemfs('/dir/subdir'), { recursive: true });
+   
+   // When using FileSystem interface:
+   await fileSystem.readFileContent(normalizePathForMemfs('/config.json'));
+   ```
+
+2. **`normalizePathGeneral`**: Use for general path normalization not directly related to virtual filesystem.
+
+   - For path comparisons in expectations
+   - For display/logging of paths
+   - For paths that need normalization but don't interact with memfs
+
+   ```typescript
+   // Good examples:
+   const expected = normalizePathGeneral('/base/path/file'); 
+   expect(normalizePathGeneral(resultPath)).toBe(expected);
+   
+   // Or better yet, use normalizePathsForComparison:
+   const [actualNorm, expectedNorm] = normalizePathsForComparison(resultPath, expected);
+   expect(actualNorm).toBe(expectedNorm);
+   ```
+
+### Windows vs. Unix Path Separators
+
+- **Always use forward slashes** (`/`) in hardcoded path strings in tests
+- **Avoid direct use of backslashes** (`\`) in paths
+- **Use `path.join`** for constructing complex paths, then normalize the result:
+  
+  ```typescript
+  // Constructing and normalizing a path:
+  const testPath = normalizePathForMemfs(path.join(baseDir, 'subdir', 'file.txt'));
+  ```
+
+### Testing Path-Based Functions
+
+When testing functions that work with paths:
+
+1. Test with simple paths (`/file.txt`)
+2. Test with nested paths (`/dir/subdir/file.txt`) 
+3. Consider testing with special characters where appropriate
+4. For cross-platform path handling (Windows/Unix), use the normalize functions
+
+### Best Practices
+
+1. **Be Consistent**: Choose the appropriate normalizer based on the context and use it consistently
+2. **Document Usage**: Add comments explaining normalization in complex test setup
+3. **Test Platform Independence**: Ensure tests pass on both Windows and Unix-like systems
+4. **Avoid Direct Path Manipulation**: Use the provided utilities instead of manually handling path separators
