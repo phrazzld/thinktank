@@ -7,7 +7,7 @@
   - **Depends On:** None.
   - **AC Ref:** Key Step 1.
 
-- [ ] **Replace spinner start/stop messages with logger in main.go**
+- [x] **Replace spinner start/stop messages with logger in main.go**
   - **Action:** Replace all `spinnerInstance.Start(msg)` and `spinnerInstance.Stop(msg)` calls with equivalent `logger.Info(msg)` calls in main.go, preserving the informational content.
   - **Depends On:** Identify all spinner usage in main.go.
   - **AC Ref:** Key Step 1.
