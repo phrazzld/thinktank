@@ -47,7 +47,7 @@
   - **Depends On:** Implement pnpm caching
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 74-75)
 
-- [ ] **Add linting step**
+- [x] **Add linting step**
   - **Action:** Add the step to run the linter using `pnpm run lint`.
   - **Depends On:** Add dependency installation step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 77-78), Key Goals 1 (PLAN.md line 9), Success Criteria 2 (PLAN.md line 136)

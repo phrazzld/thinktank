@@ -41,4 +41,7 @@ jobs:
 
       - name: Install dependencies         # Step to install project dependencies
         run: pnpm install --frozen-lockfile  # Use frozen lockfile for consistent installations
+
+      - name: Run linter                   # Step to run code linting
+        run: pnpm run lint                 # Execute the lint script defined in package.json
       # Subsequent steps will be added in following tasks
