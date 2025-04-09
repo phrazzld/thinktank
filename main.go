@@ -140,6 +140,7 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	// Build prompt for clarification (template loading is handled internally)
 	logger.Info("Analyzing task description...")
+	logger.Debug("Analyzing task description...")
 	data := &prompt.TemplateData{
 		Task: originalTask,
 	}
@@ -152,6 +153,7 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	// Call Gemini to generate clarification questions
 	logger.Info("Generating clarification questions...")
+	logger.Debug("Generating clarification questions...")
 	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
 	if err != nil {
 		logger.Error("Error generating clarification questions: %v", err)
@@ -200,6 +202,7 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	// Now refine the task with the answers
 	logger.Info("Refining task description...")
+	logger.Debug("Refining task description...")
 
 	// Build prompt for refinement (template loading is handled internally)
 	refineData := &prompt.TemplateData{
@@ -426,9 +429,11 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 	// Log appropriate message based on mode and start spinner
 	if config.DryRun {
 		logger.Info("Gathering files that would be included in context...")
+		logger.Debug("Gathering files that would be included in context...")
 		logger.Info("Dry run mode: gathering files that would be included in context...")
 	} else {
 		logger.Info("Gathering project context...")
+		logger.Debug("Gathering project context...")
 	}
 
 	// Setup file processing configuration
@@ -460,6 +465,7 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 
 	// Update spinner message and calculate statistics
 	logger.Info("Calculating token statistics...")
+	logger.Debug("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, geminiClient, projectContext, logger)
 
 	// Handle dry run mode specific output
@@ -563,6 +569,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Construct prompt using the provided prompt manager
 	logger.Info("Building prompt template...")
+	logger.Debug("Building prompt template...")
 	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
 	if err != nil {
 		logger.Error("Failed to build prompt: %v", err)
@@ -578,6 +585,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Get token count for confirmation and limit checking
 	logger.Info("Checking token limits...")
+	logger.Debug("Checking token limits...")
 	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
 	if err != nil {
 		logger.Error("Token count check failed")
@@ -626,6 +634,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Call Gemini API
 	logger.Info("Generating plan using model %s...", config.ModelName)
+	logger.Debug("Generating plan using model %s...", config.ModelName)
 	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
 		logger.Error("Generation failed")
@@ -661,6 +670,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Write the plan to file
 	logger.Info("Writing plan to %s...", config.OutputFile)
+	logger.Debug("Writing plan to %s...", config.OutputFile)
 	saveToFile(generatedPlan, config.OutputFile, logger)
 	logger.Info("Plan saved to %s", config.OutputFile)
 }
