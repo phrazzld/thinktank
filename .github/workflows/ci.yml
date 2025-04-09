@@ -11,5 +11,7 @@ jobs:
   ci:                          # Job ID
     name: Lint, Test, Build    # Job Name 
     runs-on: ubuntu-latest     # Runner Specification
-    steps:                     # Initial steps structure
-      # Empty placeholder for steps that will be added in subsequent tasks
+    steps:                     # Steps start here
+      - name: Checkout code    # Step to checkout the repository code
+        uses: actions/checkout@v4 # Use the official checkout action v4
+      # Subsequent steps will be added in following tasks
