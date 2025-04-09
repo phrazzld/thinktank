@@ -42,7 +42,7 @@
   - **Depends On:** Remove no-spinner flag from parseFlags in main.go.
   - **AC Ref:** Key Step 2.
 
-- [ ] **Remove NoSpinner field from AppConfig struct**
+- [x] **Remove NoSpinner field from AppConfig struct**
   - **Action:** Remove the `NoSpinner` boolean field from the `AppConfig` struct definition in internal/config/config.go.
   - **Depends On:** Remove NoSpinner field from Configuration struct in main.go.
   - **AC Ref:** Key Step 2.

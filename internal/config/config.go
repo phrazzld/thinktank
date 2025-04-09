@@ -70,7 +70,6 @@ type AppConfig struct {
 	Verbose   bool             `mapstructure:"verbose" toml:"verbose"`
 	LogLevel  logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
 	UseColors bool             `mapstructure:"use_colors" toml:"use_colors"`
-	NoSpinner bool             `mapstructure:"no_spinner" toml:"no_spinner"`
 	DryRun    bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
 
 	// Template settings (hierarchical)
