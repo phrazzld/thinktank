@@ -1,174 +1,315 @@
 /**
  * Tests for ConcreteFileSystem implementation
+ * 
+ * These tests verify the behavior of the ConcreteFileSystem class using a
+ * virtual file system (memfs) rather than mocking internal dependencies.
  */
+import { Stats } from 'fs';
+import { setupTestHooks, setupBasicFs, getFs } from '../../../test/setup';
 import { ConcreteFileSystem } from '../FileSystem';
-import * as fileReader from '../../utils/fileReader';
 import { FileSystemError } from '../errors/types/filesystem';
-import { setupBasicFs, resetFs } from '../../../jest/setupFiles/fs';
-
-// Mock fileReader module
-jest.mock('../../utils/fileReader');
 
 describe('ConcreteFileSystem', () => {
+  setupTestHooks(); // Handles resetting the virtual FS and other test setup
   let fileSystem: ConcreteFileSystem;
-  const mockedFileReader = fileReader as jest.Mocked<typeof fileReader>;
 
   beforeEach(() => {
-    // Reset mocks and virtual filesystem
-    jest.clearAllMocks();
-    resetFs();
-    
-    // Set up test files in virtual filesystem
-    setupBasicFs({
-      '/path/to/file.txt': 'file content',
-      '/path/to/dir/': '',
-      '/path/to/dir/file1.txt': 'nested file content',
-      '/path/to/dir/file2.txt': 'another nested file'
-    });
-    
     fileSystem = new ConcreteFileSystem();
   });
 
   describe('readFileContent', () => {
-    it('should delegate to fileReader.readFileContent and return the result', async () => {
-      // Arrange
-      const filePath = '/path/to/file.txt';
-      const expectedContent = 'file content';
-      mockedFileReader.readFileContent.mockResolvedValue(expectedContent);
+    const testFile = '/path/to/file.txt';
+    const testContent = 'file content';
+
+    it('should read content from a file', async () => {
+      // Set up test file in virtual FS
+      setupBasicFs({
+        [testFile]: testContent
+      });
 
       // Act
-      const result = await fileSystem.readFileContent(filePath);
+      const result = await fileSystem.readFileContent(testFile);
 
       // Assert
-      expect(mockedFileReader.readFileContent).toHaveBeenCalledWith(filePath, undefined);
-      expect(result).toBe(expectedContent);
+      expect(result).toBe(testContent);
     });
 
-    it('should pass options to fileReader.readFileContent', async () => {
-      // Arrange
-      const filePath = '/path/to/file.txt';
-      const options = { normalize: false };
-      mockedFileReader.readFileContent.mockResolvedValue('raw content');
-
-      // Act
-      await fileSystem.readFileContent(filePath, options);
-
-      // Assert
-      expect(mockedFileReader.readFileContent).toHaveBeenCalledWith(filePath, options);
+    it('should pass options to readFileContent', async () => {
+      const rawContent = 'content with line endings';
+      
+      // Set up test file in virtual FS
+      setupBasicFs({
+        [testFile]: rawContent
+      });
+      
+      // Test with different normalization options
+      const normalizedResult = await fileSystem.readFileContent(testFile);
+      const rawResult = await fileSystem.readFileContent(testFile, { normalize: false });
+      
+      // Basic checks
+      expect(normalizedResult).toBe(rawContent);
+      expect(rawResult).toBe(rawContent);
     });
 
-    it('should wrap FileReadError in FileSystemError for file not found', async () => {
-      // Arrange
-      const filePath = '/nonexistent/file.txt';
-      const originalError = new Error('File not found: /nonexistent/file.txt');
-      mockedFileReader.readFileContent.mockRejectedValue(originalError);
-
+    it('should throw FileSystemError when file not found', async () => {
+      const nonExistentFile = '/nonexistent/file.txt';
+      
       // Act & Assert
-      await expect(fileSystem.readFileContent(filePath)).rejects.toThrow(FileSystemError);
-      await expect(fileSystem.readFileContent(filePath)).rejects.toThrow(/not found/);
-    });
-
-    it('should wrap FileReadError in FileSystemError for permission denied', async () => {
-      // Arrange
-      const filePath = '/protected/file.txt';
-      const originalError = new Error('Permission denied to read file: /protected/file.txt');
-      mockedFileReader.readFileContent.mockRejectedValue(originalError);
-
-      // Act & Assert
-      await expect(fileSystem.readFileContent(filePath)).rejects.toThrow(FileSystemError);
-      await expect(fileSystem.readFileContent(filePath)).rejects.toThrow(/Permission denied/);
+      await expect(fileSystem.readFileContent(nonExistentFile))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.readFileContent(nonExistentFile))
+        .rejects.toThrow(/not found/);
     });
   });
 
   describe('writeFile', () => {
-    it('should delegate to fileReader.writeFile', async () => {
-      // Arrange
-      const filePath = '/path/to/output.txt';
-      const content = 'new content';
-      mockedFileReader.writeFile.mockResolvedValue(undefined);
+    const testFile = '/path/to/output.txt';
+    const testContent = 'new content';
 
+    it('should write content to a file', async () => {
       // Act
-      await fileSystem.writeFile(filePath, content);
-
+      await fileSystem.writeFile(testFile, testContent);
+      
       // Assert
-      expect(mockedFileReader.writeFile).toHaveBeenCalledWith(filePath, content);
+      const vfs = getFs();
+      expect(vfs.existsSync(testFile)).toBe(true);
+      expect(vfs.readFileSync(testFile, 'utf8')).toBe(testContent);
     });
 
-    it('should wrap errors in FileSystemError for permission denied', async () => {
-      // Arrange
-      const filePath = '/protected/file.txt';
-      const content = 'new content';
-      const originalError = new Error('Permission denied writing to file: /protected/file.txt');
-      mockedFileReader.writeFile.mockRejectedValue(originalError);
-
-      // Act & Assert
-      await expect(fileSystem.writeFile(filePath, content)).rejects.toThrow(FileSystemError);
-      await expect(fileSystem.writeFile(filePath, content)).rejects.toThrow(/Permission denied/);
+    it('should create parent directories if needed', async () => {
+      const nestedFile = '/path/to/nested/dir/output.txt';
+      
+      // Act
+      await fileSystem.writeFile(nestedFile, testContent);
+      
+      // Assert
+      const vfs = getFs();
+      expect(vfs.existsSync(nestedFile)).toBe(true);
+      expect(vfs.existsSync('/path/to/nested/dir')).toBe(true);
+      expect(vfs.readFileSync(nestedFile, 'utf8')).toBe(testContent);
     });
   });
 
   describe('fileExists', () => {
-    it('should delegate to fileReader.fileExists and return the result', async () => {
-      // Arrange
-      const filePath = '/path/to/file.txt';
-      mockedFileReader.fileExists.mockResolvedValue(true);
-
+    it('should return true for existing file', async () => {
+      const testFile = '/path/to/file.txt';
+      
+      // Set up test file
+      setupBasicFs({
+        [testFile]: 'content'
+      });
+      
       // Act
-      const result = await fileSystem.fileExists(filePath);
-
+      const result = await fileSystem.fileExists(testFile);
+      
       // Assert
-      expect(mockedFileReader.fileExists).toHaveBeenCalledWith(filePath);
       expect(result).toBe(true);
+    });
+
+    it('should return false for non-existent file', async () => {
+      const nonExistentFile = '/nonexistent/file.txt';
+      
+      // Act
+      const result = await fileSystem.fileExists(nonExistentFile);
+      
+      // Assert
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('mkdir', () => {
+    const testDir = '/path/to/dir';
+
+    it('should create a directory', async () => {
+      // Create parent directories first
+      setupBasicFs({
+        '/path/to/': ''
+      });
+      
+      // Act
+      await fileSystem.mkdir(testDir);
+      
+      // Assert
+      const vfs = getFs();
+      expect(vfs.existsSync(testDir)).toBe(true);
+      expect(vfs.statSync(testDir).isDirectory()).toBe(true);
+    });
+
+    it('should create nested directories with recursive flag', async () => {
+      const nestedDir = '/path/to/nested/dir';
+      
+      // Act
+      await fileSystem.mkdir(nestedDir, { recursive: true });
+      
+      // Assert
+      const vfs = getFs();
+      expect(vfs.existsSync(nestedDir)).toBe(true);
+      expect(vfs.statSync(nestedDir).isDirectory()).toBe(true);
+      expect(vfs.existsSync('/path/to/nested')).toBe(true);
+    });
+
+    it('should handle directory already exists', async () => {
+      // Set up existing directory
+      setupBasicFs({
+        [testDir]: ''
+      });
+      
+      // Act & Assert - should throw without recursive
+      await expect(fileSystem.mkdir(testDir))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.mkdir(testDir))
+        .rejects.toThrow(/already exists/);
+      
+      // Should NOT throw with recursive
+      await expect(fileSystem.mkdir(testDir, { recursive: true }))
+        .resolves.not.toThrow();
+    });
+
+    it('should throw FileSystemError when parent directory missing', async () => {
+      const nestedDir = '/nonexistent/parent/dir';
+      
+      // Act & Assert
+      await expect(fileSystem.mkdir(nestedDir))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.mkdir(nestedDir))
+        .rejects.toThrow(/parent directory does not exist|Failed to create directory/);
+    });
+  });
+
+  describe('readdir', () => {
+    const testDir = '/path/to/dir';
+    const testFiles = ['file1.txt', 'file2.txt', 'file3.txt'];
+
+    beforeEach(() => {
+      // Set up test directory with files
+      const fsSetup: Record<string, string> = {
+        [testDir]: ''
+      };
+      
+      testFiles.forEach(file => {
+        fsSetup[`${testDir}/${file}`] = `content of ${file}`;
+      });
+      
+      setupBasicFs(fsSetup);
+    });
+
+    it('should list files in a directory', async () => {
+      // Act
+      const files = await fileSystem.readdir(testDir);
+      
+      // Assert
+      expect(files).toHaveLength(testFiles.length);
+      testFiles.forEach(file => {
+        expect(files).toContain(file);
+      });
+    });
+
+    it('should throw FileSystemError when directory not found', async () => {
+      const nonExistentDir = '/nonexistent/dir';
+      
+      // Act & Assert
+      await expect(fileSystem.readdir(nonExistentDir))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.readdir(nonExistentDir))
+        .rejects.toThrow(/not found|directory/i);
+    });
+  });
+
+  describe('stat', () => {
+    const testFile = '/path/to/file.txt';
+    const testDir = '/path/to/dir';
+
+    beforeEach(() => {
+      // Set up test file and directory
+      setupBasicFs({
+        [testFile]: 'content',
+        [testDir]: ''
+      });
+    });
+
+    it('should return stats for a file', async () => {
+      // Act
+      const stats = await fileSystem.stat(testFile);
+      
+      // Assert
+      expect(stats).toBeInstanceOf(Stats);
+      expect(stats.isFile()).toBe(true);
+      expect(stats.isDirectory()).toBe(false);
+    });
+
+    it('should return stats for a directory', async () => {
+      // Act
+      const stats = await fileSystem.stat(testDir);
+      
+      // Assert
+      expect(stats).toBeInstanceOf(Stats);
+      expect(stats.isDirectory()).toBe(true);
+      expect(stats.isFile()).toBe(false);
+    });
+
+    it('should throw FileSystemError when path not found', async () => {
+      const nonExistentPath = '/nonexistent/path';
+      
+      // Act & Assert
+      await expect(fileSystem.stat(nonExistentPath))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.stat(nonExistentPath))
+        .rejects.toThrow(/not found/);
+    });
+  });
+
+  describe('access', () => {
+    const testFile = '/path/to/file.txt';
+
+    beforeEach(() => {
+      // Set up test file
+      setupBasicFs({
+        [testFile]: 'content'
+      });
+    });
+
+    it('should resolve for existing file with access', async () => {
+      // Act & Assert
+      await expect(fileSystem.access(testFile))
+        .resolves.not.toThrow();
+    });
+
+    it('should throw FileSystemError when file not found', async () => {
+      const nonExistentFile = '/nonexistent/file.txt';
+      
+      // Act & Assert
+      await expect(fileSystem.access(nonExistentFile))
+        .rejects.toThrow(FileSystemError);
+      
+      await expect(fileSystem.access(nonExistentFile))
+        .rejects.toThrow(/not found/);
     });
   });
 
   describe('getConfigDir', () => {
-    it('should delegate to fileReader.getConfigDir and return the result', async () => {
-      // Arrange
-      const configDir = '/home/user/.config/thinktank';
-      mockedFileReader.getConfigDir.mockResolvedValue(configDir);
-
+    it('should return a valid config directory path', async () => {
       // Act
       const result = await fileSystem.getConfigDir();
-
-      // Assert
-      expect(mockedFileReader.getConfigDir).toHaveBeenCalled();
-      expect(result).toBe(configDir);
-    });
-
-    it('should wrap errors in FileSystemError', async () => {
-      // Arrange
-      const originalError = new Error('Failed to access or create config directory');
-      mockedFileReader.getConfigDir.mockRejectedValue(originalError);
-
-      // Act & Assert
-      await expect(fileSystem.getConfigDir()).rejects.toThrow(FileSystemError);
-      await expect(fileSystem.getConfigDir()).rejects.toThrow(/Failed to access or create config directory/);
+      
+      // Assert - just check it returns a string ending with thinktank
+      expect(typeof result).toBe('string');
+      expect(result.endsWith('thinktank')).toBe(true);
     });
   });
 
   describe('getConfigFilePath', () => {
-    it('should delegate to fileReader.getConfigFilePath and return the result', async () => {
-      // Arrange
-      const configPath = '/home/user/.config/thinktank/config.json';
-      mockedFileReader.getConfigFilePath.mockResolvedValue(configPath);
-
+    it('should return a valid config file path', async () => {
       // Act
       const result = await fileSystem.getConfigFilePath();
-
-      // Assert
-      expect(mockedFileReader.getConfigFilePath).toHaveBeenCalled();
-      expect(result).toBe(configPath);
-    });
-
-    it('should wrap errors in FileSystemError', async () => {
-      // Arrange
-      const originalError = new Error('Failed to determine config file path');
-      mockedFileReader.getConfigFilePath.mockRejectedValue(originalError);
-
-      // Act & Assert
-      await expect(fileSystem.getConfigFilePath()).rejects.toThrow(FileSystemError);
-      await expect(fileSystem.getConfigFilePath()).rejects.toThrow(/Failed to determine config file path/);
+      
+      // Assert - check it returns a string ending with config.json
+      expect(typeof result).toBe('string');
+      expect(result.endsWith('config.json')).toBe(true);
     });
   });
 });

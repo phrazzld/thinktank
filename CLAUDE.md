@@ -10,15 +10,14 @@
 - Single test: `npm test -- -t "test name"`
 - Test specific files: `npm test -- path/to/file.test.ts`
 
-## Using Architect CLI
-When facing challenging problems or planning complex features:
+## Using thinktank
+When facing challenging problems or planning complex features, get help from thinktank. Write your task or request to TASK.md. Then run:
 ```
-architect --task "Your task description" [file/directory paths]
+thinktank run --group faves TASK.md ./
 ```
-- Set `GEMINI_API_KEY` environment variable first
-- Use for generating implementation plans
-- Specify relevant files/directories as context
-- Reference the output plan for structured guidance
+- Identify the output directory. Read all the files in there. Synthesize their outputs into an answer or plan.
+- If you encounter any errors running thinktank, append those errors to thinktank-errors.log.
+- Note: `GEMINI_API_KEY` environment variable is already set.
 
 ## Code Style
 - **TypeScript**: Use strictest settings; avoid `any` or vague types
