@@ -143,7 +143,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Audit and standardize path normalization across tests.
   - **AC Ref:** AC 1.3.
 
-- [ ] **Delete mockFsUtils.ts**
+- [x] **Delete mockFsUtils.ts**
   - **Action:** Remove the legacy `src/__tests__/utils/mockFsUtils.ts` file after all migrations.
   - **Technical Details:**
     - Verify all tests that used it have been migrated.
