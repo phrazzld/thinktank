@@ -32,7 +32,7 @@
   - **Depends On:** Replace spinner start/stop messages with logger in main.go, Replace spinner update message calls with logger in main.go, Replace spinner error handling with logger in main.go.
   - **AC Ref:** Key Step 2.
 
-- [ ] **Remove no-spinner flag from parseFlags in main.go**
+- [x] **Remove no-spinner flag from parseFlags in main.go**
   - **Action:** Delete the `--no-spinner` flag definition and related code from the `parseFlags` function in main.go.
   - **Depends On:** Remove initSpinner function from main.go.
   - **AC Ref:** Key Step 2.
