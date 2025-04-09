@@ -57,7 +57,7 @@
   - **Depends On:** Add linting step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 80-84), Key Goals 2 (PLAN.md line 10), Success Criteria 3 (PLAN.md line 137)
 
-- [ ] **Add build step**
+- [x] **Add build step**
   - **Action:** Add the step to build the project using `pnpm run build`.
   - **Depends On:** Add testing step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 86-87), Key Goals 3 (PLAN.md line 11), Success Criteria 4 (PLAN.md line 138)

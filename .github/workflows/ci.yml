@@ -47,4 +47,6 @@ jobs:
 
       - name: Run tests                    # Step to run tests
         run: pnpm test                     # Execute the test script defined in package.json
-      # Subsequent steps will be added in following tasks
+
+      - name: Build project                # Step to build the project
+        run: pnpm run build                # Execute the build script defined in package.json
