@@ -67,7 +67,7 @@
   - **Depends On:** Remove NoSpinner field from Configuration struct in main.go.
   - **AC Ref:** Key Step 4.
 
-- [ ] **Update integration tests related to spinner functionality**
+- [x] **Update integration tests related to spinner functionality**
   - **Action:** Identify and update any integration tests that use or reference spinner functionality to ensure they continue to work with the logging-based approach.
   - **Depends On:** Remove NoSpinner field from main_adapter.go.
   - **AC Ref:** Key Step 4.
