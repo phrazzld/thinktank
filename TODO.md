@@ -32,7 +32,7 @@
   - **Depends On:** Add code checkout step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 50-53)
 
-- [ ] **Configure pnpm setup**
+- [x] **Configure pnpm setup**
   - **Action:** Add the step to set up pnpm using `pnpm/action-setup@v4`.
   - **Depends On:** Configure Node.js setup
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 55-58)

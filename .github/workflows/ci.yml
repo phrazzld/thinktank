@@ -19,4 +19,9 @@ jobs:
         uses: actions/setup-node@v4 # Use the official setup-node action v4
         with:
           node-version: '20'   # Specify Node.js LTS version 20
+
+      - name: Set up pnpm      # Step to setup pnpm
+        uses: pnpm/action-setup@v4 # Use the official pnpm setup action v4
+        with:
+          version: latest      # Use the latest stable version of pnpm
       # Subsequent steps will be added in following tasks
