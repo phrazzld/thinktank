@@ -17,7 +17,6 @@ import (
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/prompt"
-	"github.com/phrazzld/architect/internal/spinner"
 )
 
 // Constants referencing the config package defaults
@@ -132,8 +131,7 @@ func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration
 
 // clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
 func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Initialize spinner (will be removed in a future task)
-	_ = initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Original task description
 	originalTask := config.TaskDescription
@@ -423,8 +421,7 @@ func initGeminiClient(ctx context.Context, config *Configuration, logger logutil
 
 // gatherContext collects and processes files based on configuration
 func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
-	// Initialize spinner (will be removed in a future task)
-	_ = initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Log appropriate message based on mode and start spinner
 	if config.DryRun {
@@ -564,8 +561,7 @@ func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, g
 func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
 
-	// Initialize spinner (will be removed in a future task)
-	_ = initSpinner(config, logger)
+	// Spinner initialization removed
 
 	// Construct prompt using the provided prompt manager
 	logger.Info("Building prompt template...")
@@ -733,26 +729,7 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 	logger.Info("Successfully generated plan and saved to %s", outputPath)
 }
 
-// initSpinner creates and configures a spinner instance based on config
-func initSpinner(config *Configuration, logger logutil.LoggerInterface) *spinner.Spinner {
-	// Configure spinner options based on user preferences
-	spinnerOptions := &spinner.Options{
-		Enabled:     !config.NoSpinner,
-		CharSet:     14,  // Use circle dots by default
-		RefreshRate: 100, // ms
-		Output:      os.Stdout,
-		Prefix:      " ",
-		Suffix:      " ",
-	}
-
-	// If debug mode, disable spinner to avoid cluttering logs
-	if config.LogLevel == logutil.DebugLevel {
-		spinnerOptions.Enabled = false
-	}
-
-	// Create spinner instance
-	return spinner.New(logger, spinnerOptions)
-}
+// initSpinner function removed
 
 // promptForConfirmation asks for user confirmation to proceed
 func promptForConfirmation(tokenCount int32, threshold int, logger logutil.LoggerInterface) bool {
