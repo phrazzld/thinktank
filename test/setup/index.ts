@@ -6,7 +6,7 @@
  * 
  * Usage:
  * ```typescript
- * import { setupTestHooks, setupBasicFs } from '../../../test/setup';
+ * import { setupTestHooks, setupBasicFs, createMockConsoleLogger } from '../../../test/setup';
  * ```
  */
 
@@ -27,3 +27,6 @@ export * from './cli';
 
 // Provider test utilities
 export * from './providers';
+
+// I/O utilities (ConsoleLogger, UISpinner)
+export * from './io';

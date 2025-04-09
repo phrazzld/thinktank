@@ -77,8 +77,8 @@
 
 ### 5. Update Tests
 
-- [ ] **Create testing utilities**
-  - **Action:** Build mock implementations for I/O adapters in `src/__tests__/utils/mockFactories.ts`.
+- [x] **Create testing utilities**
+  - **Action:** Build mock implementations for I/O adapters in `test/setup/` directory.
   - **Depends On:** Implement file system adapter, Implement console adapter
   - **AC Ref:** AC 3.1 (Improve testability)
 
