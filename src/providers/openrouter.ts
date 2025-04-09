@@ -20,11 +20,15 @@ import {
   createProviderContentPolicyError,
   createProviderNetworkError,
   createProviderUnknownError,
-  isProviderRateLimitError,
-  isProviderTokenLimitError,
-  isProviderContentPolicyError,
-  isProviderAuthError,
 } from '../core/errors';
+
+// Import direct pattern matching functions to avoid module resolution issues
+import {
+  detectRateLimitError,
+  detectTokenLimitError,
+  detectContentPolicyError,
+  detectAuthError,
+} from '../core/errors/providerErrorPatterns';
 
 /**
  * OpenRouter provider error class - maintained for backward compatibility
@@ -201,7 +205,7 @@ export class OpenRouterProvider implements LLMProvider {
         const errorMessage = error.message.toLowerCase();
 
         // Handle authentication errors
-        if (isProviderAuthError(errorMessage)) {
+        if (detectAuthError(errorMessage)) {
           throw new ApiError(`Authentication failed`, {
             providerId: 'openrouter',
             cause: error,
@@ -219,7 +223,7 @@ export class OpenRouterProvider implements LLMProvider {
         }
 
         // Handle rate limiting errors
-        if (isProviderRateLimitError(errorMessage)) {
+        if (detectRateLimitError(errorMessage)) {
           throw createProviderRateLimitError('openrouter', 'OpenRouter', error);
         }
 
@@ -240,12 +244,12 @@ export class OpenRouterProvider implements LLMProvider {
         }
 
         // Handle content filtering/safety errors
-        if (isProviderContentPolicyError(errorMessage)) {
+        if (detectContentPolicyError(errorMessage)) {
           throw createProviderContentPolicyError('openrouter', 'OpenRouter', error);
         }
 
         // Handle token/context errors
-        if (isProviderTokenLimitError(errorMessage)) {
+        if (detectTokenLimitError(errorMessage)) {
           throw createProviderTokenLimitError('openrouter', 'OpenRouter', error);
         }
 

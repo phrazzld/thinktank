@@ -17,11 +17,17 @@ import {
   createProviderTokenLimitError,
   createProviderContentPolicyError,
   createProviderUnknownError,
-  isProviderRateLimitError,
-  isProviderTokenLimitError,
-  isProviderContentPolicyError,
-  isProviderAuthError,
 } from '../core/errors';
+
+// Import direct pattern matching functions to avoid module resolution issues
+import {
+  detectRateLimitError,
+  detectTokenLimitError,
+  detectContentPolicyError,
+  detectAuthError,
+} from '../core/errors/providerErrorPatterns';
+
+// Removed unused import
 
 /**
  * OpenAI provider error class - maintained for backward compatibility
@@ -181,12 +187,12 @@ export class OpenAIProvider implements LLMProvider {
         // Use factory functions and pattern detection utilities for more consistent error handling
 
         // Handle rate limit errors
-        if (isProviderRateLimitError(errorMessage)) {
+        if (detectRateLimitError(errorMessage)) {
           throw createProviderRateLimitError('openai', 'OpenAI', error);
         }
 
         // Handle API authentication errors
-        if (isProviderAuthError(errorMessage)) {
+        if (detectAuthError(errorMessage)) {
           throw new ApiError(`API key error: ${error.message}`, {
             providerId: 'openai',
             cause: error,
@@ -217,12 +223,12 @@ export class OpenAIProvider implements LLMProvider {
         }
 
         // Handle token/context length errors
-        if (isProviderTokenLimitError(errorMessage)) {
+        if (detectTokenLimitError(errorMessage)) {
           throw createProviderTokenLimitError('openai', 'OpenAI', error);
         }
 
         // Handle content policy violations
-        if (isProviderContentPolicyError(errorMessage)) {
+        if (detectContentPolicyError(errorMessage)) {
           throw createProviderContentPolicyError('openai', 'OpenAI', error);
         }
 
@@ -282,12 +288,12 @@ export class OpenAIProvider implements LLMProvider {
         const errorMessage = error.message.toLowerCase();
 
         // Handle rate limit errors
-        if (isProviderRateLimitError(errorMessage)) {
+        if (detectRateLimitError(errorMessage)) {
           throw createProviderRateLimitError('openai', 'OpenAI', error);
         }
 
         // Handle API authentication errors
-        if (isProviderAuthError(errorMessage)) {
+        if (detectAuthError(errorMessage)) {
           throw new ApiError(`API key error when listing models: ${error.message}`, {
             providerId: 'openai',
             cause: error,

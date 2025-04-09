@@ -15,11 +15,15 @@ import {
   createProviderContentPolicyError,
   createProviderNetworkError,
   createProviderUnknownError,
-  isProviderRateLimitError,
-  isProviderTokenLimitError,
-  isProviderContentPolicyError,
-  isProviderNetworkError,
 } from '../core/errors';
+
+// Import direct pattern matching functions to avoid module resolution issues
+import {
+  detectRateLimitError,
+  detectTokenLimitError,
+  detectContentPolicyError,
+  detectNetworkError,
+} from '../core/errors/providerErrorPatterns';
 
 // NOTE: We've removed the custom AnthropicProviderError class
 // and now use the standardized ApiError created by the provider error factories
@@ -199,7 +203,7 @@ export class AnthropicProvider implements LLMProvider {
         const errorMessage = error.message.toLowerCase();
 
         // Handle rate limit errors
-        if (isProviderRateLimitError(errorMessage)) {
+        if (detectRateLimitError(errorMessage)) {
           throw createProviderRateLimitError('anthropic', 'Anthropic', error);
         }
 
@@ -226,17 +230,17 @@ export class AnthropicProvider implements LLMProvider {
         }
 
         // Handle token limit errors
-        if (isProviderTokenLimitError(errorMessage)) {
+        if (detectTokenLimitError(errorMessage)) {
           throw createProviderTokenLimitError('anthropic', 'Anthropic', error);
         }
 
         // Handle content policy violations
-        if (isProviderContentPolicyError(errorMessage)) {
+        if (detectContentPolicyError(errorMessage)) {
           throw createProviderContentPolicyError('anthropic', 'Anthropic', error);
         }
 
         // Handle network errors
-        if (isProviderNetworkError(errorMessage)) {
+        if (detectNetworkError(errorMessage)) {
           throw createProviderNetworkError('anthropic', 'Anthropic', error);
         }
 

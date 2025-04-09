@@ -24,10 +24,14 @@ import {
   createProviderContentPolicyError,
   createProviderUnknownError,
   createProviderNetworkError,
-  isProviderRateLimitError,
-  isProviderNetworkError,
-  isProviderContentPolicyError,
 } from '../core/errors';
+
+// Import direct pattern matching functions to avoid module resolution issues
+import {
+  detectRateLimitError,
+  detectNetworkError,
+  detectContentPolicyError,
+} from '../core/errors/providerErrorPatterns';
 
 /**
  * Google provider error class - maintained for backward compatibility
@@ -259,7 +263,7 @@ export class GoogleProvider implements LLMProvider {
         }
 
         // Handle rate limiting errors
-        if (isProviderRateLimitError(errorMessage)) {
+        if (detectRateLimitError(errorMessage)) {
           throw createProviderRateLimitError('google', 'Google', error);
         }
 
@@ -285,7 +289,7 @@ export class GoogleProvider implements LLMProvider {
         }
 
         // Handle content filtering/safety errors
-        if (isProviderContentPolicyError(errorMessage)) {
+        if (detectContentPolicyError(errorMessage)) {
           throw createProviderContentPolicyError('google', 'Google', error);
         }
 
@@ -295,7 +299,7 @@ export class GoogleProvider implements LLMProvider {
         }
 
         // Handle network errors
-        if (isProviderNetworkError(errorMessage)) {
+        if (detectNetworkError(errorMessage)) {
           throw createProviderNetworkError('google', 'Google', error);
         }
 

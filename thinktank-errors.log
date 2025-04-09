@@ -18,4 +18,5 @@
 - openai:gpt-4o
   → Error: (0 , errors_1.isProviderRateLimitError) is not a function
 
-Output directory: /Users/phaedrus/Development/thinktank/thinktank-output/diplomatic-ember
+Output directory: /Users/phaedrus/Development/thinktank/thinktank-output/diplomatic-emberWed Apr  9 12:37:13 CDT 2025: Error running thinktank: All models failed with error: (0 , errors_1.isProviderRateLimitError) is not a function
+Wed Apr  9 12:40:08 CDT 2025: Error running thinktank with specific model: (0 , errors_1.isProviderRateLimitError) is not a function
