@@ -27,7 +27,7 @@
   - **Depends On:** Set up workflow job configuration
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 47-48)
 
-- [ ] **Configure Node.js setup**
+- [x] **Configure Node.js setup**
   - **Action:** Add the step to set up Node.js using `actions/setup-node@v4`, specifying at least version 18 as per package.json requirements.
   - **Depends On:** Add code checkout step
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 50-53)
