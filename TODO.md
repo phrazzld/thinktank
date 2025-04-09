@@ -62,7 +62,7 @@
   - **Depends On:** Replace spinner start/stop messages with logger in main.go, Replace spinner update message calls with logger in main.go, Replace spinner error handling with logger in main.go, Remove initSpinner function from main.go.
   - **AC Ref:** Key Step 3.
 
-- [ ] **Remove NoSpinner field from main_adapter.go**
+- [x] **Remove NoSpinner field from main_adapter.go**
   - **Action:** Remove the `NoSpinner` boolean field from the `Configuration` struct definition in internal/integration/main_adapter.go.
   - **Depends On:** Remove NoSpinner field from Configuration struct in main.go.
   - **AC Ref:** Key Step 4.

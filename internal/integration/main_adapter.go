@@ -41,7 +41,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	NoSpinner       bool
 	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
@@ -150,7 +149,6 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	dryRunFlag := flag.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	noSpinnerFlag := flag.Bool("no-spinner", false, "Disable spinner animation during API calls")
 	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
 
 	// Parse flags
@@ -170,7 +168,6 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
-	config.NoSpinner = *noSpinnerFlag
 	config.ClarifyTask = *clarifyTaskFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv("GEMINI_API_KEY")
