@@ -42,7 +42,7 @@
   - **Depends On:** Configure pnpm setup
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 60-72), Caching Strategy (PLAN.md lines 104-106)
 
-- [ ] **Add dependency installation step**
+- [x] **Add dependency installation step**
   - **Action:** Add the step to install project dependencies using `pnpm install --frozen-lockfile`.
   - **Depends On:** Implement pnpm caching
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 74-75)

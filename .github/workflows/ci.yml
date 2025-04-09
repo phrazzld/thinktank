@@ -38,4 +38,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}    # Primary cache key
           restore-keys: |                  # Fallback cache keys
             ${{ runner.os }}-pnpm-store-
+
+      - name: Install dependencies         # Step to install project dependencies
+        run: pnpm install --frozen-lockfile  # Use frozen lockfile for consistent installations
       # Subsequent steps will be added in following tasks
