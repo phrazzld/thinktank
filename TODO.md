@@ -37,7 +37,7 @@
   - **Depends On:** Configure Node.js setup
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 55-58)
 
-- [ ] **Implement pnpm caching**
+- [x] **Implement pnpm caching**
   - **Action:** Add steps to get the pnpm store path and set up caching using `actions/cache@v4`.
   - **Depends On:** Configure pnpm setup
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 60-72), Caching Strategy (PLAN.md lines 104-106)
