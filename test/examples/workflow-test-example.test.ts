@@ -160,8 +160,11 @@ describe('Example Workflow Test', () => {
     
     it('should complete workflow and return formatted output', async () => {
       // Use factory to create run options
+      // Set validateApiKeys to false to skip API key validation in CI environment
       const options = createRunOptions({ 
-        input: 'prompt.txt'
+        input: 'prompt.txt',
+        // This is needed for CI where real API keys aren't available
+        validateApiKeys: false
       });
       
       // Run the workflow
@@ -179,7 +182,9 @@ describe('Example Workflow Test', () => {
     it('should handle custom options', async () => {
       const options = createRunOptions({ 
         input: 'prompt.txt',
-        includeMetadata: true
+        includeMetadata: true,
+        // This is needed for CI where real API keys aren't available
+        validateApiKeys: false
       });
       
       await runThinktank(options);
