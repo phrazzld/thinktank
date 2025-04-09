@@ -19,6 +19,7 @@ import { colors } from '../../utils/consoleUtils';
 import { handleError } from '../index';
 import * as configManager from '../../core/configManager';
 import { logger } from '../../utils/logger';
+import { ConsoleAdapter } from '../../core/ConsoleAdapter';
 
 // Create the command
 const runCommand = new Command('run');
@@ -188,18 +189,28 @@ runCommand
         }
       }
       
-      // Run the core function
-      await runThinktank({
-        input: promptFile,
-        contextPaths: contextPaths.length > 0 ? contextPaths : undefined,
-        specificModel: specificModels ? specificModels.join(',') : undefined,
-        groupName: options.group,
-        output: options.output,
-        configPath: options.config,
-        includeMetadata: options.includeMetadata,
-        systemPrompt,
-        disableSpinnerThrottling: options.disableSpinnerThrottling
-      });
+      // Create a ConsoleAdapter instance
+      const consoleLogger = new ConsoleAdapter(logger);
+      
+      // Run the core function with injected ConsoleLogger
+      await runThinktank(
+        {
+          input: promptFile,
+          contextPaths: contextPaths.length > 0 ? contextPaths : undefined,
+          specificModel: specificModels ? specificModels.join(',') : undefined,
+          groupName: options.group,
+          output: options.output,
+          configPath: options.config,
+          includeMetadata: options.includeMetadata,
+          systemPrompt,
+          disableSpinnerThrottling: options.disableSpinnerThrottling
+        },
+        // Use default implementations for these dependencies
+        undefined, // fileSystem
+        undefined, // configManager
+        undefined, // llmClient
+        consoleLogger // Inject the ConsoleLogger
+      );
       
       // Output completion message if verbose
       if (options.verbose) {

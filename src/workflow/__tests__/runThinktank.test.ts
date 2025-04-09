@@ -8,7 +8,7 @@ import { runThinktank, RunOptions } from '../runThinktank';
 import { ApiError } from '../../core/errors';
 import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
-import { FileSystem, ConfigManagerInterface, LLMClient } from '../../core/interfaces';
+import { FileSystem, ConfigManagerInterface, LLMClient, ConsoleLogger } from '../../core/interfaces';
 import { AppConfig, LLMResponse } from '../../core/types';
 import { Stats } from 'fs';
 import { InputSourceType } from '../inputHandler';
@@ -79,6 +79,16 @@ const mockLLMResponse: LLMResponse & { configKey: string } = {
 
 const mockLLMClient: jest.Mocked<LLMClient> = {
   generate: jest.fn().mockResolvedValue(mockLLMResponse)
+};
+
+// Create a mock for ConsoleLogger
+const mockConsoleLogger: jest.Mocked<ConsoleLogger> = {
+  error: jest.fn(),
+  warn: jest.fn(),
+  info: jest.fn(),
+  success: jest.fn(),
+  debug: jest.fn(),
+  plain: jest.fn()
 };
 
 // Mock the concrete class constructors
@@ -315,7 +325,13 @@ describe('runThinktank with Interface Mocks', () => {
       useColors: false,
     };
 
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify helpers were called with the correct mocked interfaces
     expect(setupWorkflowSpy).toHaveBeenCalledWith(
@@ -393,7 +409,13 @@ describe('runThinktank with Interface Mocks', () => {
       });
     });
 
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Simply verify the mock was called - the implementation doesn't guarantee param values
     expect(mockLLMClient.generate).toHaveBeenCalled();
@@ -407,7 +429,13 @@ describe('runThinktank with Interface Mocks', () => {
     // Clear previous calls
     writeFilesSpy.mockClear();
 
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify the writeFiles method was called during execution
     expect(writeFilesSpy).toHaveBeenCalled();
@@ -426,7 +454,13 @@ describe('runThinktank with Interface Mocks', () => {
       return mockSetupResult;
     });
 
-    await runThinktank(options);
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify that the ConfigManager.loadConfig method was called
     expect(mockConfigManager.loadConfig).toHaveBeenCalledTimes(1);
@@ -435,6 +469,43 @@ describe('runThinktank with Interface Mocks', () => {
         configPath: '/custom/config.json'
       })
     );
+  });
+
+  it('should pass ConsoleLogger to the error handler', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt'
+    };
+
+    // Setup to cause an error
+    mockFileSystem.mkdir.mockRejectedValueOnce(new Error('Test error for ConsoleLogger'));
+    setupWorkflowSpy.mockImplementationOnce(async () => {
+      throw new Error('Test error for ConsoleLogger');
+    });
+    
+    // Spy on _handleWorkflowError to check that consoleLogger is passed
+    const handleWorkflowErrorSpy = jest.spyOn(helpers, '_handleWorkflowError');
+    handleWorkflowErrorSpy.mockImplementationOnce(() => {
+      return "ConsoleLogger test error" as unknown as never;
+    });
+    
+    // Run the function
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
+    
+    // Verify that _handleWorkflowError was called with consoleLogger
+    expect(handleWorkflowErrorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        consoleLogger: mockConsoleLogger
+      })
+    );
+    
+    // Restore original implementation
+    handleWorkflowErrorSpy.mockRestore();
   });
 
   it('should handle errors from the FileSystem interface', async () => {
@@ -457,7 +528,13 @@ describe('runThinktank with Interface Mocks', () => {
     });
     
     // Invoke the function
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify we got the error message from the handler
     expect(result).toBe("Error occurred");
@@ -486,7 +563,13 @@ describe('runThinktank with Interface Mocks', () => {
     });
     
     // The function will handle the error through our mock
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify we got the error message
     expect(result).toBe("Config error occurred");
@@ -543,7 +626,13 @@ describe('runThinktank with Interface Mocks', () => {
     writeFilesSpy.mockResolvedValue(mockFileOutputResult);
     
     // With our mocked implementation, this won't actually throw an error
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify that we get a result with an error message
     expect(result).toContain('API call failed');
@@ -574,7 +663,13 @@ describe('runThinktank with Interface Mocks', () => {
       input: 'test-prompt.txt'
     };
 
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // Verify that the execute queries helper was not called
     expect(executeQueriesSpy).not.toHaveBeenCalled();
@@ -584,6 +679,28 @@ describe('runThinktank with Interface Mocks', () => {
     
     // Restore the original mock implementation
     modelSelector.selectModels = originalSelectModels;
+  });
+
+  it('should use the injected ConsoleLogger for output', async () => {
+    const options: RunOptions = {
+      input: 'test-prompt.txt',
+      includeMetadata: false,
+      useColors: false,
+    };
+    
+    // Clear previous calls on the mock console logger
+    mockConsoleLogger.plain.mockClear();
+    
+    await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
+    
+    // Verify the injected ConsoleLogger was called for output
+    expect(mockConsoleLogger.plain).toHaveBeenCalled();
   });
 
   it('should pass custom options through', async () => {
@@ -639,7 +756,13 @@ describe('runThinktank with Interface Mocks', () => {
     });
     
     // Directly verify runThinktank returns expected value 
-    const result = await runThinktank(options);
+    const result = await runThinktank(
+      options,
+      mockFileSystem,
+      mockConfigManager,
+      mockLLMClient,
+      mockConsoleLogger
+    );
     
     // In this test we just make sure it completes - the exact output will vary
     expect(typeof result).toBe('string');

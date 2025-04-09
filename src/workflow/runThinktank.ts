@@ -9,7 +9,6 @@ import {
   styleDim,
   styleWarning
 } from '../utils/consoleUtils';
-import { logger } from '../utils/logger';
 import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
 import { WorkflowState, EnhancedSpinner } from './runThinktankTypes';
 import { formatCompletionSummary } from '../utils/formatCompletionSummary';
@@ -28,7 +27,8 @@ import { writeFiles, updateSpinnerWithFileOutput } from './io';
 import { ConcreteLLMClient } from '../core/LLMClient';
 import { ConcreteConfigManager } from '../core/ConcreteConfigManager';
 import { ConcreteFileSystem } from '../core/FileSystem';
-import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
+import { ConsoleAdapter } from '../core/ConsoleAdapter';
+import { LLMClient, ConfigManagerInterface, FileSystem, ConsoleLogger } from '../core/interfaces';
 
 // Import provider modules to ensure they're registered
 import '../providers/openai';
@@ -168,10 +168,20 @@ export interface RunOptions {
  * functions in sequence and handling errors appropriately.
  * 
  * @param options - Options for running thinktank
+ * @param fileSystem - FileSystem implementation for file operations (defaults to ConcreteFileSystem)
+ * @param configManager - ConfigManager implementation for configuration handling (defaults to ConcreteConfigManager)
+ * @param llmClient - LLMClient implementation for API calls (defaults to ConcreteLLMClient)
+ * @param consoleLogger - ConsoleLogger implementation for logging (defaults to ConsoleAdapter)
  * @returns The formatted results for display
  * @throws {ThinktankError} If an error occurs during execution
  */
-export async function runThinktank(options: RunOptions): Promise<string> {
+export async function runThinktank(
+  options: RunOptions,
+  fileSystem: FileSystem = new ConcreteFileSystem(),
+  configManager: ConfigManagerInterface = new ConcreteConfigManager(),
+  llmClient: LLMClient = new ConcreteLLMClient(configManager),
+  consoleLogger: ConsoleLogger = new ConsoleAdapter()
+): Promise<string> {
   // Initialize the workflow state to track progress and share context
   const workflowState: Partial<WorkflowState> = {
     options
@@ -187,13 +197,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
   spinner.start();
   
   try {
-    // Create dependency instances for injection in the correct order
-    // 1. First create FileSystem (no dependencies)
-    const fileSystem: FileSystem = new ConcreteFileSystem();
-    // 2. Then create ConfigManager (conceptually uses FileSystem, but doesn't require it in constructor)
-    const configManager: ConfigManagerInterface = new ConcreteConfigManager();
-    // 3. Finally create LLMClient (depends on ConfigManager)
-    const llmClient: LLMClient = new ConcreteLLMClient(configManager);
+    // Dependencies are now injected as parameters to runThinktank
     
     // 1. Setup workflow: Load configuration, generate run name, create output directory
     const setupResult = await _setupWorkflow({
@@ -243,7 +247,7 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       .map((model, index) => `  ${index + 1}. ${model.provider}:${model.modelId}${!model.enabled ? ' (disabled)' : ''}`)
       .join('\n');
     
-    logger.plain(modelList);
+    consoleLogger.plain(modelList);
     // Restart spinner for next step
     spinner.start();
     
@@ -316,32 +320,32 @@ export async function runThinktank(options: RunOptions): Promise<string> {
     });
     
     // Log the formatted summary
-    logger.plain(formattedSummary.summaryText);
+    consoleLogger.plain(formattedSummary.summaryText);
     if (formattedSummary.errorDetails) {
-      formattedSummary.errorDetails.forEach(line => logger.plain(line));
+      formattedSummary.errorDetails.forEach(line => consoleLogger.plain(line));
     }
     
     // 7. Show additional metadata if requested
     if (options.includeMetadata) {
       // Spinner is already stopped after _logCompletionSummary call
       // Display timing information
-      logger.plain('\n' + styleHeader('Execution timing:'));
+      consoleLogger.plain('\n' + styleHeader('Execution timing:'));
       
       const totalTime = queryResults.queryResults.timing.durationMs + fileOutputResult.timing.durationMs;
       
-      logger.plain(styleDim(`  Total API calls:    ${queryResults.queryResults.timing.durationMs}ms`));
-      logger.plain(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
-      logger.plain(styleDim(`  Total execution:    ${totalTime}ms`));
+      consoleLogger.plain(styleDim(`  Total API calls:    ${queryResults.queryResults.timing.durationMs}ms`));
+      consoleLogger.plain(styleDim(`  File writing:       ${fileOutputResult.timing.durationMs}ms`));
+      consoleLogger.plain(styleDim(`  Total execution:    ${totalTime}ms`));
       
       // Additional model-specific timing information
-      logger.plain('\n' + styleHeader('Model timing:'));
+      consoleLogger.plain('\n' + styleHeader('Model timing:'));
       
       Object.entries(queryResults.queryResults.statuses)
         .sort((a, b) => (a[1].durationMs || 0) - (b[1].durationMs || 0))
         .forEach(([model, status]) => {
           if (status.durationMs) {
             const statusIcon = status.status === 'success' ? '+' : 'x';
-            logger.plain(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
+            consoleLogger.plain(styleDim(`  ${statusIcon} ${model}: ${status.durationMs}ms`));
           }
         });
     }
@@ -354,7 +358,8 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       spinner,
       error,
       options,
-      workflowState
+      workflowState,
+      consoleLogger
     });
   }
 }

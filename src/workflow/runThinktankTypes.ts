@@ -32,7 +32,7 @@ import { FileOutputResult } from './outputHandler';
 export { FileOutputResult };
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
-import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';
+import { LLMClient, ConfigManagerInterface, FileSystem, ConsoleLogger } from '../core/interfaces';
 
 /**
  * Enhanced spinner type for use in the workflow
@@ -508,6 +508,11 @@ export interface HandleWorkflowErrorParams extends SpinnerContext {
    * The current state of the workflow when the error occurred
    */
   workflowState: Partial<WorkflowState>;
+  
+  /**
+   * ConsoleLogger implementation for logging errors
+   */
+  consoleLogger?: ConsoleLogger;
 }
 
 /**

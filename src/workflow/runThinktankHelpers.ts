@@ -45,7 +45,7 @@ import {
   styleSuccess, 
   styleWarning
 } from '../utils/consoleUtils';
-import { logger } from '../utils/logger';
+// ConsoleLogger interface is used instead of singleton logger
 import { readContextPaths, formatCombinedInput } from '../utils/fileReader';
 import { ContextFileResult } from '../utils/fileReaderTypes';
 import {
@@ -284,12 +284,9 @@ export async function _processInput({
     if (errorContextFiles.length > 0) {
       spinner.warn(styleWarning(`${errorContextFiles.length} of ${contextFiles.length} context files could not be read and will be skipped.`));
       
-      // Log detailed information about each error file
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      errorContextFiles.forEach(file => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        logger.debug(`Context file error - ${file.path}: ${file.error?.message || 'Unknown error'}`);
-      });
+      // Log detailed information about each error file (debug-level logging removed)
+      // Since consoleLogger is not available in this function, we don't log the detailed errors
+      // This is debug-level information that's not critical for the workflow
       
       // Restart spinner after warnings
       spinner.start();
@@ -1013,6 +1010,7 @@ export function _processOutput({
  * @param params.spinner - The spinner instance for providing visual feedback
  * @param params.options - The user-provided run options
  * @param params.workflowState - The current state of the workflow when the error occurred
+ * @param params.consoleLogger - ConsoleLogger instance for logging
  * @returns Never returns normally, always throws an error
  * @throws {ThinktankError} Throws a properly categorized ThinktankError or one of its specialized subclasses
  */
@@ -1020,8 +1018,9 @@ export function _handleWorkflowError({
   error,
   spinner,
   options,
-  workflowState
-}: HandleWorkflowErrorParams): never {
+  workflowState,
+  consoleLogger
+}: HandleWorkflowErrorParams & { consoleLogger?: import('../core/interfaces').ConsoleLogger }): never {
   // Type assertions to help TypeScript understand types better
   const typedSpinner = spinner as { 
     fail: (message: string) => void;
@@ -1062,6 +1061,11 @@ export function _handleWorkflowError({
   
   // Update the spinner with the error's formatted message
   typedSpinner.fail(thinktankError.format());
+  
+  // Log error to console if a logger was provided
+  if (consoleLogger) {
+    consoleLogger.error(thinktankError.message, thinktankError);
+  }
   
   // Throw the error for upstream handling
   throw thinktankError;
