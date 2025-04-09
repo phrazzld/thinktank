@@ -22,7 +22,7 @@
   - **Depends On:** Configure workflow triggers
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 36-88)
 
-- [ ] **Add code checkout step**
+- [x] **Add code checkout step**
   - **Action:** Add the step to checkout the repository code using `actions/checkout@v4`.
   - **Depends On:** Set up workflow job configuration
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 47-48)
