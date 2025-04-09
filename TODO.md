@@ -72,7 +72,7 @@
   - **Depends On:** Remove NoSpinner field from main_adapter.go.
   - **AC Ref:** Key Step 4.
 
-- [ ] **Remove spinner dependency from go.mod and go.sum**
+- [x] **Remove spinner dependency from go.mod and go.sum**
   - **Action:** Run `go mod tidy` to remove the `github.com/briandowns/spinner` dependency from go.mod and go.sum files.
   - **Depends On:** Delete internal/spinner directory.
   - **AC Ref:** Key Step 5.
