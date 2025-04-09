@@ -1,98 +1,44 @@
 # TODO
 
-## Test Suite Refactoring - Phase 4 (Aggressive Approach)
+## I/O Separation and Test Infrastructure Improvements
 
-### 1. Create Pure Data Model
+### High Priority
 
-- [x] **Define result data interfaces**
-  - **Action:** Create interfaces in `src/workflow/types.ts` for all data structures returned by pure functions: `ProcessOutputResult`, `CompletionSummary`, etc.
-  - **Depends On:** None
-  - **AC Ref:** AC 2.1 (Return data structures)
+- [x] **Remove Duplicated File Writing Logic**
+  - **Action:** Delete `_writeOutputFiles` from `runThinktankHelpers.ts` and ensure all code uses only `io.writeFiles`.
+  - **Depends On:** None.
+  - **AC Ref:** Effective I/O Separation (Key Strength 1).
 
-- [x] **Refactor output formatting utilities**
-  - **Action:** Convert formatting functions in `src/utils/outputFormatter.ts` to pure functions that take data and return formatted strings.
-  - **Depends On:** Define result data interfaces
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
+### Medium Priority
 
-### 2. Isolate I/O Layer
+- [ ] **Refactor ConcreteFileSystem Tests**
+  - **Action:** Refactor tests in `src/core/__tests__/FileSystem.test.ts` to use virtual FS (`memfs`) via `test/setup/fs.ts` instead of mocking internal dependency. Test behavior and error wrapping, not just delegation.
+  - **Depends On:** None.
+  - **AC Ref:** Interface-Based Mocking (Key Strength 4).
 
-- [x] **Create I/O interface**
-  - **Action:** Define compact I/O interface in `src/core/interfaces.ts` with clear separation of concerns.
-  - **Depends On:** None
-  - **AC Ref:** AC 3.1 (Move I/O to high-level functions)
+- [ ] **Add Tests for I/O Module**
+  - **Action:** Create new test file `src/workflow/__tests__/io.test.ts` that properly tests the I/O module by mocking `FileSystem`/`ConsoleLogger`/`UISpinner`.
+  - **Depends On:** None.
+  - **AC Ref:** Test Coverage for `io.ts` (Opportunity 2).
 
-- [x] **Implement file system adapter**
-  - **Action:** Create adapter implementing I/O interface for file operations in `src/core/FileSystem.ts`.
-  - **Depends On:** Create I/O interface
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+### Low Priority
 
-- [x] **Implement console adapter**
-  - **Action:** Create adapter implementing I/O interface for console output in `src/core/ConsoleAdapter.ts`.
-  - **Depends On:** Create I/O interface
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
+- [ ] **Fix Example Tests**
+  - **Action:** Address failing assertions in example test files to serve as proper reference implementation.
+  - **Depends On:** None.
+  - **AC Ref:** Example Tests (Opportunity 3).
 
-### 3. Refactor Core Functions
+- [ ] **Improve Error Handling in ConcreteFileSystem**
+  - **Action:** Extract common error wrapping logic in `src/core/FileSystem.ts` into private helper methods within the class to reduce repetition.
+  - **Depends On:** None.
+  - **AC Ref:** Repetitive Error Wrapping.
 
-- [x] **Refactor `_processOutput`**
-  - **Action:** Convert `_processOutput` in `src/workflow/runThinktankHelpers.ts` to return structured data instead of performing I/O.
-  - **Depends On:** Define result data interfaces
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
+- [ ] **Standardize Logger Usage**
+  - **Action:** Inject `ConsoleLogger` instead of using singleton `logger` for final summary logging in `src/workflow/runThinktank.ts`. This is to maintain consistency with the preferred dependency injection pattern.
+  - **Depends On:** None.
+  - **AC Ref:** Inconsistent logger usage.
 
-- [x] **Extract `_processOutput` I/O operations**
-  - **Action:** Move file writing operations from `_processOutput` to `runThinktank.ts`.
-  - **Depends On:** Refactor `_processOutput`
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
-
-- [x] **Refactor `_logCompletionSummary`**
-  - **Action:** Convert `_logCompletionSummary` in `src/workflow/runThinktankHelpers.ts` to return formatted strings instead of console logging.
-  - **Depends On:** Define result data interfaces
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
-
-- [x] **Extract `_logCompletionSummary` I/O operations**
-  - **Action:** Move console output operations from `_logCompletionSummary` to `runThinktank.ts`.
-  - **Depends On:** Refactor `_logCompletionSummary`
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
-
-- [x] **Refactor `processOutput` in outputHandler.ts**
-  - **Action:** Convert to pure function returning data structures instead of performing I/O.
-  - **Depends On:** Define result data interfaces
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
-
-- [x] **Refactor `writeResponsesToFiles` in outputHandler.ts**
-  - **Action:** Convert to pure function that prepares file data without actual I/O.
-  - **Depends On:** Define result data interfaces
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
-
-### 4. Restructure Workflow
-
-- [x] **Simplify runThinktank orchestration**
-  - **Action:** Rewrite `runThinktank` in `src/workflow/runThinktank.ts` to compose pure functions and perform I/O at boundaries.
-  - **Depends On:** Refactor core functions
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
-
-- [x] **Create dedicated I/O module**
-  - **Action:** Implement centralized I/O handling in `src/workflow/io.ts` for all workflow I/O operations.
-  - **Depends On:** Implement file system adapter, Implement console adapter
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
-
-### 5. Update Tests
-
-- [x] **Create testing utilities**
-  - **Action:** Build mock implementations for I/O adapters in `test/setup/` directory.
-  - **Depends On:** Implement file system adapter, Implement console adapter
-  - **AC Ref:** AC 3.1 (Improve testability)
-
-- [x] **Create unit tests for pure functions**
-  - **Action:** Write unit tests for all refactored pure functions without I/O dependencies.
-  - **Depends On:** Refactor core functions
-  - **AC Ref:** AC 2.1 (Modify functions to return data)
-
-- [x] **Refactor workflow integration tests**
-  - **Action:** Update integration tests to use I/O mocks consistently.
-  - **Depends On:** Create testing utilities
-  - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
-
-- [x] **Simplify test setup**
-  - **Action:** Eliminate redundant test setup in workflow test files.
-  - **Depends On:** Refactor workflow integration tests
-  - **AC Ref:** AC 3.1 (Improve testability)
+- [ ] **Update Testing Documentation**
+  - **Action:** Update docs in `jest/README.md` and `src/__tests__/utils/README.md` to reflect `test/setup/` as standard, document new factories/helpers, and deprecate old patterns.
+  - **Depends On:** All other tasks.
+  - **AC Ref:** Testing documentation needs update.

@@ -15,6 +15,7 @@ import {
 } from '../../core/errors';
 import * as helpers from '../runThinktankHelpers';
 import * as nameGenerator from '../../utils/nameGenerator';
+import * as ioModule from '../io';
 import { FileWriteStatus } from '../outputHandler';
 
 // Store module paths for restoration
@@ -24,6 +25,7 @@ const oraPath = require.resolve('ora');
 
 // Mock dependencies
 jest.mock('../runThinktankHelpers');
+jest.mock('../io');
 jest.mock('../../utils/nameGenerator');
 jest.mock('ora', () => {
   return jest.fn().mockImplementation(() => {
@@ -153,8 +155,8 @@ describe('runThinktank Error Handling', () => {
       consoleOutput: 'Mock console output'
     });
     
-    // Write output files helper mock - success by default
-    (helpers._writeOutputFiles as jest.Mock).mockResolvedValue({
+    // Write files helper mock - success by default
+    (ioModule.writeFiles as jest.Mock).mockResolvedValue({
       outputDirectory: '/fake/output/dir',
       files: [{ 
         modelKey: 'mock:mock-model', 
@@ -193,6 +195,7 @@ describe('runThinktank Error Handling', () => {
   // Restore all mocked modules after tests
   afterAll(() => {
     jest.unmock('../runThinktankHelpers');
+    jest.unmock('../io');
     jest.unmock('../../utils/nameGenerator');
     jest.unmock('ora');
     
@@ -468,8 +471,8 @@ describe('runThinktank Error Handling', () => {
       ]
     });
     
-    // Mock _writeOutputFiles to throw the error instead of _processOutput
-    (helpers._writeOutputFiles as jest.Mock).mockRejectedValueOnce(fsError);
+    // Mock writeFiles to throw the error
+    (ioModule.writeFiles as jest.Mock).mockRejectedValueOnce(fsError);
     
     // Call with test options
     const options: RunOptions = {
@@ -615,8 +618,8 @@ describe('runThinktank Error Handling', () => {
     // Mock _processOutput to return pure data (no I/O)
     (helpers._processOutput as jest.Mock).mockReturnValueOnce(pureProcessOutput);
     
-    // Mock _writeOutputFiles to return mixed success/failure result
-    (helpers._writeOutputFiles as jest.Mock).mockResolvedValueOnce(mixedFileOutputResult);
+    // Mock writeFiles to return mixed success/failure result
+    (ioModule.writeFiles as jest.Mock).mockResolvedValueOnce(mixedFileOutputResult);
     
     // Mock _selectModels to return multiple models with flattened structure
     const multiModelMock: any = {
@@ -671,7 +674,7 @@ describe('runThinktank Error Handling', () => {
     
     // Verify our process output and write files functions were called
     expect(helpers._processOutput).toHaveBeenCalled();
-    expect(helpers._writeOutputFiles).toHaveBeenCalled();
+    expect(ioModule.writeFiles).toHaveBeenCalled();
   });
   
   it('should properly propagate error causes through the call chain', async () => {
@@ -773,8 +776,8 @@ describe('runThinktank Error Handling', () => {
       suggestions: ['Check file permissions']
     });
     
-    // Mock _writeOutputFiles to throw the error
-    (helpers._writeOutputFiles as jest.Mock).mockRejectedValueOnce(fsError);
+    // Mock writeFiles to throw the error
+    (ioModule.writeFiles as jest.Mock).mockRejectedValueOnce(fsError);
     
     // Mock _handleWorkflowError to add workflow context to suggestions
     jest.spyOn(helpers, '_handleWorkflowError').mockImplementationOnce((params: any) => {
