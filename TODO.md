@@ -232,7 +232,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Refactor gitignoreFiltering.test.ts.
   - **AC Ref:** AC 2.2.
 
-- [ ] **Update readContextPaths.test.ts**
+- [x] **Update readContextPaths.test.ts**
   - **Action:** Refactor `readContextPaths.test.ts` to use virtual .gitignore files.
   - **Technical Details:**
     - Replace any mock implementations with `setupWithGitignore` or `setupMultiGitignore`.

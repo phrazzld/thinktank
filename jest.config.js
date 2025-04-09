@@ -23,7 +23,7 @@ module.exports = {
     // '/src/utils/__tests__/readContextFile.centralized-mock.test.ts',
     '/src/utils/__tests__/fileSizeLimit.test.ts',
     '/src/utils/__tests__/binaryFileDetection.test.ts',
-    '/src/utils/__tests__/readContextPaths.test.ts',
+    // '/src/utils/__tests__/readContextPaths.test.ts', // Re-enabled after refactoring to use gitignore test helpers
     
     // Provider tests with configuration issues
     '/src/providers/__tests__/anthropic.test.ts',
