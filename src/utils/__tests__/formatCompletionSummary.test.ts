@@ -8,18 +8,18 @@ import { CompletionSummaryData } from '../../workflow/types';
 jest.mock('../consoleUtils', () => {
   const red = (text: string): string => `RED(${text})`;
   red.bold = (text: string): string => `RED_BOLD(${text})`;
-  
+
   return {
     colors: {
       // Simple implementation of functions
       blue: (text: string): string => `BLUE(${text})`,
       green: (text: string): string => `GREEN(${text})`,
       yellow: (text: string): string => `YELLOW(${text})`,
-      red
+      red,
     },
     styleSuccess: (text: string): string => `SUCCESS(${text})`,
     styleError: (text: string): string => `ERROR(${text})`,
-    styleDim: (text: string): string => `DIM(${text})`
+    styleDim: (text: string): string => `DIM(${text})`,
   };
 });
 
@@ -32,7 +32,7 @@ describe('formatCompletionSummary', () => {
     errors: [],
     runName: 'test-run',
     outputDirectoryPath: '/path/to/output',
-    totalExecutionTimeMs: 1500
+    totalExecutionTimeMs: 1500,
   };
 
   const partialSuccessData: CompletionSummaryData = {
@@ -43,12 +43,12 @@ describe('formatCompletionSummary', () => {
       {
         modelKey: 'openai:gpt-4o',
         message: 'API Error',
-        category: 'API'
-      }
+        category: 'API',
+      },
     ],
     runName: 'test-run',
     outputDirectoryPath: '/path/to/output',
-    totalExecutionTimeMs: 1500
+    totalExecutionTimeMs: 1500,
   };
 
   const allFailuresData: CompletionSummaryData = {
@@ -59,17 +59,17 @@ describe('formatCompletionSummary', () => {
       {
         modelKey: 'openai:gpt-4o',
         message: 'API Error',
-        category: 'API'
+        category: 'API',
       },
       {
         modelKey: 'anthropic:claude-3',
         message: 'Network Error',
-        category: 'NETWORK'
-      }
+        category: 'NETWORK',
+      },
     ],
     runName: 'test-run',
     outputDirectoryPath: '/path/to/output',
-    totalExecutionTimeMs: 1500
+    totalExecutionTimeMs: 1500,
   };
 
   const noModelsData: CompletionSummaryData = {
@@ -79,12 +79,12 @@ describe('formatCompletionSummary', () => {
     errors: [],
     runName: 'test-run',
     outputDirectoryPath: '/path/to/output',
-    totalExecutionTimeMs: 0
+    totalExecutionTimeMs: 0,
   };
 
   it('should format successful completion summary with colors', () => {
     const result = formatCompletionSummary(successfulData, { useColors: true });
-    
+
     expect(result.summaryText).toContain('SUCCESS');
     expect(result.summaryText).toContain('test-run');
     expect(result.summaryText).toContain('1.50s');
@@ -94,7 +94,7 @@ describe('formatCompletionSummary', () => {
 
   it('should format successful completion summary without colors', () => {
     const result = formatCompletionSummary(successfulData, { useColors: false });
-    
+
     expect(result.summaryText).not.toContain('SUCCESS');
     expect(result.summaryText).toContain('Successfully completed');
     expect(result.summaryText).toContain('test-run');
@@ -105,11 +105,11 @@ describe('formatCompletionSummary', () => {
 
   it('should format partial success summary', () => {
     const result = formatCompletionSummary(partialSuccessData);
-    
+
     expect(result.summaryText).toContain('test-run');
     expect(result.summaryText).toContain('50%');
     expect(result.summaryText).toContain('/path/to/output');
-    
+
     expect(result.errorDetails).toBeDefined();
     expect(result.errorDetails!.length).toBeGreaterThan(0);
     expect(result.errorDetails!.some(line => line.includes('API'))).toBeTruthy();
@@ -118,11 +118,11 @@ describe('formatCompletionSummary', () => {
 
   it('should format all failures summary', () => {
     const result = formatCompletionSummary(allFailuresData);
-    
+
     expect(result.summaryText).toContain('test-run');
     expect(result.summaryText).toContain('failed');
     expect(result.summaryText).toContain('/path/to/output');
-    
+
     expect(result.errorDetails).toBeDefined();
     expect(result.errorDetails!.length).toBeGreaterThan(0);
     expect(result.errorDetails!.some(line => line.includes('API'))).toBeTruthy();
@@ -133,7 +133,7 @@ describe('formatCompletionSummary', () => {
 
   it('should format no models queried summary', () => {
     const result = formatCompletionSummary(noModelsData);
-    
+
     expect(result.summaryText).toContain('test-run');
     expect(result.summaryText).toContain('No models were queried');
     expect(result.summaryText).toContain('/path/to/output');
@@ -143,7 +143,7 @@ describe('formatCompletionSummary', () => {
   it('should handle missing totalExecutionTimeMs', () => {
     const data = { ...successfulData, totalExecutionTimeMs: undefined };
     const result = formatCompletionSummary(data);
-    
+
     expect(result.summaryText).toContain('test-run');
     // The "s" test isn't reliable since "s" appears in "Successfully", so we'll test differently
     expect(result.summaryText).not.toMatch(/\d+\.\d+s/); // No numbers followed by "s"
@@ -153,7 +153,7 @@ describe('formatCompletionSummary', () => {
   it('should format milliseconds correctly for small durations', () => {
     const data = { ...successfulData, totalExecutionTimeMs: 750 };
     const result = formatCompletionSummary(data);
-    
+
     expect(result.summaryText).toContain('0.75s');
   });
 });

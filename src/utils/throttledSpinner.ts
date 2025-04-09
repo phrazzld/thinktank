@@ -1,9 +1,9 @@
 /**
  * ThrottledSpinner
- * 
- * A wrapper around the ora spinner that throttles text updates 
+ *
+ * A wrapper around the ora spinner that throttles text updates
  * to reduce terminal flicker while maintaining a responsive UI.
- * 
+ *
  * Includes specialized methods for updating spinner text based on
  * different types of status updates.
  */
@@ -59,7 +59,7 @@ export class ThrottledSpinner {
 
   /**
    * Creates a new ThrottledSpinner
-   * 
+   *
    * @param options Configuration options for the throttled spinner
    */
   constructor(options: ThrottledSpinnerOptions = {}) {
@@ -73,7 +73,7 @@ export class ThrottledSpinner {
   /**
    * Get the current text (the text that should be displayed,
    * not necessarily what is currently visible)
-   * 
+   *
    * @returns The current spinner text
    */
   public getCurrentText(): string {
@@ -82,7 +82,7 @@ export class ThrottledSpinner {
 
   /**
    * Updates the spinner text with throttling to reduce flicker
-   * 
+   *
    * @param text The new text to display
    * @param critical Whether this update should bypass throttling (for important messages)
    */
@@ -218,22 +218,22 @@ export class ThrottledSpinner {
   get isSpinning(): boolean {
     return this.spinner.isSpinning;
   }
-  
+
   /**
    * Updates the spinner text based on model query status
-   * 
+   *
    * @param modelKey - The model identifier (e.g., 'openai:gpt-4')
    * @param status - The current status of the model query
    * @param critical - Whether this is a critical update that should bypass throttling
    * @returns This spinner instance
    */
   public updateForModelStatus(
-    modelKey: string, 
-    status: WorkflowModelQueryStatus, 
+    modelKey: string,
+    status: WorkflowModelQueryStatus,
     critical: boolean = false
   ): ThrottledSpinner {
     let text = '';
-    
+
     switch (status.status) {
       case 'pending':
         text = `Preparing to query ${modelKey}...`;
@@ -248,23 +248,23 @@ export class ThrottledSpinner {
         text = `Error from ${modelKey}: ${status.message || 'Unknown error'}`;
         break;
     }
-    
+
     return this.setText(text, critical);
   }
-  
+
   /**
    * Updates the spinner text based on file output status
-   * 
+   *
    * @param fileDetail - The file output status details
    * @param critical - Whether this is a critical update that should bypass throttling
    * @returns This spinner instance
    */
   public updateForFileStatus(
-    fileDetail: FileOutputStatus, 
+    fileDetail: FileOutputStatus,
     critical: boolean = false
   ): ThrottledSpinner {
     let text = '';
-    
+
     switch (fileDetail.status) {
       case 'pending':
         text = `Writing file for ${fileDetail.modelKey}...`;
@@ -276,38 +276,38 @@ export class ThrottledSpinner {
         text = `Error writing file for ${fileDetail.modelKey}: ${fileDetail.error || 'Unknown error'}`;
         break;
     }
-    
+
     return this.setText(text, critical);
   }
-  
+
   /**
    * Updates the spinner text with a summary of model query results
-   * 
+   *
    * @param successCount - Number of successful queries
    * @param failureCount - Number of failed queries
    * @param critical - Whether this is a critical update that should bypass throttling
    * @returns This spinner instance
    */
   public updateForModelSummary(
-    successCount: number, 
-    failureCount: number, 
+    successCount: number,
+    failureCount: number,
     critical: boolean = false
   ): ThrottledSpinner {
     const text = `Query execution complete: ${successCount} succeeded, ${failureCount} failed`;
     return this.setText(text, critical);
   }
-  
+
   /**
    * Updates the spinner text with a summary of file output results
-   * 
+   *
    * @param succeededWrites - Number of successfully written files
    * @param failedWrites - Number of failed file writes
    * @param critical - Whether this is a critical update that should bypass throttling
    * @returns This spinner instance
    */
   public updateForFileSummary(
-    succeededWrites: number, 
-    failedWrites: number, 
+    succeededWrites: number,
+    failedWrites: number,
     critical: boolean = false
   ): ThrottledSpinner {
     const text = `Output processing complete: ${succeededWrites} files written, ${failedWrites} failed`;

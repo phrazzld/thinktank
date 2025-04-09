@@ -290,6 +290,7 @@ describe('Workflow Integration', () => {
 Utilities for testing gitignore pattern matching:
 
 - **`setupWithGitignore()`**: Creates a project with files and a gitignore file
+- **`setupMultiGitignore()`**: Creates a project with multiple gitignore files in different directories
 - **`createIgnoreChecker()`**: Creates a function to check if a path should be ignored
 
 ```typescript
@@ -313,6 +314,64 @@ describe('Gitignore Filtering', () => {
     expect(await shouldIgnore('src/index.js')).toBe(false);
   });
 });
+```
+
+#### Known Limitations with Gitignore Patterns
+
+The current implementation uses the `ignore` npm package, which has some limitations:
+
+1. **Brace Expansion Patterns**
+
+   Patterns like `*.{jpg,png}` are not supported by the `ignore` library. 
+   
+   **Workarounds:**
+   
+   - Use separate patterns instead:
+     ```
+     *.jpg
+     *.png
+     ```
+   
+   - Use the `expandBracePattern` helper function in `gitignoreUtils.ts`:
+     ```typescript
+     import { expandBracePattern } from '../../src/utils/gitignoreUtils';
+     
+     // Instead of:
+     ignoreFilter.add('*.{jpg,png}'); // Won't work!
+     
+     // Use:
+     const expandedPatterns = expandBracePattern('*.{jpg,png}');
+     ignoreFilter.add(expandedPatterns); // Adds ['*.jpg', '*.png']
+     ```
+     
+   - When creating test .gitignore files, manually expand brace patterns:
+     ```typescript
+     // Instead of:
+     await addVirtualGitignoreFile(gitignorePath, '*.{jpg,png}');
+     
+     // Use:
+     await addVirtualGitignoreFile(gitignorePath, '*.jpg\n*.png');
+     ```
+
+2. **Prefix Wildcard Patterns for Directories**
+
+   Patterns like `build-*/` work, but may match more broadly than expected. For example, `build*/` 
+   will match any directory path containing 'build', not just directories with a 'build' prefix.
+   
+   **Workaround:**
+   
+   - Be more specific with your patterns when possible
+   - Test your patterns carefully to understand their actual behavior
+   - Consider using negation patterns to exclude unwanted matches
+
+For more details, see the `gitignoreComplexPatterns.test.ts` file which documents these limitations 
+with specific test cases and provides examples of how to work around them.
+
+In general, the following gitignore features work correctly with the `ignore` library:
+- Basic patterns (`*.js`, `build/`)
+- Double-asterisk globbing (`**/node_modules`)
+- Negation (`!important/file.txt`)
+- Character ranges (`[0-9]*.log`)
 ```
 
 ## Using Data Factories

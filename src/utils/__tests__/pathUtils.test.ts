@@ -2,10 +2,10 @@
  * Tests for path normalization utilities
  */
 import path from 'path';
-import { 
-  normalizePathGeneral, 
-  normalizePathsForComparison, 
-  normalizePathForGitignore 
+import {
+  normalizePathGeneral,
+  normalizePathsForComparison,
+  normalizePathForGitignore,
 } from '../pathUtils';
 
 describe('Path Normalization Utilities', () => {
@@ -71,11 +71,15 @@ describe('Path Normalization Utilities', () => {
   describe('normalizePathForGitignore', () => {
     test('makes path relative to the base path', () => {
       expect(normalizePathForGitignore('/project/src/file.js', '/project')).toBe('src/file.js');
-      expect(normalizePathForGitignore('C:\\project\\src\\file.js', 'C:\\project')).toBe('src/file.js');
+      expect(normalizePathForGitignore('C:\\project\\src\\file.js', 'C:\\project')).toBe(
+        'src/file.js'
+      );
     });
 
     test('handles paths outside of base path', () => {
-      expect(normalizePathForGitignore('/other/dir/file.js', '/project')).toBe('../other/dir/file.js');
+      expect(normalizePathForGitignore('/other/dir/file.js', '/project')).toBe(
+        '../other/dir/file.js'
+      );
     });
 
     test('returns dot for identical paths', () => {
@@ -83,12 +87,14 @@ describe('Path Normalization Utilities', () => {
     });
 
     test('handles nested relative paths correctly', () => {
-      expect(normalizePathForGitignore('/project/src/../lib/file.js', '/project')).toBe('lib/file.js');
+      expect(normalizePathForGitignore('/project/src/../lib/file.js', '/project')).toBe(
+        'lib/file.js'
+      );
     });
 
     test('removes leading ./ from relative paths', () => {
       const result = normalizePathForGitignore(
-        path.join('/project', '.', 'src', 'file.js'), 
+        path.join('/project', '.', 'src', 'file.js'),
         '/project'
       );
       expect(result).toBe('src/file.js');

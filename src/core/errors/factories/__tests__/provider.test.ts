@@ -11,7 +11,7 @@ import {
   isProviderTokenLimitError,
   isProviderContentPolicyError,
   isProviderAuthError,
-  isProviderNetworkError
+  isProviderNetworkError,
 } from '../provider';
 import { ApiError } from '../../types/api';
 
@@ -21,9 +21,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const consoleUrl = 'https://test-provider.com/keys';
-      
+
       const error = createProviderApiKeyMissingError(providerId, providerName, consoleUrl);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
@@ -43,9 +43,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const originalError = new Error('Rate limit exceeded');
-      
+
       const error = createProviderRateLimitError(providerId, providerName, originalError);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
@@ -64,9 +64,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const modelId = 'nonexistent-model';
-      
+
       const error = createProviderModelNotFoundError(providerId, providerName, modelId);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
@@ -82,9 +82,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const originalError = new Error('Token limit exceeded');
-      
+
       const error = createProviderTokenLimitError(providerId, providerName, originalError);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
@@ -99,13 +99,15 @@ describe('Provider error factory functions', () => {
     it('creates an unknown provider error with correct properties', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
-      
+
       const error = createProviderUnknownError(providerId, providerName);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
-      expect(error.message).toContain(`Unknown error occurred while generating text from ${providerName}`);
+      expect(error.message).toContain(
+        `Unknown error occurred while generating text from ${providerName}`
+      );
       expect(error.suggestions).toBeDefined();
       expect(error.suggestions?.some((s: string) => s.includes('network'))).toBe(true);
     });
@@ -116,9 +118,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const originalError = new Error('Content policy violation');
-      
+
       const error = createProviderContentPolicyError(providerId, providerName, originalError);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);
@@ -134,9 +136,9 @@ describe('Provider error factory functions', () => {
       const providerId = 'test-provider';
       const providerName = 'Test Provider';
       const originalError = new Error('Network connection failed');
-      
+
       const error = createProviderNetworkError(providerId, providerName, originalError);
-      
+
       expect(error).toBeInstanceOf(ApiError);
       expect(error.category).toBe('API');
       expect(error.providerId).toBe(providerId);

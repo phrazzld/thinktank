@@ -12,30 +12,78 @@ import {
   createVirtualFs, 
   getVirtualFs,
   createFsError as createFsErrorUtil,
-  normalizePathForMemfs
+  normalizePathForMemfs as normalizePathForMemfsImpl
 } from '../../src/__tests__/utils/virtualFsUtils';
+
+// Re-export normalizePathForMemfs for convenient use in tests
+export const normalizePathForMemfs = normalizePathForMemfsImpl;
 import { normalizePathGeneral } from '../../src/utils/pathUtils';
 import { FileSystem } from '../../src/core/interfaces';
 
 /**
- * Sets up a basic filesystem with the specified file structure
+ * Sets up the virtual filesystem with a given file structure.
+ * Resets the filesystem before applying the structure by default.
  * 
- * @param structure - An object mapping file paths to their content
- * @param options - Additional options { reset: boolean }
+ * @param structure - Object mapping file paths to their content. Paths will be normalized.
+ *                   Use paths ending in '/' or empty string content ('') to explicitly create directories.
+ * @param options - Optional settings. `reset: true` (default) clears the FS first.
  * 
- * Usage:
- * ```typescript
- * setupBasicFs({
+ * @example
+ * setupWithFiles({
  *   '/path/to/file.txt': 'File content',
- *   '/path/to/dir/file.js': 'console.log("Hello");'
+ *   '/path/to/dir/file.js': 'console.log("Hello");',
+ *   '/empty-dir/': '' // Creates an empty directory
  * });
- * ```
  */
-export function setupBasicFs(structure: Record<string, string>, options: { reset: boolean } = { reset: true }): void {
-  if (options.reset) {
+export function setupWithFiles(
+  structure: Record<string, string>,
+  options: { reset?: boolean } = { reset: true }
+): void {
+  if (options.reset !== false) {
     resetVirtualFs();
   }
+  // createVirtualFs handles normalization and directory creation
   createVirtualFs(structure, { reset: false });
+}
+
+// Keep setupBasicFs as an alias for backward compatibility
+export const setupBasicFs = setupWithFiles;
+
+/**
+ * Sets up the virtual filesystem with a single file.
+ * Resets the filesystem before creating the file.
+ * 
+ * @param filePath - Path to the file (will be normalized).
+ * @param content - Content of the file.
+ * 
+ * @example
+ * setupWithSingleFile('/config/settings.json', '{ "port": 3000 }');
+ */
+export function setupWithSingleFile(filePath: string, content: string): void {
+  resetVirtualFs();
+  // createVirtualFs handles normalization and directory creation
+  createVirtualFs({ [filePath]: content }, { reset: false });
+}
+
+/**
+ * Sets up the virtual filesystem with a nested directory structure.
+ * This is a wrapper around setupWithFiles that emphasizes its ability to handle nested paths.
+ * Resets the filesystem before applying the structure.
+ * 
+ * @param structure - Object mapping file/directory paths to string content.
+ *                   Use paths ending in '/' or empty string content ('') to explicitly create directories.
+ * 
+ * @example
+ * setupWithNestedDirectories({
+ *   '/deep/nested/dir/file.txt': 'content',
+ *   '/deep/nested/empty/': '', // Creates empty directory
+ *   '/another/path/with/file.js': 'console.log("nested");'
+ * });
+ */
+export function setupWithNestedDirectories(
+  structure: Record<string, string>
+): void {
+  setupWithFiles(structure, { reset: true });
 }
 
 /**

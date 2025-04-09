@@ -24,7 +24,7 @@ export interface ModelGroup {
  * Thinking capability configuration for Claude models
  */
 export interface ThinkingOptions {
-  type: 'enabled'; 
+  type: 'enabled';
   budget_tokens: number;
 }
 
@@ -53,7 +53,7 @@ export interface ModelConfig {
 
 /**
  * Overall application configuration
- * 
+ *
  * Supports both legacy models array and groups object:
  * - The `models` array is treated as the default group when groups are used
  * - The `groups` object allows for defining named sets of models with specific system prompts
@@ -94,10 +94,10 @@ export interface LLMAvailableModel {
  */
 export interface LLMProvider {
   providerId: string;
-  
+
   /**
    * Generates a response from the LLM
-   * 
+   *
    * @param prompt The user prompt to send to the LLM
    * @param modelId The ID of the model to use
    * @param options Optional model parameters
@@ -110,10 +110,10 @@ export interface LLMProvider {
     options?: ModelOptions,
     systemPrompt?: SystemPrompt
   ): Promise<LLMResponse>;
-  
+
   /**
    * Optional method to list available models from the provider
-   * 
+   *
    * @param apiKey The API key to use for authentication
    * @returns Promise resolving to array of available models
    */

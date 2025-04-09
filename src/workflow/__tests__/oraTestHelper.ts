@@ -25,7 +25,7 @@ export function createMockSpinner(): jest.Mocked<Ora> {
     indent: 0,
     spinner: {
       interval: 80,
-      frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-    }
+      frames: ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'],
+    },
   } as unknown as jest.Mocked<Ora>;
 }

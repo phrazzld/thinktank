@@ -18,6 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Debug tests: `pnpm run test:debug`
 - Debug specific test file: `pnpm run test:debug:file path/to/file.test.ts`
 
+## Global Installation
+- Build for production: `pnpm run build`
+- Make CLI executable: `chmod +x dist/src/cli/index.js`
+- Install globally: `pnpm link --global` (run from inside the thinktank directory)
+- Now you can use `thinktank` command from anywhere on your system
+
 ## Using thinktank
 When facing challenging problems or planning complex features, get help from thinktank. Write your task or request to TASK.md. Then run:
 ```

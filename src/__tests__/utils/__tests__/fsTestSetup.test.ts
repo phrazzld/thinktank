@@ -1,12 +1,12 @@
 /**
  * Unit tests for the filesystem test setup utilities
  */
-import { 
-  mockFsModules, 
-  resetVirtualFs, 
+import {
+  mockFsModules,
+  resetVirtualFs,
   getVirtualFs,
   createVirtualFs,
-  addVirtualGitignoreFile 
+  addVirtualGitignoreFile,
 } from '../virtualFsUtils';
 import { normalizePath } from '../pathUtils';
 
@@ -15,13 +15,13 @@ jest.mock('fs', () => mockFsModules().fs);
 jest.mock('fs/promises', () => mockFsModules().fsPromises);
 
 // Import the module we're testing
-import { 
+import {
   setupBasicFiles,
   setupProjectStructure,
   setupWithGitignore,
   mockFileExists,
   setupGitignoreMocking,
-  setupCacheClearing
+  setupCacheClearing,
 } from '../fsTestSetup';
 
 describe('fsTestSetup', () => {
@@ -34,7 +34,7 @@ describe('fsTestSetup', () => {
       // Arrange
       const structure = {
         '/path/to/file.txt': 'File content',
-        '/path/to/another/file.js': 'console.log("Hello");'
+        '/path/to/another/file.js': 'console.log("Hello");',
       };
 
       // Act
@@ -42,10 +42,12 @@ describe('fsTestSetup', () => {
 
       // Assert
       const virtualFs = getVirtualFs();
-      
+
       // Check if the files exist and have the right content
       expect(virtualFs.readFileSync('/path/to/file.txt', 'utf8')).toBe('File content');
-      expect(virtualFs.readFileSync('/path/to/another/file.js', 'utf8')).toBe('console.log("Hello");');
+      expect(virtualFs.readFileSync('/path/to/another/file.js', 'utf8')).toBe(
+        'console.log("Hello");'
+      );
     });
   });
 
@@ -55,7 +57,7 @@ describe('fsTestSetup', () => {
       const basePath = '/project';
       const files = {
         'src/index.ts': 'console.log("Hello");',
-        'README.md': '# Project'
+        'README.md': '# Project',
       };
 
       // Act
@@ -63,11 +65,15 @@ describe('fsTestSetup', () => {
 
       // Assert
       const virtualFs = getVirtualFs();
-      
+
       // Check that the project structure is correctly set up
       expect(virtualFs.existsSync(normalizePath('/project/src', true))).toBe(true);
-      expect(virtualFs.readFileSync(normalizePath('/project/src/index.ts', true), 'utf8')).toBe('console.log("Hello");');
-      expect(virtualFs.readFileSync(normalizePath('/project/README.md', true), 'utf8')).toBe('# Project');
+      expect(virtualFs.readFileSync(normalizePath('/project/src/index.ts', true), 'utf8')).toBe(
+        'console.log("Hello");'
+      );
+      expect(virtualFs.readFileSync(normalizePath('/project/README.md', true), 'utf8')).toBe(
+        '# Project'
+      );
     });
   });
 
@@ -79,7 +85,7 @@ describe('fsTestSetup', () => {
       const files = {
         'file.txt': 'Content',
         'file.log': 'Should be ignored',
-        'node_modules/package.json': '{}'
+        'node_modules/package.json': '{}',
       };
 
       // Act
@@ -87,12 +93,20 @@ describe('fsTestSetup', () => {
 
       // Assert
       const virtualFs = getVirtualFs();
-      
+
       // Check that all files are created
-      expect(virtualFs.readFileSync(normalizePath('/test-dir/.gitignore', true), 'utf8')).toBe(gitignoreContent);
-      expect(virtualFs.readFileSync(normalizePath('/test-dir/file.txt', true), 'utf8')).toBe('Content');
-      expect(virtualFs.readFileSync(normalizePath('/test-dir/file.log', true), 'utf8')).toBe('Should be ignored');
-      expect(virtualFs.readFileSync(normalizePath('/test-dir/node_modules/package.json', true), 'utf8')).toBe('{}');
+      expect(virtualFs.readFileSync(normalizePath('/test-dir/.gitignore', true), 'utf8')).toBe(
+        gitignoreContent
+      );
+      expect(virtualFs.readFileSync(normalizePath('/test-dir/file.txt', true), 'utf8')).toBe(
+        'Content'
+      );
+      expect(virtualFs.readFileSync(normalizePath('/test-dir/file.log', true), 'utf8')).toBe(
+        'Should be ignored'
+      );
+      expect(
+        virtualFs.readFileSync(normalizePath('/test-dir/node_modules/package.json', true), 'utf8')
+      ).toBe('{}');
     });
   });
 
@@ -105,7 +119,7 @@ describe('fsTestSetup', () => {
 
       // Create a file in the virtual filesystem
       setupBasicFiles({
-        [existingPath]: 'Content'
+        [existingPath]: 'Content',
       });
 
       // Act
@@ -120,18 +134,19 @@ describe('fsTestSetup', () => {
   describe('setupGitignoreMocking', () => {
     it('should set up gitignore mocking with cache clearing and filesystem integration', async () => {
       // Arrange
-      const mockGitignoreUtils = { clearIgnoreCache: jest.fn() };
+      // Use a real gitignore utils with clearIgnoreCache method instead of mockGitignoreUtils
+      const gitignoreUtils = { clearIgnoreCache: jest.fn() };
       const mockedFileExists = jest.fn();
-      
+
       // Act
-      setupGitignoreMocking(mockGitignoreUtils, mockedFileExists);
-      
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
+
       // Assert
-      expect(mockGitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
-      
+      expect(gitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
+
       // Create a file to test fileExists mock
       setupBasicFiles({ '/test.txt': 'content' });
-      
+
       // Verify fileExists works with virtual filesystem
       expect(await mockedFileExists('/test.txt')).toBe(true);
       expect(await mockedFileExists('/nonexistent.txt')).toBe(false);
@@ -141,26 +156,26 @@ describe('fsTestSetup', () => {
   describe('setupCacheClearing', () => {
     it('should return a function that clears caches and mocks when called', async () => {
       // Arrange
-      const mockGitignoreUtils = { clearIgnoreCache: jest.fn() };
+      const gitignoreUtils = { clearIgnoreCache: jest.fn() };
       const mockedFileExists = jest.fn();
-      
+
       // Add some files to the filesystem
       setupBasicFiles({ '/test.txt': 'content' });
       const virtualFs = getVirtualFs();
       expect(virtualFs.existsSync('/test.txt')).toBe(true);
-      
+
       // Create the beforeEach function
-      const clearCachesFn = setupCacheClearing(mockGitignoreUtils, mockedFileExists);
-      
+      const clearCachesFn = setupCacheClearing(gitignoreUtils, mockedFileExists);
+
       // Act - call the function as if it were used in beforeEach
       clearCachesFn();
-      
+
       // Assert
-      expect(mockGitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
-      
+      expect(gitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
+
       // Verify filesystem was reset
       expect(virtualFs.existsSync('/test.txt')).toBe(false);
-      
+
       // Create a new file to verify fileExists mock is set up
       setupBasicFiles({ '/new-test.txt': 'new content' });
       expect(await mockedFileExists('/new-test.txt')).toBe(true);
@@ -171,46 +186,45 @@ describe('fsTestSetup', () => {
     it('should demonstrate using createVirtualFs with multiple gitignore files', async () => {
       // This test shows how to set up multiple gitignore setups
       // without resetting the filesystem between them
-      
+
       // Clear existing filesystem and create initial structure
       resetVirtualFs();
-      
+
       // First create both directories with their base files
       createVirtualFs({
         '/dir1/file.txt': 'text file',
         '/dir1/log.log': 'log file',
         '/dir2/file.txt': 'another text file',
-        '/dir2/config.json': '{"key": "value"}'
+        '/dir2/config.json': '{"key": "value"}',
       });
-      
+
       // Then add gitignore files to both directories
       await addVirtualGitignoreFile('/dir1/.gitignore', '*.log');
       await addVirtualGitignoreFile('/dir2/.gitignore', '*.json');
-      
+
       // Verify both directories have their files and gitignore files
       const virtualFs = getVirtualFs();
       expect(virtualFs.readFileSync('/dir1/.gitignore', 'utf8')).toBe('*.log');
       expect(virtualFs.readFileSync('/dir2/.gitignore', 'utf8')).toBe('*.json');
-      
-      // Create a mock gitignoreUtils implementation to demonstrate how
+
+      // Create a gitignoreUtils implementation to demonstrate how
       // a test would use these files with real behavior
-      const mockGitignoreUtils = { 
+      const gitignoreUtils = {
         clearIgnoreCache: jest.fn(),
-        shouldIgnorePath: jest.fn()
+        shouldIgnorePath: jest.fn(),
       };
-      
-      mockGitignoreUtils.shouldIgnorePath
-        .mockImplementation((dirPath, filePath) => {
-          if (dirPath === '/dir1' && filePath.endsWith('.log')) return Promise.resolve(true);
-          if (dirPath === '/dir2' && filePath.endsWith('.json')) return Promise.resolve(true);
-          return Promise.resolve(false);
-        });
-      
+
+      gitignoreUtils.shouldIgnorePath.mockImplementation((dirPath, filePath) => {
+        if (dirPath === '/dir1' && filePath.endsWith('.log')) return Promise.resolve(true);
+        if (dirPath === '/dir2' && filePath.endsWith('.json')) return Promise.resolve(true);
+        return Promise.resolve(false);
+      });
+
       // Verify the mocked behavior works as expected
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir1', 'test.log')).toBe(true);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir1', 'test.txt')).toBe(false);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir2', 'test.json')).toBe(true);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir2', 'test.log')).toBe(false);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir1', 'test.log')).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir1', 'test.txt')).toBe(false);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir2', 'test.json')).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir2', 'test.log')).toBe(false);
     });
   });
 });

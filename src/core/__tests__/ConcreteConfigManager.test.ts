@@ -28,51 +28,51 @@ describe('ConcreteConfigManager', () => {
         provider: 'openai',
         modelId: 'gpt-4o',
         enabled: true,
-        options: { temperature: 0.7 }
-      }
-    ]
+        options: { temperature: 0.7 },
+      },
+    ],
   };
 
   // Sample model for testing
   const mockModel: ModelConfig = {
     provider: 'anthropic',
     modelId: 'claude-3-sonnet-20240229',
-    enabled: true
+    enabled: true,
   };
 
   // Sample group details for testing
   const mockGroupDetails: Partial<Omit<ModelGroup, 'name'>> = {
     systemPrompt: { text: 'Test system prompt' },
     models: [],
-    description: 'Test group'
+    description: 'Test group',
   };
 
   beforeEach(() => {
     // Reset all mocks before each test
     jest.clearAllMocks();
-    
+
     // Set up default mock implementations
     (configFns.loadConfig as jest.Mock).mockResolvedValue(mockConfig);
     (configFns.getActiveConfigPath as jest.Mock).mockResolvedValue('/path/to/config.json');
     (configFns.getDefaultConfigPath as jest.Mock).mockReturnValue('/path/to/default/config.json');
-    (configFns.addOrUpdateModel as jest.Mock).mockImplementation((config, model) => ({ 
-      ...config, 
-      models: [...config.models, model] 
+    (configFns.addOrUpdateModel as jest.Mock).mockImplementation((config, model) => ({
+      ...config,
+      models: [...config.models, model],
     }));
-    (configFns.removeModel as jest.Mock).mockImplementation((config) => config);
-    (configFns.addOrUpdateGroup as jest.Mock).mockImplementation((config) => config);
-    (configFns.removeGroup as jest.Mock).mockImplementation((config) => config);
-    (configFns.addModelToGroup as jest.Mock).mockImplementation((config) => config);
-    (configFns.removeModelFromGroup as jest.Mock).mockImplementation((config) => config);
+    (configFns.removeModel as jest.Mock).mockImplementation(config => config);
+    (configFns.addOrUpdateGroup as jest.Mock).mockImplementation(config => config);
+    (configFns.removeGroup as jest.Mock).mockImplementation(config => config);
+    (configFns.addModelToGroup as jest.Mock).mockImplementation(config => config);
+    (configFns.removeModelFromGroup as jest.Mock).mockImplementation(config => config);
   });
 
   describe('loadConfig', () => {
     it('should delegate to configManager.loadConfig', async () => {
       const configManager = new ConcreteConfigManager();
       const options = { configPath: '/custom/path/config.json' };
-      
+
       const result = await configManager.loadConfig(options);
-      
+
       expect(configFns.loadConfig).toHaveBeenCalledWith(options);
       expect(result).toEqual(mockConfig);
     });
@@ -81,7 +81,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const configError = new ConfigError('Config loading error');
       (configFns.loadConfig as jest.Mock).mockRejectedValue(configError);
-      
+
       await expect(configManager.loadConfig()).rejects.toThrow(configError);
       expect(configFns.loadConfig).toHaveBeenCalled();
     });
@@ -90,7 +90,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const genericError = new Error('Generic error');
       (configFns.loadConfig as jest.Mock).mockRejectedValue(genericError);
-      
+
       try {
         await configManager.loadConfig();
         fail('Expected an error to be thrown');
@@ -108,9 +108,9 @@ describe('ConcreteConfigManager', () => {
     it('should delegate to configManager.saveConfig', async () => {
       const configManager = new ConcreteConfigManager();
       const configPath = '/custom/path/config.json';
-      
+
       await configManager.saveConfig(mockConfig, configPath);
-      
+
       expect(configFns.saveConfig).toHaveBeenCalledWith(mockConfig, configPath);
     });
 
@@ -118,7 +118,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const configError = new ConfigError('Config saving error');
       (configFns.saveConfig as jest.Mock).mockRejectedValue(configError);
-      
+
       await expect(configManager.saveConfig(mockConfig)).rejects.toThrow(configError);
       expect(configFns.saveConfig).toHaveBeenCalled();
     });
@@ -127,7 +127,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const genericError = new Error('Generic error');
       (configFns.saveConfig as jest.Mock).mockRejectedValue(genericError);
-      
+
       try {
         await configManager.saveConfig(mockConfig);
         fail('Expected an error to be thrown');
@@ -145,9 +145,9 @@ describe('ConcreteConfigManager', () => {
     it('should delegate to configManager.getActiveConfigPath', async () => {
       const configManager = new ConcreteConfigManager();
       const expectedPath = '/path/to/config.json';
-      
+
       const result = await configManager.getActiveConfigPath();
-      
+
       expect(configFns.getActiveConfigPath).toHaveBeenCalled();
       expect(result).toEqual(expectedPath);
     });
@@ -156,7 +156,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const configError = new ConfigError('Config path error');
       (configFns.getActiveConfigPath as jest.Mock).mockRejectedValue(configError);
-      
+
       await expect(configManager.getActiveConfigPath()).rejects.toThrow(configError);
       expect(configFns.getActiveConfigPath).toHaveBeenCalled();
     });
@@ -165,7 +165,7 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const genericError = new Error('Generic error');
       (configFns.getActiveConfigPath as jest.Mock).mockRejectedValue(genericError);
-      
+
       try {
         await configManager.getActiveConfigPath();
         fail('Expected an error to be thrown');
@@ -183,9 +183,9 @@ describe('ConcreteConfigManager', () => {
     it('should delegate to configManager.getDefaultConfigPath', () => {
       const configManager = new ConcreteConfigManager();
       const expectedPath = '/path/to/default/config.json';
-      
+
       const result = configManager.getDefaultConfigPath();
-      
+
       expect(configFns.getDefaultConfigPath).toHaveBeenCalled();
       expect(result).toEqual(expectedPath);
     });
@@ -194,9 +194,9 @@ describe('ConcreteConfigManager', () => {
   describe('CRUD operations', () => {
     it('should delegate addOrUpdateModel to configManager.addOrUpdateModel', () => {
       const configManager = new ConcreteConfigManager();
-      
+
       const result = configManager.addOrUpdateModel(mockConfig, mockModel);
-      
+
       expect(configFns.addOrUpdateModel).toHaveBeenCalledWith(mockConfig, mockModel);
       expect(result.models).toContain(mockModel);
     });
@@ -205,27 +205,31 @@ describe('ConcreteConfigManager', () => {
       const configManager = new ConcreteConfigManager();
       const provider = 'openai';
       const modelId = 'gpt-4o';
-      
+
       configManager.removeModel(mockConfig, provider, modelId);
-      
+
       expect(configFns.removeModel).toHaveBeenCalledWith(mockConfig, provider, modelId);
     });
 
     it('should delegate addOrUpdateGroup to configManager.addOrUpdateGroup', () => {
       const configManager = new ConcreteConfigManager();
       const groupName = 'testGroup';
-      
+
       configManager.addOrUpdateGroup(mockConfig, groupName, mockGroupDetails);
-      
-      expect(configFns.addOrUpdateGroup).toHaveBeenCalledWith(mockConfig, groupName, mockGroupDetails);
+
+      expect(configFns.addOrUpdateGroup).toHaveBeenCalledWith(
+        mockConfig,
+        groupName,
+        mockGroupDetails
+      );
     });
 
     it('should delegate removeGroup to configManager.removeGroup', () => {
       const configManager = new ConcreteConfigManager();
       const groupName = 'testGroup';
-      
+
       configManager.removeGroup(mockConfig, groupName);
-      
+
       expect(configFns.removeGroup).toHaveBeenCalledWith(mockConfig, groupName);
     });
 
@@ -234,10 +238,15 @@ describe('ConcreteConfigManager', () => {
       const groupName = 'testGroup';
       const provider = 'anthropic';
       const modelId = 'claude-3-sonnet-20240229';
-      
+
       configManager.addModelToGroup(mockConfig, groupName, provider, modelId);
-      
-      expect(configFns.addModelToGroup).toHaveBeenCalledWith(mockConfig, groupName, provider, modelId);
+
+      expect(configFns.addModelToGroup).toHaveBeenCalledWith(
+        mockConfig,
+        groupName,
+        provider,
+        modelId
+      );
     });
 
     it('should delegate removeModelFromGroup to configManager.removeModelFromGroup', () => {
@@ -245,10 +254,15 @@ describe('ConcreteConfigManager', () => {
       const groupName = 'testGroup';
       const provider = 'anthropic';
       const modelId = 'claude-3-sonnet-20240229';
-      
+
       configManager.removeModelFromGroup(mockConfig, groupName, provider, modelId);
-      
-      expect(configFns.removeModelFromGroup).toHaveBeenCalledWith(mockConfig, groupName, provider, modelId);
+
+      expect(configFns.removeModelFromGroup).toHaveBeenCalledWith(
+        mockConfig,
+        groupName,
+        provider,
+        modelId
+      );
     });
   });
 });

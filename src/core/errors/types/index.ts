@@ -1,6 +1,6 @@
 /**
  * Re-exports all error types
- * 
+ *
  * This module provides a single entry point for importing all error classes
  * defined in the error types directory.
  */

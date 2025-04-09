@@ -1,6 +1,6 @@
 /**
  * Integration test for the runThinktank completion summary logging
- * 
+ *
  * Tests that the main runThinktank function correctly formats and logs
  * completion summaries after refactoring to remove _logCompletionSummary
  */
@@ -16,8 +16,8 @@ jest.mock('../../utils/formatCompletionSummary', () => {
   return {
     formatCompletionSummary: jest.fn().mockReturnValue({
       summaryText: 'Mock summary text',
-      errorDetails: ['Mock error detail 1', 'Mock error detail 2']
-    })
+      errorDetails: ['Mock error detail 1', 'Mock error detail 2'],
+    }),
   };
 });
 
@@ -31,22 +31,28 @@ const mockFileSystem: jest.Mocked<FileSystem> = {
   stat: jest.fn().mockResolvedValue({} as any),
   access: jest.fn().mockResolvedValue(undefined),
   getConfigDir: jest.fn().mockResolvedValue('/mock/config/dir'),
-  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json')
+  getConfigFilePath: jest.fn().mockResolvedValue('/mock/config/file.json'),
 };
 
 const mockConfigManager: jest.Mocked<ConfigManagerInterface> = {
   loadConfig: jest.fn().mockResolvedValue({}),
   saveConfig: jest.fn().mockResolvedValue(undefined),
   getActiveConfigPath: jest.fn().mockResolvedValue('/mock/config/path'),
-  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config/path')
+  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config.json'),
+  addOrUpdateModel: jest.fn().mockReturnValue({}),
+  removeModel: jest.fn().mockReturnValue({}),
+  addOrUpdateGroup: jest.fn().mockReturnValue({}),
+  removeGroup: jest.fn().mockReturnValue({}),
+  addModelToGroup: jest.fn().mockReturnValue({}),
+  removeModelFromGroup: jest.fn().mockReturnValue({}),
 };
 
 const mockLlmClient: jest.Mocked<LLMClient> = {
   generate: jest.fn().mockResolvedValue({
     model: 'mock:model',
     response: 'Mock response',
-    error: null
-  })
+    error: null,
+  }),
 };
 
 const mockConsoleLogger: jest.Mocked<ConsoleLogger> = {
@@ -55,7 +61,7 @@ const mockConsoleLogger: jest.Mocked<ConsoleLogger> = {
   warn: jest.fn(),
   info: jest.fn(),
   success: jest.fn(),
-  debug: jest.fn()
+  debug: jest.fn(),
 };
 
 // Mock other functions called by runThinktank
@@ -63,52 +69,58 @@ jest.mock('../runThinktankHelpers', () => ({
   _setupWorkflow: jest.fn().mockResolvedValue({
     config: {},
     friendlyRunName: 'mock-run',
-    outputDirectoryPath: '/mock/output/dir'
+    outputDirectoryPath: '/mock/output/dir',
   }),
   _processInput: jest.fn().mockResolvedValue({
     inputResult: { content: 'Mock input', sourceType: 'direct' },
-    combinedContent: 'Mock input'
+    combinedContent: 'Mock input',
   }),
   _selectModels: jest.fn().mockReturnValue({
-    models: [{
-      provider: 'mock',
-      modelId: 'mock-model',
-      enabled: true
-    }],
-    warnings: []
+    models: [
+      {
+        provider: 'mock',
+        modelId: 'mock-model',
+        enabled: true,
+      },
+    ],
+    warnings: [],
   }),
   _executeQueries: jest.fn().mockResolvedValue({
     queryResults: {
-      responses: [{
-        provider: 'mock',
-        modelId: 'mock-model',
-        text: 'Mock response',
-        configKey: 'mock:mock-model'
-      }],
+      responses: [
+        {
+          provider: 'mock',
+          modelId: 'mock-model',
+          text: 'Mock response',
+          configKey: 'mock:mock-model',
+        },
+      ],
       statuses: {
         'mock:mock-model': {
           status: 'success',
           startTime: 1,
           endTime: 2,
-          durationMs: 1
-        }
+          durationMs: 1,
+        },
       },
       timing: {
         startTime: 1,
         endTime: 2,
-        durationMs: 1
-      }
-    }
+        durationMs: 1,
+      },
+    },
   }),
   _processOutput: jest.fn().mockResolvedValue({
-    files: [{
-      filename: 'mock-output.md',
-      content: 'Mock content',
-      modelKey: 'mock:mock-model'
-    }],
-    consoleOutput: 'Mock console output'
+    files: [
+      {
+        filename: 'mock-output.md',
+        content: 'Mock content',
+        modelKey: 'mock:mock-model',
+      },
+    ],
+    consoleOutput: 'Mock console output',
   }),
-  _handleWorkflowError: jest.fn()
+  _handleWorkflowError: jest.fn(),
 }));
 
 // Mock spinner
@@ -120,13 +132,13 @@ jest.mock('../../utils/spinnerFactory', () => {
     fail: jest.fn().mockReturnThis(),
     warn: jest.fn().mockReturnThis(),
     info: jest.fn().mockReturnThis(),
-    text: ''
+    text: '',
   };
-  
+
   return {
     __esModule: true,
     default: jest.fn(() => mockSpinner),
-    configureSpinnerFactory: jest.fn()
+    configureSpinnerFactory: jest.fn(),
   };
 });
 
@@ -135,9 +147,9 @@ jest.mock('../io', () => ({
   writeFiles: jest.fn().mockResolvedValue({
     successCount: 1,
     errorCount: 0,
-    timing: { startTime: 1, endTime: 2, durationMs: 1 }
+    timing: { startTime: 1, endTime: 2, durationMs: 1 },
   }),
-  updateSpinnerWithFileOutput: jest.fn()
+  updateSpinnerWithFileOutput: jest.fn(),
 }));
 
 describe('runThinktank Completion Summary Integration', () => {
@@ -149,7 +161,7 @@ describe('runThinktank Completion Summary Integration', () => {
   it('should call formatCompletionSummary with correct data', async () => {
     // Sample options
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Run the function
@@ -169,7 +181,7 @@ describe('runThinktank Completion Summary Integration', () => {
         successCount: 1,
         failureCount: 0,
         outputDirectoryPath: '/mock/output/dir',
-        runName: 'mock-run'
+        runName: 'mock-run',
       }),
       expect.any(Object)
     );
@@ -178,7 +190,7 @@ describe('runThinktank Completion Summary Integration', () => {
   it('should log formatted summary text and error details', async () => {
     // Sample options
     const options: RunOptions = {
-      input: 'test-prompt.txt'
+      input: 'test-prompt.txt',
     };
 
     // Run the function
@@ -200,7 +212,7 @@ describe('runThinktank Completion Summary Integration', () => {
     // Sample options with useColors: false
     const options: RunOptions = {
       input: 'test-prompt.txt',
-      useColors: false
+      useColors: false,
     };
 
     // Run the function
@@ -216,7 +228,7 @@ describe('runThinktank Completion Summary Integration', () => {
     expect(formatUtils.formatCompletionSummary).toHaveBeenCalledWith(
       expect.any(Object),
       expect.objectContaining({
-        useColors: false
+        useColors: false,
       })
     );
   });

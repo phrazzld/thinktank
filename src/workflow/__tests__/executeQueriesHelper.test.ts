@@ -9,7 +9,7 @@ import { LLMClient } from '../../core/interfaces';
 
 // Mock dependencies
 jest.mock('../../core/configManager', () => ({
-  findModelGroup: jest.fn()
+  findModelGroup: jest.fn(),
 }));
 
 // Import spinner helper
@@ -21,7 +21,7 @@ const mockSpinner = createMockSpinner();
 describe('_executeQueries Helper', () => {
   // Create a mock LLMClient
   const mockLLMClient: jest.Mocked<LLMClient> = {
-    generate: jest.fn()
+    generate: jest.fn(),
   };
 
   // Reset all mocks before each test
@@ -38,7 +38,7 @@ describe('_executeQueries Helper', () => {
   // Sample app config for tests
   const sampleConfig: AppConfig = {
     models: [],
-    groups: {}
+    groups: {},
   };
 
   // Sample models for testing
@@ -46,13 +46,13 @@ describe('_executeQueries Helper', () => {
     {
       provider: 'mock',
       modelId: 'mock-model',
-      enabled: true
+      enabled: true,
     } as ModelConfig,
     {
       provider: 'openai',
       modelId: 'gpt-4o',
-      enabled: true
-    } as ModelConfig
+      enabled: true,
+    } as ModelConfig,
   ];
 
   it('should successfully execute queries', async () => {
@@ -62,14 +62,14 @@ describe('_executeQueries Helper', () => {
         provider: 'mock',
         modelId: 'mock-model',
         text: 'Mock response',
-        metadata: {}
+        metadata: {},
       },
       {
         provider: 'openai',
         modelId: 'gpt-4o',
         text: 'OpenAI response',
-        metadata: {}
-      }
+        metadata: {},
+      },
     ];
 
     // Mock successful responses from the LLMClient
@@ -88,9 +88,9 @@ describe('_executeQueries Helper', () => {
       combinedContent: 'Test prompt with context',
       options: {
         input: 'test-prompt.txt',
-        systemPrompt: 'You are a helpful assistant'
+        systemPrompt: 'You are a helpful assistant',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the result contains both responses
@@ -105,7 +105,7 @@ describe('_executeQueries Helper', () => {
       'mock:mock-model',
       expect.any(Object),
       expect.objectContaining({
-        text: 'You are a helpful assistant'
+        text: 'You are a helpful assistant',
       })
     );
     expect(mockLLMClient.generate).toHaveBeenCalledWith(
@@ -113,7 +113,7 @@ describe('_executeQueries Helper', () => {
       'openai:gpt-4o',
       expect.any(Object),
       expect.objectContaining({
-        text: 'You are a helpful assistant'
+        text: 'You are a helpful assistant',
       })
     );
 
@@ -122,13 +122,13 @@ describe('_executeQueries Helper', () => {
     expect(mockSpinner.info).toHaveBeenCalled();
     expect(mockSpinner.start).toHaveBeenCalled();
   });
-  
+
   it('should handle thinking capability for Claude models', async () => {
     // Setup model with Claude model
     const claudeModel: ModelConfig = {
       provider: 'anthropic',
       modelId: 'claude-3-opus',
-      enabled: true
+      enabled: true,
     } as ModelConfig;
 
     // Setup mock response
@@ -137,13 +137,13 @@ describe('_executeQueries Helper', () => {
       modelId: 'claude-3-opus',
       text: 'Claude response with thinking',
       metadata: {
-        thinking: 'Deep thinking process...'
-      }
+        thinking: 'Deep thinking process...',
+      },
     };
 
     // Mock successful response from LLMClient
     mockLLMClient.generate.mockResolvedValueOnce(mockResponse);
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -155,9 +155,9 @@ describe('_executeQueries Helper', () => {
       combinedContent: 'Test prompt with context for thinking',
       options: {
         input: 'test-prompt.txt',
-        enableThinking: true
+        enableThinking: true,
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the LLMClient was called with thinking option
@@ -166,8 +166,8 @@ describe('_executeQueries Helper', () => {
       'anthropic:claude-3-opus',
       expect.objectContaining({
         thinking: expect.objectContaining({
-          type: 'enabled'
-        })
+          type: 'enabled',
+        }),
       }),
       undefined
     );
@@ -179,12 +179,12 @@ describe('_executeQueries Helper', () => {
       provider: 'mock',
       modelId: 'mock-model',
       text: 'Quick response',
-      metadata: {}
+      metadata: {},
     };
 
     // Mock successful response from LLMClient
     mockLLMClient.generate.mockResolvedValueOnce(mockResponse);
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -196,9 +196,9 @@ describe('_executeQueries Helper', () => {
       combinedContent: 'Test prompt with timeout',
       options: {
         input: 'test-prompt.txt',
-        timeoutMs: 60000 // 1 minute timeout
+        timeoutMs: 60000, // 1 minute timeout
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the LLMClient was called with timeout option
@@ -206,7 +206,7 @@ describe('_executeQueries Helper', () => {
       'Test prompt with timeout',
       'mock:mock-model',
       expect.objectContaining({
-        timeout: 60000
+        timeout: 60000,
       }),
       undefined
     );
@@ -219,10 +219,10 @@ describe('_executeQueries Helper', () => {
         provider: 'mock',
         modelId: 'mock-model',
         text: 'Mock response',
-        metadata: {}
+        metadata: {},
       })
       .mockRejectedValueOnce(new Error('API call failed'));
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -233,9 +233,9 @@ describe('_executeQueries Helper', () => {
       models: testModels,
       combinedContent: 'Test prompt with partial failures',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the results include both success and error
@@ -254,7 +254,7 @@ describe('_executeQueries Helper', () => {
     mockLLMClient.generate
       .mockRejectedValueOnce(new Error('Timeout error'))
       .mockRejectedValueOnce(new Error('API key error'));
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -265,15 +265,17 @@ describe('_executeQueries Helper', () => {
       models: testModels,
       combinedContent: 'Test prompt with all failures',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify all responses have errors
     expect(result.queryResults.responses.length).toBe(2);
     expect(result.queryResults.responses.every(r => r.error)).toBeTruthy();
-    expect(Object.values(result.queryResults.statuses).every(s => s.status === 'error')).toBeTruthy();
+    expect(
+      Object.values(result.queryResults.statuses).every(s => s.status === 'error')
+    ).toBeTruthy();
 
     // Verify spinner shows appropriate warnings and error summary
     expect(mockSpinner.warn).toHaveBeenCalled();
@@ -289,8 +291,8 @@ describe('_executeQueries Helper', () => {
       enabled: true,
       systemPrompt: {
         text: 'Model-specific system prompt',
-        metadata: { source: 'model-config' }
-      }
+        metadata: { source: 'model-config' },
+      },
     } as ModelConfig;
 
     // Mock successful response
@@ -298,9 +300,9 @@ describe('_executeQueries Helper', () => {
       provider: 'model',
       modelId: 'with-system-prompt',
       text: 'Response with model-specific system prompt',
-      metadata: {}
+      metadata: {},
     });
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -311,9 +313,9 @@ describe('_executeQueries Helper', () => {
       models: [modelWithSystemPrompt],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the LLMClient was called with model's system prompt
@@ -323,7 +325,7 @@ describe('_executeQueries Helper', () => {
       expect.any(Object),
       expect.objectContaining({
         text: 'Model-specific system prompt',
-        metadata: { source: 'model-config' }
+        metadata: { source: 'model-config' },
       })
     );
   });
@@ -333,7 +335,7 @@ describe('_executeQueries Helper', () => {
     const model: ModelConfig = {
       provider: 'group',
       modelId: 'model',
-      enabled: true
+      enabled: true,
     } as ModelConfig;
 
     // Mock group with system prompt
@@ -341,8 +343,8 @@ describe('_executeQueries Helper', () => {
       groupName: 'test-group',
       systemPrompt: {
         text: 'Group system prompt',
-        metadata: { source: 'group-config' }
-      }
+        metadata: { source: 'group-config' },
+      },
     };
 
     // Mock successful response
@@ -350,9 +352,9 @@ describe('_executeQueries Helper', () => {
       provider: 'group',
       modelId: 'model',
       text: 'Response with group system prompt',
-      metadata: {}
+      metadata: {},
     });
-    
+
     // Mock findModelGroup to return the group
     (configManager.findModelGroup as jest.Mock).mockReturnValue(mockGroup);
 
@@ -363,9 +365,9 @@ describe('_executeQueries Helper', () => {
       models: [model],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the LLMClient was called with group's system prompt
@@ -375,7 +377,7 @@ describe('_executeQueries Helper', () => {
       expect.any(Object),
       expect.objectContaining({
         text: 'Group system prompt',
-        metadata: { source: 'group-config' }
+        metadata: { source: 'group-config' },
       })
     );
   });
@@ -385,7 +387,7 @@ describe('_executeQueries Helper', () => {
     const model: ModelConfig = {
       provider: 'test',
       modelId: 'model',
-      enabled: true
+      enabled: true,
     } as ModelConfig;
 
     // Mock group
@@ -393,8 +395,8 @@ describe('_executeQueries Helper', () => {
       groupName: 'test-group',
       systemPrompt: {
         text: 'Group system prompt',
-        metadata: { source: 'group-config' }
-      }
+        metadata: { source: 'group-config' },
+      },
     };
 
     // Mock successful response without groupInfo
@@ -402,9 +404,9 @@ describe('_executeQueries Helper', () => {
       provider: 'test',
       modelId: 'model',
       text: 'Response',
-      metadata: {}
+      metadata: {},
     });
-    
+
     // Mock findModelGroup to return the group
     (configManager.findModelGroup as jest.Mock).mockReturnValue(mockGroup);
 
@@ -415,15 +417,15 @@ describe('_executeQueries Helper', () => {
       models: [model],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify groupInfo was added to the response
     expect(result.queryResults.responses[0].groupInfo).toEqual({
       name: 'test-group',
-      systemPrompt: mockGroup.systemPrompt
+      systemPrompt: mockGroup.systemPrompt,
     });
   });
 
@@ -432,7 +434,7 @@ describe('_executeQueries Helper', () => {
     const model: ModelConfig = {
       provider: 'test',
       modelId: 'model',
-      enabled: true
+      enabled: true,
     } as ModelConfig;
 
     // Mock group
@@ -440,8 +442,8 @@ describe('_executeQueries Helper', () => {
       groupName: 'test-group',
       systemPrompt: {
         text: 'Group system prompt',
-        metadata: { source: 'group-config' }
-      }
+        metadata: { source: 'group-config' },
+      },
     };
 
     // Create response that already has groupInfo
@@ -452,13 +454,13 @@ describe('_executeQueries Helper', () => {
       metadata: {},
       groupInfo: {
         name: 'client-added-group',
-        systemPrompt: { text: 'Client-added system prompt' }
-      }
+        systemPrompt: { text: 'Client-added system prompt' },
+      },
     };
 
     // Mock successful response with existing groupInfo
     mockLLMClient.generate.mockResolvedValueOnce(responseWithGroupInfo);
-    
+
     // Mock findModelGroup to return the group
     (configManager.findModelGroup as jest.Mock).mockReturnValue(mockGroup);
 
@@ -469,27 +471,27 @@ describe('_executeQueries Helper', () => {
       models: [model],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify existing groupInfo was preserved
     expect(result.queryResults.responses[0].groupInfo).toEqual({
       name: 'client-added-group',
-      systemPrompt: { text: 'Client-added system prompt' }
+      systemPrompt: { text: 'Client-added system prompt' },
     });
   });
 
   it('should capture ThinktankError in response', async () => {
     // Create a ThinktankError (non-ApiError)
     const thinktankError = new ThinktankError('Custom Thinktank error', {
-      category: errorCategories.CONFIG
+      category: errorCategories.CONFIG,
     });
 
     // Mock LLMClient to throw the ThinktankError
     mockLLMClient.generate.mockRejectedValueOnce(thinktankError);
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -500,9 +502,9 @@ describe('_executeQueries Helper', () => {
       models: [testModels[0]],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the error is captured in the response
@@ -517,7 +519,7 @@ describe('_executeQueries Helper', () => {
 
     // Mock LLMClient to throw the ApiError
     mockLLMClient.generate.mockRejectedValueOnce(apiError);
-    
+
     // Mock findModelGroup to return null (no group)
     (configManager.findModelGroup as jest.Mock).mockReturnValue(null);
 
@@ -528,9 +530,9 @@ describe('_executeQueries Helper', () => {
       models: [testModels[0]],
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
 
     // Verify the error is captured in the response
@@ -544,14 +546,14 @@ describe('_executeQueries Helper', () => {
     const result = await _executeQueries({
       spinner: mockSpinner,
       config: sampleConfig,
-      models: [],  // Empty models array
+      models: [], // Empty models array
       combinedContent: 'Test prompt',
       options: {
-        input: 'test-prompt.txt'
+        input: 'test-prompt.txt',
       },
-      llmClient: mockLLMClient
+      llmClient: mockLLMClient,
     });
-    
+
     // Verify the response contains an empty responses array
     expect(result.queryResults.responses).toEqual([]);
     expect(Object.keys(result.queryResults.statuses).length).toBe(0);

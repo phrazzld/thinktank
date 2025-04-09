@@ -10,12 +10,15 @@ import { LLMResponse } from '../../core/types';
 
 // Mock dependencies
 jest.mock('../outputHandler', () => ({
-  generateFilename: jest.fn((response, _opt) => 
-    `${response.provider}-${response.modelId}.md`),
-  formatResponseAsMarkdown: jest.fn((response, includeMetadata) => 
-    `Mock content for ${response.configKey}${includeMetadata ? ' with metadata' : ''}`),
-  formatForConsole: jest.fn((responses, options) => 
-    `Mock console output with ${responses.length} responses${options.includeMetadata ? ' including metadata' : ''}`)
+  generateFilename: jest.fn((response, _opt) => `${response.provider}-${response.modelId}.md`),
+  formatResponseAsMarkdown: jest.fn(
+    (response, includeMetadata) =>
+      `Mock content for ${response.configKey}${includeMetadata ? ' with metadata' : ''}`
+  ),
+  formatForConsole: jest.fn(
+    (responses, options) =>
+      `Mock console output with ${responses.length} responses${options.includeMetadata ? ' including metadata' : ''}`
+  ),
 }));
 
 // Import spinner helper
@@ -42,7 +45,7 @@ describe('_processOutput Helper', () => {
         error: undefined,
         metadata: { responseTime: 100 },
         groupInfo: { name: 'test-group' },
-        configKey: 'mock:model-a'
+        configKey: 'mock:model-a',
       } as LLMResponse & { configKey: string },
       {
         provider: 'mock',
@@ -51,35 +54,35 @@ describe('_processOutput Helper', () => {
         error: undefined,
         metadata: { responseTime: 150 },
         groupInfo: { name: 'default' },
-        configKey: 'mock:model-b'
-      } as LLMResponse & { configKey: string }
+        configKey: 'mock:model-b',
+      } as LLMResponse & { configKey: string },
     ],
     statuses: {
       'mock:model-a': {
         status: 'success',
         startTime: 1000,
         endTime: 1100,
-        durationMs: 100
+        durationMs: 100,
       },
       'mock:model-b': {
         status: 'success',
         startTime: 1000,
         endTime: 1150,
-        durationMs: 150
-      }
+        durationMs: 150,
+      },
     },
     timing: {
       startTime: 1000,
       endTime: 1150,
-      durationMs: 150
+      durationMs: 150,
     },
-    combinedContent: 'Test prompt'
+    combinedContent: 'Test prompt',
   };
 
   // Sample options for testing
   const sampleOptions: RunOptions = {
     input: 'test-prompt.txt',
-    includeMetadata: true
+    includeMetadata: true,
   };
 
   it('should generate file data for each response', () => {
@@ -87,30 +90,30 @@ describe('_processOutput Helper', () => {
     const result = _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
-      options: sampleOptions
+      options: sampleOptions,
     });
 
     // Assert
     expect(result).toBeDefined();
     expect(result.files).toHaveLength(2);
-    
+
     // Verify first file data
     expect(result.files[0]).toEqual({
       filename: 'mock-model-a.md',
       content: 'Mock content for mock:model-a with metadata',
-      modelKey: 'mock:model-a'
+      modelKey: 'mock:model-a',
     });
-    
+
     // Verify second file data
     expect(result.files[1]).toEqual({
       filename: 'mock-model-b.md',
       content: 'Mock content for mock:model-b with metadata',
-      modelKey: 'mock:model-b'
+      modelKey: 'mock:model-b',
     });
-    
+
     // Verify console output
     expect(result.consoleOutput).toEqual('Mock console output with 2 responses including metadata');
-    
+
     // Verify that the formatters were called correctly
     expect(outputHandler.generateFilename).toHaveBeenCalledTimes(2);
     expect(outputHandler.formatResponseAsMarkdown).toHaveBeenCalledTimes(2);
@@ -123,37 +126,34 @@ describe('_processOutput Helper', () => {
       input: 'test-prompt.txt',
       includeMetadata: false,
       useColors: false,
-      specificModel: 'mock:model-a'
+      specificModel: 'mock:model-a',
     };
 
     // Act
     const result = _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
-      options
+      options,
     });
 
     // Assert
     expect(result).toBeDefined();
-    
+
     // Verify that generateFilename was called with specific model option
     expect(outputHandler.generateFilename).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ includeGroup: false })
     );
-    
+
     // Verify that formatResponseAsMarkdown was called with includeMetadata: false
-    expect(outputHandler.formatResponseAsMarkdown).toHaveBeenCalledWith(
-      expect.anything(),
-      false
-    );
-    
+    expect(outputHandler.formatResponseAsMarkdown).toHaveBeenCalledWith(expect.anything(), false);
+
     // Verify that formatForConsole was called with the correct options
     expect(outputHandler.formatForConsole).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
         includeMetadata: false,
-        useColors: false
+        useColors: false,
       })
     );
   });
@@ -163,7 +163,7 @@ describe('_processOutput Helper', () => {
     _processOutput({
       spinner: mockSpinner,
       queryResults: sampleQueryResults,
-      options: sampleOptions
+      options: sampleOptions,
     });
 
     // Assert
@@ -178,22 +178,26 @@ describe('_processOutput Helper', () => {
     });
 
     // Act & Assert
-    expect(() => _processOutput({
-      spinner: mockSpinner,
-      queryResults: sampleQueryResults,
-      options: sampleOptions
-    })).toThrow(ThinktankError);
-    
+    expect(() =>
+      _processOutput({
+        spinner: mockSpinner,
+        queryResults: sampleQueryResults,
+        options: sampleOptions,
+      })
+    ).toThrow(ThinktankError);
+
     // Reset the mock and make it throw again for the second test
     (outputHandler.formatResponseAsMarkdown as jest.Mock).mockImplementationOnce(() => {
       throw new Error('Formatting error');
     });
-    
+
     // Verify the error message
-    expect(() => _processOutput({
-      spinner: mockSpinner,
-      queryResults: sampleQueryResults,
-      options: sampleOptions
-    })).toThrow('Error formatting output: Formatting error');
+    expect(() =>
+      _processOutput({
+        spinner: mockSpinner,
+        queryResults: sampleQueryResults,
+        options: sampleOptions,
+      })
+    ).toThrow('Error formatting output: Formatting error');
   });
 });

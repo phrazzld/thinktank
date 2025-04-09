@@ -1,17 +1,20 @@
 /**
  * Manual mock for fileReader module
- * 
+ *
  * This mock exposes the same interface as the original but with jest.fn() mocks
  * that can be configured as needed in tests.
- * 
- * IMPORTANT: To avoid conflicts with existing tests, this manual mock auto-detects 
- * if it's being required directly by the test (explicit .mock) or through Jest's 
- * automocking. When required directly, it creates self-contained mocks. When 
+ *
+ * IMPORTANT: To avoid conflicts with existing tests, this manual mock auto-detects
+ * if it's being required directly by the test (explicit .mock) or through Jest's
+ * automocking. When required directly, it creates self-contained mocks. When
  * automocked by Jest, it defers to Jest's default mock behavior.
  */
 
 // Import the original types from the types module
-import { FileReadError as ActualFileReadError, ContextFileResult as ActualContextFileResult } from '../fileReaderTypes';
+import {
+  FileReadError as ActualFileReadError,
+  ContextFileResult as ActualContextFileResult,
+} from '../fileReaderTypes';
 
 // Re-export types
 export interface ContextFileResult extends ActualContextFileResult {}
@@ -25,7 +28,7 @@ export const readContextFile = jest.fn().mockImplementation((filePath: string) =
   return Promise.resolve({
     path: filePath,
     content: 'Mocked content',
-    error: null
+    error: null,
   });
 });
 

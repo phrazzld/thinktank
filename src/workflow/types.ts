@@ -1,6 +1,6 @@
 /**
  * Data interfaces for pure functions refactored to separate I/O from business logic
- * 
+ *
  * This file defines the data structures returned by pure functions after their refactoring
  * to remove direct I/O operations. These interfaces represent the data that would have been
  * written to files or logged to the console, but is now returned as structured data instead.

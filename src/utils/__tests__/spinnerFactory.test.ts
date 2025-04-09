@@ -1,4 +1,9 @@
-import { configureSpinnerFactory, createSpinner, resetSpinnerFactoryConfig, getSpinnerFactoryConfig } from '../spinnerFactory';
+import {
+  configureSpinnerFactory,
+  createSpinner,
+  resetSpinnerFactoryConfig,
+  getSpinnerFactoryConfig,
+} from '../spinnerFactory';
 import { ThrottledSpinner } from '../throttledSpinner';
 import originalOra from 'ora';
 
@@ -12,7 +17,7 @@ jest.mock('ora', () => {
     warn: jest.fn().mockReturnThis(),
     info: jest.fn().mockReturnThis(),
     text: '',
-    isSpinning: true
+    isSpinning: true,
   }));
 });
 
@@ -41,7 +46,7 @@ describe('spinnerFactory', () => {
   test('should reset configuration to defaults', () => {
     configureSpinnerFactory({ useThrottledSpinner: false, defaultThrottleInterval: 500 });
     resetSpinnerFactoryConfig();
-    
+
     const config = getSpinnerFactoryConfig();
     expect(config.useThrottledSpinner).toBe(true);
     expect(config.defaultThrottleInterval).toBe(200);

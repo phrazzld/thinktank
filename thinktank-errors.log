@@ -1,0 +1,22 @@
+# Thinktank Errors Log
+
+## Run: diplomatic-ember (2023-04-09)
+
+### Successful Models (2):
+- google:gemini-2.5-pro-exp-03-25
+- google:gemini-2.0-flash
+
+### Failed Models (5):
+- openrouter:deepseek/deepseek-r1
+  → Error: (0 , errors_1.isProviderAuthError) is not a function
+- openrouter:deepseek/deepseek-chat-v3-0324
+  → Error: (0 , errors_1.isProviderAuthError) is not a function
+- openrouter:google/gemini-2.5-pro-exp-03-25:free
+  → Error: (0 , errors_1.isProviderAuthError) is not a function
+- openai:o3-mini
+  → Error: (0 , errors_1.isProviderRateLimitError) is not a function
+- openai:gpt-4o
+  → Error: (0 , errors_1.isProviderRateLimitError) is not a function
+
+Output directory: /Users/phaedrus/Development/thinktank/thinktank-output/diplomatic-emberWed Apr  9 12:37:13 CDT 2025: Error running thinktank: All models failed with error: (0 , errors_1.isProviderRateLimitError) is not a function
+Wed Apr  9 12:40:08 CDT 2025: Error running thinktank with specific model: (0 , errors_1.isProviderRateLimitError) is not a function

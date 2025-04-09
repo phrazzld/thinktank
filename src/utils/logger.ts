@@ -1,6 +1,6 @@
 /**
  * Logger utility module for consistent logging throughout the application
- * 
+ *
  * Provides a configurable logger with support for different verbosity levels
  * and consistent formatting of messages.
  */
@@ -11,11 +11,11 @@ import { symbols } from './consoleUtils';
  * Verbosity levels for the logger
  */
 export enum LogLevel {
-  ERROR = 0,  // Critical errors only
-  WARN = 1,   // Warnings and errors
-  INFO = 2,   // Normal operational information
-  DEBUG = 3,  // More detailed information
-  VERBOSE = 4 // Everything including detailed debugging information
+  ERROR = 0, // Critical errors only
+  WARN = 1, // Warnings and errors
+  INFO = 2, // Normal operational information
+  DEBUG = 3, // More detailed information
+  VERBOSE = 4, // Everything including detailed debugging information
 }
 
 /**
@@ -35,7 +35,7 @@ const DEFAULT_OPTIONS: LoggerOptions = {
   level: LogLevel.INFO,
   useColors: true,
   timestamp: false,
-  prefix: ''
+  prefix: '',
 };
 
 /**
@@ -43,7 +43,7 @@ const DEFAULT_OPTIONS: LoggerOptions = {
  */
 export class Logger {
   private options: Required<LoggerOptions>;
-  
+
   /**
    * Create a new logger instance
    * @param options - Configuration options for the logger
@@ -51,10 +51,10 @@ export class Logger {
   constructor(options: LoggerOptions = {}) {
     this.options = {
       ...DEFAULT_OPTIONS,
-      ...options
+      ...options,
     } as Required<LoggerOptions>;
   }
-  
+
   /**
    * Set the verbosity level of the logger
    * @param level - The log level to set
@@ -62,7 +62,7 @@ export class Logger {
   public setLevel(level: LogLevel): void {
     this.options.level = level;
   }
-  
+
   /**
    * Get the current verbosity level
    * @returns The current log level
@@ -70,7 +70,7 @@ export class Logger {
   public getLevel(): LogLevel {
     return this.options.level;
   }
-  
+
   /**
    * Enable or disable colored output
    * @param useColors - Whether to use colors in log output
@@ -78,7 +78,7 @@ export class Logger {
   public setColors(useColors: boolean): void {
     this.options.useColors = useColors;
   }
-  
+
   /**
    * Set a prefix for all log messages
    * @param prefix - The prefix to add to all messages
@@ -86,7 +86,7 @@ export class Logger {
   public setPrefix(prefix: string): void {
     this.options.prefix = prefix;
   }
-  
+
   /**
    * Enable or disable timestamps in log messages
    * @param enable - Whether to include timestamps
@@ -94,7 +94,7 @@ export class Logger {
   public setTimestamp(enable: boolean): void {
     this.options.timestamp = enable;
   }
-  
+
   /**
    * Update logger options
    * @param options - New options to apply
@@ -102,10 +102,10 @@ export class Logger {
   public configure(options: LoggerOptions): void {
     this.options = {
       ...this.options,
-      ...options
+      ...options,
     };
   }
-  
+
   /**
    * Log an error message (highest severity)
    * @param message - The message to log
@@ -114,10 +114,10 @@ export class Logger {
   public error(message: string, error?: Error): void {
     if (this.options.level >= LogLevel.ERROR) {
       const formattedMessage = this.format(message, 'error');
-      
+
       // eslint-disable-next-line no-console
       console.error(formattedMessage);
-      
+
       // If an error object is provided, log its details
       if (error) {
         const details = error.stack || error.message;
@@ -126,7 +126,7 @@ export class Logger {
       }
     }
   }
-  
+
   /**
    * Log a warning message
    * @param message - The message to log
@@ -138,7 +138,7 @@ export class Logger {
       console.warn(formattedMessage);
     }
   }
-  
+
   /**
    * Log an informational message (normal priority)
    * @param message - The message to log
@@ -150,7 +150,7 @@ export class Logger {
       console.log(formattedMessage);
     }
   }
-  
+
   /**
    * Log a success message (info level but styled as success)
    * @param message - The message to log
@@ -162,7 +162,7 @@ export class Logger {
       console.log(formattedMessage);
     }
   }
-  
+
   /**
    * Log a debug message (lower priority)
    * @param message - The message to log
@@ -174,7 +174,7 @@ export class Logger {
       console.log(formattedMessage);
     }
   }
-  
+
   /**
    * Log a verbose message (lowest priority)
    * @param message - The message to log
@@ -186,7 +186,7 @@ export class Logger {
       console.log(formattedMessage);
     }
   }
-  
+
   /**
    * Log a plain message without any formatting
    * @param message - The message to log
@@ -196,30 +196,33 @@ export class Logger {
     // eslint-disable-next-line no-console
     console.log(message);
   }
-  
+
   /**
    * Format a log message based on its type and options
    * @param message - The message to format
    * @param type - The type of message (error, warn, info, etc.)
    * @returns Formatted message with appropriate styling
    */
-  private format(message: string, type: 'error' | 'warn' | 'info' | 'success' | 'debug' | 'verbose'): string {
+  private format(
+    message: string,
+    type: 'error' | 'warn' | 'info' | 'success' | 'debug' | 'verbose'
+  ): string {
     const { useColors, timestamp, prefix } = this.options;
-    
+
     // Build message components
     const components: string[] = [];
-    
+
     // Add timestamp if enabled
     if (timestamp) {
       const time = new Date().toISOString().split('T')[1].split('.')[0];
       components.push(useColors ? chalk.gray(`[${time}]`) : `[${time}]`);
     }
-    
+
     // Add prefix if specified
     if (prefix) {
       components.push(useColors ? chalk.gray(prefix) : prefix);
     }
-    
+
     // Add level indicator
     let indicator = '';
     switch (type) {
@@ -243,7 +246,7 @@ export class Logger {
         break;
     }
     components.push(indicator);
-    
+
     // Add the message with appropriate styling
     let styledMessage = message;
     if (useColors) {
@@ -269,7 +272,7 @@ export class Logger {
       }
     }
     components.push(styledMessage);
-    
+
     return components.join(' ');
   }
 }
@@ -281,7 +284,7 @@ export const logger = new Logger();
 
 /**
  * Configure the global logger based on command-line options
- * 
+ *
  * @param options - Options to control logger configuration
  * @param options.verbose - Whether verbose mode is enabled
  * @param options.quiet - Whether quiet mode is enabled
@@ -296,7 +299,7 @@ export function configureLogger(options: {
 }): void {
   // Determine the log level based on flags
   let level = LogLevel.INFO; // Default level
-  
+
   if (options.quiet) {
     level = LogLevel.ERROR; // Only show errors
   } else if (options.debug) {
@@ -304,11 +307,11 @@ export function configureLogger(options: {
   } else if (options.verbose) {
     level = LogLevel.VERBOSE; // Show everything
   }
-  
+
   // Update the logger configuration
   logger.configure({
     level,
-    useColors: !options.noColor
+    useColors: !options.noColor,
   });
 }
 

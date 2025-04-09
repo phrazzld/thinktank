@@ -1,9 +1,9 @@
 /**
  * Integration tests for the file writing functionality in runThinktank.ts
- * 
+ *
  * These tests focus on verifying that the runThinktank module correctly processes
  * the data returned by _processOutput and writes files to disk.
- * 
+ *
  * NOTE: All tests are currently skipped due to changes in FileSystemAdapter implementation.
  */
 // Commented out unused imports as all tests are skipped

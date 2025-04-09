@@ -13,9 +13,9 @@ describe('Type Definitions', () => {
           return {
             provider: this.providerId,
             modelId,
-            text: `Test response for ${prompt}`
+            text: `Test response for ${prompt}`,
           };
-        }
+        },
       };
 
       // The test passes if TypeScript accepts this implementation
@@ -30,16 +30,13 @@ describe('Type Definitions', () => {
           return {
             provider: this.providerId,
             modelId,
-            text: `Test response for ${prompt}`
+            text: `Test response for ${prompt}`,
           };
         },
         // Including the listModels method
         async listModels() {
-          return [
-            { id: 'model-1' },
-            { id: 'model-2', description: 'Test Model 2' }
-          ];
-        }
+          return [{ id: 'model-1' }, { id: 'model-2', description: 'Test Model 2' }];
+        },
       };
 
       // The test passes if TypeScript accepts this implementation
@@ -53,7 +50,7 @@ describe('Type Definitions', () => {
       // This test verifies that we can create valid LLMAvailableModel objects
       const models: LLMAvailableModel[] = [
         { id: 'basic-model' },
-        { id: 'detailed-model', description: 'A model with description' }
+        { id: 'detailed-model', description: 'A model with description' },
       ];
 
       expect(models).toHaveLength(2);

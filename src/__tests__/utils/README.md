@@ -32,6 +32,22 @@ setupBasicFs({
 });
 ```
 
+### From `mockGitignoreUtils.ts` to `test/setup/gitignore.ts`
+
+```typescript
+// OLD (DEPRECATED)
+import * as mockGitignoreUtils from '../../../__tests__/utils/mockGitignoreUtils';
+mockGitignoreUtils.setupMockGitignore();
+mockGitignoreUtils.mockShouldIgnorePath('/dir', 'file.log', true);
+
+// NEW (RECOMMENDED)
+import { setupWithGitignore } from '../../test/setup/gitignore';
+await setupWithGitignore('/dir', '*.log', {
+  'file.txt': 'content',
+  'file.log': 'should be ignored'
+});
+```
+
 ### From `mockFactories.ts` to `test/factories/*` and `test/setup/*`
 
 ```typescript

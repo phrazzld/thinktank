@@ -1,6 +1,6 @@
 /**
  * Console utility module for terminal styling and formatting
- * 
+ *
  * Centralizes all terminal styling logic to maintain consistency
  * and provide reusable formatting helpers across the application.
  */

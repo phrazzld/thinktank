@@ -1,6 +1,6 @@
 /**
  * Registry for LLM providers in the thinktank application
- * 
+ *
  * The registry is responsible for managing the registration and lookup of LLM providers.
  * It allows the application to dynamically register and use different LLM providers.
  */
@@ -22,14 +22,14 @@ export class ProviderRegistryError extends Error {
  */
 class LLMProviderRegistry {
   private providers: Map<string, LLMProvider>;
-  
+
   constructor() {
     this.providers = new Map<string, LLMProvider>();
   }
-  
+
   /**
    * Registers a provider with the registry
-   * 
+   *
    * @param provider - The provider to register
    * @throws {ProviderRegistryError} If the provider is invalid or already registered
    */
@@ -37,56 +37,58 @@ class LLMProviderRegistry {
     if (!provider) {
       throw new ProviderRegistryError('Cannot register undefined or null provider');
     }
-    
+
     if (!provider.providerId) {
       throw new ProviderRegistryError('Provider must have a providerId');
     }
-    
+
     if (this.providers.has(provider.providerId)) {
-      throw new ProviderRegistryError(`Provider with ID '${provider.providerId}' is already registered`);
+      throw new ProviderRegistryError(
+        `Provider with ID '${provider.providerId}' is already registered`
+      );
     }
-    
+
     this.providers.set(provider.providerId, provider);
   }
-  
+
   /**
    * Gets a provider by its ID
-   * 
+   *
    * @param providerId - The ID of the provider to get
    * @returns The provider, or undefined if not found
    */
   getProvider(providerId: string): LLMProvider | undefined {
     return this.providers.get(providerId);
   }
-  
+
   /**
    * Checks if a provider is registered
-   * 
+   *
    * @param providerId - The ID of the provider to check
    * @returns True if the provider is registered, false otherwise
    */
   hasProvider(providerId: string): boolean {
     return this.providers.has(providerId);
   }
-  
+
   /**
    * Gets all registered provider IDs
-   * 
+   *
    * @returns Array of provider IDs
    */
   getProviderIds(): string[] {
     return Array.from(this.providers.keys());
   }
-  
+
   /**
    * Gets all registered providers
-   * 
+   *
    * @returns Array of providers
    */
   getAllProviders(): LLMProvider[] {
     return Array.from(this.providers.values());
   }
-  
+
   /**
    * Clears all registered providers
    * Primarily used for testing
@@ -101,7 +103,7 @@ const registry = new LLMProviderRegistry();
 
 /**
  * Registers a provider with the registry
- * 
+ *
  * @param provider - The provider to register
  * @throws {ProviderRegistryError} If the provider is invalid or already registered
  */
@@ -111,7 +113,7 @@ export function registerProvider(provider: LLMProvider): void {
 
 /**
  * Gets a provider by its ID
- * 
+ *
  * @param providerId - The ID of the provider to get
  * @returns The provider, or undefined if not found
  */
@@ -121,7 +123,7 @@ export function getProvider(providerId: string): LLMProvider | undefined {
 
 /**
  * Checks if a provider is registered
- * 
+ *
  * @param providerId - The ID of the provider to check
  * @returns True if the provider is registered, false otherwise
  */
@@ -131,7 +133,7 @@ export function hasProvider(providerId: string): boolean {
 
 /**
  * Gets all registered provider IDs
- * 
+ *
  * @returns Array of provider IDs
  */
 export function getProviderIds(): string[] {
@@ -140,7 +142,7 @@ export function getProviderIds(): string[] {
 
 /**
  * Gets all registered providers
- * 
+ *
  * @returns Array of providers
  */
 export function getAllProviders(): LLMProvider[] {
@@ -157,7 +159,7 @@ export function clearRegistry(): void {
 
 /**
  * Calls a provider with a prompt, resolving options using the cascading configuration system
- * 
+ *
  * @param providerId - The ID of the provider to use
  * @param modelId - The ID of the model to use
  * @param prompt - The prompt to send to the model
@@ -178,11 +180,13 @@ export async function callProvider(
   systemPrompt?: SystemPrompt
 ): Promise<LLMResponse> {
   const provider = getProvider(providerId);
-  
+
   if (!provider) {
-    throw new ProviderRegistryError(`Provider '${providerId}' not found for model ${providerId}:${modelId}`);
+    throw new ProviderRegistryError(
+      `Provider '${providerId}' not found for model ${providerId}:${modelId}`
+    );
   }
-  
+
   // Resolve options using the cascading configuration system
   const resolvedOptions = resolveModelOptions(
     providerId,
@@ -191,7 +195,7 @@ export async function callProvider(
     groupOptions,
     cliOptions
   );
-  
+
   // Call the provider with the resolved options
   return provider.generate(prompt, modelId, resolvedOptions, systemPrompt);
 }

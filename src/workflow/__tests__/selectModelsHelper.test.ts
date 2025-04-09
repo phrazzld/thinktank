@@ -30,21 +30,21 @@ describe('_selectModels Helper', () => {
       {
         provider: 'mock',
         modelId: 'mock-model',
-        enabled: true
+        enabled: true,
       } as ModelConfig,
       {
         provider: 'openai',
         modelId: 'gpt-4o',
-        enabled: true
-      } as ModelConfig
+        enabled: true,
+      } as ModelConfig,
     ],
     groups: {
       default: {
         name: 'default',
         systemPrompt: { text: 'You are a helpful assistant.' },
-        models: []
-      }
-    }
+        models: [],
+      },
+    },
   };
 
   it('should successfully select models', () => {
@@ -54,17 +54,17 @@ describe('_selectModels Helper', () => {
         {
           provider: 'mock',
           modelId: 'mock-model',
-          enabled: true
+          enabled: true,
         },
         {
           provider: 'openai',
           modelId: 'gpt-4o',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: [],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     });
 
     // Call the function
@@ -72,8 +72,8 @@ describe('_selectModels Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       options: {
-        input: 'test-prompt.txt'
-      }
+        input: 'test-prompt.txt',
+      },
     });
 
     // Verify the result
@@ -85,7 +85,7 @@ describe('_selectModels Helper', () => {
       sampleConfig,
       expect.objectContaining({
         includeDisabled: true,
-        validateApiKeys: true
+        validateApiKeys: true,
       })
     );
 
@@ -94,7 +94,7 @@ describe('_selectModels Helper', () => {
     expect(mockSpinner.info).toHaveBeenCalled();
     expect(mockSpinner.start).toHaveBeenCalled();
   });
-  
+
   it('should return a flattened structure with ModelSelectionResult & modeDescription properties', () => {
     // Setup mocks
     const mockSelectionResult = {
@@ -102,14 +102,14 @@ describe('_selectModels Helper', () => {
         {
           provider: 'mock',
           modelId: 'mock-model',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: [],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     };
-    
+
     (modelSelector.selectModels as jest.Mock).mockReturnValue(mockSelectionResult);
 
     // Call the function
@@ -117,20 +117,20 @@ describe('_selectModels Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       options: {
-        input: 'test-prompt.txt'
-      }
+        input: 'test-prompt.txt',
+      },
     });
 
     // Verify we have a properly flattened structure
-    expect(result).toHaveProperty('models');  // Direct property from ModelSelectionResult
-    expect(result).toHaveProperty('warnings');  // Direct property from ModelSelectionResult
-    expect(result).toHaveProperty('disabledModels');  // Direct property from ModelSelectionResult
-    expect(result).toHaveProperty('missingApiKeyModels');  // Direct property from ModelSelectionResult
-    expect(result).toHaveProperty('modeDescription');  // Our added property
-    
+    expect(result).toHaveProperty('models'); // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('warnings'); // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('disabledModels'); // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('missingApiKeyModels'); // Direct property from ModelSelectionResult
+    expect(result).toHaveProperty('modeDescription'); // Our added property
+
     // Should have the same models array from the original selection result
     expect(result.models).toBe(mockSelectionResult.models);
-    
+
     // Backward compatibility check - modelSelectionResult should contain the same models array
     expect(result.modelSelectionResult.models).toBe(result.models);
   });
@@ -142,12 +142,12 @@ describe('_selectModels Helper', () => {
         {
           provider: 'openai',
           modelId: 'gpt-4o',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: [],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     });
 
     // Call the function with specificModel
@@ -156,8 +156,8 @@ describe('_selectModels Helper', () => {
       config: sampleConfig,
       options: {
         input: 'test-prompt.txt',
-        specificModel: 'openai:gpt-4o'
-      }
+        specificModel: 'openai:gpt-4o',
+      },
     });
 
     // Verify the result
@@ -169,7 +169,7 @@ describe('_selectModels Helper', () => {
     expect(modelSelector.selectModels).toHaveBeenCalledWith(
       sampleConfig,
       expect.objectContaining({
-        specificModel: 'openai:gpt-4o'
+        specificModel: 'openai:gpt-4o',
       })
     );
   });
@@ -181,12 +181,12 @@ describe('_selectModels Helper', () => {
         {
           provider: 'mock',
           modelId: 'mock-model',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: [],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     });
 
     // Call the function with groupName
@@ -195,8 +195,8 @@ describe('_selectModels Helper', () => {
       config: sampleConfig,
       options: {
         input: 'test-prompt.txt',
-        groupName: 'coding'
-      }
+        groupName: 'coding',
+      },
     });
 
     // Verify the result
@@ -206,7 +206,7 @@ describe('_selectModels Helper', () => {
     expect(modelSelector.selectModels).toHaveBeenCalledWith(
       sampleConfig,
       expect.objectContaining({
-        groupName: 'coding'
+        groupName: 'coding',
       })
     );
   });
@@ -218,17 +218,17 @@ describe('_selectModels Helper', () => {
         {
           provider: 'mock',
           modelId: 'mock-model',
-          enabled: true
+          enabled: true,
         },
         {
           provider: 'openai',
           modelId: 'gpt-4o',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: [],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     });
 
     // Call the function with models array
@@ -237,8 +237,8 @@ describe('_selectModels Helper', () => {
       config: sampleConfig,
       options: {
         input: 'test-prompt.txt',
-        models: ['mock:mock-model', 'openai:gpt-4o']
-      }
+        models: ['mock:mock-model', 'openai:gpt-4o'],
+      },
     });
 
     // Verify the result
@@ -248,7 +248,7 @@ describe('_selectModels Helper', () => {
     expect(modelSelector.selectModels).toHaveBeenCalledWith(
       sampleConfig,
       expect.objectContaining({
-        models: ['mock:mock-model', 'openai:gpt-4o']
+        models: ['mock:mock-model', 'openai:gpt-4o'],
       })
     );
   });
@@ -260,12 +260,12 @@ describe('_selectModels Helper', () => {
         {
           provider: 'mock',
           modelId: 'mock-model',
-          enabled: true
-        }
+          enabled: true,
+        },
       ],
       warnings: ['Warning: Some models were disabled', 'API key missing for provider'],
       disabledModels: [],
-      missingApiKeyModels: []
+      missingApiKeyModels: [],
     });
 
     // Call the function
@@ -273,8 +273,8 @@ describe('_selectModels Helper', () => {
       spinner: mockSpinner,
       config: sampleConfig,
       options: {
-        input: 'test-prompt.txt'
-      }
+        input: 'test-prompt.txt',
+      },
     });
 
     // Verify warnings were displayed
@@ -285,25 +285,27 @@ describe('_selectModels Helper', () => {
   it('should handle ModelSelectionError', () => {
     // Setup mocks
     const selectionError = new ModelSelectionError('No matching models found', {
-      suggestions: ['Try a different model or group']
+      suggestions: ['Try a different model or group'],
     });
-    
+
     // Manually set properties for jest mock
     selectionError.message = 'No matching models found';
     selectionError.suggestions = ['Try a different model or group'];
-    
+
     (modelSelector.selectModels as jest.Mock).mockImplementation(() => {
       throw selectionError;
     });
 
     // Call the function and expect it to throw
-    expect(() => _selectModels({
-      spinner: mockSpinner,
-      config: sampleConfig,
-      options: {
-        input: 'test-prompt.txt'
-      }
-    })).toThrow(ConfigError);
+    expect(() =>
+      _selectModels({
+        spinner: mockSpinner,
+        config: sampleConfig,
+        options: {
+          input: 'test-prompt.txt',
+        },
+      })
+    ).toThrow(ConfigError);
 
     // Verify proper error wrapping
     try {
@@ -311,8 +313,8 @@ describe('_selectModels Helper', () => {
         spinner: mockSpinner,
         config: sampleConfig,
         options: {
-          input: 'test-prompt.txt'
-        }
+          input: 'test-prompt.txt',
+        },
       });
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);
@@ -332,13 +334,15 @@ describe('_selectModels Helper', () => {
     });
 
     // Call the function and expect it to throw the original ConfigError
-    expect(() => _selectModels({
-      spinner: mockSpinner,
-      config: sampleConfig,
-      options: {
-        input: 'test-prompt.txt'
-      }
-    })).toThrow(configError);
+    expect(() =>
+      _selectModels({
+        spinner: mockSpinner,
+        config: sampleConfig,
+        options: {
+          input: 'test-prompt.txt',
+        },
+      })
+    ).toThrow(configError);
   });
 
   it('should handle unknown errors by wrapping them in ConfigError', () => {
@@ -349,13 +353,15 @@ describe('_selectModels Helper', () => {
     });
 
     // Call the function and expect it to throw a ConfigError
-    expect(() => _selectModels({
-      spinner: mockSpinner,
-      config: sampleConfig,
-      options: {
-        input: 'test-prompt.txt'
-      }
-    })).toThrow(ConfigError);
+    expect(() =>
+      _selectModels({
+        spinner: mockSpinner,
+        config: sampleConfig,
+        options: {
+          input: 'test-prompt.txt',
+        },
+      })
+    ).toThrow(ConfigError);
 
     // Verify proper error wrapping
     try {
@@ -363,8 +369,8 @@ describe('_selectModels Helper', () => {
         spinner: mockSpinner,
         config: sampleConfig,
         options: {
-          input: 'test-prompt.txt'
-        }
+          input: 'test-prompt.txt',
+        },
       });
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);
@@ -383,20 +389,22 @@ describe('_selectModels Helper', () => {
     const mockErrorObj = {
       name: 'ModelSelectionError',
       message: 'Mock model selection error',
-      suggestions: ['Try another model']
+      suggestions: ['Try another model'],
     };
     (modelSelector.selectModels as jest.Mock).mockImplementation(() => {
       throw mockErrorObj;
     });
 
     // Call the function and expect it to throw ConfigError
-    expect(() => _selectModels({
-      spinner: mockSpinner,
-      config: sampleConfig,
-      options: {
-        input: 'test-prompt.txt'
-      }
-    })).toThrow(ConfigError);
+    expect(() =>
+      _selectModels({
+        spinner: mockSpinner,
+        config: sampleConfig,
+        options: {
+          input: 'test-prompt.txt',
+        },
+      })
+    ).toThrow(ConfigError);
 
     // Verify error details
     try {
@@ -404,8 +412,8 @@ describe('_selectModels Helper', () => {
         spinner: mockSpinner,
         config: sampleConfig,
         options: {
-          input: 'test-prompt.txt'
-        }
+          input: 'test-prompt.txt',
+        },
       });
     } catch (error) {
       expect(error).toBeInstanceOf(ConfigError);

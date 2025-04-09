@@ -1,6 +1,6 @@
 /**
  * Tests for cross-module error propagation in thinktank.
- * 
+ *
  * These tests verify that errors are properly created, propagated,
  * and handled as they cross module boundaries from providers,
  * through workflow components, to the CLI interface.

@@ -1,6 +1,6 @@
 /**
  * Unit tests for processOutput pure function
- * 
+ *
  * This test file verifies that the processOutput function in outputHandler.ts
  * correctly transforms LLM responses into structured data without performing I/O.
  */
@@ -15,7 +15,7 @@ const { processOutput } = outputHandler;
 // Mock the helpers module
 jest.mock('../../utils/helpers', () => ({
   sanitizeFilename: jest.fn(str => str.replace(/[^a-z0-9-]/gi, '_')),
-  generateOutputDirectoryPath: jest.fn(() => '/mock/output/directory')
+  generateOutputDirectoryPath: jest.fn(() => '/mock/output/directory'),
 }));
 
 // Mock the formatForConsole and other functions in outputHandler
@@ -24,10 +24,14 @@ jest.mock('../outputHandler', () => {
   return {
     ...actual,
     formatForConsole: jest.fn(() => 'Mock console output'),
-    formatResponseAsMarkdown: jest.fn((response, includeMetadata) => 
-      `Mock content for ${response.configKey}${includeMetadata ? ' with metadata' : ''}`),
-    generateFilename: jest.fn((response) => 
-      `${response.groupInfo?.name ? response.groupInfo.name + '-' : ''}${response.provider}-${response.modelId}.md`)
+    formatResponseAsMarkdown: jest.fn(
+      (response, includeMetadata) =>
+        `Mock content for ${response.configKey}${includeMetadata ? ' with metadata' : ''}`
+    ),
+    generateFilename: jest.fn(
+      response =>
+        `${response.groupInfo?.name ? response.groupInfo.name + '-' : ''}${response.provider}-${response.modelId}.md`
+    ),
   };
 });
 
@@ -44,22 +48,22 @@ describe('processOutput (Pure)', () => {
       modelId: 'gpt-4o',
       text: 'Response from GPT-4o',
       configKey: 'openai:gpt-4o',
-      metadata: { responseTime: 1200 }
+      metadata: { responseTime: 1200 },
     },
     {
       provider: 'anthropic',
       modelId: 'claude-3-opus',
       text: 'Response from Claude 3 Opus',
       configKey: 'anthropic:claude-3-opus',
-      groupInfo: { name: 'coding' }
+      groupInfo: { name: 'coding' },
     },
     {
       provider: 'error',
       modelId: 'model',
       text: '',
       error: 'Error message',
-      configKey: 'error:model'
-    }
+      configKey: 'error:model',
+    },
   ];
 
   it('should transform responses into structured data without I/O', () => {
@@ -90,7 +94,7 @@ describe('processOutput (Pure)', () => {
       includeThinking: true,
       useTable: true,
       outputDirectory: '/custom/path',
-      friendlyRunName: 'test-run'
+      friendlyRunName: 'test-run',
     };
 
     processOutput(mockResponses, options);

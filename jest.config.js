@@ -2,7 +2,7 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/src', '<rootDir>/jest', '<rootDir>/test'],
+  roots: ['<rootDir>/src', '<rootDir>/jest', '<rootDir>/test', '<rootDir>/scripts'],
   testMatch: [
     '**/__tests__/**/*.test.ts', 
     '**/__tests__/**/*.e2e.test.ts', 
@@ -17,13 +17,13 @@ module.exports = {
     '/node_modules/',
     '/dist/',
     // Temporarily exclude problematic file reader and path handling tests
-    '/src/utils/__tests__/fileReader.test.ts',
+    // '/src/utils/__tests__/fileReader.test.ts', // Re-enabled after migrating to virtual filesystem
     '/src/utils/__tests__/readContextFile.test.ts',
     // Re-enabled this test after fixing empty file handling
     // '/src/utils/__tests__/readContextFile.centralized-mock.test.ts',
     '/src/utils/__tests__/fileSizeLimit.test.ts',
     '/src/utils/__tests__/binaryFileDetection.test.ts',
-    '/src/utils/__tests__/readContextPaths.test.ts',
+    // '/src/utils/__tests__/readContextPaths.test.ts', // Re-enabled after refactoring to use gitignore test helpers
     
     // Provider tests with configuration issues
     '/src/providers/__tests__/anthropic.test.ts',
@@ -33,9 +33,10 @@ module.exports = {
     '/src/workflow/__tests__/logCompletionSummaryHelper.test.ts',
     '/src/core/__tests__/errors.test.ts',
     
-    // Gitignore-related tests with path handling issues
-    '/src/utils/__tests__/gitignoreFiltering.test.ts',
-    '/src/utils/__tests__/gitignoreFilteringIntegration.test.ts'
+    // Gitignore-related tests - all re-enabled after refactoring to use virtual filesystem helpers
+    // '/src/utils/__tests__/gitignoreFiltering.test.ts', 
+    // '/src/utils/__tests__/gitignoreFilteringIntegration.test.ts',
+    // '/src/utils/__tests__/gitignoreComplexPatterns.test.ts'
   ],
   collectCoverageFrom: [
     'src/**/*.ts',

@@ -10,6 +10,11 @@ import { Logger, logger as singletonLogger } from '../utils/logger';
  * existing logging functionality from logger.ts. This adapter allows
  * higher-level components to depend on an interface rather than concrete
  * implementation, facilitating dependency injection and testability.
+ * 
+ * The adapter follows the standard adapter pattern, delegating all calls
+ * to an underlying Logger instance. By default, it uses the global singleton
+ * logger, but a custom Logger instance can be injected for testing or special
+ * logging requirements.
  */
 export class ConsoleAdapter implements ConsoleLogger {
   private loggerInstance: Logger;

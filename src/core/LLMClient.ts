@@ -1,6 +1,6 @@
 /**
  * Concrete LLMClient implementation.
- * 
+ *
  * This module provides a concrete implementation of the LLMClient interface
  * that wraps the existing provider logic through the llmRegistry.
  */
@@ -9,11 +9,7 @@ import { LLMClient, ConfigManagerInterface } from './interfaces';
 import { LLMResponse, ModelOptions, SystemPrompt, AppConfig } from './types';
 import { callProvider } from './llmRegistry';
 import { findModelGroup, findModel } from './configManager';
-import { 
-  ApiError, 
-  ConfigError, 
-  ThinktankError
-} from './errors';
+import { ApiError, ConfigError, ThinktankError } from './errors';
 import { createModelNotFoundError } from './errors/factories/config';
 
 /**
@@ -23,18 +19,18 @@ import { createModelNotFoundError } from './errors/factories/config';
 export class ConcreteLLMClient implements LLMClient {
   /**
    * Creates a new ConcreteLLMClient instance
-   * 
+   *
    * @param configManager - Configuration manager for loading app config
    */
   constructor(private configManager: ConfigManagerInterface) {
     if (!configManager) {
-      throw new Error("ConfigManagerInterface instance is required");
+      throw new Error('ConfigManagerInterface instance is required');
     }
   }
 
   /**
    * Generates a response from a language model.
-   * 
+   *
    * @param prompt - The main user prompt
    * @param providerModelId - Model identifier in "provider:modelId" format (e.g., "openai:gpt-4o")
    * @param options - Optional parameters for generation
@@ -56,12 +52,19 @@ export class ConcreteLLMClient implements LLMClient {
       // 1. Parse provider:modelId
       const parts = providerModelId.split(':');
       if (parts.length !== 2 || !parts[0] || !parts[1]) {
-        throw new ConfigError(`Invalid model identifier format: "${providerModelId}". Expected "provider:modelId" format.`, {
-          suggestions: [
-            'Use format "provider:modelId", for example "openai:gpt-4o" or "anthropic:claude-3-opus-20240229"'
-          ],
-          examples: ['openai:gpt-4o', 'anthropic:claude-3-opus-20240229', 'google:gemini-1.5-pro']
-        });
+        throw new ConfigError(
+          `Invalid model identifier format: "${providerModelId}". Expected "provider:modelId" format.`,
+          {
+            suggestions: [
+              'Use format "provider:modelId", for example "openai:gpt-4o" or "anthropic:claude-3-opus-20240229"',
+            ],
+            examples: [
+              'openai:gpt-4o',
+              'anthropic:claude-3-opus-20240229',
+              'google:gemini-1.5-pro',
+            ],
+          }
+        );
       }
 
       providerId = parts[0];
@@ -92,7 +95,7 @@ export class ConcreteLLMClient implements LLMClient {
         prompt,
         modelConfig,
         undefined, // Group options handled within callProvider
-        options,   // Direct/CLI options have highest priority
+        options, // Direct/CLI options have highest priority
         finalSystemPrompt
       );
 
@@ -100,15 +103,18 @@ export class ConcreteLLMClient implements LLMClient {
       if (groupInfo && !response.groupInfo) {
         response.groupInfo = {
           name: groupInfo.groupName,
-          systemPrompt: groupInfo.systemPrompt
+          systemPrompt: groupInfo.systemPrompt,
         };
       }
 
       return response;
-
     } catch (error) {
       // Re-throw known errors
-      if (error instanceof ConfigError || error instanceof ApiError || error instanceof ThinktankError) {
+      if (
+        error instanceof ConfigError ||
+        error instanceof ApiError ||
+        error instanceof ThinktankError
+      ) {
         throw error;
       }
 
@@ -120,8 +126,8 @@ export class ConcreteLLMClient implements LLMClient {
         suggestions: [
           'Check API key and network connectivity',
           'Verify model availability and access permissions',
-          'Review provider status for any ongoing issues'
-        ]
+          'Review provider status for any ongoing issues',
+        ],
       });
     }
   }

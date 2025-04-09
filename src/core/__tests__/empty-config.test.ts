@@ -20,9 +20,9 @@ jest.mock('../constants', () => ({
         name: 'default',
         systemPrompt: { text: 'Test prompt' },
         models: [],
-        description: 'Test group'
-      }
-    }
+        description: 'Test group',
+      },
+    },
   },
   DEFAULT_CONFIG_TEMPLATE_PATH: '/test/template.json',
 }));
@@ -38,10 +38,7 @@ describe('Empty configuration handling', () => {
 
     // Verify that the config file would have been created
     const writeFile = jest.requireMock('../../utils/fileReader').writeFile;
-    expect(writeFile).toHaveBeenCalledWith(
-      '/test/xdg/config.json',
-      expect.any(String)
-    );
+    expect(writeFile).toHaveBeenCalledWith('/test/xdg/config.json', expect.any(String));
 
     // Verify content of written file includes our mocked data
     const writtenContent = writeFile.mock.calls[0][1];

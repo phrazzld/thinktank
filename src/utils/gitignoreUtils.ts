@@ -1,8 +1,11 @@
 /**
- * Utilities for handling .gitignore-based file filtering
+ * Utilities for handling .gitignore-based file filtering.
  * 
- * This module provides functionality for loading, parsing, and applying
- * .gitignore rules to filter files and directories during context gathering.
+ * LIMITATIONS:
+ * - Brace expansion patterns (*.{jpg,png}) are not supported
+ * - Prefix wildcard patterns match more broadly than expected
+ * 
+ * See gitignoreComplexPatterns.test.ts for details.
  */
 import fs from 'fs/promises';
 import path from 'path';
@@ -26,14 +29,17 @@ const DEFAULT_IGNORE_PATTERNS = [
   '.nuxt',
   '.output',
   '.vscode',
-  '.idea'
+  '.idea',
 ];
 
 /**
  * Creates an ignore filter that respects .gitignore rules for a given directory
- * 
+ *
  * @param directoryPath - The directory path to load .gitignore rules from
- * @returns A Promise resolving to an ignore.Ignore instance that can be used to filter paths
+ * @returns A Promise resolving to an ignore.Ignore instance
+ * 
+ * @remarks
+ * Brace expansion patterns (*.{jpg,png}) are not supported
  */
 export async function createIgnoreFilter(directoryPath: string): Promise<ignore.Ignore> {
   // Check if we already have a cached ignore filter for this directory
@@ -43,56 +49,80 @@ export async function createIgnoreFilter(directoryPath: string): Promise<ignore.
 
   // Create a new ignore filter with default patterns
   const ignoreFilter = ignore();
-  
+
   // Add default patterns
   ignoreFilter.add(DEFAULT_IGNORE_PATTERNS);
 
   // Try to load .gitignore file if it exists
   const gitignorePath = path.join(directoryPath, '.gitignore');
-  
+
   // Check if file exists - this is important to ensure the mock is called in tests
   const exists = await fileExists(gitignorePath);
-  
+
   if (exists) {
     try {
       // Read and parse the .gitignore file
       const gitignoreContent = await fs.readFile(gitignorePath, 'utf-8');
-      
+
       // Add patterns from .gitignore file
       ignoreFilter.add(gitignoreContent);
     } catch (error) {
       // If there's an error reading the .gitignore file, just continue with default patterns
-      console.warn(`Warning: Could not read .gitignore file at ${gitignorePath}. Using default ignore patterns.`);
+      console.warn(
+        `Warning: Could not read .gitignore file at ${gitignorePath}. Using default ignore patterns.`
+      );
     }
   }
-  
+
   // Cache the ignore filter for future use
   ignoreCache.set(directoryPath, ignoreFilter);
-  
+
   return ignoreFilter;
 }
 
 /**
  * Checks if a path should be ignored based on .gitignore rules
- * 
+ *
  * @param basePath - The base directory path containing the .gitignore file
  * @param filePath - The path to check (relative to basePath)
  * @returns A Promise resolving to true if the path should be ignored, false otherwise
  */
 export async function shouldIgnorePath(basePath: string, filePath: string): Promise<boolean> {
   const ignoreFilter = await createIgnoreFilter(basePath);
-  
+
   // Use dedicated utility to normalize path for gitignore pattern matching
   const normalizedPath = normalizePathForGitignore(filePath, basePath);
-  
+
   // The ignore library returns boolean for .ignores(), but we'll double-check
   // to ensure our tests and implementation work consistently
   return Boolean(ignoreFilter.ignores(normalizedPath));
 }
 
 /**
- * Clears the ignore filter cache
+ * Expands a gitignore pattern with brace expansion into multiple patterns
+ * that can be used with the ignore library
  * 
+ * @param pattern - A gitignore pattern with brace expansion, e.g. *.{jpg,png}
+ * @returns An array of expanded patterns, e.g. ["*.jpg", "*.png"]
+ */
+export function expandBracePattern(pattern: string): string[] {
+  // Check if the pattern contains a brace expansion
+  const braceMatch = pattern.match(/^(.*)\{(.*)\}(.*)$/);
+  if (!braceMatch) {
+    // No brace expansion, return original pattern
+    return [pattern];
+  }
+
+  const [, prefix, braceContent, suffix] = braceMatch;
+  const options = braceContent.split(',');
+
+  // Generate a pattern for each option
+  return options.map(option => `${prefix}${option}${suffix}`);
+}
+
+/**
+ * Clears the ignore filter cache
+ *
  * This is mainly useful for testing or when .gitignore files might change
  * during the application's lifecycle.
  */
