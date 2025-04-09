@@ -12,6 +12,9 @@ import { FileData, PureProcessOutputResult } from '../runThinktankTypes';
 
 // Mocks
 jest.mock('../../core/FileSystem');
+jest.mock('../../core/FileSystemAdapter', () => ({
+  FileSystemAdapter: jest.fn()
+}));
 jest.mock('../../core/ConcreteConfigManager');
 jest.mock('../../core/LLMClient');
 jest.mock('../runThinktankHelpers');
