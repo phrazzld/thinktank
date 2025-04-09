@@ -37,7 +37,7 @@
   - **Depends On:** Remove initSpinner function from main.go.
   - **AC Ref:** Key Step 2.
 
-- [ ] **Remove NoSpinner field from Configuration struct in main.go**
+- [x] **Remove NoSpinner field from Configuration struct in main.go**
   - **Action:** Remove the `NoSpinner` boolean field from the `Configuration` struct definition in main.go.
   - **Depends On:** Remove no-spinner flag from parseFlags in main.go.
   - **AC Ref:** Key Step 2.
@@ -47,12 +47,12 @@
   - **Depends On:** Remove NoSpinner field from Configuration struct in main.go.
   - **AC Ref:** Key Step 2.
 
-- [ ] **Remove NoSpinner handling in convertConfigToMap**
+- [x] **Remove NoSpinner handling in convertConfigToMap**
   - **Action:** Remove the `"no_spinner": cliConfig.NoSpinner,` entry from the map returned by the `convertConfigToMap` function in main.go.
   - **Depends On:** Remove NoSpinner field from AppConfig struct.
   - **AC Ref:** Key Step 2.
 
-- [ ] **Remove NoSpinner handling in backfillConfigFromAppConfig**
+- [x] **Remove NoSpinner handling in backfillConfigFromAppConfig**
   - **Action:** Remove the conditional block that checks and assigns NoSpinner in the `backfillConfigFromAppConfig` function in main.go.
   - **Depends On:** Remove NoSpinner handling in convertConfigToMap.
   - **AC Ref:** Key Step 2.

@@ -45,7 +45,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	NoSpinner       bool
 	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
@@ -854,7 +853,6 @@ func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 		"clarify_task":        cliConfig.ClarifyTask,
 		"dry_run":             cliConfig.DryRun,
 		"confirm_tokens":      cliConfig.ConfirmTokens,
-		"no_spinner":          cliConfig.NoSpinner,
 		"paths":               cliConfig.Paths,
 		"api_key":             cliConfig.ApiKey,
 		"templates.default":   cliConfig.PromptTemplate, // Map prompt template to config format
@@ -896,7 +894,6 @@ func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.App
 	if !isFlagSet("confirm-tokens") {
 		config.ConfirmTokens = appConfig.ConfirmTokens
 	}
-	// no-spinner flag removed
 	if !isFlagSet("clarify") {
 		config.ClarifyTask = appConfig.ClarifyTask
 	}
