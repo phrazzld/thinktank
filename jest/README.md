@@ -73,7 +73,11 @@ The following approaches are deprecated and should not be used in new tests:
    - These older factories have been replaced by improved versions in `test/factories/`
    - The new factories provide better TypeScript support and more consistent defaults
 
-3. **❌ Direct Jest mocking of individual functions**
+3. **❌ Gitignore mock utilities in `mockGitignoreUtils.ts`**
+   - This legacy approach has been replaced by the virtual filesystem with real gitignore files
+   - Instead, use `setupWithGitignore` and other helpers from `test/setup/gitignore.ts`
+   
+4. **❌ Direct Jest mocking of individual functions**
    - Mocking individual functions makes tests brittle and prone to breaking when implementation changes
    - Instead, mock at the interface level using the `createMock*` functions in `test/setup/`
 

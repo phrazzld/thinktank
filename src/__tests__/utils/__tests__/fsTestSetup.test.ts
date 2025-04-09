@@ -134,14 +134,15 @@ describe('fsTestSetup', () => {
   describe('setupGitignoreMocking', () => {
     it('should set up gitignore mocking with cache clearing and filesystem integration', async () => {
       // Arrange
-      const mockGitignoreUtils = { clearIgnoreCache: jest.fn() };
+      // Use a real gitignore utils with clearIgnoreCache method instead of mockGitignoreUtils
+      const gitignoreUtils = { clearIgnoreCache: jest.fn() };
       const mockedFileExists = jest.fn();
 
       // Act
-      setupGitignoreMocking(mockGitignoreUtils, mockedFileExists);
+      setupGitignoreMocking(gitignoreUtils, mockedFileExists);
 
       // Assert
-      expect(mockGitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
+      expect(gitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
 
       // Create a file to test fileExists mock
       setupBasicFiles({ '/test.txt': 'content' });
@@ -155,7 +156,7 @@ describe('fsTestSetup', () => {
   describe('setupCacheClearing', () => {
     it('should return a function that clears caches and mocks when called', async () => {
       // Arrange
-      const mockGitignoreUtils = { clearIgnoreCache: jest.fn() };
+      const gitignoreUtils = { clearIgnoreCache: jest.fn() };
       const mockedFileExists = jest.fn();
 
       // Add some files to the filesystem
@@ -164,13 +165,13 @@ describe('fsTestSetup', () => {
       expect(virtualFs.existsSync('/test.txt')).toBe(true);
 
       // Create the beforeEach function
-      const clearCachesFn = setupCacheClearing(mockGitignoreUtils, mockedFileExists);
+      const clearCachesFn = setupCacheClearing(gitignoreUtils, mockedFileExists);
 
       // Act - call the function as if it were used in beforeEach
       clearCachesFn();
 
       // Assert
-      expect(mockGitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
+      expect(gitignoreUtils.clearIgnoreCache).toHaveBeenCalled();
 
       // Verify filesystem was reset
       expect(virtualFs.existsSync('/test.txt')).toBe(false);
@@ -206,24 +207,24 @@ describe('fsTestSetup', () => {
       expect(virtualFs.readFileSync('/dir1/.gitignore', 'utf8')).toBe('*.log');
       expect(virtualFs.readFileSync('/dir2/.gitignore', 'utf8')).toBe('*.json');
 
-      // Create a mock gitignoreUtils implementation to demonstrate how
+      // Create a gitignoreUtils implementation to demonstrate how
       // a test would use these files with real behavior
-      const mockGitignoreUtils = {
+      const gitignoreUtils = {
         clearIgnoreCache: jest.fn(),
         shouldIgnorePath: jest.fn(),
       };
 
-      mockGitignoreUtils.shouldIgnorePath.mockImplementation((dirPath, filePath) => {
+      gitignoreUtils.shouldIgnorePath.mockImplementation((dirPath, filePath) => {
         if (dirPath === '/dir1' && filePath.endsWith('.log')) return Promise.resolve(true);
         if (dirPath === '/dir2' && filePath.endsWith('.json')) return Promise.resolve(true);
         return Promise.resolve(false);
       });
 
       // Verify the mocked behavior works as expected
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir1', 'test.log')).toBe(true);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir1', 'test.txt')).toBe(false);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir2', 'test.json')).toBe(true);
-      expect(await mockGitignoreUtils.shouldIgnorePath('/dir2', 'test.log')).toBe(false);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir1', 'test.log')).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir1', 'test.txt')).toBe(false);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir2', 'test.json')).toBe(true);
+      expect(await gitignoreUtils.shouldIgnorePath('/dir2', 'test.log')).toBe(false);
     });
   });
 });

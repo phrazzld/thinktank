@@ -268,13 +268,13 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Investigate complex gitignore pattern support.
   - **AC Ref:** AC 2.3.
 
-- [ ] **Remove mockGitignoreUtils.ts**
+- [x] **Remove mockGitignoreUtils.ts**
   - **Action:** Delete the mock implementation once all tests are migrated.
   - **Technical Details:**
-    - Verify all tests that used it have been migrated.
-    - Remove the file and any direct dependencies.
-    - Update `jest/README.md` to deprecate its usage.
-  - **Success Criteria:** File removed with no references remaining.
+    - Verified all tests are using the new virtual filesystem approach.
+    - Updated references in fsTestSetup.test.ts to use a simple gitignoreUtils mock.
+    - Updated documentation in `jest/README.md` and `src/__tests__/utils/README.md` to deprecate the usage.
+  - **Success Criteria:** ✅ All references to mockGitignoreUtils removed and documentation updated.
   - **Depends On:** All gitignore test refactorings.
   - **AC Ref:** AC 2.4.
 
