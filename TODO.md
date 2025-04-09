@@ -62,7 +62,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Implement helpers for standard FS test scenarios.
   - **AC Ref:** AC 1.1.
 
-- [ ] **Migrate readDirectoryContents.test.ts**
+- [x] **Migrate readDirectoryContents.test.ts**
   - **Action:** Reimplement the skipped tests in `src/utils/__tests__/readDirectoryContents.test.ts` using virtual filesystem.
   - **Technical Details:**
     - Remove any existing `jest.mock('fs')` and import the virtual filesystem helpers.
@@ -70,18 +70,19 @@ This document provides a comprehensive and detailed implementation plan for refa
     - Use `normalizePathForMemfs` for all paths.
     - Focus on testing directory traversal behavior with different directory structures.
     - Implement tests for error handling scenarios (permission denied, not a directory).
-  - **Success Criteria:** All tests in file pass, including previously skipped tests.
+  - **Success Criteria:** ✅ All tests in file pass, including previously skipped tests.
   - **Depends On:** Implement helpers for standard FS test scenarios.
   - **AC Ref:** AC 1.1.
 
-- [ ] **Migrate virtualFsUtils.test.ts**
+- [x] **Migrate virtualFsUtils.test.ts**
   - **Action:** Complete the implementation of tests for `virtualFsUtils.ts` itself.
   - **Technical Details:**
     - Properly implement tests for `normalizePathForMemfs` with various path formats.
     - Test `createVirtualFs` with complex nested directory structures.
     - Test `addVirtualGitignoreFile` functionality.
     - Ensure reset and volume management functions work correctly.
-  - **Success Criteria:** All tests in `virtualFsUtils.test.ts` pass and provide good coverage.
+    - Added tests for `createFsError`, `createMockStats`, and `createMockDirent`.
+  - **Success Criteria:** ✅ All tests in `virtualFsUtils.test.ts` pass and provide good coverage.
   - **Depends On:** None.
   - **AC Ref:** AC 1.1.
 
