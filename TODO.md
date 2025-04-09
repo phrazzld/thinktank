@@ -31,13 +31,15 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** None.
   - **AC Ref:** AC 1.1.
 
-- [ ] **Migrate fileReader.test.ts to use virtual filesystem**
+- [x] **Migrate fileReader.test.ts to use virtual filesystem**
   - **Action:** Refactor `src/utils/__tests__/fileReader.test.ts` to use `memfs` via the `setupBasicFs` helper.
   - **Technical Details:**
-    - Remove `jest.mock('fs')` and any direct mock implementations.
-    - Replace setup code with `setupBasicFs()` calls to configure test files.
-    - Use `normalizePathForMemfs()` for cross-platform path compatibility.
-    - Ensure all test assertions work with the virtual filesystem.
+    - Removed `jest.mock('fs')` and direct mock implementations.
+    - Replaced setup code with `setupBasicFs()` calls to configure test files.
+    - Used `normalizePathForMemfs()` to ensure cross-platform path compatibility.
+    - Restructured tests with better describe/beforeEach organization.
+    - Fixed platform-specific test assumptions.
+    - Updated jest.config.js to re-enable previously skipped test.
   - **Implementation Example:**
     ```typescript
     // Before:
@@ -49,15 +51,14 @@ This document provides a comprehensive and detailed implementation plan for refa
     
     // After:
     import { setupBasicFs } from '../../../test/setup/fs';
-    import { normalizePathForMemfs } from '../../__tests__/utils/virtualFsUtils';
     
     beforeEach(() => {
       setupBasicFs({
-        [normalizePathForMemfs('/path/to/file.txt')]: 'file content'
+        ['/path/to/file.txt']: 'file content'
       });
     });
     ```
-  - **Success Criteria:** All tests in `fileReader.test.ts` pass using virtual filesystem.
+  - **Success Criteria:** ✅ All tests in `fileReader.test.ts` pass using virtual filesystem.
   - **Depends On:** Implement helpers for standard FS test scenarios.
   - **AC Ref:** AC 1.1.
 
