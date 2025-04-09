@@ -82,7 +82,7 @@
   - **Depends On:** Implement file system adapter, Implement console adapter
   - **AC Ref:** AC 3.1 (Improve testability)
 
-- [ ] **Create unit tests for pure functions**
+- [x] **Create unit tests for pure functions**
   - **Action:** Write unit tests for all refactored pure functions without I/O dependencies.
   - **Depends On:** Refactor core functions
   - **AC Ref:** AC 2.1 (Modify functions to return data)
