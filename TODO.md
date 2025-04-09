@@ -17,7 +17,7 @@
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Workflow Triggers (PLAN.md lines 21-34), Success Criteria 1 (PLAN.md line 135)
 
-- [ ] **Set up workflow job configuration**
+- [x] **Set up workflow job configuration**
   - **Action:** Configure the single job with name, runner (ubuntu-latest), and initial steps structure.
   - **Depends On:** Configure workflow triggers
   - **AC Ref:** Define Single Job Workflow (PLAN.md lines 36-88)
