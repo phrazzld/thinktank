@@ -1,0 +1,16 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`gitignore test helpers setupMultiGitignore should create snapshot of the directory structure 1`] = `
+{
+  "files": [
+    "/project/.gitignore",
+    "/project/README.md",
+    "/project/src/.gitignore",
+    "/project/src/index.js",
+  ],
+  "gitignores": {
+    "root": "*.log",
+    "src": "*.tmp",
+  },
+}
+`;

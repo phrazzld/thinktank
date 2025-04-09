@@ -34,7 +34,7 @@ module.exports = {
     '/src/core/__tests__/errors.test.ts',
     
     // Gitignore-related tests with path handling issues
-    '/src/utils/__tests__/gitignoreFiltering.test.ts',
+    // '/src/utils/__tests__/gitignoreFiltering.test.ts', // Re-enabled after refactoring to use virtual filesystem helpers
     '/src/utils/__tests__/gitignoreFilteringIntegration.test.ts'
   ],
   collectCoverageFrom: [

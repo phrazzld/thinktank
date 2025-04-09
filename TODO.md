@@ -178,7 +178,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** None.
   - **AC Ref:** AC 2.1.
 
-- [ ] **Implement gitignore test helpers**
+- [x] **Implement gitignore test helpers**
   - **Action:** Create helper functions for testing gitignore functionality.
   - **Technical Details:**
     - Implement `setupWithGitignore` helper in `test/setup/gitignore.ts` that:
@@ -209,7 +209,7 @@ This document provides a comprehensive and detailed implementation plan for refa
   - **Depends On:** Test addVirtualGitignoreFile functionality.
   - **AC Ref:** AC 2.1.
 
-- [ ] **Refactor gitignoreFiltering.test.ts**
+- [x] **Refactor gitignoreFiltering.test.ts**
   - **Action:** Rewrite `gitignoreFiltering.test.ts` to use the virtual filesystem and actual gitignore files.
   - **Technical Details:**
     - Remove all mocks of `gitignoreUtils`.
