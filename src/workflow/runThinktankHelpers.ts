@@ -22,13 +22,15 @@
  * 
  * Error handling follows established contracts defined in runThinktankTypes.ts
  */
+import path from 'path';
 import { findModelGroup } from '../core/configManager';
 import { generateFunName } from '../utils/nameGenerator';
 import { 
   generateFilename,
   formatResponseAsMarkdown,
   formatForConsole,
-  createOutputDirectory
+  createOutputDirectory,
+  FileWriteDetail
 } from './outputHandler';
 import { 
   ThinktankError,
@@ -48,6 +50,8 @@ import {
 import { logger } from '../utils/logger';
 import { readContextPaths, formatCombinedInput } from '../utils/fileReader';
 import { ContextFileResult } from '../utils/fileReaderTypes';
+import { FileSystem } from '../core/interfaces';
+import { RunOptions } from './runThinktank';
 import {
   SetupWorkflowParams,
   SetupWorkflowResult,
@@ -60,7 +64,8 @@ import {
   ProcessOutputParams,
   PureProcessOutputResult,
   FileData,
-  HandleWorkflowErrorParams
+  HandleWorkflowErrorParams,
+  FileOutputResult
 } from './runThinktankTypes';
 import { processInput, InputError } from './inputHandler';
 import { selectModels, ModelSelectionError } from './modelSelector';
@@ -1065,4 +1070,100 @@ export function _handleWorkflowError({
   
   // Throw the error for upstream handling
   throw thinktankError;
+}
+
+/**
+ * Writes file data to the specified output directory using the injected FileSystem.
+ * 
+ * This function handles all file I/O operations, including directory creation, 
+ * file writing, error handling, and status tracking.
+ * 
+ * @param files - Array of FileData objects containing files to write
+ * @param outputDirectoryPath - Directory where files should be written
+ * @param fileSystem - Injected FileSystem interface for I/O operations
+ * @param options - Optional settings for file writing
+ * @returns Promise resolving to a FileOutputResult with success/failure statistics
+ */
+export async function _writeOutputFiles(
+  files: FileData[],
+  outputDirectoryPath: string,
+  fileSystem: FileSystem,
+  _options?: Partial<RunOptions> // Using underscore to indicate unused parameter
+): Promise<FileOutputResult> {
+  // Start timing for file operations
+  const fileWriteStartTime = Date.now();
+  
+  // Track file write stats
+  let succeededWrites = 0;
+  let failedWrites = 0;
+  const fileDetails: FileWriteDetail[] = [];
+  
+  // Ensure output directory exists
+  try {
+    await fileSystem.mkdir(outputDirectoryPath, { recursive: true });
+  } catch (error) {
+    throw new FileSystemError(`Failed to create output directory: ${outputDirectoryPath}`, {
+      cause: error instanceof Error ? error : undefined,
+      filePath: outputDirectoryPath
+    });
+  }
+  
+  // Process each file
+  for (const file of files) {
+    const filePath = path.join(outputDirectoryPath, file.filename);
+    
+    // Create file detail for tracking
+    const fileDetail: FileWriteDetail = {
+      modelKey: file.modelKey,
+      filename: file.filename,
+      filePath,
+      status: 'pending',
+      startTime: Date.now()
+    };
+    
+    fileDetails.push(fileDetail);
+    
+    try {
+      // Create parent directory if needed (for nested paths)
+      const parentDir = path.dirname(filePath);
+      await fileSystem.mkdir(parentDir, { recursive: true });
+      
+      // Write the file
+      await fileSystem.writeFile(filePath, file.content);
+      
+      // Update stats
+      succeededWrites++;
+      
+      // Mark as success
+      fileDetail.status = 'success';
+      fileDetail.endTime = Date.now();
+      fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
+    } catch (error) {
+      // Update stats
+      failedWrites++;
+      
+      // Mark as error
+      fileDetail.status = 'error';
+      fileDetail.error = error instanceof Error ? error.message : String(error);
+      fileDetail.endTime = Date.now();
+      fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
+    }
+  }
+  
+  // Calculate overall timing
+  const fileWriteEndTime = Date.now();
+  const fileWriteDurationMs = fileWriteEndTime - fileWriteStartTime;
+  
+  // Create file output result object
+  return {
+    outputDirectory: outputDirectoryPath,
+    files: fileDetails,
+    succeededWrites,
+    failedWrites,
+    timing: {
+      startTime: fileWriteStartTime,
+      endTime: fileWriteEndTime,
+      durationMs: fileWriteDurationMs
+    }
+  };
 }

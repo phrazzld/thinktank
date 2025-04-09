@@ -13,6 +13,7 @@ import { AppConfig, LLMResponse } from '../../core/types';
 import { Stats } from 'fs';
 import { InputSourceType } from '../inputHandler';
 import { ExecuteQueriesResult, ProcessInputResult } from '../runThinktankTypes';
+import { FileWriteDetail, FileWriteStatus } from '../outputHandler';
 
 // Create mock implementations of the interfaces
 const mockFileSystem: jest.Mocked<FileSystem> = {
@@ -81,8 +82,8 @@ const mockLLMClient: jest.Mocked<LLMClient> = {
 };
 
 // Mock the concrete class constructors
-jest.mock('../../core/FileSystemAdapter', () => ({
-  FileSystemAdapter: jest.fn(() => mockFileSystem)
+jest.mock('../../core/FileSystem', () => ({
+  ConcreteFileSystem: jest.fn(() => mockFileSystem)
 }));
 
 jest.mock('../../core/ConcreteConfigManager', () => ({
@@ -178,13 +179,33 @@ const mockQueryResult: ExecuteQueriesResult = {
   }
 };
 
-const mockOutputResult = {
+const mockOutputResult: import('../runThinktankTypes').PureProcessOutputResult = {
   files: [{ 
     modelKey: 'mock:mock-model', 
     filename: 'mock-model.md', 
     content: 'Mock content'
   }],
   consoleOutput: 'Mock console output'
+};
+
+const mockFileOutputResult = {
+  outputDirectory: '/mock/output/clever-meadow',
+  files: [{
+    modelKey: 'mock:mock-model',
+    filename: 'mock-model.md',
+    filePath: '/mock/output/clever-meadow/mock-model.md',
+    status: 'success' as FileWriteStatus,
+    startTime: 1,
+    endTime: 2,
+    durationMs: 1
+  }] as FileWriteDetail[],
+  succeededWrites: 1,
+  failedWrites: 0,
+  timing: {
+    startTime: 1,
+    endTime: 2,
+    durationMs: 1
+  }
 };
 
 // Mock ora spinner
@@ -221,6 +242,7 @@ const processInputSpy = jest.spyOn(helpers, '_processInput');
 const selectModelsSpy = jest.spyOn(helpers, '_selectModels');
 const executeQueriesSpy = jest.spyOn(helpers, '_executeQueries');
 const processOutputSpy = jest.spyOn(helpers, '_processOutput');
+const writeOutputFilesSpy = jest.spyOn(helpers, '_writeOutputFiles');
 const handleWorkflowErrorSpy = jest.spyOn(helpers, '_handleWorkflowError');
 
 // Mock formatCompletionSummary which is now used directly in runThinktank
@@ -241,7 +263,8 @@ describe('runThinktank with Interface Mocks', () => {
     processInputSpy.mockResolvedValue(mockInputResult);
     selectModelsSpy.mockReturnValue(mockSelectionResult);
     executeQueriesSpy.mockResolvedValue(mockQueryResult);
-    processOutputSpy.mockResolvedValue(mockOutputResult);
+    processOutputSpy.mockReturnValue(mockOutputResult);
+    writeOutputFilesSpy.mockResolvedValue(mockFileOutputResult);
     
     // The error handler should just return something to avoid exceptions
     handleWorkflowErrorSpy.mockImplementation(() => { 
@@ -318,6 +341,13 @@ describe('runThinktank with Interface Mocks', () => {
       })
     );
     
+    expect(writeOutputFilesSpy).toHaveBeenCalledWith(
+      mockOutputResult.files,
+      mockSetupResult.outputDirectoryPath,
+      mockFileSystem,
+      options
+    );
+    
     // Verify the result is the formatted console output
     expect(result).toBe('Mock console output');
   });
@@ -357,7 +387,7 @@ describe('runThinktank with Interface Mocks', () => {
     expect(mockLLMClient.generate).toHaveBeenCalled();
   });
 
-  it('should verify that FileSystem.writeFile is called by processOutput', async () => {
+  it('should verify that FileSystem.writeFile is called for file output', async () => {
     const options: RunOptions = {
       input: 'test-prompt.txt'
     };
@@ -365,14 +395,9 @@ describe('runThinktank with Interface Mocks', () => {
     // Clear previous calls
     mockFileSystem.writeFile.mockClear();
 
-    // Override the processOutput spy to return a valid mock
-    processOutputSpy.mockImplementationOnce(async () => {
-      return mockOutputResult;
-    });
-
     await runThinktank(options);
     
-    // Just verify the method was called - details of the call are test implementation dependent
+    // Verify the FileSystem.writeFile method was called during execution
     expect(mockFileSystem.writeFile).toHaveBeenCalled();
   });
 
@@ -497,10 +522,13 @@ describe('runThinktank with Interface Mocks', () => {
     });
 
     // Mock the console output to contain the error for testing
-    processOutputSpy.mockResolvedValue({
+    processOutputSpy.mockReturnValue({
       files: mockOutputResult.files,
       consoleOutput: 'Mock output with API call failed'
-    });
+    } as import('../runThinktankTypes').PureProcessOutputResult);
+    
+    // Mock the writeOutputFiles function
+    writeOutputFilesSpy.mockResolvedValue(mockFileOutputResult);
     
     // With our mocked implementation, this won't actually throw an error
     const result = await runThinktank(options);
@@ -560,10 +588,10 @@ describe('runThinktank with Interface Mocks', () => {
     
     // Override processOutputSpy to return a consistent console output
     processOutputSpy.mockReset();
-    processOutputSpy.mockResolvedValue({
+    processOutputSpy.mockReturnValue({
       files: mockOutputResult.files,
       consoleOutput: 'Mock console output'
-    });
+    } as import('../runThinktankTypes').PureProcessOutputResult);
     
     // Mock formatCompletionSummary to return known value
     // Use jest.requireMock to get mocked version

@@ -4,7 +4,6 @@
  * This module brings together all the specialized components and orchestrates the 
  * workflow, acting as the primary integration point for the application.
  */
-import path from 'path';
 import { 
   styleHeader,
   styleDim,
@@ -13,7 +12,6 @@ import {
 import { logger } from '../utils/logger';
 import ora, { configureSpinnerFactory } from '../utils/spinnerFactory';
 import { WorkflowState, EnhancedSpinner } from './runThinktankTypes';
-import { FileWriteDetail } from './outputHandler';
 import { formatCompletionSummary } from '../utils/formatCompletionSummary';
 import { CompletionSummaryData } from './types';
 import {
@@ -22,7 +20,8 @@ import {
   _selectModels,
   _executeQueries,
   _processOutput,
-  _handleWorkflowError
+  _handleWorkflowError,
+  _writeOutputFiles
 } from './runThinktankHelpers';
 
 // Import the concrete implementations and interfaces
@@ -269,85 +268,19 @@ export async function runThinktank(options: RunOptions): Promise<string> {
       friendlyRunName: setupResult.friendlyRunName
     });
     
-    // Write the files to disk
+    // Write files to disk using the dedicated helper function
     spinner.text = 'Writing files to disk...';
     
-    // Start timing for file operations
-    const fileWriteStartTime = Date.now();
-    
-    // Track file write stats
-    let succeededWrites = 0;
-    let failedWrites = 0;
-    const fileDetails: FileWriteDetail[] = [];
-    
-    // Process each file
-    for (const file of processedOutput.files) {
-      const filePath = path.join(setupResult.outputDirectoryPath, file.filename);
-      
-      // Create file detail for tracking
-      const fileDetail: FileWriteDetail = {
-        modelKey: file.modelKey,
-        filename: file.filename,
-        filePath,
-        status: 'pending',
-        startTime: Date.now()
-      };
-      
-      fileDetails.push(fileDetail);
-      
-      try {
-        // Create parent directory if it doesn't exist (for extra safety)
-        const parentDir = path.dirname(filePath);
-        await fileSystem.mkdir(parentDir, { recursive: true });
-        
-        // Write the file
-        await fileSystem.writeFile(filePath, file.content);
-        
-        // Update stats
-        succeededWrites++;
-        
-        // Mark as success
-        fileDetail.status = 'success';
-        fileDetail.endTime = Date.now();
-        fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
-        
-        // Update spinner text
-        spinner.text = `Written file: ${file.filename}`;
-      } catch (error) {
-        // Update stats
-        failedWrites++;
-        
-        // Mark as error
-        fileDetail.status = 'error';
-        fileDetail.error = error instanceof Error ? error.message : String(error);
-        fileDetail.endTime = Date.now();
-        fileDetail.durationMs = fileDetail.endTime - (fileDetail.startTime || fileDetail.endTime);
-        
-        // Update spinner with warning
-        spinner.warn(`Failed to write file: ${file.filename} - ${fileDetail.error}`);
-        spinner.start(); // Restart spinner after warning
-      }
-    }
-    
-    // Calculate overall timing
-    const fileWriteEndTime = Date.now();
-    const fileWriteDurationMs = fileWriteEndTime - fileWriteStartTime;
-    
-    // Create file output result object
-    const fileOutputResult = {
-      outputDirectory: setupResult.outputDirectoryPath,
-      files: fileDetails,
-      succeededWrites,
-      failedWrites,
-      timing: {
-        startTime: fileWriteStartTime,
-        endTime: fileWriteEndTime,
-        durationMs: fileWriteDurationMs
-      }
-    };
+    // Call the helper function to handle all file I/O operations
+    const fileOutputResult = await _writeOutputFiles(
+      processedOutput.files,
+      setupResult.outputDirectoryPath,
+      fileSystem,
+      options
+    );
     
     // Update spinner with final status
-    spinner.text = `Files written: ${succeededWrites} succeeded, ${failedWrites} failed`;
+    spinner.text = `Files written: ${fileOutputResult.succeededWrites} succeeded, ${fileOutputResult.failedWrites} failed`;
     
     // Update workflow state with output results
     workflowState.fileOutputResult = fileOutputResult;

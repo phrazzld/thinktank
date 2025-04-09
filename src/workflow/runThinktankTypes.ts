@@ -29,6 +29,7 @@ import { InputResult } from './inputHandler';
 import { ModelSelectionResult } from './modelSelector';
 import { QueryExecutionResult } from './queryExecutor';
 import { FileOutputResult } from './outputHandler';
+export { FileOutputResult };
 import type { Ora } from 'ora';
 import { ThrottledSpinner } from '../utils/throttledSpinner';
 import { LLMClient, ConfigManagerInterface, FileSystem } from '../core/interfaces';

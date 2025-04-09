@@ -65,7 +65,7 @@
 
 ### 4. Restructure Workflow
 
-- [ ] **Simplify runThinktank orchestration**
+- [x] **Simplify runThinktank orchestration**
   - **Action:** Rewrite `runThinktank` in `src/workflow/runThinktank.ts` to compose pure functions and perform I/O at boundaries.
   - **Depends On:** Refactor core functions
   - **AC Ref:** AC 3.1 (Push I/O operations to orchestration)
