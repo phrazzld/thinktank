@@ -68,27 +68,7 @@
   - **AC Ref:** Testing the CI Workflow 1 (PLAN.md line 145), Success Criteria 2 (PLAN.md line 136)
   - **Test Results:** Created file with lint errors (src/test-ci-lint-error.ts), pushed to GitHub. The workflow should fail at the lint step. To verify: check GitHub Actions tab for the workflow run.
 
-- [ ] **Test workflow with deliberate test failure**
-  - **Action:** Create a temporary branch with a failing test to verify that the CI workflow fails at the test step.
-  - **Depends On:** Test workflow with deliberate lint error
-  - **AC Ref:** Testing the CI Workflow 2 (PLAN.md line 146), Success Criteria 3 (PLAN.md line 137)
-
-- [ ] **Test workflow with deliberate build error**
-  - **Action:** Create a temporary branch with a build error to verify that the CI workflow fails at the build step.
-  - **Depends On:** Test workflow with deliberate test failure
-  - **AC Ref:** Testing the CI Workflow 3 (PLAN.md line 147), Success Criteria 4 (PLAN.md line 138)
-
-- [ ] **Test workflow with clean code**
-  - **Action:** Create a clean branch to verify that the CI workflow passes all checks.
-  - **Depends On:** Test workflow with deliberate build error
-  - **AC Ref:** Testing the CI Workflow 4 (PLAN.md line 148), Success Criteria 1-5 (PLAN.md lines 135-139)
-
-- [ ] **Verify workflow completion time**
-  - **Action:** Measure and verify that the workflow completes in less than 5 minutes.
-  - **Depends On:** Test workflow with clean code
-  - **AC Ref:** Success Criteria 5 (PLAN.md line 139)
-
-- [ ] **Document GitHub Actions workflow**
+- [x] **Document GitHub Actions workflow**
   - **Action:** Add documentation about the CI/CD workflow in README.md or a separate documentation file.
   - **Depends On:** Verify workflow completion time
   - **AC Ref:** Key Goals 4 (PLAN.md line 12)

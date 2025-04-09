@@ -2,7 +2,7 @@
 
 A powerful CLI tool for querying multiple Large Language Models (LLMs) with the same prompt and comparing their responses.
 
-> 📚 **Documentation**: The repository contains comprehensive documentation including the [testing philosophy](TESTING_PHILOSOPHY.md), [context formatting](#including-context-files-and-directories), and [project planning](docs/planning/master-plan.md).
+> 📚 **Documentation**: The repository contains comprehensive documentation including the [testing philosophy](TESTING_PHILOSOPHY.md), [context formatting](#including-context-files-and-directories), [GitHub Actions CI/CD](GITHUB_ACTIONS.md), and [project planning](docs/planning/master-plan.md).
 
 ## Overview
 
@@ -1248,6 +1248,7 @@ thinktank is built with a focus on maintainability, reliability, and performance
 - **Test-Driven Development**: We write tests first to define expected behavior clearly
 - **Type Safety**: We use TypeScript's strict type checking for reliability
 - **Clean Architecture**: Domain-oriented architecture with clear separation of concerns
+- **Continuous Integration**: We use GitHub Actions for automated linting, testing, and building
 - **Pragmatic Simplicity**: We prioritize readability and maintainability
 - **Minimal Abstraction**: We avoid premature abstraction and reassess regularly
 - **Atomic Design**: Components are built from atoms→molecules→organisms→templates→runtime
