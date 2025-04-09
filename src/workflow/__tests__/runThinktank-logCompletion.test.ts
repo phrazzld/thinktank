@@ -38,7 +38,13 @@ const mockConfigManager: jest.Mocked<ConfigManagerInterface> = {
   loadConfig: jest.fn().mockResolvedValue({}),
   saveConfig: jest.fn().mockResolvedValue(undefined),
   getActiveConfigPath: jest.fn().mockResolvedValue('/mock/config/path'),
-  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config/path'),
+  getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config.json'),
+  addOrUpdateModel: jest.fn().mockReturnValue({}),
+  removeModel: jest.fn().mockReturnValue({}),
+  addOrUpdateGroup: jest.fn().mockReturnValue({}),
+  removeGroup: jest.fn().mockReturnValue({}),
+  addModelToGroup: jest.fn().mockReturnValue({}),
+  removeModelFromGroup: jest.fn().mockReturnValue({}),
 };
 
 const mockLlmClient: jest.Mocked<LLMClient> = {

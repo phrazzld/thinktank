@@ -12,7 +12,7 @@
  */
 
 import type { Stats } from 'fs';
-import type { LLMResponse, ModelOptions, SystemPrompt, AppConfig } from './types';
+import type { LLMResponse, ModelOptions, SystemPrompt, AppConfig, ModelConfig, ModelGroup } from './types';
 import type { LoadConfigOptions } from './configManager';
 
 // --- Filesystem Interface ---
@@ -25,7 +25,7 @@ export interface FileSystem {
   /**
    * Reads the content of a file.
    * @param filePath - The path to the file.
-   * @param options - Optional settings like whether to normalize the content
+   * @param options - Optional settings like whether to normalize the content.
    * @returns A promise resolving to the file content as a string.
    * @throws {FileSystemError} If reading fails (e.g., not found, permission denied).
    */
@@ -77,18 +77,21 @@ export interface FileSystem {
    * @param path - The path to check.
    * @param mode - Optional mode to check (e.g., fs.constants.R_OK).
    * @returns A promise that resolves if access is allowed, rejects otherwise.
+   * @throws {FileSystemError} If access check fails or access is denied.
    */
   access(path: string, mode?: number): Promise<void>;
 
   /**
    * Gets the path to the application's config directory.
    * @returns A promise resolving to the config directory path.
+   * @throws {FileSystemError} If config directory cannot be determined or created.
    */
   getConfigDir(): Promise<string>;
 
   /**
    * Gets the path to the application's config file.
    * @returns A promise resolving to the config file path.
+   * @throws {FileSystemError} If config file path cannot be determined.
    */
   getConfigFilePath(): Promise<string>;
 }
@@ -106,15 +109,16 @@ export interface LLMClient {
   /**
    * Generates a response from the language model.
    * @param prompt - The main user prompt.
-   * @param modelId - The specific model identifier to use.
+   * @param providerModelId - The specific model identifier in "provider:modelId" format (e.g., "openai:gpt-4o").
    * @param options - Optional parameters for the generation (e.g., temperature, maxTokens).
    * @param systemPrompt - Optional system prompt to guide the model's behavior.
    * @returns A promise resolving to the standardized LLMResponse.
+   * @throws {ConfigError} If the providerModelId format is invalid or model not found.
    * @throws {ApiError} If the API call fails.
    */
   generate(
     prompt: string,
-    modelId: string,
+    providerModelId: string,
     options?: ModelOptions,
     systemPrompt?: SystemPrompt
   ): Promise<LLMResponse>;
@@ -168,7 +172,7 @@ export interface ConsoleLogger {
 // --- UI Spinner Interface ---
 
 /**
- * Interface abstracting UI spinner operations.
+ * Interface abstracting UI spinner operations for displaying progress indicators.
  * Allows for injecting different spinner implementations or mocks for testing.
  */
 export interface UISpinner {
@@ -216,9 +220,10 @@ export interface UISpinner {
   /**
    * Update the spinner text.
    * @param text - The new text to display.
+   * @param critical - Whether this is a critical update that should bypass throttling.
    * @returns The spinner instance for chaining.
    */
-  setText(text: string): UISpinner;
+  setText(text: string, critical?: boolean): UISpinner;
 
   /**
    * Get or set the current text.
@@ -229,6 +234,36 @@ export interface UISpinner {
    * Check if the spinner is currently spinning.
    */
   isSpinning: boolean;
+  
+  /**
+   * Updates the spinner text based on model query status.
+   * @param modelKey - The model identifier (e.g., 'openai:gpt-4').
+   * @param status - The current status of the model query.
+   * @param critical - Whether this is a critical update that should bypass throttling.
+   * @returns This spinner instance for chaining.
+   */
+  updateForModelStatus?(
+    modelKey: string,
+    status: { 
+      status: string; 
+      durationMs?: number; 
+      message?: string 
+    },
+    critical?: boolean
+  ): UISpinner;
+
+  /**
+   * Updates the spinner text with a summary of model query results.
+   * @param successCount - Number of successful queries.
+   * @param failureCount - Number of failed queries.
+   * @param critical - Whether this is a critical update that should bypass throttling.
+   * @returns This spinner instance for chaining.
+   */
+  updateForModelSummary?(
+    successCount: number,
+    failureCount: number,
+    critical?: boolean
+  ): UISpinner;
 }
 
 // --- Configuration Manager Interface ---
@@ -270,4 +305,72 @@ export interface ConfigManagerInterface {
    * @returns The absolute path to the default project-local config file.
    */
   getDefaultConfigPath(): string;
+  
+  /**
+   * Adds or updates a model in the configuration.
+   * @param config - The application configuration to modify.
+   * @param model - The model to add or update.
+   * @returns The updated configuration.
+   */
+  addOrUpdateModel(config: AppConfig, model: ModelConfig): AppConfig;
+  
+  /**
+   * Removes a model from the configuration.
+   * @param config - The application configuration to modify.
+   * @param provider - The provider ID.
+   * @param modelId - The model ID.
+   * @returns The updated configuration.
+   */
+  removeModel(config: AppConfig, provider: string, modelId: string): AppConfig;
+  
+  /**
+   * Adds or updates a group in the configuration.
+   * @param config - The application configuration to modify.
+   * @param groupName - The name of the group.
+   * @param groupDetails - The group details.
+   * @returns The updated configuration.
+   */
+  addOrUpdateGroup(
+    config: AppConfig,
+    groupName: string,
+    groupDetails: Partial<Omit<ModelGroup, 'name'>>
+  ): AppConfig;
+  
+  /**
+   * Removes a group from the configuration.
+   * @param config - The application configuration to modify.
+   * @param groupName - The name of the group to remove.
+   * @returns The updated configuration.
+   */
+  removeGroup(config: AppConfig, groupName: string): AppConfig;
+  
+  /**
+   * Adds a model to a group.
+   * @param config - The application configuration to modify.
+   * @param groupName - The name of the group.
+   * @param provider - The provider ID.
+   * @param modelId - The model ID.
+   * @returns The updated configuration.
+   */
+  addModelToGroup(
+    config: AppConfig,
+    groupName: string,
+    provider: string,
+    modelId: string
+  ): AppConfig;
+  
+  /**
+   * Removes a model from a group.
+   * @param config - The application configuration to modify.
+   * @param groupName - The name of the group.
+   * @param provider - The provider ID.
+   * @param modelId - The model ID.
+   * @returns The updated configuration.
+   */
+  removeModelFromGroup(
+    config: AppConfig,
+    groupName: string,
+    provider: string,
+    modelId: string
+  ): AppConfig;
 }

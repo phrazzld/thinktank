@@ -67,6 +67,12 @@ const mockConfigManager: jest.Mocked<ConfigManagerInterface> = {
   saveConfig: jest.fn().mockResolvedValue(undefined),
   getActiveConfigPath: jest.fn().mockResolvedValue('/mock/config/file.json'),
   getDefaultConfigPath: jest.fn().mockReturnValue('/mock/default/config.json'),
+  addOrUpdateModel: jest.fn().mockReturnValue(mockConfig),
+  removeModel: jest.fn().mockReturnValue(mockConfig),
+  addOrUpdateGroup: jest.fn().mockReturnValue(mockConfig),
+  removeGroup: jest.fn().mockReturnValue(mockConfig),
+  addModelToGroup: jest.fn().mockReturnValue(mockConfig),
+  removeModelFromGroup: jest.fn().mockReturnValue(mockConfig),
 };
 
 // Create a response that includes the required configKey property

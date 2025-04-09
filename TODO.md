@@ -280,15 +280,18 @@ This document provides a comprehensive and detailed implementation plan for refa
 
 ## Phase 3: Implement Dependency Injection
 
-- [ ] **Review and enhance core interfaces**
+- [x] **Review and enhance core interfaces**
   - **Action:** Ensure all interfaces in `src/core/interfaces.ts` are complete and well-documented.
   - **Technical Details:**
-    - Review each interface: `FileSystem`, `LLMClient`, `ConfigManagerInterface`, `ConsoleLogger`, `UISpinner`.
-    - Compare interface methods with actual usage in the codebase.
-    - Add missing methods and parameters based on usage patterns.
-    - Ensure comprehensive JSDoc documentation for each interface and method.
-    - Verify typings are strict and accurate.
-  - **Success Criteria:** Complete, well-documented interfaces that cover all required functionality.
+    - Reviewed each interface: `FileSystem`, `LLMClient`, `ConfigManagerInterface`, `ConsoleLogger`, `UISpinner`.
+    - Compared interface methods with actual usage in the codebase.
+    - Added missing methods to `ConfigManagerInterface` such as `addOrUpdateModel`, `removeModel`, etc.
+    - Enhanced UISpinner interface with optional methods from ThrottledSpinner implementation.
+    - Improved parameter description in LLMClient.generate to specify "provider:modelId" format.
+    - Added comprehensive JSDoc documentation for each interface and method.
+    - Verified typings are strict and accurate, avoiding any, unknown where possible.
+    - Added interface tests to verify implementation and usage patterns.
+  - **Success Criteria:** ✅ Complete, well-documented interfaces that cover all required functionality.
   - **Depends On:** None.
   - **AC Ref:** AC 3.1.
 

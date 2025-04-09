@@ -27,6 +27,12 @@ describe('ConcreteLLMClient', () => {
     saveConfig: jest.fn(),
     getActiveConfigPath: jest.fn(),
     getDefaultConfigPath: jest.fn(),
+    addOrUpdateModel: jest.fn(),
+    removeModel: jest.fn(),
+    addOrUpdateGroup: jest.fn(),
+    removeGroup: jest.fn(),
+    addModelToGroup: jest.fn(),
+    removeModelFromGroup: jest.fn(),
   };
 
   // Mock AppConfig

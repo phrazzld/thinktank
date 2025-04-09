@@ -19,6 +19,12 @@ class MockConfigManager implements ConfigManagerInterface {
   saveConfig = jest.fn();
   getActiveConfigPath = jest.fn();
   getDefaultConfigPath = jest.fn();
+  addOrUpdateModel = jest.fn();
+  removeModel = jest.fn();
+  addOrUpdateGroup = jest.fn();
+  removeGroup = jest.fn();
+  addModelToGroup = jest.fn();
+  removeModelFromGroup = jest.fn();
 }
 
 // Create a mock FileSystem for testing
