@@ -23,12 +23,6 @@
   - **AC Ref:** Clean git status
 
 ## Secondary Improvements
-
-- [ ] **Refactor Transitional main_test.go**
-  - **Action:** Refactor or remove tests in `main_test.go` that are now covered by component unit tests. Consider moving remaining integration tests to the integration package.
-  - **Depends On:** Fix Broken Integration Tests 
-  - **AC Ref:** Simplified test structure
-
 - [x] **Ensure Consistent Flag Status Documentation**
   - **Action:** Update README and CLI usage message to be perfectly aligned on the status of the `--task` flag. If `--task` is non-functional, remove it entirely from usage/help text.
   - **Depends On:** None
