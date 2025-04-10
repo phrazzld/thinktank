@@ -28,3 +28,8 @@
   - **Action:** Update README and CLI usage message to be perfectly aligned on the status of the `--task` flag. If `--task` is non-functional, remove it entirely from usage/help text.
   - **Depends On:** None
   - **AC Ref:** Consistent documentation
+
+- [x] **Clean Up Duplicated Logging Messages** (2025-04-10)
+  - **Action:** Review logging statements in `cmd/architect/context.go` to avoid duplication at different levels.
+  - **Depends On:** None 
+  - **AC Ref:** Clean, non-redundant logging
