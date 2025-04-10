@@ -5,6 +5,14 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// ConfigDirectories holds configuration-related directory paths
+type ConfigDirectories struct {
+	UserConfigDir    string
+	SystemConfigDirs []string
+	UserTemplateDir  string
+	SystemTemplateDirs []string
+}
+
 // Configuration constants
 const (
 	// App name used for XDG paths

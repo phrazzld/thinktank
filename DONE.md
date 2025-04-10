@@ -126,3 +126,8 @@
   - **Action:** Modify the OriginalMain function to gradually use the new components while maintaining backward compatibility.
   - **Depends On:** Update cmd/architect/main.go.
   - **AC Ref:** Implementation Steps 7.
+  
+- [x] **Create a new main.go entry point** (Completed on 2025-04-10)
+  - **Action:** Replace the root-level main.go with a simple entry point that calls cmd/architect/main.go's Main function.
+  - **Depends On:** Enhance OriginalMain transitional implementation.
+  - **AC Ref:** Implementation Steps 7.

@@ -7,10 +7,10 @@ import (
 
 // MockClient is a mock implementation of gemini.Client for testing
 type MockClient struct {
-	CountTokensFunc  func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
+	CountTokensFunc     func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
 	GenerateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	GetModelInfoFunc func(ctx context.Context) (*gemini.ModelInfo, error)
-	CloseFunc       func() error
+	GetModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
+	CloseFunc           func() error
 }
 
 func (m *MockClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {

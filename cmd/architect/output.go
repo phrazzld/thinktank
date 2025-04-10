@@ -188,7 +188,7 @@ func (ow *outputWriter) GenerateAndSavePlan(ctx context.Context, client gemini.C
 	if err != nil {
 		// Get detailed error information
 		errorDetails := ow.apiService.GetErrorDetails(err)
-		
+
 		// Provide specific error messages based on error type
 		if ow.apiService.IsEmptyResponseError(err) {
 			ow.logger.Error("Received empty or invalid response from Gemini API")

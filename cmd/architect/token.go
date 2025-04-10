@@ -51,7 +51,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	result := &TokenResult{
 		ExceedsLimit: false,
 	}
-	
+
 	// Get model information (limits)
 	modelInfo, err := client.GetModelInfo(ctx)
 	if err != nil {
@@ -59,14 +59,14 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 		if _, ok := gemini.IsAPIError(err); ok {
 			return nil, err
 		}
-		
+
 		// Wrap other errors
 		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
 	}
-	
+
 	// Store input limit
 	result.InputLimit = modelInfo.InputTokenLimit
-	
+
 	// Count tokens in the prompt
 	tokenResult, err := client.CountTokens(ctx, prompt)
 	if err != nil {
@@ -74,30 +74,30 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 		if _, ok := gemini.IsAPIError(err); ok {
 			return nil, err
 		}
-		
+
 		// Wrap other errors
 		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
 	}
-	
+
 	// Store token count
 	result.TokenCount = tokenResult.Total
-	
+
 	// Calculate percentage of limit
 	result.Percentage = float64(result.TokenCount) / float64(result.InputLimit) * 100
-	
+
 	// Log token usage information
 	tm.logger.Debug("Token usage: %d / %d (%.1f%%)",
 		result.TokenCount,
 		result.InputLimit,
 		result.Percentage)
-	
+
 	// Check if the prompt exceeds the token limit
 	if result.TokenCount > result.InputLimit {
 		result.ExceedsLimit = true
 		result.LimitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
 			result.TokenCount, result.InputLimit)
 	}
-	
+
 	return result, nil
 }
 
@@ -107,11 +107,11 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, client gemini.Clien
 	if err != nil {
 		return err
 	}
-	
+
 	if tokenInfo.ExceedsLimit {
 		return fmt.Errorf(tokenInfo.LimitError)
 	}
-	
+
 	return nil
 }
 

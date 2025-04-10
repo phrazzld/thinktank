@@ -2,11 +2,15 @@
 
 ## sooner
 
-* refactor the hell out of main.go. it's way too long. should be broken up into multiple smaller files.
+* Fix remaining test failures after main.go refactoring
+* Continue optimizing the code organization and interfaces after refactoring
 * implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
 * don't hardcode the plan prompt. force the user to pass a file with the full prompt.
 * enforce convention over configuration
 * support an arbitrary number of context files and directories that we can append to the core prompt file. we want to maintain a sense, in the prompt file, of "this is the main prompt / request / ask" and "this other stuff is extra context for you to use to execute"
+* support arbitrary google models
+* support arbitrary providers
+* support an arbitrary number of models
 ## later
 
 * refactor output handling to use standard streams (stdout for primary results, stderr for logs/errors) and add a json output mode flag (`--output-format json`) for machine-readable results.

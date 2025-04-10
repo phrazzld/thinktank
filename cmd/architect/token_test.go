@@ -245,7 +245,7 @@ func TestCheckTokenLimit(t *testing.T) {
 func TestPromptForConfirmation(t *testing.T) {
 	logger := &mockLogger{}
 	tokenManager := NewTokenManager(logger)
-	
+
 	// Test threshold = 0 (disabled)
 	t.Run("ThresholdDisabled", func(t *testing.T) {
 		result := tokenManager.PromptForConfirmation(5000, 0)
@@ -253,7 +253,7 @@ func TestPromptForConfirmation(t *testing.T) {
 			t.Error("Expected true when threshold is disabled (0), got false")
 		}
 	})
-	
+
 	// Test threshold > tokenCount (no confirmation needed)
 	t.Run("ThresholdNotExceeded", func(t *testing.T) {
 		result := tokenManager.PromptForConfirmation(5000, 6000)
@@ -261,7 +261,7 @@ func TestPromptForConfirmation(t *testing.T) {
 			t.Error("Expected true when token count is below threshold, got false")
 		}
 	})
-	
+
 	// Note: We can't easily test the interactive prompt behavior in a unit test
 	// since it depends on terminal input. In a real-world scenario, this would be
 	// better tested with a mock reader that can be injected for testing.

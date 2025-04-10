@@ -3,6 +3,7 @@ package architect
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,6 +35,18 @@ func (m *mockContextLogger) Warn(format string, args ...interface{}) {
 
 func (m *mockContextLogger) Error(format string, args ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
+}
+
+func (m *mockContextLogger) Fatal(format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, "FATAL: "+format)
+}
+
+func (m *mockContextLogger) Printf(format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, format)
+}
+
+func (m *mockContextLogger) Println(v ...interface{}) {
+	m.infoMessages = append(m.infoMessages, fmt.Sprint(v...))
 }
 
 // MockTokenManager for testing

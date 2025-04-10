@@ -18,6 +18,9 @@ type ManagerInterface interface {
 	// GetSystemTemplateDirs returns the system-wide template directories
 	GetSystemTemplateDirs() []string
 
+	// GetConfigDirs returns all configuration directories
+	GetConfigDirs() ConfigDirectories
+
 	// GetTemplatePath finds the path to a template file using the configured precedence
 	GetTemplatePath(name string) (string, error)
 

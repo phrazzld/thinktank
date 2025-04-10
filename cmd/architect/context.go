@@ -104,7 +104,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	cg.logger.Info("Calculating token statistics...")
 	cg.logger.Debug("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, client, projectContext, cg.logger)
-	
+
 	// Store statistics in the stats struct
 	stats.CharCount = charCount
 	stats.LineCount = lineCount
@@ -173,6 +173,6 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, client gemini.
 
 	cg.logger.Info("Dry run completed successfully.")
 	cg.logger.Info("To generate content, run without the --dry-run flag.")
-	
+
 	return nil
 }

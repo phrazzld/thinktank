@@ -9,7 +9,6 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/prompt"
 )
 
 // Main is the entry point for the architect CLI
@@ -58,7 +57,7 @@ func Main() {
 	}
 
 	// Get the final configuration
-	appConfig := configManager.GetConfig()
+	_ = configManager.GetConfig()
 
 	// Process task input (from file or flag)
 	taskDescription, err := processTaskInput(cliConfig, logger)

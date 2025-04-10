@@ -127,7 +127,7 @@
   - **Depends On:** Update cmd/architect/main.go.
   - **AC Ref:** Implementation Steps 7.
 
-- [ ] **Create a new main.go entry point**
+- [x] **Create a new main.go entry point**
   - **Action:** Replace the root-level main.go with a simple entry point that calls cmd/architect/main.go's Main function.
   - **Depends On:** Enhance OriginalMain transitional implementation.
   - **AC Ref:** Implementation Steps 7.

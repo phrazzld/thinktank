@@ -72,15 +72,15 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 // TestNewAPIService tests the creation of a new APIService
 func TestNewAPIService(t *testing.T) {
 	logger := &mockAPILogger{}
-	
+
 	// Create a new APIService
 	service := NewAPIService(logger)
-	
+
 	// Check that service is not nil
 	if service == nil {
 		t.Error("Expected non-nil APIService, got nil")
 	}
-	
+
 	// Check that it implements the APIService interface
 	var _ APIService = service // This is a compile-time check
 }
@@ -93,9 +93,9 @@ func TestInitClient(t *testing.T) {
 		apiKey    string
 		modelName string
 		setupCtx  func() (context.Context, context.CancelFunc)
-		mockError error        // Error to inject into the mock gemini.NewClient
-		wantErr   error        // Expected error type to match with errors.Is
-		wantMsg   string       // Expected error message substring
+		mockError error  // Error to inject into the mock gemini.NewClient
+		wantErr   error  // Expected error type to match with errors.Is
+		wantMsg   string // Expected error message substring
 	}{
 		{
 			name:      "Empty API Key",
@@ -147,25 +147,27 @@ func TestInitClient(t *testing.T) {
 			wantMsg: "API authentication failed",
 		},
 	}
-	
+
 	// Run tests
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := &mockAPILogger{}
-			apiService := NewAPIService(logger)
+			api := NewAPIService(logger).(*apiService) // Type assertion to access internal fields
 			
+			// Override the newClientFunc for tests with mockError
+			if tc.mockError != nil {
+				api.newClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+					return nil, tc.mockError
+				}
+			}
+
 			// Setup context
 			ctx, cancel := tc.setupCtx()
 			defer cancel()
-			
-			// If we're testing the error handling after gemini.NewClient,
-			// we need to mock and monkeypatch gemini.NewClient
-			// However, that would be complex and rely on implementation details
-			
-			// We'll just test the cases that don't require that level of mocking
-			// and verify the outputs match our expectations
-			client, err := apiService.InitClient(ctx, tc.apiKey, tc.modelName)
-			
+
+			// Call the method being tested
+			client, err := api.InitClient(ctx, tc.apiKey, tc.modelName)
+
 			// Check error expectations
 			if tc.wantErr != nil {
 				if err == nil {
@@ -174,7 +176,7 @@ func TestInitClient(t *testing.T) {
 					if !errors.Is(err, tc.wantErr) {
 						t.Errorf("Expected error type %v, got %v", tc.wantErr, err)
 					}
-					
+
 					if !strings.Contains(err.Error(), tc.wantMsg) {
 						t.Errorf("Expected error message to contain %q, got %q", tc.wantMsg, err.Error())
 					}
@@ -182,7 +184,7 @@ func TestInitClient(t *testing.T) {
 			} else if err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
-			
+
 			// For cases expecting errors, client should be nil
 			if tc.wantErr != nil && client != nil {
 				t.Errorf("Expected nil client when error occurs, got non-nil client")
@@ -382,13 +384,13 @@ func TestErrorHelperMethods(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				result := apiService.IsEmptyResponseError(tc.err)
 				if result != tc.expected {
-					t.Errorf("Expected IsEmptyResponseError to return %v for %v, got %v", 
+					t.Errorf("Expected IsEmptyResponseError to return %v for %v, got %v",
 						tc.expected, tc.err, result)
 				}
 			})
 		}
 	})
-	
+
 	// Test IsSafetyBlockedError
 	t.Run("IsSafetyBlockedError", func(t *testing.T) {
 		testCases := []struct {
@@ -437,13 +439,13 @@ func TestErrorHelperMethods(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				result := apiService.IsSafetyBlockedError(tc.err)
 				if result != tc.expected {
-					t.Errorf("Expected IsSafetyBlockedError to return %v for %v, got %v", 
+					t.Errorf("Expected IsSafetyBlockedError to return %v for %v, got %v",
 						tc.expected, tc.err, result)
 				}
 			})
 		}
 	})
-	
+
 	// Test GetErrorDetails
 	t.Run("GetErrorDetails", func(t *testing.T) {
 		testCases := []struct {
@@ -464,7 +466,7 @@ func TestErrorHelperMethods(t *testing.T) {
 			{
 				name:           "Nil Error",
 				err:            nil,
-				expectedResult: "<nil>",
+				expectedResult: "",
 			},
 			// We can create a gemini.APIError for testing, since it's exported
 			{
@@ -487,12 +489,9 @@ func TestErrorHelperMethods(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				result := apiService.GetErrorDetails(tc.err)
-				if tc.err == nil && result == "<nil>" {
-					// Special case for nil error
-					return
-				}
+				// Remove special case handling as it's now handled in the implementation
 				if result != tc.expectedResult {
-					t.Errorf("Expected error details %q, got %q", 
+					t.Errorf("Expected error details %q, got %q",
 						tc.expectedResult, result)
 				}
 			})
