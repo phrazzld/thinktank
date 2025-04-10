@@ -13,12 +13,10 @@ func SetupPromptManagerWithConfig(logger logutil.LoggerInterface, configManager 
 	// Create a prompt manager that uses the configuration system
 	promptManager := CreatePromptManager(configManager, logger)
 
-	// Pre-load the default templates
-	for _, tmplName := range []string{"default.tmpl", "clarify.tmpl", "refine.tmpl"} {
-		err := promptManager.LoadTemplate(tmplName)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load template %s: %w", tmplName, err)
-		}
+	// Pre-load the default template
+	err := promptManager.LoadTemplate("default.tmpl")
+	if err != nil {
+		return nil, fmt.Errorf("failed to load template default.tmpl: %w", err)
 	}
 
 	return promptManager, nil

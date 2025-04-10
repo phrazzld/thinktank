@@ -36,7 +36,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing).
 
-- [ ] **Update DefaultConfig() to remove clarify template references**
+- [x] **Update DefaultConfig() to remove clarify template references**
   - **Action:** Edit internal/config/config.go to remove Clarify and Refine template references from the DefaultConfig() function.
   - **Depends On:** "Remove Clarify and Refine fields from TemplateConfig struct in config.go"
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.5.
@@ -62,7 +62,7 @@
   - **Depends On:** "Remove clarifyTaskDescriptionWithConfig() function from main.go"
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.2.
 
-- [ ] **Update SetupPromptManagerWithConfig to remove clarify/refine templates**
+- [x] **Update SetupPromptManagerWithConfig to remove clarify/refine templates**
   - **Action:** Modify internal/prompt/integration.go to only load default.tmpl and remove clarify.tmpl and refine.tmpl from the template loading loop.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.3.
