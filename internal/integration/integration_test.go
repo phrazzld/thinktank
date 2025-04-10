@@ -423,12 +423,11 @@ func main() {}`)
 		t.Fatalf("Failed to read output file: %v", err)
 	}
 
-	// The task clarification test depends on the mock implementation
-	// We expect to see the refined task in the output content
-	// The refined task should contain REFINED in the output
-	if !strings.Contains(string(content), "REFINED:") {
-		t.Errorf("Output file does not reflect the refined task: %s", string(content))
-	}
+	// NOTE: This test should be updated since clarify functionality was removed
+	// The old expectation was to see a "REFINED:" marker in the output
+	// For now, just check that the output contains some content
+	if len(content) == 0 {
+		t.Errorf("Output file is empty")
 	}
 }
 
