@@ -37,7 +37,7 @@
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 2.1, AC 4.1, AC 4.2
 
-- [ ] **Task Title:** Implement file closing in Close method
+- [x] **Task Title:** Implement file closing in Close method
   - **Action:** Ensure proper cleanup of file resources.
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 4.1

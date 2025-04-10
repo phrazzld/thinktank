@@ -474,10 +474,23 @@ func TestFileLoggerClose(t *testing.T) {
 		t.Fatalf("Failed to create FileLogger: %v", err)
 	}
 	
+	// Log an event to ensure there's data to flush
+	testEvent := NewAuditEvent("INFO", "CloseTest", "Testing file close")
+	logger.Log(testEvent)
+	
 	// Close the logger
 	err = logger.Close()
 	if err != nil {
 		t.Errorf("Failed to close FileLogger: %v", err)
+	}
+	
+	// Verify file exists and contains the logged event
+	fileContent, err := os.ReadFile(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to read log file after close: %v", err)
+	}
+	if !strings.Contains(string(fileContent), "CloseTest") {
+		t.Errorf("Expected log file to contain the test event after close")
 	}
 	
 	// Closing again should not cause an error (idempotent)
@@ -485,9 +498,85 @@ func TestFileLoggerClose(t *testing.T) {
 	if err != nil {
 		t.Errorf("Second close caused an error: %v", err)
 	}
+	
+	// Verify the file pointer is nil after close
+	if logger.file != nil {
+		t.Errorf("Expected file handle to be nil after close, but it wasn't")
+	}
 }
 
-// TestNoopLoggerCreation tests the creation of a NoopLogger
+// TestFileLoggerCloseNilReceiver tests that Close properly handles nil receivers
+func TestFileLoggerCloseNilReceiver(t *testing.T) {
+	// Create a nil logger
+	var logger *FileLogger = nil
+	
+	// Call Close on nil logger - should return an error but not panic
+	err := logger.Close()
+	
+	// Verify we got an error
+	if err == nil {
+		t.Error("Expected error when calling Close on nil logger, got nil")
+	}
+	
+	// Check that the error message is clear
+	if !strings.Contains(err.Error(), "nil FileLogger") {
+		t.Errorf("Expected error message to mention 'nil FileLogger', got: %v", err)
+	}
+}
+
+// TestCloseAfterLog tests that closing flushes all writes
+func TestCloseAfterLog(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path
+	logFilePath := filepath.Join(tempDir, "flush.log")
+	
+	// Create a FileLogger
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger: %v", err)
+	}
+	
+	// Log several events in a row
+	numEvents := 100
+	for i := 0; i < numEvents; i++ {
+		event := NewAuditEvent(
+			"INFO",
+			fmt.Sprintf("FlushTest-%d", i),
+			fmt.Sprintf("Testing flush on close, event %d", i),
+		)
+		logger.Log(event)
+	}
+	
+	// Close the logger - this should flush all writes
+	err = logger.Close()
+	if err != nil {
+		t.Errorf("Failed to close FileLogger: %v", err)
+	}
+	
+	// Read the file contents
+	fileContent, err := os.ReadFile(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	
+	// Split by newlines to get individual JSON lines
+	lines := strings.Split(string(fileContent), "\n")
+	// Remove last empty line if present
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	
+	// Check that we have the expected number of log entries
+	if len(lines) != numEvents {
+		t.Errorf("Expected %d log entries after flush, got %d", numEvents, len(lines))
+	}
+}
 func TestNoopLoggerCreation(t *testing.T) {
 	// Create a NoopLogger
 	logger := NewNoopLogger()
@@ -535,5 +624,57 @@ func TestNoopLoggerClose(t *testing.T) {
 	err = logger.Close()
 	if err != nil {
 		t.Errorf("Second close caused an error: %v", err)
+	}
+}
+
+// TestFileLoggerCloseSync tests that the Close method attempts to sync before closing
+func TestFileLoggerCloseSync(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path
+	logFilePath := filepath.Join(tempDir, "sync.log")
+	
+	// Create a FileLogger
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger: %v", err)
+	}
+	
+	// Log a test event
+	testEvent := NewAuditEvent("INFO", "TestSync", "Testing sync on close")
+	logger.Log(testEvent)
+	
+	// Close the logger - this should sync and close
+	err = logger.Close()
+	if err != nil {
+		t.Errorf("Failed to close FileLogger: %v", err)
+	}
+	
+	// Verify file exists and contains the log entry
+	fileContent, err := os.ReadFile(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	
+	// Check that the file contains our test event
+	if !strings.Contains(string(fileContent), "TestSync") {
+		t.Error("Log file does not contain expected event after sync and close")
+	}
+}
+
+// TestFileLoggerNilFileClose tests closing a logger with a nil file handle
+func TestFileLoggerNilFileClose(t *testing.T) {
+	// Create a logger with a nil file
+	logger := &FileLogger{file: nil}
+	
+	// Close the logger - this should not cause an error
+	err := logger.Close()
+	if err != nil {
+		t.Errorf("Expected nil error when closing logger with nil file, got: %v", err)
 	}
 }

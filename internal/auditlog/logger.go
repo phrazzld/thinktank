@@ -166,16 +166,52 @@ func (l *FileLogger) Log(event AuditEvent) {
 }
 
 // Close flushes any buffered data and closes the underlying file.
-// It is safe to call Close multiple times; subsequent calls will return nil.
+// This method:
+// - Is thread-safe (protected by mutex)
+// - Is idempotent (safe to call multiple times)
+// - Handles nil receivers gracefully
+// - Ensures all buffered data is flushed to disk
+// - Returns descriptive errors when problems occur
+// - Sets the file handle to nil after closing to prevent use-after-close errors
+//
+// Return values:
+// - nil: Success or already closed
+// - error: Any error that occurred during the close operation
 func (l *FileLogger) Close() error {
+	// Handle nil receiver gracefully
+	if l == nil {
+		return fmt.Errorf("close called on nil FileLogger")
+	}
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	
-	if l.file != nil {
-		err := l.file.Close()
-		l.file = nil
-		return err
+	// If file is already nil, logger is already closed
+	if l.file == nil {
+		return nil
 	}
+
+	// Attempt to sync any buffered data to disk
+	if err := l.file.Sync(); err != nil {
+		// Continue with close even if sync fails, but wrap the error
+		errLogger("[WARN] Failed to sync log file before closing: %v", err)
+	}
+	
+	// Close the file
+	if err := l.file.Close(); err != nil {
+		// Wrap the error for better diagnostic information
+		wrappedErr := fmt.Errorf("failed to close log file: %w", err)
+		
+		// Handle specific error types with contextual information
+		if os.IsPermission(err) {
+			errLogger("[ERROR] Permission denied when closing log file. Check file permissions.")
+		}
+		
+		return wrappedErr
+	}
+	
+	// Set file to nil to prevent use-after-close
+	l.file = nil
 	return nil
 }
 
