@@ -232,10 +232,13 @@ func (ow *outputWriter) GenerateAndSavePlan(ctx context.Context, client gemini.C
 	return nil
 }
 
+// SetupPromptManagerWithConfig is exported for testing
+var SetupPromptManagerWithConfig = prompt.SetupPromptManagerWithConfig
+
 // GenerateAndSavePlanWithConfig creates and saves the plan to a file using the config system
 func (ow *outputWriter) GenerateAndSavePlanWithConfig(ctx context.Context, client gemini.Client, taskDescription, projectContext, outputFile string, configManager config.ManagerInterface) error {
 	// Set up a prompt manager with config support
-	promptManager, err := prompt.SetupPromptManagerWithConfig(ow.logger, configManager)
+	promptManager, err := SetupPromptManagerWithConfig(ow.logger, configManager)
 	if err != nil {
 		ow.logger.Error("Failed to set up prompt manager: %v", err)
 

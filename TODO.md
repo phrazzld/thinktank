@@ -12,7 +12,7 @@
   - **Depends On:** None
   - **AC Ref:** Package structure aligns with Go conventions
 
-- [ ] **Fix Skipped TestGenerateAndSavePlanWithConfig**
+- [x] **Fix Skipped TestGenerateAndSavePlanWithConfig**
   - **Action:** Investigate and fix the "package reference issues" in `cmd/architect/output_test.go` that prevent `TestGenerateAndSavePlanWithConfig` from running.
   - **Depends On:** None
   - **AC Ref:** All non-integration tests passing

@@ -11,3 +11,8 @@
   - **Action:** Create a new package `internal/architect` and move the component files (api.go, context.go, output.go, prompt.go, token.go) there. Update imports across the codebase. Keep minimal code in cmd/architect for the entry point. 
   - **Depends On:** None
   - **AC Ref:** Package structure aligns with Go conventions
+
+- [x] **Fix Skipped TestGenerateAndSavePlanWithConfig** (2025-04-10)
+  - **Action:** Investigate and fix the "package reference issues" in `cmd/architect/output_test.go` that prevent `TestGenerateAndSavePlanWithConfig` from running.
+  - **Depends On:** None
+  - **AC Ref:** All non-integration tests passing

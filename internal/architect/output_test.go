@@ -1,5 +1,5 @@
-// Package architect provides the command-line interface for the architect tool
-package architect
+// Package architect_test is used for testing the internal/architect package
+package architect_test
 
 import (
 	"context"
@@ -9,23 +9,24 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	promptpkg "github.com/phrazzld/architect/internal/prompt"
 )
 
-// outputTokenManager implements the TokenManager interface for testing in output_test.go
+// outputTokenManager implements the architect.TokenManager interface for testing in output_test.go
 type outputTokenManager struct {
-	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
+	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error)
 	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
 	promptForConfirmationFunc func(tokenCount int32, confirmTokens int) bool
 }
 
 func newOutputTokenManager() *outputTokenManager {
 	return &outputTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
-			return &TokenResult{
+		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
+			return &architect.TokenResult{
 				TokenCount:   100,
 				InputLimit:   1000,
 				ExceedsLimit: false,
@@ -41,7 +42,7 @@ func newOutputTokenManager() *outputTokenManager {
 	}
 }
 
-func (m *outputTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+func (m *outputTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
 	return m.getTokenInfoFunc(ctx, client, prompt)
 }
 
@@ -157,11 +158,17 @@ func (m *outputGeminiClient) Close() error {
 
 // mockConfigManager implements a simplified config.ManagerInterface for testing
 type mockConfigManager struct {
-	loadFromFilesFunc    func() error
-	ensureConfigDirsFunc func() error
-	getConfigFunc        func() *config.AppConfig
-	mergeWithFlagsFunc   func(flags map[string]interface{}) error
-	getConfigDirsFunc    func() config.ConfigDirectories
+	loadFromFilesFunc       func() error
+	ensureConfigDirsFunc    func() error
+	getConfigFunc           func() *config.AppConfig
+	mergeWithFlagsFunc      func(flags map[string]interface{}) error
+	getConfigDirsFunc       func() config.ConfigDirectories
+	getUserConfigDirFunc    func() string
+	getSystemConfigDirsFunc func() []string
+	getUserTemplateDirFunc  func() string
+	getSystemTemplateDirsFunc func() []string
+	getTemplatePathFunc     func(name string) (string, error)
+	writeDefaultConfigFunc  func() error
 }
 
 func newMockConfigManager() *mockConfigManager {
@@ -180,6 +187,24 @@ func newMockConfigManager() *mockConfigManager {
 		},
 		getConfigDirsFunc: func() config.ConfigDirectories {
 			return config.ConfigDirectories{}
+		},
+		getUserConfigDirFunc: func() string {
+			return "/mock/user/config/dir"
+		},
+		getSystemConfigDirsFunc: func() []string {
+			return []string{"/mock/system/config/dir"}
+		},
+		getUserTemplateDirFunc: func() string {
+			return "/mock/user/template/dir"
+		},
+		getSystemTemplateDirsFunc: func() []string {
+			return []string{"/mock/system/template/dir"}
+		},
+		getTemplatePathFunc: func(name string) (string, error) {
+			return "/mock/template/" + name, nil
+		},
+		writeDefaultConfigFunc: func() error {
+			return nil
 		},
 	}
 }
@@ -204,7 +229,31 @@ func (m *mockConfigManager) GetConfigDirs() config.ConfigDirectories {
 	return m.getConfigDirsFunc()
 }
 
-// outputMockAPIService implements a simplified APIService for testing
+func (m *mockConfigManager) GetUserConfigDir() string {
+	return m.getUserConfigDirFunc()
+}
+
+func (m *mockConfigManager) GetSystemConfigDirs() []string {
+	return m.getSystemConfigDirsFunc()
+}
+
+func (m *mockConfigManager) GetUserTemplateDir() string {
+	return m.getUserTemplateDirFunc()
+}
+
+func (m *mockConfigManager) GetSystemTemplateDirs() []string {
+	return m.getSystemTemplateDirsFunc()
+}
+
+func (m *mockConfigManager) GetTemplatePath(name string) (string, error) {
+	return m.getTemplatePathFunc(name)
+}
+
+func (m *mockConfigManager) WriteDefaultConfig() error {
+	return m.writeDefaultConfigFunc()
+}
+
+// outputMockAPIService implements a simplified architect.APIService for testing
 type outputMockAPIService struct {
 	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	getErrorDetailsFunc      func(err error) string
@@ -237,13 +286,95 @@ func newOutputMockAPIService() *outputMockAPIService {
 }
 
 // Override the default NewAPIService function for testing
-var originalNewAPIService = NewAPIService
+var originalNewAPIService = architect.NewAPIService
 
-// Reference to the original setup function for tests
-var originalSetupPromptManagerWithConfig = promptpkg.SetupPromptManagerWithConfig
+// mockSetupPromptManagerWithConfig is used to mock the SetupPromptManagerWithConfig function
+var mockSetupPromptManagerWithConfig func(logger logutil.LoggerInterface, configManager config.ManagerInterface) (promptpkg.ManagerInterface, error)
 
 // Reference to the original new manager function for tests
 var originalNewManager = promptpkg.NewManager
+
+// Implement the updated test for GenerateAndSavePlanWithConfig
+func TestGenerateAndSavePlanWithConfig(t *testing.T) {
+	// Create a logger for testing
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
+
+	// Create a temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "output_test")
+	if err != nil {
+		t.Fatalf("Failed to create temporary directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Define common test parameters
+	ctx := context.Background()
+	taskDescription := "Test task"
+	projectContext := "Test project context"
+	outputFile := filepath.Join(tempDir, "test_output.md")
+
+	// Create a mock prompt manager
+	mockPromptManager := newMockPromptManager()
+
+	// Create a token manager for testing
+	tokenManager := newOutputTokenManager()
+
+	// Create a mock Gemini client
+	geminiClient := newOutputGeminiClient()
+
+	// Create a mock API service
+	apiService := newOutputMockAPIService()
+
+	// Replace the global NewAPIService function for testing
+	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
+		return apiService
+	}
+	defer func() {
+		architect.NewAPIService = originalNewAPIService
+	}()
+
+	// Create an output writer
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
+
+	// Create a mock config manager
+	configManager := newMockConfigManager()
+
+	// Replace the SetupPromptManagerWithConfig function to return our mock
+	originalSetupFunc := architect.SetupPromptManagerWithConfig
+	architect.SetupPromptManagerWithConfig = func(logger logutil.LoggerInterface, configManager config.ManagerInterface) (promptpkg.ManagerInterface, error) {
+		return mockPromptManager, nil
+	}
+	defer func() {
+		architect.SetupPromptManagerWithConfig = originalSetupFunc
+	}()
+
+	// Call the method being tested
+	err = outputWriter.GenerateAndSavePlanWithConfig(ctx, geminiClient, taskDescription, projectContext, outputFile, configManager)
+
+	// Verify no error occurred
+	if err != nil {
+		t.Errorf("GenerateAndSavePlanWithConfig() unexpected error = %v", err)
+		return
+	}
+
+	// Verify the file was created
+	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+		t.Errorf("Output file not created: %v", err)
+		return
+	}
+
+	// Read the file content
+	content, err := os.ReadFile(outputFile)
+	if err != nil {
+		t.Errorf("Failed to read output file: %v", err)
+		return
+	}
+
+	// Verify content matches expected
+	expectedContent := "generated content"
+	if string(content) != expectedContent {
+		t.Errorf("File content = %v, want %v", string(content), expectedContent)
+	}
+}
 
 func (m *outputMockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
 	return m.processResponseFunc(result)
@@ -274,7 +405,7 @@ func TestSaveToFile(t *testing.T) {
 	tokenManager := newOutputTokenManager()
 
 	// Create an output writer
-	outputWriter := NewOutputWriter(logger, tokenManager)
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
@@ -465,7 +596,7 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			},
 			tokenManagerFunc: func() *outputTokenManager {
 				tm := newOutputTokenManager()
-				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
 					return nil, errors.New("token count check failed")
 				}
 				return tm
@@ -486,8 +617,8 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			},
 			tokenManagerFunc: func() *outputTokenManager {
 				tm := newOutputTokenManager()
-				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
-					return &TokenResult{
+				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
+					return &architect.TokenResult{
 						TokenCount:   2000,
 						InputLimit:   1000,
 						ExceedsLimit: true,
@@ -607,15 +738,15 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			apiService := tc.apiServiceFunc()
 
 			// Replace NewAPIService to return our mock
-			NewAPIService = func(logger logutil.LoggerInterface) APIService {
+			architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
 				return apiService
 			}
 			defer func() {
-				NewAPIService = originalNewAPIService
+				architect.NewAPIService = originalNewAPIService
 			}()
 
 			// Create output writer
-			outputWriter := NewOutputWriter(logger, tokenManager)
+			outputWriter := architect.NewOutputWriter(logger, tokenManager)
 
 			// Create unique output file for this test
 			testOutputFile := filepath.Join(tempDir, t.Name()+".md")
@@ -663,8 +794,3 @@ func TestGenerateAndSavePlan(t *testing.T) {
 	}
 }
 
-// TestGenerateAndSavePlanWithConfig tests the GenerateAndSavePlanWithConfig method
-// This test is temporarily skipped until package reference issues are resolved
-func TestGenerateAndSavePlanWithConfig(t *testing.T) {
-	t.Skip("Skipping due to package reference issues")
-}
