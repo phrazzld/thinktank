@@ -28,7 +28,7 @@
   - **Depends On:** Modify validateInputs() to require task file
   - **AC Ref:** Unit testing (Detailed Task Breakdown 5, Testing Strategy)
 
-- [ ] **Add unit tests for file existence and readability checks**
+- [x] **Add unit tests for file existence and readability checks**
   - **Action:** Create unit tests that verify error handling when the file doesn't exist or is unreadable.
   - **Depends On:** Improve error messages for task file validation
   - **AC Ref:** Error handling tests (Testing Strategy)
@@ -43,15 +43,3 @@
 - [x] **Assumption: Template Processing Decision**
   - **Context:** The plan mentions "Decision needs to be made whether user-provided files should be processed as templates themselves (with variable substitution) or used as raw content" but doesn't definitively resolve this.
   - **Assumption:** We will implement a detection mechanism to determine if a file contains template variables (like {{.Task}} or {{.Context}}) and process it accordingly. Files without template variables will be used as raw content. Files with .tmpl extension will always be treated as templates.
-
-- [ ] **Assumption: Backward Compatibility Approach**
-  - **Context:** The plan mentions "Consider providing a clear deprecation message rather than removing support immediately" for the --task flag.
-  - **Assumption:** We will maintain support for the --task flag with a deprecation warning for a transition period, rather than removing it completely.
-
-- [ ] **Clarification: Error Messaging for Prompt File Format**
-  - **Context:** The plan asks "Should we enhance the error messaging to guide users toward proper prompt file formatting?"
-  - **Clarification Needed:** What specific format guidance should be provided to users regarding prompt file structure and content?
-
-- [ ] **Clarification: Example Templates Scope**
-  - **Context:** The plan asks "Should we provide example prompt files to help users get started with creating their own prompts?"
-  - **Clarification Needed:** How many example templates should be provided, and what variations should they cover?
