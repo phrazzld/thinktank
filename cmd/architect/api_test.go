@@ -33,7 +33,7 @@ func (m *mockAPILogger) Error(format string, args ...interface{}) {
 
 // Note: The following mock service code was removed as it was not being used:
 // - mockAPIService struct definition
-// - newMockAPIService function 
+// - newMockAPIService function
 // - mockAPIService interface methods (InitClient, ProcessResponse, etc.)
 //
 // For testing, we're using the mock functionality directly in the test functions
