@@ -119,19 +119,61 @@ func main() {
 	apiService := architect.NewAPIService(logger)
 	geminiClient, err := apiService.InitClient(ctx, config.ApiKey, config.ModelName)
 	if err != nil {
-		logger.Fatal("Error creating Gemini client: %v", err)
+		// Get detailed error information
+		errorDetails := apiService.GetErrorDetails(err)
+		
+		// Check if it's an API error with enhanced details
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Error creating Gemini client: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			// Log more details in debug mode
+			if config.LogLevel == logutil.DebugLevel {
+				logger.Debug("Error details: %s", apiErr.DebugInfo())
+			}
+		} else {
+			logger.Error("Error creating Gemini client: %s", errorDetails)
+		}
+		
+		logger.Fatal("Failed to initialize API client")
 	}
 	defer geminiClient.Close()
 
 	// Task clarification code has been removed
 
-	// Gather context from files
-	projectContext := gatherContext(ctx, config, geminiClient, logger)
-
-	// Generate content if not in dry run mode
-	if !config.DryRun {
-		generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
+	// Create context gatherer
+	tokenManager := architect.NewTokenManager(logger)
+	contextGatherer := architect.NewContextGatherer(logger, config.DryRun, tokenManager)
+	
+	// Create gather config
+	gatherConfig := architect.GatherConfig{
+		Paths:        config.Paths,
+		Include:      config.Include,
+		Exclude:      config.Exclude,
+		ExcludeNames: config.ExcludeNames,
+		Format:       config.Format,
+		Verbose:      config.Verbose,
+		LogLevel:     config.LogLevel,
 	}
+	
+	// Gather context from files
+	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
+	if err != nil {
+		logger.Fatal("Failed during project context gathering: %v", err)
+	}
+
+	// Handle dry run mode
+	if config.DryRun {
+		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
+		if err != nil {
+			logger.Error("Error displaying dry run information: %v", err)
+		}
+		return
+	}
+	
+	// Generate content if not in dry run mode
+	generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
 }
 
 // clarifyTaskDescription function removed
@@ -390,6 +432,7 @@ func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) val
 // initGeminiClient function moved to cmd/architect/api.go
 
 // gatherContext collects and processes files based on configuration
+// Transitional implementation - moved to cmd/architect/context.go
 func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
 	// Spinner initialization removed
 
@@ -452,6 +495,7 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 }
 
 // displayDryRunInfo shows detailed information for dry run mode
+// Transitional implementation - moved to cmd/architect/context.go
 func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFilesCount int,
 	processedFiles []string, ctx context.Context, geminiClient gemini.Client, logger logutil.LoggerInterface) {
 
@@ -663,7 +707,25 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	}
 
 	// Process API response
-	generatedPlan := processApiResponse(result, logger)
+	generatedPlan, err := apiService.ProcessResponse(result)
+	if err != nil {
+		// Get detailed error information
+		errorDetails := apiService.GetErrorDetails(err)
+		
+		// Provide specific error messages based on error type
+		if apiService.IsEmptyResponseError(err) {
+			logger.Error("Received empty or invalid response from Gemini API")
+			logger.Error("Error details: %s", errorDetails)
+			logger.Fatal("Failed to process API response due to empty content")
+		} else if apiService.IsSafetyBlockedError(err) {
+			logger.Error("Content was blocked by Gemini safety filters")
+			logger.Error("Error details: %s", errorDetails)
+			logger.Fatal("Failed to process API response due to safety restrictions")
+		} else {
+			// Generic API error handling
+			logger.Fatal("Failed to process API response: %v", err)
+		}
+	}
 	logger.Info("Plan generated successfully")
 
 	// Debug logging of results
@@ -681,41 +743,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	logger.Info("Plan saved to %s", config.OutputFile)
 }
 
-// processApiResponse extracts content from the API response and handles errors
-func processApiResponse(result *gemini.GenerationResult, logger logutil.LoggerInterface) string {
-	// Check for empty content
-	if result.Content == "" {
-		// Build an informative error message
-		finishReason := ""
-		if result.FinishReason != "" {
-			finishReason = fmt.Sprintf(" (Finish Reason: %s)", result.FinishReason)
-		}
-
-		// Check for safety blocks
-		safetyInfo := ""
-		if len(result.SafetyRatings) > 0 {
-			blocked := false
-			for _, rating := range result.SafetyRatings {
-				if rating.Blocked {
-					blocked = true
-					safetyInfo += fmt.Sprintf(" Blocked by Safety Category: %s;", rating.Category)
-				}
-			}
-			if blocked {
-				safetyInfo = " Safety Blocking:" + safetyInfo
-			}
-		}
-
-		logger.Fatal("Received empty response from Gemini.%s%s", finishReason, safetyInfo)
-	}
-
-	// Check for whitespace-only content
-	if strings.TrimSpace(result.Content) == "" {
-		logger.Fatal("Gemini returned an empty plan text.")
-	}
-
-	return result.Content
-}
+// processApiResponse function moved to cmd/architect/api.go
 
 // saveToFile writes the generated plan to the specified file
 func saveToFile(content string, outputFile string, logger logutil.LoggerInterface) {

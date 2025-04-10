@@ -54,22 +54,22 @@
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
 
 ## Context Gathering
-- [ ] **Extract context gathering to context.go**
+- [x] **Extract context gathering to context.go**
   - **Action:** Move the gatherContext function from main.go to context.go.
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 4.
 
-- [ ] **Extract dry run info display to context.go**
+- [x] **Extract dry run info display to context.go**
   - **Action:** Move the displayDryRunInfo function from main.go to context.go.
   - **Depends On:** Extract context gathering to context.go.
   - **AC Ref:** Implementation Steps 4.
 
-- [ ] **Ensure file filtering logic remains intact**
+- [x] **Ensure file filtering logic remains intact**
   - **Action:** Verify that all file filtering functionality (include/exclude patterns) works exactly as before.
   - **Depends On:** Extract dry run info display to context.go.
   - **AC Ref:** Implementation Steps 4.
 
-- [ ] **Create unit tests for context package functions**
+- [x] **Create unit tests for context package functions**
   - **Action:** Add new tests for context.go functions to ensure proper file handling.
   - **Depends On:** All context gathering functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
