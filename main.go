@@ -21,12 +21,14 @@ import (
 
 // Constants referencing the config package defaults
 const (
-	defaultOutputFile   = config.DefaultOutputFile
-	defaultModel        = config.DefaultModel
-	apiKeyEnvVar        = config.APIKeyEnvVar
-	defaultFormat       = config.DefaultFormat
-	defaultExcludes     = config.DefaultExcludes
-	defaultExcludeNames = config.DefaultExcludeNames
+	defaultOutputFile       = config.DefaultOutputFile
+	defaultModel            = config.DefaultModel
+	apiKeyEnvVar            = config.APIKeyEnvVar
+	defaultFormat           = config.DefaultFormat
+	defaultExcludes         = config.DefaultExcludes
+	defaultExcludeNames     = config.DefaultExcludeNames
+	taskFlagDescription     = "Description of the task or goal for the plan (deprecated: use --task-file instead)."
+	taskFileFlagDescription = "Path to a file containing the task description (required)."
 )
 
 // Configuration holds the parsed command-line options
@@ -258,8 +260,8 @@ func parseFlags() *Configuration {
 	config := &Configuration{}
 
 	// Define flags
-	taskFlag := flag.String("task", "", "Description of the task or goal for the plan.")
-	taskFileFlag := flag.String("task-file", "", "Path to a file containing the task description (alternative to --task).")
+	taskFlag := flag.String("task", "", taskFlagDescription)
+	taskFileFlag := flag.String("task-file", "", taskFileFlagDescription)
 	outputFileFlag := flag.String("output", defaultOutputFile, "Output file path for the generated plan.")
 	modelNameFlag := flag.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flag.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
