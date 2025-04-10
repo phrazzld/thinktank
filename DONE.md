@@ -37,3 +37,18 @@
   - **Action:** Move the initGeminiClient function from main.go to api.go.
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 3.
+
+- [x] **Extract API response processing to api.go** (Completed on 2025-04-10)
+  - **Action:** Move the processApiResponse function from main.go to api.go.
+  - **Depends On:** Extract API client initialization to api.go.
+  - **AC Ref:** Implementation Steps 3.
+
+- [x] **Implement robust error handling in api.go** (Completed on 2025-04-10)
+  - **Action:** Ensure consistent error handling across API operations, maintaining compatibility with existing error reporting.
+  - **Depends On:** Extract API response processing to api.go.
+  - **AC Ref:** Implementation Steps 3.
+  
+- [x] **Create unit tests for API functions** (Completed on 2025-04-10)
+  - **Action:** Add new tests for api.go functions to verify behavior in isolation.
+  - **Depends On:** All API functions moved.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 4.

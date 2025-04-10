@@ -38,17 +38,17 @@
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 3.
 
-- [ ] **Extract API response processing to api.go**
+- [x] **Extract API response processing to api.go**
   - **Action:** Move the processApiResponse function from main.go to api.go.
   - **Depends On:** Extract API client initialization to api.go.
   - **AC Ref:** Implementation Steps 3.
 
-- [ ] **Implement robust error handling in api.go**
+- [x] **Implement robust error handling in api.go**
   - **Action:** Ensure consistent error handling across API operations, maintaining compatibility with existing error reporting.
   - **Depends On:** Extract API response processing to api.go.
   - **AC Ref:** Implementation Steps 3.
 
-- [ ] **Create unit tests for API functions**
+- [x] **Create unit tests for API functions**
   - **Action:** Add new tests for api.go functions to verify behavior in isolation.
   - **Depends On:** All API functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
