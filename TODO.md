@@ -17,7 +17,7 @@
   - **Depends On:** Define AuditEvent and ErrorDetails structs
   - **AC Ref:** AC 2.1
 
-- [ ] **Task Title:** Define StructuredLogger interface
+- [x] **Task Title:** Define StructuredLogger interface
   - **Action:** Create the interface with Log and Close methods in `logger.go`.
   - **Depends On:** Define AuditEvent and ErrorDetails structs
   - **AC Ref:** AC 1.1, AC 1.3
