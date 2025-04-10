@@ -8,11 +8,6 @@
 
 ## Input Validation
 
-- [ ] **Add deprecation warning for --task flag**
-  - **Action:** When users provide --task without --task-file, log a clear deprecation warning suggesting migration to --task-file.
-  - **Depends On:** Modify validateInputs() to require task file
-  - **AC Ref:** Backward compatibility (Technical Risk 1)
-
 ## Prompt Template Processing
 - [ ] **Update generateAndSavePlanWithPromptManager function**
   - **Action:** Modify this function to handle the task file content appropriately, adding logic to determine if the file should be treated as a template or raw content.
@@ -25,10 +20,6 @@
   - **AC Ref:** Template processing decision (Technical Risk 3, Open Question 1)
 
 ## Documentation
-- [ ] **Update README.md with new usage instructions**
-  - **Action:** Add clear documentation in README.md about the requirement for --task-file and deprecation of --task.
-  - **Depends On:** None
-  - **AC Ref:** Documentation update (Detailed Task Breakdown 4)
 
 - [ ] **Create example prompt file templates**
   - **Action:** Create example prompt files that users can reference when creating their own prompt files.

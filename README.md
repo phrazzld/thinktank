@@ -6,6 +6,16 @@ A powerful code-base context analysis and planning tool that leverages Google's 
 
 Architect analyzes your codebase and uses Gemini AI to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, Architect provides contextually relevant guidance tailored to your specific project.
 
+## Important Update: Task Input Method
+
+**Please note:** The way you provide the task description to Architect has changed:
+
+* The `--task-file` flag is now **required** for generating plans. You must provide the task description in a file. This allows for more complex and structured task inputs.
+* The `--task` flag is now **deprecated** and will be removed in a future release. It should no longer be used for generating plans.
+* For `--dry-run` operations, neither `--task-file` nor `--task` is strictly required, but the deprecated `--task` flag may still be used during the transition period if needed for context scoping.
+
+Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
+
 ## Features
 
 - **Contextual Analysis**: Analyzes your codebase to understand its structure, patterns, and dependencies
@@ -37,35 +47,37 @@ go install
 ## Usage
 
 ```bash
-# Basic usage
-architect --task "Your task description" path/to/your/project
+# Basic usage (Task description in task.txt)
+architect --task-file task.txt path/to/your/project
 
-# Example: Create a plan for implementing user authentication
-architect --task "Implement JWT-based user authentication and authorization" ./
-
-# Load task from a file
-architect --task-file task_description.txt ./
+# Example: Create a plan using a task file (e.g., auth_task.txt)
+# Contents of auth_task.txt: "Implement JWT-based user authentication and authorization"
+architect --task-file auth_task.txt ./
 
 # Specify output file (default is PLAN.md)
-architect --task "..." --output auth_plan.md ./
+architect --task-file task.txt --output auth_plan.md ./
 
 # Include only specific file extensions
-architect --task "..." --include .go,.md ./
+architect --task-file task.txt --include .go,.md ./
 
 # Use a different Gemini model
-architect --task "..." --model gemini-1.5-pro ./
+architect --task-file task.txt --model gemini-1.5-pro ./
 
 # Dry run to see which files would be included
-architect --dry-run --task "..." ./
+architect --dry-run ./
+# Or with deprecated --task:
+architect --dry-run --task "Task description for context" ./
+# Or with --task-file:
+architect --dry-run --task-file task.txt ./
 
 # Request confirmation before proceeding if token count exceeds threshold
-architect --task "..." --confirm-tokens 25000 ./
+architect --task-file task.txt --confirm-tokens 25000 ./
 
 # Use a custom prompt template
-architect --task "..." --prompt-template custom_template.tmpl ./
+architect --task-file task.txt --prompt-template custom_template.tmpl ./
 
 # Enable interactive task clarification
-architect --task "..." --clarify ./
+architect --task-file task.txt --clarify ./
 ```
 
 ### Required Environment Variable
@@ -79,8 +91,8 @@ export GEMINI_API_KEY="your-api-key-here"
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--task` | Description of the task or goal for the plan | (Required unless using --task-file in non-dry-run mode) |
-| `--task-file` | Path to a file containing the task description | "" |
+| `--task` | (Deprecated) Description of the task. Use --task-file instead. Will be removed in a future version. | `""` |
+| `--task-file` | Path to a file containing the task description (Required unless --dry-run is used). | `(Required)` |
 | `--output` | Output file path for the generated plan | `PLAN.md` |
 | `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
