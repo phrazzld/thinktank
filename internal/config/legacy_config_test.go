@@ -60,7 +60,7 @@ refine = "refine.tmpl"
 	// Check that the regular configuration was loaded
 	config := manager.GetConfig()
 	if config.OutputFile != "test-output.md" || config.ModelName != "test-model" {
-		t.Errorf("Failed to load standard config values. Got OutputFile=%s, ModelName=%s", 
+		t.Errorf("Failed to load standard config values. Got OutputFile=%s, ModelName=%s",
 			config.OutputFile, config.ModelName)
 	}
 
@@ -68,29 +68,29 @@ refine = "refine.tmpl"
 	// We check behavior, not implementation, by inspecting what fields are exposed by the config
 	// and ensuring ClarifyTask isn't exposed even though it was in the config file
 	appConfig := manager.config
-	
+
 	// Let's verify the template config doesn't contain clarify/refine templates
 	tConfig := appConfig.Templates
-	
+
 	// Check if templates map contains keys for templates
 	templateFields := map[string]string{
 		"Default": tConfig.Default,
 		"Test":    tConfig.Test,
 		"Custom":  tConfig.Custom,
 	}
-	
+
 	// Verify the map doesn't have Clarify or Refine keys
 	for k, v := range templateFields {
 		if k == "Clarify" || k == "Refine" {
 			t.Errorf("Template config unexpectedly contains %s field with value %s", k, v)
 		}
 	}
-	
+
 	// Verify the clarify template path isn't retrievable
 	if _, ok := manager.getTemplatePathFromConfig("clarify"); ok {
 		t.Error("getTemplatePathFromConfig unexpectedly provides a path for 'clarify'")
 	}
-	
+
 	// Verify the refine template path isn't retrievable
 	if _, ok := manager.getTemplatePathFromConfig("refine"); ok {
 		t.Error("getTemplatePathFromConfig unexpectedly provides a path for 'refine'")
