@@ -14,7 +14,7 @@
 
 ## Primary CI Workflow
 
-- [ ] **Create CI workflow file**
+- [x] **Create CI workflow file**
   - **Action:** Create the main `.github/workflows/ci.yml` file with basic structure and trigger events for master branch
   - **Depends On:** Create GitHub workflows directory
   - **AC Ref:** Primary Workflow, Trigger Events
