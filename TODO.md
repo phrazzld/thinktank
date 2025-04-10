@@ -83,7 +83,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Template Files), Step 4.
 
-- [ ] **Delete refine.tmpl**
+- [x] **Delete refine.tmpl**
   - **Action:** Delete the file internal/prompt/templates/refine.tmpl.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Template Files), Step 4.
