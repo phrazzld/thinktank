@@ -8,8 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/cmd/architect"
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // TestBasicPlanGeneration tests the basic workflow of the application
@@ -49,6 +50,7 @@ func add(a, b int) int {
 		ModelName:  "test-model",
 		ApiKey:     "test-api-key",
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -108,6 +110,7 @@ func main() {
 		ApiKey:     "test-api-key",
 		DryRun:     true,
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -156,6 +159,7 @@ func main() {
 		ModelName:  "test-model",
 		ApiKey:     "test-api-key",
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -223,6 +227,7 @@ func main() {}`)
 		ApiKey:     "test-api-key",
 		Include:    ".go,.md", // Only include Go and Markdown files
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -285,6 +290,7 @@ func main() {}`)
 		ModelName:  "test-model",
 		ApiKey:     "test-api-key",
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application and expect an error
@@ -345,6 +351,7 @@ func main() {}`)
 		ModelName:  "test-model",
 		ApiKey:     "test-api-key",
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application and expect a token limit error
@@ -404,6 +411,7 @@ func main() {}`)
 		ApiKey:        "test-api-key",
 		ConfirmTokens: 1000, // Threshold lower than our token count
 		Paths:         []string{env.TestDir + "/src"},
+		LogLevel:      logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -460,6 +468,7 @@ func main() {}`)
 		ModelName:  "test-model",
 		ApiKey:     "test-api-key",
 		Paths:      []string{env.TestDir + "/src"},
+		LogLevel:   logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -515,6 +524,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			ModelName:  "test-model",
 			ApiKey:     "test-api-key",
 			Paths:      []string{env.TestDir},
+			LogLevel:   logutil.InfoLevel,
 		}
 
 		// Run the application with our test configuration

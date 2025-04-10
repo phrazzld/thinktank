@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/phrazzld/architect/cmd/architect"
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -93,14 +93,18 @@ func RunTestWithConfig(
 	// Use a test config manager that doesn't actually read from disk
 	configManager := config.NewManager(env.Logger)
 
-	// Create a mock API service factory that uses the test environment's mock client
-	mockAPIServiceFactory := func(logger logutil.LoggerInterface) architect.APIService {
-		return &MockAPIService{
-			logger:     logger,
-			mockClient: env.MockClient,
-		}
+	// Create a mock API service that uses the test environment's mock client
+	mockAPIService := &MockAPIService{
+		logger:     env.Logger,
+		mockClient: env.MockClient,
 	}
 
-	// Run the architect application using the Run function directly
-	return architect.Run(ctx, testConfig, env.Logger, configManager, mockAPIServiceFactory)
+	// Run the architect application using the RunInternal function directly from internal/architect
+	return architect.RunInternal(
+		ctx,
+		testConfig,
+		env.Logger,
+		configManager,
+		mockAPIService,
+	)
 }
