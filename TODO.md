@@ -72,7 +72,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.4.
 
-- [ ] **Remove clarify condition in main_adapter.go**
+- [x] **Remove clarify condition in main_adapter.go**
   - **Action:** Delete the if block that calls simulateClarifyTaskDescription in internal/integration/main_adapter.go.
   - **Depends On:** "Remove simulateClarifyTaskDescription function in main_adapter.go"
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.4.
