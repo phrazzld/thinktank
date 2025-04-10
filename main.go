@@ -543,210 +543,54 @@ func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFi
 }
 
 // generateAndSavePlan is a backward-compatible wrapper for plan generation
+// Transitional implementation - moved to cmd/architect/output.go
 func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, logger logutil.LoggerInterface) {
 
-	// Use the legacy version without config system support
+	// Create token manager and output writer
+	tokenManager := architect.NewTokenManager(logger)
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
+	
+	// Create a fallback prompt manager without config
 	promptManager := prompt.NewManager(logger)
-	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+
+	// Call the method from the output writer
+	err := outputWriter.GenerateAndSavePlan(ctx, geminiClient, config.TaskDescription, projectContext, config.OutputFile, promptManager)
+	if err != nil {
+		logger.Fatal("Error generating and saving plan: %v", err)
+	}
 }
 
 // generateAndSavePlanWithConfig creates and saves the plan to a file using the config system
+// Transitional implementation - moved to cmd/architect/output.go
 func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, configManager config.ManagerInterface, logger logutil.LoggerInterface) {
 
-	// Set up a prompt manager with config support
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-	if err != nil {
-		logger.Error("Failed to set up prompt manager: %v", err)
-		// Fall back to non-config version
-		generateAndSavePlan(ctx, config, geminiClient, projectContext, logger)
-		return
-	}
+	// Create token manager and output writer
+	tokenManager := architect.NewTokenManager(logger)
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
 
-	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+	// Call the method from the output writer
+	err := outputWriter.GenerateAndSavePlanWithConfig(ctx, geminiClient, config.TaskDescription, projectContext, config.OutputFile, configManager)
+	if err != nil {
+		logger.Fatal("Error generating and saving plan with config: %v", err)
+	}
 }
 
 // generateAndSavePlanWithPromptManager is the core implementation of plan generation
+// Transitional implementation - moved to cmd/architect/output.go
 func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
 	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
 
-	// Spinner initialization removed
-
-	// First check if task file content is a template itself
-	var generatedPrompt string
-	var err error
-
-	if prompt.IsTemplate(config.TaskDescription) {
-		// This is a template in the task file - process it directly
-		logger.Info("Task file contains template variables, processing as template...")
-		logger.Debug("Processing task file as a template")
-
-		// Create template data
-		data := &prompt.TemplateData{
-			Task:    config.TaskDescription, // This is recursive but works because we're using it as raw text in the template
-			Context: projectContext,
-		}
-
-		// Create a template from the task file content
-		tmpl, err := template.New("task_file_template").Parse(config.TaskDescription)
-		if err != nil {
-			logger.Error("Failed to parse task file as template: %v", err)
-			logger.Fatal("Failed to parse task file as template: %v", err)
-		}
-
-		// Execute the template with the context data
-		var buf bytes.Buffer
-		err = tmpl.Execute(&buf, data)
-		if err != nil {
-			logger.Error("Failed to execute task file template: %v", err)
-			logger.Fatal("Failed to execute task file template: %v", err)
-		}
-
-		generatedPrompt = buf.String()
-		logger.Info("Task file template processed successfully")
-	} else {
-		// Standard approach - use the prompt builder
-		logger.Info("Building prompt template...")
-		logger.Debug("Building prompt template...")
-		
-		// Create prompt builder
-		promptBuilder := architect.NewPromptBuilder(logger)
-		
-		// Build the prompt using the prompt builder
-		generatedPrompt, err = promptBuilder.BuildPromptWithConfig(
-			config.TaskDescription, 
-			projectContext, 
-			config.PromptTemplate, 
-			configManager,
-		)
-		if err != nil {
-			logger.Error("Failed to build prompt: %v", err)
-			logger.Fatal("Failed to build prompt: %v", err)
-		}
-		logger.Info("Prompt template built successfully")
-	}
-
-	// Debug logging of prompt details
-	if config.LogLevel == logutil.DebugLevel {
-		logger.Debug("Prompt length: %d characters", len(generatedPrompt))
-		logger.Debug("Sending task to Gemini: %s", config.TaskDescription)
-	}
-
-	// Get token count for confirmation and limit checking
-	logger.Info("Checking token limits...")
-	logger.Debug("Checking token limits...")
-	
-	// Create token manager
+	// Create token manager and output writer
 	tokenManager := architect.NewTokenManager(logger)
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
 	
-	// Get token info
-	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, generatedPrompt)
+	// Call the method from the output writer
+	err := outputWriter.GenerateAndSavePlan(ctx, geminiClient, config.TaskDescription, projectContext, config.OutputFile, promptManager)
 	if err != nil {
-		logger.Error("Token count check failed")
-
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Token count check failed: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			// Log more details in debug mode
-			if config.LogLevel == logutil.DebugLevel {
-				logger.Debug("Error details: %s", apiErr.DebugInfo())
-			}
-		} else {
-			logger.Error("Token count check failed: %v", err)
-			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-		}
-
-		logger.Fatal("Aborting generation to prevent API errors")
+		logger.Fatal("Error generating and saving plan with prompt manager: %v", err)
 	}
-
-	// If token limit is exceeded, abort
-	if tokenInfo.ExceedsLimit {
-		logger.Error("Token limit exceeded")
-		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
-		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-		logger.Fatal("Aborting generation to prevent API errors")
-	}
-	logger.Info("Token check passed: %d / %d (%.1f%%)",
-		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
-
-	// Log token usage for regular (non-debug) mode
-	if config.LogLevel != logutil.DebugLevel {
-		logger.Info("Token usage: %d / %d (%.1f%%)",
-			tokenInfo.TokenCount,
-			tokenInfo.InputLimit,
-			tokenInfo.Percentage)
-	}
-
-	// Prompt for confirmation if threshold is set and exceeded
-	if !tokenManager.PromptForConfirmation(tokenInfo.TokenCount, config.ConfirmTokens) {
-		logger.Info("Operation cancelled by user.")
-		return
-	}
-
-	// Call Gemini API
-	logger.Info("Generating plan using model %s...", config.ModelName)
-	logger.Debug("Generating plan using model %s...", config.ModelName)
-	var result *gemini.GenerationResult
-	result, err = geminiClient.GenerateContent(ctx, generatedPrompt)
-	if err != nil {
-		logger.Error("Generation failed")
-
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Error generating content: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			// Log more details in debug mode
-			if config.LogLevel == logutil.DebugLevel {
-				logger.Debug("Error details: %s", apiErr.DebugInfo())
-			}
-		} else {
-			logger.Error("Error generating content: %v", err)
-		}
-
-		logger.Fatal("Plan generation failed")
-	}
-
-	// Process API response
-	generatedPlan, err := apiService.ProcessResponse(result)
-	if err != nil {
-		// Get detailed error information
-		errorDetails := apiService.GetErrorDetails(err)
-		
-		// Provide specific error messages based on error type
-		if apiService.IsEmptyResponseError(err) {
-			logger.Error("Received empty or invalid response from Gemini API")
-			logger.Error("Error details: %s", errorDetails)
-			logger.Fatal("Failed to process API response due to empty content")
-		} else if apiService.IsSafetyBlockedError(err) {
-			logger.Error("Content was blocked by Gemini safety filters")
-			logger.Error("Error details: %s", errorDetails)
-			logger.Fatal("Failed to process API response due to safety restrictions")
-		} else {
-			// Generic API error handling
-			logger.Fatal("Failed to process API response: %v", err)
-		}
-	}
-	logger.Info("Plan generated successfully")
-
-	// Debug logging of results
-	if config.LogLevel == logutil.DebugLevel {
-		logger.Debug("Plan received from Gemini.")
-		if result.TokenCount > 0 {
-			logger.Debug("Token usage: %d tokens", result.TokenCount)
-		}
-	}
-
-	// Write the plan to file
-	logger.Info("Writing plan to %s...", config.OutputFile)
-	logger.Debug("Writing plan to %s...", config.OutputFile)
-	saveToFile(generatedPlan, config.OutputFile, logger)
-	logger.Info("Plan saved to %s", config.OutputFile)
 }
 
 // processApiResponse function moved to cmd/architect/api.go

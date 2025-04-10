@@ -100,3 +100,8 @@
   - **Action:** Move the saveToFile function from main.go to output.go.
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 6.
+
+- [x] **Extract plan generation and saving to output.go** (Completed on 2025-04-10)
+  - **Action:** Move the generateAndSavePlan, generateAndSavePlanWithConfig, and generateAndSavePlanWithPromptManager functions from main.go to output.go.
+  - **Depends On:** Extract file writing logic to output.go.
+  - **AC Ref:** Implementation Steps 6.

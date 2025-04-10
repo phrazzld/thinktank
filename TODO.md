@@ -101,7 +101,7 @@
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 6.
 
-- [ ] **Extract plan generation and saving to output.go**
+- [x] **Extract plan generation and saving to output.go**
   - **Action:** Move the generateAndSavePlan, generateAndSavePlanWithConfig, and generateAndSavePlanWithPromptManager functions from main.go to output.go.
   - **Depends On:** Extract file writing logic to output.go.
   - **AC Ref:** Implementation Steps 6.
