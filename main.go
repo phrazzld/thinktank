@@ -93,10 +93,7 @@ func main() {
 	geminiClient := initGeminiClient(ctx, config, logger)
 	defer geminiClient.Close()
 
-	// If task clarification is enabled, let the user refine their task
-	if config.ClarifyTask && !config.DryRun {
-		config.TaskDescription = clarifyTaskDescriptionWithConfig(ctx, config, geminiClient, configManager, logger)
-	}
+	// Task clarification code has been removed
 
 	// Gather context from files
 	projectContext := gatherContext(ctx, config, geminiClient, logger)
@@ -849,7 +846,6 @@ func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 		"use_colors":          cliConfig.UseColors,
 		"include":             cliConfig.Include,
 		"format":              cliConfig.Format,
-		"clarify_task":        cliConfig.ClarifyTask,
 		"dry_run":             cliConfig.DryRun,
 		"confirm_tokens":      cliConfig.ConfirmTokens,
 		"paths":               cliConfig.Paths,
@@ -893,9 +889,7 @@ func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.App
 	if !isFlagSet("confirm-tokens") {
 		config.ConfirmTokens = appConfig.ConfirmTokens
 	}
-	if !isFlagSet("clarify") {
-		config.ClarifyTask = appConfig.ClarifyTask
-	}
+	// ClarifyTask handling has been removed
 	if !isFlagSet("prompt-template") && appConfig.Templates.Default != "" {
 		config.PromptTemplate = appConfig.Templates.Default
 	}

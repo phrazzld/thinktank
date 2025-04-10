@@ -21,17 +21,17 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing), Step 2.1.
 
-- [ ] **Remove ClarifyTask assignment in parseFlags()**
+- [x] **Remove ClarifyTask assignment in parseFlags()**
   - **Action:** Edit main.go to remove the assignment to config.ClarifyTask in the parseFlags() function.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing), Step 2.1.
 
-- [ ] **Remove clarify_task entry in convertConfigToMap()**
+- [x] **Remove clarify_task entry in convertConfigToMap()**
   - **Action:** Edit main.go to remove the clarify_task entry in the convertConfigToMap() function.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing).
 
-- [ ] **Remove clarify-related logic in backfillConfigFromAppConfig()**
+- [x] **Remove clarify-related logic in backfillConfigFromAppConfig()**
   - **Action:** Edit main.go to remove the code that handles ClarifyTask in the backfillConfigFromAppConfig() function.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing).
