@@ -6,7 +6,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.2.
 
-- [ ] **Remove ClarifyTask field from AppConfig struct in config.go**
+- [x] **Remove ClarifyTask field from AppConfig struct in config.go**
   - **Action:** Edit internal/config/config.go to remove the ClarifyTask field including mapstructure and toml tags.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.3.

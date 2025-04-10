@@ -59,7 +59,6 @@ type AppConfig struct {
 	TaskFile        string `mapstructure:"task_file" toml:"-"`        // Not saved to config
 	OutputFile      string `mapstructure:"output_file" toml:"output_file"`
 	ModelName       string `mapstructure:"model" toml:"model"`
-	ClarifyTask     bool   `mapstructure:"clarify_task" toml:"clarify_task"`
 
 	// File handling settings
 	Include       string `mapstructure:"include" toml:"include"`
