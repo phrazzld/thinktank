@@ -44,17 +44,39 @@ type FileLogger struct {
 
 // NewFileLogger creates a new structured logger that writes to the specified file path.
 // It automatically creates the directory if it doesn't exist and opens the file in append mode.
+// 
+// The function handles:
+// - Path validation (empty or invalid paths)
+// - Directory creation with proper permissions
+// - File opening with appropriate flags
+// - Error wrapping for better diagnostics
 func NewFileLogger(filePath string) (*FileLogger, error) {
-	// Ensure directory exists
-	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return nil, err
+	// Validate file path
+	if filePath == "" {
+		return nil, fmt.Errorf("log file path cannot be empty")
 	}
 
-	// Open file for appending
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	// Clean and normalize the path
+	filePath = filepath.Clean(filePath)
+
+	// Ensure directory exists with proper permissions
+	dir := filepath.Dir(filePath)
+	if dir != "." {
+		err := os.MkdirAll(dir, 0755)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create log directory '%s': %w", dir, err)
+		}
+	}
+
+	// Open file for appending with create if not exists
+	// Using appropriate flags for atomic operations when possible
+	flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
+	
+	// Open the file with proper permissions
+	// 0644 = user rw, group r, others r
+	file, err := os.OpenFile(filePath, flags, 0644)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to open log file '%s': %w", filePath, err)
 	}
 
 	return &FileLogger{

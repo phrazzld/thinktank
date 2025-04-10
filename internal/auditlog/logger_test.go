@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 	"time"
 )
@@ -127,6 +129,109 @@ func TestFileLoggerCreation(t *testing.T) {
 	
 	// Verify the logger implements StructuredLogger
 	var _ StructuredLogger = logger
+}
+
+// TestFileLoggerWithNestedDirectories tests creating a logger with a nested directory structure
+func TestFileLoggerWithNestedDirectories(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path with nested directories that don't exist yet
+	nestedDir := filepath.Join(tempDir, "a", "b", "c")
+	logFilePath := filepath.Join(nestedDir, "audit.log")
+	
+	// Create a FileLogger - this should create all the nested directories
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger with nested directories: %v", err)
+	}
+	defer logger.Close()
+	
+	// Check that the directories were created
+	if _, err := os.Stat(nestedDir); os.IsNotExist(err) {
+		t.Errorf("Nested directory structure was not created at %s", nestedDir)
+	}
+	
+	// Check that the file was created
+	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
+		t.Errorf("Log file was not created at %s", logFilePath)
+	}
+}
+
+// TestFileLoggerEmptyPath tests that an error is returned for an empty path
+func TestFileLoggerEmptyPath(t *testing.T) {
+	// Try to create a FileLogger with an empty path
+	logger, err := NewFileLogger("")
+	
+	// Expect an error
+	if err == nil {
+		t.Error("Expected error for empty path, but got nil")
+		if logger != nil {
+			logger.Close() // Clean up if somehow created
+		}
+	}
+	
+	// Check that the error message is clear
+	if err != nil && !strings.Contains(err.Error(), "empty") {
+		t.Errorf("Expected error message to mention 'empty', got: %v", err)
+	}
+}
+
+// TestFileLoggerInvalidPath tests that an error is returned for an invalid path
+func TestFileLoggerInvalidPath(t *testing.T) {
+	// Try to create a FileLogger with an invalid path (assuming we can find one)
+	// This is platform-dependent, but we'll try a path with invalid characters
+	invalidPath := filepath.Join(string([]byte{0}), "audit.log")
+	
+	// Try to create a FileLogger with an invalid path
+	logger, err := NewFileLogger(invalidPath)
+	
+	// Expect an error
+	if err == nil {
+		t.Error("Expected error for invalid path, but got nil")
+		if logger != nil {
+			logger.Close() // Clean up if somehow created
+		}
+	}
+}
+
+// TestFileLoggerPermissionDenied tests that an error is returned when permission is denied
+func TestFileLoggerPermissionDenied(t *testing.T) {
+	// Skip on Windows as permissions work differently
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping permission test on Windows")
+	}
+	
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Make the directory read-only
+	if err := os.Chmod(tempDir, 0500); err != nil { // r-x permissions
+		t.Fatalf("Failed to set directory permissions: %v", err)
+	}
+	
+	// Try to create a FileLogger in the read-only directory
+	logFilePath := filepath.Join(tempDir, "audit.log")
+	logger, err := NewFileLogger(logFilePath)
+	
+	// Restore permissions to ensure cleanup can succeed
+	os.Chmod(tempDir, 0700)
+	
+	// Expect an error
+	if err == nil {
+		t.Error("Expected error for permission denied, but got nil")
+		if logger != nil {
+			logger.Close() // Clean up if somehow created
+		}
+	}
 }
 
 // TestFileLoggerLog tests the basic logging functionality

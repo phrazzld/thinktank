@@ -27,7 +27,7 @@
   - **Depends On:** Define StructuredLogger interface
   - **AC Ref:** AC 1.1, AC 1.2, AC 2.1
 
-- [ ] **Task Title:** Implement file path management in NewFileLogger
+- [x] **Task Title:** Implement file path management in NewFileLogger
   - **Action:** Add directory creation and proper file opening in the constructor.
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 1.2, AC 4.1
