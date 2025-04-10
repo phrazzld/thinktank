@@ -14,9 +14,9 @@ jobs:
     name: Lint and Format
     runs-on: ubuntu-latest
     steps:
-      # Checkout step will be implemented in "Implement checkout job step" task
-      - name: Placeholder for checkout step
-        run: echo "Checkout step placeholder"
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       # Go setup step will be implemented in "Configure Go environment setup" task
       - name: Placeholder for Go setup
@@ -33,11 +33,19 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      # To be implemented in their respective tasks
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Other steps will be implemented in their respective tasks
 
   # Build job will be implemented in subsequent tasks
   build:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      # To be implemented in their respective tasks
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      # Other steps will be implemented in their respective tasks

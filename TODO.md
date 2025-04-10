@@ -19,7 +19,7 @@
   - **Depends On:** Create GitHub workflows directory
   - **AC Ref:** Primary Workflow, Trigger Events
 
-- [ ] **Implement checkout job step**
+- [x] **Implement checkout job step**
   - **Action:** Add checkout code step using actions/checkout@v4
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Setup step 1
