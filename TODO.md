@@ -42,7 +42,7 @@
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 4.1
 
-- [ ] **Task Title:** Implement NoopLogger for disabled logging
+- [x] **Task Title:** Implement NoopLogger for disabled logging
   - **Action:** Create a no-operation logger implementation to use when logging is disabled.
   - **Depends On:** Define StructuredLogger interface
   - **AC Ref:** AC 3.2, AC 4.1

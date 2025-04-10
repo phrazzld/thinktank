@@ -219,3 +219,54 @@ func TestFileLoggerClose(t *testing.T) {
 		t.Errorf("Second close caused an error: %v", err)
 	}
 }
+
+// TestNoopLoggerCreation tests the creation of a NoopLogger
+func TestNoopLoggerCreation(t *testing.T) {
+	// Create a NoopLogger
+	logger := NewNoopLogger()
+	
+	// Check that the logger is not nil
+	if logger == nil {
+		t.Fatal("Expected NoopLogger to be non-nil")
+	}
+	
+	// Verify the logger implements StructuredLogger
+	var _ StructuredLogger = logger
+}
+
+// TestNoopLoggerLog tests that the Log method doesn't cause errors
+func TestNoopLoggerLog(t *testing.T) {
+	// Create a NoopLogger
+	logger := NewNoopLogger()
+	
+	// Create a test event
+	testEvent := AuditEvent{
+		Timestamp: time.Now().UTC(),
+		Level:     "INFO",
+		Operation: "TestOperation",
+		Message:   "Test message",
+	}
+	
+	// Log the event - this should do nothing but not cause errors
+	logger.Log(testEvent)
+	
+	// If we reached here without panics, the test passes
+}
+
+// TestNoopLoggerClose tests the Close method
+func TestNoopLoggerClose(t *testing.T) {
+	// Create a NoopLogger
+	logger := NewNoopLogger()
+	
+	// Close the logger - should return nil
+	err := logger.Close()
+	if err != nil {
+		t.Errorf("Expected nil error from NoopLogger.Close(), got %v", err)
+	}
+	
+	// Closing again should also work fine
+	err = logger.Close()
+	if err != nil {
+		t.Errorf("Second close caused an error: %v", err)
+	}
+}

@@ -106,3 +106,23 @@ func (l *FileLogger) Close() error {
 	}
 	return nil
 }
+
+// NoopLogger implements StructuredLogger but performs no operations.
+// It's used when audit logging is disabled to avoid nil checks in the application code.
+type NoopLogger struct{}
+
+// Log implements StructuredLogger.Log but does nothing.
+func (l *NoopLogger) Log(event AuditEvent) {
+	// Do nothing
+}
+
+// Close implements StructuredLogger.Close but does nothing and returns nil.
+func (l *NoopLogger) Close() error {
+	// Do nothing, return no error
+	return nil
+}
+
+// NewNoopLogger creates and returns a new NoopLogger instance.
+func NewNoopLogger() *NoopLogger {
+	return &NoopLogger{}
+}
