@@ -418,8 +418,43 @@ func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (stri
 	return string(content), nil
 }
 
+// validateInputsResult represents the result of input validation
+type validateInputsResult struct {
+	// Whether validation passed successfully
+	Valid bool
+	// Error message if validation failed
+	ErrorMessage string
+	// Whether validation concerns should be treated as warnings only
+	WarningsOnly bool
+}
+
 // validateInputs verifies required inputs are provided
 func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
+	result := doValidateInputs(config, logger)
+
+	// If validation failed
+	if !result.Valid {
+		// Log the appropriate error message
+		logger.Error(result.ErrorMessage)
+		
+		// Show usage
+		flag.Usage()
+		
+		// Exit with error code
+		os.Exit(1)
+	}
+}
+
+// doValidateInputs performs the actual validation logic and returns a result
+// This function is extracted to allow testing without os.Exit
+func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) validateInputsResult {
+	// Initialize result with default values
+	result := validateInputsResult{
+		Valid:        true,
+		ErrorMessage: "",
+		WarningsOnly: false,
+	}
+
 	// Track whether task has been successfully loaded
 	taskLoaded := false
 
@@ -427,22 +462,29 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 		// Task file provided - this is the preferred path
 		taskContent, err := readTaskFromFile(config.TaskFile, logger)
 		if err != nil {
+			// Set validation failed
+			result.Valid = false
+			
 			// Specific error handling
 			switch {
 			case errors.Is(err, ErrTaskFileNotFound):
-				logger.Error("Task file not found. Please check the path: %s", config.TaskFile)
+				result.ErrorMessage = fmt.Sprintf("Task file not found. Please check the path: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
 			case errors.Is(err, ErrTaskFileReadPermission):
-				logger.Error("Cannot read task file due to permissions. Please check permissions for: %s", config.TaskFile)
+				result.ErrorMessage = fmt.Sprintf("Cannot read task file due to permissions. Please check permissions for: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
 			case errors.Is(err, ErrTaskFileIsDir):
-				logger.Error("The specified task file path is a directory, not a file: %s", config.TaskFile)
+				result.ErrorMessage = fmt.Sprintf("The specified task file path is a directory, not a file: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
 			case errors.Is(err, ErrTaskFileEmpty):
-				logger.Error("The task file is empty or contains only whitespace: %s", config.TaskFile)
+				result.ErrorMessage = fmt.Sprintf("The task file is empty or contains only whitespace: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
 			default:
 				// Generic fallback with more specific underlying error
-				logger.Error("Failed to load task file '%s': %v", config.TaskFile, err)
+				result.ErrorMessage = fmt.Sprintf("Failed to load task file '%s': %v", config.TaskFile, err)
+				logger.Error(result.ErrorMessage)
 			}
-			flag.Usage()
-			os.Exit(1)
+			return result
 		}
 
 		// Set task description from file content
@@ -451,10 +493,10 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 		logger.Debug("Loaded task description from file: %s", config.TaskFile)
 
 		// Check if --task was also unnecessarily provided
-		if flag.Lookup("task").Value.String() != "" {
+		if getTaskFlagValue() != "" {
 			logger.Warn("Both --task and --task-file flags were provided. Using task from --task-file. The --task flag is deprecated.")
 		}
-	} else if flag.Lookup("task").Value.String() != "" && !config.DryRun {
+	} else if getTaskFlagValue() != "" && !config.DryRun {
 		// Task file NOT provided, but deprecated --task IS provided (and not dry run)
 		logger.Warn("The --task flag is deprecated and will be removed in a future version. Please use --task-file instead.")
 		// config.TaskDescription is already set from parseFlags
@@ -463,24 +505,29 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 
 	// Check if a task is loaded (unless in dry-run mode)
 	if !taskLoaded && !config.DryRun {
-		logger.Error("The required --task-file flag is missing.")
-		flag.Usage()
-		os.Exit(1)
+		result.Valid = false
+		result.ErrorMessage = "The required --task-file flag is missing."
+		logger.Error(result.ErrorMessage)
+		return result
 	}
 
 	// Check for input paths
 	if len(config.Paths) == 0 {
-		logger.Error("At least one file or directory path must be provided as an argument.")
-		flag.Usage()
-		os.Exit(1)
+		result.Valid = false
+		result.ErrorMessage = "At least one file or directory path must be provided as an argument."
+		logger.Error(result.ErrorMessage)
+		return result
 	}
 
 	// Check for API key
 	if config.ApiKey == "" {
-		logger.Error("%s environment variable not set.", apiKeyEnvVar)
-		flag.Usage()
-		os.Exit(1)
+		result.Valid = false
+		result.ErrorMessage = fmt.Sprintf("%s environment variable not set.", apiKeyEnvVar)
+		logger.Error(result.ErrorMessage)
+		return result
 	}
+
+	return result
 }
 
 // initGeminiClient creates and initializes the Gemini API client
@@ -1041,6 +1088,15 @@ func isFlagSet(name string) bool {
 		}
 	})
 	return found
+}
+
+// getTaskFlagValue returns the value of the task flag
+// This function is extracted to allow mocking in tests
+var getTaskFlagValue = func() string {
+	if f := flag.Lookup("task"); f != nil {
+		return f.Value.String()
+	}
+	return ""
 }
 
 // buildPrompt constructs the prompt string for the Gemini API.
