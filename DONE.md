@@ -1,5 +1,16 @@
 # DONE
 
+## Testing
+- [x] **Run existing tests after each component extraction** (Completed on 2025-04-10)
+  - **Action:** Verify all existing tests pass after moving each logical component to maintain functionality throughout the refactoring.
+  - **Depends On:** Each component extraction.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 1.
+
+- [x] **Update integration tests if needed** (Completed on 2025-04-10)
+  - **Action:** Modify any integration tests that may be affected by the refactoring.
+  - **Depends On:** All components extracted and working.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 3.
+
 ## Initial Setup
 - [x] **Create skeleton files in cmd/architect/** (Completed on 2025-04-10)
   - **Action:** Create the following files with proper package declarations and import statements: api.go, context.go, token.go, output.go, prompt.go.

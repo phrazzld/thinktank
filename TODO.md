@@ -133,15 +133,7 @@
   - **AC Ref:** Implementation Steps 7.
 
 ## Testing
-- [x] **Run existing tests after each component extraction**
-  - **Action:** Verify all existing tests pass after moving each logical component to maintain functionality throughout the refactoring.
-  - **Depends On:** Each component extraction.
-  - **AC Ref:** Implementation Steps 8, Testing Strategy 1.
 
-- [ ] **Update integration tests if needed**
-  - **Action:** Modify any integration tests that may be affected by the refactoring.
-  - **Depends On:** All components extracted and working.
-  - **AC Ref:** Implementation Steps 8, Testing Strategy 3.
 
 ## Documentation
 - [ ] **Update README.md usage examples**
