@@ -23,7 +23,7 @@
 
 
 ## Testing
-- [ ] **Add unit tests for task file requirement**
+- [x] **Add unit tests for task file requirement**
   - **Action:** Create unit tests that verify the application properly requires the --task-file flag.
   - **Depends On:** Modify validateInputs() to require task file
   - **AC Ref:** Unit testing (Detailed Task Breakdown 5, Testing Strategy)
