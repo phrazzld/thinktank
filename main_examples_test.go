@@ -33,7 +33,10 @@ func TestListExampleTemplatesCommand(t *testing.T) {
 
 	// Read captured output
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	if err != nil {
+		t.Fatalf("Failed to read output: %v", err)
+	}
 	output := buf.String()
 
 	// Verify the output contains expected text
@@ -71,7 +74,10 @@ func TestShowExampleTemplateCommand(t *testing.T) {
 
 	// Read captured output
 	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	_, err := io.Copy(&buf, r)
+	if err != nil {
+		t.Fatalf("Failed to read output: %v", err)
+	}
 	output := buf.String()
 
 	// Verify the output contains expected text from the template

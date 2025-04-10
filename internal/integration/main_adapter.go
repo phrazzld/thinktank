@@ -221,11 +221,11 @@ func (a *MainAdapter) generateAndSavePlan(ctx context.Context, config *Configura
 			promptText = config.TaskDescription // Start with the original content
 			if strings.Contains(promptText, "{{.Context}}") {
 				// Replace context placeholder with actual context
-				promptText = strings.Replace(promptText, "{{.Context}}", projectContext, -1)
+				promptText = strings.ReplaceAll(promptText, "{{.Context}}", projectContext)
 			}
 			if strings.Contains(promptText, "{{.Task}}") {
 				// Replace task placeholder with the task description itself
-				promptText = strings.Replace(promptText, "{{.Task}}", config.TaskDescription, -1)
+				promptText = strings.ReplaceAll(promptText, "{{.Task}}", config.TaskDescription)
 			}
 		} else {
 			templateInfo = "[REGULAR_FILE]"
