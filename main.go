@@ -64,6 +64,7 @@ type Configuration struct {
 	ApiKey          string
 }
 
+// Transitional implementation - being replaced by cmd/architect/main.go's Main() function
 func main() {
 	// Parse command line flags
 	cliConfig := parseFlags()
@@ -123,8 +124,8 @@ func main() {
 	// Create backfilled CLI config for backward compatibility
 	config := backfillConfigFromAppConfig(cliConfig, appConfig)
 
-	// Create prompt builder for later use
-	promptBuilder := architect.NewPromptBuilder(logger)
+	// Create prompt builder for later use (currently used in special commands only)
+	_ = architect.NewPromptBuilder(logger)
 
 	// Validate inputs
 	validateInputs(config, logger)
@@ -136,7 +137,7 @@ func main() {
 	if err != nil {
 		// Get detailed error information
 		errorDetails := apiService.GetErrorDetails(err)
-		
+
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
 			logger.Error("Error creating Gemini client: %s", apiErr.Message)
@@ -150,7 +151,7 @@ func main() {
 		} else {
 			logger.Error("Error creating Gemini client: %s", errorDetails)
 		}
-		
+
 		logger.Fatal("Failed to initialize API client")
 	}
 	defer geminiClient.Close()
@@ -160,7 +161,7 @@ func main() {
 	// Create context gatherer
 	tokenManager := architect.NewTokenManager(logger)
 	contextGatherer := architect.NewContextGatherer(logger, config.DryRun, tokenManager)
-	
+
 	// Create gather config
 	gatherConfig := architect.GatherConfig{
 		Paths:        config.Paths,
@@ -171,7 +172,7 @@ func main() {
 		Verbose:      config.Verbose,
 		LogLevel:     config.LogLevel,
 	}
-	
+
 	// Gather context from files
 	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
@@ -186,7 +187,7 @@ func main() {
 		}
 		return
 	}
-	
+
 	// Generate content if not in dry run mode
 	generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
 }
@@ -194,6 +195,7 @@ func main() {
 // clarifyTaskDescription function removed
 
 // parseFlags handles command line argument parsing
+// Transitional implementation - moved to cmd/architect/cli.go
 func parseFlags() *Configuration {
 	config := &Configuration{}
 
@@ -255,6 +257,7 @@ func parseFlags() *Configuration {
 }
 
 // setupLogging initializes the logger based on configuration
+// Transitional implementation - moved to cmd/architect/cli.go
 func setupLogging(config *Configuration) logutil.LoggerInterface {
 	var logLevel logutil.LogLevel
 
@@ -289,7 +292,7 @@ func setupLogging(config *Configuration) logutil.LoggerInterface {
 func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (string, error) {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Read task file using the prompt builder
 	content, err := promptBuilder.ReadTaskFromFile(taskFilePath)
 	if err != nil {
@@ -309,11 +312,12 @@ func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (stri
 		// Generic error
 		return "", err
 	}
-	
+
 	return content, nil
 }
 
 // validateInputsResult represents the result of input validation
+// Transitional implementation - moved to cmd/architect/cli.go
 type validateInputsResult struct {
 	// Whether validation passed successfully
 	Valid bool
@@ -324,6 +328,7 @@ type validateInputsResult struct {
 }
 
 // validateInputs verifies required inputs are provided
+// Transitional implementation - moved to cmd/architect/cli.go
 func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 	result := doValidateInputs(config, logger)
 
@@ -342,6 +347,7 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 
 // doValidateInputs performs the actual validation logic and returns a result
 // This function is extracted to allow testing without os.Exit
+// Transitional implementation - moved to cmd/architect/cli.go
 func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) validateInputsResult {
 	// Initialize result with default values
 	result := validateInputsResult{
@@ -550,7 +556,7 @@ func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClien
 	// Create token manager and output writer
 	tokenManager := architect.NewTokenManager(logger)
 	outputWriter := architect.NewOutputWriter(logger, tokenManager)
-	
+
 	// Create a fallback prompt manager without config
 	promptManager := prompt.NewManager(logger)
 
@@ -585,7 +591,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	// Create token manager and output writer
 	tokenManager := architect.NewTokenManager(logger)
 	outputWriter := architect.NewOutputWriter(logger, tokenManager)
-	
+
 	// Call the method from the output writer
 	err := outputWriter.GenerateAndSavePlan(ctx, geminiClient, config.TaskDescription, projectContext, config.OutputFile, promptManager)
 	if err != nil {
@@ -601,7 +607,7 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 	// Create an output writer
 	tokenManager := architect.NewTokenManager(logger)
 	outputWriter := architect.NewOutputWriter(logger, tokenManager)
-	
+
 	// Call the method from the output writer
 	err := outputWriter.SaveToFile(content, outputFile)
 	if err != nil {
@@ -616,17 +622,19 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 // tokenInfoResult and associated functions moved to cmd/architect/token.go
 
 // initConfigSystem initializes the configuration system
+// Transitional implementation - moved to cmd/architect/cli.go
 func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 	return config.NewManager(logger)
 }
 
 // convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config
+// Transitional implementation - moved to cmd/architect/cli.go
 // listExampleTemplates displays a list of available example templates
 // Transitional implementation - moved to cmd/architect/prompt.go
 func listExampleTemplates(logger logutil.LoggerInterface, configManager config.ManagerInterface) {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Call the method from the prompt builder
 	err := promptBuilder.ListExampleTemplates(configManager)
 	if err != nil {
@@ -640,7 +648,7 @@ func listExampleTemplates(logger logutil.LoggerInterface, configManager config.M
 func showExampleTemplate(name string, logger logutil.LoggerInterface, configManager config.ManagerInterface) {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Call the method from the prompt builder
 	err := promptBuilder.ShowExampleTemplate(name, configManager)
 	if err != nil {
@@ -649,6 +657,7 @@ func showExampleTemplate(name string, logger logutil.LoggerInterface, configMana
 	}
 }
 
+// Transitional implementation - moved to cmd/architect/cli.go
 func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 	// Create a map of CLI flags suitable for merging
 	return map[string]interface{}{
@@ -672,6 +681,7 @@ func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 }
 
 // backfillConfigFromAppConfig creates a Configuration object from AppConfig for backward compatibility
+// Transitional implementation - moved to cmd/architect/cli.go
 func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.AppConfig) *Configuration {
 	// Start with CLI config to preserve fields not in AppConfig
 	config := *cliConfig
@@ -713,6 +723,7 @@ func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.App
 }
 
 // isFlagSet checks if a flag was explicitly set on the command line
+// Transitional implementation - moved to cmd/architect/cli.go
 func isFlagSet(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {
@@ -725,6 +736,7 @@ func isFlagSet(name string) bool {
 
 // getTaskFlagValue returns the value of the task flag
 // This function is extracted to allow mocking in tests
+// Transitional implementation - moved to cmd/architect/cli.go
 var getTaskFlagValue = func() string {
 	if f := flag.Lookup("task"); f != nil {
 		return f.Value.String()
@@ -738,7 +750,7 @@ var getTaskFlagValue = func() string {
 func buildPrompt(config *Configuration, task string, context string, logger logutil.LoggerInterface) (string, error) {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Call the method from the prompt builder
 	return promptBuilder.BuildPrompt(task, context, config.PromptTemplate)
 }
@@ -749,7 +761,7 @@ func buildPrompt(config *Configuration, task string, context string, logger logu
 func buildPromptWithConfig(config *Configuration, task string, context string, configManager config.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Call the method from the prompt builder
 	return promptBuilder.BuildPromptWithConfig(task, context, config.PromptTemplate, configManager)
 }
@@ -758,13 +770,13 @@ func buildPromptWithConfig(config *Configuration, task string, context string, c
 // Transitional implementation - moved to cmd/architect/prompt.go
 // This function is exported for testing purposes.
 func buildPromptWithManager(config *Configuration, task string, context string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
-	// Create prompt builder
-	promptBuilder := architect.NewPromptBuilder(logger)
-	
+	// No need to create a prompt builder in this transitional function
+	// Just use the prompt manager directly
+
 	// Adapt to the new interface by using BuildPrompt and passing the prompt manager's result
 	// This is a bit of a hack for backward compatibility, but it works for transitional period
 	customTemplateName := config.PromptTemplate
-	
+
 	// Create template data
 	data := &prompt.TemplateData{
 		Task:    task,

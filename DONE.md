@@ -116,3 +116,8 @@
   - **Action:** Expand the Main() function to use all the refactored components, gradually phasing out the original implementation.
   - **Depends On:** All extraction tasks completed (Token Management, API Client, Context Gathering, Prompt Building, Output Handling).
   - **AC Ref:** Implementation Steps 7.
+  
+- [x] **Add transitional comments to original main.go** (Completed on 2025-04-10)
+  - **Action:** Mark functions in the original main.go with "Transitional implementation" comments as they're moved to the new structure.
+  - **Depends On:** Each function moved to a new file.
+  - **AC Ref:** Implementation Steps 7.

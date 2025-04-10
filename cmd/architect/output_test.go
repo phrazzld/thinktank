@@ -15,15 +15,15 @@ import (
 	"github.com/phrazzld/architect/internal/prompt"
 )
 
-// mockTokenManager implements the TokenManager interface for testing
-type mockTokenManager struct {
+// outputTokenManager implements the TokenManager interface for testing in output_test.go
+type outputTokenManager struct {
 	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
 	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
 	promptForConfirmationFunc func(tokenCount int32, confirmTokens int) bool
 }
 
-func newMockTokenManager() *mockTokenManager {
-	return &mockTokenManager{
+func newOutputTokenManager() *outputTokenManager {
+	return &outputTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
 			return &TokenResult{
 				TokenCount:   100,
@@ -41,15 +41,15 @@ func newMockTokenManager() *mockTokenManager {
 	}
 }
 
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+func (m *outputTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
 	return m.getTokenInfoFunc(ctx, client, prompt)
 }
 
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
+func (m *outputTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
 	return m.checkTokenLimitFunc(ctx, client, prompt)
 }
 
-func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, confirmTokens int) bool {
+func (m *outputTokenManager) PromptForConfirmation(tokenCount int32, confirmTokens int) bool {
 	return m.promptForConfirmationFunc(tokenCount, confirmTokens)
 }
 
@@ -86,16 +86,16 @@ func (m *mockPromptManager) GetExampleTemplate(name string) (string, error) {
 	return m.getExampleTemplateFunc(name)
 }
 
-// mockGeminiClient implements a simplified gemini.Client for testing
-type mockGeminiClient struct {
+// outputGeminiClient implements a simplified gemini.Client for testing
+type outputGeminiClient struct {
 	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
 	getModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
 	countTokensFunc     func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
 	closeFunc           func()
 }
 
-func newMockGeminiClient() *mockGeminiClient {
-	return &mockGeminiClient{
+func newOutputGeminiClient() *outputGeminiClient {
+	return &outputGeminiClient{
 		generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 			return &gemini.GenerationResult{
 				Content:    "generated content",
@@ -114,19 +114,19 @@ func newMockGeminiClient() *mockGeminiClient {
 	}
 }
 
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+func (m *outputGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 	return m.generateContentFunc(ctx, prompt)
 }
 
-func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
+func (m *outputGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
 	return m.getModelInfoFunc(ctx)
 }
 
-func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+func (m *outputGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
 	return m.countTokensFunc(ctx, prompt)
 }
 
-func (m *mockGeminiClient) Close() {
+func (m *outputGeminiClient) Close() {
 	if m.closeFunc != nil {
 		m.closeFunc()
 	}
@@ -234,21 +234,21 @@ func TestSaveToFile(t *testing.T) {
 	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
 
 	// Create a token manager for testing
-	tokenManager := newMockTokenManager()
+	tokenManager := newOutputTokenManager()
 
 	// Create an output writer
 	outputWriter := NewOutputWriter(logger, tokenManager)
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
-	if err != nil {
+	if err \!= nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	// Create a test file in a non-writable directory for error case
 	readOnlyDir := filepath.Join(tempDir, "readonly")
-	if err := os.Mkdir(readOnlyDir, 0500); err != nil { // 0500 = read-only directory
+	if err := os.Mkdir(readOnlyDir, 0500); err \!= nil { // 0500 = read-only directory
 		t.Fatalf("Failed to create read-only directory: %v", err)
 	}
 
@@ -320,7 +320,7 @@ func TestSaveToFile(t *testing.T) {
 			defer tc.cleanFunc()
 
 			// Check error
-			if (err != nil) != tc.wantErr {
+			if (err \!= nil) \!= tc.wantErr {
 				t.Errorf("SaveToFile() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
@@ -332,19 +332,19 @@ func TestSaveToFile(t *testing.T) {
 
 			// Determine output path for validation
 			outputPath := tc.outputFile
-			if !filepath.IsAbs(outputPath) {
+			if \!filepath.IsAbs(outputPath) {
 				cwd, _ := os.Getwd()
 				outputPath = filepath.Join(cwd, outputPath)
 			}
 
 			// Verify file was created and content matches
 			content, err := os.ReadFile(outputPath)
-			if err != nil {
+			if err \!= nil {
 				t.Errorf("Failed to read output file: %v", err)
 				return
 			}
 
-			if string(content) != tc.content {
+			if string(content) \!= tc.content {
 				t.Errorf("File content = %v, want %v", string(content), tc.content)
 			}
 		})
@@ -358,7 +358,7 @@ func TestGenerateAndSavePlan(t *testing.T) {
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
-	if err != nil {
+	if err \!= nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -373,8 +373,8 @@ func TestGenerateAndSavePlan(t *testing.T) {
 	tests := []struct {
 		name              string
 		promptManagerFunc func() *mockPromptManager
-		tokenManagerFunc  func() *mockTokenManager
-		geminiClientFunc  func() *mockGeminiClient
+		tokenManagerFunc  func() *outputTokenManager
+		geminiClientFunc  func() *outputGeminiClient
 		apiServiceFunc    func() *mockAPIService
 		expectedContent   string
 		wantErr           bool
@@ -386,12 +386,12 @@ func TestGenerateAndSavePlan(t *testing.T) {
 				pm := newMockPromptManager()
 				return pm
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				tm := newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				tm := newOutputTokenManager()
 				return tm
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				gc := newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				gc := newOutputGeminiClient()
 				return gc
 			},
 			apiServiceFunc: func() *mockAPIService {
@@ -410,11 +410,11 @@ func TestGenerateAndSavePlan(t *testing.T) {
 				}
 				return pm
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				return newMockAPIService()
@@ -427,15 +427,15 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				tm := newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				tm := newOutputTokenManager()
 				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
 					return nil, errors.New("token count check failed")
 				}
 				return tm
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				return newMockAPIService()
@@ -448,8 +448,8 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				tm := newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				tm := newOutputTokenManager()
 				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
 					return &TokenResult{
 						TokenCount:   2000,
@@ -461,8 +461,8 @@ func TestGenerateAndSavePlan(t *testing.T) {
 				}
 				return tm
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				return newMockAPIService()
@@ -475,11 +475,11 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				gc := newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				gc := newOutputGeminiClient()
 				gc.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, errors.New("failed to generate content")
 				}
@@ -496,11 +496,11 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				as := newMockAPIService()
@@ -517,11 +517,11 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				as := newMockAPIService()
@@ -541,11 +541,11 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			promptManagerFunc: func() *mockPromptManager {
 				return newMockPromptManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				as := newMockAPIService()
@@ -593,7 +593,7 @@ func TestGenerateAndSavePlan(t *testing.T) {
 					t.Errorf("GenerateAndSavePlan() error = nil, expected error")
 					return
 				}
-				if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
+				if tc.errorContains \!= "" && \!strings.Contains(err.Error(), tc.errorContains) {
 					t.Errorf("GenerateAndSavePlan() error = %v, expected to contain %v", err, tc.errorContains)
 					return
 				}
@@ -601,7 +601,7 @@ func TestGenerateAndSavePlan(t *testing.T) {
 			}
 
 			// For non-error cases, verify the result
-			if err != nil {
+			if err \!= nil {
 				t.Errorf("GenerateAndSavePlan() unexpected error = %v", err)
 				return
 			}
@@ -614,13 +614,13 @@ func TestGenerateAndSavePlan(t *testing.T) {
 
 			// Read the file content
 			content, err := os.ReadFile(testOutputFile)
-			if err != nil {
+			if err \!= nil {
 				t.Errorf("Failed to read output file: %v", err)
 				return
 			}
 
 			// Verify content
-			if string(content) != tc.expectedContent {
+			if string(content) \!= tc.expectedContent {
 				t.Errorf("File content = %v, want %v", string(content), tc.expectedContent)
 			}
 		})
@@ -634,7 +634,7 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
-	if err != nil {
+	if err \!= nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
@@ -648,8 +648,8 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 	tests := []struct {
 		name                   string
 		configManagerFunc      func() *mockConfigManager
-		tokenManagerFunc       func() *mockTokenManager
-		geminiClientFunc       func() *mockGeminiClient
+		tokenManagerFunc       func() *outputTokenManager
+		geminiClientFunc       func() *outputGeminiClient
 		apiServiceFunc         func() *mockAPIService
 		setupPromptManagerFunc func() (prompt.ManagerInterface, error)
 		expectedContent        string
@@ -661,11 +661,11 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 			configManagerFunc: func() *mockConfigManager {
 				return newMockConfigManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				return newMockAPIService()
@@ -681,11 +681,11 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 			configManagerFunc: func() *mockConfigManager {
 				return newMockConfigManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				return newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				return newOutputGeminiClient()
 			},
 			apiServiceFunc: func() *mockAPIService {
 				return newMockAPIService()
@@ -701,11 +701,11 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 			configManagerFunc: func() *mockConfigManager {
 				return newMockConfigManager()
 			},
-			tokenManagerFunc: func() *mockTokenManager {
-				return newMockTokenManager()
+			tokenManagerFunc: func() *outputTokenManager {
+				return newOutputTokenManager()
 			},
-			geminiClientFunc: func() *mockGeminiClient {
-				gc := newMockGeminiClient()
+			geminiClientFunc: func() *outputGeminiClient {
+				gc := newOutputGeminiClient()
 				gc.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, errors.New("generation failed")
 				}
@@ -774,7 +774,7 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 					t.Errorf("GenerateAndSavePlanWithConfig() error = nil, expected error")
 					return
 				}
-				if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
+				if tc.errorContains \!= "" && \!strings.Contains(err.Error(), tc.errorContains) {
 					t.Errorf("GenerateAndSavePlanWithConfig() error = %v, expected to contain %v", err, tc.errorContains)
 					return
 				}
@@ -782,7 +782,7 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 			}
 
 			// For non-error cases, verify the result
-			if err != nil {
+			if err \!= nil {
 				t.Errorf("GenerateAndSavePlanWithConfig() unexpected error = %v", err)
 				return
 			}
@@ -795,13 +795,13 @@ func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 
 			// Read the file content
 			content, err := os.ReadFile(testOutputFile)
-			if err != nil {
+			if err \!= nil {
 				t.Errorf("Failed to read output file: %v", err)
 				return
 			}
 
 			// Verify content
-			if string(content) != tc.expectedContent {
+			if string(content) \!= tc.expectedContent {
 				t.Errorf("File content = %v, want %v", string(content), tc.expectedContent)
 			}
 		})
