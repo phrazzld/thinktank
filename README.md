@@ -63,9 +63,6 @@ architect --task "..." --confirm-tokens 25000 ./
 
 # Use a custom prompt template
 architect --task "..." --prompt-template custom_template.tmpl ./
-
-# Enable interactive task clarification
-architect --task "..." --clarify ./
 ```
 
 ### Required Environment Variable
@@ -198,26 +195,6 @@ The generated PLAN.md includes:
 5. **Testing Strategy**: Approach for verifying the implementation
 6. **Open Questions**: Ambiguities needing clarification
 
-## Task Clarification
-
-Architect provides an interactive AI-powered task clarification process to help refine your task descriptions:
-
-1. Enable with the `--clarify` flag
-2. Architect will analyze your task and generate clarifying questions
-3. You answer each question to provide more context
-4. Based on your answers, Architect generates a refined, more detailed task description
-5. The refined task is then used for plan generation
-
-Benefits:
-- More detailed and precise task descriptions
-- Helps identify technical requirements and constraints upfront
-- Produces more focused and actionable plans
-- Interactive process that improves AI understanding of your goals
-
-Example:
-```bash
-architect --task "Implement user authentication" --clarify ./
-```
 
 ## Custom Prompt Templates
 
