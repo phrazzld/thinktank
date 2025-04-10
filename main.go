@@ -62,6 +62,17 @@ func main() {
 	// Initialize XDG-compliant configuration system
 	configManager := initConfigSystem(logger)
 
+	// Create a temporary NoopLogger for early initialization
+	// This is needed because we need to load configuration before we can
+	// initialize the real audit logger, but the config system needs an audit logger.
+	// We'll use a NoopLogger during this bootstrapping phase.
+	tempAuditLogger := auditlog.NewNoopLogger()
+
+	// Update the configManager with the temporary audit logger (if supported)
+	if manager, ok := configManager.(*config.Manager); ok {
+		manager.AuditLogger = tempAuditLogger
+	}
+
 	// Load configuration from files
 	err := configManager.LoadFromFiles()
 	if err != nil {
@@ -85,9 +96,14 @@ func main() {
 	// Get the final configuration
 	appConfig := configManager.GetConfig()
 
-	// Initialize structured audit logger
+	// Initialize structured audit logger with the loaded configuration
 	auditLogger := initAuditLogger(appConfig, logger)
 	defer auditLogger.Close() // Ensure logger is closed at program exit
+	
+	// Update the config manager with the real audit logger (if supported)
+	if manager, ok := configManager.(*config.Manager); ok {
+		manager.AuditLogger = auditLogger
+	}
 
 	// Log application startup
 	startupEvent := auditlog.NewAuditEvent(
@@ -111,15 +127,15 @@ func main() {
 
 	// If task clarification is enabled, let the user refine their task
 	if config.ClarifyTask && !config.DryRun {
-		config.TaskDescription = clarifyTaskDescriptionWithConfig(ctx, config, geminiClient, configManager, logger)
+		config.TaskDescription = clarifyTaskDescriptionWithConfig(ctx, config, geminiClient, configManager, logger, auditLogger)
 	}
 
 	// Gather context from files
-	projectContext := gatherContext(ctx, config, geminiClient, logger)
+	projectContext := gatherContext(ctx, config, geminiClient, logger, auditLogger)
 
 	// Generate content if not in dry run mode
 	if !config.DryRun {
-		generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
+		generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger, auditLogger)
 	}
 
 	// Log application shutdown
@@ -132,31 +148,45 @@ func main() {
 }
 
 // clarifyTaskDescription is a backward-compatible wrapper for clarification process
-func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
+func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) string {
 	// Use legacy version with default prompt manager
 	promptManager := prompt.NewManager(logger)
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
+	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger, auditLogger)
 }
 
 // clarifyTaskDescriptionWithConfig performs task clarification using the config system
-func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface) string {
+func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) string {
 	// Set up prompt manager with config support
 	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
 	if err != nil {
 		logger.Error("Failed to set up prompt manager: %v", err)
+		// Log the error
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"PromptManagerSetupError",
+			"Failed to set up prompt manager with config",
+		).WithErrorFromGoError(err))
 		// Fall back to the non-config version
-		return clarifyTaskDescription(ctx, config, geminiClient, logger)
+		return clarifyTaskDescription(ctx, config, geminiClient, logger, auditLogger)
 	}
 
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
+	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger, auditLogger)
 }
 
 // clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
-func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
+func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) string {
 	// Spinner initialization removed
 
 	// Original task description
 	originalTask := config.TaskDescription
+
+	// Log that we're starting the clarification process
+	clarifyEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"TaskClarificationStart",
+		"Starting task clarification process",
+	).WithInput(originalTask)
+	auditLogger.Log(clarifyEvent)
 
 	// Build prompt for clarification (template loading is handled internally)
 	logger.Info("Analyzing task description...")
@@ -168,15 +198,34 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	clarifyPrompt, err := promptManager.BuildPrompt("clarify.tmpl", data)
 	if err != nil {
 		logger.Error("Failed to build clarification prompt: %v", err)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"TaskClarificationError",
+			"Failed to build clarification prompt",
+		).WithErrorFromGoError(err))
 		return originalTask
 	}
 
 	// Call Gemini to generate clarification questions
 	logger.Info("Generating clarification questions...")
 	logger.Debug("Generating clarification questions...")
+	
+	// Log API call
+	apiCallEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"APIRequest",
+		"Calling Gemini API for clarification questions",
+	).WithMetadata("model", config.ModelName)
+	auditLogger.Log(apiCallEvent)
+	
 	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
 	if err != nil {
 		logger.Error("Error generating clarification questions: %v", err)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"APIError",
+			"Error generating clarification questions",
+		).WithErrorFromGoError(err))
 		return originalTask
 	}
 
@@ -191,6 +240,12 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	if err != nil {
 		logger.Error("Failed to parse clarification response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ResponseParsingError",
+			"Failed to parse clarification response as JSON",
+		).WithErrorFromGoError(err).
+		WithMetadata("response", result.Content))
 		return originalTask
 	}
 
@@ -199,6 +254,15 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 
 	// Show the analysis to the user
 	logger.Info("Task Analysis: %s", clarificationData.Analysis)
+	
+	// Log that we received analysis
+	analysisEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"TaskAnalysisComplete",
+		"Received task analysis from API",
+	).WithOutput(clarificationData.Analysis).
+	WithMetadata("num_questions", len(clarificationData.Questions))
+	auditLogger.Log(analysisEvent)
 
 	// Present each question and collect answers
 	var questionAnswers strings.Builder
@@ -212,12 +276,26 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 		answer, err := reader.ReadString('\n')
 		if err != nil {
 			logger.Error("Error reading input: %v", err)
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"UserInputError",
+				"Error reading user input",
+			).WithErrorFromGoError(err))
 			return originalTask
 		}
 
 		// Add the Q&A to our collection
 		questionAnswers.WriteString(fmt.Sprintf("Question %d: %s\n", i+1, question))
 		questionAnswers.WriteString(fmt.Sprintf("Answer %d: %s\n", i+1, strings.TrimSpace(answer)))
+		
+		// Log each Q&A
+		qaEvent := auditlog.NewAuditEvent(
+			"INFO",
+			"UserClarification",
+			fmt.Sprintf("User answered clarification question %d", i+1),
+		).WithInput(question)
+		.WithOutput(strings.TrimSpace(answer))
+		auditLogger.Log(qaEvent)
 	}
 
 	// Now refine the task with the answers
@@ -233,13 +311,31 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	refinePrompt, err := promptManager.BuildPrompt("refine.tmpl", refineData)
 	if err != nil {
 		logger.Error("Failed to build refinement prompt: %v", err)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"TaskRefinementError",
+			"Failed to build refinement prompt",
+		).WithErrorFromGoError(err))
 		return originalTask
 	}
+
+	// Log API call
+	refineApiEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"APIRequest",
+		"Calling Gemini API for task refinement",
+	).WithMetadata("model", config.ModelName)
+	auditLogger.Log(refineApiEvent)
 
 	// Call Gemini to generate refined task
 	result, err = geminiClient.GenerateContent(ctx, refinePrompt)
 	if err != nil {
 		logger.Error("Error generating refined task: %v", err)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"APIError",
+			"Error generating refined task",
+		).WithErrorFromGoError(err))
 		return originalTask
 	}
 
@@ -254,6 +350,12 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	if err != nil {
 		logger.Error("Failed to parse refinement response: %v", err)
 		logger.Debug("Response content: %s", result.Content)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ResponseParsingError",
+			"Failed to parse refinement response as JSON",
+		).WithErrorFromGoError(err).
+		WithMetadata("response", result.Content))
 		return originalTask
 	}
 
@@ -272,6 +374,16 @@ func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Config
 	}
 
 	fmt.Println("\nProceeding with the refined task description...")
+
+	// Log completion of clarification process
+	completionEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"TaskClarificationComplete",
+		"Task clarification process completed successfully",
+	).WithInput(originalTask)
+	.WithOutput(refinementData.RefinedTask)
+	.WithMetadata("key_points_count", len(refinementData.KeyPoints))
+	auditLogger.Log(completionEvent)
 
 	return refinementData.RefinedTask
 }
@@ -437,8 +549,24 @@ func initGeminiClient(ctx context.Context, config *Configuration, logger logutil
 }
 
 // gatherContext collects and processes files based on configuration
-func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
+func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) string {
 	// Spinner initialization removed
+
+	// Log that we're starting the context gathering process
+	gatherEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ContextGatheringStart",
+		"Starting project context gathering",
+	).WithMetadata("dry_run", config.DryRun).
+	WithMetadata("include_filter", config.Include).
+	WithMetadata("exclude_filter", config.Exclude).
+	WithMetadata("exclude_names", config.ExcludeNames)
+	
+	// Add paths to metadata as an array
+	for i, path := range config.Paths {
+		gatherEvent = gatherEvent.WithMetadata(fmt.Sprintf("path_%d", i+1), path)
+	}
+	auditLogger.Log(gatherEvent)
 
 	// Log appropriate message based on mode and start spinner
 	if config.DryRun {
@@ -463,10 +591,18 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 		fileConfig.SetFileCollector(collector)
 	}
 
-	// Gather project context
-	projectContext, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
+	// Gather project context with audit logging
+	projectContext, processedFilesCount, err := fileutil.GatherProjectContextWithAuditLogging(config.Paths, fileConfig, auditLogger)
 	if err != nil {
 		logger.Error("Failed during project context gathering: %v", err)
+		
+		// Log error to audit log
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ContextGatheringError",
+			"Failed to gather project context",
+		).WithErrorFromGoError(err))
+		
 		logger.Fatal("Failed during project context gathering: %v", err)
 	}
 
@@ -474,19 +610,47 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 	if processedFilesCount == 0 {
 		logger.Info("No files were processed for context. Check paths and filters.")
 		logger.Warn("No files were processed for context. Check paths and filters.")
+		
+		// Log warning to audit log
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"WARN",
+			"EmptyContext",
+			"No files were processed for context",
+		).WithMetadata("paths", strings.Join(config.Paths, ", ")))
+		
 		return projectContext
 	}
 
 	// Update spinner message and calculate statistics
 	logger.Info("Calculating token statistics...")
 	logger.Debug("Calculating token statistics...")
+	
+	// Log that we're calculating statistics
+	statsEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"CalculatingStatistics",
+		"Calculating token statistics for context",
+	)
+	auditLogger.Log(statsEvent)
+	
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, geminiClient, projectContext, logger)
+
+	// Log statistics to audit log
+	contextStats := auditlog.NewAuditEvent(
+		"INFO",
+		"ContextStatistics",
+		"Context gathering statistics",
+	).WithMetadata("file_count", processedFilesCount).
+	WithMetadata("line_count", lineCount).
+	WithMetadata("char_count", charCount).
+	WithMetadata("token_count", tokenCount)
+	auditLogger.Log(contextStats)
 
 	// Handle dry run mode specific output
 	if config.DryRun {
 		logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
 			processedFilesCount, lineCount, charCount, tokenCount)
-		displayDryRunInfo(charCount, lineCount, tokenCount, processedFilesCount, processedFiles, ctx, geminiClient, logger)
+		displayDryRunInfo(charCount, lineCount, tokenCount, processedFilesCount, processedFiles, ctx, geminiClient, logger, auditLogger)
 	} else if config.LogLevel == logutil.DebugLevel || processedFilesCount > 0 {
 		// Normal run mode
 		logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
@@ -495,12 +659,32 @@ func gatherContext(ctx context.Context, config *Configuration, geminiClient gemi
 			processedFilesCount, lineCount, charCount, tokenCount)
 	}
 
+	// Log completion of context gathering
+	completionEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ContextGatheringComplete",
+		"Project context gathering completed successfully",
+	).WithMetadata("file_count", processedFilesCount)
+	.WithMetadata("token_count", tokenCount)
+	auditLogger.Log(completionEvent)
+
 	return projectContext
 }
 
 // displayDryRunInfo shows detailed information for dry run mode
 func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFilesCount int,
-	processedFiles []string, ctx context.Context, geminiClient gemini.Client, logger logutil.LoggerInterface) {
+	processedFiles []string, ctx context.Context, geminiClient gemini.Client, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) {
+
+	// Log that we're displaying dry run info
+	dryRunEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"DryRunInfo",
+		"Displaying dry run information",
+	).WithMetadata("file_count", processedFilesCount).
+	WithMetadata("line_count", lineCount).
+	WithMetadata("char_count", charCount).
+	WithMetadata("token_count", tokenCount)
+	auditLogger.Log(dryRunEvent)
 
 	logger.Info("Files that would be included in context:")
 	if processedFilesCount == 0 {
@@ -525,8 +709,20 @@ func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFi
 			logger.Warn("Could not get model information: %s", apiErr.Message)
 			// Only show detailed info in debug logs
 			logger.Debug("Model info error details: %s", apiErr.DebugInfo())
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"WARN",
+				"ModelInfoAPIError",
+				"Could not get model information due to API error",
+			).WithError(apiErr.Message))
 		} else {
 			logger.Warn("Could not get model information: %v", modelInfoErr)
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"WARN",
+				"ModelInfoError",
+				"Could not get model information",
+			).WithError(modelInfoErr.Error()))
 		}
 	} else {
 		// Convert to int32 for comparison with model limits
@@ -535,50 +731,98 @@ func displayDryRunInfo(charCount int, lineCount int, tokenCount int, processedFi
 		logger.Info("Token usage: %d / %d (%.1f%% of model's limit)",
 			tokenCountInt32, modelInfo.InputTokenLimit, percentOfLimit)
 
+		// Log token information
+		tokenInfoEvent := auditlog.NewAuditEvent(
+			"INFO",
+			"TokenUsageInfo",
+			"Token usage information",
+		).WithMetadata("token_count", tokenCountInt32)
+		.WithMetadata("token_limit", modelInfo.InputTokenLimit)
+		.WithMetadata("percentage", percentOfLimit)
+		
 		// Check if token count exceeds limit
 		if tokenCountInt32 > modelInfo.InputTokenLimit {
 			logger.Error("WARNING: Token count exceeds model's limit by %d tokens",
 				tokenCountInt32-modelInfo.InputTokenLimit)
 			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+			
+			tokenInfoEvent = tokenInfoEvent.WithMetadata("exceeds_limit", true)
+			.WithMetadata("excess_tokens", tokenCountInt32-modelInfo.InputTokenLimit)
+			auditLogger.Log(tokenInfoEvent)
+			
+			// Log a separate error event
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"TokenLimitExceeded",
+				"Token count exceeds model limit",
+			).WithMetadata("token_count", tokenCountInt32)
+			.WithMetadata("token_limit", modelInfo.InputTokenLimit)
+			.WithMetadata("excess_tokens", tokenCountInt32-modelInfo.InputTokenLimit))
 		} else {
 			logger.Info("Context size is within the model's token limit")
+			
+			tokenInfoEvent = tokenInfoEvent.WithMetadata("exceeds_limit", false)
+			auditLogger.Log(tokenInfoEvent)
 		}
 	}
 
 	logger.Info("Dry run completed successfully.")
 	logger.Info("To generate content, run without the --dry-run flag.")
+	
+	// Log dry run completion
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"DryRunComplete",
+		"Dry run completed successfully",
+	))
 }
 
 // generateAndSavePlan is a backward-compatible wrapper for plan generation
 func generateAndSavePlan(ctx context.Context, config *Configuration, geminiClient gemini.Client,
-	projectContext string, logger logutil.LoggerInterface) {
+	projectContext string, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) {
 
 	// Use the legacy version without config system support
 	promptManager := prompt.NewManager(logger)
-	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger, auditLogger)
 }
 
 // generateAndSavePlanWithConfig creates and saves the plan to a file using the config system
 func generateAndSavePlanWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client,
-	projectContext string, configManager config.ManagerInterface, logger logutil.LoggerInterface) {
+	projectContext string, configManager config.ManagerInterface, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) {
 
 	// Set up a prompt manager with config support
 	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
 	if err != nil {
 		logger.Error("Failed to set up prompt manager: %v", err)
+		// Log the error
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"PromptManagerSetupError",
+			"Failed to set up prompt manager with config",
+		).WithErrorFromGoError(err))
 		// Fall back to non-config version
-		generateAndSavePlan(ctx, config, geminiClient, projectContext, logger)
+		generateAndSavePlan(ctx, config, geminiClient, projectContext, logger, auditLogger)
 		return
 	}
 
-	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger)
+	generateAndSavePlanWithPromptManager(ctx, config, geminiClient, projectContext, promptManager, logger, auditLogger)
 }
 
 // generateAndSavePlanWithPromptManager is the core implementation of plan generation
 func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client,
-	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) {
+	projectContext string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) {
 
 	// Spinner initialization removed
+
+	// Log that we're starting the plan generation process
+	genStartEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"PlanGenerationStart",
+		"Starting plan generation process",
+	).WithInput(config.TaskDescription)
+	.WithMetadata("model", config.ModelName)
+	.WithMetadata("output_file", config.OutputFile)
+	auditLogger.Log(genStartEvent)
 
 	// Construct prompt using the provided prompt manager
 	logger.Info("Building prompt template...")
@@ -586,6 +830,11 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
 	if err != nil {
 		logger.Error("Failed to build prompt: %v", err)
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"PromptBuildingError",
+			"Failed to build prompt template",
+		).WithErrorFromGoError(err))
 		logger.Fatal("Failed to build prompt: %v", err)
 	}
 	logger.Info("Prompt template built successfully")
@@ -599,7 +848,15 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	// Get token count for confirmation and limit checking
 	logger.Info("Checking token limits...")
 	logger.Debug("Checking token limits...")
-	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
+	
+	tokenCountEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"TokenCountCheck",
+		"Checking token count and limits",
+	).WithMetadata("prompt_length", len(generatedPrompt))
+	auditLogger.Log(tokenCountEvent)
+	
+	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger, auditLogger)
 	if err != nil {
 		logger.Error("Token count check failed")
 
@@ -613,9 +870,22 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 			if config.LogLevel == logutil.DebugLevel {
 				logger.Debug("Error details: %s", apiErr.DebugInfo())
 			}
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"TokenCountAPIError",
+				"Token count check failed due to API error",
+			).WithError(apiErr.Message)
+			.WithMetadata("suggestion", apiErr.Suggestion))
 		} else {
 			logger.Error("Token count check failed: %v", err)
 			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"TokenCountError",
+				"Token count check failed",
+			).WithErrorFromGoError(err))
 		}
 
 		logger.Fatal("Aborting generation to prevent API errors")
@@ -626,8 +896,18 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 		logger.Error("Token limit exceeded")
 		logger.Error("Token limit exceeded: %s", tokenInfo.limitError)
 		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"TokenLimitExceeded",
+			"Token count exceeds model limit",
+		).WithMetadata("token_count", tokenInfo.tokenCount)
+		.WithMetadata("token_limit", tokenInfo.inputLimit)
+		.WithMetadata("error", tokenInfo.limitError))
+		
 		logger.Fatal("Aborting generation to prevent API errors")
 	}
+	
 	logger.Info("Token check passed: %d / %d (%.1f%%)",
 		tokenInfo.tokenCount, tokenInfo.inputLimit, tokenInfo.percentage)
 
@@ -638,16 +918,42 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 			tokenInfo.inputLimit,
 			tokenInfo.percentage)
 	}
+	
+	// Log token success info
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"TokenCheckPassed",
+		"Token count is within model limits",
+	).WithMetadata("token_count", tokenInfo.tokenCount)
+	.WithMetadata("token_limit", tokenInfo.inputLimit)
+	.WithMetadata("percentage", tokenInfo.percentage))
 
 	// Prompt for confirmation if threshold is set and exceeded
-	if !promptForConfirmation(tokenInfo.tokenCount, config.ConfirmTokens, logger) {
+	if !promptForConfirmation(tokenInfo.tokenCount, config.ConfirmTokens, logger, auditLogger) {
 		logger.Info("Operation cancelled by user.")
+		
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"INFO",
+			"UserCancellation",
+			"User cancelled plan generation",
+		).WithMetadata("token_count", tokenInfo.tokenCount)
+		.WithMetadata("confirmation_threshold", config.ConfirmTokens))
+		
 		return
 	}
 
 	// Call Gemini API
 	logger.Info("Generating plan using model %s...", config.ModelName)
 	logger.Debug("Generating plan using model %s...", config.ModelName)
+	
+	// Log API call
+	apiCallEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"APIRequest",
+		"Calling Gemini API for plan generation",
+	).WithMetadata("model", config.ModelName)
+	auditLogger.Log(apiCallEvent)
+	
 	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
 		logger.Error("Generation failed")
@@ -662,16 +968,40 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 			if config.LogLevel == logutil.DebugLevel {
 				logger.Debug("Error details: %s", apiErr.DebugInfo())
 			}
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"APIError",
+				"Error generating plan content",
+			).WithError(apiErr.Message)
+			.WithMetadata("suggestion", apiErr.Suggestion))
 		} else {
 			logger.Error("Error generating content: %v", err)
+			
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"GenerationError",
+				"Error generating plan content",
+			).WithErrorFromGoError(err))
 		}
 
 		logger.Fatal("Plan generation failed")
 	}
 
 	// Process API response
-	generatedPlan := processApiResponse(result, logger)
+	generatedPlan := processApiResponse(result, logger, auditLogger)
 	logger.Info("Plan generated successfully")
+	
+	// Log successful generation
+	successEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"PlanGenerationSuccess",
+		"Successfully generated plan content",
+	).WithMetadata("content_length", len(generatedPlan))
+	if result.TokenCount > 0 {
+		successEvent = successEvent.WithMetadata("output_tokens", result.TokenCount)
+	}
+	auditLogger.Log(successEvent)
 
 	// Debug logging of results
 	if config.LogLevel == logutil.DebugLevel {
@@ -684,12 +1014,29 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	// Write the plan to file
 	logger.Info("Writing plan to %s...", config.OutputFile)
 	logger.Debug("Writing plan to %s...", config.OutputFile)
-	saveToFile(generatedPlan, config.OutputFile, logger)
+	
+	// Log file saving
+	saveEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"SavingPlan",
+		"Saving generated plan to file",
+	).WithMetadata("output_file", config.OutputFile)
+	auditLogger.Log(saveEvent)
+	
+	saveToFile(generatedPlan, config.OutputFile, logger, auditLogger)
 	logger.Info("Plan saved to %s", config.OutputFile)
+	
+	// Log completion
+	completionEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"PlanGenerationComplete",
+		"Plan generation process completed successfully",
+	).WithMetadata("output_file", config.OutputFile)
+	auditLogger.Log(completionEvent)
 }
 
 // processApiResponse extracts content from the API response and handles errors
-func processApiResponse(result *gemini.GenerationResult, logger logutil.LoggerInterface) string {
+func processApiResponse(result *gemini.GenerationResult, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) string {
 	// Check for empty content
 	if result.Content == "" {
 		// Build an informative error message
@@ -700,52 +1047,138 @@ func processApiResponse(result *gemini.GenerationResult, logger logutil.LoggerIn
 
 		// Check for safety blocks
 		safetyInfo := ""
+		safetyBlocked := false
+		blockedCategories := []string{}
+
 		if len(result.SafetyRatings) > 0 {
-			blocked := false
 			for _, rating := range result.SafetyRatings {
 				if rating.Blocked {
-					blocked = true
+					safetyBlocked = true
+					blockedCategories = append(blockedCategories, rating.Category)
 					safetyInfo += fmt.Sprintf(" Blocked by Safety Category: %s;", rating.Category)
 				}
 			}
-			if blocked {
+			if safetyBlocked {
 				safetyInfo = " Safety Blocking:" + safetyInfo
 			}
 		}
+
+		// Log error to audit log
+		errorEvent := auditlog.NewAuditEvent(
+			"ERROR",
+			"EmptyAPIResponse",
+			"Received empty response from Gemini API",
+		)
+		if result.FinishReason != "" {
+			errorEvent = errorEvent.WithMetadata("finish_reason", result.FinishReason)
+		}
+		if safetyBlocked {
+			errorEvent = errorEvent.WithMetadata("safety_blocked", true)
+			// Add each blocked category
+			for i, category := range blockedCategories {
+				errorEvent = errorEvent.WithMetadata(fmt.Sprintf("blocked_category_%d", i+1), category)
+			}
+		}
+		auditLogger.Log(errorEvent)
 
 		logger.Fatal("Received empty response from Gemini.%s%s", finishReason, safetyInfo)
 	}
 
 	// Check for whitespace-only content
 	if strings.TrimSpace(result.Content) == "" {
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR", 
+			"EmptyContentResponse",
+			"Gemini returned a whitespace-only response",
+		))
 		logger.Fatal("Gemini returned an empty plan text.")
 	}
+
+	// Log successful response processing
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ResponseProcessed",
+		"Successfully processed API response",
+	).WithMetadata("content_length", len(result.Content)))
 
 	return result.Content
 }
 
 // saveToFile writes the generated plan to the specified file
-func saveToFile(content string, outputFile string, logger logutil.LoggerInterface) {
+func saveToFile(content string, outputFile string, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) {
+	// Log that we're resolving the output path
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ResolvingOutputPath",
+		"Resolving output file path",
+	).WithMetadata("output_file", outputFile))
+
 	// Resolve the output file path
 	outputPath, err := resolvePath(outputFile, "output", logger)
 	if err != nil {
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"PathResolutionError",
+			"Error resolving output file path",
+		).WithErrorFromGoError(err)
+		.WithMetadata("output_file", outputFile))
 		logger.Fatal("Error resolving output file path: %v", err)
 	}
+
+	// Log resolved path
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"OutputPathResolved",
+		"Output path resolution successful",
+	).WithMetadata("resolved_path", outputPath))
 
 	// Ensure the directory exists
 	dir := filepath.Dir(outputPath)
 	if dir != "." {
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"INFO",
+			"EnsureDirectoryExists",
+			"Ensuring output directory exists",
+		).WithMetadata("directory", dir))
+
 		if err := os.MkdirAll(dir, 0755); err != nil {
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"DirectoryCreationError",
+				"Error creating directory for output file",
+			).WithErrorFromGoError(err)
+			.WithMetadata("directory", dir))
 			logger.Fatal("Error creating directory for output file: %v", err)
 		}
 	}
 
 	// Write to file
 	logger.Info("Writing plan to %s...", outputPath)
+
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"WritingOutput",
+		"Writing content to output file",
+	).WithMetadata("file_path", outputPath)
+	.WithMetadata("content_length", len(content)))
+
 	err = os.WriteFile(outputPath, []byte(content), 0644)
 	if err != nil {
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"FileWriteError",
+			"Error writing content to file",
+		).WithErrorFromGoError(err)
+		.WithMetadata("file_path", outputPath))
 		logger.Fatal("Error writing plan to file %s: %v", outputPath, err)
 	}
+
+	// Log successful file write
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"OutputSaved",
+		"Successfully saved output to file",
+	).WithMetadata("file_path", outputPath))
 
 	logger.Info("Successfully generated plan and saved to %s", outputPath)
 }
@@ -753,11 +1186,27 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 // initSpinner function removed
 
 // promptForConfirmation asks for user confirmation to proceed
-func promptForConfirmation(tokenCount int32, threshold int, logger logutil.LoggerInterface) bool {
+func promptForConfirmation(tokenCount int32, threshold int, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) bool {
 	if threshold <= 0 || int32(threshold) > tokenCount {
 		// No confirmation needed if threshold is disabled (0) or token count is below threshold
+		if threshold > 0 {
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"INFO",
+				"ConfirmationNotNeeded",
+				"Token count below confirmation threshold",
+			).WithMetadata("token_count", tokenCount)
+			.WithMetadata("threshold", threshold))
+		}
 		return true
 	}
+
+	// Log that we're prompting for confirmation
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ConfirmationPrompt",
+		"Token count exceeds confirmation threshold, prompting for user confirmation",
+	).WithMetadata("token_count", tokenCount)
+	.WithMetadata("threshold", threshold))
 
 	logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
 	logger.Info("Do you want to proceed with the API call? [y/N]: ")
@@ -766,14 +1215,30 @@ func promptForConfirmation(tokenCount int32, threshold int, logger logutil.Logge
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		logger.Error("Error reading input: %v", err)
+		
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"UserInputError",
+			"Error reading user confirmation input",
+		).WithErrorFromGoError(err))
+		
 		return false
 	}
 
 	// Trim whitespace and convert to lowercase
 	response = strings.ToLower(strings.TrimSpace(response))
 
+	// Log user response
+	confirmed := response == "y" || response == "yes"
+	auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"UserConfirmation",
+		"User confirmation response received",
+	).WithMetadata("confirmed", confirmed)
+	.WithMetadata("response", response))
+
 	// Only proceed if the user explicitly confirms with 'y' or 'yes'
-	return response == "y" || response == "yes"
+	return confirmed
 }
 
 // tokenInfoResult holds information about token counts and limits
@@ -786,36 +1251,82 @@ type tokenInfoResult struct {
 }
 
 // getTokenInfo gets token count information and checks limits
-func getTokenInfo(ctx context.Context, geminiClient gemini.Client, prompt string, logger logutil.LoggerInterface) (*tokenInfoResult, error) {
+func getTokenInfo(ctx context.Context, geminiClient gemini.Client, prompt string, logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) (*tokenInfoResult, error) {
 	// Create result structure
 	result := &tokenInfoResult{
 		exceedsLimit: false,
 	}
 
+	// Log that we're getting model info
+	modelInfoEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"FetchingModelInfo",
+		"Retrieving model information for token limit check"
+	)
+	auditLogger.Log(modelInfoEvent)
+
 	// Get model information (limits)
 	modelInfo, err := geminiClient.GetModelInfo(ctx)
 	if err != nil {
 		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"ModelInfoAPIError",
+				"Failed to retrieve model information",
+			).WithError(apiErr.Message))
 			return nil, err
 		}
 
 		// Wrap other errors
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ModelInfoError",
+			"Failed to retrieve model information",
+		).WithErrorFromGoError(err))
 		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
 	}
 
 	// Store input limit
 	result.inputLimit = modelInfo.InputTokenLimit
+	
+	// Log model info received
+	modelInfoReceivedEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ModelInfoReceived",
+		"Retrieved model information successfully",
+	).WithMetadata("model_name", modelInfo.Name)
+	.WithMetadata("input_token_limit", modelInfo.InputTokenLimit)
+	.WithMetadata("output_token_limit", modelInfo.OutputTokenLimit)
+	auditLogger.Log(modelInfoReceivedEvent)
+
+	// Log that we're counting tokens
+	countTokensEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"CountingTokens",
+		"Counting tokens in prompt",
+	).WithMetadata("prompt_length", len(prompt))
+	auditLogger.Log(countTokensEvent)
 
 	// Count tokens in the prompt
 	tokenResult, err := geminiClient.CountTokens(ctx, prompt)
 	if err != nil {
 		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			auditLogger.Log(auditlog.NewAuditEvent(
+				"ERROR",
+				"TokenCountAPIError",
+				"Failed to count tokens",
+			).WithError(apiErr.Message))
 			return nil, err
 		}
 
 		// Wrap other errors
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"TokenCountError",
+			"Failed to count tokens",
+		).WithErrorFromGoError(err))
 		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
 	}
 
@@ -830,12 +1341,31 @@ func getTokenInfo(ctx context.Context, geminiClient gemini.Client, prompt string
 		result.tokenCount,
 		result.inputLimit,
 		result.percentage)
+		
+	// Log token count received
+	tokenCountEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"TokenCountReceived",
+		"Received token count information",
+	).WithMetadata("token_count", result.tokenCount)
+	.WithMetadata("token_limit", result.inputLimit)
+	.WithMetadata("percentage", result.percentage)
+	auditLogger.Log(tokenCountEvent)
 
 	// Check if the prompt exceeds the token limit
 	if result.tokenCount > result.inputLimit {
 		result.exceedsLimit = true
 		result.limitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
 			result.tokenCount, result.inputLimit)
+			
+		// Log token limit exceeded
+		auditLogger.Log(auditlog.NewAuditEvent(
+			"WARN",
+			"TokenLimitExceeded",
+			"Prompt exceeds token limit",
+		).WithMetadata("token_count", result.tokenCount)
+		.WithMetadata("token_limit", result.inputLimit)
+		.WithMetadata("excess_tokens", result.tokenCount - result.inputLimit))
 	}
 
 	return result, nil
@@ -844,7 +1374,9 @@ func getTokenInfo(ctx context.Context, geminiClient gemini.Client, prompt string
 // checkTokenLimit verifies that the prompt doesn't exceed the model's token limit
 // Deprecated: Use getTokenInfo instead
 func checkTokenLimit(ctx context.Context, geminiClient gemini.Client, prompt string, logger logutil.LoggerInterface) error {
-	tokenInfo, err := getTokenInfo(ctx, geminiClient, prompt, logger)
+	// Create a no-op audit logger for backward compatibility
+	noopAuditLogger := auditlog.NewNoopLogger()
+	tokenInfo, err := getTokenInfo(ctx, geminiClient, prompt, logger, noopAuditLogger)
 	if err != nil {
 		return err
 	}
@@ -857,6 +1389,7 @@ func checkTokenLimit(ctx context.Context, geminiClient gemini.Client, prompt str
 }
 
 // initConfigSystem initializes the configuration system
+// The audit logger will be set later after configuration is loaded
 func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 	return config.NewManager(logger)
 }

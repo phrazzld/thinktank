@@ -4,14 +4,17 @@ package fileutil
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -237,17 +240,56 @@ func processFile(path string, builder *strings.Builder, config *Config) {
 }
 
 // GatherProjectContext walks paths and gathers formatted content.
+// This is the original function without audit logging for backward compatibility.
 func GatherProjectContext(paths []string, config *Config) (string, int, error) {
+	// Call the audit logging version with a nil logger for backward compatibility
+	return GatherProjectContextWithAuditLogging(paths, config, nil)
+}
+
+// GatherProjectContextWithAuditLogging walks paths and gathers formatted content,
+// with structured audit logging of the process.
+func GatherProjectContextWithAuditLogging(paths []string, config *Config, auditLogger auditlog.StructuredLogger) (string, int, error) {
 	var builder strings.Builder
+	startTime := time.Now()
+	var processingErrors []string
+
+	// Create a no-op logger if not provided
+	if auditLogger == nil {
+		auditLogger = auditlog.NewNoopLogger()
+	}
+
+	// Log the start of context gathering with input metadata
+	startEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ContextGatheringStart",
+		"Starting to gather project context",
+	).WithMetadata("pathCount", len(paths))
+
+	// Add information about filters if present
+	if len(config.IncludeExts) > 0 {
+		startEvent = startEvent.WithMetadata("includeExtensions", strings.Join(config.IncludeExts, ","))
+	}
+	if len(config.ExcludeExts) > 0 {
+		startEvent = startEvent.WithMetadata("excludeExtensions", strings.Join(config.ExcludeExts, ","))
+	}
+	if len(config.ExcludeNames) > 0 {
+		startEvent = startEvent.WithMetadata("excludeNames", strings.Join(config.ExcludeNames, ","))
+	}
+
+	auditLogger.Log(startEvent)
+
 	builder.WriteString("<context>\n") // Start context wrapper
 
 	config.processedFiles = 0
 	config.totalFiles = 0
+	hasError := false
 
 	for _, p := range paths {
 		info, err := os.Stat(p)
 		if err != nil {
 			config.Logger.Printf("Warning: Cannot stat path %s: %v. Skipping.\n", p, err)
+			processingErrors = append(processingErrors, fmt.Sprintf("Cannot stat path %s: %v", p, err))
+			hasError = true
 			continue
 		}
 
@@ -256,6 +298,7 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 			err := filepath.WalkDir(p, func(subPath string, d os.DirEntry, err error) error {
 				if err != nil {
 					config.Logger.Printf("Warning: Error accessing path %s during walk: %v\n", subPath, err)
+					processingErrors = append(processingErrors, fmt.Sprintf("Error accessing path %s: %v", subPath, err))
 					return err // Report error up
 				}
 
@@ -277,6 +320,8 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 			})
 			if err != nil {
 				config.Logger.Printf("Error walking directory %s: %v\n", p, err)
+				processingErrors = append(processingErrors, fmt.Sprintf("Error walking directory %s: %v", p, err))
+				hasError = true
 				// Continue with other paths if possible
 			}
 		} else {
@@ -286,7 +331,56 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 	}
 
 	builder.WriteString("</context>") // End context wrapper
-	return builder.String(), config.processedFiles, nil
+	context := builder.String()
+	duration := time.Since(startTime)
+
+	// Log statistics about the gathered context
+	statsEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ContextStatistics",
+		"Context gathering statistics",
+	).WithMetadata("processedFiles", config.processedFiles).
+		WithMetadata("totalFiles", config.totalFiles).
+		WithMetadata("skippedFiles", config.totalFiles-config.processedFiles).
+		WithMetadata("durationMs", duration.Milliseconds()).
+		WithMetadata("charCount", len(context))
+
+	auditLogger.Log(statsEvent)
+
+	// Log completion event (or error if there were issues)
+	level := "INFO"
+	if hasError {
+		level = "WARNING"
+	}
+	message := "Context gathering completed successfully"
+	if hasError {
+		message = "Context gathering completed with errors"
+	}
+
+	completionEvent := auditlog.NewAuditEvent(
+		level,
+		"ContextGatheringComplete",
+		message,
+	).WithMetadata("processedFiles", config.processedFiles).
+		WithMetadata("durationMs", duration.Milliseconds())
+
+	if hasError {
+		completionEvent = completionEvent.WithMetadata("errors", true).
+			WithMetadata("errorCount", len(processingErrors))
+
+		// Only log the first few errors to avoid excessive log size
+		if len(processingErrors) > 0 {
+			errorSummary := strings.Join(processingErrors[:min(3, len(processingErrors))], "; ")
+			if len(processingErrors) > 3 {
+				errorSummary += fmt.Sprintf("; and %d more errors", len(processingErrors)-3)
+			}
+			completionEvent = completionEvent.WithError(auditlog.NewErrorDetails(errorSummary, "ContextGatheringError"))
+		}
+	}
+
+	auditLogger.Log(completionEvent)
+
+	return context, config.processedFiles, nil
 }
 
 // CalculateStatistics calculates basic string stats.
