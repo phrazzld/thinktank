@@ -74,7 +74,7 @@
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Build
 
-- [ ] **Implement build step**
+- [x] **Implement build step**
   - **Action:** Add step to build the project
   - **Depends On:** Create build job
   - **AC Ref:** Build step 1

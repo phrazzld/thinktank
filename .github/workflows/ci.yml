@@ -107,4 +107,9 @@ jobs:
           go-version: 'stable'
           cache: true
       
-      # Build step and artifact upload will be implemented in subsequent tasks
+      # Build the project
+      - name: Build
+        run: go build -v -ldflags="-s -w" -o architect
+        timeout-minutes: 5
+      
+      # Artifact upload will be implemented in a subsequent task
