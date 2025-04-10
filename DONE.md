@@ -89,3 +89,8 @@
   - **Action:** Move the readTaskFromFile function from main.go to prompt.go.
   - **Depends On:** Extract template loading to prompt.go.
   - **AC Ref:** Implementation Steps 5.
+
+- [x] **Create unit tests for prompt package functions** (Completed on 2025-04-10)
+  - **Action:** Add new tests for prompt.go functions to verify template handling.
+  - **Depends On:** All prompt building functions moved.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
