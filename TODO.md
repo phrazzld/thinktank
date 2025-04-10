@@ -7,7 +7,7 @@
   - **Depends On:** None.
   - **AC Ref:** AC 1.1, AC 1.3
 
-- [ ] **Task Title:** Define AuditEvent and ErrorDetails structs
+- [x] **Task Title:** Define AuditEvent and ErrorDetails structs
   - **Action:** Implement the AuditEvent struct with appropriate fields and JSON tags in `event.go`.
   - **Depends On:** Create basic package structure for auditlog
   - **AC Ref:** AC 1.1, AC 2.1, AC 2.2
