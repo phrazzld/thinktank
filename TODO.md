@@ -3,10 +3,6 @@
 ## Command-Line Interface Updates
 
 ## Input Validation
-- [ ] **Modify validateInputs() to require task file**
-  - **Action:** Update the validateInputs() function to enforce the requirement for --task-file, following the implementation specification in PLAN.md.
-  - **Depends On:** None
-  - **AC Ref:** Validation logic update (Detailed Task Breakdown 2)
 
 - [ ] **Improve error messages for task file validation**
   - **Action:** Enhance error handling for file existence, readability, and content validation with clear error messages.

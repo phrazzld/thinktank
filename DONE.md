@@ -10,3 +10,8 @@
   - **Action:** Update the usage message to show --task-file as the primary means of providing input, as shown in the Implementation Specifications.
   - **Depends On:** None
   - **AC Ref:** Documentation update (Detailed Task Breakdown 4)
+
+- [x] **Modify validateInputs() to require task file**
+  - **Action:** Update the validateInputs() function to enforce the requirement for --task-file, following the implementation specification in PLAN.md.
+  - **Depends On:** None
+  - **AC Ref:** Validation logic update (Detailed Task Breakdown 2)

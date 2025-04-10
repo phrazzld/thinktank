@@ -368,31 +368,39 @@ func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (stri
 
 // validateInputs verifies required inputs are provided
 func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
-	// Check for task description (not required in dry run mode)
+	// Track whether task has been successfully loaded
+	taskLoaded := false
+
 	if config.TaskFile != "" {
-		// Load task from file
+		// Task file provided - this is the preferred path
 		taskContent, err := readTaskFromFile(config.TaskFile, logger)
 		if err != nil {
-			logger.Error("Failed to read task file: %v", err)
+			logger.Error("Failed to load task file: %v", err)
 			flag.Usage()
 			os.Exit(1)
 		}
 
 		// Set task description from file content
 		config.TaskDescription = taskContent
+		taskLoaded = true
 		logger.Debug("Loaded task description from file: %s", config.TaskFile)
+
+		// Check if --task was also unnecessarily provided
+		if flag.Lookup("task").Value.String() != "" {
+			logger.Warn("Both --task and --task-file flags were provided. Using task from --task-file. The --task flag is deprecated.")
+		}
+	} else if flag.Lookup("task").Value.String() != "" && !config.DryRun {
+		// Task file NOT provided, but deprecated --task IS provided (and not dry run)
+		logger.Warn("The --task flag is deprecated and will be removed in a future version. Please use --task-file instead.")
+		// config.TaskDescription is already set from parseFlags
+		taskLoaded = true
 	}
 
-	// Check if task description is still empty after potentially loading from file
-	if config.TaskDescription == "" && !config.DryRun {
-		logger.Error("Either --task or --task-file must be provided (except in dry-run mode).")
+	// Check if a task is loaded (unless in dry-run mode)
+	if !taskLoaded && !config.DryRun {
+		logger.Error("The required --task-file flag is missing.")
 		flag.Usage()
 		os.Exit(1)
-	}
-
-	// Check if both --task and --task-file are provided
-	if config.TaskDescription != "" && config.TaskFile != "" && flag.Lookup("task").Value.String() != "" {
-		logger.Warn("Both --task and --task-file flags were provided. Using task from --task-file.")
 	}
 
 	// Check for input paths
