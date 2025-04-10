@@ -4,7 +4,8 @@
 *.dll
 *.so
 *.dylib
-architect
+# Binary executable named architect, but not the directory
+/architect
 
 # Test binary, built with `go test -c`
 *.test
