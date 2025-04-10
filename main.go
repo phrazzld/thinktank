@@ -310,8 +310,9 @@ func parseFlags() *Configuration {
 
 // setupLogging initializes the logger based on configuration
 func setupLogging(config *Configuration) logutil.LoggerInterface {
+	var logLevel logutil.LogLevel
+
 	// Determine log level
-	logLevel := logutil.InfoLevel
 	if config.Verbose {
 		logLevel = logutil.DebugLevel
 	} else {
@@ -917,12 +918,14 @@ func isFlagSet(name string) bool {
 }
 
 // buildPrompt constructs the prompt string for the Gemini API.
+// nolint:unused
 func buildPrompt(config *Configuration, task string, context string, logger logutil.LoggerInterface) (string, error) {
 	// Use config-less version for backward compatibility
 	return buildPromptWithManager(config, task, context, prompt.NewManager(logger), logger)
 }
 
 // buildPromptWithConfig constructs the prompt string using the configuration system
+// nolint:unused
 func buildPromptWithConfig(config *Configuration, task string, context string, configManager config.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
 	// Create a prompt manager with config support
 	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
