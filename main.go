@@ -3,13 +3,16 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
@@ -20,12 +23,22 @@ import (
 
 // Constants referencing the config package defaults
 const (
-	defaultOutputFile   = config.DefaultOutputFile
-	defaultModel        = config.DefaultModel
-	apiKeyEnvVar        = config.APIKeyEnvVar
-	defaultFormat       = config.DefaultFormat
-	defaultExcludes     = config.DefaultExcludes
-	defaultExcludeNames = config.DefaultExcludeNames
+	defaultOutputFile       = config.DefaultOutputFile
+	defaultModel            = config.DefaultModel
+	apiKeyEnvVar            = config.APIKeyEnvVar
+	defaultFormat           = config.DefaultFormat
+	defaultExcludes         = config.DefaultExcludes
+	defaultExcludeNames     = config.DefaultExcludeNames
+	taskFlagDescription     = "Description of the task or goal for the plan (deprecated: use --task-file instead)."
+	taskFileFlagDescription = "Path to a file containing the task description (required)."
+)
+
+// Define sentinel errors for task file validation
+var (
+	ErrTaskFileNotFound       = errors.New("task file not found")
+	ErrTaskFileReadPermission = errors.New("task file permission denied")
+	ErrTaskFileIsDir          = errors.New("task file path is a directory")
+	ErrTaskFileEmpty          = errors.New("task file is empty")
 )
 
 // Configuration holds the parsed command-line options
@@ -44,6 +57,8 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
+	ListExamples    bool
+	ShowExample     string
 	Paths           []string
 	ApiKey          string
 }
@@ -68,6 +83,17 @@ func main() {
 	// Ensure configuration directories exist
 	if err := configManager.EnsureConfigDirs(); err != nil {
 		logger.Warn("Failed to create configuration directories: %v", err)
+	}
+
+	// Handle special subcommands before regular flow
+	if cliConfig.ListExamples {
+		listExampleTemplates(logger, configManager)
+		return
+	}
+
+	if cliConfig.ShowExample != "" {
+		showExampleTemplate(cliConfig.ShowExample, logger, configManager)
+		return
 	}
 
 	// Convert CLI flags to the format needed for merging
@@ -110,8 +136,8 @@ func parseFlags() *Configuration {
 	config := &Configuration{}
 
 	// Define flags
-	taskFlag := flag.String("task", "", "Description of the task or goal for the plan.")
-	taskFileFlag := flag.String("task-file", "", "Path to a file containing the task description (alternative to --task).")
+	taskFlag := flag.String("task", "", taskFlagDescription)
+	taskFileFlag := flag.String("task-file", "", taskFileFlagDescription)
 	outputFileFlag := flag.String("output", defaultOutputFile, "Output file path for the generated plan.")
 	modelNameFlag := flag.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flag.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
@@ -124,12 +150,18 @@ func parseFlags() *Configuration {
 	dryRunFlag := flag.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
+	listExamplesFlag := flag.Bool("list-examples", false, "List available example prompt template files")
+	showExampleFlag := flag.String("show-example", "", "Display the content of a specific example template")
 
 	// Set custom usage message
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s (--task \"<description>\" | --task-file <path>) [options] <path1> [path2...]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s --task-file <path> [options] <path1> [path2...]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Arguments:\n")
 		fmt.Fprintf(os.Stderr, "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
+		fmt.Fprintf(os.Stderr, "Example Commands:\n")
+		fmt.Fprintf(os.Stderr, "  %s --list-examples                 List available example templates\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic.tmpl       Display the content of a specific example template\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic > my.tmpl  Save an example template to a file\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
@@ -152,6 +184,8 @@ func parseFlags() *Configuration {
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
+	config.ListExamples = *listExamplesFlag
+	config.ShowExample = *showExampleFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv(apiKeyEnvVar)
 
@@ -199,63 +233,153 @@ func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (stri
 		taskFilePath = filepath.Join(cwd, taskFilePath)
 	}
 
-	// Check if file exists
-	if _, err := os.Stat(taskFilePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("task file not found: %s", taskFilePath)
+	// Enhanced file existence check with specific errors
+	fileInfo, err := os.Stat(taskFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileNotFound, taskFilePath)
+		}
+		if os.IsPermission(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
+		}
+		// Generic stat error
+		return "", fmt.Errorf("error checking task file status: %w", err)
+	}
+
+	// Check if it's a directory
+	if fileInfo.IsDir() {
+		return "", fmt.Errorf("%w: %s", ErrTaskFileIsDir, taskFilePath)
 	}
 
 	// Read file content
 	content, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("error reading task file: %w", err)
+		if os.IsPermission(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
+		}
+		// Generic read error
+		return "", fmt.Errorf("error reading task file content: %w", err)
+	}
+
+	// Check for empty content
+	if len(strings.TrimSpace(string(content))) == 0 {
+		return "", fmt.Errorf("%w: %s", ErrTaskFileEmpty, taskFilePath)
 	}
 
 	// Return content as string
 	return string(content), nil
 }
 
+// validateInputsResult represents the result of input validation
+type validateInputsResult struct {
+	// Whether validation passed successfully
+	Valid bool
+	// Error message if validation failed
+	ErrorMessage string
+	// Whether validation concerns should be treated as warnings only
+	WarningsOnly bool
+}
+
 // validateInputs verifies required inputs are provided
 func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
-	// Check for task description (not required in dry run mode)
+	result := doValidateInputs(config, logger)
+
+	// If validation failed
+	if !result.Valid {
+		// Log the appropriate error message
+		logger.Error(result.ErrorMessage)
+
+		// Show usage
+		flag.Usage()
+
+		// Exit with error code
+		os.Exit(1)
+	}
+}
+
+// doValidateInputs performs the actual validation logic and returns a result
+// This function is extracted to allow testing without os.Exit
+func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) validateInputsResult {
+	// Initialize result with default values
+	result := validateInputsResult{
+		Valid:        true,
+		ErrorMessage: "",
+		WarningsOnly: false,
+	}
+
+	// Track whether task has been successfully loaded
+	taskLoaded := false
+
 	if config.TaskFile != "" {
-		// Load task from file
+		// Task file provided - this is the preferred path
 		taskContent, err := readTaskFromFile(config.TaskFile, logger)
 		if err != nil {
-			logger.Error("Failed to read task file: %v", err)
-			flag.Usage()
-			os.Exit(1)
+			// Set validation failed
+			result.Valid = false
+
+			// Specific error handling
+			switch {
+			case errors.Is(err, ErrTaskFileNotFound):
+				result.ErrorMessage = fmt.Sprintf("Task file not found. Please check the path: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
+			case errors.Is(err, ErrTaskFileReadPermission):
+				result.ErrorMessage = fmt.Sprintf("Cannot read task file due to permissions. Please check permissions for: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
+			case errors.Is(err, ErrTaskFileIsDir):
+				result.ErrorMessage = fmt.Sprintf("The specified task file path is a directory, not a file: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
+			case errors.Is(err, ErrTaskFileEmpty):
+				result.ErrorMessage = fmt.Sprintf("The task file is empty or contains only whitespace: %s", config.TaskFile)
+				logger.Error(result.ErrorMessage)
+			default:
+				// Generic fallback with more specific underlying error
+				result.ErrorMessage = fmt.Sprintf("Failed to load task file '%s': %v", config.TaskFile, err)
+				logger.Error(result.ErrorMessage)
+			}
+			return result
 		}
 
 		// Set task description from file content
 		config.TaskDescription = taskContent
+		taskLoaded = true
 		logger.Debug("Loaded task description from file: %s", config.TaskFile)
+
+		// Check if --task was also unnecessarily provided
+		if getTaskFlagValue() != "" {
+			logger.Warn("Both --task and --task-file flags were provided. Using task from --task-file. The --task flag is deprecated.")
+		}
+	} else if getTaskFlagValue() != "" && !config.DryRun {
+		// Task file NOT provided, but deprecated --task IS provided (and not dry run)
+		logger.Warn("The --task flag is deprecated and will be removed in a future version. Please use --task-file instead.")
+		// config.TaskDescription is already set from parseFlags
+		taskLoaded = true
 	}
 
-	// Check if task description is still empty after potentially loading from file
-	if config.TaskDescription == "" && !config.DryRun {
-		logger.Error("Either --task or --task-file must be provided (except in dry-run mode).")
-		flag.Usage()
-		os.Exit(1)
-	}
-
-	// Check if both --task and --task-file are provided
-	if config.TaskDescription != "" && config.TaskFile != "" && flag.Lookup("task").Value.String() != "" {
-		logger.Warn("Both --task and --task-file flags were provided. Using task from --task-file.")
+	// Check if a task is loaded (unless in dry-run mode)
+	if !taskLoaded && !config.DryRun {
+		result.Valid = false
+		result.ErrorMessage = "The required --task-file flag is missing."
+		logger.Error(result.ErrorMessage)
+		return result
 	}
 
 	// Check for input paths
 	if len(config.Paths) == 0 {
-		logger.Error("At least one file or directory path must be provided as an argument.")
-		flag.Usage()
-		os.Exit(1)
+		result.Valid = false
+		result.ErrorMessage = "At least one file or directory path must be provided as an argument."
+		logger.Error(result.ErrorMessage)
+		return result
 	}
 
 	// Check for API key
 	if config.ApiKey == "" {
-		logger.Error("%s environment variable not set.", apiKeyEnvVar)
-		flag.Usage()
-		os.Exit(1)
+		result.Valid = false
+		result.ErrorMessage = fmt.Sprintf("%s environment variable not set.", apiKeyEnvVar)
+		logger.Error(result.ErrorMessage)
+		return result
 	}
+
+	return result
 }
 
 // initGeminiClient creates and initializes the Gemini API client
@@ -411,15 +535,49 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Spinner initialization removed
 
-	// Construct prompt using the provided prompt manager
-	logger.Info("Building prompt template...")
-	logger.Debug("Building prompt template...")
-	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
-	if err != nil {
-		logger.Error("Failed to build prompt: %v", err)
-		logger.Fatal("Failed to build prompt: %v", err)
+	// First check if task file content is a template itself
+	var generatedPrompt string
+	var err error
+
+	if prompt.IsTemplate(config.TaskDescription) {
+		// This is a template in the task file - process it directly
+		logger.Info("Task file contains template variables, processing as template...")
+		logger.Debug("Processing task file as a template")
+
+		// Create template data
+		data := &prompt.TemplateData{
+			Task:    config.TaskDescription, // This is recursive but works because we're using it as raw text in the template
+			Context: projectContext,
+		}
+
+		// Create a template from the task file content
+		tmpl, err := template.New("task_file_template").Parse(config.TaskDescription)
+		if err != nil {
+			logger.Error("Failed to parse task file as template: %v", err)
+			logger.Fatal("Failed to parse task file as template: %v", err)
+		}
+
+		// Execute the template with the context data
+		var buf bytes.Buffer
+		err = tmpl.Execute(&buf, data)
+		if err != nil {
+			logger.Error("Failed to execute task file template: %v", err)
+			logger.Fatal("Failed to execute task file template: %v", err)
+		}
+
+		generatedPrompt = buf.String()
+		logger.Info("Task file template processed successfully")
+	} else {
+		// Standard approach - use the prompt manager with templates
+		logger.Info("Building prompt template...")
+		logger.Debug("Building prompt template...")
+		generatedPrompt, err = buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
+		if err != nil {
+			logger.Error("Failed to build prompt: %v", err)
+			logger.Fatal("Failed to build prompt: %v", err)
+		}
+		logger.Info("Prompt template built successfully")
 	}
-	logger.Info("Prompt template built successfully")
 
 	// Debug logging of prompt details
 	if config.LogLevel == logutil.DebugLevel {
@@ -690,6 +848,57 @@ func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 }
 
 // convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config
+// listExampleTemplates displays a list of available example templates
+func listExampleTemplates(logger logutil.LoggerInterface, configManager config.ManagerInterface) {
+	// Create prompt manager
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		// Fall back to basic manager if config-based setup fails
+		promptManager = prompt.NewManager(logger)
+	}
+
+	// Get the list of examples
+	examples, err := promptManager.ListExampleTemplates()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error listing example templates: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Display the examples
+	fmt.Println("Available Example Templates:")
+	fmt.Println("---------------------------")
+	if len(examples) == 0 {
+		fmt.Println("No example templates found.")
+	} else {
+		for i, example := range examples {
+			fmt.Printf("%d. %s\n", i+1, example)
+		}
+		fmt.Println("\nTo view an example template, use --show-example <template-name>")
+		fmt.Println("Example: architect --show-example basic.tmpl")
+	}
+}
+
+// showExampleTemplate displays the content of a specific example template
+func showExampleTemplate(name string, logger logutil.LoggerInterface, configManager config.ManagerInterface) {
+	// Create prompt manager
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		// Fall back to basic manager if config-based setup fails
+		promptManager = prompt.NewManager(logger)
+	}
+
+	// Get the template content
+	content, err := promptManager.GetExampleTemplate(name)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Use --list-examples to see available example templates.\n")
+		os.Exit(1)
+	}
+
+	// Print the content to stdout (allowing for redirection to a file)
+	fmt.Print(content)
+}
+
 func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 	// Create a map of CLI flags suitable for merging
 	return map[string]interface{}{
@@ -762,6 +971,15 @@ func isFlagSet(name string) bool {
 		}
 	})
 	return found
+}
+
+// getTaskFlagValue returns the value of the task flag
+// This function is extracted to allow mocking in tests
+var getTaskFlagValue = func() string {
+	if f := flag.Lookup("task"); f != nil {
+		return f.Value.String()
+	}
+	return ""
 }
 
 // buildPrompt constructs the prompt string for the Gemini API.

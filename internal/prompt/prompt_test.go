@@ -174,6 +174,117 @@ func TestLoadTemplateWithConfig(t *testing.T) {
 	}
 }
 
+// TestIsTemplate tests the IsTemplate function to verify it correctly identifies templates
+func TestIsTemplate(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{
+			name:     "Basic template with .Task",
+			content:  "This is a template with {{.Task}} variable",
+			expected: true,
+		},
+		{
+			name:     "Basic template with .Context",
+			content:  "This is a template with {{.Context}} variable",
+			expected: true,
+		},
+		{
+			name:     "Template with whitespace",
+			content:  "This is a template with {{ .Task }} variable",
+			expected: true,
+		},
+		{
+			name:     "Multiple template variables",
+			content:  "Template with {{.Task}} and {{.Context}} variables",
+			expected: true,
+		},
+		{
+			name:     "Not a template - no variables",
+			content:  "This is not a template, just plain text",
+			expected: false,
+		},
+		{
+			name:     "Not a template - different variables",
+			content:  "This has {{.Name}} and {{.Something}} but not the right ones",
+			expected: false,
+		},
+		{
+			name:     "Braces but not template syntax",
+			content:  "This has { braces } but not templates",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsTemplate(tt.content)
+			if result != tt.expected {
+				t.Errorf("IsTemplate(%q) = %v, want %v", tt.content, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestFileIsTemplate tests the FileIsTemplate function to verify it correctly identifies
+// template files based on both file extension and content
+func TestFileIsTemplate(t *testing.T) {
+	tests := []struct {
+		name     string
+		filePath string
+		content  string
+		expected bool
+	}{
+		{
+			name:     "File with .tmpl extension",
+			filePath: "/path/to/template.tmpl",
+			content:  "This is a template file without template variables",
+			expected: true,
+		},
+		{
+			name:     "File with .tmpl extension and template variables",
+			filePath: "/path/to/template.tmpl",
+			content:  "This is a template with {{.Task}} variable",
+			expected: true,
+		},
+		{
+			name:     "File without .tmpl extension but with template variables",
+			filePath: "/path/to/template.md",
+			content:  "This is a markdown file with {{.Task}} template variable",
+			expected: true,
+		},
+		{
+			name:     "File without .tmpl extension or template variables",
+			filePath: "/path/to/regular.txt",
+			content:  "This is a regular text file without template variables",
+			expected: false,
+		},
+		{
+			name:     "File with .tmpl in the middle of filename",
+			filePath: "/path/to/my.tmpl.md",
+			content:  "This is not a template file despite having tmpl in the name",
+			expected: false,
+		},
+		{
+			name:     "Non-template content but with different template variables",
+			filePath: "/path/to/regular.txt",
+			content:  "This has {{.Name}} and {{.Something}} but not the right ones",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FileIsTemplate(tt.filePath, tt.content)
+			if result != tt.expected {
+				t.Errorf("FileIsTemplate(%q, %q) = %v, want %v", tt.filePath, tt.content, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestListTemplates(t *testing.T) {
 	logger := newMockLogger()
 	manager := NewManager(logger)

@@ -7,9 +7,11 @@ import (
 
 // MockManager implements prompt.Manager for testing
 type MockManager struct {
-	LoadTemplateFunc  func(templatePath string) error
-	BuildPromptFunc   func(templateName string, data *TemplateData) (string, error)
-	ListTemplatesFunc func() ([]string, error)
+	LoadTemplateFunc         func(templatePath string) error
+	BuildPromptFunc          func(templateName string, data *TemplateData) (string, error)
+	ListTemplatesFunc        func() ([]string, error)
+	ListExampleTemplatesFunc func() ([]string, error)
+	GetExampleTemplateFunc   func(name string) (string, error)
 }
 
 // LoadTemplate calls the mocked implementation
@@ -34,6 +36,22 @@ func (m *MockManager) ListTemplates() ([]string, error) {
 		return m.ListTemplatesFunc()
 	}
 	return []string{"default.tmpl", "custom.tmpl"}, nil
+}
+
+// ListExampleTemplates calls the mocked implementation
+func (m *MockManager) ListExampleTemplates() ([]string, error) {
+	if m.ListExampleTemplatesFunc != nil {
+		return m.ListExampleTemplatesFunc()
+	}
+	return []string{"basic.tmpl", "detailed.tmpl", "bugfix.tmpl", "feature.tmpl"}, nil
+}
+
+// GetExampleTemplate calls the mocked implementation
+func (m *MockManager) GetExampleTemplate(name string) (string, error) {
+	if m.GetExampleTemplateFunc != nil {
+		return m.GetExampleTemplateFunc(name)
+	}
+	return fmt.Sprintf("Mock example template content for %s", name), nil
 }
 
 // NewMockManager creates a new mock prompt manager for testing

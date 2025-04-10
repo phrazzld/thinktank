@@ -106,14 +106,18 @@ func (env *TestEnv) Setup() {
 	os.Stdout = w
 
 	go func() {
-		_, _ = io.Copy(env.StdoutBuffer, r)
+		if _, err := io.Copy(env.StdoutBuffer, r); err != nil {
+			panic(fmt.Sprintf("Failed to copy stdout: %v", err))
+		}
 	}()
 
 	r2, w2, _ := os.Pipe()
 	os.Stderr = w2
 
 	go func() {
-		_, _ = io.Copy(env.StderrBuffer, r2)
+		if _, err := io.Copy(env.StderrBuffer, r2); err != nil {
+			panic(fmt.Sprintf("Failed to copy stderr: %v", err))
+		}
 	}()
 
 	// Set stdin to our mock

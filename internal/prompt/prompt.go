@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -24,6 +25,8 @@ type ManagerInterface interface {
 	LoadTemplate(templatePath string) error
 	BuildPrompt(templateName string, data *TemplateData) (string, error)
 	ListTemplates() ([]string, error)
+	ListExampleTemplates() ([]string, error)
+	GetExampleTemplate(name string) (string, error)
 }
 
 // Manager handles loading and processing prompt templates
@@ -263,4 +266,62 @@ func (m *Manager) ListTemplates() ([]string, error) {
 	}
 
 	return templates, nil
+}
+
+// ListExampleTemplates returns a list of available example template names
+func (m *Manager) ListExampleTemplates() ([]string, error) {
+	// Look for embedded example templates in the examples directory
+	entries, err := fs.ReadDir(m.embeddedTemplates, "templates/examples")
+	if err != nil {
+		return nil, fmt.Errorf("failed to read embedded example templates: %w", err)
+	}
+
+	// Create a slice to hold template names
+	examples := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".tmpl") {
+			examples = append(examples, entry.Name())
+		}
+	}
+
+	return examples, nil
+}
+
+// GetExampleTemplate retrieves the content of a specific example template
+func (m *Manager) GetExampleTemplate(name string) (string, error) {
+	// Ensure the name has .tmpl extension
+	if !strings.HasSuffix(name, ".tmpl") {
+		name = name + ".tmpl"
+	}
+
+	// Read the template content from the embedded filesystem
+	path := filepath.Join("templates/examples", name)
+	content, err := fs.ReadFile(m.embeddedTemplates, path)
+	if err != nil {
+		return "", fmt.Errorf("example template not found: %w", err)
+	}
+
+	return string(content), nil
+}
+
+// IsTemplate checks if the content is a Go template by looking for template variables
+// like {{.Task}} or {{.Context}}. Returns true if template patterns are found.
+func IsTemplate(content string) bool {
+	// Regular expression to match Go template variables
+	// This pattern looks for {{.Task}} or {{.Context}} with optional whitespace
+	re := regexp.MustCompile(`{{\s*\.(?:Task|Context)\s*}}`)
+	return re.MatchString(content)
+}
+
+// FileIsTemplate determines if a file should be processed as a template based on
+// its file path and content. It checks the file extension first, and if it's not
+// a .tmpl file, falls back to content inspection.
+func FileIsTemplate(filePath string, content string) bool {
+	// Check if the file has a .tmpl extension
+	if filepath.Ext(filePath) == ".tmpl" {
+		return true
+	}
+
+	// Fall back to content inspection
+	return IsTemplate(content)
 }
