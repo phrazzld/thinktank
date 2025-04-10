@@ -110,3 +110,9 @@
   - **Action:** Add new tests for output.go functions to ensure proper file writing.
   - **Depends On:** All output handling functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
+  
+## Main Entry Point
+- [x] **Update cmd/architect/main.go** (Completed on 2025-04-10)
+  - **Action:** Expand the Main() function to use all the refactored components, gradually phasing out the original implementation.
+  - **Depends On:** All extraction tasks completed (Token Management, API Client, Context Gathering, Prompt Building, Output Handling).
+  - **AC Ref:** Implementation Steps 7.

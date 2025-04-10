@@ -5,22 +5,18 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
-	"github.com/phrazzld/architect/internal/adapters/cliui"
-	"github.com/phrazzld/architect/internal/adapters/filesystem"
-	"github.com/phrazzld/architect/internal/adapters/git"
-	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	contextService "github.com/phrazzld/architect/internal/context"
-	"github.com/phrazzld/architect/internal/core"
+	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/plan"
 	"github.com/phrazzld/architect/internal/prompt"
 )
 
 // Main is the entry point for the architect CLI
 func Main() {
+	// Create a base context
+	ctx := context.Background()
+
 	// Parse command line flags
 	cliConfig, err := ParseFlags()
 	if err != nil {
@@ -30,35 +26,27 @@ func Main() {
 
 	// Setup logging early for error reporting
 	logger := SetupLogging(cliConfig)
-
-	// Initialize the CLI UI adapter
-	ui := cliui.NewAdapter(logger, os.Stdin)
-
-	// Display startup info
-	ui.DisplayInfo("Architect - An AI-assisted planning tool")
-	ui.DisplayInfo("Version: 0.1.0")
+	logger.Info("Starting Architect - AI-assisted planning tool")
 
 	// Initialize XDG-compliant configuration system
 	configManager := config.NewManager(logger)
 
-	// Create a temporary NoopLogger for early initialization
-	// This is needed because we need to load configuration before we can
-	// initialize the real audit logger, but the config system needs an audit logger.
-	tempAuditLogger := auditlog.NewNoopLogger()
-
-	// Update the configManager with the temporary audit logger
-	configManager.SetAuditLogger(tempAuditLogger)
-
 	// Load configuration from files
 	err = configManager.LoadFromFiles()
 	if err != nil {
-		ui.DisplayWarning("Failed to load configuration: %v", err)
-		ui.DisplayInfo("Using default configuration")
+		logger.Warn("Failed to load configuration: %v", err)
+		logger.Info("Using default configuration")
 	}
 
 	// Ensure configuration directories exist
 	if err := configManager.EnsureConfigDirs(); err != nil {
-		ui.DisplayWarning("Failed to create configuration directories: %v", err)
+		logger.Warn("Failed to create configuration directories: %v", err)
+	}
+
+	// Handle special subcommands before regular flow
+	if handleSpecialCommands(cliConfig, logger, configManager) {
+		// Special command was executed, exit the program
+		return
 	}
 
 	// Convert CLI flags to the format needed for merging
@@ -66,293 +54,166 @@ func Main() {
 
 	// Merge CLI flags with loaded configuration
 	if err := configManager.MergeWithFlags(cliFlags); err != nil {
-		ui.DisplayWarning("Failed to merge CLI flags with configuration: %v", err)
+		logger.Warn("Failed to merge CLI flags with configuration: %v", err)
 	}
 
 	// Get the final configuration
 	appConfig := configManager.GetConfig()
 
-	// Initialize structured audit logger with the loaded configuration
-	auditLogger, err := initAuditLogger(appConfig, logger)
+	// Process task input (from file or flag)
+	taskDescription, err := processTaskInput(cliConfig, logger)
 	if err != nil {
-		ui.DisplayWarning("Failed to initialize audit logger: %v", err)
-		ui.DisplayInfo("Using no-op audit logger")
-		auditLogger = auditlog.NewNoopLogger()
+		logger.Error("Failed to process task input: %v", err)
+		os.Exit(1)
 	}
-	defer auditLogger.Close() // Ensure logger is closed at program exit
 
-	// Create LLM client (will be implemented in a future task, using a stub for now)
-	llmClient := &stubLLMClient{}
+	// Validate inputs
+	if err := validateInputs(cliConfig, taskDescription, logger); err != nil {
+		logger.Error("Input validation failed: %v", err)
+		os.Exit(1)
+	}
 
-	// Create prompt manager
-	promptManager := prompt.NewManager(logger)
-
-	// Create filesystem adapter
-	fsAdapter := filesystem.NewOSFileSystem()
-	
-	// Create git checker
-	gitChecker := git.NewCLIChecker(logger)
-	
-	// Create context gatherer
-	contextGatherer := contextService.NewService(
-		fsAdapter,
-		gitChecker,
-		logger,
-		auditLogger,
-	)
-	
-	// Create file writer
-	fileWriter := filesystem.NewOSFileWriter()
-	
-	// Create plan generator
-	planGenerator := plan.NewService(
-		llmClient,
-		promptManager,
-		logger,
-		auditLogger,
-		ui,
-	)
-
-	// Create the core service
-	service := core.NewService(
-		ui,
-		configManager,
-		newLogProvider(logger, auditLogger),
-		llmClient,
-		promptManager,
-		contextGatherer,
-		planGenerator,
-		fileWriter,
-	)
-
-	// Set up context
-	ctx := context.Background()
-
-	// For now, we'll still rely on the original main function for most functionality
-	// In the future, this will be replaced by calls to service methods
-	// For now, we're just integrating the task clarification functionality
-	refinedTaskDesc := cliConfig.TaskDescription
-	if cliConfig.ClarifyTask && !cliConfig.DryRun {
-		var err error
-		refinedTaskDesc, err = service.ClarifyTask(ctx, cliConfig.TaskDescription, cliConfig.ModelName)
-		if err != nil {
-			ui.DisplayError("Task clarification failed: %v", err)
-			// Continue with original task description
-			refinedTaskDesc = cliConfig.TaskDescription
+	// Initialize API client
+	apiService := NewAPIService(logger)
+	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
+	if err != nil {
+		// Handle API client initialization errors
+		errorDetails := apiService.GetErrorDetails(err)
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Error creating Gemini client: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			if cliConfig.LogLevel == logutil.DebugLevel {
+				logger.Debug("Error details: %s", apiErr.DebugInfo())
+			}
 		} else {
-			ui.DisplayInfo("Using refined task: %s", refinedTaskDesc)
-			// Update the CLI config with the refined task
-			cliConfig.TaskDescription = refinedTaskDesc
+			logger.Error("Error creating Gemini client: %s", errorDetails)
 		}
+		logger.Fatal("Failed to initialize API client")
+	}
+	defer geminiClient.Close()
+
+	// Create token manager
+	tokenManager := NewTokenManager(logger)
+
+	// Create context gatherer
+	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
+
+	// Create gather config
+	gatherConfig := GatherConfig{
+		Paths:        cliConfig.Paths,
+		Include:      cliConfig.Include,
+		Exclude:      cliConfig.Exclude,
+		ExcludeNames: cliConfig.ExcludeNames,
+		Format:       cliConfig.Format,
+		Verbose:      cliConfig.Verbose,
+		LogLevel:     cliConfig.LogLevel,
 	}
 
-	// For now, call the original main function with our initialized components
-	// This will be replaced by proper service orchestration in future refactoring
-	OriginalMain(cliConfig, logger, configManager, auditLogger, ui)
-}
-
-// For now, we'll still rely on the original main.go implementation
-// This will be removed in future refactoring steps
-func OriginalMain(cliConfig *CliConfig, loggerObj, configManagerObj, auditLoggerObj, uiObj interface{}) {
-	// Recover the core service from the calling function's context
-	// This is a bit of a hack, but it's temporary until we fully refactor main.go
-	service := getService()
-	if service == nil {
-		fmt.Println("Error: Could not get service instance. This is a transitional implementation.")
-		os.Exit(1)
-	}
-
-	// Create a context
-	ctx := context.Background()
-
-	// If the user specified a task file, read it
-	taskDescription := cliConfig.TaskDescription
-	if cliConfig.TaskFile != "" {
-		content, err := os.ReadFile(cliConfig.TaskFile)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading task file: %v\n", err)
-			os.Exit(1)
-		}
-		taskDescription = string(content)
-	}
-
-	// Get the project context
-	// First, convert CLI flags to ContextConfig
-	logger, ok := loggerObj.(logutil.LoggerInterface)
-	if !ok {
-		fmt.Println("Error: Logger is not of the expected type. This is a transitional implementation.")
-		os.Exit(1)
-	}
-
-	logger.Info("Gathering project context from %d paths", len(cliConfig.Paths))
-	
-	projectContext, stats, err := service.GatherContext(
-		ctx,
-		cliConfig.Paths,
-		strings.Split(cliConfig.Include, ","),
-		strings.Split(cliConfig.Exclude, ","),
-		strings.Split(cliConfig.ExcludeNames, ","),
-		cliConfig.Format,
-	)
+	// Gather context from files
+	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error gathering context: %v\n", err)
-		os.Exit(1)
+		logger.Fatal("Failed during project context gathering: %v", err)
 	}
 
-	logger.Info("Gathered context from %d/%d files (%d skipped)",
-		stats.ProcessedFiles, stats.TotalFiles, stats.SkippedFiles)
-
-	// If in dry run mode, just display stats and exit
+	// Handle dry run mode
 	if cliConfig.DryRun {
-		ui, ok := uiObj.(core.UserInterface)
-		if !ok {
-			fmt.Println("Error: UI is not of the expected type. This is a transitional implementation.")
-			os.Exit(1)
-		}
-
-		// Get model info for token limit
-		modelInfo, err := service.GetModelInfo(ctx)
+		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error getting model info: %v\n", err)
-			os.Exit(1)
+			logger.Error("Error displaying dry run information: %v", err)
 		}
-
-		// Count tokens in the context
-		tokenCount, _, _ := countTokens(ctx, projectContext, service.GetLLMClient())
-
-		// Call the UI's dry run info display method
-		ui.DisplayDryRunInfo(
-			len(projectContext),
-			strings.Count(projectContext, "\n")+1,
-			int(tokenCount),
-			stats.ProcessedFiles,
-			stats.FileList,
-			modelInfo.InputTokenLimit,
-			float64(tokenCount)/float64(modelInfo.InputTokenLimit)*100,
-		)
-		os.Exit(0)
+		return
 	}
 
-	// Generate and save the plan
-	err = service.GenerateAndSavePlan(
+	// Create output writer
+	outputWriter := NewOutputWriter(logger, tokenManager)
+
+	// Generate and save plan with configuration
+	err = outputWriter.GenerateAndSavePlanWithConfig(
 		ctx,
+		geminiClient,
 		taskDescription,
 		projectContext,
 		cliConfig.OutputFile,
-		cliConfig.ModelName,
-		cliConfig.ConfirmTokens,
-		cliConfig.PromptTemplate,
+		configManager,
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error generating plan: %v\n", err)
-		os.Exit(1)
+		logger.Fatal("Error generating and saving plan: %v", err)
 	}
 
-	fmt.Printf("Plan successfully saved to %s\n", cliConfig.OutputFile)
-	os.Exit(0)
+	logger.Info("Plan successfully generated and saved to %s", cliConfig.OutputFile)
 }
 
-// getService returns the service instance from the global state
-// This is a temporary function for the transitional period
-var globalService *core.Service
+// handleSpecialCommands processes special command flags like list-examples and show-example
+// Returns true if a special command was executed
+func handleSpecialCommands(cliConfig *CliConfig, logger logutil.LoggerInterface, configManager config.ManagerInterface) bool {
+	// Create prompt builder
+	promptBuilder := NewPromptBuilder(logger)
 
-func setService(service *core.Service) {
-	globalService = service
-}
-
-func getService() *core.Service {
-	return globalService
-}
-
-// Helper function for token counting during the transition
-func countTokens(ctx context.Context, text string, llmClient core.LLMClient) (int32, error) {
-	result, err := llmClient.CountTokens(ctx, text)
-	if err != nil {
-		return 0, err
-	}
-	return result.Total, nil
-}
-
-// initAuditLogger creates and configures the audit logger based on application configuration
-func initAuditLogger(appConfig *config.AppConfig, logger interface{}) (auditlog.StructuredLogger, error) {
-	// Temporary implementation - will be moved to an adapter in subsequent tasks
-	// If audit logging is disabled, use a no-op logger
-	if !appConfig.AuditLogEnabled {
-		return auditlog.NewNoopLogger(), nil
+	// Handle special subcommands before regular flow
+	if cliConfig.ListExamples {
+		err := promptBuilder.ListExampleTemplates(configManager)
+		if err != nil {
+			logger.Error("Error listing example templates: %v", err)
+			os.Exit(1)
+		}
+		return true
 	}
 
-	// Create an audit logger that writes to the configured file
-	auditLogger, err := auditlog.NewFileLogger(appConfig.AuditLogFile)
-	if err != nil {
-		return auditlog.NewNoopLogger(), fmt.Errorf("failed to create audit logger: %w", err)
+	if cliConfig.ShowExample != "" {
+		err := promptBuilder.ShowExampleTemplate(cliConfig.ShowExample, configManager)
+		if err != nil {
+			logger.Error("Error showing example template: %v", err)
+			os.Exit(1)
+		}
+		return true
 	}
 
-	return auditLogger, nil
+	// No special commands were executed
+	return false
 }
 
-// logProvider implements the core.LogProvider interface to provide access to loggers
-type logProvider struct {
-	logger      logutil.LoggerInterface
-	auditLogger auditlog.StructuredLogger
-}
+// processTaskInput extracts task description from file or flag
+func processTaskInput(cliConfig *CliConfig, logger logutil.LoggerInterface) (string, error) {
+	// If task file is provided, read from file
+	if cliConfig.TaskFile != "" {
+		// Create prompt builder
+		promptBuilder := NewPromptBuilder(logger)
 
-func newLogProvider(logger logutil.LoggerInterface, auditLogger auditlog.StructuredLogger) *logProvider {
-	return &logProvider{
-		logger:      logger,
-		auditLogger: auditLogger,
-	}
-}
-
-func (p *logProvider) GetLogger() logutil.LoggerInterface {
-	return p.logger
-}
-
-func (p *logProvider) GetAuditLogger() auditlog.StructuredLogger {
-	return p.auditLogger
-}
-
-// stubLLMClient is a temporary implementation of the core.LLMClient interface
-// It will be replaced with a real implementation in a future refactoring task
-type stubLLMClient struct{}
-
-func (c *stubLLMClient) GenerateContent(ctx context.Context, prompt string) (*core.GenerationResult, error) {
-	// For task clarification stage 1, return questions
-	if strings.Contains(prompt, "clarify") {
-		return &core.GenerationResult{
-			Content:      `{"analysis":"Task needs clarification.","questions":["What is the expected output?","What constraints are there?","How should it integrate with existing code?"]}`,
-			FinishReason: "STOP",
-			TokenCount:   100,
-		}, nil
-	}
-	// For task clarification stage 2, return refined task
-	if strings.Contains(prompt, "refine") {
-		return &core.GenerationResult{
-			Content:      `{"refined_task":"Improved task description with details from answers.","key_points":["Output format specified","Performance constraints noted","Integration approach outlined"]}`,
-			FinishReason: "STOP",
-			TokenCount:   100,
-		}, nil
+		// Read task from file using prompt builder
+		content, err := promptBuilder.ReadTaskFromFile(cliConfig.TaskFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to read task from file: %w", err)
+		}
+		return content, nil
 	}
 
-	// Default response
-	return &core.GenerationResult{
-		Content:      "Stub response",
-		FinishReason: "STOP",
-		TokenCount:   100,
-	}, nil
+	// Otherwise, use the task description from CLI flags
+	return cliConfig.TaskDescription, nil
 }
 
-func (c *stubLLMClient) CountTokens(ctx context.Context, text string) (*core.TokenResult, error) {
-	return &core.TokenResult{Total: 100}, nil
-}
+// validateInputs verifies that all required inputs are provided
+func validateInputs(cliConfig *CliConfig, taskDescription string, logger logutil.LoggerInterface) error {
+	// Skip validation in dry-run mode
+	if cliConfig.DryRun {
+		return nil
+	}
 
-func (c *stubLLMClient) GetModelInfo(ctx context.Context) (*core.ModelInfo, error) {
-	return &core.ModelInfo{
-		Name:             "stub-model",
-		InputTokenLimit:  8192,
-		OutputTokenLimit: 4096,
-	}, nil
-}
+	// Validate task description
+	if taskDescription == "" {
+		return fmt.Errorf("task description is required (use --task or --task-file)")
+	}
 
-func (c *stubLLMClient) Close() error {
+	// Validate paths
+	if len(cliConfig.Paths) == 0 {
+		return fmt.Errorf("at least one file or directory path must be provided")
+	}
+
+	// Validate API key
+	if cliConfig.ApiKey == "" {
+		return fmt.Errorf("%s environment variable not set", apiKeyEnvVar)
+	}
+
 	return nil
 }

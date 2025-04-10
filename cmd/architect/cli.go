@@ -38,6 +38,8 @@ type CliConfig struct {
 	ConfirmTokens   int
 	PromptTemplate  string
 	ClarifyTask     bool
+	ListExamples    bool
+	ShowExample     string
 	Paths           []string
 	ApiKey          string
 }
@@ -68,14 +70,24 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flagSet.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
 	clarifyTaskFlag := flagSet.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
+	listExamplesFlag := flagSet.Bool("list-examples", false, "List available example prompt template files")
+	showExampleFlag := flagSet.String("show-example", "", "Display the content of a specific example template")
 
 	// Set custom usage message
 	flagSet.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s (--task \"<description>\" | --task-file <path>) [options] <path1> [path2...]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [--list-examples | --show-example NAME | (--task \"<description>\" | --task-file <path>) [options] <path1> [path2...]]\n\n", os.Args[0])
+
 		fmt.Fprintf(os.Stderr, "Arguments:\n")
 		fmt.Fprintf(os.Stderr, "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
+
+		fmt.Fprintf(os.Stderr, "Example Commands:\n")
+		fmt.Fprintf(os.Stderr, "  %s --list-examples                 List available example templates\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic.tmpl       Display the content of a specific example template\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic > my.tmpl  Save an example template to a file\n\n", os.Args[0])
+
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flagSet.PrintDefaults()
+
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
 		fmt.Fprintf(os.Stderr, "  %s: Required. Your Google AI Gemini API key.\n", apiKeyEnvVar)
 	}
@@ -100,16 +112,20 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
 	config.ClarifyTask = *clarifyTaskFlag
+	config.ListExamples = *listExamplesFlag
+	config.ShowExample = *showExampleFlag
 	config.Paths = flagSet.Args()
 	config.ApiKey = getenv(apiKeyEnvVar)
 
-	// Basic validation
-	if config.TaskDescription == "" && config.TaskFile == "" {
-		return nil, fmt.Errorf("missing task description, use --task or --task-file")
-	}
+	// Basic validation for non-special commands
+	if !config.ListExamples && config.ShowExample == "" {
+		if config.TaskDescription == "" && config.TaskFile == "" {
+			return nil, fmt.Errorf("missing task description, use --task or --task-file")
+		}
 
-	if len(config.Paths) == 0 {
-		return nil, fmt.Errorf("no paths specified for project context")
+		if len(config.Paths) == 0 {
+			return nil, fmt.Errorf("no paths specified for project context")
+		}
 	}
 
 	return config, nil
@@ -167,6 +183,8 @@ func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
 		"confirmTokens":  cliConfig.ConfirmTokens,
 		"promptTemplate": cliConfig.PromptTemplate,
 		"clarify":        cliConfig.ClarifyTask,
+		"listExamples":   cliConfig.ListExamples,
+		"showExample":    cliConfig.ShowExample,
 		"apiKey":         cliConfig.ApiKey,
 	}
 }

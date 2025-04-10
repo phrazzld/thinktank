@@ -112,7 +112,7 @@
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
 
 ## Main Entry Point
-- [ ] **Update cmd/architect/main.go**
+- [x] **Update cmd/architect/main.go**
   - **Action:** Expand the Main() function to use all the refactored components, gradually phasing out the original implementation.
   - **Depends On:** All extraction tasks completed (Token Management, API Client, Context Gathering, Prompt Building, Output Handling).
   - **AC Ref:** Implementation Steps 7.
