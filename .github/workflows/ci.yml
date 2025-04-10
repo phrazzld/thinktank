@@ -29,8 +29,15 @@ jobs:
       - name: Verify dependencies
         run: go mod verify
 
+      # Check code formatting
+      - name: Check formatting
+        run: |
+          if [ -n "$(go fmt ./...)" ]; then
+            echo "Code is not formatted, run 'go fmt ./...'"
+            exit 1
+          fi
+
       # The following steps will be implemented in their respective tasks:
-      # - "Implement formatting check"
       # - "Implement vet check"
       # - "Implement golangci-lint"
 

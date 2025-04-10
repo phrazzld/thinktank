@@ -34,7 +34,7 @@
   - **Depends On:** Configure Go environment setup
   - **AC Ref:** Lint job
 
-- [ ] **Implement formatting check**
+- [x] **Implement formatting check**
   - **Action:** Add step to check code formatting with go fmt
   - **Depends On:** Configure Go environment setup
   - **AC Ref:** Code Quality Checks step 1
