@@ -49,7 +49,7 @@
 
 ## Configuration System Integration
 
-- [ ] **Task Title:** Add audit log configuration fields to AppConfig
+- [x] **Task Title:** Add audit log configuration fields to AppConfig
   - **Action:** Update the AppConfig struct in `config.go` to include AuditLogEnabled and AuditLogFile fields.
   - **Depends On:** None
   - **AC Ref:** AC 3.1, AC 3.2

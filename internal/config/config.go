@@ -67,10 +67,12 @@ type AppConfig struct {
 	ConfirmTokens int    `mapstructure:"confirm_tokens" toml:"confirm_tokens"`
 
 	// Logging and display settings
-	Verbose   bool             `mapstructure:"verbose" toml:"verbose"`
-	LogLevel  logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
-	UseColors bool             `mapstructure:"use_colors" toml:"use_colors"`
-	DryRun    bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
+	Verbose         bool             `mapstructure:"verbose" toml:"verbose"`
+	LogLevel        logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
+	UseColors       bool             `mapstructure:"use_colors" toml:"use_colors"`
+	DryRun          bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
+	AuditLogEnabled bool             `mapstructure:"audit_log_enabled" toml:"audit_log_enabled"`
+	AuditLogFile    string           `mapstructure:"audit_log_file" toml:"audit_log_file"`
 
 	// Template settings (hierarchical)
 	Templates TemplateConfig `mapstructure:"templates" toml:"templates"`
@@ -88,12 +90,14 @@ type AppConfig struct {
 // DefaultConfig returns a new AppConfig instance with default values
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
-		OutputFile:    DefaultOutputFile,
-		ModelName:     DefaultModel,
-		Format:        DefaultFormat,
-		UseColors:     true,
-		LogLevel:      logutil.InfoLevel,
-		ConfirmTokens: 0, // Disabled by default
+		OutputFile:      DefaultOutputFile,
+		ModelName:       DefaultModel,
+		Format:          DefaultFormat,
+		UseColors:       true,
+		LogLevel:        logutil.InfoLevel,
+		ConfirmTokens:   0,     // Disabled by default
+		AuditLogEnabled: false, // Audit logging disabled by default
+		AuditLogFile:    "",    // Empty string (will use default location when implemented)
 		Excludes: ExcludeConfig{
 			Extensions: DefaultExcludes,
 			Names:      DefaultExcludeNames,

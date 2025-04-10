@@ -262,6 +262,8 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 	v.SetDefault("clarify_task", defaultConfig.ClarifyTask)
 	v.SetDefault("confirm_tokens", defaultConfig.ConfirmTokens)
 	v.SetDefault("include", defaultConfig.Include)
+	v.SetDefault("audit_log_enabled", defaultConfig.AuditLogEnabled)
+	v.SetDefault("audit_log_file", defaultConfig.AuditLogFile)
 
 	// Hierarchical settings
 	v.SetDefault("templates.default", defaultConfig.Templates.Default)
@@ -478,6 +480,7 @@ func (m *Manager) displayInitializationMessage() {
 	m.logger.Printf("    - Model: %s", defaults.ModelName)
 	m.logger.Printf("    - Log Level: %s", defaults.LogLevel)
 	m.logger.Printf("    - Default Template: %s", defaults.Templates.Default)
+	m.logger.Printf("    - Audit Logging: %v", defaults.AuditLogEnabled)
 	m.logger.Printf("  You can customize these settings by editing the file.")
 	m.logger.Printf("  See documentation for all available options.")
 }

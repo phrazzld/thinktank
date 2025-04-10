@@ -17,6 +17,10 @@ log_level = "info"  # Log level (debug, info, warn, error)
 use_colors = true  # Use colored output
 no_spinner = false  # Disable spinner animation
 
+# Audit logging options
+audit_log_enabled = false  # Enable structured audit logging in JSON lines format
+audit_log_file = ""  # Path to audit log file (empty uses default location)
+
 # Template settings
 [templates]
 default = "default.tmpl"  # Main template for generating plans

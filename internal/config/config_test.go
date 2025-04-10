@@ -41,6 +41,15 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.Excludes.Names != DefaultExcludeNames {
 		t.Errorf("Expected Excludes.Names to match DefaultExcludeNames")
 	}
+
+	// Check audit log values
+	if cfg.AuditLogEnabled != false {
+		t.Errorf("Expected AuditLogEnabled to be false, got %v", cfg.AuditLogEnabled)
+	}
+
+	if cfg.AuditLogFile != "" {
+		t.Errorf("Expected AuditLogFile to be empty string, got %s", cfg.AuditLogFile)
+	}
 }
 
 func TestAppConfig_MarshalUnmarshal(t *testing.T) {
@@ -56,6 +65,8 @@ func TestAppConfig_MarshalUnmarshal(t *testing.T) {
 	cfg.OutputFile = "test-output.md"
 	cfg.Templates.Default = "custom-default.tmpl"
 	cfg.Excludes.Extensions = ".test"
+	cfg.AuditLogEnabled = true
+	cfg.AuditLogFile = "/path/to/audit.log"
 
 	// This is just a placeholder to verify the structure can be marshaled/unmarshaled
 	// The actual TOML marshal/unmarshal will be tested in loader_test.go
