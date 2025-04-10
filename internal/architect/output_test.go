@@ -288,11 +288,9 @@ func newOutputMockAPIService() *outputMockAPIService {
 // Override the default NewAPIService function for testing
 var originalNewAPIService = architect.NewAPIService
 
-// mockSetupPromptManagerWithConfig is used to mock the SetupPromptManagerWithConfig function
-var mockSetupPromptManagerWithConfig func(logger logutil.LoggerInterface, configManager config.ManagerInterface) (promptpkg.ManagerInterface, error)
-
-// Reference to the original new manager function for tests
-var originalNewManager = promptpkg.NewManager
+// These variables have been removed as they're unused:
+// - mockSetupPromptManagerWithConfig
+// - originalNewManager
 
 // Implement the updated test for GenerateAndSavePlanWithConfig
 func TestGenerateAndSavePlanWithConfig(t *testing.T) {

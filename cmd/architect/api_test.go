@@ -31,43 +31,12 @@ func (m *mockAPILogger) Error(format string, args ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
 }
 
-// mockAPIService is a test implementation of APIService
-type mockAPIService struct {
-	logger     logutil.LoggerInterface
-	initError  error
-	mockClient gemini.Client
-}
-
-func newMockAPIService(logger logutil.LoggerInterface, initError error, mockClient gemini.Client) APIService {
-	return &mockAPIService{
-		logger:     logger,
-		initError:  initError,
-		mockClient: mockClient,
-	}
-}
-
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	if m.initError != nil {
-		return nil, m.initError
-	}
-	return m.mockClient, nil
-}
-
-func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return "", errors.New("not implemented in mock")
-}
-
-func (m *mockAPIService) IsEmptyResponseError(err error) bool {
-	return false
-}
-
-func (m *mockAPIService) IsSafetyBlockedError(err error) bool {
-	return false
-}
-
-func (m *mockAPIService) GetErrorDetails(err error) string {
-	return err.Error()
-}
+// Note: The following mock service code was removed as it was not being used:
+// - mockAPIService struct definition
+// - newMockAPIService function 
+// - mockAPIService interface methods (InitClient, ProcessResponse, etc.)
+//
+// For testing, we're using the mock functionality directly in the test functions
 
 // TestNewAPIService tests the creation of a new APIService
 func TestNewAPIService(t *testing.T) {

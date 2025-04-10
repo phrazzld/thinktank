@@ -12,20 +12,21 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// MockAPIService implements the architect.APIService interface for testing
-type MockAPIService struct {
+// mockIntAPIService implements the architect.APIService interface for testing
+// This type is actually used by running tests but wasn't detected by linting
+type mockIntAPIService struct {
 	logger     logutil.LoggerInterface
 	mockClient gemini.Client
 }
 
 // InitClient returns the mock client instead of creating a real one
-func (s *MockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
 	// Always return the mock client, ignoring the API key and model name
 	return s.mockClient, nil
 }
 
 // ProcessResponse processes the API response and extracts content
-func (s *MockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
+func (s *mockIntAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
 	// Check for nil result
 	if result == nil {
 		return "", fmt.Errorf("result is nil")
@@ -61,7 +62,7 @@ func (s *MockAPIService) ProcessResponse(result *gemini.GenerationResult) (strin
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses
-func (s *MockAPIService) IsEmptyResponseError(err error) bool {
+func (s *mockIntAPIService) IsEmptyResponseError(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -69,7 +70,7 @@ func (s *MockAPIService) IsEmptyResponseError(err error) bool {
 }
 
 // IsSafetyBlockedError checks if an error is related to safety filters
-func (s *MockAPIService) IsSafetyBlockedError(err error) bool {
+func (s *mockIntAPIService) IsSafetyBlockedError(err error) bool {
 	if err == nil {
 		return false
 	}
@@ -77,7 +78,7 @@ func (s *MockAPIService) IsSafetyBlockedError(err error) bool {
 }
 
 // GetErrorDetails extracts detailed information from an error
-func (s *MockAPIService) GetErrorDetails(err error) string {
+func (s *mockIntAPIService) GetErrorDetails(err error) string {
 	if err == nil {
 		return ""
 	}
@@ -94,7 +95,7 @@ func RunTestWithConfig(
 	configManager := config.NewManager(env.Logger)
 
 	// Create a mock API service that uses the test environment's mock client
-	mockAPIService := &MockAPIService{
+	mockAPIService := &mockIntAPIService{
 		logger:     env.Logger,
 		mockClient: env.MockClient,
 	}
