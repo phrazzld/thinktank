@@ -1,6 +1,20 @@
 // Package auditlog provides structured logging capabilities for the architect tool.
 package auditlog
 
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+)
+
+// errLogger is used to log internal errors without causing recursive logging issues
+var errLogger = func(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format+"\n", args...)
+}
+
 // StructuredLogger defines the interface for structured audit logging.
 // It provides methods for logging structured events and cleaning up resources.
 type StructuredLogger interface {
@@ -19,4 +33,76 @@ type StructuredLogger interface {
 	// Returns an error if cleanup fails, which the caller may choose
 	// to log but typically should not cause the application to fail.
 	Close() error
+}
+
+// FileLogger implements StructuredLogger by writing JSON lines to a file.
+// It ensures thread-safety using a mutex and properly manages file resources.
+type FileLogger struct {
+	file *os.File    // The file handle for writing logs
+	mu   sync.Mutex  // Mutex for ensuring thread-safety
+}
+
+// NewFileLogger creates a new structured logger that writes to the specified file path.
+// It automatically creates the directory if it doesn't exist and opens the file in append mode.
+func NewFileLogger(filePath string) (*FileLogger, error) {
+	// Ensure directory exists
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, err
+	}
+
+	// Open file for appending
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+
+	return &FileLogger{
+		file: file,
+	}, nil
+}
+
+// Log writes an audit event to the log file as a JSON line.
+// It handles errors internally, logs them to stderr, but doesn't fail the application.
+func (l *FileLogger) Log(event AuditEvent) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	// Ensure timestamp is set
+	if event.Timestamp.IsZero() {
+		event.Timestamp = time.Now().UTC()
+	}
+
+	// Ensure level is set
+	if event.Level == "" {
+		event.Level = "INFO"
+	}
+
+	// Marshal to JSON
+	jsonBytes, err := json.Marshal(event)
+	if err != nil {
+		// Log to stderr but avoid recursion
+		errLogger("[ERROR] Failed to marshal audit event: %v", err)
+		return
+	}
+
+	// Add newline and write to file
+	jsonBytes = append(jsonBytes, '\n')
+	if _, err := l.file.Write(jsonBytes); err != nil {
+		errLogger("[ERROR] Failed to write audit event: %v", err)
+	}
+}
+
+// Close flushes any buffered data and closes the underlying file.
+// It is safe to call Close multiple times; subsequent calls will return nil.
+func (l *FileLogger) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	if l.file != nil {
+		err := l.file.Close()
+		l.file = nil
+		return err
+	}
+	return nil
 }

@@ -22,7 +22,7 @@
   - **Depends On:** Define AuditEvent and ErrorDetails structs
   - **AC Ref:** AC 1.1, AC 1.3
 
-- [ ] **Task Title:** Implement FileLogger struct
+- [x] **Task Title:** Implement FileLogger struct
   - **Action:** Create the FileLogger struct that satisfies the StructuredLogger interface.
   - **Depends On:** Define StructuredLogger interface
   - **AC Ref:** AC 1.1, AC 1.2, AC 2.1
