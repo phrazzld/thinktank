@@ -4,6 +4,8 @@ package architect
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -39,8 +41,27 @@ func NewOutputWriter(logger logutil.LoggerInterface, tokenManager TokenManager) 
 
 // SaveToFile writes the generated plan to the specified file
 func (ow *outputWriter) SaveToFile(content, outputFile string) error {
-	// Stub implementation - will be replaced with actual code from main.go
-	return fmt.Errorf("not implemented yet")
+	// Ensure output path is absolute
+	outputPath := outputFile
+	if !filepath.IsAbs(outputPath) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			ow.logger.Error("Error getting current working directory: %v", err)
+			return fmt.Errorf("error getting current working directory: %w", err)
+		}
+		outputPath = filepath.Join(cwd, outputPath)
+	}
+
+	// Write to file
+	ow.logger.Info("Writing plan to %s...", outputPath)
+	err := os.WriteFile(outputPath, []byte(content), 0644)
+	if err != nil {
+		ow.logger.Error("Error writing plan to file %s: %v", outputPath, err)
+		return fmt.Errorf("error writing plan to file %s: %w", outputPath, err)
+	}
+
+	ow.logger.Info("Successfully generated plan and saved to %s", outputPath)
+	return nil
 }
 
 // GenerateAndSavePlan creates and saves the plan to a file

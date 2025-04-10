@@ -94,3 +94,9 @@
   - **Action:** Add new tests for prompt.go functions to verify template handling.
   - **Depends On:** All prompt building functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
+  
+## Output Handling
+- [x] **Extract file writing logic to output.go** (Completed on 2025-04-10)
+  - **Action:** Move the saveToFile function from main.go to output.go.
+  - **Depends On:** Create skeleton files in cmd/architect/.
+  - **AC Ref:** Implementation Steps 6.

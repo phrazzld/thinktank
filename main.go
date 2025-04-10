@@ -752,25 +752,17 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 // processApiResponse function moved to cmd/architect/api.go
 
 // saveToFile writes the generated plan to the specified file
+// Transitional implementation - moved to cmd/architect/output.go
 func saveToFile(content string, outputFile string, logger logutil.LoggerInterface) {
-	// Ensure output path is absolute
-	outputPath := outputFile
-	if !filepath.IsAbs(outputPath) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			logger.Fatal("Error getting current working directory: %v", err)
-		}
-		outputPath = filepath.Join(cwd, outputPath)
-	}
-
-	// Write to file
-	logger.Info("Writing plan to %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), 0644)
+	// Create an output writer
+	tokenManager := architect.NewTokenManager(logger)
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
+	
+	// Call the method from the output writer
+	err := outputWriter.SaveToFile(content, outputFile)
 	if err != nil {
-		logger.Fatal("Error writing plan to file %s: %v", outputPath, err)
+		logger.Fatal("Error saving to file: %v", err)
 	}
-
-	logger.Info("Successfully generated plan and saved to %s", outputPath)
 }
 
 // initSpinner function removed
