@@ -11,7 +11,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.3.
 
-- [ ] **Remove Clarify and Refine fields from TemplateConfig struct in config.go**
+- [x] **Remove Clarify and Refine fields from TemplateConfig struct in config.go**
   - **Action:** Edit internal/config/config.go to remove the Clarify and Refine string fields from the TemplateConfig struct.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.4.

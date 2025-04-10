@@ -32,10 +32,6 @@ const (
 type TemplateConfig struct {
 	// Default template used for generating content (logical name or path)
 	Default string `mapstructure:"default" toml:"default"`
-	// Clarification template used for task analysis
-	Clarify string `mapstructure:"clarify" toml:"clarify"`
-	// Refinement template used for refining task description
-	Refine string `mapstructure:"refine" toml:"refine"`
 	// Test template for integration testing
 	Test string `mapstructure:"test" toml:"test"`
 	// Custom template for integration testing
@@ -99,8 +95,6 @@ func DefaultConfig() *AppConfig {
 		},
 		Templates: TemplateConfig{
 			Default: "default.tmpl",
-			Clarify: "clarify.tmpl",
-			Refine:  "refine.tmpl",
 		},
 	}
 }

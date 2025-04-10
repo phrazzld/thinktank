@@ -10,3 +10,8 @@
   - **Action:** Edit internal/config/config.go to remove the ClarifyTask field including mapstructure and toml tags.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.3.
+
+- [x] **Remove Clarify and Refine fields from TemplateConfig struct in config.go** (2025-04-09)
+  - **Action:** Edit internal/config/config.go to remove the Clarify and Refine string fields from the TemplateConfig struct.
+  - **Depends On:** None.
+  - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.4.
