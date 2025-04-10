@@ -106,7 +106,7 @@
   - **Depends On:** Extract file writing logic to output.go.
   - **AC Ref:** Implementation Steps 6.
 
-- [ ] **Create unit tests for output package functions**
+- [x] **Create unit tests for output package functions**
   - **Action:** Add new tests for output.go functions to ensure proper file writing.
   - **Depends On:** All output handling functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.

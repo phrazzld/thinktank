@@ -105,3 +105,8 @@
   - **Action:** Move the generateAndSavePlan, generateAndSavePlanWithConfig, and generateAndSavePlanWithPromptManager functions from main.go to output.go.
   - **Depends On:** Extract file writing logic to output.go.
   - **AC Ref:** Implementation Steps 6.
+
+- [x] **Create unit tests for output package functions** (Completed on 2025-04-10)
+  - **Action:** Add new tests for output.go functions to ensure proper file writing.
+  - **Depends On:** All output handling functions moved.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
