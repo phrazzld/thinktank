@@ -31,3 +31,9 @@
   - **Action:** Add new tests for token.go functions to ensure they work correctly in isolation.
   - **Depends On:** All token management functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
+
+## API Client
+- [x] **Extract API client initialization to api.go** (Completed on 2025-04-10)
+  - **Action:** Move the initGeminiClient function from main.go to api.go.
+  - **Depends On:** Create skeleton files in cmd/architect/.
+  - **AC Ref:** Implementation Steps 3.

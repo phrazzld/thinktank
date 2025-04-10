@@ -32,8 +32,11 @@ func NewAPIService(logger logutil.LoggerInterface) APIService {
 
 // InitClient initializes and returns a Gemini client
 func (s *apiService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	// Stub implementation - will be replaced with actual code from main.go
-	return nil, fmt.Errorf("not implemented yet")
+	client, err := gemini.NewClient(ctx, apiKey, modelName)
+	if err != nil {
+		return nil, fmt.Errorf("error creating Gemini client: %w", err)
+	}
+	return client, nil
 }
 
 // ProcessResponse processes the API response and extracts content

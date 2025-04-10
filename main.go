@@ -116,7 +116,11 @@ func main() {
 
 	// Initialize API client
 	ctx := context.Background()
-	geminiClient := initGeminiClient(ctx, config, logger)
+	apiService := architect.NewAPIService(logger)
+	geminiClient, err := apiService.InitClient(ctx, config.ApiKey, config.ModelName)
+	if err != nil {
+		logger.Fatal("Error creating Gemini client: %v", err)
+	}
 	defer geminiClient.Close()
 
 	// Task clarification code has been removed
@@ -383,14 +387,7 @@ func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) val
 	return result
 }
 
-// initGeminiClient creates and initializes the Gemini API client
-func initGeminiClient(ctx context.Context, config *Configuration, logger logutil.LoggerInterface) gemini.Client {
-	client, err := gemini.NewClient(ctx, config.ApiKey, config.ModelName)
-	if err != nil {
-		logger.Fatal("Error creating Gemini client: %v", err)
-	}
-	return client
-}
+// initGeminiClient function moved to cmd/architect/api.go
 
 // gatherContext collects and processes files based on configuration
 func gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {

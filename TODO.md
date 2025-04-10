@@ -33,7 +33,7 @@
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
 
 ## API Client
-- [ ] **Extract API client initialization to api.go**
+- [x] **Extract API client initialization to api.go**
   - **Action:** Move the initGeminiClient function from main.go to api.go.
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 3.
