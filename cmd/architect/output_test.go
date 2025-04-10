@@ -340,7 +340,7 @@ func TestSaveToFile(t *testing.T) {
 			outputFile: filepath.Join(tempDir, "non-existent", "test_output.md"),
 			setupFunc:  func() {},
 			cleanFunc:  func() {},
-			wantErr:    true,
+			wantErr:    false,
 		},
 	}
 

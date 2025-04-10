@@ -1,6 +1,7 @@
 package architect
 
 import (
+	"strings"
 	"context"
 	"errors"
 	"fmt"
@@ -272,9 +273,17 @@ func TestGatherContext(t *testing.T) {
 			return
 		}
 
-		// If no error, ensure we got empty results
-		if projectContext != "" {
-			t.Errorf("Expected empty project context for non-existent path, got %q (length %d)", projectContext, len(projectContext))
+		// Fix: The implementation now returns "<context>\n</context>" for no processed files,
+		// which is a valid behavior to ensure XML-like wrapping consistency
+		// Just check that we're not getting any actual file content
+		if !strings.HasPrefix(projectContext, "<context>") || !strings.HasSuffix(projectContext, "</context>") {
+			t.Errorf("Project context should be wrapped in <context> tags, got %q", projectContext)
+		}
+		
+		// Make sure no actual content is included
+		expectedEmpty := "<context>\n</context>"
+		if projectContext != expectedEmpty {
+			t.Errorf("Expected empty context with only wrapper tags, got %q", projectContext)
 		}
 
 		if stats != nil && stats.ProcessedFilesCount > 0 {
