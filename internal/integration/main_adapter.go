@@ -183,7 +183,6 @@ func (a *MainAdapter) gatherContext(ctx context.Context, config *Configuration, 
 	return "This is a simulated project context for testing."
 }
 
-
 // generateAndSavePlan is a simplified version of the main package's generateAndSavePlan
 func (a *MainAdapter) generateAndSavePlan(ctx context.Context, config *Configuration, geminiClient gemini.Client, projectContext string, logger logutil.LoggerInterface) {
 	// Check token limits first

@@ -105,7 +105,6 @@ func main() {
 
 // clarifyTaskDescription function removed
 
-
 // parseFlags handles command line argument parsing
 func parseFlags() *Configuration {
 	config := &Configuration{}
