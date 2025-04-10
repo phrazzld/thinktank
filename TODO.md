@@ -12,7 +12,7 @@
   - **Depends On:** Create basic package structure for auditlog
   - **AC Ref:** AC 1.1, AC 2.1, AC 2.2
 
-- [ ] **Task Title:** Implement helper function for creating events
+- [x] **Task Title:** Implement helper function for creating events
   - **Action:** Create the NewAuditEvent function to simplify event creation with proper defaults.
   - **Depends On:** Define AuditEvent and ErrorDetails structs
   - **AC Ref:** AC 2.1
