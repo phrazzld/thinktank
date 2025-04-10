@@ -59,7 +59,7 @@
   - **Depends On:** Create test job
   - **AC Ref:** Testing step 1
 
-- [ ] **Add coverage reporting**
+- [x] **Add coverage reporting**
   - **Action:** Add step to generate test coverage reports
   - **Depends On:** Add race detection testing
   - **AC Ref:** Testing step 2

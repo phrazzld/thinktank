@@ -68,6 +68,14 @@ jobs:
       - name: Run tests with race detection
         run: go test -v -race ./...
         timeout-minutes: 15
+        
+      # Generate coverage report
+      - name: Generate coverage report
+        run: go test -coverprofile=coverage.out ./...
+        
+      # Display coverage summary
+      - name: Display coverage summary
+        run: go tool cover -func=coverage.out
 
   # Build job will be implemented in subsequent tasks
   build:
