@@ -3,7 +3,6 @@ package integration
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"os"
 	"strings"
@@ -41,7 +40,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
 }
@@ -112,12 +110,7 @@ func (a *MainAdapter) RunWithArgs(args []string, env *TestEnv) error {
 	ctx := context.Background()
 	geminiClient := env.MockClient
 
-	// If task clarification is enabled, simulate the clarification process
-	if config.ClarifyTask && !config.DryRun {
-		// For testing, we'll just modify the task description
-		// instead of trying to actually run the interactive part
-		config.TaskDescription = a.simulateClarifyTaskDescription(ctx, config, geminiClient, logger, env)
-	}
+	// Task clarification code has been removed
 
 	// Gather context from files
 	projectContext := a.gatherContext(ctx, config, geminiClient, logger)
@@ -149,7 +142,6 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	dryRunFlag := flag.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
 
 	// Parse flags
 	flag.Parse()
@@ -168,7 +160,6 @@ func (a *MainAdapter) parseFlags() *Configuration {
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
-	config.ClarifyTask = *clarifyTaskFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv("GEMINI_API_KEY")
 
@@ -190,110 +181,6 @@ func (a *MainAdapter) parseFlags() *Configuration {
 func (a *MainAdapter) gatherContext(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
 	// Just return a simplified context for testing
 	return "This is a simulated project context for testing."
-}
-
-// simulateClarifyTaskDescription simulates the interactive task clarification process
-func (a *MainAdapter) simulateClarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface, env *TestEnv) string {
-	// Get the original task description
-	originalTask := config.TaskDescription
-
-	// For testing, we'll just simulate both API calls with mock responses
-
-	// First API call would generate clarification questions
-	// We simulate the first response as if Gemini returned questions
-	clarificationResponse := `{
-		"analysis": "The task needs clarification on implementation details and scope.",
-		"questions": [
-			"What specific features should the implementation include?",
-			"Are there any performance requirements or constraints?",
-			"How should the feature integrate with existing code?"
-		]
-	}`
-
-	// In a real scenario, the user would answer these questions
-	// For testing, we'll simulate user input
-	env.SimulateUserInput("Should include error handling and logging\n")
-	env.SimulateUserInput("Should be optimized for speed\n")
-	env.SimulateUserInput("Should use existing utility functions\n")
-
-	// Second API call would refine the task based on answers
-	// We simulate the second response
-	refinementResponse := `{
-		"refined_task": "REFINED: ${originalTask} with comprehensive error handling, logging, and performance optimization, utilizing existing utility functions.",
-		"key_points": [
-			"Implement robust error handling and logging",
-			"Optimize for performance",
-			"Integrate with existing utility code"
-		]
-	}`
-
-	// Replace placeholder with actual task
-	refinementResponse = strings.Replace(refinementResponse, "${originalTask}", originalTask, 1)
-
-	// Configure mock client to return our responses
-	previousGenerateContent := env.MockClient.GenerateContentFunc
-
-	// Set up the mock to first return the clarification questions, then the refined task
-	callCount := 0
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		callCount++
-		if callCount == 1 {
-			// First call - return clarification questions
-			return &gemini.GenerationResult{
-				Content:      clarificationResponse,
-				TokenCount:   100,
-				FinishReason: "STOP",
-			}, nil
-		} else {
-			// Second call - return refined task
-			return &gemini.GenerationResult{
-				Content:      refinementResponse,
-				TokenCount:   100,
-				FinishReason: "STOP",
-			}, nil
-		}
-	}
-
-	// Extract the refined task from the response (simulating what the real function would do)
-	var refinementData struct {
-		RefinedTask string   `json:"refined_task"`
-		KeyPoints   []string `json:"key_points"`
-	}
-
-	// Parse JSON response - need to call GenerateContent twice to get to this point
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		return &gemini.GenerationResult{
-			Content:      clarificationResponse,
-			TokenCount:   100,
-			FinishReason: "STOP",
-		}, nil
-	}
-
-	if _, err := geminiClient.GenerateContent(ctx, "first call"); err != nil {
-		return "" // Return empty string if first call fails
-	}
-
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		return &gemini.GenerationResult{
-			Content:      refinementResponse,
-			TokenCount:   100,
-			FinishReason: "STOP",
-		}, nil
-	}
-
-	result, err := geminiClient.GenerateContent(ctx, "second call") // Second call for refinement
-	if err != nil {
-		return "" // Return empty string if second call fails
-	}
-
-	// Parse the refinement result
-	_ = json.Unmarshal([]byte(result.Content), &refinementData)
-
-	// Restore the original mock function for future calls
-	env.MockClient.GenerateContentFunc = previousGenerateContent
-
-	// Return the refined task
-	return refinementData.RefinedTask
 }
 
 // generateAndSavePlan is a simplified version of the main package's generateAndSavePlan
