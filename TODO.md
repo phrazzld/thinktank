@@ -67,7 +67,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.3.
 
-- [ ] **Remove simulateClarifyTaskDescription function in main_adapter.go**
+- [x] **Remove simulateClarifyTaskDescription function in main_adapter.go**
   - **Action:** Delete the entire simulateClarifyTaskDescription function from internal/integration/main_adapter.go.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.4.
