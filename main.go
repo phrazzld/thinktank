@@ -106,19 +106,6 @@ func main() {
 
 // clarifyTaskDescription function removed
 
-// clarifyTaskDescriptionWithConfig performs task clarification using the config system
-func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Set up prompt manager with config support
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-	if err != nil {
-		logger.Error("Failed to set up prompt manager: %v", err)
-		// Create a basic prompt manager instead
-		promptManager = prompt.NewManager(logger)
-	}
-
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
-}
-
 // clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
 func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
 	// Spinner initialization removed
