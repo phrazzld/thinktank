@@ -7,7 +7,7 @@
   - **AC Ref:** AC 1.7
 
 ## CLI Flag Removal
-- [ ] **Remove clarify flag definition**
+- [x] **Remove clarify flag definition**
   - **Action:** In `cmd/architect/cli.go`, delete the `clarifyTaskFlag` variable definition (line ~98).
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.1

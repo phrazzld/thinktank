@@ -95,7 +95,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flagSet.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	clarifyTaskFlag := flagSet.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
+	// Flag removed but kept as a temporary variable for compilation
+	clarifyTaskFlag := new(bool) // This will be removed in a subsequent task
 	listExamplesFlag := flagSet.Bool("list-examples", false, "List available example prompt template files")
 	showExampleFlag := flagSet.String("show-example", "", "Display the content of a specific example template")
 
