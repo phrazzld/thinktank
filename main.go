@@ -45,7 +45,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	ClarifyTask     bool
 	Paths           []string
 	ApiKey          string
 }
