@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -301,4 +302,13 @@ func (m *Manager) GetExampleTemplate(name string) (string, error) {
 	}
 
 	return string(content), nil
+}
+
+// IsTemplate checks if the content is a Go template by looking for template variables
+// like {{.Task}} or {{.Context}}. Returns true if template patterns are found.
+func IsTemplate(content string) bool {
+	// Regular expression to match Go template variables
+	// This pattern looks for {{.Task}} or {{.Context}} with optional whitespace
+	re := regexp.MustCompile(`{{\s*\.(?:Task|Context)\s*}}`)
+	return re.MatchString(content)
 }

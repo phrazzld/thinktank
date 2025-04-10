@@ -176,6 +176,60 @@ func TestLoadTemplateWithConfig(t *testing.T) {
 	}
 }
 
+// TestIsTemplate tests the IsTemplate function to verify it correctly identifies templates
+func TestIsTemplate(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected bool
+	}{
+		{
+			name:     "Basic template with .Task",
+			content:  "This is a template with {{.Task}} variable",
+			expected: true,
+		},
+		{
+			name:     "Basic template with .Context",
+			content:  "This is a template with {{.Context}} variable",
+			expected: true,
+		},
+		{
+			name:     "Template with whitespace",
+			content:  "This is a template with {{ .Task }} variable",
+			expected: true,
+		},
+		{
+			name:     "Multiple template variables",
+			content:  "Template with {{.Task}} and {{.Context}} variables",
+			expected: true,
+		},
+		{
+			name:     "Not a template - no variables",
+			content:  "This is not a template, just plain text",
+			expected: false,
+		},
+		{
+			name:     "Not a template - different variables",
+			content:  "This has {{.Name}} and {{.Something}} but not the right ones",
+			expected: false,
+		},
+		{
+			name:     "Braces but not template syntax",
+			content:  "This has { braces } but not templates",
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsTemplate(tt.content)
+			if result != tt.expected {
+				t.Errorf("IsTemplate(%q) = %v, want %v", tt.content, result, tt.expected)
+			}
+		})
+	}
+}
+
 func TestListTemplates(t *testing.T) {
 	logger := newMockLogger()
 	manager := NewManager(logger)

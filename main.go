@@ -3,6 +3,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
@@ -683,15 +685,49 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 
 	// Spinner initialization removed
 
-	// Construct prompt using the provided prompt manager
-	logger.Info("Building prompt template...")
-	logger.Debug("Building prompt template...")
-	generatedPrompt, err := buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
-	if err != nil {
-		logger.Error("Failed to build prompt: %v", err)
-		logger.Fatal("Failed to build prompt: %v", err)
+	// First check if task file content is a template itself
+	var generatedPrompt string
+	var err error
+
+	if prompt.IsTemplate(config.TaskDescription) {
+		// This is a template in the task file - process it directly
+		logger.Info("Task file contains template variables, processing as template...")
+		logger.Debug("Processing task file as a template")
+		
+		// Create template data
+		data := &prompt.TemplateData{
+			Task:    config.TaskDescription, // This is recursive but works because we're using it as raw text in the template
+			Context: projectContext,
+		}
+		
+		// Create a template from the task file content
+		tmpl, err := template.New("task_file_template").Parse(config.TaskDescription)
+		if err != nil {
+			logger.Error("Failed to parse task file as template: %v", err)
+			logger.Fatal("Failed to parse task file as template: %v", err)
+		}
+		
+		// Execute the template with the context data
+		var buf bytes.Buffer
+		err = tmpl.Execute(&buf, data)
+		if err != nil {
+			logger.Error("Failed to execute task file template: %v", err)
+			logger.Fatal("Failed to execute task file template: %v", err)
+		}
+		
+		generatedPrompt = buf.String()
+		logger.Info("Task file template processed successfully")
+	} else {
+		// Standard approach - use the prompt manager with templates
+		logger.Info("Building prompt template...")
+		logger.Debug("Building prompt template...")
+		generatedPrompt, err = buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
+		if err != nil {
+			logger.Error("Failed to build prompt: %v", err)
+			logger.Fatal("Failed to build prompt: %v", err)
+		}
+		logger.Info("Prompt template built successfully")
 	}
-	logger.Info("Prompt template built successfully")
 
 	// Debug logging of prompt details
 	if config.LogLevel == logutil.DebugLevel {
