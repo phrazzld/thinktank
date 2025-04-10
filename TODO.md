@@ -79,7 +79,7 @@
   - **Depends On:** Create build job
   - **AC Ref:** Build step 1
 
-- [ ] **Add artifact upload**
+- [x] **Add artifact upload**
   - **Action:** Add step to upload build artifacts with correct binary name 'architect'
   - **Depends On:** Implement build step
   - **AC Ref:** Build step 2

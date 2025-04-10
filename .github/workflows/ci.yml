@@ -112,4 +112,10 @@ jobs:
         run: go build -v -ldflags="-s -w" -o architect
         timeout-minutes: 5
       
-      # Artifact upload will be implemented in a subsequent task
+      # Upload binary as artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: architect-binary
+          path: architect
+          retention-days: 7
