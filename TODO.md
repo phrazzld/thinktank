@@ -7,7 +7,7 @@
   - **Depends On:** None
   - **AC Ref:** Integration tests passing
 
-- [ ] **Move Core Logic from cmd/architect to internal/architect**
+- [x] **Move Core Logic from cmd/architect to internal/architect**
   - **Action:** Create a new package `internal/architect` and move the component files (api.go, context.go, output.go, prompt.go, token.go) there. Update imports across the codebase. Keep minimal code in cmd/architect for the entry point. 
   - **Depends On:** None
   - **AC Ref:** Package structure aligns with Go conventions
