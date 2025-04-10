@@ -33,7 +33,7 @@
   - **Depends On:** Improve error messages for task file validation
   - **AC Ref:** Error handling tests (Testing Strategy)
 
-- [ ] **Add integration tests for prompt file usage**
+- [x] **Add integration tests for prompt file usage**
   - **Action:** Create integration tests that validate the complete workflow with various prompt file formats.
   - **Depends On:** Update generateAndSavePlanWithPromptManager function, Add fileIsTemplate detection mechanism
   - **AC Ref:** Integration testing (Testing Strategy)
