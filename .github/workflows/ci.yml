@@ -25,8 +25,11 @@ jobs:
           go-version: 'stable'
           cache: true
 
+      # Verify dependencies integrity
+      - name: Verify dependencies
+        run: go mod verify
+
       # The following steps will be implemented in their respective tasks:
-      # - "Add dependency verification step"
       # - "Implement formatting check"
       # - "Implement vet check"
       # - "Implement golangci-lint"
