@@ -43,6 +43,34 @@ type CliConfig struct {
 	ApiKey         string
 }
 
+// ValidateInputs checks if the configuration is valid and returns an error if not
+func ValidateInputs(config *CliConfig, logger logutil.LoggerInterface) error {
+	// Check if we're in list examples or show example mode
+	if config.ListExamples || config.ShowExample != "" {
+		return nil // Skip validation for example commands
+	}
+
+	// Check for task file
+	if config.TaskFile == "" && !config.DryRun {
+		logger.Error("The required --task-file flag is missing.")
+		return fmt.Errorf("missing required --task-file flag")
+	}
+
+	// Check for input paths
+	if len(config.Paths) == 0 {
+		logger.Error("At least one file or directory path must be provided as an argument.")
+		return fmt.Errorf("no paths specified")
+	}
+
+	// Check for API key
+	if config.ApiKey == "" {
+		logger.Error("%s environment variable not set.", apiKeyEnvVar)
+		return fmt.Errorf("API key not set")
+	}
+
+	return nil
+}
+
 // ParseFlags handles command line argument parsing and returns the configuration
 func ParseFlags() (*CliConfig, error) {
 	return ParseFlagsWithEnv(flag.CommandLine, os.Args[1:], os.Getenv)

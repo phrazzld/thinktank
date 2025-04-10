@@ -158,17 +158,17 @@ func (m *outputGeminiClient) Close() error {
 
 // mockConfigManager implements a simplified config.ManagerInterface for testing
 type mockConfigManager struct {
-	loadFromFilesFunc       func() error
-	ensureConfigDirsFunc    func() error
-	getConfigFunc           func() *config.AppConfig
-	mergeWithFlagsFunc      func(flags map[string]interface{}) error
-	getConfigDirsFunc       func() config.ConfigDirectories
-	getUserConfigDirFunc    func() string
-	getSystemConfigDirsFunc func() []string
-	getUserTemplateDirFunc  func() string
+	loadFromFilesFunc         func() error
+	ensureConfigDirsFunc      func() error
+	getConfigFunc             func() *config.AppConfig
+	mergeWithFlagsFunc        func(flags map[string]interface{}) error
+	getConfigDirsFunc         func() config.ConfigDirectories
+	getUserConfigDirFunc      func() string
+	getSystemConfigDirsFunc   func() []string
+	getUserTemplateDirFunc    func() string
 	getSystemTemplateDirsFunc func() []string
-	getTemplatePathFunc     func(name string) (string, error)
-	writeDefaultConfigFunc  func() error
+	getTemplatePathFunc       func(name string) (string, error)
+	writeDefaultConfigFunc    func() error
 }
 
 func newMockConfigManager() *mockConfigManager {
@@ -793,4 +793,3 @@ func TestGenerateAndSavePlan(t *testing.T) {
 		})
 	}
 }
-
