@@ -227,7 +227,7 @@ func main() {}`)
 func TestErrorHandling(t *testing.T) {
 	// Temporarily skip this test until error handling is updated
 	t.Skip("Skipping error handling test - needs updating for refactored architecture")
-	
+
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
@@ -278,7 +278,7 @@ func main() {}`)
 func TestTokenCountExceeded(t *testing.T) {
 	// Temporarily skip this test until token counting is updated
 	t.Skip("Skipping token count test - needs updating for refactored architecture")
-	
+
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
@@ -492,7 +492,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Set up the output file path
 		outputFile := filepath.Join(env.TestDir, "output.md")
-		
+
 		// Set environment variable to signal the template type
 		os.Setenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION", "true")
 		defer os.Unsetenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION")
@@ -537,7 +537,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Set up the output file path
 		outputFile := filepath.Join(env.TestDir, "output.md")
-		
+
 		// Set environment variable to signal the template type
 		os.Setenv("MOCK_TEMPLATE_HAS_VARIABLES", "true")
 		defer os.Unsetenv("MOCK_TEMPLATE_HAS_VARIABLES")
@@ -548,7 +548,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			[]string{
 				"architect",
 				"--task", taskFileContent, // Direct content with template vars
-				"--task-file", taskFile,   // Indicates we're testing a task file
+				"--task-file", taskFile, // Indicates we're testing a task file
 				"--output", outputFile,
 				env.TestDir,
 			},
@@ -582,7 +582,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Set up the output file path
 		outputFile := filepath.Join(env.TestDir, "output.md")
-		
+
 		// Set environment variable to signal the template type
 		os.Setenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION", "true")
 		defer os.Unsetenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION")
@@ -593,7 +593,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			[]string{
 				"architect",
 				"--task", taskFileContent, // Direct content with template vars
-				"--task-file", taskFile,   // Indicates we're testing a task file with .tmpl extension
+				"--task-file", taskFile, // Indicates we're testing a task file with .tmpl extension
 				"--output", outputFile,
 				env.TestDir,
 			},
@@ -627,7 +627,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Set up the output file path
 		outputFile := filepath.Join(env.TestDir, "output.md")
-		
+
 		// Set environment variable to signal the template type
 		os.Setenv("MOCK_TEMPLATE_INVALID", "true")
 		defer os.Unsetenv("MOCK_TEMPLATE_INVALID")
@@ -638,7 +638,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			[]string{
 				"architect",
 				"--task", taskFileContent, // Direct content with invalid template syntax
-				"--task-file", taskFile,   // Indicates we're testing a task file with .tmpl extension
+				"--task-file", taskFile, // Indicates we're testing a task file with .tmpl extension
 				"--output", outputFile,
 				env.TestDir,
 			},
@@ -656,7 +656,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			if !strings.Contains(string(content), "ERROR") {
 				t.Errorf("Invalid template content did not produce expected error in output: %s", string(content))
 			}
-		} 
+		}
 		// If there's an error, that's fine too - the test passes
 	})
 }

@@ -153,7 +153,7 @@ func TestInitClient(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := &mockAPILogger{}
 			api := NewAPIService(logger).(*apiService) // Type assertion to access internal fields
-			
+
 			// Override the newClientFunc for tests with mockError
 			if tc.mockError != nil {
 				api.newClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {

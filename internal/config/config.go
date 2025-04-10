@@ -7,9 +7,9 @@ import (
 
 // ConfigDirectories holds configuration-related directory paths
 type ConfigDirectories struct {
-	UserConfigDir    string
-	SystemConfigDirs []string
-	UserTemplateDir  string
+	UserConfigDir      string
+	SystemConfigDirs   []string
+	UserTemplateDir    string
 	SystemTemplateDirs []string
 }
 

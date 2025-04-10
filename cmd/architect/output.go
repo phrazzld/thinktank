@@ -56,6 +56,13 @@ func (ow *outputWriter) SaveToFile(content, outputFile string) error {
 		outputPath = filepath.Join(cwd, outputPath)
 	}
 
+	// Ensure the output directory exists
+	outputDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		ow.logger.Error("Error creating output directory %s: %v", outputDir, err)
+		return fmt.Errorf("error creating output directory %s: %w", outputDir, err)
+	}
+
 	// Write to file
 	ow.logger.Info("Writing plan to %s...", outputPath)
 	err := os.WriteFile(outputPath, []byte(content), 0644)

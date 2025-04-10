@@ -18,10 +18,10 @@ import (
 type MainAdapter struct {
 	// Original flag set for restoring after test
 	OrigFlagCommandLine *flag.FlagSet
-	
+
 	// Original NewAPIService function to restore after tests
 	OrigNewAPIService func(logger logutil.LoggerInterface) architect.APIService
-	
+
 	// Used to track if we already saved the original API service
 	savedOriginalAPIService bool
 }
@@ -56,7 +56,7 @@ func NewMainAdapter() *MainAdapter {
 
 	// Create the adapter
 	adapter := &MainAdapter{
-		OrigFlagCommandLine: origFlagCommandLine,
+		OrigFlagCommandLine:     origFlagCommandLine,
 		savedOriginalAPIService: false,
 	}
 
@@ -108,7 +108,7 @@ func (a *MainAdapter) RunWithArgs(args []string, env *TestEnv) error {
 			mockClient: env.MockClient,
 		}
 	}
-	
+
 	// Restore the original NewAPIService when done
 	defer func() {
 		architect.NewAPIService = a.OrigNewAPIService
@@ -187,10 +187,10 @@ func (a *MainAdapter) RunWithArgs(args []string, env *TestEnv) error {
 func (a *MainAdapter) parseFlags(args []string) (*CliConfig, error) {
 	// Create a new FlagSet for this test
 	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
-	
+
 	// Create the config to populate
 	config := &CliConfig{}
-	
+
 	// Define flags - match the ones in cmd/architect/cli.go
 	taskFlag := flagSet.String("task", "", "Description of the task or goal for the plan.")
 	taskFileFlag := flagSet.String("task-file", "", "Path to a file containing the task description (alternative to --task).")
@@ -206,17 +206,17 @@ func (a *MainAdapter) parseFlags(args []string) (*CliConfig, error) {
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flagSet.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	
+
 	// Additional flags in architect's CLI
 	flagSet.Bool("clarify", false, "Enable interactive task clarification")
 	flagSet.Bool("list-examples", false, "List available example prompt template files")
 	flagSet.String("show-example", "", "Display the content of a specific example template")
-	
+
 	// Parse flags
 	if err := flagSet.Parse(args); err != nil {
 		return nil, fmt.Errorf("error parsing flags: %w", err)
 	}
-	
+
 	// Store flag values in configuration
 	config.TaskDescription = *taskFlag
 	config.TaskFile = *taskFileFlag
@@ -233,7 +233,7 @@ func (a *MainAdapter) parseFlags(args []string) (*CliConfig, error) {
 	config.PromptTemplate = *promptTemplateFlag
 	config.Paths = flagSet.Args()
 	config.ApiKey = os.Getenv("GEMINI_API_KEY")
-	
+
 	// Determine log level based on flags
 	if config.Verbose {
 		config.LogLevel = logutil.DebugLevel
@@ -244,7 +244,7 @@ func (a *MainAdapter) parseFlags(args []string) (*CliConfig, error) {
 			config.LogLevel = logutil.InfoLevel
 		}
 	}
-	
+
 	return config, nil
 }
 
@@ -253,15 +253,15 @@ func (a *MainAdapter) processTaskInput(cliConfig *CliConfig, logger logutil.Logg
 	// If task file is provided, read from file
 	if cliConfig.TaskFile != "" {
 		// For integration tests, just use the TaskDescription field as the content
-		// if we have a task file reference, but we're actually setting 
+		// if we have a task file reference, but we're actually setting
 		// TaskDescription in the test case directly to avoid real file I/O
 		if cliConfig.TaskDescription != "" {
 			return cliConfig.TaskDescription, nil
 		}
-		
+
 		// Create prompt builder
 		promptBuilder := architect.NewPromptBuilder(logger)
-		
+
 		// If the test truly wants to read from an actual file, we can do that too
 		content, err := promptBuilder.ReadTaskFromFile(cliConfig.TaskFile)
 		if err != nil {
@@ -269,7 +269,7 @@ func (a *MainAdapter) processTaskInput(cliConfig *CliConfig, logger logutil.Logg
 		}
 		return content, nil
 	}
-	
+
 	// Otherwise, use the task description from CLI flags
 	return cliConfig.TaskDescription, nil
 }
@@ -292,7 +292,7 @@ func (s *MockAPIService) ProcessResponse(result *gemini.GenerationResult) (strin
 	if result == nil {
 		return "", fmt.Errorf("result is nil")
 	}
-	
+
 	// Check for empty content
 	if result.Content == "" {
 		return "", fmt.Errorf("empty content")
@@ -300,25 +300,25 @@ func (s *MockAPIService) ProcessResponse(result *gemini.GenerationResult) (strin
 
 	// Get the original content
 	content := result.Content
-	
+
 	// For template tests, look for task file path to determine template processing
 	// This is for backward compatibility with the original tests
-	
+
 	// For tests checking template file with .tmpl extension
 	if os.Getenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION") == "true" {
 		return content + "\n\nTEMPLATE_PROCESSED: YES", nil
 	}
-	
+
 	// For tests checking template with template variables
 	if os.Getenv("MOCK_TEMPLATE_HAS_VARIABLES") == "true" {
 		return content + "\n\nTEMPLATE_PROCESSED: YES", nil
 	}
-	
+
 	// For tests checking invalid template
 	if os.Getenv("MOCK_TEMPLATE_INVALID") == "true" {
 		return "ERROR: Failed to parse template - invalid variable", nil
 	}
-	
+
 	// For normal results, just add the standard template processed marker for tests
 	return content + "\n\nTEMPLATE_PROCESSED: NO", nil
 }

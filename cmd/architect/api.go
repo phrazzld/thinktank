@@ -58,7 +58,7 @@ type apiService struct {
 // It's defined as a variable to allow mocking in tests
 var NewAPIService = func(logger logutil.LoggerInterface) APIService {
 	return &apiService{
-		logger: logger,
+		logger:        logger,
 		newClientFunc: gemini.NewClient, // Default to the real implementation
 	}
 }

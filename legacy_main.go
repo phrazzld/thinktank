@@ -651,20 +651,20 @@ func promptForConfirmation(tokenCount int32, confirmTokens int, logger logutil.L
 	if confirmTokens <= 0 {
 		return true // No confirmation needed
 	}
-	
+
 	// Format the message
 	msg := fmt.Sprintf("Token count (%d) exceeds confirmation threshold (%d). Proceed?", tokenCount, confirmTokens)
-	
+
 	// Read from stdin
 	reader := bufio.NewReader(os.Stdin)
 	logger.Warn("%s (y/N): ", msg)
-	
+
 	response, err := reader.ReadString('\n')
 	if err != nil {
 		logger.Error("Error reading input: %v", err)
 		return false
 	}
-	
+
 	response = strings.ToLower(strings.TrimSpace(response))
 	return response == "y" || response == "yes"
 }
@@ -673,7 +673,7 @@ func promptForConfirmation(tokenCount int32, confirmTokens int, logger logutil.L
 // Re-export for testing with original signature
 type tokenInfoResult struct {
 	tokenCount    int32
-	inputLimit    int32 
+	inputLimit    int32
 	outputLimit   int32
 	exceedsLimit  bool
 	percentOfMax  float64
@@ -701,7 +701,7 @@ func (t tokenInfoResult) IsNil() bool {
 func getTokenInfo(ctx context.Context, client gemini.Client, prompt string, logger logutil.LoggerInterface) (tokenInfoResult, error) {
 	// Create result struct
 	result := tokenInfoResult{}
-	
+
 	// Get token count
 	tokenCount, err := client.CountTokens(ctx, prompt)
 	if err != nil {
@@ -709,13 +709,13 @@ func getTokenInfo(ctx context.Context, client gemini.Client, prompt string, logg
 		result.countingError = err
 		return result, err
 	}
-	
+
 	// Store token count
 	if tokenCount != nil {
 		result.TokenCount = tokenCount.Total
 		result.tokenCount = tokenCount.Total
 	}
-	
+
 	// Get model info
 	modelInfo, err := client.GetModelInfo(ctx)
 	if err != nil {
@@ -723,18 +723,18 @@ func getTokenInfo(ctx context.Context, client gemini.Client, prompt string, logg
 		result.infoError = err
 		return result, err
 	}
-	
+
 	// Store model info
 	result.ModelInfo = modelInfo
 	if modelInfo != nil {
 		result.modelName = modelInfo.Name
 		result.inputLimit = modelInfo.InputTokenLimit
 		result.outputLimit = modelInfo.OutputTokenLimit
-		
+
 		// Calculate percentage of limit
 		result.PercentOfMax = float64(result.TokenCount) / float64(modelInfo.InputTokenLimit) * 100
 		result.percentOfMax = result.PercentOfMax
-		
+
 		// Check if token count exceeds limit
 		if result.TokenCount > modelInfo.InputTokenLimit {
 			result.ExceedsLimit = true
@@ -744,7 +744,7 @@ func getTokenInfo(ctx context.Context, client gemini.Client, prompt string, logg
 			result.limitError = fmt.Errorf("token limit exceeded by %d tokens", result.ExceededBy)
 		}
 	}
-	
+
 	return result, nil
 }
 
@@ -933,7 +933,7 @@ func buildPromptWithManager(config *Configuration, task string, context string, 
 func handleSpecialCommands(cliConfig *Configuration, logger logutil.LoggerInterface, configManager config.ManagerInterface) bool {
 	// Create prompt builder
 	promptBuilder := architect.NewPromptBuilder(logger)
-	
+
 	// Handle special subcommands before regular flow
 	if cliConfig.ListExamples {
 		err := promptBuilder.ListExampleTemplates(configManager)
@@ -964,7 +964,7 @@ func processTaskInput(cliConfig *Configuration, logger logutil.LoggerInterface) 
 	if cliConfig.TaskFile != "" {
 		// Create prompt builder
 		promptBuilder := architect.NewPromptBuilder(logger)
-		
+
 		// Read task from file using prompt builder
 		content, err := promptBuilder.ReadTaskFromFile(cliConfig.TaskFile)
 		if err != nil {
@@ -973,7 +973,7 @@ func processTaskInput(cliConfig *Configuration, logger logutil.LoggerInterface) 
 		}
 		return content
 	}
-	
+
 	// Otherwise, use the task description from CLI flags
 	return cliConfig.TaskDescription
 }

@@ -49,9 +49,9 @@ func (m *mockFullConfigManager) GetSystemTemplateDirs() []string {
 
 func (m *mockFullConfigManager) GetConfigDirs() config.ConfigDirectories {
 	return config.ConfigDirectories{
-		UserConfigDir:     m.userDir,
-		SystemConfigDirs:  m.sysDirs,
-		UserTemplateDir:   m.GetUserTemplateDir(),
+		UserConfigDir:      m.userDir,
+		SystemConfigDirs:   m.sysDirs,
+		UserTemplateDir:    m.GetUserTemplateDir(),
 		SystemTemplateDirs: m.GetSystemTemplateDirs(),
 	}
 }

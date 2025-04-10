@@ -286,6 +286,12 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 	}
 
 	builder.WriteString("</context>") // End context wrapper
+
+	// If no files were processed, return empty string and zero count
+	if config.processedFiles == 0 {
+		return "", 0, nil
+	}
+
 	return builder.String(), config.processedFiles, nil
 }
 

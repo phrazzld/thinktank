@@ -89,9 +89,9 @@ func (m *Manager) GetSystemTemplateDirs() []string {
 // GetConfigDirs returns all configuration directories
 func (m *Manager) GetConfigDirs() ConfigDirectories {
 	return ConfigDirectories{
-		UserConfigDir:     m.userConfigDir,
-		SystemConfigDirs:  m.sysConfigDirs,
-		UserTemplateDir:   m.GetUserTemplateDir(),
+		UserConfigDir:      m.userConfigDir,
+		SystemConfigDirs:   m.sysConfigDirs,
+		UserTemplateDir:    m.GetUserTemplateDir(),
 		SystemTemplateDirs: m.GetSystemTemplateDirs(),
 	}
 }
