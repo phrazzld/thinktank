@@ -64,7 +64,7 @@
   - **Depends On:** Add race detection testing
   - **AC Ref:** Testing step 2
 
-- [ ] **Implement coverage threshold check**
+- [x] **Implement coverage threshold check**
   - **Action:** Add step to verify coverage against threshold (80%)
   - **Depends On:** Add coverage reporting
   - **AC Ref:** Testing step 3
@@ -139,8 +139,8 @@
 - [x] **Issue/Assumption:** Branch name for PR targets
   - **Context:** Confirmed the workflow should be configured for PRs targeting the master branch (not main).
 
-- [ ] **Issue/Assumption:** Dependency on bc command
-  - **Context:** The coverage threshold check uses the bc command which may not be available by default on all runners. Assuming it's available or should be installed.
+- [x] **Issue/Assumption:** Dependency on bc command
+  - **Context:** Coverage threshold check implemented using shell integer comparison instead of bc to avoid dependency issues.
 
 - [ ] **Issue/Assumption:** Go version specification
   - **Context:** The workflow uses 'stable' for Go version. Need to confirm if a specific version should be pinned instead for consistency.

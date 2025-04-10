@@ -76,6 +76,19 @@ jobs:
       # Display coverage summary
       - name: Display coverage summary
         run: go tool cover -func=coverage.out
+        
+      # Check coverage threshold
+      - name: Check coverage threshold
+        run: |
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+          THRESHOLD=80
+          COVERAGE_INT=${COVERAGE%.*}  # Remove decimal part for integer comparison
+          echo "Code coverage: $COVERAGE%"
+          if [ "$COVERAGE_INT" -lt "$THRESHOLD" ]; then
+            echo "Code coverage is below the required threshold of $THRESHOLD% (actual: $COVERAGE%)"
+            exit 1
+          fi
+          echo "Code coverage threshold check passed ($COVERAGE% >= $THRESHOLD%)"
 
   # Build job will be implemented in subsequent tasks
   build:
