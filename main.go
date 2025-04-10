@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/adrg/xdg"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -83,6 +85,19 @@ func main() {
 	// Get the final configuration
 	appConfig := configManager.GetConfig()
 
+	// Initialize structured audit logger
+	auditLogger := initAuditLogger(appConfig, logger)
+	defer auditLogger.Close() // Ensure logger is closed at program exit
+
+	// Log application startup
+	startupEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ApplicationStart",
+		"Architect tool started",
+	).WithMetadata("version", "1.0.0") // TODO: Use actual version
+
+	auditLogger.Log(startupEvent)
+
 	// Create backfilled CLI config for backward compatibility
 	config := backfillConfigFromAppConfig(cliConfig, appConfig)
 
@@ -106,6 +121,14 @@ func main() {
 	if !config.DryRun {
 		generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
 	}
+
+	// Log application shutdown
+	shutdownEvent := auditlog.NewAuditEvent(
+		"INFO",
+		"ApplicationEnd",
+		"Architect tool completed successfully",
+	)
+	auditLogger.Log(shutdownEvent)
 }
 
 // clarifyTaskDescription is a backward-compatible wrapper for clarification process
@@ -835,6 +858,44 @@ func checkTokenLimit(ctx context.Context, geminiClient gemini.Client, prompt str
 // initConfigSystem initializes the configuration system
 func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 	return config.NewManager(logger)
+}
+
+// getCacheDir returns the XDG cache directory for the application
+// This can be overridden in tests
+var getCacheDir = func() string {
+	return filepath.Join(xdg.CacheHome, "architect")
+}
+
+// initAuditLogger initializes and returns a structured audit logger based on the configuration
+func initAuditLogger(appConfig *config.AppConfig, logger logutil.LoggerInterface) auditlog.StructuredLogger {
+	// Check if audit logging is enabled
+	if !appConfig.AuditLogEnabled {
+		logger.Debug("Audit logging is disabled, using NoopLogger")
+		return auditlog.NewNoopLogger()
+	}
+
+	// Determine the log file path
+	logPath := appConfig.AuditLogFile
+	if logPath == "" {
+		// Use default path in XDG cache directory
+		cacheDir := getCacheDir()
+		logPath = filepath.Join(cacheDir, "audit.log")
+		logger.Debug("Using default audit log path: %s", logPath)
+	} else {
+		logger.Debug("Using configured audit log path: %s", logPath)
+	}
+
+	// Create the audit logger
+	auditLogger, err := auditlog.NewFileLogger(logPath)
+	if err != nil {
+		// Log the error but continue with a NoopLogger
+		logger.Error("Failed to create audit log file at %s: %v", logPath, err)
+		logger.Warn("Falling back to NoopLogger (audit events will be discarded)")
+		return auditlog.NewNoopLogger()
+	}
+
+	logger.Info("Audit logging enabled, writing to: %s", logPath)
+	return auditLogger
 }
 
 // convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config

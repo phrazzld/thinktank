@@ -54,24 +54,24 @@
   - **Depends On:** None
   - **AC Ref:** AC 3.1, AC 3.2
 
-- [ ] **Task Title:** Update DefaultConfig with audit log defaults
+- [x] **Task Title:** Update DefaultConfig with audit log defaults
   - **Action:** Add default values for audit logging configuration in the DefaultConfig function.
   - **Depends On:** Add audit log configuration fields to AppConfig
   - **AC Ref:** AC 3.1, AC 3.3
 
-- [ ] **Task Title:** Update example_config.toml with audit log options
+- [x] **Task Title:** Update example_config.toml with audit log options
   - **Action:** Add documentation and examples for the audit log configuration options.
   - **Depends On:** Add audit log configuration fields to AppConfig
   - **AC Ref:** AC 3.1, AC 3.2
 
-- [ ] **Task Title:** Update setViperDefaults in loader.go
+- [x] **Task Title:** Update setViperDefaults in loader.go
   - **Action:** Ensure new configuration fields have proper defaults in the Viper configuration.
   - **Depends On:** Update DefaultConfig with audit log defaults
   - **AC Ref:** AC 3.1, AC 3.3
 
 ## Application Flow Integration
 
-- [ ] **Task Title:** Add logger initialization to main.go
+- [x] **Task Title:** Add logger initialization to main.go
   - **Action:** Implement the code to initialize the appropriate logger based on configuration.
   - **Depends On:** Implement FileLogger struct, Implement NoopLogger for disabled logging, Add audit log configuration fields to AppConfig
   - **AC Ref:** AC 1.2, AC 3.2, AC 4.1
