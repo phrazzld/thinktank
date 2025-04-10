@@ -628,7 +628,8 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	// Call Gemini API
 	logger.Info("Generating plan using model %s...", config.ModelName)
 	logger.Debug("Generating plan using model %s...", config.ModelName)
-	result, err := geminiClient.GenerateContent(ctx, generatedPrompt)
+	var result *gemini.GenerationResult
+	result, err = geminiClient.GenerateContent(ctx, generatedPrompt)
 	if err != nil {
 		logger.Error("Generation failed")
 
