@@ -104,12 +104,7 @@ func main() {
 	}
 }
 
-// clarifyTaskDescription is a backward-compatible wrapper for clarification process
-func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
-	// Use legacy version with default prompt manager
-	promptManager := prompt.NewManager(logger)
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
-}
+// clarifyTaskDescription function removed
 
 // clarifyTaskDescriptionWithConfig performs task clarification using the config system
 func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface) string {
@@ -117,8 +112,8 @@ func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration
 	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
 	if err != nil {
 		logger.Error("Failed to set up prompt manager: %v", err)
-		// Fall back to the non-config version
-		return clarifyTaskDescription(ctx, config, geminiClient, logger)
+		// Create a basic prompt manager instead
+		promptManager = prompt.NewManager(logger)
 	}
 
 	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
