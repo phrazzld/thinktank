@@ -85,33 +85,83 @@ func NewFileLogger(filePath string) (*FileLogger, error) {
 }
 
 // Log writes an audit event to the log file as a JSON line.
-// It handles errors internally, logs them to stderr, but doesn't fail the application.
+// 
+// This method is completely thread-safe and can be called concurrently from multiple goroutines.
+// It handles all error conditions gracefully without panicking, including:
+// - Nil file handle
+// - Closed file
+// - JSON marshaling errors
+// - File write errors
+// 
+// Errors are logged to stderr but don't cause the application to fail. This is essential for
+// logging systems, which should never disrupt the main application flow.
+//
+// The method also ensures that events have proper default values for required fields,
+// such as timestamp and log level.
 func (l *FileLogger) Log(event AuditEvent) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	// Ensure timestamp is set
-	if event.Timestamp.IsZero() {
-		event.Timestamp = time.Now().UTC()
-	}
-
-	// Ensure level is set
-	if event.Level == "" {
-		event.Level = "INFO"
-	}
-
-	// Marshal to JSON
-	jsonBytes, err := json.Marshal(event)
-	if err != nil {
-		// Log to stderr but avoid recursion
-		errLogger("[ERROR] Failed to marshal audit event: %v", err)
+	// Protect against nil receiver
+	if l == nil {
+		errLogger("[ERROR] Attempted to log to a nil FileLogger")
 		return
 	}
 
-	// Add newline and write to file
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	
+	// Protect against nil or closed file handle
+	if l.file == nil {
+		errLogger("[ERROR] Attempted to log to a FileLogger with a nil file handle")
+		return
+	}
+
+	// Clone the event to avoid modifying the caller's copy
+	eventCopy := event
+	
+	// Ensure timestamp is set
+	if eventCopy.Timestamp.IsZero() {
+		eventCopy.Timestamp = time.Now().UTC()
+	}
+
+	// Ensure level is set
+	if eventCopy.Level == "" {
+		eventCopy.Level = "INFO"
+	}
+
+	// Marshal to JSON with graceful error handling
+	jsonBytes, err := json.Marshal(eventCopy)
+	if err != nil {
+		// Log to stderr but avoid recursion
+		errLogger("[ERROR] Failed to marshal audit event: %v", err)
+		// Try a simplified version with just the core fields
+		simplifiedEvent := AuditEvent{
+			Timestamp: eventCopy.Timestamp,
+			Level:     eventCopy.Level,
+			Operation: eventCopy.Operation,
+			Message:   eventCopy.Message + " [marshaling error: full event could not be serialized]",
+		}
+		
+		jsonBytes, err = json.Marshal(simplifiedEvent)
+		if err != nil {
+			// If even simplified event fails, give up but don't crash
+			errLogger("[ERROR] Failed to marshal simplified audit event: %v", err)
+			return
+		}
+	}
+
+	// Add newline and write to file with proper error handling
 	jsonBytes = append(jsonBytes, '\n')
-	if _, err := l.file.Write(jsonBytes); err != nil {
-		errLogger("[ERROR] Failed to write audit event: %v", err)
+	
+	_, err = l.file.Write(jsonBytes)
+	if err != nil {
+		// Log write error with context
+		errLogger("[ERROR] Failed to write audit event to log file: %v", err)
+		
+		// Handle specific error types with contextual information
+		if os.IsPermission(err) {
+			errLogger("[ERROR] Permission denied when writing to log file. Check file permissions.")
+		} else if os.IsNotExist(err) {
+			errLogger("[ERROR] Log file no longer exists. It may have been deleted.")
+		}
 	}
 }
 

@@ -3,10 +3,12 @@ package auditlog
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -292,6 +294,166 @@ func TestFileLoggerLog(t *testing.T) {
 	if parsedEvent["message"] != "Test log message" {
 		t.Errorf("Expected message 'Test log message', got %v", parsedEvent["message"])
 	}
+}
+
+// TestConcurrentLogging tests that the Log method is safe for concurrent use
+func TestConcurrentLogging(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path
+	logFilePath := filepath.Join(tempDir, "concurrent.log")
+	
+	// Create a FileLogger
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger: %v", err)
+	}
+	defer logger.Close()
+	
+	// Number of concurrent goroutines
+	numGoroutines := 100
+	// Number of log events per goroutine
+	eventsPerGoroutine := 10
+	
+	// Create a wait group to wait for all goroutines to finish
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+	
+	// Start multiple goroutines that log events concurrently
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			
+			for j := 0; j < eventsPerGoroutine; j++ {
+				event := NewAuditEvent(
+					"INFO",
+					fmt.Sprintf("Operation-%d-%d", id, j),
+					fmt.Sprintf("Message from goroutine %d, event %d", id, j),
+				)
+				logger.Log(event)
+			}
+		}(i)
+	}
+	
+	// Wait for all goroutines to finish
+	wg.Wait()
+	
+	// Close the logger to ensure all data is flushed
+	logger.Close()
+	
+	// Verify the log file exists
+	if _, err := os.Stat(logFilePath); os.IsNotExist(err) {
+		t.Errorf("Log file was not created at %s", logFilePath)
+	}
+	
+	// Read the file contents
+	fileContent, err := os.ReadFile(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	
+	// Split by newlines to get individual JSON lines
+	lines := strings.Split(string(fileContent), "\n")
+	// Remove last empty line if present
+	if lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	
+	// Check that we have the expected number of log entries
+	expectedLines := numGoroutines * eventsPerGoroutine
+	if len(lines) != expectedLines {
+		t.Errorf("Expected %d log entries, got %d", expectedLines, len(lines))
+	}
+	
+	// Verify each line is valid JSON
+	for i, line := range lines {
+		var event map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &event); err != nil {
+			t.Errorf("Line %d is not valid JSON: %v", i, err)
+		}
+	}
+}
+
+// TestLogWithNilFile tests that the Log method handles a nil file gracefully
+func TestLogWithNilFile(t *testing.T) {
+	// Create a logger with a nil file
+	logger := &FileLogger{file: nil}
+	
+	// Create a test event
+	testEvent := NewAuditEvent("INFO", "TestOperation", "Test message")
+	
+	// Log the event - this should not panic
+	logger.Log(testEvent)
+	
+	// If we reach here without panicking, the test passes
+}
+
+// TestLogAfterClose tests that the Log method handles logging after close
+func TestLogAfterClose(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path
+	logFilePath := filepath.Join(tempDir, "closed.log")
+	
+	// Create a FileLogger
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger: %v", err)
+	}
+	
+	// Close the logger
+	logger.Close()
+	
+	// Try to log after closing - should not panic
+	testEvent := NewAuditEvent("INFO", "TestOperation", "Test message")
+	logger.Log(testEvent)
+	
+	// If we reach here without panicking, the test passes
+}
+
+// TestLogWithInvalidEvent tests that the Log method handles invalid events gracefully
+func TestLogWithInvalidEvent(t *testing.T) {
+	// Create a temporary directory for the test
+	tempDir, err := os.MkdirTemp("", "filelogger-test")
+	if err != nil {
+		t.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tempDir) // Clean up
+	
+	// Test file path
+	logFilePath := filepath.Join(tempDir, "invalid.log")
+	
+	// Create a FileLogger
+	logger, err := NewFileLogger(logFilePath)
+	if err != nil {
+		t.Fatalf("Failed to create FileLogger: %v", err)
+	}
+	defer logger.Close()
+	
+	// Create a test event with a value that cannot be marshaled to JSON
+	// For this test, we'll create a circular reference which will cause
+	// the JSON marshaler to fail
+	invalidEvent := NewAuditEvent("INFO", "InvalidEvent", "This event has an invalid field")
+	
+	// Create a circular reference
+	circular := make(map[string]interface{})
+	circular["self"] = circular
+	invalidEvent.Inputs = circular
+	
+	// Log the event - this should not panic despite marshaling failing
+	logger.Log(invalidEvent)
+	
+	// If we reach here without panicking, the test passes
 }
 
 // TestFileLoggerClose tests the Close method

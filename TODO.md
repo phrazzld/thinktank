@@ -32,7 +32,7 @@
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 1.2, AC 4.1
 
-- [ ] **Task Title:** Implement thread-safe Log method
+- [x] **Task Title:** Implement thread-safe Log method
   - **Action:** Add mutex locking and proper error handling in the Log method.
   - **Depends On:** Implement FileLogger struct
   - **AC Ref:** AC 2.1, AC 4.1, AC 4.2
