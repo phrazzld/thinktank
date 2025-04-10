@@ -88,12 +88,24 @@ func main() {
 
 	// Handle special subcommands before regular flow
 	if cliConfig.ListExamples {
-		listExampleTemplates(logger, configManager)
+		// Create prompt builder and use it directly
+		promptBuilder := architect.NewPromptBuilder(logger)
+		err := promptBuilder.ListExampleTemplates(configManager)
+		if err != nil {
+			logger.Error("Error listing example templates: %v", err)
+			os.Exit(1)
+		}
 		return
 	}
 
 	if cliConfig.ShowExample != "" {
-		showExampleTemplate(cliConfig.ShowExample, logger, configManager)
+		// Create prompt builder and use it directly
+		promptBuilder := architect.NewPromptBuilder(logger)
+		err := promptBuilder.ShowExampleTemplate(cliConfig.ShowExample, configManager)
+		if err != nil {
+			logger.Error("Error showing example template: %v", err)
+			os.Exit(1)
+		}
 		return
 	}
 
@@ -110,6 +122,9 @@ func main() {
 
 	// Create backfilled CLI config for backward compatibility
 	config := backfillConfigFromAppConfig(cliConfig, appConfig)
+
+	// Create prompt builder for later use
+	promptBuilder := architect.NewPromptBuilder(logger)
 
 	// Validate inputs
 	validateInputs(config, logger)
@@ -270,51 +285,32 @@ func setupLogging(config *Configuration) logutil.LoggerInterface {
 }
 
 // readTaskFromFile reads task description from a file
+// Transitional implementation - moved to cmd/architect/prompt.go
 func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (string, error) {
-	// Check if path is absolute, if not make it absolute
-	if !filepath.IsAbs(taskFilePath) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf("error getting current working directory: %w", err)
-		}
-		taskFilePath = filepath.Join(cwd, taskFilePath)
-	}
-
-	// Enhanced file existence check with specific errors
-	fileInfo, err := os.Stat(taskFilePath)
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Read task file using the prompt builder
+	content, err := promptBuilder.ReadTaskFromFile(taskFilePath)
 	if err != nil {
-		if os.IsNotExist(err) {
+		// We need to map generic errors to our sentinel errors for backward compatibility
+		if strings.Contains(err.Error(), "task file not found") {
 			return "", fmt.Errorf("%w: %s", ErrTaskFileNotFound, taskFilePath)
 		}
-		if os.IsPermission(err) {
+		if strings.Contains(err.Error(), "task file permission denied") {
 			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
 		}
-		// Generic stat error
-		return "", fmt.Errorf("error checking task file status: %w", err)
-	}
-
-	// Check if it's a directory
-	if fileInfo.IsDir() {
-		return "", fmt.Errorf("%w: %s", ErrTaskFileIsDir, taskFilePath)
-	}
-
-	// Read file content
-	content, err := os.ReadFile(taskFilePath)
-	if err != nil {
-		if os.IsPermission(err) {
-			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
+		if strings.Contains(err.Error(), "task file path is a directory") {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileIsDir, taskFilePath)
 		}
-		// Generic read error
-		return "", fmt.Errorf("error reading task file content: %w", err)
+		if strings.Contains(err.Error(), "task file is empty") {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileEmpty, taskFilePath)
+		}
+		// Generic error
+		return "", err
 	}
-
-	// Check for empty content
-	if len(strings.TrimSpace(string(content))) == 0 {
-		return "", fmt.Errorf("%w: %s", ErrTaskFileEmpty, taskFilePath)
-	}
-
-	// Return content as string
-	return string(content), nil
+	
+	return content, nil
 }
 
 // validateInputsResult represents the result of input validation
@@ -610,10 +606,20 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 		generatedPrompt = buf.String()
 		logger.Info("Task file template processed successfully")
 	} else {
-		// Standard approach - use the prompt manager with templates
+		// Standard approach - use the prompt builder
 		logger.Info("Building prompt template...")
 		logger.Debug("Building prompt template...")
-		generatedPrompt, err = buildPromptWithManager(config, config.TaskDescription, projectContext, promptManager, logger)
+		
+		// Create prompt builder
+		promptBuilder := architect.NewPromptBuilder(logger)
+		
+		// Build the prompt using the prompt builder
+		generatedPrompt, err = promptBuilder.BuildPromptWithConfig(
+			config.TaskDescription, 
+			projectContext, 
+			config.PromptTemplate, 
+			configManager,
+		)
 		if err != nil {
 			logger.Error("Failed to build prompt: %v", err)
 			logger.Fatal("Failed to build prompt: %v", err)
@@ -780,54 +786,31 @@ func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 
 // convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config
 // listExampleTemplates displays a list of available example templates
+// Transitional implementation - moved to cmd/architect/prompt.go
 func listExampleTemplates(logger logutil.LoggerInterface, configManager config.ManagerInterface) {
-	// Create prompt manager
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-	if err != nil {
-		// Fall back to basic manager if config-based setup fails
-		promptManager = prompt.NewManager(logger)
-	}
-
-	// Get the list of examples
-	examples, err := promptManager.ListExampleTemplates()
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Call the method from the prompt builder
+	err := promptBuilder.ListExampleTemplates(configManager)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error listing example templates: %v\n", err)
 		os.Exit(1)
 	}
-
-	// Display the examples
-	fmt.Println("Available Example Templates:")
-	fmt.Println("---------------------------")
-	if len(examples) == 0 {
-		fmt.Println("No example templates found.")
-	} else {
-		for i, example := range examples {
-			fmt.Printf("%d. %s\n", i+1, example)
-		}
-		fmt.Println("\nTo view an example template, use --show-example <template-name>")
-		fmt.Println("Example: architect --show-example basic.tmpl")
-	}
 }
 
 // showExampleTemplate displays the content of a specific example template
+// Transitional implementation - moved to cmd/architect/prompt.go
 func showExampleTemplate(name string, logger logutil.LoggerInterface, configManager config.ManagerInterface) {
-	// Create prompt manager
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Call the method from the prompt builder
+	err := promptBuilder.ShowExampleTemplate(name, configManager)
 	if err != nil {
-		// Fall back to basic manager if config-based setup fails
-		promptManager = prompt.NewManager(logger)
-	}
-
-	// Get the template content
-	content, err := promptManager.GetExampleTemplate(name)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		fmt.Fprintf(os.Stderr, "Use --list-examples to see available example templates.\n")
+		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-
-	// Print the content to stdout (allowing for redirection to a file)
-	fmt.Print(content)
 }
 
 func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
@@ -914,45 +897,51 @@ var getTaskFlagValue = func() string {
 }
 
 // buildPrompt constructs the prompt string for the Gemini API.
+// Transitional implementation - moved to cmd/architect/prompt.go
 // nolint:unused
 func buildPrompt(config *Configuration, task string, context string, logger logutil.LoggerInterface) (string, error) {
-	// Use config-less version for backward compatibility
-	return buildPromptWithManager(config, task, context, prompt.NewManager(logger), logger)
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Call the method from the prompt builder
+	return promptBuilder.BuildPrompt(task, context, config.PromptTemplate)
 }
 
 // buildPromptWithConfig constructs the prompt string using the configuration system
+// Transitional implementation - moved to cmd/architect/prompt.go
 // nolint:unused
 func buildPromptWithConfig(config *Configuration, task string, context string, configManager config.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
-	// Create a prompt manager with config support
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-	if err != nil {
-		return "", fmt.Errorf("failed to set up prompt manager: %w", err)
-	}
-
-	return buildPromptWithManager(config, task, context, promptManager, logger)
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Call the method from the prompt builder
+	return promptBuilder.BuildPromptWithConfig(task, context, config.PromptTemplate, configManager)
 }
 
 // buildPromptWithManager constructs the prompt string using the provided prompt manager.
+// Transitional implementation - moved to cmd/architect/prompt.go
 // This function is exported for testing purposes.
 func buildPromptWithManager(config *Configuration, task string, context string, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) (string, error) {
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Adapt to the new interface by using BuildPrompt and passing the prompt manager's result
+	// This is a bit of a hack for backward compatibility, but it works for transitional period
+	customTemplateName := config.PromptTemplate
+	
 	// Create template data
 	data := &prompt.TemplateData{
 		Task:    task,
-		Context: context, // context already has the <context> tags from fileutil
+		Context: context,
 	}
 
 	// Determine which template to use
 	templateName := "default.tmpl"
-	if config.PromptTemplate != "" {
-		templateName = config.PromptTemplate
+	if customTemplateName != "" {
+		templateName = customTemplateName
 		logger.Debug("Using custom prompt template: %s", templateName)
 	}
 
 	// Build the prompt (template loading is now handled by the manager)
-	generatedPrompt, err := promptManager.BuildPrompt(templateName, data)
-	if err != nil {
-		return "", fmt.Errorf("failed to build prompt: %w", err)
-	}
-
-	return generatedPrompt, nil
+	return promptManager.BuildPrompt(templateName, data)
 }

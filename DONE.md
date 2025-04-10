@@ -73,3 +73,19 @@
   - **Action:** Add new tests for context.go functions to ensure proper file handling.
   - **Depends On:** All context gathering functions moved.
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
+  
+## Prompt Building
+- [x] **Extract prompt building functions to prompt.go** (Completed on 2025-04-10)
+  - **Action:** Move buildPrompt, buildPromptWithConfig, and buildPromptWithManager functions from main.go to prompt.go.
+  - **Depends On:** Create skeleton files in cmd/architect/.
+  - **AC Ref:** Implementation Steps 5.
+
+- [x] **Extract template loading to prompt.go** (Completed on 2025-04-10)
+  - **Action:** Move template related functions (listExampleTemplates, showExampleTemplate) from main.go to prompt.go.
+  - **Depends On:** Extract prompt building functions to prompt.go.
+  - **AC Ref:** Implementation Steps 5.
+
+- [x] **Extract task file reading to prompt.go** (Completed on 2025-04-10)
+  - **Action:** Move the readTaskFromFile function from main.go to prompt.go.
+  - **Depends On:** Extract template loading to prompt.go.
+  - **AC Ref:** Implementation Steps 5.

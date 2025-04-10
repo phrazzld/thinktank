@@ -75,17 +75,17 @@
   - **AC Ref:** Implementation Steps 8, Testing Strategy 4.
 
 ## Prompt Building
-- [ ] **Extract prompt building functions to prompt.go**
+- [x] **Extract prompt building functions to prompt.go**
   - **Action:** Move buildPrompt, buildPromptWithConfig, and buildPromptWithManager functions from main.go to prompt.go.
   - **Depends On:** Create skeleton files in cmd/architect/.
   - **AC Ref:** Implementation Steps 5.
 
-- [ ] **Extract template loading to prompt.go**
+- [x] **Extract template loading to prompt.go**
   - **Action:** Move template related functions (listExampleTemplates, showExampleTemplate) from main.go to prompt.go.
   - **Depends On:** Extract prompt building functions to prompt.go.
   - **AC Ref:** Implementation Steps 5.
 
-- [ ] **Extract task file reading to prompt.go**
+- [x] **Extract task file reading to prompt.go**
   - **Action:** Move the readTaskFromFile function from main.go to prompt.go.
   - **Depends On:** Extract template loading to prompt.go.
   - **AC Ref:** Implementation Steps 5.
