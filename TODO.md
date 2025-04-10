@@ -78,7 +78,7 @@
   - **AC Ref:** Implementation Steps 1 (Functions and Code Paths), Step 3.4.
 
 ## Template File Removal
-- [ ] **Delete clarify.tmpl**
+- [x] **Delete clarify.tmpl**
   - **Action:** Delete the file internal/prompt/templates/clarify.tmpl.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Template Files), Step 4.
