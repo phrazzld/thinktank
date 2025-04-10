@@ -39,7 +39,7 @@
   - **Depends On:** Configure Go environment setup
   - **AC Ref:** Code Quality Checks step 1
 
-- [ ] **Implement vet check**
+- [x] **Implement vet check**
   - **Action:** Add step to run go vet
   - **Depends On:** Configure Go environment setup
   - **AC Ref:** Code Quality Checks step 2

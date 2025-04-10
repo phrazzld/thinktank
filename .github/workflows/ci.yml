@@ -37,8 +37,11 @@ jobs:
             exit 1
           fi
 
+      # Run static analysis
+      - name: Run vet
+        run: go vet ./...
+
       # The following steps will be implemented in their respective tasks:
-      # - "Implement vet check"
       # - "Implement golangci-lint"
 
   # Test job will be implemented in subsequent tasks
