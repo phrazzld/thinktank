@@ -45,11 +45,11 @@ func (l *testLogger) Warn(format string, args ...interface{}) {
 	l.warnMsgs = append(l.warnMsgs, format)
 }
 
-func (l *testLogger) Info(format string, args ...interface{})  {}
-func (l *testLogger) Debug(format string, args ...interface{}) {}
-func (l *testLogger) Fatal(format string, args ...interface{}) {}
+func (l *testLogger) Info(format string, args ...interface{})   {}
+func (l *testLogger) Debug(format string, args ...interface{})  {}
+func (l *testLogger) Fatal(format string, args ...interface{})  {}
 func (l *testLogger) Printf(format string, args ...interface{}) {}
-func (l *testLogger) Println(v ...interface{}) {}
+func (l *testLogger) Println(v ...interface{})                  {}
 
 // TestTaskFileRequired tests that validateInputs requires a task file
 func TestTaskFileRequired(t *testing.T) {
@@ -58,13 +58,13 @@ func TestTaskFileRequired(t *testing.T) {
 	// Save original functions
 	originalOsExit := osExit
 	originalFlagUsage := flag.Usage
-	
+
 	// Restore original functions after test
-	defer func() { 
-		osExit = originalOsExit 
+	defer func() {
+		osExit = originalOsExit
 		flag.Usage = originalFlagUsage
 	}()
-	
+
 	// Mock the flag.Usage function to do nothing in tests
 	flag.Usage = func() {}
 
@@ -156,7 +156,7 @@ func TestTaskFileRequired(t *testing.T) {
 			// Add missing paths and API key for our new validation
 			tt.config.Paths = []string{"testpath"}
 			tt.config.ApiKey = "test-key"
-			
+
 			// Run validateInputs
 			validateInputs(tt.config, logger)
 
@@ -183,13 +183,13 @@ func TestInvalidTaskFile(t *testing.T) {
 	// Save original functions
 	originalOsExit := osExit
 	originalFlagUsage := flag.Usage
-	
+
 	// Restore original functions after test
-	defer func() { 
-		osExit = originalOsExit 
+	defer func() {
+		osExit = originalOsExit
 		flag.Usage = originalFlagUsage
 	}()
-	
+
 	// Mock the flag.Usage function to do nothing in tests
 	flag.Usage = func() {}
 
@@ -236,7 +236,7 @@ func TestInvalidTaskFile(t *testing.T) {
 			// Add missing paths and API key for our new validation
 			config.Paths = []string{"testpath"}
 			config.ApiKey = "test-key"
-			
+
 			// Run validateInputs
 			validateInputs(config, logger)
 
@@ -259,7 +259,7 @@ func TestInvalidTaskFile(t *testing.T) {
 				}
 			}
 			if !foundExpectedError {
-				t.Errorf("Expected error message containing '%s', got messages: %v", 
+				t.Errorf("Expected error message containing '%s', got messages: %v",
 					tt.expectErrorMsg, logger.errorMsgs)
 			}
 		})
@@ -272,14 +272,14 @@ func TestDeprecatedTaskFlag(t *testing.T) {
 	originalOsExit := osExit
 	originalFlagUsage := flag.Usage
 	originalTaskFlagValue := getTaskFlagValue
-	
+
 	// Restore original functions after test
-	defer func() { 
-		osExit = originalOsExit 
+	defer func() {
+		osExit = originalOsExit
 		flag.Usage = originalFlagUsage
 		getTaskFlagValue = originalTaskFlagValue
 	}()
-	
+
 	// Mock the flag.Usage function to do nothing in tests
 	flag.Usage = func() {}
 
@@ -306,7 +306,7 @@ func TestDeprecatedTaskFlag(t *testing.T) {
 	// Add missing paths and API key for our new validation
 	config.Paths = []string{"testpath"}
 	config.ApiKey = "test-key"
-	
+
 	// Run validateInputs
 	validateInputs(config, logger)
 

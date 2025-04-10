@@ -438,10 +438,10 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 	if !result.Valid {
 		// Log the appropriate error message
 		logger.Error(result.ErrorMessage)
-		
+
 		// Show usage
 		flag.Usage()
-		
+
 		// Exit with error code
 		os.Exit(1)
 	}
@@ -466,7 +466,7 @@ func doValidateInputs(config *Configuration, logger logutil.LoggerInterface) val
 		if err != nil {
 			// Set validation failed
 			result.Valid = false
-			
+
 			// Specific error handling
 			switch {
 			case errors.Is(err, ErrTaskFileNotFound):
@@ -693,20 +693,20 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 		// This is a template in the task file - process it directly
 		logger.Info("Task file contains template variables, processing as template...")
 		logger.Debug("Processing task file as a template")
-		
+
 		// Create template data
 		data := &prompt.TemplateData{
 			Task:    config.TaskDescription, // This is recursive but works because we're using it as raw text in the template
 			Context: projectContext,
 		}
-		
+
 		// Create a template from the task file content
 		tmpl, err := template.New("task_file_template").Parse(config.TaskDescription)
 		if err != nil {
 			logger.Error("Failed to parse task file as template: %v", err)
 			logger.Fatal("Failed to parse task file as template: %v", err)
 		}
-		
+
 		// Execute the template with the context data
 		var buf bytes.Buffer
 		err = tmpl.Execute(&buf, data)
@@ -714,7 +714,7 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 			logger.Error("Failed to execute task file template: %v", err)
 			logger.Fatal("Failed to execute task file template: %v", err)
 		}
-		
+
 		generatedPrompt = buf.String()
 		logger.Info("Task file template processed successfully")
 	} else {
