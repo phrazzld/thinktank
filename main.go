@@ -4,7 +4,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -106,130 +105,6 @@ func main() {
 
 // clarifyTaskDescription function removed
 
-// clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
-func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Spinner initialization removed
-
-	// Original task description
-	originalTask := config.TaskDescription
-
-	// Build prompt for clarification (template loading is handled internally)
-	logger.Info("Analyzing task description...")
-	logger.Debug("Analyzing task description...")
-	data := &prompt.TemplateData{
-		Task: originalTask,
-	}
-
-	clarifyPrompt, err := promptManager.BuildPrompt("clarify.tmpl", data)
-	if err != nil {
-		logger.Error("Failed to build clarification prompt: %v", err)
-		return originalTask
-	}
-
-	// Call Gemini to generate clarification questions
-	logger.Info("Generating clarification questions...")
-	logger.Debug("Generating clarification questions...")
-	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
-	if err != nil {
-		logger.Error("Error generating clarification questions: %v", err)
-		return originalTask
-	}
-
-	// Process the JSON response
-	var clarificationData struct {
-		Analysis  string   `json:"analysis"`
-		Questions []string `json:"questions"`
-	}
-
-	// Parse JSON response - must be valid JSON as requested in the prompt
-	err = json.Unmarshal([]byte(result.Content), &clarificationData)
-	if err != nil {
-		logger.Error("Failed to parse clarification response: %v", err)
-		logger.Debug("Response content: %s", result.Content)
-		return originalTask
-	}
-
-	// Stop spinner and start the interactive clarification process
-	logger.Info("Task analysis complete")
-
-	// Show the analysis to the user
-	logger.Info("Task Analysis: %s", clarificationData.Analysis)
-
-	// Present each question and collect answers
-	var questionAnswers strings.Builder
-	fmt.Println("\n🔍 Task Clarification:")
-
-	reader := bufio.NewReader(os.Stdin)
-	for i, question := range clarificationData.Questions {
-		fmt.Printf("\n%d. %s\n", i+1, question)
-		fmt.Print("   Your answer: ")
-
-		answer, err := reader.ReadString('\n')
-		if err != nil {
-			logger.Error("Error reading input: %v", err)
-			return originalTask
-		}
-
-		// Add the Q&A to our collection
-		questionAnswers.WriteString(fmt.Sprintf("Question %d: %s\n", i+1, question))
-		questionAnswers.WriteString(fmt.Sprintf("Answer %d: %s\n", i+1, strings.TrimSpace(answer)))
-	}
-
-	// Now refine the task with the answers
-	logger.Info("Refining task description...")
-	logger.Debug("Refining task description...")
-
-	// Build prompt for refinement (template loading is handled internally)
-	refineData := &prompt.TemplateData{
-		Task:    originalTask,
-		Context: questionAnswers.String(),
-	}
-
-	refinePrompt, err := promptManager.BuildPrompt("refine.tmpl", refineData)
-	if err != nil {
-		logger.Error("Failed to build refinement prompt: %v", err)
-		return originalTask
-	}
-
-	// Call Gemini to generate refined task
-	result, err = geminiClient.GenerateContent(ctx, refinePrompt)
-	if err != nil {
-		logger.Error("Error generating refined task: %v", err)
-		return originalTask
-	}
-
-	// Process the JSON response
-	var refinementData struct {
-		RefinedTask string   `json:"refined_task"`
-		KeyPoints   []string `json:"key_points"`
-	}
-
-	// Parse JSON response
-	err = json.Unmarshal([]byte(result.Content), &refinementData)
-	if err != nil {
-		logger.Error("Failed to parse refinement response: %v", err)
-		logger.Debug("Response content: %s", result.Content)
-		return originalTask
-	}
-
-	// Stop spinner and show the refined task
-	logger.Info("Task refinement complete")
-
-	// Show the refinement results
-	fmt.Println("\n✨ Refined Task Description:")
-	fmt.Println(refinementData.RefinedTask)
-
-	if len(refinementData.KeyPoints) > 0 {
-		fmt.Println("\n🔑 Key Technical Points:")
-		for i, point := range refinementData.KeyPoints {
-			fmt.Printf("%d. %s\n", i+1, point)
-		}
-	}
-
-	fmt.Println("\nProceeding with the refined task description...")
-
-	return refinementData.RefinedTask
-}
 
 // parseFlags handles command line argument parsing
 func parseFlags() *Configuration {
