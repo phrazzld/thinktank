@@ -4,6 +4,7 @@ package integration
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -121,8 +122,14 @@ func (env *TestEnv) Setup() {
 
 // SimulateUserInput writes data to mock stdin to simulate user input
 func (env *TestEnv) SimulateUserInput(input string) {
-	env.MockStdin.WriteString(input)
-	env.MockStdin.Seek(0, 0) // Rewind to start
+	_, err := env.MockStdin.WriteString(input)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to write to mock stdin: %v", err))
+	}
+	_, err = env.MockStdin.Seek(0, 0) // Rewind to start
+	if err != nil {
+		panic(fmt.Sprintf("Failed to seek in mock stdin: %v", err))
+	}
 }
 
 // CreateTestFile creates a file with the given content in the test directory

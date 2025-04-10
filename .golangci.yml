@@ -1,0 +1,17 @@
+# .golangci.yml
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+
+issues:
+  # Define output format 
+  output:
+    format: colored-line-number

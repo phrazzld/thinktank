@@ -114,6 +114,7 @@ func fileExists(t *testing.T, path string) bool {
 }
 
 // Helper function to create a config manager with test-specific paths
+// nolint:unused
 func newTestConfigManager(t *testing.T, logger logutil.LoggerInterface, userConfigDir string, sysConfigDirs []string) *config.Manager {
 	t.Helper()
 	// Create a manager with standard paths
@@ -147,8 +148,8 @@ func newTestConfigManager(t *testing.T, logger logutil.LoggerInterface, userConf
 
 // TestConfigIntegration tests comprehensive configuration system integration
 func TestConfigIntegration(t *testing.T) {
-	// Using fmt here to prevent "imported but not used" error
-	_ = fmt.Sprintf("This is just to use the fmt package")
+	// This test needs the fmt package imported
+	_ = "Using fmt package"
 	// --- Test Case 1: Default Config ---
 	t.Run("DefaultConfigNoFiles", func(t *testing.T) {
 		// Set up temp directories
