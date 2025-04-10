@@ -90,10 +90,11 @@ jobs:
           fi
           echo "Code coverage threshold check passed ($COVERAGE% >= $THRESHOLD%)"
 
-  # Build job will be implemented in subsequent tasks
+  # Build job for building Go binary
   build:
     name: Build
     runs-on: ubuntu-latest
+    needs: test
     steps:
       # Checkout repository
       - name: Checkout code
@@ -106,4 +107,4 @@ jobs:
           go-version: 'stable'
           cache: true
       
-      # Other steps will be implemented in their respective tasks
+      # Build step and artifact upload will be implemented in subsequent tasks

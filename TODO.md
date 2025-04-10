@@ -69,7 +69,7 @@
   - **Depends On:** Add coverage reporting
   - **AC Ref:** Testing step 3
 
-- [ ] **Create build job**
+- [x] **Create build job**
   - **Action:** Create the build job with proper configuration
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Build
