@@ -270,7 +270,7 @@ func (a *MainAdapter) simulateClarifyTaskDescription(ctx context.Context, config
 	}
 
 	if _, err := geminiClient.GenerateContent(ctx, "first call"); err != nil {
-		return ""  // Return empty string if first call fails
+		return "" // Return empty string if first call fails
 	}
 
 	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
@@ -283,7 +283,7 @@ func (a *MainAdapter) simulateClarifyTaskDescription(ctx context.Context, config
 
 	result, err := geminiClient.GenerateContent(ctx, "second call") // Second call for refinement
 	if err != nil {
-		return ""  // Return empty string if second call fails
+		return "" // Return empty string if second call fails
 	}
 
 	// Parse the refinement result

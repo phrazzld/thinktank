@@ -28,8 +28,8 @@ type ManagerInterface interface {
 
 // Manager handles loading and processing prompt templates
 type Manager struct {
-	logger            logutil.LoggerInterface
-	defaultPrompt     string
+	logger        logutil.LoggerInterface
+	defaultPrompt string
 	// templatePath is currently unused but kept for future expansion
 	// nolint:unused
 	templatePath      string
