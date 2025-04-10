@@ -1,13 +1,12 @@
 # TODO
 
 ## Command-Line Interface Updates
+- [ ] **Completely remove --task flag**
+  - **Action:** Remove the --task flag functionality completely to simplify the codebase. This includes removing the flag from parseFlags(), removing all code related to supporting the flag in validateInputs(), removing its description constant, and updating any documentation that still references it.
+  - **Depends On:** All other tasks that mention the --task flag deprecation
+  - **AC Ref:** Code simplification and maintainability
 
 ## Input Validation
-
-- [ ] **Improve error messages for task file validation**
-  - **Action:** Enhance error handling for file existence, readability, and content validation with clear error messages.
-  - **Depends On:** Modify validateInputs() to require task file
-  - **AC Ref:** Error handling (Technical Risk 2)
 
 - [ ] **Add deprecation warning for --task flag**
   - **Action:** When users provide --task without --task-file, log a clear deprecation warning suggesting migration to --task-file.

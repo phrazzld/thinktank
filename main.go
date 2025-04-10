@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -29,6 +30,14 @@ const (
 	defaultExcludeNames     = config.DefaultExcludeNames
 	taskFlagDescription     = "Description of the task or goal for the plan (deprecated: use --task-file instead)."
 	taskFileFlagDescription = "Path to a file containing the task description (required)."
+)
+
+// Define sentinel errors for task file validation
+var (
+	ErrTaskFileNotFound       = errors.New("task file not found")
+	ErrTaskFileReadPermission = errors.New("task file permission denied")
+	ErrTaskFileIsDir          = errors.New("task file path is a directory")
+	ErrTaskFileEmpty          = errors.New("task file is empty")
 )
 
 // Configuration holds the parsed command-line options
@@ -351,15 +360,37 @@ func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (stri
 		taskFilePath = filepath.Join(cwd, taskFilePath)
 	}
 
-	// Check if file exists
-	if _, err := os.Stat(taskFilePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("task file not found: %s", taskFilePath)
+	// Enhanced file existence check with specific errors
+	fileInfo, err := os.Stat(taskFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileNotFound, taskFilePath)
+		}
+		if os.IsPermission(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
+		}
+		// Generic stat error
+		return "", fmt.Errorf("error checking task file status: %w", err)
+	}
+
+	// Check if it's a directory
+	if fileInfo.IsDir() {
+		return "", fmt.Errorf("%w: %s", ErrTaskFileIsDir, taskFilePath)
 	}
 
 	// Read file content
 	content, err := os.ReadFile(taskFilePath)
 	if err != nil {
-		return "", fmt.Errorf("error reading task file: %w", err)
+		if os.IsPermission(err) {
+			return "", fmt.Errorf("%w: %s", ErrTaskFileReadPermission, taskFilePath)
+		}
+		// Generic read error
+		return "", fmt.Errorf("error reading task file content: %w", err)
+	}
+
+	// Check for empty content
+	if len(strings.TrimSpace(string(content))) == 0 {
+		return "", fmt.Errorf("%w: %s", ErrTaskFileEmpty, taskFilePath)
 	}
 
 	// Return content as string
@@ -375,7 +406,20 @@ func validateInputs(config *Configuration, logger logutil.LoggerInterface) {
 		// Task file provided - this is the preferred path
 		taskContent, err := readTaskFromFile(config.TaskFile, logger)
 		if err != nil {
-			logger.Error("Failed to load task file: %v", err)
+			// Specific error handling
+			switch {
+			case errors.Is(err, ErrTaskFileNotFound):
+				logger.Error("Task file not found. Please check the path: %s", config.TaskFile)
+			case errors.Is(err, ErrTaskFileReadPermission):
+				logger.Error("Cannot read task file due to permissions. Please check permissions for: %s", config.TaskFile)
+			case errors.Is(err, ErrTaskFileIsDir):
+				logger.Error("The specified task file path is a directory, not a file: %s", config.TaskFile)
+			case errors.Is(err, ErrTaskFileEmpty):
+				logger.Error("The task file is empty or contains only whitespace: %s", config.TaskFile)
+			default:
+				// Generic fallback with more specific underlying error
+				logger.Error("Failed to load task file '%s': %v", config.TaskFile, err)
+			}
 			flag.Usage()
 			os.Exit(1)
 		}
