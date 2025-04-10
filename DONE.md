@@ -142,3 +142,9 @@
   - **Action:** Replace the root-level main.go with a simple entry point that calls cmd/architect/main.go's Main function.
   - **Depends On:** Enhance OriginalMain transitional implementation.
   - **AC Ref:** Implementation Steps 7.
+  
+## Documentation
+- [x] **Update README.md usage examples** (Completed on 2025-04-10)
+  - **Action:** Ensure all command examples in README.md work with the refactored code.
+  - **Depends On:** Create a new main.go entry point.
+  - **AC Ref:** Implementation Steps 5.

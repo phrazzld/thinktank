@@ -136,11 +136,6 @@
 
 
 ## Documentation
-- [ ] **Update README.md usage examples**
-  - **Action:** Ensure all command examples in README.md work with the refactored code.
-  - **Depends On:** Create a new main.go entry point.
-  - **AC Ref:** Implementation Steps 5.
-
 - [ ] **Update help text for commands**
   - **Action:** Verify the help text is consistent across all commands.
   - **Depends On:** Update README.md usage examples.
