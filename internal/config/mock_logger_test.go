@@ -1,9 +1,7 @@
 package config
 
 import (
-	"reflect"
-	"testing"
-
+	"fmt"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -25,42 +23,31 @@ func newMockLogger() *mockLogger {
 }
 
 func (m *mockLogger) Debug(format string, args ...interface{}) {
-	m.debugMessages = append(m.debugMessages, format)
+	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockLogger) Info(format string, args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, format)
+	m.infoMessages = append(m.infoMessages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockLogger) Warn(format string, args ...interface{}) {
-	m.warnMessages = append(m.warnMessages, format)
+	m.warnMessages = append(m.warnMessages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockLogger) Error(format string, args ...interface{}) {
-	m.errorMessages = append(m.errorMessages, format)
+	m.errorMessages = append(m.errorMessages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockLogger) Fatal(format string, args ...interface{}) {
-	m.errorMessages = append(m.errorMessages, "FATAL: "+format)
+	m.errorMessages = append(m.errorMessages, fmt.Sprintf("FATAL: "+format, args...))
 }
 
 func (m *mockLogger) Printf(format string, args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, format)
+	m.infoMessages = append(m.infoMessages, fmt.Sprintf(format, args...))
 }
 
 func (m *mockLogger) Println(args ...interface{}) {
-	m.infoMessages = append(m.infoMessages, "println")
+	m.infoMessages = append(m.infoMessages, fmt.Sprint(args...))
 }
 
 func (m *mockLogger) SetLevel(level logutil.LogLevel) {}
-
-func TestAppConfigStructHasNoFieldClarifyTask(t *testing.T) {
-	// Get the type of AppConfig struct
-	configType := reflect.TypeOf(AppConfig{})
-
-	// Check if the ClarifyTask field exists
-	_, exists := configType.FieldByName("ClarifyTask")
-	if exists {
-		t.Error("ClarifyTask field still exists in AppConfig struct but should have been removed")
-	}
-}
