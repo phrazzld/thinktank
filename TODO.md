@@ -9,7 +9,7 @@
 ## Input Validation
 
 ## Prompt Template Processing
-- [ ] **Update generateAndSavePlanWithPromptManager function**
+- [x] **Update generateAndSavePlanWithPromptManager function**
   - **Action:** Modify this function to handle the task file content appropriately, adding logic to determine if the file should be treated as a template or raw content.
   - **Depends On:** Modify validateInputs() to require task file
   - **AC Ref:** Template handling update (Detailed Task Breakdown 3)
