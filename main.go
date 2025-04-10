@@ -58,7 +58,6 @@ type Configuration struct {
 	DryRun          bool
 	ConfirmTokens   int
 	PromptTemplate  string
-	ClarifyTask     bool
 	ListExamples    bool
 	ShowExample     string
 	Paths           []string
@@ -120,10 +119,7 @@ func main() {
 	geminiClient := initGeminiClient(ctx, config, logger)
 	defer geminiClient.Close()
 
-	// If task clarification is enabled, let the user refine their task
-	if config.ClarifyTask && !config.DryRun {
-		config.TaskDescription = clarifyTaskDescriptionWithConfig(ctx, config, geminiClient, configManager, logger)
-	}
+	// Task clarification code has been removed
 
 	// Gather context from files
 	projectContext := gatherContext(ctx, config, geminiClient, logger)
@@ -134,150 +130,7 @@ func main() {
 	}
 }
 
-// clarifyTaskDescription is a backward-compatible wrapper for clarification process
-func clarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface) string {
-	// Use legacy version with default prompt manager
-	promptManager := prompt.NewManager(logger)
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
-}
-
-// clarifyTaskDescriptionWithConfig performs task clarification using the config system
-func clarifyTaskDescriptionWithConfig(ctx context.Context, config *Configuration, geminiClient gemini.Client, configManager config.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Set up prompt manager with config support
-	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-	if err != nil {
-		logger.Error("Failed to set up prompt manager: %v", err)
-		// Fall back to the non-config version
-		return clarifyTaskDescription(ctx, config, geminiClient, logger)
-	}
-
-	return clarifyTaskDescriptionWithPromptManager(ctx, config, geminiClient, promptManager, logger)
-}
-
-// clarifyTaskDescriptionWithPromptManager is the core implementation of the task clarification process
-func clarifyTaskDescriptionWithPromptManager(ctx context.Context, config *Configuration, geminiClient gemini.Client, promptManager prompt.ManagerInterface, logger logutil.LoggerInterface) string {
-	// Spinner initialization removed
-
-	// Original task description
-	originalTask := config.TaskDescription
-
-	// Build prompt for clarification (template loading is handled internally)
-	logger.Info("Analyzing task description...")
-	logger.Debug("Analyzing task description...")
-	data := &prompt.TemplateData{
-		Task: originalTask,
-	}
-
-	clarifyPrompt, err := promptManager.BuildPrompt("clarify.tmpl", data)
-	if err != nil {
-		logger.Error("Failed to build clarification prompt: %v", err)
-		return originalTask
-	}
-
-	// Call Gemini to generate clarification questions
-	logger.Info("Generating clarification questions...")
-	logger.Debug("Generating clarification questions...")
-	result, err := geminiClient.GenerateContent(ctx, clarifyPrompt)
-	if err != nil {
-		logger.Error("Error generating clarification questions: %v", err)
-		return originalTask
-	}
-
-	// Process the JSON response
-	var clarificationData struct {
-		Analysis  string   `json:"analysis"`
-		Questions []string `json:"questions"`
-	}
-
-	// Parse JSON response - must be valid JSON as requested in the prompt
-	err = json.Unmarshal([]byte(result.Content), &clarificationData)
-	if err != nil {
-		logger.Error("Failed to parse clarification response: %v", err)
-		logger.Debug("Response content: %s", result.Content)
-		return originalTask
-	}
-
-	// Stop spinner and start the interactive clarification process
-	logger.Info("Task analysis complete")
-
-	// Show the analysis to the user
-	logger.Info("Task Analysis: %s", clarificationData.Analysis)
-
-	// Present each question and collect answers
-	var questionAnswers strings.Builder
-	fmt.Println("\n🔍 Task Clarification:")
-
-	reader := bufio.NewReader(os.Stdin)
-	for i, question := range clarificationData.Questions {
-		fmt.Printf("\n%d. %s\n", i+1, question)
-		fmt.Print("   Your answer: ")
-
-		answer, err := reader.ReadString('\n')
-		if err != nil {
-			logger.Error("Error reading input: %v", err)
-			return originalTask
-		}
-
-		// Add the Q&A to our collection
-		questionAnswers.WriteString(fmt.Sprintf("Question %d: %s\n", i+1, question))
-		questionAnswers.WriteString(fmt.Sprintf("Answer %d: %s\n", i+1, strings.TrimSpace(answer)))
-	}
-
-	// Now refine the task with the answers
-	logger.Info("Refining task description...")
-	logger.Debug("Refining task description...")
-
-	// Build prompt for refinement (template loading is handled internally)
-	refineData := &prompt.TemplateData{
-		Task:    originalTask,
-		Context: questionAnswers.String(),
-	}
-
-	refinePrompt, err := promptManager.BuildPrompt("refine.tmpl", refineData)
-	if err != nil {
-		logger.Error("Failed to build refinement prompt: %v", err)
-		return originalTask
-	}
-
-	// Call Gemini to generate refined task
-	result, err = geminiClient.GenerateContent(ctx, refinePrompt)
-	if err != nil {
-		logger.Error("Error generating refined task: %v", err)
-		return originalTask
-	}
-
-	// Process the JSON response
-	var refinementData struct {
-		RefinedTask string   `json:"refined_task"`
-		KeyPoints   []string `json:"key_points"`
-	}
-
-	// Parse JSON response
-	err = json.Unmarshal([]byte(result.Content), &refinementData)
-	if err != nil {
-		logger.Error("Failed to parse refinement response: %v", err)
-		logger.Debug("Response content: %s", result.Content)
-		return originalTask
-	}
-
-	// Stop spinner and show the refined task
-	logger.Info("Task refinement complete")
-
-	// Show the refinement results
-	fmt.Println("\n✨ Refined Task Description:")
-	fmt.Println(refinementData.RefinedTask)
-
-	if len(refinementData.KeyPoints) > 0 {
-		fmt.Println("\n🔑 Key Technical Points:")
-		for i, point := range refinementData.KeyPoints {
-			fmt.Printf("%d. %s\n", i+1, point)
-		}
-	}
-
-	fmt.Println("\nProceeding with the refined task description...")
-
-	return refinementData.RefinedTask
-}
+// clarifyTaskDescription function removed
 
 // parseFlags handles command line argument parsing
 func parseFlags() *Configuration {
@@ -298,7 +151,6 @@ func parseFlags() *Configuration {
 	dryRunFlag := flag.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
 	listExamplesFlag := flag.Bool("list-examples", false, "List available example prompt template files")
 	showExampleFlag := flag.String("show-example", "", "Display the content of a specific example template")
 
@@ -333,7 +185,6 @@ func parseFlags() *Configuration {
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
-	config.ClarifyTask = *clarifyTaskFlag
 	config.ListExamples = *listExamplesFlag
 	config.ShowExample = *showExampleFlag
 	config.Paths = flag.Args()
@@ -1061,7 +912,6 @@ func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 		"use_colors":          cliConfig.UseColors,
 		"include":             cliConfig.Include,
 		"format":              cliConfig.Format,
-		"clarify_task":        cliConfig.ClarifyTask,
 		"dry_run":             cliConfig.DryRun,
 		"confirm_tokens":      cliConfig.ConfirmTokens,
 		"paths":               cliConfig.Paths,
@@ -1105,9 +955,7 @@ func backfillConfigFromAppConfig(cliConfig *Configuration, appConfig *config.App
 	if !isFlagSet("confirm-tokens") {
 		config.ConfirmTokens = appConfig.ConfirmTokens
 	}
-	if !isFlagSet("clarify") {
-		config.ClarifyTask = appConfig.ClarifyTask
-	}
+	// ClarifyTask handling has been removed
 	if !isFlagSet("prompt-template") && appConfig.Templates.Default != "" {
 		config.PromptTemplate = appConfig.Templates.Default
 	}

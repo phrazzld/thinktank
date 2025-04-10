@@ -373,8 +373,9 @@ func main() {}`)
 	// and if the output file was created based on the user's response
 }
 
-// TestTaskClarification tests the interactive task clarification feature
-func TestTaskClarification(t *testing.T) {
+// TestTaskExecution tests the basic task execution without clarification
+// (replaces the old TestTaskClarification test that depended on the removed clarify feature)
+func TestTaskExecution(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
@@ -393,16 +394,15 @@ func main() {}`)
 	// Set up the adapter
 	adapter := NewMainAdapter()
 
-	// Original task description
-	originalTask := "Implement a new feature"
+	// Task description
+	taskDescription := "Implement a new feature"
 
-	// Run the application with the clarify flag
+	// Run the application with basic task description
 	err := adapter.RunWithArgs(
 		[]string{
 			"architect",
-			"--task", originalTask,
+			"--task", taskDescription,
 			"--output", outputFile,
-			"--clarify", // Enable task clarification
 			env.TestDir + "/src",
 		},
 		env,
@@ -417,7 +417,7 @@ func main() {}`)
 		t.Errorf("Output file was not created at %s", outputFile)
 	}
 
-	// Verify that the refined task was used
+	// Verify that the task was used
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
 		t.Fatalf("Failed to read output file: %v", err)
@@ -425,8 +425,10 @@ func main() {}`)
 
 	// The task clarification test depends on the mock implementation
 	// We expect to see the refined task in the output content
+	// The refined task should contain REFINED in the output
 	if !strings.Contains(string(content), "REFINED:") {
 		t.Errorf("Output file does not reflect the refined task: %s", string(content))
+	}
 	}
 }
 

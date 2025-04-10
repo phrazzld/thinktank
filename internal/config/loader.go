@@ -160,14 +160,6 @@ func (m *Manager) getTemplatePathFromConfig(templateName string) (string, bool) 
 		if m.config.Templates.Default != "" {
 			return m.config.Templates.Default, true
 		}
-	case "clarify":
-		if m.config.Templates.Clarify != "" {
-			return m.config.Templates.Clarify, true
-		}
-	case "refine":
-		if m.config.Templates.Refine != "" {
-			return m.config.Templates.Refine, true
-		}
 	case "test":
 		// For test templates
 		return "test.tmpl", true
@@ -259,14 +251,11 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 	v.SetDefault("verbose", defaultConfig.Verbose)
 	v.SetDefault("log_level", defaultConfig.LogLevel)
 	v.SetDefault("use_colors", defaultConfig.UseColors)
-	v.SetDefault("clarify_task", defaultConfig.ClarifyTask)
 	v.SetDefault("confirm_tokens", defaultConfig.ConfirmTokens)
 	v.SetDefault("include", defaultConfig.Include)
 
 	// Hierarchical settings
 	v.SetDefault("templates.default", defaultConfig.Templates.Default)
-	v.SetDefault("templates.clarify", defaultConfig.Templates.Clarify)
-	v.SetDefault("templates.refine", defaultConfig.Templates.Refine)
 	v.SetDefault("templates.dir", defaultConfig.Templates.Dir)
 	v.SetDefault("templates.test", "test.tmpl")
 

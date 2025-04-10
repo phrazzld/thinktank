@@ -32,10 +32,6 @@ const (
 type TemplateConfig struct {
 	// Default template used for generating content (logical name or path)
 	Default string `mapstructure:"default" toml:"default"`
-	// Clarification template used for task analysis
-	Clarify string `mapstructure:"clarify" toml:"clarify"`
-	// Refinement template used for refining task description
-	Refine string `mapstructure:"refine" toml:"refine"`
 	// Test template for integration testing
 	Test string `mapstructure:"test" toml:"test"`
 	// Custom template for integration testing
@@ -59,7 +55,6 @@ type AppConfig struct {
 	TaskFile        string `mapstructure:"task_file" toml:"-"`        // Not saved to config
 	OutputFile      string `mapstructure:"output_file" toml:"output_file"`
 	ModelName       string `mapstructure:"model" toml:"model"`
-	ClarifyTask     bool   `mapstructure:"clarify_task" toml:"clarify_task"`
 
 	// File handling settings
 	Include       string `mapstructure:"include" toml:"include"`
@@ -100,8 +95,6 @@ func DefaultConfig() *AppConfig {
 		},
 		Templates: TemplateConfig{
 			Default: "default.tmpl",
-			Clarify: "clarify.tmpl",
-			Refine:  "refine.tmpl",
 		},
 	}
 }
