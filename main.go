@@ -3,16 +3,13 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/phrazzld/architect/cmd/architect"
 	"github.com/phrazzld/architect/internal/config"
@@ -64,13 +61,19 @@ type Configuration struct {
 	ApiKey          string
 }
 
-// Transitional implementation - being replaced by cmd/architect/main.go's Main() function
-func main() {
+// OriginalMain is the original entry point for the architect CLI
+// It's a refactored version of the original main function that gradually uses
+// the new components while maintaining backward compatibility
+func OriginalMain() int {
+	// Create a base context
+	ctx := context.Background()
+
 	// Parse command line flags
 	cliConfig := parseFlags()
 
 	// Setup logging early for error reporting
 	logger := setupLogging(cliConfig)
+	logger.Info("Starting Architect - AI-assisted planning tool")
 
 	// Initialize XDG-compliant configuration system
 	configManager := initConfigSystem(logger)
@@ -88,26 +91,9 @@ func main() {
 	}
 
 	// Handle special subcommands before regular flow
-	if cliConfig.ListExamples {
-		// Create prompt builder and use it directly
-		promptBuilder := architect.NewPromptBuilder(logger)
-		err := promptBuilder.ListExampleTemplates(configManager)
-		if err != nil {
-			logger.Error("Error listing example templates: %v", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	if cliConfig.ShowExample != "" {
-		// Create prompt builder and use it directly
-		promptBuilder := architect.NewPromptBuilder(logger)
-		err := promptBuilder.ShowExampleTemplate(cliConfig.ShowExample, configManager)
-		if err != nil {
-			logger.Error("Error showing example template: %v", err)
-			os.Exit(1)
-		}
-		return
+	if handleSpecialCommands(cliConfig, logger, configManager) {
+		// Special command was executed, exit the program
+		return 0
 	}
 
 	// Convert CLI flags to the format needed for merging
@@ -124,14 +110,18 @@ func main() {
 	// Create backfilled CLI config for backward compatibility
 	config := backfillConfigFromAppConfig(cliConfig, appConfig)
 
-	// Create prompt builder for later use (currently used in special commands only)
-	_ = architect.NewPromptBuilder(logger)
+	// Process task input from file or flag
+	taskDescription := processTaskInput(config, logger)
 
-	// Validate inputs
-	validateInputs(config, logger)
+	// Validate inputs - exit with code 1 if validation fails
+	result := doValidateInputs(config, logger)
+	if !result.Valid {
+		logger.Error(result.ErrorMessage)
+		flag.Usage()
+		return 1
+	}
 
-	// Initialize API client
-	ctx := context.Background()
+	// Initialize API client using the new APIService
 	apiService := architect.NewAPIService(logger)
 	geminiClient, err := apiService.InitClient(ctx, config.ApiKey, config.ModelName)
 	if err != nil {
@@ -153,12 +143,11 @@ func main() {
 		}
 
 		logger.Fatal("Failed to initialize API client")
+		return 1
 	}
 	defer geminiClient.Close()
 
-	// Task clarification code has been removed
-
-	// Create context gatherer
+	// Create token manager and context gatherer using the new components
 	tokenManager := architect.NewTokenManager(logger)
 	contextGatherer := architect.NewContextGatherer(logger, config.DryRun, tokenManager)
 
@@ -177,6 +166,7 @@ func main() {
 	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
 		logger.Fatal("Failed during project context gathering: %v", err)
+		return 1
 	}
 
 	// Handle dry run mode
@@ -184,12 +174,30 @@ func main() {
 		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
 		if err != nil {
 			logger.Error("Error displaying dry run information: %v", err)
+			return 1
 		}
-		return
+		return 0
 	}
 
+	// Create output writer
+	outputWriter := architect.NewOutputWriter(logger, tokenManager)
+
 	// Generate content if not in dry run mode
-	generateAndSavePlanWithConfig(ctx, config, geminiClient, projectContext, configManager, logger)
+	err = outputWriter.GenerateAndSavePlanWithConfig(
+		ctx,
+		geminiClient,
+		taskDescription,
+		projectContext,
+		config.OutputFile,
+		configManager,
+	)
+	if err != nil {
+		logger.Fatal("Error generating and saving plan: %v", err)
+		return 1
+	}
+
+	logger.Info("Plan successfully generated and saved to %s", config.OutputFile)
+	return 0
 }
 
 // clarifyTaskDescription function removed
@@ -600,6 +608,23 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 }
 
 // processApiResponse function moved to cmd/architect/api.go
+// Re-export for testing with original signature
+func processApiResponse(response *gemini.GenerationResult, logger logutil.LoggerInterface) string {
+	// Process the generationResult and return the text
+	if response == nil {
+		logger.Error("Empty response from API")
+		return ""
+	}
+
+	// Check for safety issues
+	if response.FinishReason == "SAFETY" {
+		logger.Warn("Content blocked due to safety concerns")
+		return ""
+	}
+
+	// Return the text content
+	return response.Content
+}
 
 // saveToFile writes the generated plan to the specified file
 // Transitional implementation - moved to cmd/architect/output.go
@@ -618,8 +643,113 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 // initSpinner function removed
 
 // promptForConfirmation function moved to TokenManager
+// Re-export for testing - maintaining original signature
+func promptForConfirmation(tokenCount int32, confirmTokens int, logger logutil.LoggerInterface) bool {
+	if confirmTokens <= 0 {
+		return true // No confirmation needed
+	}
+	
+	// Format the message
+	msg := fmt.Sprintf("Token count (%d) exceeds confirmation threshold (%d). Proceed?", tokenCount, confirmTokens)
+	
+	// Read from stdin
+	reader := bufio.NewReader(os.Stdin)
+	logger.Warn("%s (y/N): ", msg)
+	
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		logger.Error("Error reading input: %v", err)
+		return false
+	}
+	
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes"
+}
 
 // tokenInfoResult and associated functions moved to cmd/architect/token.go
+// Re-export for testing with original signature
+type tokenInfoResult struct {
+	tokenCount    int32
+	inputLimit    int32 
+	outputLimit   int32
+	exceedsLimit  bool
+	percentOfMax  float64
+	exceededBy    int32
+	modelName     string
+	countingError error
+	infoError     error
+	limitError    error // Added to satisfy tests
+	// Keep the capitalized fields for our implementation
+	TokenCount    int32
+	ModelInfo     *gemini.ModelInfo
+	PercentOfMax  float64
+	ExceedsLimit  bool
+	ExceededBy    int32
+	CountingError error
+	InfoError     error
+}
+
+// Helper function to check if a tokenInfoResult is nil (for test compatibility)
+func (t tokenInfoResult) IsNil() bool {
+	return false
+}
+
+// Re-export for testing
+func getTokenInfo(ctx context.Context, client gemini.Client, prompt string, logger logutil.LoggerInterface) (tokenInfoResult, error) {
+	// Create result struct
+	result := tokenInfoResult{}
+	
+	// Get token count
+	tokenCount, err := client.CountTokens(ctx, prompt)
+	if err != nil {
+		result.CountingError = err
+		result.countingError = err
+		return result, err
+	}
+	
+	// Store token count
+	if tokenCount != nil {
+		result.TokenCount = tokenCount.Total
+		result.tokenCount = tokenCount.Total
+	}
+	
+	// Get model info
+	modelInfo, err := client.GetModelInfo(ctx)
+	if err != nil {
+		result.InfoError = err
+		result.infoError = err
+		return result, err
+	}
+	
+	// Store model info
+	result.ModelInfo = modelInfo
+	if modelInfo != nil {
+		result.modelName = modelInfo.Name
+		result.inputLimit = modelInfo.InputTokenLimit
+		result.outputLimit = modelInfo.OutputTokenLimit
+		
+		// Calculate percentage of limit
+		result.PercentOfMax = float64(result.TokenCount) / float64(modelInfo.InputTokenLimit) * 100
+		result.percentOfMax = result.PercentOfMax
+		
+		// Check if token count exceeds limit
+		if result.TokenCount > modelInfo.InputTokenLimit {
+			result.ExceedsLimit = true
+			result.exceedsLimit = true
+			result.ExceededBy = result.TokenCount - modelInfo.InputTokenLimit
+			result.exceededBy = result.ExceededBy
+			result.limitError = fmt.Errorf("token limit exceeded by %d tokens", result.ExceededBy)
+		}
+	}
+	
+	return result, nil
+}
+
+// Re-export for testing
+func checkTokenLimit(ctx context.Context, client gemini.Client, prompt string, logger logutil.LoggerInterface) error {
+	tokenManager := architect.NewTokenManager(logger)
+	return tokenManager.CheckTokenLimit(ctx, client, prompt)
+}
 
 // initConfigSystem initializes the configuration system
 // Transitional implementation - moved to cmd/architect/cli.go
@@ -792,4 +922,63 @@ func buildPromptWithManager(config *Configuration, task string, context string, 
 
 	// Build the prompt (template loading is now handled by the manager)
 	return promptManager.BuildPrompt(templateName, data)
+}
+
+// handleSpecialCommands processes special command flags like list-examples and show-example
+// Returns true if a special command was executed
+// This is a bridge to the architect.HandleSpecialCommands function that maintains backward compatibility
+func handleSpecialCommands(cliConfig *Configuration, logger logutil.LoggerInterface, configManager config.ManagerInterface) bool {
+	// Create prompt builder
+	promptBuilder := architect.NewPromptBuilder(logger)
+	
+	// Handle special subcommands before regular flow
+	if cliConfig.ListExamples {
+		err := promptBuilder.ListExampleTemplates(configManager)
+		if err != nil {
+			logger.Error("Error listing example templates: %v", err)
+			os.Exit(1)
+		}
+		return true
+	}
+
+	if cliConfig.ShowExample != "" {
+		err := promptBuilder.ShowExampleTemplate(cliConfig.ShowExample, configManager)
+		if err != nil {
+			logger.Error("Error showing example template: %v", err)
+			os.Exit(1)
+		}
+		return true
+	}
+
+	// No special commands were executed
+	return false
+}
+
+// processTaskInput extracts task description from file or flag
+// This is a bridge to the architect.ProcessTaskInput function that maintains backward compatibility
+func processTaskInput(cliConfig *Configuration, logger logutil.LoggerInterface) string {
+	// If task file is provided, read from file
+	if cliConfig.TaskFile != "" {
+		// Create prompt builder
+		promptBuilder := architect.NewPromptBuilder(logger)
+		
+		// Read task from file using prompt builder
+		content, err := promptBuilder.ReadTaskFromFile(cliConfig.TaskFile)
+		if err != nil {
+			logger.Error("Failed to read task from file: %v", err)
+			os.Exit(1)
+		}
+		return content
+	}
+	
+	// Otherwise, use the task description from CLI flags
+	return cliConfig.TaskDescription
+}
+
+// main is now a thin wrapper around OriginalMain
+// This allows for an easy transition to architect.Main() in the future
+// Transitional implementation - being replaced by cmd/architect/main.go's Main() function
+func main() {
+	exitCode := OriginalMain()
+	os.Exit(exitCode)
 }
