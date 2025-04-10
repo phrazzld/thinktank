@@ -54,7 +54,7 @@
   - **Depends On:** Create CI workflow file
   - **AC Ref:** Testing
 
-- [ ] **Add race detection testing**
+- [x] **Add race detection testing**
   - **Action:** Implement step to run tests with race detection
   - **Depends On:** Create test job
   - **AC Ref:** Testing step 1
