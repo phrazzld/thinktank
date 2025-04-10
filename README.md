@@ -11,8 +11,8 @@ Architect analyzes your codebase and uses Gemini AI to create comprehensive tech
 **Please note:** The way you provide the task description to Architect has changed:
 
 * The `--task-file` flag is now **required** for generating plans. You must provide the task description in a file. This allows for more complex and structured task inputs.
-* The `--task` flag is now **deprecated** and will be removed in a future release. It should no longer be used for generating plans.
-* For `--dry-run` operations, neither `--task-file` nor `--task` is strictly required, but the deprecated `--task` flag may still be used during the transition period if needed for context scoping.
+* The `--task` flag has been **removed**. All task descriptions must be provided via files.
+* For `--dry-run` operations, the `--task-file` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
 
 Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
 
@@ -61,13 +61,12 @@ architect --task-file task.txt --output auth_plan.md ./
 architect --task-file task.txt --include .go,.md ./
 
 # Use a different Gemini model
-architect --task-file task.txt --model gemini-1.5-pro ./
+architect --task-file task.txt --model gemini-2.5-pro-exp-03-25 ./
 
-# Dry run to see which files would be included
+# Dry run to see which files would be included (without generating a plan)
 architect --dry-run ./
-# Or with deprecated --task:
-architect --dry-run --task "Task description for context" ./
-# Or with --task-file:
+
+# Dry run with context from a task file
 architect --dry-run --task-file task.txt ./
 
 # Request confirmation before proceeding if token count exceeds threshold
@@ -81,6 +80,9 @@ architect --list-examples
 
 # View a specific example template
 architect --show-example feature.tmpl
+
+# Save an example template to a file (for customization)
+architect --show-example feature.tmpl > my-feature-template.tmpl
 
 # Enable interactive task clarification
 architect --task-file task.txt --clarify ./
@@ -97,8 +99,7 @@ export GEMINI_API_KEY="your-api-key-here"
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--task` | (Deprecated) Description of the task. Use --task-file instead. Will be removed in a future version. | `""` |
-| `--task-file` | Path to a file containing the task description (Required unless --dry-run is used). | `(Required)` |
+| `--task-file` | Path to a file containing the task description (Required unless --dry-run is used) | `(Required)` |
 | `--output` | Output file path for the generated plan | `PLAN.md` |
 | `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
@@ -111,7 +112,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
 | `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
-| `--no-spinner` | Disable spinner animation during API calls | `false` |
 | `--clarify` | Enable interactive task clarification to refine your task description | `false` |
 | `--list-examples` | List available example prompt template files | `false` |
 | `--show-example` | Display the content of a specific example template | `""` |
@@ -253,6 +253,13 @@ Available example templates include:
 - `detailed.tmpl`: A comprehensive template with detailed sections
 - `bugfix.tmpl`: A template specifically designed for bug fixes
 - `feature.tmpl`: A template designed for new feature implementation
+
+Templates are searched in this order:
+1. Absolute paths or paths relative to current directory (if specified directly)
+2. Custom paths configured in the config file
+3. User template directory: `~/.config/architect/templates/`
+4. System template directories
+5. Built-in embedded templates (included in the binary)
 
 ## Troubleshooting
 

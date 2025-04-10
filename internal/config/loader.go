@@ -86,6 +86,16 @@ func (m *Manager) GetSystemTemplateDirs() []string {
 	return dirs
 }
 
+// GetConfigDirs returns all configuration directories
+func (m *Manager) GetConfigDirs() ConfigDirectories {
+	return ConfigDirectories{
+		UserConfigDir:      m.userConfigDir,
+		SystemConfigDirs:   m.sysConfigDirs,
+		UserTemplateDir:    m.GetUserTemplateDir(),
+		SystemTemplateDirs: m.GetSystemTemplateDirs(),
+	}
+}
+
 // GetTemplatePath finds the path to a template file using the configured precedence
 func (m *Manager) GetTemplatePath(name string) (string, error) {
 	// If name is already a file path (contains path separator)

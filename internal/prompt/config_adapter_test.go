@@ -47,6 +47,15 @@ func (m *mockFullConfigManager) GetSystemTemplateDirs() []string {
 	return dirs
 }
 
+func (m *mockFullConfigManager) GetConfigDirs() config.ConfigDirectories {
+	return config.ConfigDirectories{
+		UserConfigDir:      m.userDir,
+		SystemConfigDirs:   m.sysDirs,
+		UserTemplateDir:    m.GetUserTemplateDir(),
+		SystemTemplateDirs: m.GetSystemTemplateDirs(),
+	}
+}
+
 func (m *mockFullConfigManager) GetTemplatePath(name string) (string, error) {
 	if path, ok := m.templates[name]; ok {
 		return path, nil
