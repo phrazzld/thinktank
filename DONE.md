@@ -20,3 +20,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
   - **Output:** Removed the ClarifyTask field from the struct while keeping temporary workarounds to maintain compatibility until subsequent tasks
+
+- [x] **Remove clarify key-value pair from ConvertConfigToMap**
+  - **Action:** In `cmd/architect/cli.go`, delete the `"clarify": cliConfig.ClarifyTask` entry from the ConvertConfigToMap function (line ~209).
+  - **Depends On:** Remove ClarifyTask field from CliConfig struct
+  - **AC Ref:** AC 1.2
+  - **Output:** Removed the clarify key and temporary variable from the map returned by ConvertConfigToMap

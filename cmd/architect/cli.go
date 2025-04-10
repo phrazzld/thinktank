@@ -196,10 +196,7 @@ func SetupLoggingCustom(config *CliConfig, logLevelFlag *flag.Flag, output io.Wr
 
 // ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
 func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
-	// We need to track whether clarifyTaskValue is in scope to avoid compilation errors
-	// This complexity will be removed in the next task when we remove the "clarify" key entirely
-	var clarifyTaskValue bool
-
+	// The temporary clarifyTaskValue variable and clarify key have been removed
 	return map[string]interface{}{
 		"taskFile":       cliConfig.TaskFile,
 		"output":         cliConfig.OutputFile,
@@ -214,7 +211,6 @@ func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
 		"dryRun":         cliConfig.DryRun,
 		"confirmTokens":  cliConfig.ConfirmTokens,
 		"promptTemplate": cliConfig.PromptTemplate,
-		"clarify":        clarifyTaskValue, // Using temporary variable, will be removed in next task
 		"listExamples":   cliConfig.ListExamples,
 		"showExample":    cliConfig.ShowExample,
 		"apiKey":         cliConfig.ApiKey,
