@@ -14,7 +14,7 @@
   - **Depends On:** Modify validateInputs() to require task file
   - **AC Ref:** Template handling update (Detailed Task Breakdown 3)
 
-- [ ] **Add fileIsTemplate detection mechanism**
+- [x] **Add fileIsTemplate detection mechanism**
   - **Action:** Implement logic to determine if a file should be processed as a template (with variable substitution) or used as raw content.
   - **Depends On:** Update generateAndSavePlanWithPromptManager function
   - **AC Ref:** Template processing decision (Technical Risk 3, Open Question 1)
@@ -40,9 +40,9 @@
 
 ## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
 
-- [ ] **Assumption: Template Processing Decision**
+- [x] **Assumption: Template Processing Decision**
   - **Context:** The plan mentions "Decision needs to be made whether user-provided files should be processed as templates themselves (with variable substitution) or used as raw content" but doesn't definitively resolve this.
-  - **Assumption:** We will implement a detection mechanism to determine if a file contains template variables (like {{.Task}} or {{.Context}}) and process it accordingly. Files without template variables will be used as raw content.
+  - **Assumption:** We will implement a detection mechanism to determine if a file contains template variables (like {{.Task}} or {{.Context}}) and process it accordingly. Files without template variables will be used as raw content. Files with .tmpl extension will always be treated as templates.
 
 - [ ] **Assumption: Backward Compatibility Approach**
   - **Context:** The plan mentions "Consider providing a clear deprecation message rather than removing support immediately" for the --task flag.

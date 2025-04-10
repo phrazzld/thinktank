@@ -312,3 +312,16 @@ func IsTemplate(content string) bool {
 	re := regexp.MustCompile(`{{\s*\.(?:Task|Context)\s*}}`)
 	return re.MatchString(content)
 }
+
+// FileIsTemplate determines if a file should be processed as a template based on
+// its file path and content. It checks the file extension first, and if it's not
+// a .tmpl file, falls back to content inspection.
+func FileIsTemplate(filePath string, content string) bool {
+	// Check if the file has a .tmpl extension
+	if filepath.Ext(filePath) == ".tmpl" {
+		return true
+	}
+
+	// Fall back to content inspection
+	return IsTemplate(content)
+}
