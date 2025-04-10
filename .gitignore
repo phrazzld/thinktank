@@ -31,3 +31,10 @@ Thumbs.db
 
 # Plan output
 PLAN.md
+
+# Temporary files
+*.bak
+test-results/
+thinktank-output/
+*-TASK.md
+*-PLAN.md
