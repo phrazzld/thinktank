@@ -14,6 +14,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/phrazzld/architect/cmd/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -588,7 +589,12 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	// Get token count for confirmation and limit checking
 	logger.Info("Checking token limits...")
 	logger.Debug("Checking token limits...")
-	tokenInfo, err := getTokenInfo(ctx, geminiClient, generatedPrompt, logger)
+	
+	// Create token manager
+	tokenManager := architect.NewTokenManager(logger)
+	
+	// Get token info
+	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, generatedPrompt)
 	if err != nil {
 		logger.Error("Token count check failed")
 
@@ -611,25 +617,25 @@ func generateAndSavePlanWithPromptManager(ctx context.Context, config *Configura
 	}
 
 	// If token limit is exceeded, abort
-	if tokenInfo.exceedsLimit {
+	if tokenInfo.ExceedsLimit {
 		logger.Error("Token limit exceeded")
-		logger.Error("Token limit exceeded: %s", tokenInfo.limitError)
+		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
 		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		logger.Fatal("Aborting generation to prevent API errors")
 	}
 	logger.Info("Token check passed: %d / %d (%.1f%%)",
-		tokenInfo.tokenCount, tokenInfo.inputLimit, tokenInfo.percentage)
+		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
 
 	// Log token usage for regular (non-debug) mode
 	if config.LogLevel != logutil.DebugLevel {
 		logger.Info("Token usage: %d / %d (%.1f%%)",
-			tokenInfo.tokenCount,
-			tokenInfo.inputLimit,
-			tokenInfo.percentage)
+			tokenInfo.TokenCount,
+			tokenInfo.InputLimit,
+			tokenInfo.Percentage)
 	}
 
 	// Prompt for confirmation if threshold is set and exceeded
-	if !promptForConfirmation(tokenInfo.tokenCount, config.ConfirmTokens, logger) {
+	if !tokenManager.PromptForConfirmation(tokenInfo.TokenCount, config.ConfirmTokens) {
 		logger.Info("Operation cancelled by user.")
 		return
 	}
@@ -738,109 +744,9 @@ func saveToFile(content string, outputFile string, logger logutil.LoggerInterfac
 
 // initSpinner function removed
 
-// promptForConfirmation asks for user confirmation to proceed
-func promptForConfirmation(tokenCount int32, threshold int, logger logutil.LoggerInterface) bool {
-	if threshold <= 0 || int32(threshold) > tokenCount {
-		// No confirmation needed if threshold is disabled (0) or token count is below threshold
-		return true
-	}
+// promptForConfirmation function moved to TokenManager
 
-	logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
-	logger.Info("Do you want to proceed with the API call? [y/N]: ")
-
-	reader := bufio.NewReader(os.Stdin)
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		logger.Error("Error reading input: %v", err)
-		return false
-	}
-
-	// Trim whitespace and convert to lowercase
-	response = strings.ToLower(strings.TrimSpace(response))
-
-	// Only proceed if the user explicitly confirms with 'y' or 'yes'
-	return response == "y" || response == "yes"
-}
-
-// tokenInfoResult holds information about token counts and limits
-type tokenInfoResult struct {
-	tokenCount   int32
-	inputLimit   int32
-	exceedsLimit bool
-	limitError   string
-	percentage   float64
-}
-
-// getTokenInfo gets token count information and checks limits
-func getTokenInfo(ctx context.Context, geminiClient gemini.Client, prompt string, logger logutil.LoggerInterface) (*tokenInfoResult, error) {
-	// Create result structure
-	result := &tokenInfoResult{
-		exceedsLimit: false,
-	}
-
-	// Get model information (limits)
-	modelInfo, err := geminiClient.GetModelInfo(ctx)
-	if err != nil {
-		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
-			return nil, err
-		}
-
-		// Wrap other errors
-		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
-	}
-
-	// Store input limit
-	result.inputLimit = modelInfo.InputTokenLimit
-
-	// Count tokens in the prompt
-	tokenResult, err := geminiClient.CountTokens(ctx, prompt)
-	if err != nil {
-		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
-			return nil, err
-		}
-
-		// Wrap other errors
-		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
-	}
-
-	// Store token count
-	result.tokenCount = tokenResult.Total
-
-	// Calculate percentage of limit
-	result.percentage = float64(result.tokenCount) / float64(result.inputLimit) * 100
-
-	// Log token usage information
-	logger.Debug("Token usage: %d / %d (%.1f%%)",
-		result.tokenCount,
-		result.inputLimit,
-		result.percentage)
-
-	// Check if the prompt exceeds the token limit
-	if result.tokenCount > result.inputLimit {
-		result.exceedsLimit = true
-		result.limitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
-			result.tokenCount, result.inputLimit)
-	}
-
-	return result, nil
-}
-
-// checkTokenLimit verifies that the prompt doesn't exceed the model's token limit
-// Deprecated: Use getTokenInfo instead
-func checkTokenLimit(ctx context.Context, geminiClient gemini.Client, prompt string, logger logutil.LoggerInterface) error {
-	tokenInfo, err := getTokenInfo(ctx, geminiClient, prompt, logger)
-	if err != nil {
-		return err
-	}
-
-	if tokenInfo.exceedsLimit {
-		return fmt.Errorf(tokenInfo.limitError)
-	}
-
-	return nil
-}
+// tokenInfoResult and associated functions moved to cmd/architect/token.go
 
 // initConfigSystem initializes the configuration system
 func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {

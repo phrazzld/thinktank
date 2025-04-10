@@ -10,3 +10,24 @@
   - **Action:** Thoroughly analyze the existing cmd/architect/main.go and cmd/architect/cli.go to understand current functionality and integration points.
   - **Depends On:** None.
   - **AC Ref:** Refactoring Approach 1.
+
+## Token Management
+- [x] **Extract token counting logic to token.go** (Completed on 2025-04-10)
+  - **Action:** Move the tokenInfoResult struct and getTokenInfo function from main.go to token.go, maintaining the same function signatures.
+  - **Depends On:** Create skeleton files in cmd/architect/.
+  - **AC Ref:** Implementation Steps 2.
+
+- [x] **Extract token limit checking to token.go** (Completed on 2025-04-10)
+  - **Action:** Move the checkTokenLimit function from main.go to token.go.
+  - **Depends On:** Extract token counting logic to token.go.
+  - **AC Ref:** Implementation Steps 2.
+
+- [x] **Add token confirmation logic to token.go** (Completed on 2025-04-10)
+  - **Action:** Move the promptForConfirmation function from main.go to token.go.
+  - **Depends On:** Extract token limit checking to token.go.
+  - **AC Ref:** Implementation Steps 2.
+
+- [x] **Create unit tests for token package functions** (Completed on 2025-04-10)
+  - **Action:** Add new tests for token.go functions to ensure they work correctly in isolation.
+  - **Depends On:** All token management functions moved.
+  - **AC Ref:** Implementation Steps 8, Testing Strategy 4.

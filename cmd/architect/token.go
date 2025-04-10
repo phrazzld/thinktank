@@ -2,9 +2,11 @@
 package architect
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -45,22 +47,94 @@ func NewTokenManager(logger logutil.LoggerInterface) TokenManager {
 
 // GetTokenInfo retrieves token count information and checks limits
 func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
-	// Stub implementation - will be replaced with actual code from main.go
-	return nil, fmt.Errorf("not implemented yet")
+	// Create result structure
+	result := &TokenResult{
+		ExceedsLimit: false,
+	}
+	
+	// Get model information (limits)
+	modelInfo, err := client.GetModelInfo(ctx)
+	if err != nil {
+		// Pass through API errors directly for better error messages
+		if _, ok := gemini.IsAPIError(err); ok {
+			return nil, err
+		}
+		
+		// Wrap other errors
+		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
+	}
+	
+	// Store input limit
+	result.InputLimit = modelInfo.InputTokenLimit
+	
+	// Count tokens in the prompt
+	tokenResult, err := client.CountTokens(ctx, prompt)
+	if err != nil {
+		// Pass through API errors directly for better error messages
+		if _, ok := gemini.IsAPIError(err); ok {
+			return nil, err
+		}
+		
+		// Wrap other errors
+		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
+	}
+	
+	// Store token count
+	result.TokenCount = tokenResult.Total
+	
+	// Calculate percentage of limit
+	result.Percentage = float64(result.TokenCount) / float64(result.InputLimit) * 100
+	
+	// Log token usage information
+	tm.logger.Debug("Token usage: %d / %d (%.1f%%)",
+		result.TokenCount,
+		result.InputLimit,
+		result.Percentage)
+	
+	// Check if the prompt exceeds the token limit
+	if result.TokenCount > result.InputLimit {
+		result.ExceedsLimit = true
+		result.LimitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
+			result.TokenCount, result.InputLimit)
+	}
+	
+	return result, nil
 }
 
 // CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
 func (tm *tokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	// Stub implementation - will be replaced with actual code from main.go
-	return fmt.Errorf("not implemented yet")
+	tokenInfo, err := tm.GetTokenInfo(ctx, client, prompt)
+	if err != nil {
+		return err
+	}
+	
+	if tokenInfo.ExceedsLimit {
+		return fmt.Errorf(tokenInfo.LimitError)
+	}
+	
+	return nil
 }
 
 // PromptForConfirmation asks for user confirmation to proceed
 func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
-	// Stub implementation - will be replaced with actual code from main.go
+	if threshold <= 0 || int32(threshold) > tokenCount {
+		// No confirmation needed if threshold is disabled (0) or token count is below threshold
+		return true
+	}
+
 	tm.logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
 	tm.logger.Info("Do you want to proceed with the API call? [y/N]: ")
 
-	// Return false by default for the stub implementation
-	return false
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		tm.logger.Error("Error reading input: %v", err)
+		return false
+	}
+
+	// Trim whitespace and convert to lowercase
+	response = strings.ToLower(strings.TrimSpace(response))
+
+	// Only proceed if the user explicitly confirms with 'y' or 'yes'
+	return response == "y" || response == "yes"
 }
