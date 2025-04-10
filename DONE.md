@@ -5,3 +5,8 @@
   - **Action:** Modify the task-file flag description in parseFlags() to indicate it's required. Update the taskFlag description to indicate it's deprecated.
   - **Depends On:** None
   - **AC Ref:** Requirement to make --task-file required (Detailed Task Breakdown 1)
+
+- [x] **Update flag.Usage() message in parseFlags()**
+  - **Action:** Update the usage message to show --task-file as the primary means of providing input, as shown in the Implementation Specifications.
+  - **Depends On:** None
+  - **AC Ref:** Documentation update (Detailed Task Breakdown 4)
