@@ -47,10 +47,11 @@ jobs:
         with:
           version: latest
 
-  # Test job will be implemented in subsequent tasks
+  # Test job for running Go tests
   test:
     name: Test
     runs-on: ubuntu-latest
+    needs: lint
     steps:
       # Checkout repository
       - name: Checkout code
@@ -63,7 +64,10 @@ jobs:
           go-version: 'stable'
           cache: true
       
-      # Other steps will be implemented in their respective tasks
+      # Run Go tests
+      - name: Run tests
+        run: go test -v ./...
+        timeout-minutes: 10
 
   # Build job will be implemented in subsequent tasks
   build:
