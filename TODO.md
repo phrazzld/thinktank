@@ -81,22 +81,22 @@
   - **Depends On:** Add logger initialization to main.go
   - **AC Ref:** AC 1.2, AC 3.3
 
-- [ ] **Task Title:** Add application start/end logging
+- [x] **Task Title:** Add application start/end logging
   - **Action:** Log application startup and shutdown events.
   - **Depends On:** Add logger initialization to main.go
   - **AC Ref:** AC 2.1, AC 5.1
 
-- [ ] **Task Title:** Update key function signatures to accept structured logger
+- [x] **Task Title:** Update key function signatures to accept structured logger
   - **Action:** Modify functions like clarifyTaskDescriptionWithPromptManager, generateAndSavePlanWithPromptManager, etc.
   - **Depends On:** Add logger initialization to main.go
   - **AC Ref:** AC 5.1
 
-- [ ] **Task Title:** Add configuration loading logging
+- [x] **Task Title:** Add configuration loading logging
   - **Action:** Log configuration loading events and results.
   - **Depends On:** Update key function signatures to accept structured logger
   - **AC Ref:** AC 2.1, AC 5.1
 
-- [ ] **Task Title:** Add task clarification process logging
+- [x] **Task Title:** Add task clarification process logging
   - **Action:** Add structured logging for the task clarification workflow.
   - **Depends On:** Update key function signatures to accept structured logger
   - **AC Ref:** AC 2.1, AC 5.1
