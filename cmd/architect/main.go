@@ -11,6 +11,9 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// APIServiceFactory defines a factory function type for creating APIService instances
+type APIServiceFactory func(logger logutil.LoggerInterface) APIService
+
 // Main is the entry point for the architect CLI
 func Main() {
 	// Create a base context
@@ -59,21 +62,37 @@ func Main() {
 	// Get the final configuration
 	_ = configManager.GetConfig()
 
+	// Call the core Run function with the real API service factory
+	err = Run(ctx, cliConfig, logger, configManager, NewAPIService)
+	if err != nil {
+		logger.Error("Application failed: %v", err)
+		os.Exit(1)
+	}
+}
+
+// Run contains the core application logic, separated from the Main function
+// to improve testability. It takes dependencies as parameters for better
+// dependency injection support during testing.
+func Run(
+	ctx context.Context,
+	cliConfig *CliConfig,
+	logger logutil.LoggerInterface,
+	configManager config.ManagerInterface,
+	apiServiceFactory APIServiceFactory,
+) error {
 	// Process task input (from file or flag)
 	taskDescription, err := processTaskInput(cliConfig, logger)
 	if err != nil {
-		logger.Error("Failed to process task input: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("failed to process task input: %w", err)
 	}
 
 	// Validate inputs
 	if err := validateInputs(cliConfig, taskDescription, logger); err != nil {
-		logger.Error("Input validation failed: %v", err)
-		os.Exit(1)
+		return fmt.Errorf("input validation failed: %w", err)
 	}
 
 	// Initialize API client
-	apiService := NewAPIService(logger)
+	apiService := apiServiceFactory(logger)
 	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
 	if err != nil {
 		// Handle API client initialization errors
@@ -89,7 +108,7 @@ func Main() {
 		} else {
 			logger.Error("Error creating Gemini client: %s", errorDetails)
 		}
-		logger.Fatal("Failed to initialize API client")
+		return fmt.Errorf("failed to initialize API client: %w", err)
 	}
 	defer geminiClient.Close()
 
@@ -113,7 +132,7 @@ func Main() {
 	// Gather context from files
 	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
-		logger.Fatal("Failed during project context gathering: %v", err)
+		return fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
 	// Handle dry run mode
@@ -121,8 +140,9 @@ func Main() {
 		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
 		if err != nil {
 			logger.Error("Error displaying dry run information: %v", err)
+			return fmt.Errorf("error displaying dry run information: %w", err)
 		}
-		return
+		return nil
 	}
 
 	// Create output writer
@@ -138,10 +158,11 @@ func Main() {
 		configManager,
 	)
 	if err != nil {
-		logger.Fatal("Error generating and saving plan: %v", err)
+		return fmt.Errorf("error generating and saving plan: %w", err)
 	}
 
 	logger.Info("Plan successfully generated and saved to %s", cliConfig.OutputFile)
+	return nil
 }
 
 // handleSpecialCommands processes special command flags like list-examples and show-example

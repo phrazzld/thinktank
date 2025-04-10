@@ -152,7 +152,7 @@ func (pb *promptBuilder) ListExampleTemplates(configManager config.ManagerInterf
 		if strings.Contains(err.Error(), "list error") {
 			return fmt.Errorf("error listing example templates: %w", err)
 		}
-		
+
 		// For real errors, we still want to show a nice error message
 		fmt.Println("Error listing example templates:")
 		fmt.Println(err.Error())

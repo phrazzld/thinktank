@@ -1,12 +1,12 @@
 package architect
 
 import (
-	"strings"
 	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/gemini"
@@ -279,7 +279,7 @@ func TestGatherContext(t *testing.T) {
 		if !strings.HasPrefix(projectContext, "<context>") || !strings.HasSuffix(projectContext, "</context>") {
 			t.Errorf("Project context should be wrapped in <context> tags, got %q", projectContext)
 		}
-		
+
 		// Make sure no actual content is included
 		expectedEmpty := "<context>\n</context>"
 		if projectContext != expectedEmpty {

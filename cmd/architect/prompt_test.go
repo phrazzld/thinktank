@@ -418,52 +418,6 @@ func TestListExampleTemplates(t *testing.T) {
 		}
 	})
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 	// Restore original function
 	setupPromptManagerWithConfig = originalFunc
 }
@@ -510,8 +464,9 @@ func TestShowExampleTemplate(t *testing.T) {
 				if r := recover(); r != nil {
 					testErr = fmt.Errorf("panic in ShowExampleTemplate: %v", r)
 				}
-			}()}()
-			testErr = builder.ShowExampleTemplate("example.tmpl", configManager)
+			}()
+		}()
+		testErr = builder.ShowExampleTemplate("example.tmpl", configManager)
 
 		// Restore stdout
 		w.Close()
@@ -520,7 +475,7 @@ func TestShowExampleTemplate(t *testing.T) {
 		output := string(outBytes)
 
 		// Verify results
-		t.Skip("Skipping remainder of test due to output redirection issues");
+		t.Skip("Skipping remainder of test due to output redirection issues")
 		if testErr != nil {
 			t.Errorf("Expected no testError, got: %v", testErr)
 		}
