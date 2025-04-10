@@ -121,7 +121,7 @@ func TestCalculateStatisticsWithTokenCounting(t *testing.T) {
 	}
 
 	// Now test fallback behavior when client is nil
-	chars, lines, tokens = CalculateStatisticsWithTokenCounting(ctx, nil, input, logger)
+	_, _, tokens = CalculateStatisticsWithTokenCounting(ctx, nil, input, logger)
 
 	// Should use estimation
 	expectedTokensFallback := estimateTokenCount(input)

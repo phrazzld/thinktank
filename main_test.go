@@ -16,6 +16,8 @@ import (
 )
 
 // Mock os.Exit for testing
+// Intentionally keeping this for future tests that may need to mock os.Exit
+// nolint:unused
 var osExit = os.Exit
 
 func TestCheckTokenLimit(t *testing.T) {
