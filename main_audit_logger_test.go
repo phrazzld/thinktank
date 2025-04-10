@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/adrg/xdg"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -111,12 +112,19 @@ func TestInitAuditLogger(t *testing.T) {
 
 	// Test with default path (empty string)
 	t.Run("DefaultPath", func(t *testing.T) {
-		// Temporarily override the getCacheDir function
+		// Save original XDG paths and restore them after the test
+		origXDGCacheHome := xdg.CacheHome
+		defer func() { xdg.CacheHome = origXDGCacheHome }()
+
+		// Set XDG directories to our test directory
+		xdg.CacheHome = tmpDir
+
+		// Override the getCacheDir function for consistent testing
 		origGetCacheDir := getCacheDir
 		defer func() { getCacheDir = origGetCacheDir }()
 
 		getCacheDir = func() string {
-			return tmpDir
+			return filepath.Join(tmpDir, "architect")
 		}
 
 		cfg := &config.AppConfig{
@@ -134,7 +142,7 @@ func TestInitAuditLogger(t *testing.T) {
 		}
 
 		// Verify the log file was created in the expected location
-		expectedPath := filepath.Join(tmpDir, "audit.log")
+		expectedPath := filepath.Join(tmpDir, "architect", "audit.log")
 		if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 			t.Errorf("Log file was not created at default path %s", expectedPath)
 		}

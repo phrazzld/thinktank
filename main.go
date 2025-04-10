@@ -362,22 +362,19 @@ func setupLogging(config *Configuration) logutil.LoggerInterface {
 
 // readTaskFromFile reads task description from a file
 func readTaskFromFile(taskFilePath string, logger logutil.LoggerInterface) (string, error) {
-	// Check if path is absolute, if not make it absolute
-	if !filepath.IsAbs(taskFilePath) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf("error getting current working directory: %w", err)
-		}
-		taskFilePath = filepath.Join(cwd, taskFilePath)
+	// Resolve the task file path (treating it as an "output" type since it's an input file in the working directory)
+	resolvedPath, err := resolvePath(taskFilePath, "output", logger)
+	if err != nil {
+		return "", fmt.Errorf("error resolving task file path: %w", err)
 	}
 
 	// Check if file exists
-	if _, err := os.Stat(taskFilePath); os.IsNotExist(err) {
-		return "", fmt.Errorf("task file not found: %s", taskFilePath)
+	if _, err := os.Stat(resolvedPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("task file not found: %s", resolvedPath)
 	}
 
 	// Read file content
-	content, err := os.ReadFile(taskFilePath)
+	content, err := os.ReadFile(resolvedPath)
 	if err != nil {
 		return "", fmt.Errorf("error reading task file: %w", err)
 	}
@@ -729,19 +726,23 @@ func processApiResponse(result *gemini.GenerationResult, logger logutil.LoggerIn
 
 // saveToFile writes the generated plan to the specified file
 func saveToFile(content string, outputFile string, logger logutil.LoggerInterface) {
-	// Ensure output path is absolute
-	outputPath := outputFile
-	if !filepath.IsAbs(outputPath) {
-		cwd, err := os.Getwd()
-		if err != nil {
-			logger.Fatal("Error getting current working directory: %v", err)
+	// Resolve the output file path
+	outputPath, err := resolvePath(outputFile, "output", logger)
+	if err != nil {
+		logger.Fatal("Error resolving output file path: %v", err)
+	}
+
+	// Ensure the directory exists
+	dir := filepath.Dir(outputPath)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			logger.Fatal("Error creating directory for output file: %v", err)
 		}
-		outputPath = filepath.Join(cwd, outputPath)
 	}
 
 	// Write to file
 	logger.Info("Writing plan to %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), 0644)
+	err = os.WriteFile(outputPath, []byte(content), 0644)
 	if err != nil {
 		logger.Fatal("Error writing plan to file %s: %v", outputPath, err)
 	}
@@ -866,6 +867,57 @@ var getCacheDir = func() string {
 	return filepath.Join(xdg.CacheHome, "architect")
 }
 
+// getConfigDir returns the XDG config directory for the application
+// This can be overridden in tests
+var getConfigDir = func() string {
+	return filepath.Join(xdg.ConfigHome, "architect")
+}
+
+// resolvePath converts a relative path to an absolute path based on the path type
+// Supported path types: "log", "config", "output"
+// If the path is already absolute, it is returned unchanged
+func resolvePath(path string, pathType string, logger logutil.LoggerInterface) (string, error) {
+	// Check if path is empty
+	if path == "" {
+		return "", fmt.Errorf("path cannot be empty")
+	}
+
+	// If path is already absolute, return it as is
+	if filepath.IsAbs(path) {
+		return path, nil
+	}
+
+	// Resolve based on path type
+	switch pathType {
+	case "log":
+		// Log files go to XDG_CACHE_HOME/architect
+		cacheDir := getCacheDir()
+		resolved := filepath.Join(cacheDir, path)
+		logger.Debug("Resolved log path '%s' to '%s'", path, resolved)
+		return resolved, nil
+
+	case "config":
+		// Config files go to XDG_CONFIG_HOME/architect
+		configDir := getConfigDir()
+		resolved := filepath.Join(configDir, path)
+		logger.Debug("Resolved config path '%s' to '%s'", path, resolved)
+		return resolved, nil
+
+	case "output":
+		// Output files go to current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("failed to get current working directory: %w", err)
+		}
+		resolved := filepath.Join(cwd, path)
+		logger.Debug("Resolved output path '%s' to '%s'", path, resolved)
+		return resolved, nil
+
+	default:
+		return "", fmt.Errorf("unsupported path type: %s", pathType)
+	}
+}
+
 // initAuditLogger initializes and returns a structured audit logger based on the configuration
 func initAuditLogger(appConfig *config.AppConfig, logger logutil.LoggerInterface) auditlog.StructuredLogger {
 	// Check if audit logging is enabled
@@ -877,24 +929,28 @@ func initAuditLogger(appConfig *config.AppConfig, logger logutil.LoggerInterface
 	// Determine the log file path
 	logPath := appConfig.AuditLogFile
 	if logPath == "" {
-		// Use default path in XDG cache directory
-		cacheDir := getCacheDir()
-		logPath = filepath.Join(cacheDir, "audit.log")
-		logger.Debug("Using default audit log path: %s", logPath)
-	} else {
-		logger.Debug("Using configured audit log path: %s", logPath)
+		// Use default path for audit logs
+		logPath = "audit.log"
 	}
 
-	// Create the audit logger
-	auditLogger, err := auditlog.NewFileLogger(logPath)
+	// Resolve the path (handles both relative and absolute paths)
+	resolvedPath, err := resolvePath(logPath, "log", logger)
 	if err != nil {
-		// Log the error but continue with a NoopLogger
-		logger.Error("Failed to create audit log file at %s: %v", logPath, err)
+		logger.Error("Failed to resolve audit log path '%s': %v", logPath, err)
 		logger.Warn("Falling back to NoopLogger (audit events will be discarded)")
 		return auditlog.NewNoopLogger()
 	}
 
-	logger.Info("Audit logging enabled, writing to: %s", logPath)
+	// Create the audit logger
+	auditLogger, err := auditlog.NewFileLogger(resolvedPath)
+	if err != nil {
+		// Log the error but continue with a NoopLogger
+		logger.Error("Failed to create audit log file at %s: %v", resolvedPath, err)
+		logger.Warn("Falling back to NoopLogger (audit events will be discarded)")
+		return auditlog.NewNoopLogger()
+	}
+
+	logger.Info("Audit logging enabled, writing to: %s", resolvedPath)
 	return auditLogger
 }
 

@@ -76,7 +76,7 @@
   - **Depends On:** Implement FileLogger struct, Implement NoopLogger for disabled logging, Add audit log configuration fields to AppConfig
   - **AC Ref:** AC 1.2, AC 3.2, AC 4.1
 
-- [ ] **Task Title:** Implement file path resolution for relative paths
+- [x] **Task Title:** Implement file path resolution for relative paths
   - **Action:** Add logic to resolve relative paths to appropriate locations using XDG standards.
   - **Depends On:** Add logger initialization to main.go
   - **AC Ref:** AC 1.2, AC 3.3

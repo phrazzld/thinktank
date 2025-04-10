@@ -566,16 +566,32 @@ func TestSaveToFile(t *testing.T) {
 		}
 	})
 
-	// Test save to non-existent directory
-	t.Run("NonExistentDirectory", func(t *testing.T) {
+	// Test save to new directory (should create the directory)
+	t.Run("CreateDirectory", func(t *testing.T) {
 		mockLog := &mockLogger{LoggerInterface: baseLogger}
 		content := "Test plan content"
-		outputFile := filepath.Join(tmpDir, "nonexistent", "test-output.md")
+		newDir := filepath.Join(tmpDir, "new-directory")
+		outputFile := filepath.Join(newDir, "test-output.md")
 
 		saveToFile(content, outputFile, mockLog)
 
-		if !mockLog.fatalCalled {
-			t.Error("Expected Fatal to be called for non-existent directory")
+		// Verify directory was created
+		if _, err := os.Stat(newDir); os.IsNotExist(err) {
+			t.Errorf("Directory was not created: %s", newDir)
+		}
+
+		// Verify file was created with correct content
+		savedContent, err := os.ReadFile(outputFile)
+		if err != nil {
+			t.Errorf("Failed to read saved file: %v", err)
+		}
+
+		if string(savedContent) != content {
+			t.Errorf("Expected content '%s', got '%s'", content, string(savedContent))
+		}
+
+		if mockLog.fatalCalled {
+			t.Error("Fatal was called unexpectedly when creating directory")
 		}
 	})
 }
