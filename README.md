@@ -11,7 +11,7 @@ Architect analyzes your codebase and uses Gemini AI to create comprehensive tech
 **Please note:** The way you provide the task description to Architect has changed:
 
 * The `--task-file` flag is now **required** for generating plans. You must provide the task description in a file. This allows for more complex and structured task inputs.
-* The `--task` flag is now fully **deprecated** and is no longer functional. All task descriptions must be provided via files.
+* The `--task` flag has been **removed**. All task descriptions must be provided via files.
 * For `--dry-run` operations, the `--task-file` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
 
 Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
@@ -115,7 +115,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--clarify` | Enable interactive task clarification to refine your task description | `false` |
 | `--list-examples` | List available example prompt template files | `false` |
 | `--show-example` | Display the content of a specific example template | `""` |
-| `--task` | (Deprecated) Description of the task. This flag is no longer functional and will be removed in a future version. Use --task-file instead. | `""` |
 
 ## Configuration Files
 

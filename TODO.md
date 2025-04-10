@@ -17,7 +17,7 @@
   - **Depends On:** None
   - **AC Ref:** All non-integration tests passing
 
-- [ ] **Remove Temporary/Backup Files from Git**
+- [x] **Remove Temporary/Backup Files from Git**
   - **Action:** Remove temporary files (main.go.bak and test-results/*) from the repository and update `.gitignore` to prevent future occurrences.
   - **Depends On:** None
   - **AC Ref:** Clean git status
@@ -29,7 +29,7 @@
   - **Depends On:** Fix Broken Integration Tests 
   - **AC Ref:** Simplified test structure
 
-- [ ] **Ensure Consistent Flag Status Documentation**
+- [x] **Ensure Consistent Flag Status Documentation**
   - **Action:** Update README and CLI usage message to be perfectly aligned on the status of the `--task` flag. If `--task` is non-functional, remove it entirely from usage/help text.
   - **Depends On:** None
   - **AC Ref:** Consistent documentation

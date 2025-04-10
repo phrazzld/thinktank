@@ -23,25 +23,24 @@ const (
 
 // CliConfig holds the parsed command-line options
 type CliConfig struct {
-	TaskDescription string
-	TaskFile        string
-	OutputFile      string
-	ModelName       string
-	Verbose         bool
-	LogLevel        logutil.LogLevel
-	UseColors       bool
-	Include         string
-	Exclude         string
-	ExcludeNames    string
-	Format          string
-	DryRun          bool
-	ConfirmTokens   int
-	PromptTemplate  string
-	ClarifyTask     bool
-	ListExamples    bool
-	ShowExample     string
-	Paths           []string
-	ApiKey          string
+	TaskFile       string
+	OutputFile     string
+	ModelName      string
+	Verbose        bool
+	LogLevel       logutil.LogLevel
+	UseColors      bool
+	Include        string
+	Exclude        string
+	ExcludeNames   string
+	Format         string
+	DryRun         bool
+	ConfirmTokens  int
+	PromptTemplate string
+	ClarifyTask    bool
+	ListExamples   bool
+	ShowExample    string
+	Paths          []string
+	ApiKey         string
 }
 
 // ParseFlags handles command line argument parsing and returns the configuration
@@ -55,8 +54,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config := &CliConfig{}
 
 	// Define flags
-	taskFlag := flagSet.String("task", "", "Description of the task or goal for the plan.")
-	taskFileFlag := flagSet.String("task-file", "", "Path to a file containing the task description (alternative to --task).")
+	taskFileFlag := flagSet.String("task-file", "", "Path to a file containing the task description.")
 	outputFileFlag := flagSet.String("output", defaultOutputFile, "Output file path for the generated plan.")
 	modelNameFlag := flagSet.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
@@ -75,7 +73,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Set custom usage message
 	flagSet.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: %s [--list-examples | --show-example NAME | (--task \"<description>\" | --task-file <path>) [options] <path1> [path2...]]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [--list-examples | --show-example NAME | --task-file <path> [options] <path1> [path2...]]\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Arguments:\n")
 		fmt.Fprintf(os.Stderr, "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
@@ -98,7 +96,6 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	}
 
 	// Store flag values in configuration
-	config.TaskDescription = *taskFlag
 	config.TaskFile = *taskFileFlag
 	config.OutputFile = *outputFileFlag
 	config.ModelName = *modelNameFlag
@@ -119,8 +116,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Basic validation for non-special commands
 	if !config.ListExamples && config.ShowExample == "" {
-		if config.TaskDescription == "" && config.TaskFile == "" {
-			return nil, fmt.Errorf("missing task description, use --task or --task-file")
+		if config.TaskFile == "" {
+			return nil, fmt.Errorf("missing required flag --task-file")
 		}
 
 		if len(config.Paths) == 0 {
@@ -168,7 +165,6 @@ func SetupLoggingCustom(config *CliConfig, logLevelFlag *flag.Flag, output io.Wr
 // ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
 func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
 	return map[string]interface{}{
-		"task":           cliConfig.TaskDescription,
 		"taskFile":       cliConfig.TaskFile,
 		"output":         cliConfig.OutputFile,
 		"model":          cliConfig.ModelName,

@@ -72,7 +72,7 @@ func Main() {
 // convertToArchitectConfig converts the cmd package CliConfig to the internal architect package CliConfig
 func convertToArchitectConfig(cmdConfig *CliConfig) *architect.CliConfig {
 	return &architect.CliConfig{
-		TaskDescription: cmdConfig.TaskDescription,
+		TaskDescription: "", // Empty string as task description is now only read from the file
 		TaskFile:        cmdConfig.TaskFile,
 		OutputFile:      cmdConfig.OutputFile,
 		Format:          cmdConfig.Format,

@@ -19,27 +19,27 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		{
 			name: "Basic valid configuration",
 			args: []string{
-				"--task", "Test task",
+				"--task-file", "task.md",
 				"path1", "path2",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
 			want: &CliConfig{
-				TaskDescription: "Test task",
-				Paths:           []string{"path1", "path2"},
-				ApiKey:          "test-api-key",
-				OutputFile:      defaultOutputFile,
-				ModelName:       defaultModel,
-				UseColors:       true, // default value
-				Exclude:         defaultExcludes,
-				ExcludeNames:    defaultExcludeNames,
-				Format:          defaultFormat,
+				TaskFile:     "task.md",
+				Paths:        []string{"path1", "path2"},
+				ApiKey:       "test-api-key",
+				OutputFile:   defaultOutputFile,
+				ModelName:    defaultModel,
+				UseColors:    true, // default value
+				Exclude:      defaultExcludes,
+				ExcludeNames: defaultExcludeNames,
+				Format:       defaultFormat,
 			},
 			wantErr: false,
 		},
 		{
-			name: "Missing task description",
+			name: "Missing task file",
 			args: []string{
 				"path1",
 			},
@@ -52,35 +52,13 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		{
 			name: "Missing paths",
 			args: []string{
-				"--task", "Test task",
+				"--task-file", "task.md",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
 			want:    nil,
 			wantErr: true,
-		},
-		{
-			name: "Task file instead of task description",
-			args: []string{
-				"--task-file", "task.md",
-				"path1",
-			},
-			env: map[string]string{
-				apiKeyEnvVar: "test-api-key",
-			},
-			want: &CliConfig{
-				TaskFile:     "task.md",
-				Paths:        []string{"path1"},
-				ApiKey:       "test-api-key",
-				OutputFile:   defaultOutputFile,
-				ModelName:    defaultModel,
-				UseColors:    true, // default value
-				Exclude:      defaultExcludes,
-				ExcludeNames: defaultExcludeNames,
-				Format:       defaultFormat,
-			},
-			wantErr: false,
 		},
 	}
 
@@ -107,9 +85,6 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			}
 
 			// Compare only the fields we care about for this test
-			if got.TaskDescription != tt.want.TaskDescription {
-				t.Errorf("TaskDescription = %v, want %v", got.TaskDescription, tt.want.TaskDescription)
-			}
 			if got.TaskFile != tt.want.TaskFile {
 				t.Errorf("TaskFile = %v, want %v", got.TaskFile, tt.want.TaskFile)
 			}
