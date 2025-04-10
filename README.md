@@ -76,6 +76,12 @@ architect --task-file task.txt --confirm-tokens 25000 ./
 # Use a custom prompt template
 architect --task-file task.txt --prompt-template custom_template.tmpl ./
 
+# View available example templates
+architect --list-examples
+
+# View a specific example template
+architect --show-example feature.tmpl
+
 # Enable interactive task clarification
 architect --task-file task.txt --clarify ./
 ```
@@ -107,6 +113,8 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
 | `--no-spinner` | Disable spinner animation during API calls | `false` |
 | `--clarify` | Enable interactive task clarification to refine your task description | `false` |
+| `--list-examples` | List available example prompt template files | `false` |
+| `--show-example` | Display the content of a specific example template | `""` |
 
 ## Configuration Files
 
@@ -241,6 +249,30 @@ Architect supports custom prompt templates for specialized plan generation:
    - `{{.Task}}`: The task description
    - `{{.Context}}`: The codebase context
 3. Pass your template file with `--prompt-template`
+
+### Example Templates
+
+Architect comes with several example prompt templates that you can use as starting points for your own custom templates:
+
+```bash
+# List available example templates
+architect --list-examples
+
+# View the content of a specific example template
+architect --show-example basic.tmpl
+
+# Save an example template to a file (for customization)
+architect --show-example feature.tmpl > my-feature-template.tmpl
+
+# Use your custom template
+architect --task-file task.txt --prompt-template my-feature-template.tmpl ./
+```
+
+Available example templates include:
+- `basic.tmpl`: A simple template with minimal structure
+- `detailed.tmpl`: A comprehensive template with detailed sections
+- `bugfix.tmpl`: A template specifically designed for bug fixes
+- `feature.tmpl`: A template designed for new feature implementation
 
 ## Troubleshooting
 

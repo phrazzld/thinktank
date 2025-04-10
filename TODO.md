@@ -21,10 +21,6 @@
 
 ## Documentation
 
-- [ ] **Create example prompt file templates**
-  - **Action:** Create example prompt files that users can reference when creating their own prompt files.
-  - **Depends On:** None
-  - **AC Ref:** User guidance (Open Question 2)
 
 ## Testing
 - [ ] **Add unit tests for task file requirement**

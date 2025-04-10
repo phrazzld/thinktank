@@ -2,6 +2,11 @@
 
 ## 2025-04-09
 
+- [x] **Create example prompt file templates**
+  - **Action:** Create example prompt files that users can reference when creating their own prompt files.
+  - **Depends On:** None
+  - **AC Ref:** User guidance (Open Question 2)
+
 - [x] **Add deprecation warning for --task flag**
   - **Action:** When users provide --task without --task-file, log a clear deprecation warning suggesting migration to --task-file.
   - **Depends On:** Modify validateInputs() to require task file

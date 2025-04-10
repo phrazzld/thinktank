@@ -57,6 +57,8 @@ type Configuration struct {
 	ConfirmTokens   int
 	PromptTemplate  string
 	ClarifyTask     bool
+	ListExamples    bool
+	ShowExample     string
 	Paths           []string
 	ApiKey          string
 }
@@ -81,6 +83,17 @@ func main() {
 	// Ensure configuration directories exist
 	if err := configManager.EnsureConfigDirs(); err != nil {
 		logger.Warn("Failed to create configuration directories: %v", err)
+	}
+
+	// Handle special subcommands before regular flow
+	if cliConfig.ListExamples {
+		listExampleTemplates(logger, configManager)
+		return
+	}
+
+	if cliConfig.ShowExample != "" {
+		showExampleTemplate(cliConfig.ShowExample, logger, configManager)
+		return
 	}
 
 	// Convert CLI flags to the format needed for merging
@@ -284,12 +297,18 @@ func parseFlags() *Configuration {
 	confirmTokensFlag := flag.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	promptTemplateFlag := flag.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
 	clarifyTaskFlag := flag.Bool("clarify", false, "Enable interactive task clarification to refine your task description")
+	listExamplesFlag := flag.Bool("list-examples", false, "List available example prompt template files")
+	showExampleFlag := flag.String("show-example", "", "Display the content of a specific example template")
 
 	// Set custom usage message
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s --task-file <path> [options] <path1> [path2...]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Arguments:\n")
 		fmt.Fprintf(os.Stderr, "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
+		fmt.Fprintf(os.Stderr, "Example Commands:\n")
+		fmt.Fprintf(os.Stderr, "  %s --list-examples                 List available example templates\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic.tmpl       Display the content of a specific example template\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --show-example basic > my.tmpl  Save an example template to a file\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
@@ -313,6 +332,8 @@ func parseFlags() *Configuration {
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
 	config.ClarifyTask = *clarifyTaskFlag
+	config.ListExamples = *listExamplesFlag
+	config.ShowExample = *showExampleFlag
 	config.Paths = flag.Args()
 	config.ApiKey = os.Getenv(apiKeyEnvVar)
 
@@ -894,6 +915,57 @@ func initConfigSystem(logger logutil.LoggerInterface) config.ManagerInterface {
 }
 
 // convertConfigToMap converts the CLI Configuration struct to a map for merging with loaded config
+// listExampleTemplates displays a list of available example templates
+func listExampleTemplates(logger logutil.LoggerInterface, configManager config.ManagerInterface) {
+	// Create prompt manager
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		// Fall back to basic manager if config-based setup fails
+		promptManager = prompt.NewManager(logger)
+	}
+
+	// Get the list of examples
+	examples, err := promptManager.ListExampleTemplates()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error listing example templates: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Display the examples
+	fmt.Println("Available Example Templates:")
+	fmt.Println("---------------------------")
+	if len(examples) == 0 {
+		fmt.Println("No example templates found.")
+	} else {
+		for i, example := range examples {
+			fmt.Printf("%d. %s\n", i+1, example)
+		}
+		fmt.Println("\nTo view an example template, use --show-example <template-name>")
+		fmt.Println("Example: architect --show-example basic.tmpl")
+	}
+}
+
+// showExampleTemplate displays the content of a specific example template
+func showExampleTemplate(name string, logger logutil.LoggerInterface, configManager config.ManagerInterface) {
+	// Create prompt manager
+	promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
+	if err != nil {
+		// Fall back to basic manager if config-based setup fails
+		promptManager = prompt.NewManager(logger)
+	}
+
+	// Get the template content
+	content, err := promptManager.GetExampleTemplate(name)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Use --list-examples to see available example templates.\n")
+		os.Exit(1)
+	}
+
+	// Print the content to stdout (allowing for redirection to a file)
+	fmt.Print(content)
+}
+
 func convertConfigToMap(cliConfig *Configuration) map[string]interface{} {
 	// Create a map of CLI flags suitable for merging
 	return map[string]interface{}{
