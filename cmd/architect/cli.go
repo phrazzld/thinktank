@@ -36,11 +36,11 @@ type CliConfig struct {
 	DryRun         bool
 	ConfirmTokens  int
 	PromptTemplate string
-	ClarifyTask    bool
-	ListExamples   bool
-	ShowExample    string
-	Paths          []string
-	ApiKey         string
+	// ClarifyTask field removed as part of the feature removal
+	ListExamples bool
+	ShowExample  string
+	Paths        []string
+	ApiKey       string
 }
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
@@ -137,7 +137,10 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.PromptTemplate = *promptTemplateFlag
-	config.ClarifyTask = *clarifyTaskFlag
+	// config.ClarifyTask assignment removed
+	// Store the value in a variable solely to prevent the compiler from complaining
+	// about the unused clarifyTaskFlag (will be cleaned up in subsequent tasks)
+	_ = *clarifyTaskFlag // This will be removed in a subsequent task
 	config.ListExamples = *listExamplesFlag
 	config.ShowExample = *showExampleFlag
 	config.Paths = flagSet.Args()
@@ -193,6 +196,10 @@ func SetupLoggingCustom(config *CliConfig, logLevelFlag *flag.Flag, output io.Wr
 
 // ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
 func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
+	// We need to track whether clarifyTaskValue is in scope to avoid compilation errors
+	// This complexity will be removed in the next task when we remove the "clarify" key entirely
+	var clarifyTaskValue bool
+
 	return map[string]interface{}{
 		"taskFile":       cliConfig.TaskFile,
 		"output":         cliConfig.OutputFile,
@@ -207,7 +214,7 @@ func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
 		"dryRun":         cliConfig.DryRun,
 		"confirmTokens":  cliConfig.ConfirmTokens,
 		"promptTemplate": cliConfig.PromptTemplate,
-		"clarify":        cliConfig.ClarifyTask,
+		"clarify":        clarifyTaskValue, // Using temporary variable, will be removed in next task
 		"listExamples":   cliConfig.ListExamples,
 		"showExample":    cliConfig.ShowExample,
 		"apiKey":         cliConfig.ApiKey,

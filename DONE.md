@@ -14,3 +14,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.1
   - **Output:** Removed the clarify flag definition from the CLI args, added temporary variable to maintain compilation until subsequent tasks
+  
+- [x] **Remove ClarifyTask field from CliConfig struct**
+  - **Action:** In `cmd/architect/cli.go`, delete the `ClarifyTask bool` field from the CliConfig struct (line ~39).
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.2
+  - **Output:** Removed the ClarifyTask field from the struct while keeping temporary workarounds to maintain compatibility until subsequent tasks

@@ -12,7 +12,7 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.1
 
-- [ ] **Remove ClarifyTask field from CliConfig struct**
+- [x] **Remove ClarifyTask field from CliConfig struct**
   - **Action:** In `cmd/architect/cli.go`, delete the `ClarifyTask bool` field from the CliConfig struct (line ~39).
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
