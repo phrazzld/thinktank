@@ -22,7 +22,7 @@
   - **Depends On:** Remove ClarifyTask field from CliConfig struct
   - **AC Ref:** AC 1.2
 
-- [ ] **Remove clarify flag from CLI usage description**
+- [x] **Remove clarify flag from CLI usage description**
   - **Action:** In `cmd/architect/cli.go`, delete the `--clarify` flag description from the flagSet.Usage function.
   - **Depends On:** Remove clarify flag definition
   - **AC Ref:** AC 1.1, AC 1.6

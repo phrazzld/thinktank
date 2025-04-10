@@ -26,3 +26,9 @@
   - **Depends On:** Remove ClarifyTask field from CliConfig struct
   - **AC Ref:** AC 1.2
   - **Output:** Removed the clarify key and temporary variable from the map returned by ConvertConfigToMap
+
+- [x] **Remove clarify flag from CLI usage description**
+  - **Action:** In `cmd/architect/cli.go`, delete the `--clarify` flag description from the flagSet.Usage function.
+  - **Depends On:** Remove clarify flag definition
+  - **AC Ref:** AC 1.1, AC 1.6
+  - **Output:** The clarify flag was already effectively removed from the CLI usage description, as it's not shown in the help output. No specific description text was found in the flagSet.Usage function that needed removal.
