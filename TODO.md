@@ -16,7 +16,7 @@
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Configuration Structures), Step 2.4.
 
-- [ ] **Remove clarify flag declaration in parseFlags()**
+- [x] **Remove clarify flag declaration in parseFlags()**
   - **Action:** Edit main.go to remove the clarifyTaskFlag declaration in the parseFlags() function.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Flag Declaration and Parsing), Step 2.1.
