@@ -2,6 +2,8 @@
 
 ## sooner
 
+* refactor the hell out of main.go. it's way too long. should be broken up into multiple smaller files.
+* implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
 * don't hardcode the plan prompt. force the user to pass a file with the full prompt.
 * enforce convention over configuration
 * support an arbitrary number of context files and directories that we can append to the core prompt file. we want to maintain a sense, in the prompt file, of "this is the main prompt / request / ask" and "this other stuff is extra context for you to use to execute"
@@ -33,6 +35,3 @@
 * remove user-facing niceties like spinners and excessive color formatting in favor of clean, programmable output
 * enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
-
-## in progress
-* implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
