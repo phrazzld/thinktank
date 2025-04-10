@@ -1,5 +1,61 @@
 # TODO
 
+## Critical Build and Test Issues
+
+- [ ] **Task Title:** Fix method chaining syntax in main.go
+  - **Action:** Run gofmt and manually correct dot placement at end of lines rather than beginning of lines.
+  - **Depends On:** None
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Fix parameter lists and function signatures in main.go
+  - **Action:** Identify and fix missing commas in parameter lists and improperly formatted function signatures.
+  - **Depends On:** Fix method chaining syntax in main.go
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Fix audit_logging_test.go compilation errors
+  - **Action:** Resolve illegal character issues and update variable names to fix compilation errors.
+  - **Depends On:** Fix syntax errors in main.go
+  - **AC Ref:** AC 6.1
+
+- [ ] **Task Title:** Update test mocks for audit logging
+  - **Action:** Ensure all test mocks and adapters properly implement updated interfaces with audit logging parameters.
+  - **Depends On:** Fix audit_logging_test.go compilation errors
+  - **AC Ref:** AC 6.1
+
+## Audit Logging Consistency
+
+- [ ] **Task Title:** Standardize error handling in audit logging
+  - **Action:** Ensure all error logging uses WithErrorFromGoError(err) consistently instead of WithError(err.Error()).
+  - **Depends On:** Fix syntax errors in main.go
+  - **AC Ref:** AC 4.1, AC 5.1
+
+- [ ] **Task Title:** Implement nil safety checks for audit loggers
+  - **Action:** Add nil checks before using audit loggers to prevent nil pointer dereferences in all components.
+  - **Depends On:** Standardize error handling in audit logging
+  - **AC Ref:** AC 4.1
+
+- [ ] **Task Title:** Ensure consistent metadata fields in audit events
+  - **Action:** Define and use a standard set of metadata field names and formats across all audit events.
+  - **Depends On:** Standardize error handling in audit logging
+  - **AC Ref:** AC 2.1, AC 5.1
+
+## Code Refinement
+
+- [ ] **Task Title:** Refactor main.go for improved maintainability
+  - **Action:** Extract logical sections into smaller functions or dedicated packages to reduce complexity.
+  - **Depends On:** All syntax errors fixed and tests passing
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Run code quality tools across codebase
+  - **Action:** Run go vet and address any issues with code quality or potential bugs.
+  - **Depends On:** Fix syntax errors in main.go
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Update project documentation for audit logging
+  - **Action:** Update README.md and other documentation to reflect the current state of audit logging.
+  - **Depends On:** Complete all audit logging implementation tasks
+  - **AC Ref:** AC 2.2
+
 ## Structured Logger Creation
 
 - [x] **Task Title:** Create basic package structure for auditlog

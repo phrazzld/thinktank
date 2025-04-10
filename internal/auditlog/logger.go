@@ -29,7 +29,7 @@ type StructuredLogger interface {
 	// typically using the defer pattern after logger creation.
 	// Implementations should ensure this method is idempotent and
 	// safe to call multiple times.
-	// 
+	//
 	// Returns an error if cleanup fails, which the caller may choose
 	// to log but typically should not cause the application to fail.
 	Close() error
@@ -38,13 +38,13 @@ type StructuredLogger interface {
 // FileLogger implements StructuredLogger by writing JSON lines to a file.
 // It ensures thread-safety using a mutex and properly manages file resources.
 type FileLogger struct {
-	file *os.File    // The file handle for writing logs
-	mu   sync.Mutex  // Mutex for ensuring thread-safety
+	file *os.File   // The file handle for writing logs
+	mu   sync.Mutex // Mutex for ensuring thread-safety
 }
 
 // NewFileLogger creates a new structured logger that writes to the specified file path.
 // It automatically creates the directory if it doesn't exist and opens the file in append mode.
-// 
+//
 // The function handles:
 // - Path validation (empty or invalid paths)
 // - Directory creation with proper permissions
@@ -71,7 +71,7 @@ func NewFileLogger(filePath string) (*FileLogger, error) {
 	// Open file for appending with create if not exists
 	// Using appropriate flags for atomic operations when possible
 	flags := os.O_APPEND | os.O_CREATE | os.O_WRONLY
-	
+
 	// Open the file with proper permissions
 	// 0644 = user rw, group r, others r
 	file, err := os.OpenFile(filePath, flags, 0644)
@@ -85,14 +85,14 @@ func NewFileLogger(filePath string) (*FileLogger, error) {
 }
 
 // Log writes an audit event to the log file as a JSON line.
-// 
+//
 // This method is completely thread-safe and can be called concurrently from multiple goroutines.
 // It handles all error conditions gracefully without panicking, including:
 // - Nil file handle
 // - Closed file
 // - JSON marshaling errors
 // - File write errors
-// 
+//
 // Errors are logged to stderr but don't cause the application to fail. This is essential for
 // logging systems, which should never disrupt the main application flow.
 //
@@ -107,7 +107,7 @@ func (l *FileLogger) Log(event AuditEvent) {
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	// Protect against nil or closed file handle
 	if l.file == nil {
 		errLogger("[ERROR] Attempted to log to a FileLogger with a nil file handle")
@@ -116,7 +116,7 @@ func (l *FileLogger) Log(event AuditEvent) {
 
 	// Clone the event to avoid modifying the caller's copy
 	eventCopy := event
-	
+
 	// Ensure timestamp is set
 	if eventCopy.Timestamp.IsZero() {
 		eventCopy.Timestamp = time.Now().UTC()
@@ -139,7 +139,7 @@ func (l *FileLogger) Log(event AuditEvent) {
 			Operation: eventCopy.Operation,
 			Message:   eventCopy.Message + " [marshaling error: full event could not be serialized]",
 		}
-		
+
 		jsonBytes, err = json.Marshal(simplifiedEvent)
 		if err != nil {
 			// If even simplified event fails, give up but don't crash
@@ -150,12 +150,12 @@ func (l *FileLogger) Log(event AuditEvent) {
 
 	// Add newline and write to file with proper error handling
 	jsonBytes = append(jsonBytes, '\n')
-	
+
 	_, err = l.file.Write(jsonBytes)
 	if err != nil {
 		// Log write error with context
 		errLogger("[ERROR] Failed to write audit event to log file: %v", err)
-		
+
 		// Handle specific error types with contextual information
 		if os.IsPermission(err) {
 			errLogger("[ERROR] Permission denied when writing to log file. Check file permissions.")
@@ -185,7 +185,7 @@ func (l *FileLogger) Close() error {
 
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	// If file is already nil, logger is already closed
 	if l.file == nil {
 		return nil
@@ -196,20 +196,20 @@ func (l *FileLogger) Close() error {
 		// Continue with close even if sync fails, but wrap the error
 		errLogger("[WARN] Failed to sync log file before closing: %v", err)
 	}
-	
+
 	// Close the file
 	if err := l.file.Close(); err != nil {
 		// Wrap the error for better diagnostic information
 		wrappedErr := fmt.Errorf("failed to close log file: %w", err)
-		
+
 		// Handle specific error types with contextual information
 		if os.IsPermission(err) {
 			errLogger("[ERROR] Permission denied when closing log file. Check file permissions.")
 		}
-		
+
 		return wrappedErr
 	}
-	
+
 	// Set file to nil to prevent use-after-close
 	l.file = nil
 	return nil

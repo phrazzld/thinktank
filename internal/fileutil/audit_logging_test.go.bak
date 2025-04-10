@@ -1,0 +1,228 @@
+package fileutil
+
+import (
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/phrazzld/architect/internal/auditlog"
+)
+
+type MockAuditLogger struct {
+	Events []auditlog.AuditEvent
+}
+
+func NewMockAuditLogger() *MockAuditLogger {
+	return &MockAuditLogger{
+		Events: make([]auditlog.AuditEvent, 0),
+	}
+}
+
+func (m *MockAuditLogger) Log(event auditlog.AuditEvent) {
+	m.Events = append(m.Events, event)
+}
+
+func (m *MockAuditLogger) Close() error {
+	return nil
+}
+
+// Helper function to find an audit event by operation name
+func (m *MockAuditLogger) FindEvent(operation string) (auditlog.AuditEvent, bool) {
+	for _, event := range m.Events {
+		if event.Operation == operation {
+			return event, true
+		}
+	}
+	return auditlog.AuditEvent{}, false
+}
+
+// Helper function to check if an event contains a metadata key with a specific value
+func hasMetadataValue(event auditlog.AuditEvent, key string, expectedValue interface{}) bool {
+	if event.Metadata == nil {
+		return false
+	}
+	
+	value, exists := event.Metadata[key]
+	if \!exists {
+		return false
+	}
+	
+	// Handle different value types
+	switch expectedValue := expectedValue.(type) {
+	case string:
+		strValue, ok := value.(string)
+		return ok && strValue == expectedValue
+	case int:
+		// The value might be stored as float64 in the map
+		if floatValue, ok := value.(float64); ok {
+			return int(floatValue) == expectedValue
+		}
+		intValue, ok := value.(int)
+		return ok && intValue == expectedValue
+	case bool:
+		boolValue, ok := value.(bool)
+		return ok && boolValue == expectedValue
+	default:
+		// For other types, just check if they are equal
+		return value == expectedValue
+	}
+}
+
+func TestContextGatheringWithAuditLogging(t *testing.T) {
+	// Create a test directory structure
+	testDir, cleanup := setupTestDir(t)
+	defer cleanup()
+	
+	// Create audit logger
+	auditLogger := NewMockAuditLogger()
+	
+	// Test with various configurations
+	tests := []struct {
+		name               string
+		paths              []string
+		include            string
+		exclude            string
+		excludeNames       string
+		expectedEventCount int
+		expectedEvents     map[string]bool // operation name -> should exist
+		expectedMetadata   map[string]map[string]interface{} // operation -> (key -> value)
+	}{
+		{
+			name:               "All files, no filters",
+			paths:              []string{testDir},
+			expectedEventCount: 3, // Start, Statistics, Complete
+			expectedEvents: map[string]bool{
+				"ContextGatheringStart":    true,
+				"ContextStatistics":        true,
+				"ContextGatheringComplete": true,
+			},
+			expectedMetadata: map[string]map[string]interface{}{
+				"ContextGatheringStart": {
+					"pathCount": 1,
+				},
+				"ContextStatistics": {
+					"processedFiles": 8, // Expected from context_test.go TestGatherProjectContext
+					"charCount":      0,  // Will be non-zero but we do not test exact value
+				},
+				"ContextGatheringComplete": {
+					"processedFiles": 8,
+				},
+			},
+		},
+		{
+			name:               "Only Go files",
+			paths:              []string{testDir},
+			include:            ".go",
+			expectedEventCount: 3,
+			expectedEvents: map[string]bool{
+				"ContextGatheringStart":    true,
+				"ContextStatistics":        true,
+				"ContextGatheringComplete": true,
+			},
+			expectedMetadata: map[string]map[string]interface{}{
+				"ContextGatheringStart": {
+					"includeExtensions": ".go",
+				},
+				"ContextGatheringComplete": {
+					"processedFiles": 4, // Only .go files
+				},
+			},
+		},
+		{
+			name:               "Non-existent path",
+			paths:              []string{filepath.Join(testDir, "non-existent")},
+			expectedEventCount: 3,
+			expectedEvents: map[string]bool{
+				"ContextGatheringStart":    true,
+				"ContextStatistics":        true,
+				"ContextGatheringComplete": true,
+			},
+			expectedMetadata: map[string]map[string]interface{}{
+				"ContextGatheringComplete": {
+					"processedFiles": 0,
+					"errors":         true,
+				},
+			},
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset the audit logger
+			auditLogger.Events = make([]auditlog.AuditEvent, 0)
+			
+			// Create the standard logger
+			stdLogger := NewMockLogger()
+			
+			// Create configuration with both loggers
+			config := NewConfig(true, tt.include, tt.exclude, tt.excludeNames, "<{path}>\n{content}\n</{path}>", stdLogger)
+			
+			// Call the function with audit logger
+			result, processedFiles, err := GatherProjectContextWithAuditLogging(tt.paths, config, auditLogger)
+			
+			// Basic validation
+			if tt.paths[0] \!= filepath.Join(testDir, "non-existent") && err \!= nil {
+				t.Errorf("Expected no error, got: %v", err)
+			}
+			
+			// Verify the context and processed files (same as in context_test.go)
+			if strings.HasPrefix(tt.name, "Non-existent") {
+				if processedFiles \!= 0 {
+					t.Errorf("Expected 0 processed files, got %d", processedFiles)
+				}
+			}
+			
+			// Basic check of result
+			if result == "" {
+				t.Errorf("Expected non-empty context string")
+			}
+			
+			// Check the number of audit events
+			if len(auditLogger.Events) < tt.expectedEventCount {
+				t.Errorf("Expected at least %d audit events, got %d", tt.expectedEventCount, len(auditLogger.Events))
+			}
+			
+			// Check that expected events exist
+			for operation, shouldExist := range tt.expectedEvents {
+				_, found := auditLogger.FindEvent(operation)
+				if shouldExist && \!found {
+					t.Errorf("Expected to find event with operation %s, but it was missing", operation)
+				} else if \!shouldExist && found {
+					t.Errorf("Found unexpected event with operation %s", operation)
+				}
+			}
+			
+			// Check metadata fields in events
+			for operation, expectedFields := range tt.expectedMetadata {
+				event, found := auditLogger.FindEvent(operation)
+				if \!found {
+					t.Errorf("Could not find event with operation %s to check metadata", operation)
+					continue
+				}
+				
+				for key, expectedValue := range expectedFields {
+					// Special case for non-exact matches (like charCount)
+					if key == "charCount" {
+						if event.Metadata == nil || event.Metadata[key] == nil {
+							t.Errorf("Event %s is missing expected metadata field %s", operation, key)
+						}
+						continue
+					}
+					
+					// For error field, just check existence not value
+					if key == "errors" && expectedValue == true {
+						if event.Error == nil {
+							t.Errorf("Event %s should have an error field but does not", operation)
+						}
+						continue
+					}
+					
+					if \!hasMetadataValue(event, key, expectedValue) {
+						t.Errorf("Event %s metadata field %s expected value %v, got %v", 
+							operation, key, expectedValue, event.Metadata[key])
+					}
+				}
+			}
+		})
+	}
+}

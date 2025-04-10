@@ -192,6 +192,15 @@ func (a *MainAdapter) gatherContext(ctx context.Context, config *Configuration, 
 	return "This is a simulated project context for testing."
 }
 
+// ClarifyTaskDescription provides a testable interface to the task clarification functionality
+// This function is used to test audit logging in the task clarification process
+func ClarifyTaskDescription(ctx context.Context, config interface{}, geminiClient interface{},
+	promptManager prompt.ManagerInterface, logger logutil.LoggerInterface, auditLogger interface{}) string {
+	// This function will be implemented in the tests, simulating the behavior of clarifyTaskDescriptionWithPromptManager
+	// from main.go
+	return "Refined task description"
+}
+
 // simulateClarifyTaskDescription simulates the interactive task clarification process
 func (a *MainAdapter) simulateClarifyTaskDescription(ctx context.Context, config *Configuration, geminiClient gemini.Client, logger logutil.LoggerInterface, env *TestEnv) string {
 	// Get the original task description

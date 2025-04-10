@@ -20,15 +20,15 @@ func NewErrorDetails(message string, typeStr ...string) ErrorDetails {
 	details := ErrorDetails{
 		Message: message,
 	}
-	
+
 	if len(typeStr) > 0 && typeStr[0] != "" {
 		details.Type = typeStr[0]
 	}
-	
+
 	if len(typeStr) > 1 && typeStr[1] != "" {
 		details.Details = typeStr[1]
 	}
-	
+
 	return details
 }
 
@@ -105,15 +105,15 @@ func (e AuditEvent) WithErrorFromGoError(err error) AuditEvent {
 	if err == nil {
 		return e
 	}
-	
+
 	// Extract the type name using reflection
 	t := reflect.TypeOf(err)
 	typeName := t.String()
-	
+
 	// If it's a pointer, get the element type
 	if t.Kind() == reflect.Ptr {
 		typeName = t.Elem().Name()
 	}
-	
+
 	return e.WithError(NewErrorDetails(err.Error(), typeName))
 }

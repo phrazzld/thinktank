@@ -199,7 +199,7 @@ func TestNewErrorDetails(t *testing.T) {
 	if error.Details != "" {
 		t.Errorf("Expected details to be empty, got %v", error.Details)
 	}
-	
+
 	// Test with all fields
 	error = NewErrorDetails("An error occurred", "TestError", "More details")
 	if error.Message != "An error occurred" {
@@ -226,7 +226,7 @@ func TestAuditEventWithMethods(t *testing.T) {
 	if event.Level != "INFO" {
 		t.Errorf("Expected level 'INFO', got %v", event.Level)
 	}
-	
+
 	// Check inputs were set correctly
 	if event.Inputs == nil || len(event.Inputs) != 2 {
 		t.Fatalf("Expected Inputs to have 2 items, got %v", event.Inputs)
@@ -237,7 +237,7 @@ func TestAuditEventWithMethods(t *testing.T) {
 	if event.Inputs["param2"] != 123 {
 		t.Errorf("Expected inputs.param2 to be 123, got %v", event.Inputs["param2"])
 	}
-	
+
 	// Check outputs were set correctly
 	if event.Outputs == nil || len(event.Outputs) != 1 {
 		t.Fatalf("Expected Outputs to have 1 item, got %v", event.Outputs)
@@ -245,7 +245,7 @@ func TestAuditEventWithMethods(t *testing.T) {
 	if event.Outputs["result"] != "success" {
 		t.Errorf("Expected outputs.result to be 'success', got %v", event.Outputs["result"])
 	}
-	
+
 	// Check metadata was set correctly
 	if event.Metadata == nil || len(event.Metadata) != 1 {
 		t.Fatalf("Expected Metadata to have 1 item, got %v", event.Metadata)
@@ -253,7 +253,7 @@ func TestAuditEventWithMethods(t *testing.T) {
 	if event.Metadata["duration_ms"] != 150 {
 		t.Errorf("Expected metadata.duration_ms to be 150, got %v", event.Metadata["duration_ms"])
 	}
-	
+
 	// Check error was set correctly
 	if event.Error == nil {
 		t.Fatal("Expected Error to be set, but it was nil")
@@ -269,11 +269,11 @@ func TestAuditEventWithMethods(t *testing.T) {
 func TestWithErrorFromGoError(t *testing.T) {
 	// Create a standard Go error
 	err := &testError{msg: "Go error"}
-	
+
 	// Create event with the error
 	event := NewAuditEvent("ERROR", "TestOp", "Test error").
 		WithErrorFromGoError(err)
-	
+
 	// Check error was set correctly
 	if event.Error == nil {
 		t.Fatal("Expected Error to be set, but it was nil")

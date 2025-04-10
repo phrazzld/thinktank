@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/adrg/xdg"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/spf13/viper"
 )
@@ -20,14 +21,17 @@ const ConfigFilename = "config.toml"
 // Manager is responsible for loading and providing application configuration
 type Manager struct {
 	logger        logutil.LoggerInterface
+	auditLogger   auditlog.StructuredLogger
 	userConfigDir string
 	sysConfigDirs []string
 	config        *AppConfig
 	viperInst     *viper.Viper
 }
 
-// NewManager creates a new configuration manager
-func NewManager(logger logutil.LoggerInterface) *Manager {
+// NewManager creates a new configuration manager.
+// It accepts a logger for user-facing messages and an optional audit logger for structured logging.
+// If auditLogger is nil, a no-op implementation will be used for backward compatibility.
+func NewManager(logger logutil.LoggerInterface, auditLogger ...auditlog.StructuredLogger) *Manager {
 	// Get user config directory
 	userConfigDir := filepath.Join(xdg.ConfigHome, AppName)
 
@@ -37,8 +41,18 @@ func NewManager(logger logutil.LoggerInterface) *Manager {
 		sysConfigDirs = append(sysConfigDirs, filepath.Join(dir, AppName))
 	}
 
+	// Set up audit logger (use NoopLogger if not provided)
+	var structLogger auditlog.StructuredLogger
+	if len(auditLogger) > 0 && auditLogger[0] != nil {
+		structLogger = auditLogger[0]
+	} else {
+		// Use NoopLogger for backward compatibility
+		structLogger = auditlog.NewNoopLogger()
+	}
+
 	return &Manager{
 		logger:        logger,
+		auditLogger:   structLogger,
 		userConfigDir: userConfigDir,
 		sysConfigDirs: sysConfigDirs,
 		config:        DefaultConfig(),
@@ -183,6 +197,19 @@ func (m *Manager) getTemplatePathFromConfig(templateName string) (string, bool) 
 
 // LoadFromFiles loads configuration from files (user, system) according to precedence
 func (m *Manager) LoadFromFiles() error {
+	// Ensure we have an audit logger (use NoopLogger if not initialized)
+	if m.auditLogger == nil {
+		m.auditLogger = auditlog.NewNoopLogger()
+	}
+
+	// Log the start of configuration loading
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ConfigLoadStart",
+		"Starting configuration loading process",
+	).WithMetadata("user_config_dir", m.userConfigDir).
+		WithMetadata("system_config_dirs_count", len(m.sysConfigDirs)))
+
 	v := m.viperInst
 	v.SetConfigType("toml")
 	v.SetConfigName(strings.TrimSuffix(ConfigFilename, filepath.Ext(ConfigFilename)))
@@ -208,10 +235,33 @@ func (m *Manager) LoadFromFiles() error {
 		if errors.As(err, &configFileNotFoundError) {
 			m.logger.Info("No configuration file found. Initializing default configuration...")
 
+			// Log config file not found event
+			m.auditLogger.Log(auditlog.NewAuditEvent(
+				"INFO",
+				"ConfigFileNotFound",
+				"No configuration file found, initializing defaults",
+			).WithMetadata("search_paths", append(m.sysConfigDirs, m.userConfigDir)))
+
 			// Ensure config directories exist before writing
 			if ensureErr := m.EnsureConfigDirs(); ensureErr != nil {
 				// Log warning but proceed with defaults in memory
 				m.logger.Warn("Failed to create configuration directories: %v. Using default settings.", ensureErr)
+
+				// Log directory creation error
+				m.auditLogger.Log(auditlog.NewAuditEvent(
+					"WARN",
+					"ConfigDirCreationError",
+					"Failed to create configuration directories",
+				).WithErrorFromGoError(ensureErr).
+					WithMetadata("user_config_dir", m.userConfigDir))
+
+				// Log that we're using defaults
+				m.auditLogger.Log(auditlog.NewAuditEvent(
+					"INFO",
+					"UsingDefaultConfig",
+					"Using default configuration (in-memory only)",
+				))
+
 				// Return nil here because we can still operate with defaults,
 				// even if we couldn't write the initial file.
 				return nil
@@ -221,29 +271,90 @@ func (m *Manager) LoadFromFiles() error {
 			if writeErr := m.WriteDefaultConfig(); writeErr != nil {
 				// Log warning but proceed with defaults in memory
 				m.logger.Warn("Failed to write default configuration file: %v. Using default settings.", writeErr)
+
+				// Log file write error
+				m.auditLogger.Log(auditlog.NewAuditEvent(
+					"WARN",
+					"ConfigFileWriteError",
+					"Failed to write default configuration file",
+				).WithErrorFromGoError(writeErr).
+					WithMetadata("file_path", filepath.Join(m.userConfigDir, ConfigFilename)))
 			} else {
 				// Display success message only if write was successful
 				m.displayInitializationMessage()
+
+				// Log successful default config creation
+				m.auditLogger.Log(auditlog.NewAuditEvent(
+					"INFO",
+					"DefaultConfigCreated",
+					"Default configuration file created successfully",
+				).WithMetadata("file_path", filepath.Join(m.userConfigDir, ConfigFilename)))
 			}
+
+			// Log completion with defaults
+			m.auditLogger.Log(auditlog.NewAuditEvent(
+				"INFO",
+				"ConfigLoadComplete",
+				"Configuration loading process completed with defaults",
+			))
+
 			// Even if writing failed, we proceed with defaults loaded via setViperDefaults.
 			// No need to unmarshal again as viper already has the defaults.
 			return nil // Indicate success (defaults are loaded)
 		}
+
+		// Log other configuration errors
+		m.auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ConfigLoadError",
+			"Error reading configuration file",
+		).WithErrorFromGoError(err))
+
 		// Other errors should be reported
 		return fmt.Errorf("error reading config file: %w", err)
 	}
 
 	// File was found and read successfully
-	m.logger.Debug("Loaded configuration from %s", v.ConfigFileUsed())
+	configFile := v.ConfigFileUsed()
+	m.logger.Debug("Loaded configuration from %s", configFile)
+
+	// Log successful file load
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ConfigFileLoaded",
+		"Configuration file loaded successfully",
+	).WithMetadata("file_path", configFile))
 
 	// Unmarshal into our config struct
 	if err := v.Unmarshal(m.config); err != nil {
+		// Log unmarshal error
+		m.auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ConfigUnmarshalError",
+			"Failed to unmarshal configuration data",
+		).WithErrorFromGoError(err).
+			WithMetadata("file_path", configFile))
+
 		return fmt.Errorf("failed to unmarshal config data: %w", err)
 	}
 
 	// Debug display config
 	m.logger.Debug("Loaded config: OutputFile=%s, ModelName=%s",
 		m.config.OutputFile, m.config.ModelName)
+
+	// Log config load completion
+	configDetails := map[string]interface{}{
+		"output_file":       m.config.OutputFile,
+		"model":             m.config.ModelName,
+		"audit_log_enabled": m.config.AuditLogEnabled,
+	}
+
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"ConfigLoadComplete",
+		"Configuration loading process completed successfully",
+	).WithMetadata("config_file", configFile).
+		WithMetadata("config_values", configDetails))
 
 	return nil
 }
@@ -278,9 +389,34 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 
 // MergeWithFlags merges loaded configuration with command-line flags
 func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
+	// Ensure we have an audit logger (use NoopLogger if not initialized)
+	if m.auditLogger == nil {
+		m.auditLogger = auditlog.NewNoopLogger()
+	}
+
+	// Count valid flags (non-nil, non-empty)
+	validFlagCount := 0
+	for _, flagValue := range cliFlags {
+		if flagValue != nil {
+			if strVal, ok := flagValue.(string); !(ok && strVal == "") {
+				validFlagCount++
+			}
+		}
+	}
+
+	// Log start of flag merging
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"MergeFlags",
+		"Merging CLI flags with configuration",
+	).WithMetadata("flag_count", validFlagCount))
+
 	// Create a reflector to work with the config struct
 	configVal := reflect.ValueOf(m.config).Elem()
 	configType := configVal.Type()
+
+	// Track applied flags for logging
+	appliedFlags := make(map[string]interface{})
 
 	// Process each flag
 	for flagName, flagValue := range cliFlags {
@@ -303,6 +439,7 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 				fieldVal := configVal.Field(i)
 				if fieldVal.CanSet() {
 					setValue(fieldVal, flagValue)
+					appliedFlags[flagName] = flagValue
 					found = true
 					break
 				}
@@ -313,6 +450,7 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 				fieldVal := configVal.Field(i)
 				if fieldVal.CanSet() {
 					setValue(fieldVal, flagValue)
+					appliedFlags[flagName] = flagValue
 					found = true
 					break
 				}
@@ -335,6 +473,7 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 							fieldVal := templatesVal.Field(i)
 							if fieldVal.CanSet() {
 								setValue(fieldVal, flagValue)
+								appliedFlags[flagName] = flagValue
 								found = true
 								break
 							}
@@ -357,6 +496,7 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 							fieldVal := excludesVal.Field(i)
 							if fieldVal.CanSet() {
 								setValue(fieldVal, flagValue)
+								appliedFlags[flagName] = flagValue
 								found = true
 								break
 							}
@@ -368,8 +508,23 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 
 		if !found {
 			m.logger.Debug("Flag '%s' does not map to any config field", flagName)
+
+			// Log flag that didn't match any config field
+			m.auditLogger.Log(auditlog.NewAuditEvent(
+				"DEBUG",
+				"FlagNotMapped",
+				"Flag does not map to any configuration field",
+			).WithMetadata("flag_name", flagName))
 		}
 	}
+
+	// Log completion of flag merging with summary
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"MergeFlagsComplete",
+		"CLI flags successfully merged with configuration",
+	).WithMetadata("flags_provided", validFlagCount).
+		WithMetadata("flags_applied", len(appliedFlags)))
 
 	return nil
 }
@@ -438,19 +593,56 @@ func (m *Manager) EnsureConfigDirs() error {
 
 // WriteDefaultConfig writes the default configuration to the user's config file
 func (m *Manager) WriteDefaultConfig() error {
+	// Ensure we have an audit logger (use NoopLogger if not initialized)
+	if m.auditLogger == nil {
+		m.auditLogger = auditlog.NewNoopLogger()
+	}
+
 	configPath := filepath.Join(m.userConfigDir, ConfigFilename)
+
+	// Log that we're attempting to write default config
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"WriteDefaultConfig",
+		"Writing default configuration file",
+	).WithMetadata("file_path", configPath))
 
 	// Check if file already exists
 	if _, err := os.Stat(configPath); !errors.Is(err, os.ErrNotExist) {
 		if err == nil {
 			m.logger.Debug("Config file already exists at %s, skipping default creation", configPath)
+
+			// Log that file already exists
+			m.auditLogger.Log(auditlog.NewAuditEvent(
+				"INFO",
+				"ConfigFileExists",
+				"Configuration file already exists, skipping default creation",
+			).WithMetadata("file_path", configPath))
+
 			return nil // Not an error, just skip creation
 		}
+
+		// Log error checking for file existence
+		m.auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ConfigFileCheckError",
+			"Failed to check if configuration file exists",
+		).WithErrorFromGoError(err).
+			WithMetadata("file_path", configPath))
+
 		return fmt.Errorf("failed to check for config file: %w", err)
 	}
 
 	// Ensure directory exists
 	if err := os.MkdirAll(m.userConfigDir, 0755); err != nil {
+		// Log directory creation error
+		m.auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ConfigDirCreationError",
+			"Failed to create configuration directory",
+		).WithErrorFromGoError(err).
+			WithMetadata("directory", m.userConfigDir))
+
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -460,10 +652,31 @@ func (m *Manager) WriteDefaultConfig() error {
 
 	// Write the config file
 	if err := v.WriteConfigAs(configPath); err != nil {
+		// Log file write error
+		m.auditLogger.Log(auditlog.NewAuditEvent(
+			"ERROR",
+			"ConfigFileWriteError",
+			"Failed to write default configuration file",
+		).WithErrorFromGoError(err).
+			WithMetadata("file_path", configPath))
+
 		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
 	m.logger.Debug("Created default configuration at %s", configPath)
+
+	// Log successful file creation
+	m.auditLogger.Log(auditlog.NewAuditEvent(
+		"INFO",
+		"DefaultConfigWritten",
+		"Default configuration file successfully written",
+	).WithMetadata("file_path", configPath).
+		WithMetadata("config_values", map[string]interface{}{
+			"output_file":       m.config.OutputFile,
+			"model":             m.config.ModelName,
+			"audit_log_enabled": m.config.AuditLogEnabled,
+		}))
+
 	return nil
 }
 
