@@ -94,7 +94,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
 | `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
 | `--no-spinner` | Disable spinner animation during API calls | `false` |
-| `--clarify` | Enable interactive task clarification to refine your task description | `false` |
 
 ## Configuration Files
 

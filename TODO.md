@@ -89,7 +89,7 @@
   - **AC Ref:** Implementation Steps 1 (Template Files), Step 4.
 
 ## Documentation Updates
-- [ ] **Remove clarify flag from README.md configuration table**
+- [x] **Remove clarify flag from README.md configuration table**
   - **Action:** Edit README.md to remove the `--clarify` entry from the configuration options table.
   - **Depends On:** None.
   - **AC Ref:** Implementation Steps 1 (Documentation), Step 5.1.
