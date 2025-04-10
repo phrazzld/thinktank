@@ -18,9 +18,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Go setup step will be implemented in "Configure Go environment setup" task
-      - name: Placeholder for Go setup
-        run: echo "Go setup placeholder"
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
 
       # The following steps will be implemented in their respective tasks:
       # - "Add dependency verification step"
@@ -36,6 +39,13 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
       
       # Other steps will be implemented in their respective tasks
 
@@ -47,5 +57,12 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
       
       # Other steps will be implemented in their respective tasks
