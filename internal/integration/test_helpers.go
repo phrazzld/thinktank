@@ -69,7 +69,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	mockClient := gemini.NewMockClient()
 
 	// Create a logger that writes to the stderr buffer
-	logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ", true)
+	logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ")
 
 	// Create cleanup function
 	cleanup := func() {

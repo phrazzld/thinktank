@@ -28,7 +28,6 @@ type CliConfig struct {
 	ModelName        string
 	Verbose          bool
 	LogLevel         logutil.LogLevel
-	UseColors        bool
 	Include          string
 	Exclude          string
 	ExcludeNames     string
@@ -78,7 +77,6 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	modelNameFlag := flagSet.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
-	useColorsFlag := flagSet.Bool("color", true, "Enable/disable colored log output.")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
 	excludeFlag := flagSet.String("exclude", defaultExcludes, "Comma-separated list of file extensions to exclude.")
 	excludeNamesFlag := flagSet.String("exclude-names", defaultExcludeNames, "Comma-separated list of file/dir names to exclude.")
@@ -115,7 +113,6 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.OutputFile = *outputFileFlag
 	config.ModelName = *modelNameFlag
 	config.Verbose = *verboseFlag
-	config.UseColors = *useColorsFlag
 	config.Include = *includeFlag
 	config.Exclude = *excludeFlag
 	config.ExcludeNames = *excludeNamesFlag
@@ -160,7 +157,7 @@ func SetupLogging(config *CliConfig) logutil.LoggerInterface {
 // SetupLoggingCustom initializes the logger with custom flag and writer for testing
 func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
 	// Use the LogLevel already set in the config during ParseFlags
-	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ", config.UseColors)
+	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
 	return logger
 }
 
@@ -172,7 +169,6 @@ func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
 		"model":            cliConfig.ModelName,
 		"verbose":          cliConfig.Verbose,
 		"logLevel":         cliConfig.LogLevel.String(),
-		"color":            cliConfig.UseColors,
 		"include":          cliConfig.Include,
 		"exclude":          cliConfig.Exclude,
 		"excludeNames":     cliConfig.ExcludeNames,

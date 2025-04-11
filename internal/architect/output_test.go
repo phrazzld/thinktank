@@ -266,7 +266,7 @@ func TestStitchPrompt(t *testing.T) {
 // TestSaveToFile tests the SaveToFile method
 func TestSaveToFile(t *testing.T) {
 	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
 	// Create a file writer
 	fileWriter := architect.NewFileWriter(logger)
