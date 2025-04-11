@@ -123,7 +123,7 @@
   - **AC Ref:** PLAN.md Step 6
 
 ## Refactor `cmd/architect/main.go`
-- [ ] **Task Title:** Remove `configManager` initialization and usage in `main.go`
+- [x] **Task Title:** Remove `configManager` initialization and usage in `main.go`
   - **Action:** Delete the lines related to `config.NewManager`, `configManager.LoadFromFiles`, `configManager.EnsureConfigDirs`, `configManager.MergeWithFlags`, and `configManager.GetConfig` from `cmd/architect/main.go`.
   - **Depends On:** Delete config loader implementation file, Delete config manager interface file
   - **AC Ref:** PLAN.md Step 5
