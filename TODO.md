@@ -17,7 +17,7 @@
   - **Depends On:** Define Audit Logger Interface
   - **AC Ref:** PLAN.MD Detailed Step 2
 
-- [ ] **Implement NoOpAuditLogger**
+- [x] **Implement NoOpAuditLogger**
   - **Action:** Implement the `NoOpAuditLogger` struct and its methods (`NewNoOpAuditLogger`, `Log`, `Close`) in `internal/auditlog/logger.go`. These methods should perform no actions and return `nil` error.
   - **Depends On:** Define Audit Logger Interface
   - **AC Ref:** PLAN.MD Detailed Step 4

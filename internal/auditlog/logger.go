@@ -92,3 +92,24 @@ func (l *FileAuditLogger) Close() error {
 	}
 	return nil
 }
+
+// NoOpAuditLogger implements AuditLogger with no-op methods.
+// This implementation is used when audit logging is disabled.
+type NoOpAuditLogger struct{}
+
+// NewNoOpAuditLogger creates a new NoOpAuditLogger instance.
+func NewNoOpAuditLogger() *NoOpAuditLogger {
+	return &NoOpAuditLogger{}
+}
+
+// Log implements the AuditLogger interface but performs no action.
+// It always returns nil (no error).
+func (l *NoOpAuditLogger) Log(entry AuditEntry) error {
+	return nil // Do nothing
+}
+
+// Close implements the AuditLogger interface but performs no action.
+// It always returns nil (no error).
+func (l *NoOpAuditLogger) Close() error {
+	return nil // Do nothing
+}
