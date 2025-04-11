@@ -158,7 +158,6 @@ use_colors = true
 # Template settings
 [templates]
 default = "default.tmpl" 
-clarify = "clarify.tmpl"
 dir = "templates"  # Relative to config dir or absolute path
 
 # File exclusion patterns
