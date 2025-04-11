@@ -110,3 +110,63 @@
   - **Depends On:** Remove clarify key-value pair from ConvertConfigToMap
   - **AC Ref:** AC 1.5, AC 1.8
   - **Output:** Removed the `TestConvertConfigNoClarity` test from `cmd/architect/flags_test.go` and added a new `TestConvertConfigBasic` test to ensure basic functionality of the ConvertConfigToMap function is still being tested.
+
+- [x] **Update legacy config tests**
+  - **Action:** In `internal/config/legacy_config_test.go`, review and update tests to ensure they still pass when loading legacy config files with clarify-related fields.
+  - **Depends On:** Remove fields from TemplateConfig
+  - **AC Ref:** AC 1.5, AC 1.8
+  - **Output:** Examined the `internal/config/legacy_config_test.go` file and found that it already correctly tests that legacy config files with clarify-related fields are handled properly, with the fields being ignored. The tests pass without any modifications, confirming backward compatibility.
+
+- [x] **Update integration tests**
+  - **Action:** In `internal/integration/integration_test.go`, rename `TestTaskClarification` to `TestTaskExecution` if it exists.
+  - **Depends On:** Remove conditional clarify logic from execution flow
+  - **AC Ref:** AC 1.5, AC 1.8
+  - **Output:** The test was already named `TestTaskExecution` and correctly tests the standard execution flow without any clarify-specific setup or assertions. No changes were needed.
+
+- [x] **Update BACKLOG.md**
+  - **Action:** Edit `BACKLOG.md` to move the "purge the program of the clarify flag and feature and related code and tests" line to a "Done" section.
+  - **Depends On:** All other tasks completed
+  - **AC Ref:** AC 1.6
+  - **Output:** Created a new "completed" section in BACKLOG.md and moved the "purge the program of the clarify flag and feature and related code and tests" line to this section.
+
+- [x] **Run unit tests**
+  - **Action:** Run `go test ./...` and fix any test failures resulting from the removed code.
+  - **Depends On:** All test update tasks
+  - **AC Ref:** AC 1.8, AC 1.9
+  - **Output:** All tests pass successfully, confirming that the removal of the clarify feature has not broken any functionality.
+
+- [x] **Clean up Go dependencies**
+  - **Action:** Run `go mod tidy` to ensure no unused dependencies remain.
+  - **Depends On:** All code removal tasks
+  - **AC Ref:** AC 1.7
+  - **Output:** Dependencies are already clean and up-to-date. No changes were needed.
+
+- [x] **Run go vet**
+  - **Action:** Run `go vet ./...` to check for any issues introduced by the code changes.
+  - **Depends On:** Run unit tests
+  - **AC Ref:** AC 1.8, AC 1.9
+  - **Output:** No issues were found by go vet, confirming code quality.
+
+- [x] **Run linter**
+  - **Action:** Run `hooks/pre-commit` to ensure code quality and catch any issues.
+  - **Depends On:** Run go vet
+  - **AC Ref:** AC 1.8, AC 1.9
+  - **Output:** The pre-commit hook, which includes linting, completed successfully with no issues reported.
+
+- [x] **Verify flag removal in CLI help**
+  - **Action:** Run `go run main.go --help` and verify the `--clarify` flag no longer appears in the output.
+  - **Depends On:** Remove clarify flag definition
+  - **AC Ref:** AC 1.1, AC 1.9
+  - **Output:** Confirmed that the `--clarify` flag does not appear in the CLI help output.
+
+- [x] **Perform final grep search**
+  - **Action:** Run a final grep search for any remaining references to "clarify", "ClarifyTask", etc., to ensure complete removal.
+  - **Depends On:** All code, documentation, and test update tasks
+  - **AC Ref:** AC 1.7
+  - **Output:** The only remaining references to "clarify" are in plan documents, test files that intentionally test backward compatibility, and git history. No functional code references remain.
+
+- [x] **Test basic application functionality**
+  - **Action:** Run `go run main.go --task-file task.txt ./` with dry run to verify plan generation works correctly.
+  - **Depends On:** All validation tasks
+  - **AC Ref:** AC 1.9
+  - **Output:** The application runs successfully in dry run mode, confirming basic functionality without the clarify feature.

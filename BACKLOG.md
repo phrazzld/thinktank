@@ -1,8 +1,11 @@
 # backlog
 
-## sooner
+## completed
 
 * purge the program of the clarify flag and feature and related code and tests
+
+## sooner
+
 * make it easier to manage prompt templates
 * implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
 * don't hardcode the plan prompt. force the user to pass a file with the full prompt.
