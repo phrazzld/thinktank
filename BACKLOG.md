@@ -2,6 +2,7 @@
 
 ## sooner
 
+* increase github action testing threshold from 30 to 80, and meet it
 * nuke a bunch of the user config stuff -- like maybe all of it. do we really need system config and user config and all that? or can we just get away with defaults and cli flags? simple is better, i think.
 * implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
 * enforce convention over configuration

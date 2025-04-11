@@ -144,12 +144,12 @@
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 9
 
-- [ ] **Task Title:** Update `cmd/architect/cli.go` tests
+- [x] **Task Title:** Update `cmd/architect/cli.go` tests
   - **Action:** Modify existing tests or add new tests for `cmd/architect/cli.go`. Verify that `ParseFlagsWithEnv` correctly parses all flags, applies defaults, reads the environment variable, and populates the `CliConfig` struct accurately. Test edge cases and error handling for flag parsing. Ensure tests for `SetupLoggingCustom` and `ValidateInputs` are still valid or updated.
   - **Depends On:** Update `ParseFlagsWithEnv` to populate `CliConfig` directly, Remove `ConvertConfigToMap` function definition, Update `ValidateInputs` function (if necessary)
   - **AC Ref:** PLAN.md Step 9
 
-- [ ] **Task Title:** Update integration tests for `main.go` and `app.go`
+- [x] **Task Title:** Update integration tests for `main.go` and `app.go`
   - **Action:** Refactor integration tests that involve `cmd/architect/main.go` or `internal/architect/app.go`. Remove any setup related to mocking `ConfigManager` or creating temporary config files. Update test setup to pass configuration directly via the `architect.CliConfig` struct when calling `architect.Execute` or `architect.RunInternal`.
   - **Depends On:** Update `architect.Execute` call in `main.go`, Update `Execute` function body to use `cliConfig`, Update `RunInternal` function body to use `cliConfig`
   - **AC Ref:** PLAN.md Step 9

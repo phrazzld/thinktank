@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/phrazzld/architect/internal/architect"
-	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -65,79 +64,12 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
-// mockConfigManager implements a simple version of config.ManagerInterface for testing
-type mockConfigManager struct {
-	logger logutil.LoggerInterface
-	config *config.AppConfig
-}
-
-func newMockConfigManager(logger logutil.LoggerInterface) *mockConfigManager {
-	return &mockConfigManager{
-		logger: logger,
-		config: config.DefaultConfig(),
-	}
-}
-
-// Implement the minimal required interface methods
-func (m *mockConfigManager) GetConfig() *config.AppConfig {
-	return m.config
-}
-
-func (m *mockConfigManager) GetUserConfigDir() string {
-	return "/mock/user/config/dir"
-}
-
-func (m *mockConfigManager) GetSystemConfigDirs() []string {
-	return []string{"/mock/system/config/dir"}
-}
-
-func (m *mockConfigManager) GetConfigDirs() config.ConfigDirectories {
-	return config.ConfigDirectories{
-		UserConfigDir:    m.GetUserConfigDir(),
-		SystemConfigDirs: m.GetSystemConfigDirs(),
-	}
-}
-
-func (m *mockConfigManager) LoadFromFiles() error {
-	return nil
-}
-
-func (m *mockConfigManager) MergeWithFlags(cliFlags map[string]interface{}) error {
-	return nil
-}
-
-func (m *mockConfigManager) EnsureConfigDirs() error {
-	return nil
-}
-
-func (m *mockConfigManager) WriteDefaultConfig() error {
-	return nil
-}
-
-// GetUserTemplateDir returns a mock path (this is a legacy method that will be removed)
-func (m *mockConfigManager) GetUserTemplateDir() string {
-	return "/mock/user/template/dir"
-}
-
-// GetSystemTemplateDirs returns mock paths (this is a legacy method that will be removed)
-func (m *mockConfigManager) GetSystemTemplateDirs() []string {
-	return []string{"/mock/system/template/dir"}
-}
-
-// GetTemplatePath is a legacy method that will be removed
-func (m *mockConfigManager) GetTemplatePath(name string) (string, error) {
-	return "", fmt.Errorf("templates not supported in new architecture")
-}
-
 // RunTestWithConfig runs the architect application with the provided test config and environment
 func RunTestWithConfig(
 	ctx context.Context,
 	testConfig *architect.CliConfig,
 	env *TestEnv,
 ) error {
-	// Use a mock config manager for testing
-	configManager := newMockConfigManager(env.Logger)
-
 	// Create a mock API service that uses the test environment's mock client
 	mockAPIService := &mockIntAPIService{
 		logger:     env.Logger,
@@ -145,11 +77,11 @@ func RunTestWithConfig(
 	}
 
 	// Run the architect application using the RunInternal function directly from internal/architect
+	// The updated signature no longer requires a configManager
 	return architect.RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
-		configManager,
 		mockAPIService,
 	)
 }

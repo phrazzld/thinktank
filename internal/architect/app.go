@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )

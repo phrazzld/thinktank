@@ -156,7 +156,12 @@ func SetupLogging(config *CliConfig) logutil.LoggerInterface {
 
 // SetupLoggingCustom initializes the logger with custom flag and writer for testing
 func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
-	// Use the LogLevel already set in the config during ParseFlags
+	// Apply verbose override if set
+	if config.Verbose {
+		config.LogLevel = logutil.DebugLevel
+	}
+
+	// Use the LogLevel set in the config
 	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
 	return logger
 }
