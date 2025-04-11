@@ -18,7 +18,7 @@
   - **Depends On:** Tidy Go module dependencies
   - **AC Ref:** PLAN.md Step 2
 
-- [ ] **Task Title:** Delete config manager interface file
+- [x] **Task Title:** Delete config manager interface file
   - **Action:** Delete the file `internal/config/interfaces.go`.
   - **Depends On:** Tidy Go module dependencies
   - **AC Ref:** PLAN.md Step 2
