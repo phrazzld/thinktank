@@ -154,7 +154,7 @@
   - **Depends On:** Update `architect.Execute` call in `main.go`, Update `Execute` function body to use `cliConfig`, Update `RunInternal` function body to use `cliConfig`
   - **AC Ref:** PLAN.md Step 9
 
-- [ ] **Task Title:** Ensure all tests pass
+- [x] **Task Title:** Ensure all tests pass
   - **Action:** Run the full test suite (`go test ./...`). Verify that all tests pass after completing the refactoring steps. Debug and fix any failing tests.
   - **Depends On:** Update integration tests for `main.go` and `app.go`
   - **AC Ref:** PLAN.md Step 9, Definition of Done
