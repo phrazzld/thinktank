@@ -111,3 +111,8 @@
     * **Action:** Verified that tests for `GenerateAndSavePlan*` methods were already removed during previous refactoring. Confirmed all tests for the remaining functionality (`SaveToFile`, `EscapeContent`, and `StitchPrompt`) were working correctly. Removed unused files (prompt.go and prompt_test.go) from the cmd/architect package as they depended on the deleted internal/prompt package.
     * **Depends On:** Task: Refactor Output Writing (`internal/architect/output.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)
+
+- [x] **Task: Update Integration Tests (`internal/integration/`)** - 2025-04-10
+    * **Action:** Rewrote integration tests to use the new `--instructions` flag instead of the removed `--task-file` flag. Updated references in test cases from `TaskFile` to `InstructionsFile`. Created helper methods to validate the XML structure of prompts, including proper XML escaping in file content. Added tests for complex XML content handling, empty instructions, and proper structure validation. Created mock methods to replace template-related functions that were removed from the config package.
+    * **Depends On:** Task: Refactor Core Application Flow (`internal/architect/app.go`), Task: Refactor Output Writing (`internal/architect/output.go`), Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
+    * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Integration Tests)

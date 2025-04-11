@@ -11,7 +11,6 @@ import (
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/prompt"
 )
 
 // TestConfigIntegration tests comprehensive configuration system integration
@@ -234,89 +233,14 @@ output_file = "USER_OUTPUT.md"
 		}
 	})
 
-	// --- Test Case 4: Template Lookup Precedence (Modified for Test Environment) ---
+	// --- Test Case 4: Template Lookup Precedence (Skipped - Templates Removed) ---
 	t.Run("TemplateLookupPrecedence", func(t *testing.T) {
-		// Set up temp directories (only using cleanup)
-		_, cleanup := setupTempConfigDir(t)
-		defer cleanup()
-
-		// Create a logger that writes to a buffer for testing
-		var logBuf bytes.Buffer
-		logger := logutil.NewLogger(logutil.DebugLevel, &logBuf, "", true)
-
-		// Create fresh config manager
-		configManager := config.NewManager(logger)
-
-		// Test embedded templates fallback
-		err := configManager.LoadFromFiles()
-		if err != nil {
-			t.Fatalf("Failed to load default config: %v", err)
-		}
-
-		// Test lookup for known embedded template
-		_, err = configManager.GetTemplatePath("default.tmpl")
-		// It's expected that GetTemplatePath returns an error now, since we're relying on the
-		// embedded templates in prompt.LoadTemplate
-		if err == nil {
-			t.Log("GetTemplatePath succeeded with a filesystem path")
-		} else if !strings.Contains(err.Error(), "embedded templates will be used as fallback") {
-			t.Fatalf("Unexpected error message: %v", err)
-		}
-
-		// Test with prompt manager
-		promptManager, err := prompt.SetupPromptManagerWithConfig(logger, configManager)
-		if err != nil {
-			t.Fatalf("Failed to create prompt manager: %v", err)
-		}
-
-		// Check that embedded templates work for the standard templates
-		err = promptManager.LoadTemplate("default.tmpl")
-		if err != nil {
-			t.Errorf("Failed to load embedded default template: %v", err)
-		}
-
-		// We've verified templates are accessible
-		t.Log("Template lookup precedence verified with embedded templates")
+		t.Skip("Template system has been removed in favor of direct XML structure")
 	})
 
-	// --- Test Case 5: Backward Compatibility with Old Interface ---
+	// --- Test Case 5: Backward Compatibility with Old Interface (Skipped - Templates Removed) ---
 	t.Run("BackwardCompatibilityOldInterface", func(t *testing.T) {
-		// Set up temp directories
-		tempDir, cleanup := setupTempConfigDir(t)
-		defer cleanup()
-
-		// Create a logger that writes to a buffer for testing
-		var logBuf bytes.Buffer
-		logger := logutil.NewLogger(logutil.DebugLevel, &logBuf, "", true)
-
-		// Test the old approach with direct template paths
-		promptManager := prompt.NewManager(logger)
-
-		// Create a temp template file
-		tmpTemplate := filepath.Join(tempDir, "direct-template.tmpl")
-		createConfigFile(t, tmpTemplate, "Direct template content with {{.Task}} placeholder")
-
-		// Try to load it with the old approach
-		err := promptManager.LoadTemplate(tmpTemplate)
-		if err != nil {
-			t.Fatalf("Failed to load template with direct path (old approach): %v", err)
-		}
-
-		// Build prompt with it
-		data := &prompt.TemplateData{
-			Task:    "Test Task",
-			Context: "Test Context",
-		}
-
-		result, err := promptManager.BuildPrompt(filepath.Base(tmpTemplate), data)
-		if err != nil {
-			t.Fatalf("Failed to build prompt with direct path: %v", err)
-		}
-
-		// Check content
-		if result != "Direct template content with Test Task placeholder" {
-			t.Errorf("Unexpected prompt content: %s", result)
-		}
+		t.Skip("Template system has been removed in favor of direct XML structure")
 	})
 
 	// --- Test Case 7: Automatic Initialization on First Run ---

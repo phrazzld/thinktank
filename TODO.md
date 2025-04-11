@@ -114,7 +114,7 @@
 
 ## Phase 4: Integration Testing & Documentation
 
-- [ ] **Task: Update Integration Tests (`internal/integration/`)**
+- [x] **Task: Update Integration Tests (`internal/integration/`)**
     * **Action:** Rewrite integration tests:
         * Use the new `--instructions` flag.
         * Provide sample static instruction files.
