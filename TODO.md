@@ -66,7 +66,7 @@
   - **Depends On:** Refine `AppConfig` struct fields
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Update `ParseFlagsWithEnv` to define all flags
+- [x] **Task Title:** Update `ParseFlagsWithEnv` to define all flags
   - **Action:** Modify the `ParseFlagsWithEnv` function. Ensure `flagSet.String`, `flagSet.Bool`, `flagSet.Int` etc. are called for *all* configurable options defined in the updated `cmd.CliConfig`. Use default values sourced from `internal/config/config.go` (e.g., `config.DefaultOutputFile`, `config.DefaultModel`).
   - **Depends On:** Update `cmd.CliConfig` struct definition, Verify `DefaultConfig()` function correctness
   - **AC Ref:** PLAN.md Step 4
