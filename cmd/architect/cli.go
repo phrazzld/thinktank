@@ -173,23 +173,19 @@ func SetupLoggingCustom(config *CliConfig, logLevelFlag *flag.Flag, output io.Wr
 
 // ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
 func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
-	// The temporary clarifyTaskValue variable and clarify key have been removed
 	return map[string]interface{}{
-		"taskFile":       cliConfig.TaskFile,
-		"output":         cliConfig.OutputFile,
-		"model":          cliConfig.ModelName,
-		"verbose":        cliConfig.Verbose,
-		"logLevel":       cliConfig.LogLevel.String(),
-		"color":          cliConfig.UseColors,
-		"include":        cliConfig.Include,
-		"exclude":        cliConfig.Exclude,
-		"excludeNames":   cliConfig.ExcludeNames,
-		"format":         cliConfig.Format,
-		"dryRun":         cliConfig.DryRun,
-		"confirmTokens":  cliConfig.ConfirmTokens,
-		"promptTemplate": cliConfig.PromptTemplate,
-		"listExamples":   cliConfig.ListExamples,
-		"showExample":    cliConfig.ShowExample,
-		"apiKey":         cliConfig.ApiKey,
+		"instructionsFile": cliConfig.InstructionsFile,
+		"output":           cliConfig.OutputFile,
+		"model":            cliConfig.ModelName,
+		"verbose":          cliConfig.Verbose,
+		"logLevel":         cliConfig.LogLevel.String(),
+		"color":            cliConfig.UseColors,
+		"include":          cliConfig.Include,
+		"exclude":          cliConfig.Exclude,
+		"excludeNames":     cliConfig.ExcludeNames,
+		"format":           cliConfig.Format,
+		"dryRun":           cliConfig.DryRun,
+		"confirmTokens":    cliConfig.ConfirmTokens,
+		"apiKey":           cliConfig.ApiKey,
 	}
 }

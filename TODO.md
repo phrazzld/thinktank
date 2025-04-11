@@ -22,7 +22,7 @@
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 1)
 
-- [ ] **Task: Update Config-Flag Mapping (`cmd/architect/cli.go`)**
+- [x] **Task: Update Config-Flag Mapping (`cmd/architect/cli.go`)**
     * **Action:** Modify `ConvertConfigToMap`. Remove map keys related to removed flags (`promptTemplate`, `listExamples`, `showExample`, `taskFile`). Add `instructionsFile` key if necessary for config merging (likely not needed).
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 1)
