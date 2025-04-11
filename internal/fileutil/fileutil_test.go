@@ -97,7 +97,7 @@ func TestCalculateStatisticsWithTokenCounting(t *testing.T) {
 	}
 
 	// Create a mock logger
-	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ", false)
+	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
 
 	// Test with mock client
 	chars, lines, tokens := CalculateStatisticsWithTokenCounting(ctx, mockClient, input, logger)

@@ -295,7 +295,7 @@ var originalNewAPIService = architect.NewAPIService
 // Implement the updated test for GenerateAndSavePlanWithConfig
 func TestGenerateAndSavePlanWithConfig(t *testing.T) {
 	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
@@ -397,7 +397,7 @@ func (m *outputMockAPIService) InitClient(ctx context.Context, apiKey, modelName
 // TestSaveToFile tests the SaveToFile method
 func TestSaveToFile(t *testing.T) {
 	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
 	// Create a token manager for testing
 	tokenManager := newOutputTokenManager()
@@ -520,7 +520,7 @@ func TestSaveToFile(t *testing.T) {
 // TestGenerateAndSavePlan tests the GenerateAndSavePlan method
 func TestGenerateAndSavePlan(t *testing.T) {
 	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ", false)
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")

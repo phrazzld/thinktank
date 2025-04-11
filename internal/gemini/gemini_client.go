@@ -43,7 +43,7 @@ func newGeminiClient(ctx context.Context, apiKey, modelName string) (Client, err
 	}
 
 	// Create standard logger for internal client use
-	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ", true)
+	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ")
 
 	// Initialize the Google genai client
 	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))

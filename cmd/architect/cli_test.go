@@ -32,7 +32,6 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				ApiKey:       "test-api-key",
 				OutputFile:   defaultOutputFile,
 				ModelName:    defaultModel,
-				UseColors:    true, // default value
 				Exclude:      defaultExcludes,
 				ExcludeNames: defaultExcludeNames,
 				Format:       defaultFormat,

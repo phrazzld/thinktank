@@ -70,10 +70,9 @@ type AppConfig struct {
 	ConfirmTokens int    `mapstructure:"confirm_tokens" toml:"confirm_tokens"`
 
 	// Logging and display settings
-	Verbose   bool             `mapstructure:"verbose" toml:"verbose"`
-	LogLevel  logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
-	UseColors bool             `mapstructure:"use_colors" toml:"use_colors"`
-	DryRun    bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
+	Verbose  bool             `mapstructure:"verbose" toml:"verbose"`
+	LogLevel logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
+	DryRun   bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
 
 	// Template settings (hierarchical)
 	Templates TemplateConfig `mapstructure:"templates" toml:"templates"`
@@ -94,7 +93,6 @@ func DefaultConfig() *AppConfig {
 		OutputFile:    DefaultOutputFile,
 		ModelName:     DefaultModel,
 		Format:        DefaultFormat,
-		UseColors:     true,
 		LogLevel:      logutil.InfoLevel,
 		ConfirmTokens: 0, // Disabled by default
 		Excludes: ExcludeConfig{

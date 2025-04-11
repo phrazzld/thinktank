@@ -147,7 +147,6 @@ func TestMergeWithFlags(t *testing.T) {
 		"output_file": "custom-output.md",
 		"model":       "custom-model",
 		"verbose":     true,
-		"use_colors":  false,
 	}
 
 	if err := manager.MergeWithFlags(flags); err != nil {
@@ -166,10 +165,6 @@ func TestMergeWithFlags(t *testing.T) {
 
 	if !config.Verbose {
 		t.Error("Expected Verbose to be true")
-	}
-
-	if config.UseColors {
-		t.Error("Expected UseColors to be false")
 	}
 
 	// Test nested flag handling
