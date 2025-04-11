@@ -33,7 +33,7 @@ func Main() {
 	// CLI flags and environment variables are now the only source of configuration
 
 	// Execute the core application logic
-	err = architect.Execute(ctx, coreConfig, logger, configManager)
+	err = architect.Execute(ctx, coreConfig, logger)
 	if err != nil {
 		logger.Error("Application failed: %v", err)
 		os.Exit(1)

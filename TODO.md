@@ -128,7 +128,7 @@
   - **Depends On:** Delete config loader implementation file, Delete config manager interface file
   - **AC Ref:** PLAN.md Step 5
 
-- [ ] **Task Title:** Update `architect.Execute` call in `main.go`
+- [x] **Task Title:** Update `architect.Execute` call in `main.go`
   - **Action:** Modify the call to `architect.Execute` in `main.go`. Pass the `coreConfig` (derived from `cmdConfig`) and `logger`. Remove the `configManager` argument. Ensure the arguments match the updated `Execute` signature.
   - **Depends On:** Remove `configManager` initialization and usage in `main.go`, Remove `configManager` parameter from `Execute` signature
   - **AC Ref:** PLAN.md Step 5
