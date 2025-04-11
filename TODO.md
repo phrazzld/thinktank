@@ -71,7 +71,7 @@
     * **Depends On:** Task: Define FileMeta Struct (`internal/fileutil/fileutil.go`)
     * **AC Ref:** Plan Section 2 (Structured Context), Plan Section 3 (Task 3), Plan Section 4 (FileUtil)
 
-- [ ] **Task: Update `fileutil` Tests (`internal/fileutil/context_test.go`)**
+- [x] **Task: Update `fileutil` Tests (`internal/fileutil/context_test.go`)**
     * **Action:** Rewrite tests for `GatherProjectContext` to assert that the returned slice (`[]FileMeta`) contains the expected files (correct paths and content) in the expected order (if applicable, e.g., based on argument order or FS walk order) and that the file count is correct. Verify filtering logic still works.
     * **Depends On:** Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)

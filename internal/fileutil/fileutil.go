@@ -228,9 +228,20 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 		config.fileCollector(path)
 	}
 
+	// Convert to absolute path if it's not already
+	absPath := path
+	if !filepath.IsAbs(path) {
+		// If this fails, just use the original path
+		if abs, err := filepath.Abs(path); err == nil {
+			absPath = abs
+		} else {
+			config.Logger.Printf("Warning: Could not convert %s to absolute path: %v\n", path, err)
+		}
+	}
+
 	// Create a FileMeta and add it to the slice
 	*files = append(*files, FileMeta{
-		Path:    path,
+		Path:    absPath,
 		Content: string(content),
 	})
 }
