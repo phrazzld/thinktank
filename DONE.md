@@ -62,3 +62,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.3
   - **Output:** After thorough examination of the `internal/architect/app.go` file and the entire `internal/architect` package, confirmed that there is no conditional logic or function calls related to the clarify feature in the execution flow. This is consistent with the findings in the clarify-references.md document which noted "No explicit references to `cliConfig.ClarifyTask` or clarify-related function calls were found in the `internal/architect` package Go files."
+
+- [x] **Delete clarify template files**
+  - **Action:** Check `internal/prompt/templates/` for `clarify.tmpl` and `refine.tmpl` and delete these files if found.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.4
+  - **Output:** Conducted a search for `clarify.tmpl` and `refine.tmpl` files in the `internal/prompt/templates/` directory and confirmed that these files do not exist. This finding is consistent with the clarify-references.md document which noted "No actual template files named `clarify.tmpl` were found, but references exist in configuration." There are references to these templates in documentation but the actual template files don't exist, so no deletion was necessary.

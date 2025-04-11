@@ -55,7 +55,7 @@
   - **AC Ref:** AC 1.3
 
 ## Template Removal
-- [ ] **Delete clarify template files**
+- [x] **Delete clarify template files**
   - **Action:** Check `internal/prompt/templates/` for `clarify.tmpl` and `refine.tmpl` and delete these files if found.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.4
