@@ -39,7 +39,7 @@
 
 ## Phase 2: Remove Templating System
 
-- [ ] **Task: Delete Prompt Package (`internal/prompt/`)**
+- [x] **Task: Delete Prompt Package (`internal/prompt/`)**
     * **Action:** Delete the entire `internal/prompt/` directory, including all `.go` files, `.tmpl` files, and tests within it.
     * **Depends On:** None (Can be done early, but code won't compile until usages are removed)
     * **AC Ref:** Plan Section 2 (Templating Removal), Plan Section 3 (Task 4)
