@@ -44,7 +44,7 @@
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 3
 
-- [ ] **Task Title:** Refine `AppConfig` struct fields
+- [x] **Task Title:** Refine `AppConfig` struct fields
   - **Action:** Review the fields in `AppConfig`. Remove fields that are *only* set via flags and have no default value or are not used internally across multiple components *after* flag parsing (e.g., potentially `TaskDescription`, `TaskFile`, `Paths`, `DryRun`, `APIKey` as per PLAN.MD). Keep fields that hold default values (`OutputFile`, `ModelName`, `Format`, `LogLevel`, `ConfirmTokens`, `Excludes`) or are needed post-merge.
   - **Depends On:** Remove struct tags from `AppConfig`
   - **AC Ref:** PLAN.md Step 3

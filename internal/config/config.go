@@ -33,34 +33,23 @@ type ExcludeConfig struct {
 	Names string
 }
 
-// AppConfig holds configuration settings loaded from defaults, env vars, and flags
+// AppConfig holds essential configuration settings with defaults
 type AppConfig struct {
-	// Task-related settings
-	TaskDescription string // Not saved to config
-	TaskFile        string // Not saved to config
-	OutputFile      string
-	ModelName       string
+	// Core settings with defaults
+	OutputFile string
+	ModelName  string
+	Format     string
 
 	// File handling settings
 	Include       string
-	Format        string
 	ConfirmTokens int
 
 	// Logging and display settings
 	Verbose  bool
 	LogLevel logutil.LogLevel
-	DryRun   bool // Not saved to config
-
-	// Template settings have been removed
 
 	// Exclude settings (hierarchical)
 	Excludes ExcludeConfig
-
-	// Input paths (not saved to config file)
-	Paths []string
-
-	// API key (not saved to config file for security)
-	APIKey string
 }
 
 // DefaultConfig returns a new AppConfig instance with default values
