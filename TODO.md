@@ -29,7 +29,7 @@
   - **AC Ref:** PLAN.md Step 2
 
 ## Simplify `internal/config/config.go`
-- [ ] **Task Title:** Remove `ManagerInterface` usage reference
+- [x] **Task Title:** Remove `ManagerInterface` usage reference
   - **Action:** Remove any code referencing `ManagerInterface` within `internal/config/config.go` (if any exists after deleting `interfaces.go`). This task might be implicitly completed by deleting `interfaces.go`. Verify no compilation errors related to the interface remain in this file.
   - **Depends On:** Delete config manager interface file
   - **AC Ref:** PLAN.md Step 3
