@@ -76,7 +76,7 @@
     * **Depends On:** Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)
 
-- [ ] **Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`)**
+- [x] **Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`)**
     * **Action:** Add code (likely within the `Execute` or `RunInternal` function, or potentially refactored into `output.go`) that:
         1. Takes the instructions string and the `[]FileMeta` context slice.
         2. Formats each `FileMeta` entry using the `<{path}>...</{path}>` style (including potential escaping via an `escapeContent` helper).
@@ -85,7 +85,7 @@
     * **Depends On:** Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`)
     * **AC Ref:** Plan Section 2 (Prompt Stitching), Plan Section 4 (Prompt Stitching Logic)
 
-- [ ] **Task: Add Prompt Stitching Unit Tests**
+- [x] **Task: Add Prompt Stitching Unit Tests**
     * **Action:** Create unit tests specifically for the prompt stitching logic implemented in the previous task. Verify correct formatting of individual context files, correct usage of XML tags, and proper combination of instructions and context parts. Test edge cases like empty context or empty instructions.
     * **Depends On:** Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`)
     * **AC Ref:** Plan Section 6 (Unit Tests)

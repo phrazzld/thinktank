@@ -2,17 +2,15 @@
 package architect
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"text/template"
+	"strings"
 
-	"github.com/phrazzld/architect/internal/config"
+	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/prompt"
 )
 
 // OutputWriter defines the interface for file output and plan writing
@@ -232,6 +230,46 @@ func (ow *outputWriter) GenerateAndSavePlan(ctx context.Context, client gemini.C
 	return nil
 }
 
+// EscapeContent helps prevent conflicts with XML-like tags by escaping < and > characters
+func EscapeContent(content string) string {
+	escaped := strings.ReplaceAll(content, "<", "&lt;")
+	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
+	return escaped
+}
+
+// StitchPrompt combines instructions and file context into the final prompt string with XML-like tags
+func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string {
+	var sb strings.Builder
+
+	// Add instructions block
+	sb.WriteString("<instructions>\n")
+	if instructions != "" {
+		sb.WriteString(instructions)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("</instructions>\n")
+
+	// Add context block
+	sb.WriteString("<context>\n")
+	for _, file := range contextFiles {
+		// Add file path tag
+		sb.WriteString("<path>")
+		sb.WriteString(file.Path)
+		sb.WriteString("</path>\n")
+
+		// Add file content with escaping
+		sb.WriteString(EscapeContent(file.Content))
+		sb.WriteString("\n\n")
+	}
+	sb.WriteString("</context>")
+
+	return sb.String()
+}
+
+// Note: Temporarily commenting out the prompt manager integration
+// until the prompt stitching tests are complete
+
+/*
 // SetupPromptManagerWithConfig is exported for testing
 var SetupPromptManagerWithConfig = prompt.SetupPromptManagerWithConfig
 
@@ -253,3 +291,4 @@ func (ow *outputWriter) GenerateAndSavePlanWithConfig(ctx context.Context, clien
 	// Use the config-based prompt manager
 	return ow.GenerateAndSavePlan(ctx, client, taskDescription, projectContext, outputFile, promptManager)
 }
+*/
