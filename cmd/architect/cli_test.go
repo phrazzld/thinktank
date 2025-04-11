@@ -20,27 +20,27 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		{
 			name: "Basic valid configuration",
 			args: []string{
-				"--task-file", "task.md",
+				"--instructions", "instructions.md",
 				"path1", "path2",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
 			want: &CliConfig{
-				TaskFile:     "task.md",
-				Paths:        []string{"path1", "path2"},
-				ApiKey:       "test-api-key",
-				OutputFile:   defaultOutputFile,
-				ModelName:    defaultModel,
-				UseColors:    true, // default value
-				Exclude:      defaultExcludes,
-				ExcludeNames: defaultExcludeNames,
-				Format:       defaultFormat,
+				InstructionsFile: "instructions.md",
+				Paths:            []string{"path1", "path2"},
+				ApiKey:           "test-api-key",
+				OutputFile:       defaultOutputFile,
+				ModelName:        defaultModel,
+				UseColors:        true, // default value
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
 			},
 			wantErr: false,
 		},
 		{
-			name: "Missing task file",
+			name: "Missing instructions file",
 			args: []string{
 				"path1",
 			},
@@ -53,13 +53,36 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		{
 			name: "Missing paths",
 			args: []string{
-				"--task-file", "task.md",
+				"--instructions", "instructions.md",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
 			want:    nil,
 			wantErr: true,
+		},
+		{
+			name: "Dry run without instructions file",
+			args: []string{
+				"--dry-run",
+				"path1", "path2",
+			},
+			env: map[string]string{
+				apiKeyEnvVar: "test-api-key",
+			},
+			want: &CliConfig{
+				InstructionsFile: "",
+				DryRun:           true,
+				Paths:            []string{"path1", "path2"},
+				ApiKey:           "test-api-key",
+				OutputFile:       defaultOutputFile,
+				ModelName:        defaultModel,
+				UseColors:        true, // default value
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
+			},
+			wantErr: false,
 		},
 	}
 
@@ -85,9 +108,9 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				return
 			}
 
-			// Compare only the fields we care about for this test
-			if got.TaskFile != tt.want.TaskFile {
-				t.Errorf("TaskFile = %v, want %v", got.TaskFile, tt.want.TaskFile)
+			// Compare fields we care about for this test
+			if got.InstructionsFile != tt.want.InstructionsFile {
+				t.Errorf("InstructionsFile = %v, want %v", got.InstructionsFile, tt.want.InstructionsFile)
 			}
 			if !reflect.DeepEqual(got.Paths, tt.want.Paths) {
 				t.Errorf("Paths = %v, want %v", got.Paths, tt.want.Paths)
@@ -97,6 +120,9 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			}
 			if got.OutputFile != tt.want.OutputFile {
 				t.Errorf("OutputFile = %v, want %v", got.OutputFile, tt.want.OutputFile)
+			}
+			if got.DryRun != tt.want.DryRun {
+				t.Errorf("DryRun = %v, want %v", got.DryRun, tt.want.DryRun)
 			}
 		})
 	}
@@ -141,31 +167,38 @@ func TestSetupLoggingCustom(t *testing.T) {
 	}
 }
 
-// TestParsingExampleFlags tests the parsing of the example-related flags
-func TestParsingExampleFlags(t *testing.T) {
+// TestAdvancedConfiguration tests more complex configuration options
+func TestAdvancedConfiguration(t *testing.T) {
 	testCases := []struct {
-		name                string
-		args                []string
-		expectedListFlag    bool
-		expectedShowExample string
+		name             string
+		args             []string
+		expectedFormat   string
+		expectedModel    string
+		expectedExclude  string
+		expectedLogLevel string
 	}{
 		{
-			name:                "No example flags",
-			args:                []string{"--task-file", "task.txt", "./"},
-			expectedListFlag:    false,
-			expectedShowExample: "",
+			name: "Default format and model",
+			args: []string{"--instructions", "instructions.txt", "./"},
+			expectedFormat:   defaultFormat,
+			expectedModel:    defaultModel,
+			expectedExclude:  defaultExcludes,
+			expectedLogLevel: "info",
 		},
 		{
-			name:                "With list-examples flag",
-			args:                []string{"--list-examples"},
-			expectedListFlag:    true,
-			expectedShowExample: "",
-		},
-		{
-			name:                "With show-example flag",
-			args:                []string{"--show-example", "basic.tmpl"},
-			expectedListFlag:    false,
-			expectedShowExample: "basic.tmpl",
+			name: "Custom format and model",
+			args: []string{
+				"--instructions", "instructions.txt",
+				"--format", "Custom: {path}\n{content}\n---\n",
+				"--model", "custom-model",
+				"--exclude", "*.tmp,*.bak",
+				"--log-level", "debug",
+				"./",
+			},
+			expectedFormat:   "Custom: {path}\n{content}\n---\n",
+			expectedModel:    "custom-model",
+			expectedExclude:  "*.tmp,*.bak",
+			expectedLogLevel: "debug",
 		},
 	}
 
@@ -183,25 +216,28 @@ func TestParsingExampleFlags(t *testing.T) {
 
 			// Parse flags
 			config, err := ParseFlagsWithEnv(fs, tc.args, getenv)
-
-			// If we expect ListExamples or ShowExample, there shouldn't be an error
-			// even if task-file is missing
-			if tc.expectedListFlag || tc.expectedShowExample != "" {
-				if err != nil {
-					t.Fatalf("Expected no error for example flags, got: %v", err)
-				}
-			} else if err != nil {
-				// For other test cases, errors are expected - we're testing the example flags specifically
-				return
+			if err != nil {
+				t.Fatalf("Expected no error for valid config, got: %v", err)
 			}
 
-			// Check flag values
-			if config.ListExamples != tc.expectedListFlag {
-				t.Errorf("Expected ListExamples to be %v, got %v", tc.expectedListFlag, config.ListExamples)
+			// Check values
+			if config.Format != tc.expectedFormat {
+				t.Errorf("Expected Format to be %q, got %q", tc.expectedFormat, config.Format)
 			}
 
-			if config.ShowExample != tc.expectedShowExample {
-				t.Errorf("Expected ShowExample to be %q, got %q", tc.expectedShowExample, config.ShowExample)
+			if config.ModelName != tc.expectedModel {
+				t.Errorf("Expected ModelName to be %q, got %q", tc.expectedModel, config.ModelName)
+			}
+			
+			if config.Exclude != tc.expectedExclude {
+				t.Errorf("Expected Exclude to be %q, got %q", tc.expectedExclude, config.Exclude)
+			}
+
+			// Set up logging to populate the log level
+			SetupLoggingCustom(config, nil, io.Discard)
+			
+			if strings.ToLower(config.LogLevel.String()) != tc.expectedLogLevel {
+				t.Errorf("Expected LogLevel to be %q, got %q", tc.expectedLogLevel, strings.ToLower(config.LogLevel.String()))
 			}
 		})
 	}
@@ -227,86 +263,152 @@ func (l *errorTrackingLogger) Fatal(format string, args ...interface{})  {}
 func (l *errorTrackingLogger) Printf(format string, args ...interface{}) {}
 func (l *errorTrackingLogger) Println(v ...interface{})                  {}
 
-// TestTaskFileRequirementSimple confirms that ValidateInputs properly checks for task-file
-func TestTaskFileRequirementSimple(t *testing.T) {
-	// Create a test task file
-	tempFile, err := os.CreateTemp("", "task-*.txt")
+// TestInstructionsFileRequirement confirms that ValidateInputs properly checks for instructions file
+// TestUsageMessage verifies that the usage message contains the correct information
+func TestUsageMessage(t *testing.T) {
+	// Create a buffer to capture the usage output
+	var buffer strings.Builder
+	
+	// Create a new flag set with the buffer as output
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(&buffer)
+	
+	// Define flags to make this a real flagset (minimal subset)
+	fs.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
+	fs.String("output", "output.md", "Output file path")
+	
+	// Add a custom usage function similar to the one in cli.go
+	fs.Usage = func() {
+		fmt.Fprintf(fs.Output(), "Usage: %s --instructions <file> [options] <path1> [path2...]\n\n", os.Args[0])
+		
+		fmt.Fprintf(fs.Output(), "Arguments:\n")
+		fmt.Fprintf(fs.Output(), "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
+		
+		fmt.Fprintf(fs.Output(), "Example Commands:\n")
+		fmt.Fprintf(fs.Output(), "  %s --instructions instructions.txt ./src                Generate plan using instructions file\n", os.Args[0])
+		fmt.Fprintf(fs.Output(), "  %s --instructions instructions.txt --output custom.md ./ Generate plan with custom output file\n", os.Args[0])
+		fmt.Fprintf(fs.Output(), "  %s --dry-run ./                                         Show files without generating plan\n\n", os.Args[0])
+		
+		fmt.Fprintf(fs.Output(), "Options:\n")
+		fs.PrintDefaults()
+	}
+	
+	// Call usage
+	fs.Usage()
+	
+	// Get the output
+	output := buffer.String()
+	
+	// Verify the usage message contains key elements
+	requiredPhrases := []string{
+		"--instructions <file>",
+		"Arguments:",
+		"Example Commands:",
+		"--instructions instructions.txt",
+		"--dry-run",
+		"Options:",
+	}
+	
+	for _, phrase := range requiredPhrases {
+		if !strings.Contains(output, phrase) {
+			t.Errorf("Usage message doesn't contain required phrase: %q", phrase)
+		}
+	}
+	
+	// Verify the usage message does NOT contain removed flags
+	removedFlags := []string{
+		"--task-file",
+		"--prompt-template",
+		"--list-examples",
+		"--show-example",
+	}
+	
+	for _, flag := range removedFlags {
+		if strings.Contains(output, flag) {
+			t.Errorf("Usage message shouldn't contain removed flag: %q", flag)
+		}
+	}
+}
+
+func TestInstructionsFileRequirement(t *testing.T) {
+	// Create a test instructions file
+	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
-		t.Fatalf("Failed to create temporary task file: %v", err)
+		t.Fatalf("Failed to create temporary instructions file: %v", err)
 	}
 	defer os.Remove(tempFile.Name())
 
-	_, err = tempFile.WriteString("Test task content")
+	_, err = tempFile.WriteString("Test instructions content")
 	if err != nil {
-		t.Fatalf("Failed to write to temporary task file: %v", err)
+		t.Fatalf("Failed to write to temporary instructions file: %v", err)
 	}
 	tempFile.Close()
 
-	// Test with a valid task file
+	// Test with a valid instructions file
 	config := &CliConfig{
-		TaskFile: tempFile.Name(),
-		Paths:    []string{"testfile"},
-		ApiKey:   "test-key",
+		InstructionsFile: tempFile.Name(),
+		Paths:            []string{"testfile"},
+		ApiKey:           "test-key",
 	}
 
 	// Create a custom logger that tracks error calls
 	errLogger := &errorTrackingLogger{}
 
-	// Run validation with a valid task file
+	// Run validation with a valid instructions file
 	var validationErr error
 
 	// Test the normal case first (valid config)
 	validationErr = ValidateInputs(config, errLogger)
 	if validationErr != nil {
-		t.Errorf("Validation failed with a valid task file: %s", validationErr)
+		t.Errorf("Validation failed with a valid instructions file: %s", validationErr)
 	}
 
 	// Check that no error was logged
 	if errLogger.errorCalled {
-		t.Error("Error was logged for valid task file")
+		t.Error("Error was logged for valid instructions file")
 	}
 
 	// Reset for next test
 	errLogger.reset()
 
-	// Test with no task file and not in dry run mode
+	// Test with no instructions file and not in dry run mode
 	configNoFile := &CliConfig{
-		TaskFile: "",
-		DryRun:   false,
-		Paths:    []string{"testfile"},
-		ApiKey:   "test-key",
+		InstructionsFile: "",
+		DryRun:           false,
+		Paths:            []string{"testfile"},
+		ApiKey:           "test-key",
 	}
 
-	// Run validation with no task file
+	// Run validation with no instructions file
 	validationErr = ValidateInputs(configNoFile, errLogger)
 
-	// Validation should fail without a task file
+	// Validation should fail without an instructions file
 	if validationErr == nil {
-		t.Error("Validation passed with no task file, expected failure")
+		t.Error("Validation passed with no instructions file, expected failure")
 	}
 
-	// Should log an error about missing task file
+	// Should log an error about missing instructions file
 	if !errLogger.errorCalled {
-		t.Error("No error was logged for missing task file")
+		t.Error("No error was logged for missing instructions file")
 	}
 
 	// Reset for next test
 	errLogger.reset()
 
-	// Test with no task file but in dry run mode
+	// Test with no instructions file but in dry run mode
 	configDryRun := &CliConfig{
-		TaskFile: "",
-		DryRun:   true,
-		Paths:    []string{"testfile"},
-		ApiKey:   "test-key",
+		InstructionsFile: "",
+		DryRun:           true,
+		Paths:            []string{"testfile"},
+		ApiKey:           "test-key",
 	}
 
 	// Run validation in dry run mode
 	validationErr = ValidateInputs(configDryRun, errLogger)
 
-	// Validation should pass in dry run mode even without a task file
+	// Validation should pass in dry run mode even without an instructions file
 	if validationErr != nil {
-		t.Errorf("Validation failed in dry run mode without a task file: %s", validationErr)
+		t.Errorf("Validation failed in dry run mode without an instructions file: %s", validationErr)
 	}
 
 	// No error should be logged

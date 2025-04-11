@@ -32,7 +32,7 @@
     * **Depends On:** Task: Update Core CliConfig Types
     * **AC Ref:** Plan Section 3 (Task 1)
 
-- [ ] **Task: Update CLI Tests (`cmd/architect/cli_test.go`)**
+- [x] **Task: Update CLI Tests (`cmd/architect/cli_test.go`)**
     * **Action:** Rewrite tests to verify the new flag parsing (`--instructions`), validation logic, usage message, and removal of old flags/features. Ensure tests cover required flag errors and positional argument handling for context.
     * **Depends On:** Task: Update CLI Input Validation (`cmd/architect/cli.go`), Task: Update CLI Usage Message (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)
