@@ -27,7 +27,7 @@
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 1)
 
-- [ ] **Task: Update Main Entry Point Logic (`cmd/architect/main.go`)**
+- [x] **Task: Update Main Entry Point Logic (`cmd/architect/main.go`)**
     * **Action:** Modify `convertToArchitectConfig` function to correctly map the fields between `cmd/architect/cli.go::CliConfig` and `internal/architect/types.go::CliConfig`, reflecting the removal/addition of fields. Remove call to `architect.HandleSpecialCommands`.
     * **Depends On:** Task: Update Core CliConfig Types
     * **AC Ref:** Plan Section 3 (Task 1)
