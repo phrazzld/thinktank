@@ -60,12 +60,11 @@ func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManage
 func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
 	// Log appropriate message based on mode
 	if cg.dryRun {
-		cg.logger.Info("Gathering files that would be included in context...")
-		cg.logger.Debug("Gathering files that would be included in context...")
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
+		cg.logger.Debug("Processing files with include/exclude filters for dry run...")
 	} else {
 		cg.logger.Info("Gathering project context...")
-		cg.logger.Debug("Gathering project context...")
+		cg.logger.Debug("Processing files with include/exclude filters...")
 	}
 
 	// Setup file processing configuration
@@ -96,7 +95,6 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 
 	// Log warning if no files were processed
 	if processedFilesCount == 0 {
-		cg.logger.Info("No files were processed for context. Check paths and filters.")
 		cg.logger.Warn("No files were processed for context. Check paths and filters.")
 		return contextFiles, stats, nil
 	}
@@ -111,7 +109,6 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 
 	// Calculate token statistics
 	cg.logger.Info("Calculating token statistics...")
-	cg.logger.Debug("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, client, projectContext, cg.logger)
 
 	// Store statistics in the stats struct
@@ -120,15 +117,15 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	stats.TokenCount = int32(tokenCount)
 
 	// Handle output based on mode
-	if cg.dryRun {
+	if processedFilesCount > 0 {
 		cg.logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
 			processedFilesCount, lineCount, charCount, tokenCount)
-	} else if config.LogLevel == logutil.DebugLevel || processedFilesCount > 0 {
-		// Normal run mode
-		cg.logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
-			processedFilesCount, lineCount, charCount, tokenCount)
-		cg.logger.Info("Context gathered: %d files processed, %d lines, %d chars, %d tokens.",
-			processedFilesCount, lineCount, charCount, tokenCount)
+
+		// Additional detailed debug information if needed
+		if config.LogLevel == logutil.DebugLevel && !cg.dryRun {
+			cg.logger.Debug("Context details: files=%d, lines=%d, chars=%d, tokens=%d",
+				processedFilesCount, lineCount, charCount, tokenCount)
+		}
 	}
 
 	return contextFiles, stats, nil

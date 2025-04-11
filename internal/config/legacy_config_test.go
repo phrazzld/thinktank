@@ -65,11 +65,6 @@ refine = "refine.tmpl"
 			config.OutputFile, config.ModelName)
 	}
 
-	// Verify the field isn't present in the loaded app config
-	// We check behavior, not implementation, by inspecting what fields are exposed by the config
-	// and ensuring ClarifyTask isn't exposed even though it was in the config file
-	appConfig := manager.config
-
 	// Template config has been removed, so no need to check for template-related fields
 	// Just verify that loading config with legacy template fields doesn't cause errors
 }

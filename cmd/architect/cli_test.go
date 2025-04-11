@@ -2,11 +2,14 @@ package architect
 
 import (
 	"flag"
+	"fmt"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 func TestParseFlagsWithEnv(t *testing.T) {
@@ -155,8 +158,23 @@ func TestSetupLoggingCustom(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// We can't easily check the logger itself, but we can check
-			// that the config's LogLevel was set correctly
+			// Initialize the config with the desired log level based on test case
+			if tt.config.Verbose {
+				tt.config.LogLevel = logutil.DebugLevel
+			} else if tt.logLevelFlag != nil {
+				// Parse the flag value
+				logLevelValue := tt.logLevelFlag.Value.String()
+				parsedLevel, err := logutil.ParseLogLevel(logLevelValue)
+				if err == nil {
+					tt.config.LogLevel = parsedLevel
+				} else {
+					tt.config.LogLevel = logutil.InfoLevel
+				}
+			} else {
+				tt.config.LogLevel = logutil.InfoLevel
+			}
+
+			// Now call SetupLoggingCustom which should now just use the existing LogLevel
 			SetupLoggingCustom(tt.config, tt.logLevelFlag, io.Discard)
 
 			// Case insensitive comparison since the logLevel returns uppercase values

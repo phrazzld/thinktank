@@ -77,7 +77,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	outputFileFlag := flagSet.String("output", defaultOutputFile, "Output file path for the generated plan.")
 	modelNameFlag := flagSet.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
-	flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
+	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
 	useColorsFlag := flagSet.Bool("color", true, "Enable/disable colored log output.")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
 	excludeFlag := flagSet.String("exclude", defaultExcludes, "Comma-separated list of file extensions to exclude.")
@@ -123,6 +123,21 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.Paths = flagSet.Args()
+
+	// Determine initial log level from flag
+	parsedLogLevel := logutil.InfoLevel // Default
+	if *logLevelFlag != "info" {
+		ll, err := logutil.ParseLogLevel(*logLevelFlag)
+		if err == nil {
+			parsedLogLevel = ll
+		}
+	}
+	config.LogLevel = parsedLogLevel
+
+	// Apply verbose override *after* parsing the specific level
+	if config.Verbose {
+		config.LogLevel = logutil.DebugLevel
+	}
 	config.ApiKey = getenv(apiKeyEnvVar)
 
 	// Basic validation
@@ -143,31 +158,9 @@ func SetupLogging(config *CliConfig) logutil.LoggerInterface {
 }
 
 // SetupLoggingCustom initializes the logger with custom flag and writer for testing
-func SetupLoggingCustom(config *CliConfig, logLevelFlag *flag.Flag, output io.Writer) logutil.LoggerInterface {
-	var logLevel logutil.LogLevel
-
-	// Determine log level
-	if config.Verbose {
-		logLevel = logutil.DebugLevel
-	} else if logLevelFlag != nil {
-		// Get the log level from the configuration
-		logLevelValue := logLevelFlag.Value.String()
-		var err error
-		logLevel, err = logutil.ParseLogLevel(logLevelValue)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: %v. Defaulting to 'info' level.\n", err)
-			logLevel = logutil.InfoLevel
-		}
-	} else {
-		logLevel = logutil.InfoLevel
-	}
-
-	// Store the log level in the config
-	config.LogLevel = logLevel
-
-	// Create structured logger
-	logger := logutil.NewLogger(logLevel, output, "[architect] ", config.UseColors)
-
+func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
+	// Use the LogLevel already set in the config during ParseFlags
+	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ", config.UseColors)
 	return logger
 }
 

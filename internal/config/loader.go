@@ -61,8 +61,6 @@ func (m *Manager) GetSystemConfigDirs() []string {
 	return m.sysConfigDirs
 }
 
-// Template-related methods have been removed
-
 // GetConfigDirs returns all configuration directories
 func (m *Manager) GetConfigDirs() ConfigDirectories {
 	return ConfigDirectories{

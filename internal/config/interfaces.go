@@ -12,17 +12,8 @@ type ManagerInterface interface {
 	// GetSystemConfigDirs returns the system-wide configuration directories
 	GetSystemConfigDirs() []string
 
-	// GetUserTemplateDir returns the directory for user-specific templates
-	GetUserTemplateDir() string
-
-	// GetSystemTemplateDirs returns the system-wide template directories
-	GetSystemTemplateDirs() []string
-
 	// GetConfigDirs returns all configuration directories
 	GetConfigDirs() ConfigDirectories
-
-	// GetTemplatePath finds the path to a template file using the configured precedence
-	GetTemplatePath(name string) (string, error)
 
 	// LoadFromFiles loads configuration from files (user, system) according to precedence
 	LoadFromFiles() error
