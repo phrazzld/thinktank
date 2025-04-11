@@ -113,3 +113,7 @@ func (l *NoOpAuditLogger) Log(entry AuditEntry) error {
 func (l *NoOpAuditLogger) Close() error {
 	return nil // Do nothing
 }
+
+// Compile-time checks to ensure implementations satisfy the AuditLogger interface.
+var _ AuditLogger = (*FileAuditLogger)(nil)
+var _ AuditLogger = (*NoOpAuditLogger)(nil)
