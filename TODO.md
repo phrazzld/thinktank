@@ -97,7 +97,7 @@
   - **AC Ref:** PLAN.md Step 4
 
 ## Refactor `internal/architect/app.go`
-- [ ] **Task Title:** Remove `configManager` parameter from `Execute` signature
+- [x] **Task Title:** Remove `configManager` parameter from `Execute` signature
   - **Action:** Modify the function signature of `Execute` in `internal/architect/app.go` to remove the `configManager config.ManagerInterface` parameter.
   - **Depends On:** Delete config manager interface file
   - **AC Ref:** PLAN.md Step 6
