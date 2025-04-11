@@ -34,7 +34,7 @@
   - **Depends On:** Delete config manager interface file
   - **AC Ref:** PLAN.md Step 3
 
-- [ ] **Task Title:** Remove config directory structures and constants
+- [x] **Task Title:** Remove config directory structures and constants
   - **Action:** Delete the `ConfigDirectories` struct and related constants (`AppName`, `ConfigFilename`) and functions using them from `internal/config/config.go`.
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 3

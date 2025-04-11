@@ -5,17 +5,8 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// ConfigDirectories holds configuration-related directory paths
-type ConfigDirectories struct {
-	UserConfigDir    string
-	SystemConfigDirs []string
-}
-
 // Configuration constants
 const (
-	// App name used for XDG paths
-	AppName = "architect"
-
 	// Default values
 	DefaultOutputFile = "PLAN.md"
 	DefaultModel      = "gemini-2.5-pro-exp-03-25"
@@ -33,8 +24,6 @@ const (
 		"out,tmp,coverage,__pycache__,*.pyc,*.pyo,.DS_Store,~$*,desktop.ini,Thumbs.db," +
 		"package-lock.json,yarn.lock,go.sum,go.work"
 )
-
-//
 
 // ExcludeConfig defines file exclusion configuration
 type ExcludeConfig struct {
