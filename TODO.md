@@ -12,7 +12,7 @@
     - **Depends On:** Task: Update Core CliConfig Types
     - **AC Ref:** Plan Section 3 (Task 1), Plan Section 4 (CLIConfig Structs)
 
-- [ ] **Task: Update CLI Usage Message (`cmd/architect/cli.go`)**
+- [x] **Task: Update CLI Usage Message (`cmd/architect/cli.go`)**
     - **Action:** Modify the `flagSet.Usage` function to accurately reflect the new command structure (`architect --instructions <file> [context_paths...]`) and remove documentation for deleted flags.
     - **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     - **AC Ref:** Plan Section 3 (Task 1)
