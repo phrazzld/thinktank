@@ -91,7 +91,7 @@
   - **Depends On:** Remove `ConvertConfigToMap` call from `ParseFlagsWithEnv`
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Update `ValidateInputs` function (if necessary)
+- [x] **Task Title:** Update `ValidateInputs` function (if necessary)
   - **Action:** Review the `ValidateInputs` function. Ensure it correctly validates necessary fields directly from the `CliConfig` struct argument. Modify if it was previously relying on intermediate structures or config manager state.
   - **Depends On:** Update `cmd.CliConfig` struct definition
   - **AC Ref:** PLAN.md Step 4
