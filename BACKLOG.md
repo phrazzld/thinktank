@@ -1,9 +1,5 @@
 # backlog
 
-## completed
-
-* purge the program of the clarify flag and feature and related code and tests
-
 ## sooner
 
 * make it easier to manage prompt templates
@@ -39,6 +35,5 @@
 * make `architect` aware of claude code's memory files (`CLAUDE.md`, `CLAUDE.local.md`) to read configuration settings, respecting the same hierarchy
 * investigate presenting `architect` itself as a tool to claude code, potentially via mcp, defining its capabilities for planning, critique, and refinement
 * review and significantly improve the clarity, detail, and actionability of all error messages throughout the application
-* remove user-facing niceties like spinners and excessive color formatting in favor of clean, programmable output
 * enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
