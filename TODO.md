@@ -165,7 +165,7 @@
   - **Depends On:** Ensure all tests pass (implies functionality is stable)
   - **AC Ref:** PLAN.md Step 8
 
-- [ ] **Task Title:** Verify CLI `--help` output
+- [x] **Task Title:** Verify CLI `--help` output
   - **Action:** Run the application with the `--help` flag. Verify that the output accurately reflects all available flags, their descriptions, default values, and mentions the `GEMINI_API_KEY` environment variable. Ensure the usage examples are correct. Update flag descriptions in `cmd/architect/cli.go` if necessary.
   - **Depends On:** Update `ParseFlagsWithEnv` to define all flags
   - **AC Ref:** PLAN.md Step 8
