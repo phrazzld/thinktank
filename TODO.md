@@ -112,7 +112,7 @@
   - **Depends On:** Remove `configManager` parameter from `Execute` signature, Review and update `architect.CliConfig` struct
   - **AC Ref:** PLAN.md Step 6
 
-- [ ] **Task Title:** Update `RunInternal` function body to use `cliConfig`
+- [x] **Task Title:** Update `RunInternal` function body to use `cliConfig`
   - **Action:** Refactor the body of the `RunInternal` function. Replace any usage of `configManager.GetConfig()` or similar methods with direct access to the fields of the `cliConfig *CliConfig` parameter.
   - **Depends On:** Remove `configManager` parameter from `RunInternal` signature, Review and update `architect.CliConfig` struct
   - **AC Ref:** PLAN.md Step 6
