@@ -4,8 +4,8 @@ import (
 	"testing"
 )
 
-// TestConvertConfigNoClarity verifies that clarify_task is not included in the config map
-func TestConvertConfigNoClarity(t *testing.T) {
+// TestConvertConfigBasic verifies basic functionality of ConvertConfigToMap
+func TestConvertConfigBasic(t *testing.T) {
 	// Create a minimal config for testing
 	config := &CliConfig{
 		TaskFile:   "task.txt",
@@ -15,9 +15,14 @@ func TestConvertConfigNoClarity(t *testing.T) {
 	// Convert to map
 	configMap := ConvertConfigToMap(config)
 
-	// Check that clarify_task is not in the map
-	_, hasClarifyTask := configMap["clarify_task"]
-	if hasClarifyTask {
-		t.Error("ConvertConfigToMap() should not include clarify_task key")
+	// Check that basic fields are included
+	taskFile, hasTaskFile := configMap["taskFile"]
+	if !hasTaskFile || taskFile != "task.txt" {
+		t.Error("ConvertConfigToMap() should include taskFile key with correct value")
+	}
+
+	outputFile, hasOutputFile := configMap["output"]
+	if !hasOutputFile || outputFile != "output.md" {
+		t.Error("ConvertConfigToMap() should include output key with correct value")
 	}
 }

@@ -60,28 +60,28 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.4
 
-- [ ] **Check and delete example templates**
+- [x] **Check and delete example templates**
   - **Action:** Check `internal/prompt/templates/examples/` for any templates related to clarify and delete if found.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.4
 
-- [ ] **Update embed.go if necessary**
+- [x] **Update embed.go if necessary**
   - **Action:** If needed, update `internal/prompt/embed.go` to remove references to deleted templates (though go:embed should handle missing files gracefully).
   - **Depends On:** Delete clarify template files, Check and delete example templates
   - **AC Ref:** AC 1.4
 
 ## Documentation Updates
-- [ ] **Remove clarify feature from README**
+- [x] **Remove clarify feature from README**
   - **Action:** Edit `README.md` to remove the "Task Clarification" feature from the Features list (line ~33).
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.6
 
-- [ ] **Remove clarify example from README**
+- [x] **Remove clarify example from README**
   - **Action:** Edit `README.md` to remove the `--clarify` usage example (lines ~87-88).
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.6
 
-- [ ] **Remove clarify from options table in README**
+- [x] **Remove clarify from options table in README**
   - **Action:** Edit `README.md` to remove the `--clarify` row from the Configuration Options table (line ~115).
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.6
@@ -92,12 +92,12 @@
   - **AC Ref:** AC 1.6
 
 ## Test Updates
-- [ ] **Update CLI flag tests**
+- [x] **Update CLI flag tests**
   - **Action:** In `cmd/architect/cli_test.go`, remove any test cases specifically validating the parsing or behavior of the `--clarify` flag.
   - **Depends On:** Remove ClarifyTask field from CliConfig struct
   - **AC Ref:** AC 1.5, AC 1.8
 
-- [ ] **Remove TestConvertConfigNoClarity**
+- [x] **Remove TestConvertConfigNoClarity**
   - **Action:** In `cmd/architect/flags_test.go`, delete the `TestConvertConfigNoClarity` test as it tests a field that will no longer exist.
   - **Depends On:** Remove clarify key-value pair from ConvertConfigToMap
   - **AC Ref:** AC 1.5, AC 1.8

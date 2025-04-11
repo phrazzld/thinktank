@@ -68,3 +68,45 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.4
   - **Output:** Conducted a search for `clarify.tmpl` and `refine.tmpl` files in the `internal/prompt/templates/` directory and confirmed that these files do not exist. This finding is consistent with the clarify-references.md document which noted "No actual template files named `clarify.tmpl` were found, but references exist in configuration." There are references to these templates in documentation but the actual template files don't exist, so no deletion was necessary.
+
+- [x] **Check and delete example templates**
+  - **Action:** Check `internal/prompt/templates/examples/` for any templates related to clarify and delete if found.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.4
+  - **Output:** Examined all example template files in the `internal/prompt/templates/examples/` directory (basic.tmpl, bugfix.tmpl, detailed.tmpl, and feature.tmpl) and confirmed that none of them contain references to the clarify feature. No templates needed to be deleted.
+
+- [x] **Update embed.go if necessary**
+  - **Action:** If needed, update `internal/prompt/embed.go` to remove references to deleted templates (though go:embed should handle missing files gracefully).
+  - **Depends On:** Delete clarify template files, Check and delete example templates
+  - **AC Ref:** AC 1.4
+  - **Output:** Examined the `internal/prompt/embed.go` file and found that it uses wildcard patterns (`templates/*.tmpl` and `templates/examples/*.tmpl`) to embed all template files. This approach handles missing files gracefully, and no specific references to clarify template files were found. No changes were needed to the embed.go file.
+
+- [x] **Remove clarify feature from README**
+  - **Action:** Edit `README.md` to remove the "Task Clarification" feature from the Features list (line ~33).
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.6
+  - **Output:** Removed the "Task Clarification" feature from the Features list in the README.md file.
+
+- [x] **Remove clarify example from README**
+  - **Action:** Edit `README.md` to remove the `--clarify` usage example (lines ~87-88).
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.6
+  - **Output:** Removed the example demonstrating the `--clarify` flag usage from the README.md file.
+
+- [x] **Remove clarify from options table in README**
+  - **Action:** Edit `README.md` to remove the `--clarify` row from the Configuration Options table (line ~115).
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.6
+  - **Output:** Removed the `--clarify` row from the Configuration Options table in the README.md file.
+
+- [x] **Update CLI flag tests**
+  - **Action:** In `cmd/architect/cli_test.go`, remove any test cases specifically validating the parsing or behavior of the `--clarify` flag.
+  - **Depends On:** Remove ClarifyTask field from CliConfig struct
+  - **AC Ref:** AC 1.5, AC 1.8
+  - **Output:** Examined the `cmd/architect/cli_test.go` file and found no test cases specifically validating the parsing or behavior of the `--clarify` flag. No changes were needed.
+
+- [x] **Remove TestConvertConfigNoClarity**
+  - **Action:** In `cmd/architect/flags_test.go`, delete the `TestConvertConfigNoClarity` test as it tests a field that will no longer exist.
+  - **Depends On:** Remove clarify key-value pair from ConvertConfigToMap
+  - **AC Ref:** AC 1.5, AC 1.8
+  - **Output:** Removed the `TestConvertConfigNoClarity` test from `cmd/architect/flags_test.go` and added a new `TestConvertConfigBasic` test to ensure basic functionality of the ConvertConfigToMap function is still being tested.

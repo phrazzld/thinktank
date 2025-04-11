@@ -30,7 +30,6 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 - **Structured Logging**: Clear, color-coded logs with configurable verbosity levels
 - **Interactive Progress**: Visual spinner indicates progress during API calls
 - **User Confirmation**: Optional confirmation for large token counts
-- **Task Clarification**: Interactive AI-powered process to refine task descriptions
 
 ## Installation
 
@@ -83,9 +82,6 @@ architect --show-example feature.tmpl
 
 # Save an example template to a file (for customization)
 architect --show-example feature.tmpl > my-feature-template.tmpl
-
-# Enable interactive task clarification
-architect --task-file task.txt --clarify ./
 ```
 
 ### Required Environment Variable
@@ -112,7 +108,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
 | `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
-| `--clarify` | Enable interactive task clarification to refine your task description | `false` |
 | `--list-examples` | List available example prompt template files | `false` |
 | `--show-example` | Display the content of a specific example template | `""` |
 
