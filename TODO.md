@@ -61,7 +61,7 @@
 
 ## Phase 3: Refactor Core Logic & Context Handling
 
-- [ ] **Task: Define FileMeta Struct (`internal/fileutil/fileutil.go`)**
+- [x] **Task: Define FileMeta Struct (`internal/fileutil/fileutil.go`)**
     * **Action:** Define `type FileMeta struct { Path string; Content string }` within the `internal/fileutil` package (or reuse if a similar suitable type already exists).
     * **Depends On:** None
     * **AC Ref:** Plan Section 4 (FileUtil)

@@ -178,8 +178,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 		expectedLogLevel string
 	}{
 		{
-			name: "Default format and model",
-			args: []string{"--instructions", "instructions.txt", "./"},
+			name:             "Default format and model",
+			args:             []string{"--instructions", "instructions.txt", "./"},
 			expectedFormat:   defaultFormat,
 			expectedModel:    defaultModel,
 			expectedExclude:  defaultExcludes,
@@ -228,14 +228,14 @@ func TestAdvancedConfiguration(t *testing.T) {
 			if config.ModelName != tc.expectedModel {
 				t.Errorf("Expected ModelName to be %q, got %q", tc.expectedModel, config.ModelName)
 			}
-			
+
 			if config.Exclude != tc.expectedExclude {
 				t.Errorf("Expected Exclude to be %q, got %q", tc.expectedExclude, config.Exclude)
 			}
 
 			// Set up logging to populate the log level
 			SetupLoggingCustom(config, nil, io.Discard)
-			
+
 			if strings.ToLower(config.LogLevel.String()) != tc.expectedLogLevel {
 				t.Errorf("Expected LogLevel to be %q, got %q", tc.expectedLogLevel, strings.ToLower(config.LogLevel.String()))
 			}
@@ -268,37 +268,37 @@ func (l *errorTrackingLogger) Println(v ...interface{})                  {}
 func TestUsageMessage(t *testing.T) {
 	// Create a buffer to capture the usage output
 	var buffer strings.Builder
-	
+
 	// Create a new flag set with the buffer as output
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(&buffer)
-	
+
 	// Define flags to make this a real flagset (minimal subset)
 	fs.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
 	fs.String("output", "output.md", "Output file path")
-	
+
 	// Add a custom usage function similar to the one in cli.go
 	fs.Usage = func() {
 		fmt.Fprintf(fs.Output(), "Usage: %s --instructions <file> [options] <path1> [path2...]\n\n", os.Args[0])
-		
+
 		fmt.Fprintf(fs.Output(), "Arguments:\n")
 		fmt.Fprintf(fs.Output(), "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
-		
+
 		fmt.Fprintf(fs.Output(), "Example Commands:\n")
 		fmt.Fprintf(fs.Output(), "  %s --instructions instructions.txt ./src                Generate plan using instructions file\n", os.Args[0])
 		fmt.Fprintf(fs.Output(), "  %s --instructions instructions.txt --output custom.md ./ Generate plan with custom output file\n", os.Args[0])
 		fmt.Fprintf(fs.Output(), "  %s --dry-run ./                                         Show files without generating plan\n\n", os.Args[0])
-		
+
 		fmt.Fprintf(fs.Output(), "Options:\n")
 		fs.PrintDefaults()
 	}
-	
+
 	// Call usage
 	fs.Usage()
-	
+
 	// Get the output
 	output := buffer.String()
-	
+
 	// Verify the usage message contains key elements
 	requiredPhrases := []string{
 		"--instructions <file>",
@@ -308,13 +308,13 @@ func TestUsageMessage(t *testing.T) {
 		"--dry-run",
 		"Options:",
 	}
-	
+
 	for _, phrase := range requiredPhrases {
 		if !strings.Contains(output, phrase) {
 			t.Errorf("Usage message doesn't contain required phrase: %q", phrase)
 		}
 	}
-	
+
 	// Verify the usage message does NOT contain removed flags
 	removedFlags := []string{
 		"--task-file",
@@ -322,7 +322,7 @@ func TestUsageMessage(t *testing.T) {
 		"--list-examples",
 		"--show-example",
 	}
-	
+
 	for _, flag := range removedFlags {
 		if strings.Contains(output, flag) {
 			t.Errorf("Usage message shouldn't contain removed flag: %q", flag)

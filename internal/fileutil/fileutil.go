@@ -16,6 +16,12 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// FileMeta represents a file with its path and content.
+type FileMeta struct {
+	Path    string
+	Content string
+}
+
 // Config holds file processing configuration
 type Config struct {
 	Verbose        bool
