@@ -90,7 +90,7 @@
     * **Depends On:** Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`)
     * **AC Ref:** Plan Section 6 (Unit Tests)
 
-- [ ] **Task: Refactor Core Application Flow (`internal/architect/app.go`)**
+- [x] **Task: Refactor Core Application Flow (`internal/architect/app.go`)**
     * **Action:** Modify `Execute` and `RunInternal`:
         * Remove call to `processTaskInput`. Read instructions directly from `cliConfig.InstructionsFile` using `os.ReadFile`.
         * Update call to `contextGatherer.GatherContext` to receive `[]FileMeta`.
