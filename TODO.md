@@ -76,17 +76,17 @@
   - **Depends On:** Update `ParseFlagsWithEnv` to define all flags
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Remove `ConvertConfigToMap` call from `ParseFlagsWithEnv`
-  - **Action:** Delete the line calling `ConvertConfigToMap` within the `ParseFlagsWithEnv` function, as it's no longer needed.
+- [x] **Task Title:** Remove `ConvertConfigToMap` call from `ParseFlagsWithEnv`
+  - **Action:** Task is already satisfied - there is no `ConvertConfigToMap` call within the `ParseFlagsWithEnv` function. The `ConvertConfigToMap` function is called in `main.go` (line 48), not in `ParseFlagsWithEnv`.
   - **Depends On:** Update `ParseFlagsWithEnv` to populate `CliConfig` directly
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Update `SetupLoggingCustom` function
-  - **Action:** Ensure the `SetupLoggingCustom` function correctly uses the `LogLevel` field from the parsed `CliConfig` struct passed as an argument.
+- [x] **Task Title:** Update `SetupLoggingCustom` function
+  - **Action:** Task is already satisfied - the `SetupLoggingCustom` function already correctly uses the `LogLevel` field from the parsed `CliConfig` struct as seen in line 160 of cli.go: `logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")`. The comment also confirms this: "Use the LogLevel already set in the config during ParseFlags".
   - **Depends On:** Update `cmd.CliConfig` struct definition
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Remove `ConvertConfigToMap` function definition
+- [x] **Task Title:** Remove `ConvertConfigToMap` function definition
   - **Action:** Delete the entire `ConvertConfigToMap` function from `cmd/architect/cli.go`.
   - **Depends On:** Remove `ConvertConfigToMap` call from `ParseFlagsWithEnv`
   - **AC Ref:** PLAN.md Step 4

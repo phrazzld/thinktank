@@ -160,21 +160,3 @@ func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logut
 	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
 	return logger
 }
-
-// ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
-func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
-	return map[string]interface{}{
-		"instructionsFile": cliConfig.InstructionsFile,
-		"output":           cliConfig.OutputFile,
-		"model":            cliConfig.ModelName,
-		"verbose":          cliConfig.Verbose,
-		"logLevel":         cliConfig.LogLevel.String(),
-		"include":          cliConfig.Include,
-		"exclude":          cliConfig.Exclude,
-		"excludeNames":     cliConfig.ExcludeNames,
-		"format":           cliConfig.Format,
-		"dryRun":           cliConfig.DryRun,
-		"confirmTokens":    cliConfig.ConfirmTokens,
-		"apiKey":           cliConfig.ApiKey,
-	}
-}
