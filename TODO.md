@@ -55,7 +55,7 @@
   - **AC Ref:** PLAN.md Step 3
 
 ## Refactor `internal/architect/types.go`
-- [ ] **Task Title:** Review and update `architect.CliConfig` struct
+- [x] **Task Title:** Review and update `architect.CliConfig` struct
   - **Action:** Review the `CliConfig` struct in `internal/architect/types.go`. Ensure it contains all necessary configuration fields that the core `architect` logic requires, which will now be derived solely from defaults and flags passed down from the `cmd` layer. Add any missing fields previously obtained via config files but now needed from flags (e.g., `ModelName`, `ConfirmTokens`, `LogLevel` if they weren't already there).
   - **Depends On:** Refine `AppConfig` struct fields
   - **AC Ref:** PLAN.md Step 7
