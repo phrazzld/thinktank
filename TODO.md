@@ -139,7 +139,7 @@
   - **AC Ref:** PLAN.md Step 5
 
 ## Refactor Tests
-- [ ] **Task Title:** Delete config file loading tests
+- [x] **Task Title:** Delete config file loading tests
   - **Action:** Delete any test files specifically targeting the config file loading mechanism (e.g., `internal/config/loader_test.go` if it exists). Remove related test helper functions or fixtures.
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 9
