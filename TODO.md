@@ -33,7 +33,7 @@
   - **Depends On:** None
   - **AC Ref:** PLAN.MD Detailed Step 3
 
-- [ ] **Update CLI Configuration Struct (cmd)**
+- [x] **Update CLI Configuration Struct (cmd)**
   - **Action:** Add the `AuditLogFile string` field to the `CliConfig` struct in `cmd/architect/cli.go`.
   - **Depends On:** Add Audit Log CLI Flag
   - **AC Ref:** PLAN.MD Detailed Step 3

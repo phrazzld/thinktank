@@ -25,6 +25,7 @@ const (
 type CliConfig struct {
 	InstructionsFile string
 	OutputFile       string
+	AuditLogFile     string // Path to write structured audit logs (JSON Lines)
 	ModelName        string
 	Verbose          bool
 	LogLevel         logutil.LogLevel
