@@ -2,11 +2,9 @@
 
 ## sooner
 
-* nuke a bunch of the user config stuff -- like maybe all of it
+* nuke a bunch of the user config stuff -- like maybe all of it. do we really need system config and user config and all that? or can we just get away with defaults and cli flags? simple is better, i think.
 * implement persistent, structured logging (e.g., json lines) to a configurable file path, detailing operations, inputs, outputs, token counts, errors, and final results for better auditability and programmatic use by tools like claude code.
 * enforce convention over configuration
-* remove a lot more user-facing niceties and silliness
-* support an arbitrary number of context files and directories that we can append to the core prompt file. we want to maintain a sense, in the prompt file, of "this is the main prompt / request / ask" and "this other stuff is extra context for you to use to execute"
 * support arbitrary google models
 * support arbitrary providers
 * support an arbitrary number of models

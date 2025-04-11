@@ -8,7 +8,6 @@ require (
 	github.com/adrg/xdg v0.5.3
 	github.com/fatih/color v1.18.0
 	github.com/google/generative-ai-go v0.19.0
-	github.com/spf13/viper v1.20.1
 	google.golang.org/api v0.228.0
 )
 
