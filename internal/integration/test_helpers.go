@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/gemini"
@@ -194,6 +195,50 @@ func (env *TestEnv) SetupMockGeminiClient() {
 	}
 }
 
+// SetupXMLValidatingClient configures the mock client to validate XML structure in prompts
+func (env *TestEnv) SetupXMLValidatingClient(t *testing.T, expectedPartialMatches ...string) {
+	// Mock GenerateContent with XML structure validation
+	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		// Basic validation - checks for existence of tags
+		if !strings.Contains(prompt, "<instructions>") || !strings.Contains(prompt, "</instructions>") {
+			t.Errorf("Prompt missing instructions tags: %s", prompt)
+		}
+
+		if !strings.Contains(prompt, "<context>") || !strings.Contains(prompt, "</context>") {
+			t.Errorf("Prompt missing context tags: %s", prompt)
+		}
+
+		// Check for XML escaping of special characters
+		if strings.Contains(prompt, "<") && !strings.Contains(prompt, "&lt;") {
+			t.Errorf("Potential unescaped < character in content section: %s", prompt)
+		}
+
+		if strings.Contains(prompt, ">") && !strings.Contains(prompt, "&gt;") {
+			t.Errorf("Potential unescaped > character in content section: %s", prompt)
+		}
+
+		// Check for additional expected partial matches (like filenames)
+		for _, partialMatch := range expectedPartialMatches {
+			found := false
+			// For each partial match, check if it exists anywhere in the prompt
+			if strings.Contains(prompt, partialMatch) {
+				found = true
+			}
+
+			if !found {
+				t.Errorf("Prompt missing expected content %s: %s", partialMatch, prompt)
+			}
+		}
+
+		// If we get here, the validation passed
+		return &gemini.GenerationResult{
+			Content:      "# Validated XML Structure Plan\n\nThis content was generated after validating the XML structure of the prompt.",
+			TokenCount:   1000,
+			FinishReason: "STOP",
+		}, nil
+	}
+}
+
 // GetOutputFile reads the content of a file in the test directory
 func (env *TestEnv) GetOutputFile(t *testing.T, relativePath string) string {
 	fullPath := filepath.Join(env.TestDir, relativePath)
@@ -204,4 +249,19 @@ func (env *TestEnv) GetOutputFile(t *testing.T, relativePath string) string {
 	}
 
 	return string(content)
+}
+
+// CreateInstructionsFile creates a new instructions file for testing
+// This helper encapsulates the process of creating properly formatted instruction files
+func (env *TestEnv) CreateInstructionsFile(t *testing.T, content string, options ...string) string {
+	// Default relative path
+	relativePath := "instructions.md"
+
+	// If an option is provided, use it as the relative path
+	if len(options) > 0 && options[0] != "" {
+		relativePath = options[0]
+	}
+
+	// Create the instruction file
+	return env.CreateTestFile(t, relativePath, content)
 }

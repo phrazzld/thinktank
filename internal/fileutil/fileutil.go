@@ -16,6 +16,12 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// FileMeta represents a file with its path and content.
+type FileMeta struct {
+	Path    string
+	Content string
+}
+
 // Config holds file processing configuration
 type Config struct {
 	Verbose        bool
@@ -193,8 +199,8 @@ func shouldProcess(path string, config *Config) bool {
 	return true
 }
 
-// processFile reads, checks, and formats a single file's content.
-func processFile(path string, builder *strings.Builder, config *Config) {
+// processFile reads, checks, and adds a file to the FileMeta slice.
+func processFile(path string, files *[]FileMeta, config *Config) {
 	config.totalFiles++ // Increment total count when we attempt to process
 
 	// Run all checks first
@@ -222,24 +228,27 @@ func processFile(path string, builder *strings.Builder, config *Config) {
 		config.fileCollector(path)
 	}
 
-	formatted := config.Format
-	formatted = strings.ReplaceAll(formatted, "{path}", path)
-	// Need to handle potential triple backticks in content if using markdown code blocks
-	contentStr := string(content)
-	if strings.Contains(config.Format, "```") && strings.Contains(contentStr, "```") {
-		// Simple heuristic: add a newline to break potential fences
-		// A more robust solution might involve language-specific fences like ```go
-		contentStr = strings.ReplaceAll(contentStr, "```", "`` `") // Break existing fences
+	// Convert to absolute path if it's not already
+	absPath := path
+	if !filepath.IsAbs(path) {
+		// If this fails, just use the original path
+		if abs, err := filepath.Abs(path); err == nil {
+			absPath = abs
+		} else {
+			config.Logger.Printf("Warning: Could not convert %s to absolute path: %v\n", path, err)
+		}
 	}
-	formatted = strings.ReplaceAll(formatted, "{content}", contentStr)
 
-	builder.WriteString(formatted)
+	// Create a FileMeta and add it to the slice
+	*files = append(*files, FileMeta{
+		Path:    absPath,
+		Content: string(content),
+	})
 }
 
-// GatherProjectContext walks paths and gathers formatted content.
-func GatherProjectContext(paths []string, config *Config) (string, int, error) {
-	var builder strings.Builder
-	builder.WriteString("<context>\n") // Start context wrapper
+// GatherProjectContext walks paths and gathers files into a slice of FileMeta.
+func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, error) {
+	var files []FileMeta
 
 	config.processedFiles = 0
 	config.totalFiles = 0
@@ -270,7 +279,7 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 
 				// It's a file, process it
 				if !d.IsDir() {
-					processFile(subPath, &builder, config)
+					processFile(subPath, &files, config)
 				}
 
 				return nil // Continue walking
@@ -281,18 +290,11 @@ func GatherProjectContext(paths []string, config *Config) (string, int, error) {
 			}
 		} else {
 			// It's a single file
-			processFile(p, &builder, config)
+			processFile(p, &files, config)
 		}
 	}
 
-	builder.WriteString("</context>") // End context wrapper
-
-	// If no files were processed, return context wrapper only to ensure tests pass
-	if config.processedFiles == 0 {
-		return builder.String(), 0, nil
-	}
-
-	return builder.String(), config.processedFiles, nil
+	return files, config.processedFiles, nil
 }
 
 // CalculateStatistics calculates basic string stats.

@@ -61,127 +61,15 @@ func (m *Manager) GetSystemConfigDirs() []string {
 	return m.sysConfigDirs
 }
 
-// GetUserTemplateDir returns the directory for user-specific templates
-func (m *Manager) GetUserTemplateDir() string {
-	if m.config.Templates.Dir != "" {
-		// If the template dir in config is absolute, use it directly
-		if filepath.IsAbs(m.config.Templates.Dir) {
-			return m.config.Templates.Dir
-		}
-		// Otherwise, it's relative to user config dir
-		return filepath.Join(m.userConfigDir, m.config.Templates.Dir)
-	}
-	// Default templates directory within user config
-	return filepath.Join(m.userConfigDir, "templates")
-}
-
-// GetSystemTemplateDirs returns the system-wide template directories
-func (m *Manager) GetSystemTemplateDirs() []string {
-	dirs := []string{}
-	for _, dir := range m.sysConfigDirs {
-		// If template dir is specified in config, use that (to be implemented)
-		// For now, just use a standard "templates" subdir
-		dirs = append(dirs, filepath.Join(dir, "templates"))
-	}
-	return dirs
-}
-
 // GetConfigDirs returns all configuration directories
 func (m *Manager) GetConfigDirs() ConfigDirectories {
 	return ConfigDirectories{
-		UserConfigDir:      m.userConfigDir,
-		SystemConfigDirs:   m.sysConfigDirs,
-		UserTemplateDir:    m.GetUserTemplateDir(),
-		SystemTemplateDirs: m.GetSystemTemplateDirs(),
+		UserConfigDir:    m.userConfigDir,
+		SystemConfigDirs: m.sysConfigDirs,
 	}
 }
 
-// GetTemplatePath finds the path to a template file using the configured precedence
-func (m *Manager) GetTemplatePath(name string) (string, error) {
-	// If name is already a file path (contains path separator)
-	if strings.ContainsRune(name, os.PathSeparator) {
-		// If it's an absolute path, use it directly
-		if filepath.IsAbs(name) {
-			if _, err := os.Stat(name); err == nil {
-				return name, nil
-			}
-			return "", fmt.Errorf("template not found at absolute path: %s", name)
-		}
-
-		// Try as relative path from current directory
-		cwd, err := os.Getwd()
-		if err == nil {
-			cwdPath := filepath.Join(cwd, name)
-			if _, err := os.Stat(cwdPath); err == nil {
-				return cwdPath, nil
-			}
-		}
-	}
-
-	// If it's a logical name (like "default"), add .tmpl extension if not present
-	if !strings.HasSuffix(name, ".tmpl") {
-		name = name + ".tmpl"
-	}
-
-	// Check if user has configured a specific path for this template
-	// First, get the base name without extension
-	baseName := strings.TrimSuffix(filepath.Base(name), filepath.Ext(name))
-	if templatePath, ok := m.getTemplatePathFromConfig(baseName); ok {
-		// Check if it's an absolute path
-		if filepath.IsAbs(templatePath) {
-			if _, err := os.Stat(templatePath); err == nil {
-				return templatePath, nil
-			}
-		} else {
-			// Check relative to user config dir
-			userPath := filepath.Join(m.userConfigDir, templatePath)
-			if _, err := os.Stat(userPath); err == nil {
-				return userPath, nil
-			}
-		}
-	}
-
-	// Check user template directory
-	userTemplatePath := filepath.Join(m.GetUserTemplateDir(), filepath.Base(name))
-	if _, err := os.Stat(userTemplatePath); err == nil {
-		return userTemplatePath, nil
-	}
-
-	// Check system template directories
-	for _, dir := range m.GetSystemTemplateDirs() {
-		sysTemplatePath := filepath.Join(dir, filepath.Base(name))
-		if _, err := os.Stat(sysTemplatePath); err == nil {
-			return sysTemplatePath, nil
-		}
-	}
-
-	// No further filesystem-based fallbacks
-	// At this point, we rely on the embedded templates in prompt.go::LoadTemplate
-	// which will handle the final fallback case using Go's embed.FS
-
-	return "", fmt.Errorf("template not found in user or system paths: %s (embedded templates will be used as fallback)", name)
-}
-
-// getTemplatePathFromConfig checks if there's a specific path configured for a template
-func (m *Manager) getTemplatePathFromConfig(templateName string) (string, bool) {
-	// Check known template names
-	switch strings.ToLower(templateName) {
-	case "default":
-		if m.config.Templates.Default != "" {
-			return m.config.Templates.Default, true
-		}
-	case "test":
-		// For test templates
-		return "test.tmpl", true
-	case "custom":
-		// For custom templates in test
-		v := m.viperInst
-		if v.IsSet("templates.custom") {
-			return v.GetString("templates.custom"), true
-		}
-	}
-	return "", false
-}
+// Template-related functions have been removed
 
 // LoadFromFiles loads configuration from files (user, system) according to precedence
 func (m *Manager) LoadFromFiles() error {
@@ -263,10 +151,7 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 	v.SetDefault("confirm_tokens", defaultConfig.ConfirmTokens)
 	v.SetDefault("include", defaultConfig.Include)
 
-	// Hierarchical settings
-	v.SetDefault("templates.default", defaultConfig.Templates.Default)
-	v.SetDefault("templates.dir", defaultConfig.Templates.Dir)
-	v.SetDefault("templates.test", "test.tmpl")
+	// Template settings have been removed
 
 	v.SetDefault("excludes.extensions", defaultConfig.Excludes.Extensions)
 	v.SetDefault("excludes.names", defaultConfig.Excludes.Names)
@@ -315,29 +200,9 @@ func (m *Manager) MergeWithFlags(cliFlags map[string]interface{}) error {
 			}
 		}
 
-		// Handle nested fields for templates and excludes
+		// Handle nested fields for excludes (templates removed)
 		if !found {
-			// Check if it's a template setting
-			if strings.HasPrefix(flagName, "templates.") {
-				templateField := strings.TrimPrefix(flagName, "templates.")
-				templatesVal := configVal.FieldByName("Templates")
-
-				if templatesVal.IsValid() && templatesVal.Kind() == reflect.Struct {
-					for i := 0; i < templatesVal.NumField(); i++ {
-						field := templatesVal.Type().Field(i)
-						tag := field.Tag.Get("mapstructure")
-
-						if tag == templateField || strings.EqualFold(field.Name, templateField) {
-							fieldVal := templatesVal.Field(i)
-							if fieldVal.CanSet() {
-								setValue(fieldVal, flagValue)
-								found = true
-								break
-							}
-						}
-					}
-				}
-			}
+			// Template setting handling has been removed
 
 			// Check if it's an excludes setting
 			if strings.HasPrefix(flagName, "excludes.") {
@@ -423,12 +288,6 @@ func (m *Manager) EnsureConfigDirs() error {
 		return fmt.Errorf("failed to create user config directory: %w", err)
 	}
 
-	// Ensure user templates directory exists
-	templateDir := m.GetUserTemplateDir()
-	if err := os.MkdirAll(templateDir, 0755); err != nil {
-		return fmt.Errorf("failed to create user templates directory: %w", err)
-	}
-
 	return nil
 }
 
@@ -475,7 +334,6 @@ func (m *Manager) displayInitializationMessage() {
 	m.logger.Printf("    - Output File: %s", defaults.OutputFile)
 	m.logger.Printf("    - Model: %s", defaults.ModelName)
 	m.logger.Printf("    - Log Level: %s", defaults.LogLevel)
-	m.logger.Printf("    - Default Template: %s", defaults.Templates.Default)
 	m.logger.Printf("  You can customize these settings by editing the file.")
 	m.logger.Printf("  See documentation for all available options.")
 }

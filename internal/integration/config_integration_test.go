@@ -188,8 +188,8 @@ output_file = "USER_OVERRIDE.md"
 		cfg := configManager.GetConfig()
 
 		// Check precedence: user value should override system
-		if cfg.OutputFile != "USER_OVERRIDE.MD" {
-			t.Errorf("Expected output file to be USER_OVERRIDE.MD (user config), got %s", cfg.OutputFile)
+		if cfg.OutputFile != "USER_OVERRIDE.md" {
+			t.Errorf("Expected output file to be USER_OVERRIDE.md (user config), got %s", cfg.OutputFile)
 		}
 
 		// Check fallback: missing value in user config should fall back to system
@@ -281,7 +281,6 @@ model = "user-model"`
 		// Create hierarchical flags using dot notation
 		flags := map[string]interface{}{
 			"excludes.extensions": ".custom-ext",
-			"templates.default":   "custom-template.tmpl",
 		}
 
 		// Merge flags with config
@@ -295,10 +294,6 @@ model = "user-model"`
 		// Check that hierarchical flags were properly merged
 		if cfg.Excludes.Extensions != ".custom-ext" {
 			t.Errorf("Expected excludes.extensions to be .custom-ext, got %s", cfg.Excludes.Extensions)
-		}
-
-		if cfg.Templates.Default != "custom-template.tmpl" {
-			t.Errorf("Expected templates.default to be custom-template.tmpl, got %s", cfg.Templates.Default)
 		}
 	})
 }

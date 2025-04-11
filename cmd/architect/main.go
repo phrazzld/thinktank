@@ -44,12 +44,6 @@ func Main() {
 	// Convert cmdConfig to architect.CliConfig to pass to core logic
 	coreConfig := convertToArchitectConfig(cmdConfig)
 
-	// Handle special subcommands before regular flow
-	if architect.HandleSpecialCommands(coreConfig, logger, configManager) {
-		// Special command was executed, exit the program
-		return
-	}
-
 	// Convert CLI flags to the format needed for merging
 	cliFlags := ConvertConfigToMap(cmdConfig)
 
@@ -72,22 +66,18 @@ func Main() {
 // convertToArchitectConfig converts the cmd package CliConfig to the internal architect package CliConfig
 func convertToArchitectConfig(cmdConfig *CliConfig) *architect.CliConfig {
 	return &architect.CliConfig{
-		TaskDescription: "", // Empty string as task description is now only read from the file
-		TaskFile:        cmdConfig.TaskFile,
-		OutputFile:      cmdConfig.OutputFile,
-		Format:          cmdConfig.Format,
-		Paths:           cmdConfig.Paths,
-		Include:         cmdConfig.Include,
-		Exclude:         cmdConfig.Exclude,
-		ExcludeNames:    cmdConfig.ExcludeNames,
-		DryRun:          cmdConfig.DryRun,
-		Verbose:         cmdConfig.Verbose,
-		ApiKey:          cmdConfig.ApiKey,
-		ModelName:       cmdConfig.ModelName,
-		ConfirmTokens:   cmdConfig.ConfirmTokens,
-		Template:        cmdConfig.PromptTemplate,
-		ListExamples:    cmdConfig.ListExamples,
-		ShowExample:     cmdConfig.ShowExample,
-		LogLevel:        cmdConfig.LogLevel,
+		InstructionsFile: cmdConfig.InstructionsFile,
+		OutputFile:       cmdConfig.OutputFile,
+		Format:           cmdConfig.Format,
+		Paths:            cmdConfig.Paths,
+		Include:          cmdConfig.Include,
+		Exclude:          cmdConfig.Exclude,
+		ExcludeNames:     cmdConfig.ExcludeNames,
+		DryRun:           cmdConfig.DryRun,
+		Verbose:          cmdConfig.Verbose,
+		ApiKey:           cmdConfig.ApiKey,
+		ModelName:        cmdConfig.ModelName,
+		ConfirmTokens:    cmdConfig.ConfirmTokens,
+		LogLevel:         cmdConfig.LogLevel,
 	}
 }

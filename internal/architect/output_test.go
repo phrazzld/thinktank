@@ -2,396 +2,265 @@
 package architect_test
 
 import (
-	"context"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/architect"
-	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/logutil"
-	promptpkg "github.com/phrazzld/architect/internal/prompt"
 )
 
-// outputTokenManager implements the architect.TokenManager interface for testing in output_test.go
-type outputTokenManager struct {
-	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error)
-	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
-	promptForConfirmationFunc func(tokenCount int32, confirmTokens int) bool
-}
-
-func newOutputTokenManager() *outputTokenManager {
-	return &outputTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
-			return &architect.TokenResult{
-				TokenCount:   100,
-				InputLimit:   1000,
-				ExceedsLimit: false,
-				Percentage:   10.0,
-			}, nil
+// TestEscapeContent tests the XML escaping helper function
+func TestEscapeContent(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "No escaping needed",
+			input:    "Normal content without special characters",
+			expected: "Normal content without special characters",
 		},
-		checkTokenLimitFunc: func(ctx context.Context, client gemini.Client, prompt string) error {
-			return nil
+		{
+			name:     "Single less-than character",
+			input:    "func test() { if (x < y) { return } }",
+			expected: "func test() { if (x &lt; y) { return } }",
 		},
-		promptForConfirmationFunc: func(tokenCount int32, confirmTokens int) bool {
-			return true
+		{
+			name:     "Single greater-than character",
+			input:    "func test() { if (x > y) { return } }",
+			expected: "func test() { if (x &gt; y) { return } }",
 		},
-	}
-}
-
-func (m *outputTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
-	return m.getTokenInfoFunc(ctx, client, prompt)
-}
-
-func (m *outputTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	return m.checkTokenLimitFunc(ctx, client, prompt)
-}
-
-func (m *outputTokenManager) PromptForConfirmation(tokenCount int32, confirmTokens int) bool {
-	return m.promptForConfirmationFunc(tokenCount, confirmTokens)
-}
-
-// mockPromptManager implements the promptpkg.ManagerInterface for testing
-type mockPromptManager struct {
-	buildPromptFunc          func(templateName string, data *promptpkg.TemplateData) (string, error)
-	listExampleTemplatesFunc func() ([]string, error)
-	listTemplatesFunc        func() ([]string, error)
-	getExampleTemplateFunc   func(name string) (string, error)
-	loadTemplateFunc         func(templatePath string) error
-}
-
-func newMockPromptManager() *mockPromptManager {
-	return &mockPromptManager{
-		buildPromptFunc: func(templateName string, data *promptpkg.TemplateData) (string, error) {
-			return "mock prompt", nil
+		{
+			name:     "Both comparison operators",
+			input:    "func validate(x, y, z int) bool { return x < y && y > z }",
+			expected: "func validate(x, y, z int) bool { return x &lt; y && y &gt; z }",
 		},
-		listExampleTemplatesFunc: func() ([]string, error) {
-			return []string{"example.tmpl"}, nil
+		{
+			name:     "HTML/XML tags",
+			input:    "<div>Some HTML content</div>",
+			expected: "&lt;div&gt;Some HTML content&lt;/div&gt;",
 		},
-		listTemplatesFunc: func() ([]string, error) {
-			return []string{"example.tmpl"}, nil
+		{
+			name:     "Nested tags",
+			input:    "<outer><inner>Nested tags</inner></outer>",
+			expected: "&lt;outer&gt;&lt;inner&gt;Nested tags&lt;/inner&gt;&lt;/outer&gt;",
 		},
-		getExampleTemplateFunc: func(name string) (string, error) {
-			return "example template content", nil
+		{
+			name:     "Multiple occurrences mixed with code",
+			input:    "if (x < 10 && y > 20) { return <r>value</r> }",
+			expected: "if (x &lt; 10 && y &gt; 20) { return &lt;r&gt;value&lt;/r&gt; }",
 		},
-		loadTemplateFunc: func(templatePath string) error {
-			return nil
+		{
+			name:     "Empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name:     "Already escaped content",
+			input:    "function with &lt;param&gt;",
+			expected: "function with &lt;param&gt;",
 		},
 	}
-}
 
-func (m *mockPromptManager) BuildPrompt(templateName string, data *promptpkg.TemplateData) (string, error) {
-	return m.buildPromptFunc(templateName, data)
-}
-
-func (m *mockPromptManager) ListExampleTemplates() ([]string, error) {
-	return m.listExampleTemplatesFunc()
-}
-
-func (m *mockPromptManager) GetExampleTemplate(name string) (string, error) {
-	return m.getExampleTemplateFunc(name)
-}
-
-func (m *mockPromptManager) ListTemplates() ([]string, error) {
-	if m.listTemplatesFunc != nil {
-		return m.listTemplatesFunc()
-	}
-	return nil, nil
-}
-
-func (m *mockPromptManager) LoadTemplate(templatePath string) error {
-	if m.loadTemplateFunc != nil {
-		return m.loadTemplateFunc(templatePath)
-	}
-	return nil
-}
-
-// outputGeminiClient implements a simplified gemini.Client for testing
-type outputGeminiClient struct {
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	getModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
-	countTokensFunc     func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
-	closeFunc           func()
-}
-
-func newOutputGeminiClient() *outputGeminiClient {
-	return &outputGeminiClient{
-		generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-			return &gemini.GenerationResult{
-				Content:    "generated content",
-				TokenCount: 50,
-			}, nil
-		},
-		getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-			return &gemini.ModelInfo{
-				InputTokenLimit: 1000,
-			}, nil
-		},
-		countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-			return &gemini.TokenCount{Total: 100}, nil
-		},
-		closeFunc: func() {},
-	}
-}
-
-func (m *outputGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	return m.generateContentFunc(ctx, prompt)
-}
-
-func (m *outputGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return m.getModelInfoFunc(ctx)
-}
-
-func (m *outputGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	return m.countTokensFunc(ctx, prompt)
-}
-
-func (m *outputGeminiClient) Close() error {
-	if m.closeFunc != nil {
-		m.closeFunc()
-	}
-	return nil
-}
-
-// mockConfigManager implements a simplified config.ManagerInterface for testing
-type mockConfigManager struct {
-	loadFromFilesFunc         func() error
-	ensureConfigDirsFunc      func() error
-	getConfigFunc             func() *config.AppConfig
-	mergeWithFlagsFunc        func(flags map[string]interface{}) error
-	getConfigDirsFunc         func() config.ConfigDirectories
-	getUserConfigDirFunc      func() string
-	getSystemConfigDirsFunc   func() []string
-	getUserTemplateDirFunc    func() string
-	getSystemTemplateDirsFunc func() []string
-	getTemplatePathFunc       func(name string) (string, error)
-	writeDefaultConfigFunc    func() error
-}
-
-func newMockConfigManager() *mockConfigManager {
-	return &mockConfigManager{
-		loadFromFilesFunc: func() error {
-			return nil
-		},
-		ensureConfigDirsFunc: func() error {
-			return nil
-		},
-		getConfigFunc: func() *config.AppConfig {
-			return &config.AppConfig{}
-		},
-		mergeWithFlagsFunc: func(flags map[string]interface{}) error {
-			return nil
-		},
-		getConfigDirsFunc: func() config.ConfigDirectories {
-			return config.ConfigDirectories{}
-		},
-		getUserConfigDirFunc: func() string {
-			return "/mock/user/config/dir"
-		},
-		getSystemConfigDirsFunc: func() []string {
-			return []string{"/mock/system/config/dir"}
-		},
-		getUserTemplateDirFunc: func() string {
-			return "/mock/user/template/dir"
-		},
-		getSystemTemplateDirsFunc: func() []string {
-			return []string{"/mock/system/template/dir"}
-		},
-		getTemplatePathFunc: func(name string) (string, error) {
-			return "/mock/template/" + name, nil
-		},
-		writeDefaultConfigFunc: func() error {
-			return nil
-		},
-	}
-}
-
-func (m *mockConfigManager) LoadFromFiles() error {
-	return m.loadFromFilesFunc()
-}
-
-func (m *mockConfigManager) EnsureConfigDirs() error {
-	return m.ensureConfigDirsFunc()
-}
-
-func (m *mockConfigManager) GetConfig() *config.AppConfig {
-	return m.getConfigFunc()
-}
-
-func (m *mockConfigManager) MergeWithFlags(flags map[string]interface{}) error {
-	return m.mergeWithFlagsFunc(flags)
-}
-
-func (m *mockConfigManager) GetConfigDirs() config.ConfigDirectories {
-	return m.getConfigDirsFunc()
-}
-
-func (m *mockConfigManager) GetUserConfigDir() string {
-	return m.getUserConfigDirFunc()
-}
-
-func (m *mockConfigManager) GetSystemConfigDirs() []string {
-	return m.getSystemConfigDirsFunc()
-}
-
-func (m *mockConfigManager) GetUserTemplateDir() string {
-	return m.getUserTemplateDirFunc()
-}
-
-func (m *mockConfigManager) GetSystemTemplateDirs() []string {
-	return m.getSystemTemplateDirsFunc()
-}
-
-func (m *mockConfigManager) GetTemplatePath(name string) (string, error) {
-	return m.getTemplatePathFunc(name)
-}
-
-func (m *mockConfigManager) WriteDefaultConfig() error {
-	return m.writeDefaultConfigFunc()
-}
-
-// outputMockAPIService implements a simplified architect.APIService for testing
-type outputMockAPIService struct {
-	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
-	getErrorDetailsFunc      func(err error) string
-	isEmptyResponseErrorFunc func(err error) bool
-	isSafetyBlockedErrorFunc func(err error) bool
-	initClientFunc           func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
-}
-
-func newOutputMockAPIService() *outputMockAPIService {
-	return &outputMockAPIService{
-		processResponseFunc: func(result *gemini.GenerationResult) (string, error) {
-			if result == nil {
-				return "", errors.New("empty response")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := architect.EscapeContent(tt.input)
+			if result != tt.expected {
+				t.Errorf("EscapeContent() = %v, want %v", result, tt.expected)
 			}
-			return result.Content, nil
+		})
+	}
+}
+
+// TestStitchPrompt tests the main prompt stitching function
+func TestStitchPrompt(t *testing.T) {
+	// Create common test files
+	standardFile := fileutil.FileMeta{
+		Path:    "/standard/file.go",
+		Content: "package main\n\nfunc main() {\n\tfmt.Println(\"Hello, world!\")\n}",
+	}
+
+	fileWithTags := fileutil.FileMeta{
+		Path:    "/tagged/file.go",
+		Content: "func test() { if (a < b || c > d) { return <r>value</r> } }",
+	}
+
+	emptyFile := fileutil.FileMeta{
+		Path:    "/empty/file.go",
+		Content: "",
+	}
+
+	// Define test cases
+	tests := []struct {
+		name         string
+		instructions string
+		contextFiles []fileutil.FileMeta
+		checks       []func(t *testing.T, result string)
+	}{
+		{
+			name:         "Standard case - instructions with multiple files",
+			instructions: "Standard test instructions for multiple files",
+			contextFiles: []fileutil.FileMeta{standardFile, fileWithTags},
+			checks: []func(t *testing.T, result string){
+				// Check instructions block
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "<instructions>\nStandard test instructions for multiple files\n</instructions>") {
+						t.Error("Instructions section not formatted correctly")
+					}
+				},
+				// Check context block
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "<context>") || !strings.Contains(result, "</context>") {
+						t.Error("Missing context section tags")
+					}
+				},
+				// Check file paths
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "<path>/standard/file.go</path>") {
+						t.Error("Missing or incorrectly formatted standard file path tag")
+					}
+					if !strings.Contains(result, "<path>/tagged/file.go</path>") {
+						t.Error("Missing or incorrectly formatted tagged file path tag")
+					}
+				},
+				// Check file content
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "package main") {
+						t.Error("Missing content from standard file")
+					}
+					if !strings.Contains(result, "Hello, world!") {
+						t.Error("Missing specific content from standard file")
+					}
+				},
+				// Check XML escaping
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "&lt;") || !strings.Contains(result, "&gt;") {
+						t.Error("XML special characters were not escaped properly")
+					}
+					if !strings.Contains(result, "&lt;r&gt;value&lt;/r&gt;") {
+						t.Error("XML tags in content were not properly escaped")
+					}
+				},
+			},
 		},
-		getErrorDetailsFunc: func(err error) string {
-			return "mock error details"
+		{
+			name:         "Empty instructions",
+			instructions: "",
+			contextFiles: []fileutil.FileMeta{standardFile},
+			checks: []func(t *testing.T, result string){
+				func(t *testing.T, result string) {
+					// Check that instructions tags exist even with empty content
+					if !strings.Contains(result, "<instructions>\n</instructions>") {
+						t.Error("Empty instructions not properly formatted")
+					}
+				},
+				func(t *testing.T, result string) {
+					// Check that file content is still included
+					if !strings.Contains(result, "package main") {
+						t.Error("Missing file content despite empty instructions")
+					}
+				},
+			},
 		},
-		isEmptyResponseErrorFunc: func(err error) bool {
-			return false
+		{
+			name:         "Empty context files list",
+			instructions: "Instructions with empty context",
+			contextFiles: []fileutil.FileMeta{},
+			checks: []func(t *testing.T, result string){
+				func(t *testing.T, result string) {
+					// Verify instructions are included
+					if !strings.Contains(result, "Instructions with empty context") {
+						t.Error("Missing instructions content")
+					}
+				},
+				func(t *testing.T, result string) {
+					// Check that context tags exist even with no files
+					if !strings.Contains(result, "<context>\n</context>") {
+						t.Error("Empty context not properly formatted")
+					}
+				},
+			},
 		},
-		isSafetyBlockedErrorFunc: func(err error) bool {
-			return false
+		{
+			name:         "Empty file content",
+			instructions: "Instructions with empty file content",
+			contextFiles: []fileutil.FileMeta{emptyFile},
+			checks: []func(t *testing.T, result string){
+				func(t *testing.T, result string) {
+					// Verify file path is included
+					if !strings.Contains(result, "<path>/empty/file.go</path>") {
+						t.Error("Missing path tag for empty file")
+					}
+				},
+				func(t *testing.T, result string) {
+					// Ensure there's an appropriate representation of empty content
+					if !strings.Contains(result, "<path>/empty/file.go</path>\n\n\n") {
+						t.Error("Empty file content not properly handled")
+					}
+				},
+			},
 		},
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-			return nil, nil
+		{
+			name:         "Instructions with XML-like tags",
+			instructions: "Instructions with <tags> that should NOT be escaped",
+			contextFiles: []fileutil.FileMeta{standardFile},
+			checks: []func(t *testing.T, result string){
+				func(t *testing.T, result string) {
+					// Verify instructions are preserved as-is (not escaped)
+					if !strings.Contains(result, "Instructions with <tags> that should NOT be escaped") {
+						t.Error("Instructions content was incorrectly modified")
+					}
+				},
+				func(t *testing.T, result string) {
+					// Double-check that the file content is still properly escaped
+					if !strings.Contains(result, "fmt.Println") {
+						t.Error("Missing expected file content")
+					}
+				},
+			},
+		},
+		{
+			name:         "File with special characters in path",
+			instructions: "Testing path with special characters",
+			contextFiles: []fileutil.FileMeta{
+				{Path: "/path/with/<special>/chars.go", Content: "special path content"},
+			},
+			checks: []func(t *testing.T, result string){
+				func(t *testing.T, result string) {
+					// Verify path is correctly included without escaping
+					if !strings.Contains(result, "<path>/path/with/<special>/chars.go</path>") {
+						t.Error("Path with special characters not properly handled")
+					}
+				},
+				func(t *testing.T, result string) {
+					// Check content is included
+					if !strings.Contains(result, "special path content") {
+						t.Error("Missing content from file with special path")
+					}
+				},
+			},
 		},
 	}
-}
 
-// Override the default NewAPIService function for testing
-var originalNewAPIService = architect.NewAPIService
+	// Run all test cases
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Get the stitched prompt result
+			result := architect.StitchPrompt(tt.instructions, tt.contextFiles)
 
-// These variables have been removed as they're unused:
-// - mockSetupPromptManagerWithConfig
-// - originalNewManager
+			// Debug output for troubleshooting (commented out for production)
+			// t.Logf("Result: %s", result)
 
-// Implement the updated test for GenerateAndSavePlanWithConfig
-func TestGenerateAndSavePlanWithConfig(t *testing.T) {
-	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
-
-	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "output_test")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
+			// Run all checks for this test case
+			for _, check := range tt.checks {
+				check(t, result)
+			}
+		})
 	}
-	defer os.RemoveAll(tempDir)
-
-	// Define common test parameters
-	ctx := context.Background()
-	taskDescription := "Test task"
-	projectContext := "Test project context"
-	outputFile := filepath.Join(tempDir, "test_output.md")
-
-	// Create a mock prompt manager
-	mockPromptManager := newMockPromptManager()
-
-	// Create a token manager for testing
-	tokenManager := newOutputTokenManager()
-
-	// Create a mock Gemini client
-	geminiClient := newOutputGeminiClient()
-
-	// Create a mock API service
-	apiService := newOutputMockAPIService()
-
-	// Replace the global NewAPIService function for testing
-	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
-		return apiService
-	}
-	defer func() {
-		architect.NewAPIService = originalNewAPIService
-	}()
-
-	// Create an output writer
-	outputWriter := architect.NewOutputWriter(logger, tokenManager)
-
-	// Create a mock config manager
-	configManager := newMockConfigManager()
-
-	// Replace the SetupPromptManagerWithConfig function to return our mock
-	originalSetupFunc := architect.SetupPromptManagerWithConfig
-	architect.SetupPromptManagerWithConfig = func(logger logutil.LoggerInterface, configManager config.ManagerInterface) (promptpkg.ManagerInterface, error) {
-		return mockPromptManager, nil
-	}
-	defer func() {
-		architect.SetupPromptManagerWithConfig = originalSetupFunc
-	}()
-
-	// Call the method being tested
-	err = outputWriter.GenerateAndSavePlanWithConfig(ctx, geminiClient, taskDescription, projectContext, outputFile, configManager)
-
-	// Verify no error occurred
-	if err != nil {
-		t.Errorf("GenerateAndSavePlanWithConfig() unexpected error = %v", err)
-		return
-	}
-
-	// Verify the file was created
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file not created: %v", err)
-		return
-	}
-
-	// Read the file content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Errorf("Failed to read output file: %v", err)
-		return
-	}
-
-	// Verify content matches expected
-	expectedContent := "generated content"
-	if string(content) != expectedContent {
-		t.Errorf("File content = %v, want %v", string(content), expectedContent)
-	}
-}
-
-func (m *outputMockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return m.processResponseFunc(result)
-}
-
-func (m *outputMockAPIService) GetErrorDetails(err error) string {
-	return m.getErrorDetailsFunc(err)
-}
-
-func (m *outputMockAPIService) IsEmptyResponseError(err error) bool {
-	return m.isEmptyResponseErrorFunc(err)
-}
-
-func (m *outputMockAPIService) IsSafetyBlockedError(err error) bool {
-	return m.isSafetyBlockedErrorFunc(err)
-}
-
-func (m *outputMockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	return m.initClientFunc(ctx, apiKey, modelName)
 }
 
 // TestSaveToFile tests the SaveToFile method
@@ -399,11 +268,8 @@ func TestSaveToFile(t *testing.T) {
 	// Create a logger for testing
 	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
-	// Create a token manager for testing
-	tokenManager := newOutputTokenManager()
-
-	// Create an output writer
-	outputWriter := architect.NewOutputWriter(logger, tokenManager)
+	// Create a file writer
+	fileWriter := architect.NewFileWriter(logger)
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")
@@ -411,12 +277,6 @@ func TestSaveToFile(t *testing.T) {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
-
-	// Create a test file in a non-writable directory for error case
-	readOnlyDir := filepath.Join(tempDir, "readonly")
-	if err := os.Mkdir(readOnlyDir, 0500); err != nil { // 0500 = read-only directory
-		t.Fatalf("Failed to create read-only directory: %v", err)
-	}
 
 	// Define test cases
 	tests := []struct {
@@ -480,7 +340,7 @@ func TestSaveToFile(t *testing.T) {
 			tc.setupFunc()
 
 			// Save to file
-			err := outputWriter.SaveToFile(tc.content, tc.outputFile)
+			err := fileWriter.SaveToFile(tc.content, tc.outputFile)
 
 			// Run cleanup function
 			defer tc.cleanFunc()
@@ -512,281 +372,6 @@ func TestSaveToFile(t *testing.T) {
 
 			if string(content) != tc.content {
 				t.Errorf("File content = %v, want %v", string(content), tc.content)
-			}
-		})
-	}
-}
-
-// TestGenerateAndSavePlan tests the GenerateAndSavePlan method
-func TestGenerateAndSavePlan(t *testing.T) {
-	// Create a logger for testing
-	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
-
-	// Create a temporary directory for testing
-	tempDir, err := os.MkdirTemp("", "output_test")
-	if err != nil {
-		t.Fatalf("Failed to create temporary directory: %v", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// Define common test parameters
-	ctx := context.Background()
-	taskDescription := "Test task"
-	projectContext := "Test project context"
-
-	// Test cases
-	tests := []struct {
-		name              string
-		promptManagerFunc func() *mockPromptManager
-		tokenManagerFunc  func() *outputTokenManager
-		geminiClientFunc  func() *outputGeminiClient
-		apiServiceFunc    func() *outputMockAPIService
-		expectedContent   string
-		wantErr           bool
-		errorContains     string
-	}{
-		{
-			name: "Happy path - generates content successfully",
-			promptManagerFunc: func() *mockPromptManager {
-				pm := newMockPromptManager()
-				return pm
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				tm := newOutputTokenManager()
-				return tm
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				gc := newOutputGeminiClient()
-				return gc
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				as := newOutputMockAPIService()
-				return as
-			},
-			expectedContent: "generated content",
-			wantErr:         false,
-		},
-		{
-			name: "Error - prompt building fails",
-			promptManagerFunc: func() *mockPromptManager {
-				pm := newMockPromptManager()
-				pm.buildPromptFunc = func(templateName string, data *promptpkg.TemplateData) (string, error) {
-					return "", errors.New("failed to build prompt")
-				}
-				return pm
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				return newOutputTokenManager()
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				return newOutputMockAPIService()
-			},
-			wantErr:       true,
-			errorContains: "failed to build prompt",
-		},
-		{
-			name: "Error - token check fails",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				tm := newOutputTokenManager()
-				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
-					return nil, errors.New("token count check failed")
-				}
-				return tm
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				return newOutputMockAPIService()
-			},
-			wantErr:       true,
-			errorContains: "token count check failed",
-		},
-		{
-			name: "Error - token limit exceeded",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				tm := newOutputTokenManager()
-				tm.getTokenInfoFunc = func(ctx context.Context, client gemini.Client, prompt string) (*architect.TokenResult, error) {
-					return &architect.TokenResult{
-						TokenCount:   2000,
-						InputLimit:   1000,
-						ExceedsLimit: true,
-						LimitError:   "token limit exceeded",
-						Percentage:   200.0,
-					}, nil
-				}
-				return tm
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				return newOutputMockAPIService()
-			},
-			wantErr:       true,
-			errorContains: "token limit exceeded",
-		},
-		{
-			name: "Error - content generation fails",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				return newOutputTokenManager()
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				gc := newOutputGeminiClient()
-				gc.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-					return nil, errors.New("failed to generate content")
-				}
-				return gc
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				return newOutputMockAPIService()
-			},
-			wantErr:       true,
-			errorContains: "plan generation failed",
-		},
-		{
-			name: "Error - API response processing fails",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				return newOutputTokenManager()
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				as := newOutputMockAPIService()
-				as.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {
-					return "", errors.New("failed to process API response")
-				}
-				return as
-			},
-			wantErr:       true,
-			errorContains: "failed to process API response",
-		},
-		{
-			name: "Error - empty response",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				return newOutputTokenManager()
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				as := newOutputMockAPIService()
-				as.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {
-					return "", errors.New("empty response")
-				}
-				as.isEmptyResponseErrorFunc = func(err error) bool {
-					return true
-				}
-				return as
-			},
-			wantErr:       true,
-			errorContains: "empty content",
-		},
-		{
-			name: "Error - safety blocked",
-			promptManagerFunc: func() *mockPromptManager {
-				return newMockPromptManager()
-			},
-			tokenManagerFunc: func() *outputTokenManager {
-				return newOutputTokenManager()
-			},
-			geminiClientFunc: func() *outputGeminiClient {
-				return newOutputGeminiClient()
-			},
-			apiServiceFunc: func() *outputMockAPIService {
-				as := newOutputMockAPIService()
-				as.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {
-					return "", errors.New("safety blocked")
-				}
-				as.isSafetyBlockedErrorFunc = func(err error) bool {
-					return true
-				}
-				return as
-			},
-			wantErr:       true,
-			errorContains: "safety restrictions",
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			// Create dependencies
-			promptManager := tc.promptManagerFunc()
-			tokenManager := tc.tokenManagerFunc()
-			geminiClient := tc.geminiClientFunc()
-			apiService := tc.apiServiceFunc()
-
-			// Replace NewAPIService to return our mock
-			architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
-				return apiService
-			}
-			defer func() {
-				architect.NewAPIService = originalNewAPIService
-			}()
-
-			// Create output writer
-			outputWriter := architect.NewOutputWriter(logger, tokenManager)
-
-			// Create unique output file for this test
-			testOutputFile := filepath.Join(tempDir, t.Name()+".md")
-
-			// Call the method being tested
-			err = outputWriter.GenerateAndSavePlan(ctx, geminiClient, taskDescription, projectContext, testOutputFile, promptManager)
-
-			// Verify error behavior
-			if tc.wantErr {
-				if err == nil {
-					t.Errorf("GenerateAndSavePlan() error = nil, expected error")
-					return
-				}
-				if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
-					t.Errorf("GenerateAndSavePlan() error = %v, expected to contain %v", err, tc.errorContains)
-					return
-				}
-				return
-			}
-
-			// For non-error cases, verify the result
-			if err != nil {
-				t.Errorf("GenerateAndSavePlan() unexpected error = %v", err)
-				return
-			}
-
-			// Verify the file was created
-			if _, err := os.Stat(testOutputFile); os.IsNotExist(err) {
-				t.Errorf("output file not created: %v", err)
-				return
-			}
-
-			// Read the file content
-			content, err := os.ReadFile(testOutputFile)
-			if err != nil {
-				t.Errorf("Failed to read output file: %v", err)
-				return
-			}
-
-			// Verify content
-			if string(content) != tc.expectedContent {
-				t.Errorf("File content = %v, want %v", string(content), tc.expectedContent)
 			}
 		})
 	}

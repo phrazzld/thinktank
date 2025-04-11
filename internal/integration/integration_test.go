@@ -37,20 +37,20 @@ func add(a, b int) int {
 	return a + b
 }`)
 
-	// Create a task file
-	taskFile := env.CreateTestFile(t, "task.txt", "Implement a new feature to multiply two numbers")
+	// Create an instructions file (previously task file)
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
-	// Create a test configuration
+	// Create a test configuration with the new InstructionsFile field
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -96,21 +96,21 @@ func main() {
 	fmt.Println("Hello, world!")
 }`)
 
-	// Create a task file (optional for dry run, but including it for completeness)
-	taskFile := env.CreateTestFile(t, "task.txt", "Test task")
+	// Create an instructions file (optional for dry run, but including it for completeness)
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration with dry run enabled
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		DryRun:     true,
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		DryRun:           true,
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -127,8 +127,8 @@ func main() {
 	}
 }
 
-// TestTaskFileInput tests using a task file instead of command line task
-func TestTaskFileInput(t *testing.T) {
+// TestInstructionsFileInput tests using an instructions file
+func TestInstructionsFileInput(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
@@ -147,19 +147,19 @@ func main() {
 
 	// Create a task file with special content for testing
 	taskContent := "Implement a new feature to multiply two numbers"
-	taskFile := env.CreateTestFile(t, "task.txt", taskContent)
+	instructionsFile := env.CreateTestFile(t, "instructions.md", taskContent)
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration focusing on task file input
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -214,20 +214,20 @@ func main() {}`)
 	env.CreateTestFile(t, "src/config.json", `{"key": "value"}`)
 
 	// Create a task file
-	taskFile := env.CreateTestFile(t, "task.txt", "Test task")
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration with file inclusion filters
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Include:    ".go,.md", // Only include Go and Markdown files
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Include:          ".go,.md", // Only include Go and Markdown files
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -278,19 +278,19 @@ func TestErrorHandling(t *testing.T) {
 func main() {}`)
 
 	// Create a task file
-	taskFile := env.CreateTestFile(t, "task.txt", "Test task")
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application and expect an error
@@ -339,19 +339,19 @@ func TestTokenCountExceeded(t *testing.T) {
 func main() {}`)
 
 	// Create a task file
-	taskFile := env.CreateTestFile(t, "task.txt", "Test task")
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application and expect a token limit error
@@ -395,7 +395,7 @@ func TestUserConfirmation(t *testing.T) {
 func main() {}`)
 
 	// Create a task file
-	taskFile := env.CreateTestFile(t, "task.txt", "Test task")
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
 	// Simulate user input (say "yes" to confirmation)
 	env.SimulateUserInput("y\n")
@@ -405,13 +405,13 @@ func main() {}`)
 
 	// Create a test configuration with confirm-tokens
 	testConfig := &architect.CliConfig{
-		TaskFile:      taskFile,
-		OutputFile:    outputFile,
-		ModelName:     "test-model",
-		ApiKey:        "test-api-key",
-		ConfirmTokens: 1000, // Threshold lower than our token count
-		Paths:         []string{env.TestDir + "/src"},
-		LogLevel:      logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		ConfirmTokens:    1000, // Threshold lower than our token count
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -456,19 +456,19 @@ func main() {}`)
 
 	// Create a task file
 	taskDescription := "Implement a new feature"
-	taskFile := env.CreateTestFile(t, "task.txt", taskDescription)
+	instructionsFile := env.CreateTestFile(t, "instructions.md", taskDescription)
 
 	// Set up the output file path
 	outputFile := filepath.Join(env.TestDir, "output.md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
-		TaskFile:   taskFile,
-		OutputFile: outputFile,
-		ModelName:  "test-model",
-		ApiKey:     "test-api-key",
-		Paths:      []string{env.TestDir + "/src"},
-		LogLevel:   logutil.InfoLevel,
+		InstructionsFile: instructionsFile,
+		OutputFile:       outputFile,
+		ModelName:        "test-model",
+		ApiKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
 	}
 
 	// Run the application with our test configuration
@@ -511,15 +511,15 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 		env.SetupMockGeminiClient()
 
 		// Create a regular text file without template variables
-		taskFileContent := "This is a regular task description without any template variables."
-		taskFile := env.CreateTestFile(t, "task.txt", taskFileContent)
+		instructionsContent := "This is a regular task description without any template variables."
+		instructionsFile := env.CreateTestFile(t, "instructions.md", instructionsContent)
 
 		// Set up the output file path
 		outputFile := filepath.Join(env.TestDir, "output.md")
 
 		// Create a test configuration
 		testConfig := &architect.CliConfig{
-			TaskFile:   taskFile,
+			InstructionsFile: instructionsFile,
 			OutputFile: outputFile,
 			ModelName:  "test-model",
 			ApiKey:     "test-api-key",

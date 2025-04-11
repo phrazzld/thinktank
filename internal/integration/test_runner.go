@@ -4,7 +4,6 @@ package integration
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
@@ -37,28 +36,9 @@ func (s *mockIntAPIService) ProcessResponse(result *gemini.GenerationResult) (st
 		return "", fmt.Errorf("empty content")
 	}
 
-	// Get the original content
-	content := result.Content
-
-	// For template processing in tests, we can use conditionals based on the test being run
-	// Since gemini.GenerationResult doesn't have Metadata, we'll use environment variables
-	// or check the content itself
-	if os.Getenv("MOCK_TEMPLATE_FILE_HAS_TMPL_EXTENSION") == "true" {
-		return content + "\n\nTEMPLATE_PROCESSED: YES", nil
-	}
-
-	// For tests checking template with template variables
-	if os.Getenv("MOCK_TEMPLATE_HAS_VARIABLES") == "true" {
-		return content + "\n\nTEMPLATE_PROCESSED: YES", nil
-	}
-
-	// For tests checking invalid template
-	if os.Getenv("MOCK_TEMPLATE_INVALID") == "true" {
-		return "ERROR: Failed to parse template - invalid variable", nil
-	}
-
-	// For normal results, just add the standard template processed marker for tests
-	return content + "\n\nTEMPLATE_PROCESSED: NO", nil
+	// Get the original content - with the new architecture, we just return the content
+	// directly without any template processing
+	return result.Content, nil
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses
@@ -85,14 +65,78 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
+// mockConfigManager implements a simple version of config.ManagerInterface for testing
+type mockConfigManager struct {
+	logger logutil.LoggerInterface
+	config *config.AppConfig
+}
+
+func newMockConfigManager(logger logutil.LoggerInterface) *mockConfigManager {
+	return &mockConfigManager{
+		logger: logger,
+		config: config.DefaultConfig(),
+	}
+}
+
+// Implement the minimal required interface methods
+func (m *mockConfigManager) GetConfig() *config.AppConfig {
+	return m.config
+}
+
+func (m *mockConfigManager) GetUserConfigDir() string {
+	return "/mock/user/config/dir"
+}
+
+func (m *mockConfigManager) GetSystemConfigDirs() []string {
+	return []string{"/mock/system/config/dir"}
+}
+
+func (m *mockConfigManager) GetConfigDirs() config.ConfigDirectories {
+	return config.ConfigDirectories{
+		UserConfigDir:    m.GetUserConfigDir(),
+		SystemConfigDirs: m.GetSystemConfigDirs(),
+	}
+}
+
+func (m *mockConfigManager) LoadFromFiles() error {
+	return nil
+}
+
+func (m *mockConfigManager) MergeWithFlags(cliFlags map[string]interface{}) error {
+	return nil
+}
+
+func (m *mockConfigManager) EnsureConfigDirs() error {
+	return nil
+}
+
+func (m *mockConfigManager) WriteDefaultConfig() error {
+	return nil
+}
+
+// GetUserTemplateDir returns a mock path (this is a legacy method that will be removed)
+func (m *mockConfigManager) GetUserTemplateDir() string {
+	return "/mock/user/template/dir"
+}
+
+// GetSystemTemplateDirs returns mock paths (this is a legacy method that will be removed)
+func (m *mockConfigManager) GetSystemTemplateDirs() []string {
+	return []string{"/mock/system/template/dir"}
+}
+
+// GetTemplatePath is a legacy method that will be removed
+func (m *mockConfigManager) GetTemplatePath(name string) (string, error) {
+	return "", fmt.Errorf("templates not supported in new architecture")
+}
+
 // RunTestWithConfig runs the architect application with the provided test config and environment
 func RunTestWithConfig(
 	ctx context.Context,
 	testConfig *architect.CliConfig,
 	env *TestEnv,
 ) error {
-	// Use a test config manager that doesn't actually read from disk
-	configManager := config.NewManager(env.Logger)
+	// Use a mock config manager for testing
+	configManager := newMockConfigManager(env.Logger)
 
 	// Create a mock API service that uses the test environment's mock client
 	mockAPIService := &mockIntAPIService{

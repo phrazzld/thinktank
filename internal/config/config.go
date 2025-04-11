@@ -7,10 +7,8 @@ import (
 
 // ConfigDirectories holds configuration-related directory paths
 type ConfigDirectories struct {
-	UserConfigDir      string
-	SystemConfigDirs   []string
-	UserTemplateDir    string
-	SystemTemplateDirs []string
+	UserConfigDir    string
+	SystemConfigDirs []string
 }
 
 // Configuration constants
@@ -36,17 +34,7 @@ const (
 		"package-lock.json,yarn.lock,go.sum,go.work"
 )
 
-// TemplateConfig defines template-specific configuration options
-type TemplateConfig struct {
-	// Default template used for generating content (logical name or path)
-	Default string `mapstructure:"default" toml:"default"`
-	// Test template for integration testing
-	Test string `mapstructure:"test" toml:"test"`
-	// Custom template for integration testing
-	Custom string `mapstructure:"custom" toml:"custom"`
-	// Directory to look for custom templates, relative to config dir or absolute
-	Dir string `mapstructure:"dir" toml:"dir"`
-}
+//
 
 // ExcludeConfig defines file exclusion configuration
 type ExcludeConfig struct {
@@ -74,8 +62,7 @@ type AppConfig struct {
 	LogLevel logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
 	DryRun   bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
 
-	// Template settings (hierarchical)
-	Templates TemplateConfig `mapstructure:"templates" toml:"templates"`
+	// Template settings have been removed
 
 	// Exclude settings (hierarchical)
 	Excludes ExcludeConfig `mapstructure:"excludes" toml:"excludes"`
@@ -98,9 +85,6 @@ func DefaultConfig() *AppConfig {
 		Excludes: ExcludeConfig{
 			Extensions: DefaultExcludes,
 			Names:      DefaultExcludeNames,
-		},
-		Templates: TemplateConfig{
-			Default: "default.tmpl",
 		},
 	}
 }

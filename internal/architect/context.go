@@ -4,6 +4,7 @@ package architect
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -33,7 +34,7 @@ type GatherConfig struct {
 // ContextGatherer defines the interface for gathering project context
 type ContextGatherer interface {
 	// GatherContext collects and processes files based on configuration
-	GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) (string, *ContextStats, error)
+	GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
 
 	// DisplayDryRunInfo shows detailed information for dry run mode
 	DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *ContextStats) error
@@ -56,15 +57,14 @@ func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManage
 }
 
 // GatherContext collects and processes files based on configuration
-func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) (string, *ContextStats, error) {
+func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
 	// Log appropriate message based on mode
 	if cg.dryRun {
-		cg.logger.Info("Gathering files that would be included in context...")
-		cg.logger.Debug("Gathering files that would be included in context...")
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
+		cg.logger.Debug("Processing files with include/exclude filters for dry run...")
 	} else {
 		cg.logger.Info("Gathering project context...")
-		cg.logger.Debug("Gathering project context...")
+		cg.logger.Debug("Processing files with include/exclude filters...")
 	}
 
 	// Setup file processing configuration
@@ -84,10 +84,10 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	}
 
 	// Gather project context
-	projectContext, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
+	contextFiles, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
 	if err != nil {
 		cg.logger.Error("Failed during project context gathering: %v", err)
-		return "", nil, fmt.Errorf("failed during project context gathering: %w", err)
+		return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
 	// Set the processed files count in stats
@@ -95,14 +95,20 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 
 	// Log warning if no files were processed
 	if processedFilesCount == 0 {
-		cg.logger.Info("No files were processed for context. Check paths and filters.")
 		cg.logger.Warn("No files were processed for context. Check paths and filters.")
-		return projectContext, stats, nil
+		return contextFiles, stats, nil
 	}
+
+	// Create a combined string for token counting
+	var combinedContent strings.Builder
+	for _, file := range contextFiles {
+		combinedContent.WriteString(file.Content)
+		combinedContent.WriteString("\n")
+	}
+	projectContext := combinedContent.String()
 
 	// Calculate token statistics
 	cg.logger.Info("Calculating token statistics...")
-	cg.logger.Debug("Calculating token statistics...")
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, client, projectContext, cg.logger)
 
 	// Store statistics in the stats struct
@@ -111,18 +117,18 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	stats.TokenCount = int32(tokenCount)
 
 	// Handle output based on mode
-	if cg.dryRun {
+	if processedFilesCount > 0 {
 		cg.logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
 			processedFilesCount, lineCount, charCount, tokenCount)
-	} else if config.LogLevel == logutil.DebugLevel || processedFilesCount > 0 {
-		// Normal run mode
-		cg.logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
-			processedFilesCount, lineCount, charCount, tokenCount)
-		cg.logger.Info("Context gathered: %d files processed, %d lines, %d chars, %d tokens.",
-			processedFilesCount, lineCount, charCount, tokenCount)
+
+		// Additional detailed debug information if needed
+		if config.LogLevel == logutil.DebugLevel && !cg.dryRun {
+			cg.logger.Debug("Context details: files=%d, lines=%d, chars=%d, tokens=%d",
+				processedFilesCount, lineCount, charCount, tokenCount)
+		}
 	}
 
-	return projectContext, stats, nil
+	return contextFiles, stats, nil
 }
 
 // DisplayDryRunInfo shows detailed information for dry run mode

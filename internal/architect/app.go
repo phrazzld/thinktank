@@ -4,6 +4,7 @@ package architect
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -18,18 +19,21 @@ func Execute(
 	logger logutil.LoggerInterface,
 	configManager config.ManagerInterface,
 ) error {
-	// Process task input (from file or flag)
-	taskDescription, err := processTaskInput(cliConfig, logger)
+	// 1. Read instructions from file
+	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
 	if err != nil {
-		return fmt.Errorf("failed to process task input: %w", err)
+		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+		return fmt.Errorf("failed to read instructions file %s: %w", cliConfig.InstructionsFile, err)
 	}
+	instructions := string(instructionsContent)
+	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
 
-	// Validate inputs
-	if err := validateInputs(cliConfig, taskDescription, logger); err != nil {
+	// 2. Validate inputs
+	if err := validateInputs(cliConfig, logger); err != nil {
 		return fmt.Errorf("input validation failed: %w", err)
 	}
 
-	// Initialize API client
+	// 3. Initialize API client
 	apiService := NewAPIService(logger)
 	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
 	if err != nil {
@@ -50,13 +54,13 @@ func Execute(
 	}
 	defer geminiClient.Close()
 
-	// Create token manager
+	// 4. Create token manager
 	tokenManager := NewTokenManager(logger)
 
-	// Create context gatherer
+	// 5. Create context gatherer
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
 
-	// Create gather config
+	// 6. Create gather config
 	gatherConfig := GatherConfig{
 		Paths:        cliConfig.Paths,
 		Include:      cliConfig.Include,
@@ -67,13 +71,13 @@ func Execute(
 		LogLevel:     cliConfig.LogLevel,
 	}
 
-	// Gather context from files
-	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
+	// 7. Gather context files
+	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
 		return fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
-	// Handle dry run mode
+	// 8. Handle dry run mode
 	if cliConfig.DryRun {
 		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
 		if err != nil {
@@ -83,20 +87,93 @@ func Execute(
 		return nil
 	}
 
-	// Create output writer
-	outputWriter := NewOutputWriter(logger, tokenManager)
+	// 9. Stitch prompt
+	stitchedPrompt := StitchPrompt(instructions, contextFiles)
+	logger.Info("Prompt constructed successfully")
+	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// Generate and save plan with configuration
-	err = outputWriter.GenerateAndSavePlanWithConfig(
-		ctx,
-		geminiClient,
-		taskDescription,
-		projectContext,
-		cliConfig.OutputFile,
-		configManager,
-	)
+	// 10. Check token limits
+	logger.Info("Checking token limits...")
+	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, stitchedPrompt)
 	if err != nil {
-		return fmt.Errorf("error generating and saving plan: %w", err)
+		logger.Error("Token count check failed")
+
+		// Check if it's an API error with enhanced details
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Token count check failed: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			logger.Debug("Error details: %s", apiErr.DebugInfo())
+		} else {
+			logger.Error("Token count check failed: %v", err)
+			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		}
+
+		return fmt.Errorf("token count check failed: %w", err)
+	}
+
+	// If token limit is exceeded, abort
+	if tokenInfo.ExceedsLimit {
+		logger.Error("Token limit exceeded")
+		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
+		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		return fmt.Errorf("token limit exceeded: %s", tokenInfo.LimitError)
+	}
+
+	logger.Info("Token check passed: %d / %d (%.1f%%)",
+		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
+
+	// 11. Generate content
+	logger.Info("Generating plan...")
+	result, err := geminiClient.GenerateContent(ctx, stitchedPrompt)
+	if err != nil {
+		logger.Error("Generation failed")
+
+		// Check if it's an API error with enhanced details
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Error generating content: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			logger.Debug("Error details: %s", apiErr.DebugInfo())
+		} else {
+			logger.Error("Error generating content: %v", err)
+		}
+
+		return fmt.Errorf("plan generation failed: %w", err)
+	}
+
+	// 12. Process API response
+	generatedPlan, err := apiService.ProcessResponse(result)
+	if err != nil {
+		// Get detailed error information
+		errorDetails := apiService.GetErrorDetails(err)
+
+		// Provide specific error messages based on error type
+		if apiService.IsEmptyResponseError(err) {
+			logger.Error("Received empty or invalid response from Gemini API")
+			logger.Error("Error details: %s", errorDetails)
+			return fmt.Errorf("failed to process API response due to empty content: %w", err)
+		} else if apiService.IsSafetyBlockedError(err) {
+			logger.Error("Content was blocked by Gemini safety filters")
+			logger.Error("Error details: %s", errorDetails)
+			return fmt.Errorf("failed to process API response due to safety restrictions: %w", err)
+		} else {
+			// Generic API error handling
+			return fmt.Errorf("failed to process API response: %w", err)
+		}
+	}
+	logger.Info("Plan generated successfully")
+
+	// 13. Create file writer
+	fileWriter := NewFileWriter(logger)
+
+	// 14. Save output
+	logger.Info("Writing plan to %s...", cliConfig.OutputFile)
+	err = fileWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
+	if err != nil {
+		return fmt.Errorf("error saving plan to file: %w", err)
 	}
 
 	logger.Info("Plan successfully generated and saved to %s", cliConfig.OutputFile)
@@ -112,18 +189,21 @@ func RunInternal(
 	configManager config.ManagerInterface,
 	apiService APIService,
 ) error {
-	// Process task input (from file or flag)
-	taskDescription, err := processTaskInput(cliConfig, logger)
+	// 1. Read instructions from file
+	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
 	if err != nil {
-		return fmt.Errorf("failed to process task input: %w", err)
+		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+		return fmt.Errorf("failed to read instructions file %s: %w", cliConfig.InstructionsFile, err)
 	}
+	instructions := string(instructionsContent)
+	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
 
-	// Validate inputs
-	if err := validateInputs(cliConfig, taskDescription, logger); err != nil {
+	// 2. Validate inputs
+	if err := validateInputs(cliConfig, logger); err != nil {
 		return fmt.Errorf("input validation failed: %w", err)
 	}
 
-	// Initialize the client
+	// 3. Initialize the client
 	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
 	if err != nil {
 		// Handle API client initialization errors
@@ -143,13 +223,13 @@ func RunInternal(
 	}
 	defer geminiClient.Close()
 
-	// Create token manager
+	// 4. Create token manager
 	tokenManager := NewTokenManager(logger)
 
-	// Create context gatherer
+	// 5. Create context gatherer
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
 
-	// Create gather config
+	// 6. Create gather config
 	gatherConfig := GatherConfig{
 		Paths:        cliConfig.Paths,
 		Include:      cliConfig.Include,
@@ -160,13 +240,13 @@ func RunInternal(
 		LogLevel:     cliConfig.LogLevel,
 	}
 
-	// Gather context from files
-	projectContext, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
+	// 7. Gather context files
+	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
 	if err != nil {
 		return fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
-	// Handle dry run mode
+	// 8. Handle dry run mode
 	if cliConfig.DryRun {
 		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
 		if err != nil {
@@ -176,84 +256,114 @@ func RunInternal(
 		return nil
 	}
 
-	// Create output writer
-	outputWriter := NewOutputWriter(logger, tokenManager)
+	// 9. Stitch prompt
+	stitchedPrompt := StitchPrompt(instructions, contextFiles)
+	logger.Info("Prompt constructed successfully")
+	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// Generate and save plan with configuration
-	err = outputWriter.GenerateAndSavePlanWithConfig(
-		ctx,
-		geminiClient,
-		taskDescription,
-		projectContext,
-		cliConfig.OutputFile,
-		configManager,
-	)
+	// 10. Check token limits
+	logger.Info("Checking token limits...")
+	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, stitchedPrompt)
 	if err != nil {
-		return fmt.Errorf("error generating and saving plan: %w", err)
+		logger.Error("Token count check failed")
+
+		// Check if it's an API error with enhanced details
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Token count check failed: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			logger.Debug("Error details: %s", apiErr.DebugInfo())
+		} else {
+			logger.Error("Token count check failed: %v", err)
+			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		}
+
+		return fmt.Errorf("token count check failed: %w", err)
+	}
+
+	// If token limit is exceeded, abort
+	if tokenInfo.ExceedsLimit {
+		logger.Error("Token limit exceeded")
+		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
+		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		return fmt.Errorf("token limit exceeded: %s", tokenInfo.LimitError)
+	}
+
+	logger.Info("Token check passed: %d / %d (%.1f%%)",
+		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
+
+	// 11. Generate content
+	logger.Info("Generating plan...")
+	result, err := geminiClient.GenerateContent(ctx, stitchedPrompt)
+	if err != nil {
+		logger.Error("Generation failed")
+
+		// Check if it's an API error with enhanced details
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Error generating content: %s", apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			logger.Debug("Error details: %s", apiErr.DebugInfo())
+		} else {
+			logger.Error("Error generating content: %v", err)
+		}
+
+		return fmt.Errorf("plan generation failed: %w", err)
+	}
+
+	// 12. Process API response
+	generatedPlan, err := apiService.ProcessResponse(result)
+	if err != nil {
+		// Get detailed error information
+		errorDetails := apiService.GetErrorDetails(err)
+
+		// Provide specific error messages based on error type
+		if apiService.IsEmptyResponseError(err) {
+			logger.Error("Received empty or invalid response from Gemini API")
+			logger.Error("Error details: %s", errorDetails)
+			return fmt.Errorf("failed to process API response due to empty content: %w", err)
+		} else if apiService.IsSafetyBlockedError(err) {
+			logger.Error("Content was blocked by Gemini safety filters")
+			logger.Error("Error details: %s", errorDetails)
+			return fmt.Errorf("failed to process API response due to safety restrictions: %w", err)
+		} else {
+			// Generic API error handling
+			return fmt.Errorf("failed to process API response: %w", err)
+		}
+	}
+	logger.Info("Plan generated successfully")
+
+	// 13. Create file writer
+	fileWriter := NewFileWriter(logger)
+
+	// 14. Save output
+	logger.Info("Writing plan to %s...", cliConfig.OutputFile)
+	err = fileWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
+	if err != nil {
+		return fmt.Errorf("error saving plan to file: %w", err)
 	}
 
 	logger.Info("Plan successfully generated and saved to %s", cliConfig.OutputFile)
 	return nil
 }
 
-// HandleSpecialCommands processes special command flags like list-examples and show-example
-// Returns true if a special command was executed
-func HandleSpecialCommands(cliConfig *CliConfig, logger logutil.LoggerInterface, configManager config.ManagerInterface) bool {
-	// Create prompt builder
-	promptBuilder := NewPromptBuilder(logger)
-
-	// Handle special subcommands before regular flow
-	if cliConfig.ListExamples {
-		err := promptBuilder.ListExampleTemplates(configManager)
-		if err != nil {
-			logger.Error("Error listing example templates: %v", err)
-			return true
-		}
-		return true
-	}
-
-	if cliConfig.ShowExample != "" {
-		err := promptBuilder.ShowExampleTemplate(cliConfig.ShowExample, configManager)
-		if err != nil {
-			logger.Error("Error showing example template: %v", err)
-			return true
-		}
-		return true
-	}
-
-	// No special commands were executed
-	return false
-}
-
-// processTaskInput extracts task description from file or flag
-func processTaskInput(cliConfig *CliConfig, logger logutil.LoggerInterface) (string, error) {
-	// If task file is provided, read from file
-	if cliConfig.TaskFile != "" {
-		// Create prompt builder
-		promptBuilder := NewPromptBuilder(logger)
-
-		// Read task from file using prompt builder
-		content, err := promptBuilder.ReadTaskFromFile(cliConfig.TaskFile)
-		if err != nil {
-			return "", fmt.Errorf("failed to read task from file: %w", err)
-		}
-		return content, nil
-	}
-
-	// Otherwise, use the task description from CLI flags
-	return cliConfig.TaskDescription, nil
-}
+// Note: HandleSpecialCommands and processTaskInput functions have been removed
+// as part of the refactoring to simplify the core application flow.
+// The functionality has been replaced with direct reading of the instructions file
+// and the prompt stitching logic.
 
 // validateInputs verifies that all required inputs are provided
-func validateInputs(cliConfig *CliConfig, taskDescription string, logger logutil.LoggerInterface) error {
+func validateInputs(cliConfig *CliConfig, logger logutil.LoggerInterface) error {
 	// Skip validation in dry-run mode
 	if cliConfig.DryRun {
 		return nil
 	}
 
-	// Validate task description
-	if taskDescription == "" {
-		return fmt.Errorf("task description is required (use --task or --task-file)")
+	// Validate instructions file
+	if cliConfig.InstructionsFile == "" {
+		return fmt.Errorf("instructions file is required (use --instructions)")
 	}
 
 	// Validate paths

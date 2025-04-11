@@ -8,17 +8,17 @@ import (
 func TestConvertConfigBasic(t *testing.T) {
 	// Create a minimal config for testing
 	config := &CliConfig{
-		TaskFile:   "task.txt",
-		OutputFile: "output.md",
+		InstructionsFile: "instructions.txt",
+		OutputFile:       "output.md",
 	}
 
 	// Convert to map
 	configMap := ConvertConfigToMap(config)
 
 	// Check that basic fields are included
-	taskFile, hasTaskFile := configMap["taskFile"]
-	if !hasTaskFile || taskFile != "task.txt" {
-		t.Error("ConvertConfigToMap() should include taskFile key with correct value")
+	instructionsFile, hasInstructionsFile := configMap["instructionsFile"]
+	if !hasInstructionsFile || instructionsFile != "instructions.txt" {
+		t.Error("ConvertConfigToMap() should include instructionsFile key with correct value")
 	}
 
 	outputFile, hasOutputFile := configMap["output"]

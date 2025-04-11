@@ -5,9 +5,8 @@ import "github.com/phrazzld/architect/internal/logutil"
 
 // CliConfig represents the command-line configuration used by the application
 type CliConfig struct {
-	// Task configuration
-	TaskDescription string
-	TaskFile        string
+	// Instructions configuration
+	InstructionsFile string
 
 	// Output configuration
 	OutputFile string
@@ -27,11 +26,6 @@ type CliConfig struct {
 
 	// Token management
 	ConfirmTokens int
-
-	// Template options
-	Template     string
-	ListExamples bool
-	ShowExample  string
 
 	// Logging
 	LogLevel logutil.LogLevel

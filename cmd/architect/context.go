@@ -4,40 +4,19 @@ package architect
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	corearchitect "github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// ContextStats holds information about processed files and context size
-type ContextStats struct {
-	ProcessedFilesCount int
-	CharCount           int
-	LineCount           int
-	TokenCount          int32
-	ProcessedFiles      []string
-}
+// ContextStats is an alias for the internal architect.ContextStats
+type ContextStats = corearchitect.ContextStats
 
-// GatherConfig holds parameters needed for gathering context
-type GatherConfig struct {
-	Paths        []string
-	Include      string
-	Exclude      string
-	ExcludeNames string
-	Format       string
-	Verbose      bool
-	LogLevel     logutil.LogLevel
-}
-
-// ContextGatherer defines the interface for gathering project context
-type ContextGatherer interface {
-	// GatherContext collects and processes files based on configuration
-	GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) (string, *ContextStats, error)
-
-	// DisplayDryRunInfo shows detailed information for dry run mode
-	DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *ContextStats) error
-}
+// GatherConfig is an alias for the internal architect.GatherConfig
+type GatherConfig = corearchitect.GatherConfig
 
 // contextGatherer implements the ContextGatherer interface
 type contextGatherer struct {
@@ -47,7 +26,7 @@ type contextGatherer struct {
 }
 
 // NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager) ContextGatherer {
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager) corearchitect.ContextGatherer {
 	return &contextGatherer{
 		logger:       logger,
 		dryRun:       dryRun,
@@ -56,7 +35,7 @@ func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManage
 }
 
 // GatherContext collects and processes files based on configuration
-func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) (string, *ContextStats, error) {
+func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
 	// Log appropriate message based on mode
 	if cg.dryRun {
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
@@ -83,10 +62,10 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	}
 
 	// Gather project context
-	projectContext, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
+	contextFiles, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
 	if err != nil {
 		cg.logger.Error("Failed during project context gathering: %v", err)
-		return "", nil, fmt.Errorf("failed during project context gathering: %w", err)
+		return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
 	// Set the processed files count in stats
@@ -95,8 +74,16 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	// Log warning if no files were processed
 	if processedFilesCount == 0 {
 		cg.logger.Warn("No files were processed for context. Check paths and filters.")
-		return projectContext, stats, nil
+		return contextFiles, stats, nil
 	}
+
+	// Create a combined string for token counting
+	var combinedContent strings.Builder
+	for _, file := range contextFiles {
+		combinedContent.WriteString(file.Content)
+		combinedContent.WriteString("\n")
+	}
+	projectContext := combinedContent.String()
 
 	// Calculate token statistics
 	cg.logger.Info("Calculating token statistics...")
@@ -119,7 +106,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 		}
 	}
 
-	return projectContext, stats, nil
+	return contextFiles, stats, nil
 }
 
 // DisplayDryRunInfo shows detailed information for dry run mode

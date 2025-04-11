@@ -2,7 +2,7 @@
 
 ## Commands
 - **Build**: `go build`
-- **Run**: `go run main.go --task "TASK DESCRIPTION" PATH/TO/FILES/OR/DIRS`
+- **Run**: `go run main.go --instructions instructions.md PATH/TO/FILES/OR/DIRS`
 - **Test**: `go test ./...`
 - **Test Single File**: `go test ./PACKAGE_PATH/FILE_test.go`
 - **Lint/Format**: `go fmt ./...`
