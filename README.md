@@ -27,7 +27,7 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 - **Dry Run Mode**: Preview which files would be included and see token statistics before API calls
 - **Task File Input**: Load task descriptions from external files
 - **Custom Prompts**: Use your own prompt templates for specialized plan generation
-- **Structured Logging**: Clear, color-coded logs with configurable verbosity levels
+- **Structured Logging**: Clear, structured logs with configurable verbosity levels
 - **Interactive Progress**: Visual spinner indicates progress during API calls
 - **User Confirmation**: Optional confirmation for large token counts
 
@@ -100,7 +100,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
 | `--log-level` | Set logging level (debug, info, warn, error) | `info` |
-| `--color` | Enable/disable colored log output | `true` |
 | `--include` | Comma-separated list of file extensions to include | (All files) |
 | `--exclude` | Comma-separated list of file extensions to exclude | (Common binary and media files) |
 | `--exclude-names` | Comma-separated list of file/dir names to exclude | (Common directories like .git, node_modules) |

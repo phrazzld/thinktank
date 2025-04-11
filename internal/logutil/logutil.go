@@ -7,8 +7,6 @@ import (
 	"log"
 	"os"
 	"time"
-
-	"github.com/fatih/color"
 )
 
 // LoggerInterface defines the common logging interface
@@ -86,36 +84,26 @@ func (l LogLevel) String() string {
 	}
 }
 
-// Logger provides structured logging with levels and color support
+// Logger provides structured logging with levels
 type Logger struct {
-	level      LogLevel  // Current log level
-	writer     io.Writer // Where to write logs (typically os.Stderr)
-	prefix     string    // Prefix for all log messages
-	useColors  bool      // Whether to use colors in output
-	debugColor *color.Color
-	infoColor  *color.Color
-	warnColor  *color.Color
-	errorColor *color.Color
+	level  LogLevel  // Current log level
+	writer io.Writer // Where to write logs (typically os.Stderr)
+	prefix string    // Prefix for all log messages
 }
 
 // Ensure Logger implements LoggerInterface
 var _ LoggerInterface = (*Logger)(nil)
 
 // NewLogger creates a new logger with the specified configuration
-func NewLogger(level LogLevel, writer io.Writer, prefix string, useColors bool) *Logger {
+func NewLogger(level LogLevel, writer io.Writer, prefix string) *Logger {
 	if writer == nil {
 		writer = os.Stderr
 	}
 
 	logger := &Logger{
-		level:      level,
-		writer:     writer,
-		prefix:     prefix,
-		useColors:  useColors,
-		debugColor: color.New(color.FgCyan),
-		infoColor:  color.New(color.FgGreen),
-		warnColor:  color.New(color.FgYellow),
-		errorColor: color.New(color.FgRed, color.Bold),
+		level:  level,
+		writer: writer,
+		prefix: prefix,
 	}
 
 	return logger
@@ -135,21 +123,7 @@ func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
 	}
 
 	formattedMsg := l.formatMessage(level, format, args...)
-
-	if l.useColors {
-		switch level {
-		case DebugLevel:
-			fmt.Fprintln(l.writer, l.debugColor.Sprint(formattedMsg))
-		case InfoLevel:
-			fmt.Fprintln(l.writer, l.infoColor.Sprint(formattedMsg))
-		case WarnLevel:
-			fmt.Fprintln(l.writer, l.warnColor.Sprint(formattedMsg))
-		case ErrorLevel:
-			fmt.Fprintln(l.writer, l.errorColor.Sprint(formattedMsg))
-		}
-	} else {
-		fmt.Fprintln(l.writer, formattedMsg)
-	}
+	fmt.Fprintln(l.writer, formattedMsg)
 }
 
 // Debug logs a message at DEBUG level
@@ -186,11 +160,6 @@ func (l *Logger) SetLevel(level LogLevel) {
 // SetPrefix changes the prefix used in log messages
 func (l *Logger) SetPrefix(prefix string) {
 	l.prefix = prefix
-}
-
-// SetUseColors toggles color output
-func (l *Logger) SetUseColors(useColors bool) {
-	l.useColors = useColors
 }
 
 // Println implements LoggerInterface by logging at info level

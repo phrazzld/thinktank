@@ -260,7 +260,6 @@ func (m *Manager) setViperDefaults(v *viper.Viper) {
 	v.SetDefault("format", defaultConfig.Format)
 	v.SetDefault("verbose", defaultConfig.Verbose)
 	v.SetDefault("log_level", defaultConfig.LogLevel)
-	v.SetDefault("use_colors", defaultConfig.UseColors)
 	v.SetDefault("confirm_tokens", defaultConfig.ConfirmTokens)
 	v.SetDefault("include", defaultConfig.Include)
 

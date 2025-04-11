@@ -50,14 +50,14 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "Simple Path No Filters",
 			path: "test.txt",
 			config: &Config{
-				Logger: logutil.NewLogger(logutil.WarnLevel, nil, "", false), // Minimal logging
+				Logger: logutil.NewLogger(logutil.WarnLevel, nil, ""), // Minimal logging
 			},
 		},
 		{
 			name: "With Include Filters",
 			path: "src/main.go",
 			config: &Config{
-				Logger:      logutil.NewLogger(logutil.WarnLevel, nil, "", false),
+				Logger:      logutil.NewLogger(logutil.WarnLevel, nil, ""),
 				IncludeExts: []string{".go", ".md", ".txt"},
 			},
 		},
@@ -65,7 +65,7 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "With Exclude Filters",
 			path: "dist/bundle.js",
 			config: &Config{
-				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, "", false),
+				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, ""),
 				ExcludeExts:  []string{".exe", ".bin", ".obj"},
 				ExcludeNames: []string{"node_modules", "dist", "build"},
 			},
@@ -74,7 +74,7 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "With All Filters",
 			path: "src/components/App.tsx",
 			config: &Config{
-				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, "", false),
+				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, ""),
 				IncludeExts:  []string{".go", ".md", ".ts", ".tsx"},
 				ExcludeExts:  []string{".exe", ".bin", ".obj"},
 				ExcludeNames: []string{"node_modules", "dist", "build"},
@@ -105,7 +105,7 @@ func BenchmarkCalculateStatisticsWithTokenCounting(b *testing.B) {
 		},
 	}
 
-	logger := logutil.NewLogger(logutil.WarnLevel, nil, "", false)
+	logger := logutil.NewLogger(logutil.WarnLevel, nil, "")
 
 	b.ResetTimer()
 	b.ReportAllocs()

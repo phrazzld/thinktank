@@ -13,7 +13,6 @@ include = ""  # Leave empty to include all file types
 # Display options
 verbose = false  # Enable verbose logging
 log_level = "info"  # Log level (debug, info, warn, error)
-use_colors = true  # Use colored output
 no_spinner = false  # Disable spinner animation
 
 # Template settings

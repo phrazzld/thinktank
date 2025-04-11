@@ -28,7 +28,7 @@ func TestLogLevelString(t *testing.T) {
 
 func TestLoggerLevelFiltering(t *testing.T) {
 	buf := new(bytes.Buffer)
-	logger := NewLogger(InfoLevel, buf, "", false)
+	logger := NewLogger(InfoLevel, buf, "")
 
 	// Debug message should not be logged at Info level
 	logger.Debug("This should not be logged")
@@ -58,7 +58,7 @@ func TestLoggerLevelFiltering(t *testing.T) {
 func TestLoggerPrefix(t *testing.T) {
 	buf := new(bytes.Buffer)
 	prefix := "TEST: "
-	logger := NewLogger(DebugLevel, buf, prefix, false)
+	logger := NewLogger(DebugLevel, buf, prefix)
 
 	logger.Info("Message")
 	if !strings.Contains(buf.String(), prefix) {
