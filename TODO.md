@@ -43,7 +43,7 @@
   - **Depends On:** Update CLI Configuration Struct (cmd)
   - **AC Ref:** PLAN.MD Detailed Step 3
 
-- [ ] **Update Core Configuration Struct (internal)**
+- [x] **Update Core Configuration Struct (internal)**
   - **Action:** Add the `AuditLogFile string` field to the `CliConfig` struct in `internal/architect/types.go`.
   - **Depends On:** None
   - **AC Ref:** PLAN.MD Detailed Step 4

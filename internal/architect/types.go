@@ -9,8 +9,9 @@ type CliConfig struct {
 	InstructionsFile string
 
 	// Output configuration
-	OutputFile string
-	Format     string
+	OutputFile   string
+	AuditLogFile string // Path to write structured audit logs (JSON Lines)
+	Format       string
 
 	// Context gathering options
 	Paths        []string
