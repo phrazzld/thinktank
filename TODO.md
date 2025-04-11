@@ -71,7 +71,7 @@
   - **Depends On:** Update `cmd.CliConfig` struct definition, Verify `DefaultConfig()` function correctness
   - **AC Ref:** PLAN.md Step 4
 
-- [ ] **Task Title:** Update `ParseFlagsWithEnv` to populate `CliConfig` directly
+- [x] **Task Title:** Update `ParseFlagsWithEnv` to populate `CliConfig` directly
   - **Action:** Modify `ParseFlagsWithEnv` to populate the local `config *CliConfig` struct directly using the values parsed from flags and the `GEMINI_API_KEY` environment variable (via `getenv`). Remove any logic related to preparing data for `ConvertConfigToMap`.
   - **Depends On:** Update `ParseFlagsWithEnv` to define all flags
   - **AC Ref:** PLAN.md Step 4
