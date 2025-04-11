@@ -28,7 +28,6 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 - **XML-Structured Approach**: Uses a simple XML structure for instructions and context
 - **Instructions File Input**: Load instructions from external files
 - **Structured Logging**: Clear, structured logs with configurable verbosity levels
-- **Interactive Progress**: Visual spinner indicates progress during API calls
 - **User Confirmation**: Optional confirmation for large token counts
 
 ## Installation
