@@ -25,11 +25,12 @@ func TestLegacyConfigWithClarifyFieldsIsIgnored(t *testing.T) {
 		t.Fatalf("Failed to create config directory: %v", err)
 	}
 
-	// Create config with legacy clarify fields
+	// Create config with legacy fields that should be ignored
 	legacyConfig := `output_file = "test-output.md"
 model = "test-model"
 clarify_task = true
 
+# Template-related settings that should be ignored
 [templates]
 default = "default.tmpl"
 clarify = "clarify.tmpl"
@@ -69,30 +70,6 @@ refine = "refine.tmpl"
 	// and ensuring ClarifyTask isn't exposed even though it was in the config file
 	appConfig := manager.config
 
-	// Let's verify the template config doesn't contain clarify/refine templates
-	tConfig := appConfig.Templates
-
-	// Check if templates map contains keys for templates
-	templateFields := map[string]string{
-		"Default": tConfig.Default,
-		"Test":    tConfig.Test,
-		"Custom":  tConfig.Custom,
-	}
-
-	// Verify the map doesn't have Clarify or Refine keys
-	for k, v := range templateFields {
-		if k == "Clarify" || k == "Refine" {
-			t.Errorf("Template config unexpectedly contains %s field with value %s", k, v)
-		}
-	}
-
-	// Verify the clarify template path isn't retrievable
-	if _, ok := manager.getTemplatePathFromConfig("clarify"); ok {
-		t.Error("getTemplatePathFromConfig unexpectedly provides a path for 'clarify'")
-	}
-
-	// Verify the refine template path isn't retrievable
-	if _, ok := manager.getTemplatePathFromConfig("refine"); ok {
-		t.Error("getTemplatePathFromConfig unexpectedly provides a path for 'refine'")
-	}
+	// Template config has been removed, so no need to check for template-related fields
+	// Just verify that loading config with legacy template fields doesn't cause errors
 }

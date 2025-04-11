@@ -54,7 +54,7 @@
     * **Depends On:** Task: Remove Template Fields from Config (`internal/config/`)
     * **AC Ref:** Plan Section 2 (Configuration Changes), Plan Section 3 (Task 7)
 
-- [ ] **Task: Update Config Tests (`internal/config/loader_test.go`, `legacy_config_test.go`)**
+- [x] **Task: Update Config Tests (`internal/config/loader_test.go`, `legacy_config_test.go`)**
     * **Action:** Rewrite config loader tests to remove checks for template loading, `GetTemplatePath`, and template-related configuration fields. Ensure legacy config tests still handle potentially ignored fields correctly if applicable, but without checking for template fields specifically.
     * **Depends On:** Task: Remove Template Logic from Config Loader (`internal/config/loader.go`)
     * **AC Ref:** Plan Section 3 (Task 7), Plan Section 6 (Unit Tests)
