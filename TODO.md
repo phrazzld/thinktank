@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Section 2 (Type Definitions), Plan Section 4 (CLIConfig Structs)
 
-- [ ] **Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)**
+- [x] **Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)**
     - **Action:** Update `ParseFlagsWithEnv` function: Remove definitions for `--task-file`, `--prompt-template`, `--list-examples`, `--show-example`. Add definition for a required `--instructions` string flag. Update flag parsing logic to populate `InstructionsFile` in `CliConfig`. Remove population of deleted fields.
     - **Depends On:** Task: Update Core CliConfig Types
     - **AC Ref:** Plan Section 3 (Task 1), Plan Section 4 (CLIConfig Structs)

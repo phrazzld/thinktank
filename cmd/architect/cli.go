@@ -78,7 +78,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config := &CliConfig{}
 
 	// Define flags
-	taskFileFlag := flagSet.String("task-file", "", "Path to a file containing the task description.")
+	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
 	outputFileFlag := flagSet.String("output", defaultOutputFile, "Output file path for the generated plan.")
 	modelNameFlag := flagSet.String("model", defaultModel, "Gemini model to use for generation.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
@@ -90,9 +90,6 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	formatFlag := flagSet.String("format", defaultFormat, "Format string for each file. Use {path} and {content}.")
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
-	promptTemplateFlag := flagSet.String("prompt-template", "", "Path to a custom prompt template file (.tmpl)")
-	listExamplesFlag := flagSet.Bool("list-examples", false, "List available example prompt template files")
-	showExampleFlag := flagSet.String("show-example", "", "Display the content of a specific example template")
 
 	// Set custom usage message
 	flagSet.Usage = func() {
@@ -119,7 +116,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	}
 
 	// Store flag values in configuration
-	config.TaskFile = *taskFileFlag
+	config.InstructionsFile = *instructionsFileFlag
 	config.OutputFile = *outputFileFlag
 	config.ModelName = *modelNameFlag
 	config.Verbose = *verboseFlag
@@ -130,21 +127,16 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.Format = *formatFlag
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
-	config.PromptTemplate = *promptTemplateFlag
-	config.ListExamples = *listExamplesFlag
-	config.ShowExample = *showExampleFlag
 	config.Paths = flagSet.Args()
 	config.ApiKey = getenv(apiKeyEnvVar)
 
-	// Basic validation for non-special commands
-	if !config.ListExamples && config.ShowExample == "" {
-		if config.TaskFile == "" {
-			return nil, fmt.Errorf("missing required flag --task-file")
-		}
+	// Basic validation
+	if config.InstructionsFile == "" && !config.DryRun {
+		return nil, fmt.Errorf("missing required flag --instructions")
+	}
 
-		if len(config.Paths) == 0 {
-			return nil, fmt.Errorf("no paths specified for project context")
-		}
+	if len(config.Paths) == 0 {
+		return nil, fmt.Errorf("no paths specified for project context")
 	}
 
 	return config, nil
