@@ -13,7 +13,7 @@
   - **AC Ref:** PLAN.md Step 1
 
 ## Delete Config File Loading Code
-- [ ] **Task Title:** Delete config loader implementation file
+- [x] **Task Title:** Delete config loader implementation file
   - **Action:** Delete the file `internal/config/loader.go`.
   - **Depends On:** Tidy Go module dependencies
   - **AC Ref:** PLAN.md Step 2
