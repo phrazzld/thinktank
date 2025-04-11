@@ -66,7 +66,7 @@
     * **Depends On:** None
     * **AC Ref:** Plan Section 4 (FileUtil)
 
-- [ ] **Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`)**
+- [x] **Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`)**
     * **Action:** Change the signature of `GatherProjectContext` to `func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, error)`. Modify the implementation to collect processed files into a `[]FileMeta` slice instead of building a formatted string. Remove internal usage of `config.Format`.
     * **Depends On:** Task: Define FileMeta Struct (`internal/fileutil/fileutil.go`)
     * **AC Ref:** Plan Section 2 (Structured Context), Plan Section 3 (Task 3), Plan Section 4 (FileUtil)

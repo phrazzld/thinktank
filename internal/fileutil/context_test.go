@@ -3,7 +3,6 @@ package fileutil
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -62,26 +61,26 @@ func TestGatherProjectContext(t *testing.T) {
 	defer cleanup()
 
 	tests := []struct {
-		name               string
-		paths              []string
-		include            string
-		exclude            string
-		excludeNames       string
-		expectedFiles      int
-		unexpectedContents []string
-		expectedContents   []string
+		name            string
+		paths           []string
+		include         string
+		exclude         string
+		excludeNames    string
+		expectedFiles   int
+		unexpectedPaths []string
+		expectedPaths   []string
 	}{
 		{
 			name:          "All files, no filters",
 			paths:         []string{testDir},
 			expectedFiles: 8, // Go/MD/JSON files and dist/app.js, excluding hidden, binary, and some excluded dirs
-			unexpectedContents: []string{
+			unexpectedPaths: []string{
 				"binary.bin",
 				".git",
 				".gitignore",
 				".env",
 			},
-			expectedContents: []string{
+			expectedPaths: []string{
 				"main.go",
 				"README.md",
 				"config.json",
@@ -95,7 +94,7 @@ func TestGatherProjectContext(t *testing.T) {
 			paths:         []string{testDir},
 			include:       ".go",
 			expectedFiles: 4, // All .go files, excluding hidden and excluded dirs
-			unexpectedContents: []string{
+			unexpectedPaths: []string{
 				"README.md",
 				"config.json",
 				"binary.bin",
@@ -104,7 +103,7 @@ func TestGatherProjectContext(t *testing.T) {
 				".gitignore",
 				".env",
 			},
-			expectedContents: []string{
+			expectedPaths: []string{
 				"main.go",
 				"lib.go",
 				"helper.go",
@@ -116,7 +115,7 @@ func TestGatherProjectContext(t *testing.T) {
 			paths:         []string{testDir},
 			include:       ".go,.md",
 			expectedFiles: 5, // .go and .md files
-			unexpectedContents: []string{
+			unexpectedPaths: []string{
 				"config.json",
 				"binary.bin",
 				"node_modules",
@@ -124,7 +123,7 @@ func TestGatherProjectContext(t *testing.T) {
 				".gitignore",
 				".env",
 			},
-			expectedContents: []string{
+			expectedPaths: []string{
 				"main.go",
 				"README.md",
 				"lib.go",
@@ -137,7 +136,7 @@ func TestGatherProjectContext(t *testing.T) {
 			paths:         []string{testDir},
 			exclude:       ".go",
 			expectedFiles: 4, // Everything except .go files, hidden files, and excluded dirs
-			unexpectedContents: []string{
+			unexpectedPaths: []string{
 				"main.go",
 				"lib.go",
 				"helper.go",
@@ -147,7 +146,7 @@ func TestGatherProjectContext(t *testing.T) {
 				".gitignore",
 				".env",
 			},
-			expectedContents: []string{
+			expectedPaths: []string{
 				"README.md",
 				"config.json",
 				"app.js",
@@ -158,14 +157,14 @@ func TestGatherProjectContext(t *testing.T) {
 			paths:         []string{testDir},
 			excludeNames:  "dist",
 			expectedFiles: 7, // All non-excluded files
-			unexpectedContents: []string{
+			unexpectedPaths: []string{
 				"binary.bin",
 				".git",
 				".gitignore",
 				".env",
 				"dist/app.js",
 			},
-			expectedContents: []string{
+			expectedPaths: []string{
 				"main.go",
 				"README.md",
 				"config.json",
@@ -175,7 +174,7 @@ func TestGatherProjectContext(t *testing.T) {
 			name:          "Specific file paths",
 			paths:         []string{filepath.Join(testDir, "main.go"), filepath.Join(testDir, "README.md")},
 			expectedFiles: 2, // Just the 2 specified files
-			expectedContents: []string{
+			expectedPaths: []string{
 				"main.go",
 				"README.md",
 			},
@@ -193,7 +192,7 @@ func TestGatherProjectContext(t *testing.T) {
 			config := NewConfig(true, tt.include, tt.exclude, tt.excludeNames, "<{path}>\n{content}\n</{path}>", logger)
 
 			// Gather context
-			context, processedFiles, err := GatherProjectContext(tt.paths, config)
+			files, processedFiles, err := GatherProjectContext(tt.paths, config)
 			if err != nil {
 				t.Fatalf("GatherProjectContext returned error: %v", err)
 			}
@@ -203,26 +202,39 @@ func TestGatherProjectContext(t *testing.T) {
 				t.Errorf("Expected %d processed files, got %d", tt.expectedFiles, processedFiles)
 			}
 
-			// Check that unexpected contents are not included
-			for _, unexpected := range tt.unexpectedContents {
-				if strings.Contains(context, unexpected) {
-					t.Errorf("Context contains unexpected content: %s", unexpected)
+			// Check that file count matches returned slice length
+			if len(files) != processedFiles {
+				t.Errorf("Expected files slice length to be %d, got %d", processedFiles, len(files))
+			}
+
+			// Convert FileMeta slice to a simple map for easier testing
+			pathMap := make(map[string]string)
+			for _, file := range files {
+				baseFileName := filepath.Base(file.Path)
+				pathMap[baseFileName] = file.Content
+			}
+
+			// Check that unexpected paths are not included
+			for _, unexpectedPath := range tt.unexpectedPaths {
+				basePath := filepath.Base(unexpectedPath)
+				if _, exists := pathMap[basePath]; exists {
+					t.Errorf("Result contains unexpected path: %s", unexpectedPath)
 				}
 			}
 
-			// Check that expected contents are included
-			for _, expected := range tt.expectedContents {
-				if !strings.Contains(context, expected) {
-					t.Errorf("Context doesn't contain expected content: %s", expected)
+			// Check that expected paths are included
+			for _, expectedPath := range tt.expectedPaths {
+				basePath := filepath.Base(expectedPath)
+				if _, exists := pathMap[basePath]; !exists {
+					t.Errorf("Result doesn't contain expected path: %s", expectedPath)
 				}
 			}
 
-			// Check context wrapping
-			if !strings.HasPrefix(context, "<context>") {
-				t.Errorf("Context should start with <context>")
-			}
-			if !strings.HasSuffix(context, "</context>") {
-				t.Errorf("Context should end with </context>")
+			// Check that each FileMeta has non-empty content
+			for _, file := range files {
+				if file.Content == "" {
+					t.Errorf("File %s has empty content", file.Path)
+				}
 			}
 		})
 	}
@@ -244,7 +256,7 @@ func TestFileCollector(t *testing.T) {
 	config.SetFileCollector(collector)
 
 	// Gather context
-	_, processedFiles, err := GatherProjectContext([]string{testDir}, config)
+	files, processedFiles, err := GatherProjectContext([]string{testDir}, config)
 	if err != nil {
 		t.Fatalf("GatherProjectContext returned error: %v", err)
 	}
@@ -266,64 +278,18 @@ func TestFileCollector(t *testing.T) {
 			t.Errorf("Collected non-.go file: %s", file)
 		}
 	}
-}
 
-func TestFormatting(t *testing.T) {
-	testDir, cleanup := setupTestDir(t)
-	defer cleanup()
-
-	// Create different format strings and check the output
-	formats := []struct {
-		name           string
-		format         string
-		expectedPrefix string
-		expectedSuffix string
-	}{
-		{
-			name:           "Default format",
-			format:         "<{path}>\n{content}\n</{path}>",
-			expectedPrefix: "<",
-			expectedSuffix: ">",
-		},
-		{
-			name:           "Markdown code blocks",
-			format:         "## {path}\n```\n{content}\n```\n",
-			expectedPrefix: "##",
-			expectedSuffix: "```",
-		},
-		{
-			name:           "Simple format",
-			format:         "// FILE: {path}\n{content}\n",
-			expectedPrefix: "// FILE:",
-			expectedSuffix: "",
-		},
+	// Check that all files in the result slice have .go extension
+	if len(files) != processedFiles {
+		t.Errorf("Expected files slice length to be %d, got %d", processedFiles, len(files))
 	}
 
-	for _, fmt := range formats {
-		t.Run(fmt.name, func(t *testing.T) {
-			logger := NewMockLogger()
-			config := NewConfig(true, "", "", "", fmt.format, logger)
-
-			// Gather context with just one file
-			paths := []string{filepath.Join(testDir, "main.go")}
-			context, processedFiles, err := GatherProjectContext(paths, config)
-			if err != nil {
-				t.Fatalf("GatherProjectContext returned error: %v", err)
-			}
-
-			// Check processed files count
-			if processedFiles != 1 {
-				t.Errorf("Expected 1 processed file, got %d", processedFiles)
-			}
-
-			// Check context contents for format
-			contextWithoutWrapper := strings.TrimPrefix(strings.TrimSuffix(context, "</context>"), "<context>\n")
-			if !strings.Contains(contextWithoutWrapper, fmt.expectedPrefix) {
-				t.Errorf("Context doesn't contain expected prefix: %s", fmt.expectedPrefix)
-			}
-			if fmt.expectedSuffix != "" && !strings.Contains(contextWithoutWrapper, fmt.expectedSuffix) {
-				t.Errorf("Context doesn't contain expected suffix: %s", fmt.expectedSuffix)
-			}
-		})
+	for _, file := range files {
+		if filepath.Ext(file.Path) != ".go" {
+			t.Errorf("Result contains non-.go file: %s", file.Path)
+		}
 	}
 }
+
+// TestFormatting is not needed anymore as the format field is no longer used in GatherProjectContext
+// The formatting will be handled by the prompt stitching logic
