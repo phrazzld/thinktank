@@ -7,7 +7,7 @@
   - **Depends On:** None
   - **AC Ref:** PLAN.md Step 1
 
-- [ ] **Task Title:** Tidy Go module dependencies
+- [x] **Task Title:** Tidy Go module dependencies
   - **Action:** Execute `go mod tidy` in the terminal at the project root. Verify `go.mod` and `go.sum` are updated correctly.
   - **Depends On:** Remove Viper dependency via Go modules
   - **AC Ref:** PLAN.md Step 1
