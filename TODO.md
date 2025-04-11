@@ -169,3 +169,15 @@
   - **Action:** Run the application with the `--help` flag. Verify that the output accurately reflects all available flags, their descriptions, default values, and mentions the `GEMINI_API_KEY` environment variable. Ensure the usage examples are correct. Update flag descriptions in `cmd/architect/cli.go` if necessary.
   - **Depends On:** Update `ParseFlagsWithEnv` to define all flags
   - **AC Ref:** PLAN.md Step 8
+  
+## Code Review Improvements
+
+- [ ] **Task Title:** Refactor validation logic in CLI
+  - **Action:** Modify `cmd/architect/cli.go` to improve separation of concerns between `ParseFlagsWithEnv` and `ValidateInputs`. Move all logical validation (checking for required flags based on mode, API key presence) into the `ValidateInputs` function. Keep only parsing-related errors in `ParseFlagsWithEnv`. Update corresponding tests to verify both functions correctly handle their respective validation responsibilities.
+  - **Depends On:** None (already completed tasks)
+  - **AC Ref:** CODE_REVIEW.md
+
+- [ ] **Task Title:** Investigate color dependency removal
+  - **Action:** Review the removal of `github.com/fatih/color` and related `mattn` dependencies. Determine if this was intentional as part of the configuration simplification. If unintentional, assess the impact on user experience (particularly the loss of colored output). Document the finding and, if needed, create a separate task to restore color functionality.
+  - **Depends On:** None (already completed tasks)
+  - **AC Ref:** CODE_REVIEW.md
