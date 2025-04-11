@@ -38,3 +38,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
   - **Output:** The field does not exist in the internal CliConfig struct in `internal/architect/types.go`. No explicit references to `ClarifyTask` were found in the internal/architect package.
+
+- [x] **Remove fields from AppConfig in config.go**
+  - **Action:** In `internal/config/config.go`, check for and remove any `ClarifyTask` field from the AppConfig struct if present.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.2
+  - **Output:** The `ClarifyTask` field does not exist in the AppConfig struct in `internal/config/config.go`. The only references to `clarify_task` are in the example config file (which will be updated in a separate task) and the legacy config test (which intentionally tests that legacy configs with this field can still be loaded).

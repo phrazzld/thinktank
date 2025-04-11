@@ -33,7 +33,7 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
 
-- [ ] **Remove fields from AppConfig in config.go**
+- [x] **Remove fields from AppConfig in config.go**
   - **Action:** In `internal/config/config.go`, check for and remove any `ClarifyTask` field from the AppConfig struct if present.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
