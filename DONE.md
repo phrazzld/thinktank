@@ -44,3 +44,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
   - **Output:** The `ClarifyTask` field does not exist in the AppConfig struct in `internal/config/config.go`. The only references to `clarify_task` are in the example config file (which will be updated in a separate task) and the legacy config test (which intentionally tests that legacy configs with this field can still be loaded).
+
+- [x] **Remove fields from TemplateConfig**
+  - **Action:** In `internal/config/config.go`, delete the `Clarify` and `Refine` fields from the TemplateConfig struct if present.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.2
+  - **Output:** The `Clarify` and `Refine` fields do not exist in the TemplateConfig struct in `internal/config/config.go`. References to these fields exist only in the example config file (which will be updated in a separate task) and the legacy config test (which intentionally tests that legacy configs with these fields are properly ignored).

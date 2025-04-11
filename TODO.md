@@ -38,7 +38,7 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
 
-- [ ] **Remove fields from TemplateConfig**
+- [x] **Remove fields from TemplateConfig**
   - **Action:** In `internal/config/config.go`, delete the `Clarify` and `Refine` fields from the TemplateConfig struct if present.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
