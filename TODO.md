@@ -107,7 +107,7 @@
     * **Depends On:** Task: Remove Prompt Package (`internal/prompt/`)
     * **AC Ref:** Plan Section 3 (Task 6)
 
-- [ ] **Task: Update Output Tests (`internal/architect/output_test.go`)**
+- [x] **Task: Update Output Tests (`internal/architect/output_test.go`)**
     * **Action:** Remove tests for `GenerateAndSavePlan*`. Update or add tests for `SaveToFile` if its core logic changed (likely minimal changes needed). Remove mocks related to prompt managers.
     * **Depends On:** Task: Refactor Output Writing (`internal/architect/output.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)
@@ -126,24 +126,7 @@
     * **Depends On:** Task: Refactor Core Application Flow (`internal/architect/app.go`), Task: Refactor Output Writing (`internal/architect/output.go`), Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Integration Tests)
 
-- [ ] **Task: Update README.md**
-    * **Action:** Thoroughly revise `README.md`: Update Usage section with new command examples (`architect --instructions ...`). Remove references to `--task-file`, `--prompt-template`, example templates. Update Configuration Options table. Explain the new "Instructions + Context Dump" philosophy.
+- [ ] **Task: Update documentation, like README.md and CLAUDE.md**
+    * **Action:** Thoroughly revise `README.md` and `CLAUDE.md`
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 9)
-
-- [ ] **Task: Update CLAUDE.md**
-    * **Action:** Update the Run command example in `CLAUDE.md` to reflect the new CLI structure.
-    * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
-    * **AC Ref:** Plan Section 3 (Task 9)
-
-- [ ] **Task: Verify CI Pipeline (`ci.yml`)**
-    * **Action:** Run the CI pipeline. Ensure all linting, building, and rewritten tests pass. Verify test coverage meets requirements.
-    * **Depends On:** Task: Update Integration Tests (`internal/integration/`), Task: Update CLI Tests (`cmd/architect/cli_test.go`), Task: Update `fileutil` Tests (`internal/fileutil/context_test.go`), Task: Update Config Tests (`internal/config/loader_test.go`), Task: Add Prompt Stitching Unit Tests
-    * **AC Ref:** Plan Section 6 (CI Pipeline)
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-* **(Assumption Confirmed)** Assumed that *no* dynamic substitution or templating whatsoever is required in the instructions file content.
-* **(Assumption Confirmed)** Assumed `<instructions>...</instructions>` and `<context>...</context>` XML tags are the desired final prompt structure delimiters.
-* **(Assumption Confirmed)** Assumed `[]FileMeta{Path, Content}` is the preferred structure for internal context representation.
-* **Issue:** Need final decision on whether the `Format` field in `internal/fileutil/Config` is still needed/useful for formatting the context *during the stitching phase* or if that formatting logic should be hardcoded in the stitching function. (Current plan assumes stitching logic handles formatting using `<{path}>...</{path}>`).

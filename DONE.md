@@ -106,3 +106,8 @@
     * **Action:** Removed the `GenerateAndSavePlan` and `GenerateAndSavePlanWithConfig` methods. Renamed the interface from `OutputWriter` to `FileWriter` to better reflect its focused responsibility. Simplified the implementation by removing token management and API service dependencies, focusing solely on file writing. Updated all references in app.go to use the new interface.
     * **Depends On:** Task: Remove Prompt Package (`internal/prompt/`)
     * **AC Ref:** Plan Section 3 (Task 6)
+
+- [x] **Task: Update Output Tests (`internal/architect/output_test.go`)** - 2025-04-10
+    * **Action:** Verified that tests for `GenerateAndSavePlan*` methods were already removed during previous refactoring. Confirmed all tests for the remaining functionality (`SaveToFile`, `EscapeContent`, and `StitchPrompt`) were working correctly. Removed unused files (prompt.go and prompt_test.go) from the cmd/architect package as they depended on the deleted internal/prompt package.
+    * **Depends On:** Task: Refactor Output Writing (`internal/architect/output.go`)
+    * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Unit Tests)
