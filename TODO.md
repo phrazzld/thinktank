@@ -6,7 +6,7 @@
   - **Depends On:** None
   - **AC Ref:** PLAN.MD Detailed Step 1
 
-- [ ] **Define Audit Logger Interface**
+- [x] **Define Audit Logger Interface**
   - **Action:** Define the `AuditLogger` interface with `Log(entry AuditEntry) error` and `Close() error` methods in a new file `internal/auditlog/logger.go`.
   - **Depends On:** Define Audit Log Data Structures
   - **AC Ref:** PLAN.MD Detailed Step 2
