@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/phrazzld/architect/internal/architect"
-	"github.com/phrazzld/architect/internal/config"
 )
 
 // Main is the entry point for the architect CLI
@@ -26,37 +25,15 @@ func Main() {
 	logger := SetupLogging(cmdConfig)
 	logger.Info("Starting Architect - AI-assisted planning tool")
 
-	// Initialize XDG-compliant configuration system
-	configManager := config.NewManager(logger)
-
-	// Load configuration from files
-	err = configManager.LoadFromFiles()
-	if err != nil {
-		logger.Warn("Failed to load configuration: %v", err)
-		logger.Info("Using default configuration")
-	}
-
-	// Ensure configuration directories exist
-	if err := configManager.EnsureConfigDirs(); err != nil {
-		logger.Warn("Failed to create configuration directories: %v", err)
-	}
+	// Configuration is now managed via CLI flags and environment variables only
 
 	// Convert cmdConfig to architect.CliConfig to pass to core logic
 	coreConfig := convertToArchitectConfig(cmdConfig)
 
-	// Convert CLI flags to the format needed for merging
-	cliFlags := ConvertConfigToMap(cmdConfig)
-
-	// Merge CLI flags with loaded configuration
-	if err := configManager.MergeWithFlags(cliFlags); err != nil {
-		logger.Warn("Failed to merge CLI flags with configuration: %v", err)
-	}
-
-	// Get the final configuration
-	_ = configManager.GetConfig()
+	// CLI flags and environment variables are now the only source of configuration
 
 	// Execute the core application logic
-	err = architect.Execute(ctx, coreConfig, logger, configManager)
+	err = architect.Execute(ctx, coreConfig, logger)
 	if err != nil {
 		logger.Error("Application failed: %v", err)
 		os.Exit(1)

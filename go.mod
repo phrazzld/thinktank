@@ -6,7 +6,6 @@ toolchain go1.23.7
 
 require (
 	github.com/adrg/xdg v0.5.3
-	github.com/fatih/color v1.18.0
 	github.com/google/generative-ai-go v0.19.0
 	github.com/spf13/viper v1.20.1
 	google.golang.org/api v0.228.0
@@ -28,8 +27,6 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
-	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect
 	github.com/sagikazarmark/locafero v0.7.0 // indirect
 	github.com/sourcegraph/conc v0.3.0 // indirect

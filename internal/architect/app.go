@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -17,7 +16,6 @@ func Execute(
 	ctx context.Context,
 	cliConfig *CliConfig,
 	logger logutil.LoggerInterface,
-	configManager config.ManagerInterface,
 ) error {
 	// 1. Read instructions from file
 	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
@@ -186,7 +184,6 @@ func RunInternal(
 	ctx context.Context,
 	cliConfig *CliConfig,
 	logger logutil.LoggerInterface,
-	configManager config.ManagerInterface,
 	apiService APIService,
 ) error {
 	// 1. Read instructions from file

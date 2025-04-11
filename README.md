@@ -94,63 +94,21 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
 
-## Configuration Files
+## Configuration
 
-Architect follows the XDG Base Directory Specification for configuration files, looking for settings in standardized locations across platforms.
+Architect is configured entirely through command-line flags and the `GEMINI_API_KEY` environment variable. There are no configuration files to manage, which simplifies usage and deployment.
 
-### Configuration File Locations
+### Default Values
 
-- **User configuration**: `~/.config/architect/config.toml` (Linux/macOS) or `%APPDATA%\architect\config.toml` (Windows)
-- **System configuration**: `/etc/xdg/architect/config.toml` (Linux) or system-wide locations on other platforms
+Architect comes with sensible defaults for most options:
 
-### Automatic Configuration Initialization
+- Output file: `PLAN.md`
+- Model: `gemini-2.5-pro-exp-03-25`
+- Log level: `info`
+- File formatting: XML-style format for context building
+- Default exclusions for common binary, media files, and directories
 
-Architect automatically creates necessary configuration directories and files the first time you run any command:
-
-- No explicit initialization command is needed
-- User configuration directory (`~/.config/architect/`) is created automatically
-- Default configuration file is generated with sensible defaults
-
-When automatic initialization occurs, you'll see a message like this:
-
-```
-✓ Architect configuration initialized automatically.
-  Created default configuration file at: /home/user/.config/architect/config.toml
-  Applying default settings:
-    - Output File: PLAN.md
-    - Model: gemini-2.5-pro-exp-03-25
-    - Log Level: info
-  You can customize these settings by editing the file.
-```
-
-This message only appears the first time you run the tool, or if your configuration file is deleted.
-
-### Configuration Format
-
-Architect uses TOML as its configuration format. Example configuration:
-
-```toml
-# General configuration
-output_file = "PLAN.md"
-model = "gemini-2.5-pro-exp-03-25"
-log_level = "info"
-use_colors = true
-
-# File exclusion patterns
-[excludes]
-extensions = ".exe,.bin,.o,.jar"
-names = ".git,node_modules,vendor"
-```
-
-For a complete example with all available options, see the [example configuration file](internal/config/example_config.toml).
-
-### Configuration Precedence
-
-Settings are loaded with the following precedence (highest to lowest):
-1. Command-line flags
-2. User configuration file
-3. System configuration files
-4. Default values
+You can override any of these defaults using the appropriate command-line flags.
 
 
 ## Token Management
@@ -208,11 +166,10 @@ This approach provides a clear separation between the instructions and the codeb
 - Set `--log-level=debug` for detailed information about the analysis process
 
 ### Common Issues
-- **Running from different directories**: Architect uses XDG config paths, not project-relative configs
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
-- **Configuration file not created**: If the automatic initialization fails to create the configuration file (e.g., due to permission issues), the tool will still run with default settings in memory
-- **Custom configuration lost**: If you accidentally delete your configuration file, a new default one will be created on the next run; consider backing up your custom settings
-- **Unexpected default values**: If some settings are using defaults unexpectedly, check for typos in your config file as TOML requires exact field names
+- **Missing API key**: Ensure the `GEMINI_API_KEY` environment variable is set correctly
+- **Path issues**: When running commands, use absolute or correct relative paths to your project files
+- **Flag precedence**: Remember that CLI flags always take precedence over default values
 
 ## Contributing
 

@@ -137,15 +137,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	}
 	config.ApiKey = getenv(apiKeyEnvVar)
 
-	// Basic validation
-	if config.InstructionsFile == "" && !config.DryRun {
-		return nil, fmt.Errorf("missing required flag --instructions")
-	}
-
-	if len(config.Paths) == 0 {
-		return nil, fmt.Errorf("no paths specified for project context")
-	}
-
+	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
+	// Validation is now exclusively handled by ValidateInputs
 	return config, nil
 }
 
@@ -156,25 +149,12 @@ func SetupLogging(config *CliConfig) logutil.LoggerInterface {
 
 // SetupLoggingCustom initializes the logger with custom flag and writer for testing
 func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
-	// Use the LogLevel already set in the config during ParseFlags
+	// Apply verbose override if set
+	if config.Verbose {
+		config.LogLevel = logutil.DebugLevel
+	}
+
+	// Use the LogLevel set in the config
 	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
 	return logger
-}
-
-// ConvertConfigToMap converts a CliConfig to a map for use with config.Manager.MergeWithFlags
-func ConvertConfigToMap(cliConfig *CliConfig) map[string]interface{} {
-	return map[string]interface{}{
-		"instructionsFile": cliConfig.InstructionsFile,
-		"output":           cliConfig.OutputFile,
-		"model":            cliConfig.ModelName,
-		"verbose":          cliConfig.Verbose,
-		"logLevel":         cliConfig.LogLevel.String(),
-		"include":          cliConfig.Include,
-		"exclude":          cliConfig.Exclude,
-		"excludeNames":     cliConfig.ExcludeNames,
-		"format":           cliConfig.Format,
-		"dryRun":           cliConfig.DryRun,
-		"confirmTokens":    cliConfig.ConfirmTokens,
-		"apiKey":           cliConfig.ApiKey,
-	}
 }
