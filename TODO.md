@@ -160,7 +160,7 @@
   - **AC Ref:** PLAN.md Step 9, Definition of Done
 
 ## Update Documentation
-- [ ] **Task Title:** Update `README.md` documentation
+- [x] **Task Title:** Update `README.md` documentation
   - **Action:** Modify `README.md`. Remove any sections discussing configuration files (`config.toml`, XDG paths). Clearly state that configuration is managed *only* via CLI flags and the `GEMINI_API_KEY` environment variable. Update usage examples to reflect this. Ensure the README accurately describes all available flags and the required environment variable.
   - **Depends On:** Ensure all tests pass (implies functionality is stable)
   - **AC Ref:** PLAN.md Step 8
@@ -169,14 +169,3 @@
   - **Action:** Run the application with the `--help` flag. Verify that the output accurately reflects all available flags, their descriptions, default values, and mentions the `GEMINI_API_KEY` environment variable. Ensure the usage examples are correct. Update flag descriptions in `cmd/architect/cli.go` if necessary.
   - **Depends On:** Update `ParseFlagsWithEnv` to define all flags
   - **AC Ref:** PLAN.md Step 8
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-- [ ] **Issue/Assumption:** Assumed `AppConfig` in `internal/config` is retained but simplified.
-  - **Context:** PLAN.md Step 3 includes a decision: "*Decision: Keep `AppConfig` for now to hold merged values, but simplify it.*" This decomposition assumes this decision holds and `AppConfig` is not entirely removed or merged into `cmd.CliConfig`.
-
-- [ ] **Issue/Assumption:** Assumed specific fields should be removed from `internal/config/AppConfig`.
-  - **Context:** PLAN.md Step 3 suggests removing fields like `TaskDescription`, `TaskFile`, `Paths`, `DryRun`, `APIKey` from `AppConfig` if they are only set via flags/env and not defaulted. Task "Refine `AppConfig` struct fields" implements this assumption. Confirmation during implementation is advised.
-
-- [ ] **Issue/Assumption:** Assumed `architect.CliConfig` in `internal/architect/types.go` is the designated struct for passing final configuration to the core logic.
-  - **Context:** PLAN.md Steps 5, 6, and 7 imply that a config struct (likely `architect.CliConfig`) will be populated from `cmd.CliConfig` and passed to the core `architect.Execute` function. This decomposition follows that structure.
-```
