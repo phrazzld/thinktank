@@ -49,7 +49,7 @@
     * **Depends On:** None (Can be done early, but code won't compile until usages are removed)
     * **AC Ref:** Plan Section 2 (Configuration Changes), Plan Section 3 (Task 7)
 
-- [ ] **Task: Remove Template Logic from Config Loader (`internal/config/loader.go`)**
+- [x] **Task: Remove Template Logic from Config Loader (`internal/config/loader.go`)**
     * **Action:** Edit `internal/config/loader.go`: Remove the `GetTemplatePath` function. Remove any logic related to `templates.dir` or loading specific template names (e.g., `default`, `test`, `custom`) from the configuration within `LoadFromFiles` or `MergeWithFlags`. Remove `setViperDefaults` entries for templates.
     * **Depends On:** Task: Remove Template Fields from Config (`internal/config/`)
     * **AC Ref:** Plan Section 2 (Configuration Changes), Plan Section 3 (Task 7)
