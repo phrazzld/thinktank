@@ -117,7 +117,7 @@
   - **Depends On:** Remove `configManager` parameter from `RunInternal` signature, Review and update `architect.CliConfig` struct
   - **AC Ref:** PLAN.md Step 6
 
-- [ ] **Task Title:** Update `validateInputs` function in `app.go`
+- [x] **Task Title:** Update `validateInputs` function in `app.go`
   - **Action:** Ensure the internal `validateInputs` function within `internal/architect/app.go` uses the passed `cliConfig *CliConfig` parameter for its checks.
   - **Depends On:** Review and update `architect.CliConfig` struct
   - **AC Ref:** PLAN.md Step 6
