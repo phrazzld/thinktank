@@ -49,7 +49,7 @@
   - **Depends On:** Remove struct tags from `AppConfig`
   - **AC Ref:** PLAN.md Step 3
 
-- [ ] **Task Title:** Verify `DefaultConfig()` function correctness
+- [x] **Task Title:** Verify `DefaultConfig()` function correctness
   - **Action:** Ensure the `DefaultConfig()` function correctly initializes the simplified `AppConfig` struct with appropriate default values, reflecting any field removals or changes.
   - **Depends On:** Refine `AppConfig` struct fields
   - **AC Ref:** PLAN.md Step 3
