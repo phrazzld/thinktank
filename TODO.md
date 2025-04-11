@@ -12,7 +12,7 @@
   - **AC Ref:** PLAN.MD Detailed Step 2
 
 ## Audit Logger Implementations
-- [ ] **Implement FileAuditLogger**
+- [x] **Implement FileAuditLogger**
   - **Action:** Implement the `FileAuditLogger` struct and its methods (`NewFileAuditLogger`, `Log`, `Close`) in `internal/auditlog/logger.go`. Include file opening (append/create), JSON marshaling, writing JSON Lines, mutex locking for concurrent safety, and internal error logging using the provided `logutil.LoggerInterface`.
   - **Depends On:** Define Audit Logger Interface
   - **AC Ref:** PLAN.MD Detailed Step 2
