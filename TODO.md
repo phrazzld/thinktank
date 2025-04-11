@@ -17,7 +17,7 @@
     - **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     - **AC Ref:** Plan Section 3 (Task 1)
 
-- [ ] **Task: Update CLI Input Validation (`cmd/architect/cli.go`)**
+- [x] **Task: Update CLI Input Validation (`cmd/architect/cli.go`)**
     * **Action:** Modify `ValidateInputs` function. Remove the check for `TaskFile`. Add a check ensuring `InstructionsFile` is provided (unless in `--dry-run` mode, if that distinction is kept). Remove validation bypass logic related to example commands.
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 1)

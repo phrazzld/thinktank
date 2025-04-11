@@ -41,15 +41,10 @@ type CliConfig struct {
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
 func ValidateInputs(config *CliConfig, logger logutil.LoggerInterface) error {
-	// Check if we're in list examples or show example mode
-	if config.ListExamples || config.ShowExample != "" {
-		return nil // Skip validation for example commands
-	}
-
-	// Check for task file
-	if config.TaskFile == "" && !config.DryRun {
-		logger.Error("The required --task-file flag is missing.")
-		return fmt.Errorf("missing required --task-file flag")
+	// Check for instructions file
+	if config.InstructionsFile == "" && !config.DryRun {
+		logger.Error("The required --instructions flag is missing.")
+		return fmt.Errorf("missing required --instructions flag")
 	}
 
 	// Check for input paths
