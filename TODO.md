@@ -28,7 +28,7 @@
   - **AC Ref:** AC 1.1, AC 1.6
 
 ## Internal Configuration Removal
-- [ ] **Remove ClarifyTask field from internal CliConfig**
+- [x] **Remove ClarifyTask field from internal CliConfig**
   - **Action:** If present in `internal/architect/types.go`, delete the `ClarifyTask` field from any config struct.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2

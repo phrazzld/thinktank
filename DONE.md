@@ -32,3 +32,9 @@
   - **Depends On:** Remove clarify flag definition
   - **AC Ref:** AC 1.1, AC 1.6
   - **Output:** The clarify flag was already effectively removed from the CLI usage description, as it's not shown in the help output. No specific description text was found in the flagSet.Usage function that needed removal.
+
+- [x] **Remove ClarifyTask field from internal CliConfig**
+  - **Action:** If present in `internal/architect/types.go`, delete the `ClarifyTask` field from any config struct.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.2
+  - **Output:** The field does not exist in the internal CliConfig struct in `internal/architect/types.go`. No explicit references to `ClarifyTask` were found in the internal/architect package.
