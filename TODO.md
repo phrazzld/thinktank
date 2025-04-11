@@ -39,7 +39,7 @@
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 3
 
-- [ ] **Task Title:** Remove struct tags from `AppConfig`
+- [x] **Task Title:** Remove struct tags from `AppConfig`
   - **Action:** Remove all `mapstructure` and `toml` struct tags from the `AppConfig` struct definition in `internal/config/config.go`.
   - **Depends On:** Delete config loader implementation file
   - **AC Ref:** PLAN.md Step 3

@@ -28,39 +28,39 @@ const (
 // ExcludeConfig defines file exclusion configuration
 type ExcludeConfig struct {
 	// File extensions to exclude
-	Extensions string `mapstructure:"extensions" toml:"extensions"`
+	Extensions string
 	// File and directory names to exclude
-	Names string `mapstructure:"names" toml:"names"`
+	Names string
 }
 
-// AppConfig holds configuration settings loaded from config files, env vars, and flags
+// AppConfig holds configuration settings loaded from defaults, env vars, and flags
 type AppConfig struct {
 	// Task-related settings
-	TaskDescription string `mapstructure:"task_description" toml:"-"` // Not saved to config
-	TaskFile        string `mapstructure:"task_file" toml:"-"`        // Not saved to config
-	OutputFile      string `mapstructure:"output_file" toml:"output_file"`
-	ModelName       string `mapstructure:"model" toml:"model"`
+	TaskDescription string // Not saved to config
+	TaskFile        string // Not saved to config
+	OutputFile      string
+	ModelName       string
 
 	// File handling settings
-	Include       string `mapstructure:"include" toml:"include"`
-	Format        string `mapstructure:"format" toml:"format"`
-	ConfirmTokens int    `mapstructure:"confirm_tokens" toml:"confirm_tokens"`
+	Include       string
+	Format        string
+	ConfirmTokens int
 
 	// Logging and display settings
-	Verbose  bool             `mapstructure:"verbose" toml:"verbose"`
-	LogLevel logutil.LogLevel `mapstructure:"log_level" toml:"log_level"`
-	DryRun   bool             `mapstructure:"dry_run" toml:"-"` // Not saved to config
+	Verbose  bool
+	LogLevel logutil.LogLevel
+	DryRun   bool // Not saved to config
 
 	// Template settings have been removed
 
 	// Exclude settings (hierarchical)
-	Excludes ExcludeConfig `mapstructure:"excludes" toml:"excludes"`
+	Excludes ExcludeConfig
 
 	// Input paths (not saved to config file)
-	Paths []string `mapstructure:"paths" toml:"-"`
+	Paths []string
 
 	// API key (not saved to config file for security)
-	APIKey string `mapstructure:"api_key" toml:"-"`
+	APIKey string
 }
 
 // DefaultConfig returns a new AppConfig instance with default values
