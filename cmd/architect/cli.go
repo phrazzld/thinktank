@@ -23,24 +23,20 @@ const (
 
 // CliConfig holds the parsed command-line options
 type CliConfig struct {
-	TaskFile       string
-	OutputFile     string
-	ModelName      string
-	Verbose        bool
-	LogLevel       logutil.LogLevel
-	UseColors      bool
-	Include        string
-	Exclude        string
-	ExcludeNames   string
-	Format         string
-	DryRun         bool
-	ConfirmTokens  int
-	PromptTemplate string
-	// ClarifyTask field removed as part of the feature removal
-	ListExamples bool
-	ShowExample  string
-	Paths        []string
-	ApiKey       string
+	InstructionsFile string
+	OutputFile       string
+	ModelName        string
+	Verbose          bool
+	LogLevel         logutil.LogLevel
+	UseColors        bool
+	Include          string
+	Exclude          string
+	ExcludeNames     string
+	Format           string
+	DryRun           bool
+	ConfirmTokens    int
+	Paths            []string
+	ApiKey           string
 }
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
