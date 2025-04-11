@@ -61,7 +61,7 @@
   - **AC Ref:** PLAN.md Step 7
 
 ## Refactor `cmd/architect/cli.go`
-- [ ] **Task Title:** Update `cmd.CliConfig` struct definition
+- [x] **Task Title:** Update `cmd.CliConfig` struct definition
   - **Action:** Modify the `CliConfig` struct in `cmd/architect/cli.go` to include fields for *all* configurable options previously covered by flags *and* config files (e.g., `OutputFile`, `ModelName`, `Include`, `Exclude`, `ExcludeNames`, `Format`, `ConfirmTokens`, `Verbose`, `LogLevel`). Ensure field names and types are appropriate.
   - **Depends On:** Refine `AppConfig` struct fields
   - **AC Ref:** PLAN.md Step 4
