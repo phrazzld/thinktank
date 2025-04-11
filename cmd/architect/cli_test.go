@@ -84,26 +84,54 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Missing instructions file",
+			name: "Missing instructions file (now validated in ValidateInputs)",
 			args: []string{
 				"path1",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CliConfig{
+				InstructionsFile: "",
+				Paths:            []string{"path1"},
+				ApiKey:           "test-api-key",
+				OutputFile:       defaultOutputFile,
+				ModelName:        defaultModel,
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
+				ConfirmTokens:    0,
+				Verbose:          false,
+				LogLevel:         logutil.InfoLevel,
+				Include:          "",
+				DryRun:           false,
+			},
+			wantErr: false, // No longer errors at parse time
 		},
 		{
-			name: "Missing paths",
+			name: "Missing paths (now validated in ValidateInputs)",
 			args: []string{
 				"--instructions", "instructions.md",
 			},
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want:    nil,
-			wantErr: true,
+			want: &CliConfig{
+				InstructionsFile: "instructions.md",
+				Paths:            []string{},
+				ApiKey:           "test-api-key",
+				OutputFile:       defaultOutputFile,
+				ModelName:        defaultModel,
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
+				ConfirmTokens:    0,
+				Verbose:          false,
+				LogLevel:         logutil.InfoLevel,
+				Include:          "",
+				DryRun:           false,
+			},
+			wantErr: false, // No longer errors at parse time
 		},
 		{
 			name: "Missing API key",

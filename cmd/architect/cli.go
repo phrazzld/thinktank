@@ -137,15 +137,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	}
 	config.ApiKey = getenv(apiKeyEnvVar)
 
-	// Basic validation
-	if config.InstructionsFile == "" && !config.DryRun {
-		return nil, fmt.Errorf("missing required flag --instructions")
-	}
-
-	if len(config.Paths) == 0 {
-		return nil, fmt.Errorf("no paths specified for project context")
-	}
-
+	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
+	// Validation is now exclusively handled by ValidateInputs
 	return config, nil
 }
 

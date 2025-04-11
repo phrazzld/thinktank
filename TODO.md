@@ -172,7 +172,7 @@
   
 ## Code Review Improvements
 
-- [ ] **Task Title:** Refactor validation logic in CLI
+- [x] **Task Title:** Refactor validation logic in CLI
   - **Action:** Modify `cmd/architect/cli.go` to improve separation of concerns between `ParseFlagsWithEnv` and `ValidateInputs`. Move all logical validation (checking for required flags based on mode, API key presence) into the `ValidateInputs` function. Keep only parsing-related errors in `ParseFlagsWithEnv`. Update corresponding tests to verify both functions correctly handle their respective validation responsibilities.
   - **Depends On:** None (already completed tasks)
   - **AC Ref:** CODE_REVIEW.md
