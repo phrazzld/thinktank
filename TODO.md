@@ -44,7 +44,7 @@
     * **Depends On:** None (Can be done early, but code won't compile until usages are removed)
     * **AC Ref:** Plan Section 2 (Templating Removal), Plan Section 3 (Task 4)
 
-- [ ] **Task: Remove Template Fields from Config (`internal/config/`)**
+- [x] **Task: Remove Template Fields from Config (`internal/config/`)**
     * **Action:** Edit `internal/config/config.go`: Remove the `Templates TemplateConfig` field from the `AppConfig` struct. Update the `DefaultConfig` function accordingly.
     * **Depends On:** None (Can be done early, but code won't compile until usages are removed)
     * **AC Ref:** Plan Section 2 (Configuration Changes), Plan Section 3 (Task 7)
