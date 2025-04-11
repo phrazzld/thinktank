@@ -23,7 +23,7 @@
   - **Depends On:** Tidy Go module dependencies
   - **AC Ref:** PLAN.md Step 2
 
-- [ ] **Task Title:** Delete example config file
+- [x] **Task Title:** Delete example config file
   - **Action:** Delete the file `internal/config/example_config.toml`.
   - **Depends On:** Tidy Go module dependencies
   - **AC Ref:** PLAN.md Step 2
