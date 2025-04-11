@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -167,12 +166,12 @@ func Execute(
 	}
 	logger.Info("Plan generated successfully")
 
-	// 13. Create output writer
-	outputWriter := NewOutputWriter(logger, tokenManager)
+	// 13. Create file writer
+	fileWriter := NewFileWriter(logger)
 
 	// 14. Save output
 	logger.Info("Writing plan to %s...", cliConfig.OutputFile)
-	err = outputWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
+	err = fileWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
 	if err != nil {
 		return fmt.Errorf("error saving plan to file: %w", err)
 	}
@@ -336,12 +335,12 @@ func RunInternal(
 	}
 	logger.Info("Plan generated successfully")
 
-	// 13. Create output writer
-	outputWriter := NewOutputWriter(logger, tokenManager)
+	// 13. Create file writer
+	fileWriter := NewFileWriter(logger)
 
 	// 14. Save output
 	logger.Info("Writing plan to %s...", cliConfig.OutputFile)
-	err = outputWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
+	err = fileWriter.SaveToFile(generatedPlan, cliConfig.OutputFile)
 	if err != nil {
 		return fmt.Errorf("error saving plan to file: %w", err)
 	}

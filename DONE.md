@@ -101,3 +101,8 @@
         * Remove `HandleSpecialCommands`.
     * **Depends On:** Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`), Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`), Task: Remove Prompt Package (`internal/prompt/`)
     * **AC Ref:** Plan Section 3 (Task 5)
+
+- [x] **Task: Refactor Output Writing (`internal/architect/output.go`)** - 2025-04-10
+    * **Action:** Removed the `GenerateAndSavePlan` and `GenerateAndSavePlanWithConfig` methods. Renamed the interface from `OutputWriter` to `FileWriter` to better reflect its focused responsibility. Simplified the implementation by removing token management and API service dependencies, focusing solely on file writing. Updated all references in app.go to use the new interface.
+    * **Depends On:** Task: Remove Prompt Package (`internal/prompt/`)
+    * **AC Ref:** Plan Section 3 (Task 6)

@@ -102,7 +102,7 @@
     * **Depends On:** Task: Implement Prompt Stitching Logic (`internal/architect/app.go` or `output.go`), Task: Refactor `GatherProjectContext` (`internal/fileutil/fileutil.go`), Task: Remove Prompt Package (`internal/prompt/`)
     * **AC Ref:** Plan Section 3 (Task 5)
 
-- [ ] **Task: Refactor Output Writing (`internal/architect/output.go`)**
+- [x] **Task: Refactor Output Writing (`internal/architect/output.go`)**
     * **Action:** Remove the `GenerateAndSavePlan` and `GenerateAndSavePlanWithConfig` methods. The responsibility of prompt generation moves to `app.go`. Ensure `SaveToFile` remains functional, accepting the raw response string from the LLM. Remove dependencies on prompt-related types and interfaces.
     * **Depends On:** Task: Remove Prompt Package (`internal/prompt/`)
     * **AC Ref:** Plan Section 3 (Task 6)

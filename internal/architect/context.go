@@ -4,6 +4,7 @@ package architect
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
