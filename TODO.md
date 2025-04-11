@@ -126,7 +126,7 @@
     * **Depends On:** Task: Refactor Core Application Flow (`internal/architect/app.go`), Task: Refactor Output Writing (`internal/architect/output.go`), Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 8), Plan Section 6 (Integration Tests)
 
-- [ ] **Task: Update documentation, like README.md and CLAUDE.md**
-    * **Action:** Thoroughly revise `README.md` and `CLAUDE.md`
+- [x] **Task: Update documentation, like README.md and CLAUDE.md** - 2025-04-10
+    * **Action:** Thoroughly revised `README.md` and `CLAUDE.md` to reflect the new architecture and command structure. Updated all examples to use `--instructions` instead of `--task-file`. Removed all template-related documentation, including the "Custom Prompt Templates" section. Added a new "XML-Structured Approach" section explaining the new format. Updated configuration examples and troubleshooting sections.
     * **Depends On:** Task: Refactor CLI Flag Parsing (`cmd/architect/cli.go`)
     * **AC Ref:** Plan Section 3 (Task 9)

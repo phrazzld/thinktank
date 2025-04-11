@@ -6,13 +6,13 @@ A powerful code-base context analysis and planning tool that leverages Google's 
 
 Architect analyzes your codebase and uses Gemini AI to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, Architect provides contextually relevant guidance tailored to your specific project.
 
-## Important Update: Task Input Method
+## Important Update: Instruction Input Method
 
-**Please note:** The way you provide the task description to Architect has changed:
+**Please note:** The way you provide instructions to Architect has changed:
 
-* The `--task-file` flag is now **required** for generating plans. You must provide the task description in a file. This allows for more complex and structured task inputs.
-* The `--task` flag has been **removed**. All task descriptions must be provided via files.
-* For `--dry-run` operations, the `--task-file` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
+* The `--instructions` flag is now **required** for generating plans. You must provide the instructions in a file. This allows for more complex and structured inputs.
+* The `--task-file` flag has been **removed** and replaced with the `--instructions` flag.
+* For `--dry-run` operations, the `--instructions` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
 
 Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
 
@@ -25,8 +25,8 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 - **Git-Aware**: Respects .gitignore patterns when scanning your codebase
 - **Token Management**: Smart token counting with limit checking to prevent API errors
 - **Dry Run Mode**: Preview which files would be included and see token statistics before API calls
-- **Task File Input**: Load task descriptions from external files
-- **Custom Prompts**: Use your own prompt templates for specialized plan generation
+- **XML-Structured Approach**: Uses a simple XML structure for instructions and context
+- **Instructions File Input**: Load instructions from external files
 - **Structured Logging**: Clear, color-coded logs with configurable verbosity levels
 - **Interactive Progress**: Visual spinner indicates progress during API calls
 - **User Confirmation**: Optional confirmation for large token counts
@@ -46,42 +46,30 @@ go install
 ## Usage
 
 ```bash
-# Basic usage (Task description in task.txt)
-architect --task-file task.txt path/to/your/project
+# Basic usage (Instructions in instructions.txt)
+architect --instructions instructions.txt path/to/your/project
 
-# Example: Create a plan using a task file (e.g., auth_task.txt)
-# Contents of auth_task.txt: "Implement JWT-based user authentication and authorization"
-architect --task-file auth_task.txt ./
+# Example: Create a plan using an instructions file (e.g., auth_instructions.txt)
+# Contents of auth_instructions.txt: "Implement JWT-based user authentication and authorization"
+architect --instructions auth_instructions.txt ./
 
 # Specify output file (default is PLAN.md)
-architect --task-file task.txt --output auth_plan.md ./
+architect --instructions instructions.txt --output auth_plan.md ./
 
 # Include only specific file extensions
-architect --task-file task.txt --include .go,.md ./
+architect --instructions instructions.txt --include .go,.md ./
 
 # Use a different Gemini model
-architect --task-file task.txt --model gemini-2.5-pro-exp-03-25 ./
+architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 ./
 
 # Dry run to see which files would be included (without generating a plan)
 architect --dry-run ./
 
-# Dry run with context from a task file
-architect --dry-run --task-file task.txt ./
+# Dry run with instructions file
+architect --dry-run --instructions instructions.txt ./
 
 # Request confirmation before proceeding if token count exceeds threshold
-architect --task-file task.txt --confirm-tokens 25000 ./
-
-# Use a custom prompt template
-architect --task-file task.txt --prompt-template custom_template.tmpl ./
-
-# View available example templates
-architect --list-examples
-
-# View a specific example template
-architect --show-example feature.tmpl
-
-# Save an example template to a file (for customization)
-architect --show-example feature.tmpl > my-feature-template.tmpl
+architect --instructions instructions.txt --confirm-tokens 25000 ./
 ```
 
 ### Required Environment Variable
@@ -95,7 +83,7 @@ export GEMINI_API_KEY="your-api-key-here"
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--task-file` | Path to a file containing the task description (Required unless --dry-run is used) | `(Required)` |
+| `--instructions` | Path to a file containing the instructions (Required unless --dry-run is used) | `(Required)` |
 | `--output` | Output file path for the generated plan | `PLAN.md` |
 | `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
@@ -107,9 +95,6 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--format` | Format string for each file. Use {path} and {content} | `<{path}>\n```\n{content}\n```\n</{path}>\n\n` |
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
-| `--prompt-template` | Path to a custom prompt template file (.tmpl) | uses default template |
-| `--list-examples` | List available example prompt template files | `false` |
-| `--show-example` | Display the content of a specific example template | `""` |
 
 ## Configuration Files
 
@@ -127,7 +112,6 @@ Architect automatically creates necessary configuration directories and files th
 - No explicit initialization command is needed
 - User configuration directory (`~/.config/architect/`) is created automatically
 - Default configuration file is generated with sensible defaults
-- Template directory (`~/.config/architect/templates/`) is created for custom templates
 
 When automatic initialization occurs, you'll see a message like this:
 
@@ -138,7 +122,6 @@ When automatic initialization occurs, you'll see a message like this:
     - Output File: PLAN.md
     - Model: gemini-2.5-pro-exp-03-25
     - Log Level: info
-    - Default Template: default.tmpl
   You can customize these settings by editing the file.
 ```
 
@@ -154,11 +137,6 @@ output_file = "PLAN.md"
 model = "gemini-2.5-pro-exp-03-25"
 log_level = "info"
 use_colors = true
-
-# Template settings
-[templates]
-default = "default.tmpl" 
-dir = "templates"  # Relative to config dir or absolute path
 
 # File exclusion patterns
 [excludes]
@@ -176,16 +154,6 @@ Settings are loaded with the following precedence (highest to lowest):
 3. System configuration files
 4. Default values
 
-### Template Directories
-
-Templates are searched in this order:
-1. Absolute paths or paths relative to current directory (if specified directly)
-2. Custom paths configured in the config file
-3. User template directory: `~/.config/architect/templates/`
-4. System template directories
-5. Built-in embedded templates (included in the binary)
-
-The template system is designed to work properly when the application is installed globally. No matter which directory you run Architect from, it will always find the appropriate templates using the XDG-compliant paths or embedded defaults.
 
 ## Token Management
 
@@ -214,46 +182,16 @@ The generated PLAN.md includes:
 6. **Open Questions**: Ambiguities needing clarification
 
 
-## Custom Prompt Templates
+## XML-Structured Approach
 
-Architect supports custom prompt templates for specialized plan generation:
+Architect uses a simple XML structure to organize instructions and context:
 
-1. Create a .tmpl file using Go's text/template syntax
-2. Reference the following variables in your template:
-   - `{{.Task}}`: The task description
-   - `{{.Context}}`: The codebase context
-3. Pass your template file with `--prompt-template`
+1. Instructions are wrapped in `<instructions>...</instructions>` tags 
+2. Context files are wrapped in `<context>...</context>` tags
+3. Each file in the context is formatted with its path and content
+4. All XML special characters in file content are properly escaped
 
-### Example Templates
-
-Architect comes with several example prompt templates that you can use as starting points for your own custom templates:
-
-```bash
-# List available example templates
-architect --list-examples
-
-# View the content of a specific example template
-architect --show-example basic.tmpl
-
-# Save an example template to a file (for customization)
-architect --show-example feature.tmpl > my-feature-template.tmpl
-
-# Use your custom template
-architect --task-file task.txt --prompt-template my-feature-template.tmpl ./
-```
-
-Available example templates include:
-- `basic.tmpl`: A simple template with minimal structure
-- `detailed.tmpl`: A comprehensive template with detailed sections
-- `bugfix.tmpl`: A template specifically designed for bug fixes
-- `feature.tmpl`: A template designed for new feature implementation
-
-Templates are searched in this order:
-1. Absolute paths or paths relative to current directory (if specified directly)
-2. Custom paths configured in the config file
-3. User template directory: `~/.config/architect/templates/`
-4. System template directories
-5. Built-in embedded templates (included in the binary)
+This approach provides a clear separation between the instructions and the codebase context, making it easier for the LLM to understand and process the input.
 
 ## Troubleshooting
 
@@ -272,7 +210,6 @@ Templates are searched in this order:
 - Set `--log-level=debug` for detailed information about the analysis process
 
 ### Common Issues
-- **"Template not found"**: Ensure templates exist in the expected directories, or provide absolute paths
 - **Running from different directories**: Architect uses XDG config paths, not project-relative configs
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
 - **Configuration file not created**: If the automatic initialization fails to create the configuration file (e.g., due to permission issues), the tool will still run with default settings in memory
