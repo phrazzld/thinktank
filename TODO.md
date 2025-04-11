@@ -43,7 +43,7 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
 
-- [ ] **Update example config file**
+- [x] **Update example config file**
   - **Action:** In `internal/config/example_config.toml`, remove the `clarify_task = false` line and the `clarify = "clarify.tmpl"` and `refine = "refine.tmpl"` lines under the [templates] section.
   - **Depends On:** Remove fields from TemplateConfig
   - **AC Ref:** AC 1.2

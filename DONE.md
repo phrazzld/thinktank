@@ -50,3 +50,9 @@
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.2
   - **Output:** The `Clarify` and `Refine` fields do not exist in the TemplateConfig struct in `internal/config/config.go`. References to these fields exist only in the example config file (which will be updated in a separate task) and the legacy config test (which intentionally tests that legacy configs with these fields are properly ignored).
+
+- [x] **Update example config file**
+  - **Action:** In `internal/config/example_config.toml`, remove the `clarify_task = false` line and the `clarify = "clarify.tmpl"` and `refine = "refine.tmpl"` lines under the [templates] section.
+  - **Depends On:** Remove fields from TemplateConfig
+  - **AC Ref:** AC 1.2
+  - **Output:** Removed the `clarify_task = false` line from the general configuration section and the `clarify = "clarify.tmpl"` and `refine = "refine.tmpl"` lines from the [templates] section in the example config file while maintaining proper formatting and all other configuration options.

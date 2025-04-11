@@ -5,7 +5,6 @@
 output_file = "PLAN.md"  # Output file for generated plans
 model = "gemini-2.5-pro-exp-03-25"  # Gemini model to use
 format = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"  # Format for code snippets
-clarify_task = false  # Whether to enable task clarification
 confirm_tokens = 0  # Token threshold for confirmation (0 = never prompt)
 
 # Include patterns (comma-separated list)
@@ -20,8 +19,6 @@ no_spinner = false  # Disable spinner animation
 # Template settings
 [templates]
 default = "default.tmpl"  # Main template for generating plans
-clarify = "clarify.tmpl"  # Template for task clarification
-refine = "refine.tmpl"  # Template for refining task
 dir = "templates"  # Custom template directory (relative to config dir or absolute)
 
 # File exclusion patterns
