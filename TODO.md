@@ -28,7 +28,7 @@
   - **AC Ref:** PLAN.MD Detailed Step 2, PLAN.MD Detailed Step 4
 
 ## Configuration and Initialization
-- [ ] **Add Audit Log CLI Flag**
+- [x] **Add Audit Log CLI Flag**
   - **Action:** Add a new string flag `--audit-log-file` to `cmd/architect/cli.go` using `flagSet.String`. Include appropriate usage description.
   - **Depends On:** None
   - **AC Ref:** PLAN.MD Detailed Step 3
