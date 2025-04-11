@@ -133,7 +133,7 @@
   - **Depends On:** Remove `configManager` initialization and usage in `main.go`, Remove `configManager` parameter from `Execute` signature
   - **AC Ref:** PLAN.md Step 5
 
-- [ ] **Task Title:** Update `convertToArchitectConfig` function
+- [x] **Task Title:** Update `convertToArchitectConfig` function
   - **Action:** Review and update the `convertToArchitectConfig` function in `main.go`. Ensure it correctly maps all necessary fields from the `cmd.CliConfig` struct (populated by flags/env) to the `architect.CliConfig` struct (used by core logic).
   - **Depends On:** Update `cmd.CliConfig` struct definition, Review and update `architect.CliConfig` struct
   - **AC Ref:** PLAN.md Step 5
