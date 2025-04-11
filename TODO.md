@@ -58,7 +58,7 @@
   - **Depends On:** Implement FileAuditLogger, Implement NoOpAuditLogger, Update Config Conversion Logic
   - **AC Ref:** PLAN.MD Detailed Step 5
 
-- [ ] **Implement Error Handling for File Logger Init**
+- [x] **Implement Error Handling for File Logger Init**
   - **Action:** In `cmd/architect/main.go`, add error handling for the `auditlog.NewFileAuditLogger` call. If an error occurs, log it using the console logger and fall back to using `auditlog.NewNoOpAuditLogger`.
   - **Depends On:** Implement Audit Logger Initialization in Main
   - **AC Ref:** PLAN.MD Detailed Step 5

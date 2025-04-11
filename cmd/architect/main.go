@@ -30,8 +30,15 @@ func Main() {
 	// Note: The auditLogger will be passed to Execute() in a future task
 	var auditLogger auditlog.AuditLogger
 	if cmdConfig.AuditLogFile != "" {
-		auditLogger, _ = auditlog.NewFileAuditLogger(cmdConfig.AuditLogFile, logger)
-		logger.Info("Audit logging enabled to file: %s", cmdConfig.AuditLogFile)
+		fileLogger, err := auditlog.NewFileAuditLogger(cmdConfig.AuditLogFile, logger)
+		if err != nil {
+			// Log error and fall back to NoOp implementation
+			logger.Error("Failed to initialize file audit logger: %v. Audit logging disabled.", err)
+			auditLogger = auditlog.NewNoOpAuditLogger()
+		} else {
+			auditLogger = fileLogger
+			logger.Info("Audit logging enabled to file: %s", cmdConfig.AuditLogFile)
+		}
 	} else {
 		auditLogger = auditlog.NewNoOpAuditLogger()
 		logger.Debug("Audit logging is disabled")
