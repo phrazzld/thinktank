@@ -185,7 +185,6 @@ func RunInternal(
 	ctx context.Context,
 	cliConfig *CliConfig,
 	logger logutil.LoggerInterface,
-	configManager config.ManagerInterface,
 	apiService APIService,
 ) error {
 	// 1. Read instructions from file

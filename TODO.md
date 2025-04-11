@@ -102,7 +102,7 @@
   - **Depends On:** Delete config manager interface file
   - **AC Ref:** PLAN.md Step 6
 
-- [ ] **Task Title:** Remove `configManager` parameter from `RunInternal` signature
+- [x] **Task Title:** Remove `configManager` parameter from `RunInternal` signature
   - **Action:** Modify the function signature of `RunInternal` in `internal/architect/app.go` to remove the `configManager config.ManagerInterface` parameter.
   - **Depends On:** Delete config manager interface file
   - **AC Ref:** PLAN.md Step 6
