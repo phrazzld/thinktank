@@ -45,6 +45,7 @@ func convertToArchitectConfig(cmdConfig *CliConfig) *architect.CliConfig {
 	return &architect.CliConfig{
 		InstructionsFile: cmdConfig.InstructionsFile,
 		OutputFile:       cmdConfig.OutputFile,
+		AuditLogFile:     cmdConfig.AuditLogFile,
 		Format:           cmdConfig.Format,
 		Paths:            cmdConfig.Paths,
 		Include:          cmdConfig.Include,

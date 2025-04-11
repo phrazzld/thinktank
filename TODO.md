@@ -48,7 +48,7 @@
   - **Depends On:** None
   - **AC Ref:** PLAN.MD Detailed Step 4
 
-- [ ] **Update Config Conversion Logic**
+- [x] **Update Config Conversion Logic**
   - **Action:** Update the `convertToArchitectConfig` function in `cmd/architect/main.go` to copy the `AuditLogFile` value from the `cmd` config to the `internal/architect` config.
   - **Depends On:** Update CLI Configuration Struct (cmd), Update Core Configuration Struct (internal)
   - **AC Ref:** PLAN.MD Detailed Step 4
