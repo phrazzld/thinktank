@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/auditlog"
 )
 
 // Main is the entry point for the architect CLI
@@ -24,6 +25,20 @@ func Main() {
 	// Setup logging early for error reporting
 	logger := SetupLogging(cmdConfig)
 	logger.Info("Starting Architect - AI-assisted planning tool")
+
+	// Initialize the audit logger
+	// Note: The auditLogger will be passed to Execute() in a future task
+	var auditLogger auditlog.AuditLogger
+	if cmdConfig.AuditLogFile != "" {
+		auditLogger, _ = auditlog.NewFileAuditLogger(cmdConfig.AuditLogFile, logger)
+		logger.Info("Audit logging enabled to file: %s", cmdConfig.AuditLogFile)
+	} else {
+		auditLogger = auditlog.NewNoOpAuditLogger()
+		logger.Debug("Audit logging is disabled")
+	}
+
+	// Temporarily use the logger to avoid "unused variable" error until later tasks
+	_ = auditLogger
 
 	// Configuration is now managed via CLI flags and environment variables only
 

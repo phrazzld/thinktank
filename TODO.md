@@ -53,7 +53,7 @@
   - **Depends On:** Update CLI Configuration Struct (cmd), Update Core Configuration Struct (internal)
   - **AC Ref:** PLAN.MD Detailed Step 4
 
-- [ ] **Implement Audit Logger Initialization in Main**
+- [x] **Implement Audit Logger Initialization in Main**
   - **Action:** In `cmd/architect/main.go`, import `internal/auditlog`. After initializing the console `logger`, add logic to check `cmdConfig.AuditLogFile`. If set, call `auditlog.NewFileAuditLogger`; otherwise, call `auditlog.NewNoOpAuditLogger`. Use the console `logger` for internal logging within `FileAuditLogger`.
   - **Depends On:** Implement FileAuditLogger, Implement NoOpAuditLogger, Update Config Conversion Logic
   - **AC Ref:** PLAN.MD Detailed Step 5
