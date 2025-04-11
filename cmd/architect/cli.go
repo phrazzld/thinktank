@@ -84,9 +84,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	formatFlag := flagSet.String("format", defaultFormat, "Format string for each file. Use {path} and {content}.")
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
-	// TODO: Use this flag in the next task "Update CLI Configuration Struct (cmd)"
-	// For now, we just add the flag definition for users to see in --help
-	_ = flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
+	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
 
 	// Set custom usage message
 	flagSet.Usage = func() {
@@ -115,6 +113,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Store flag values in configuration
 	config.InstructionsFile = *instructionsFileFlag
 	config.OutputFile = *outputFileFlag
+	config.AuditLogFile = *auditLogFileFlag
 	config.ModelName = *modelNameFlag
 	config.Verbose = *verboseFlag
 	config.Include = *includeFlag

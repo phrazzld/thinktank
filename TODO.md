@@ -38,7 +38,7 @@
   - **Depends On:** Add Audit Log CLI Flag
   - **AC Ref:** PLAN.MD Detailed Step 3
 
-- [ ] **Update Flag Parsing Logic**
+- [x] **Update Flag Parsing Logic**
   - **Action:** In `ParseFlagsWithEnv` within `cmd/architect/cli.go`, assign the value of the new `--audit-log-file` flag to the `config.AuditLogFile` field.
   - **Depends On:** Update CLI Configuration Struct (cmd)
   - **AC Ref:** PLAN.MD Detailed Step 3
