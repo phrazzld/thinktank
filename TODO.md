@@ -49,7 +49,7 @@
   - **AC Ref:** AC 1.2
 
 ## Core Logic Removal
-- [ ] **Remove conditional clarify logic from execution flow**
+- [x] **Remove conditional clarify logic from execution flow**
   - **Action:** In `internal/architect/app.go`, locate and remove any `if cliConfig.ClarifyTask` blocks or function calls related to the clarify feature. Ensure the standard execution path remains intact.
   - **Depends On:** Conduct comprehensive search for clarify references
   - **AC Ref:** AC 1.3

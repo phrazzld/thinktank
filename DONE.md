@@ -56,3 +56,9 @@
   - **Depends On:** Remove fields from TemplateConfig
   - **AC Ref:** AC 1.2
   - **Output:** Removed the `clarify_task = false` line from the general configuration section and the `clarify = "clarify.tmpl"` and `refine = "refine.tmpl"` lines from the [templates] section in the example config file while maintaining proper formatting and all other configuration options.
+
+- [x] **Remove conditional clarify logic from execution flow**
+  - **Action:** In `internal/architect/app.go`, locate and remove any `if cliConfig.ClarifyTask` blocks or function calls related to the clarify feature. Ensure the standard execution path remains intact.
+  - **Depends On:** Conduct comprehensive search for clarify references
+  - **AC Ref:** AC 1.3
+  - **Output:** After thorough examination of the `internal/architect/app.go` file and the entire `internal/architect` package, confirmed that there is no conditional logic or function calls related to the clarify feature in the execution flow. This is consistent with the findings in the clarify-references.md document which noted "No explicit references to `cliConfig.ClarifyTask` or clarify-related function calls were found in the `internal/architect` package Go files."
