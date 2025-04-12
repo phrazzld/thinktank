@@ -34,7 +34,7 @@
     - **Action:** In `ValidateInputs` (`cmd/architect/cli.go` and `internal/architect/app.go`), update the validation logic: check `len(config.ModelNames) > 0` (unless `DryRun` is true), return an error if empty. Remove any checks related to the old `config.OutputFile`.
     - **Depends On:** Update `CliConfig` Struct, Remove Old `--output` Flag
     - **AC Ref:** AC1
-- [ ] **Update CLI Usage Message:**
+- [x] **Update CLI Usage Message:**
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), update the `flagSet.Usage` message to reflect the repeatable `--model` flag, the new `--output-dir` option, and remove references to the old `--output` flag.
     - **Depends On:** Register Repeatable `--model` Flag, Register `--output-dir` Flag, Remove Old `--output` Flag
     - **AC Ref:** AC1, AC3, AC5
