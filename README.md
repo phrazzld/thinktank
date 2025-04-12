@@ -143,7 +143,7 @@ architect now supports generating plans with multiple AI models simultaneously:
 - **Run Name Directories**: Automatically creates a uniquely named directory for each run
 - **Parallel Processing**: Processes models in sequence, but reuses context gathering for efficiency
 - **Error Isolation**: If one model fails, others will still complete successfully
-- **Backward Compatibility**: The `--output` flag is still supported as an alias for `--output-dir` but is deprecated
+- **Output Files**: Each model's output is saved in its own file within the output directory
 
 Example:
 ```bash

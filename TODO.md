@@ -23,7 +23,7 @@
   - **Action:** Simplify the `savePlanToFile` function in `internal/architect/app.go` to only write to model-specific files in the output directory. Remove any legacy output path handling.
   - **Depends On:** Remove --output Flag and Logic
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
-- [ ] **Task Title:** Update Documentation
+- [x] **Task Title:** Update Documentation
   - **Action:** Update README.md and any other documentation to remove all references to the --output flag, ensuring only --output-dir is mentioned.
   - **Depends On:** Remove --output Flag and Logic
   - **AC Ref:** Issue 2, `DOCUMENTATION_APPROACH.md` (Clarity and Consistency)
