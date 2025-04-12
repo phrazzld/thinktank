@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -272,4 +273,45 @@ func (env *TestEnv) CreateInstructionsFile(t *testing.T, content string, options
 
 	// Create the instruction file
 	return env.CreateTestFile(t, relativePath, content)
+}
+
+// TimeInterval represents a start and end time for measuring concurrent execution
+type TimeInterval struct {
+	Start time.Time
+	End   time.Time
+}
+
+// areIntervalsConcurrent checks if a set of time intervals overlap significantly,
+// indicating concurrent execution. Returns true if at least half of the intervals
+// overlap with at least one other interval.
+func areIntervalsConcurrent(intervals []TimeInterval) bool {
+	if len(intervals) < 2 {
+		return false
+	}
+
+	// Count overlapping intervals
+	overlappingIntervals := 0
+
+	for i := 0; i < len(intervals); i++ {
+		hasOverlap := false
+		for j := 0; j < len(intervals); j++ {
+			if i == j {
+				continue
+			}
+
+			// Check if intervals overlap
+			if (intervals[i].Start.Before(intervals[j].End) || intervals[i].Start.Equal(intervals[j].End)) &&
+				(intervals[j].Start.Before(intervals[i].End) || intervals[j].Start.Equal(intervals[i].End)) {
+				hasOverlap = true
+				break
+			}
+		}
+
+		if hasOverlap {
+			overlappingIntervals++
+		}
+	}
+
+	// Require that at least half of the intervals have overlaps
+	return overlappingIntervals >= len(intervals)/2
 }

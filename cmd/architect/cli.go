@@ -55,6 +55,10 @@ type CliConfig struct {
 	ConfirmTokens    int
 	Paths            []string
 	ApiKey           string
+
+	// Rate limiting configuration
+	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
+	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
 }
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
@@ -109,6 +113,12 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
 
+	// Rate limiting flags
+	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, // Use hardcoded default for backward compatibility with tests
+		"Maximum number of concurrent API requests (0 = no limit)")
+	rateLimitRPMFlag := flagSet.Int("rate-limit", 60, // Use hardcoded default for backward compatibility with tests
+		"Maximum requests per minute (RPM) per model (0 = no limit)")
+
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
 	flagSet.Var(modelFlag, "model", fmt.Sprintf("Gemini model to use for generation (repeatable). Default: %s", defaultModel))
@@ -153,6 +163,10 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.Paths = flagSet.Args()
+
+	// Store rate limiting configuration
+	config.MaxConcurrentRequests = *maxConcurrentFlag
+	config.RateLimitRequestsPerMinute = *rateLimitRPMFlag
 
 	// Set model names from the flag, defaulting to a single default model if none provided
 	if len(*modelFlag) > 0 {

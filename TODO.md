@@ -33,11 +33,11 @@
   - **Action:** Modify the application to process requests for multiple models concurrently rather than sequentially. Use Go's concurrency primitives (goroutines and channels) to implement this feature while maintaining proper error handling and logging.
   - **Depends On:** None
   - **AC Ref:** Issue 3, `CORE_PRINCIPLES.md` (Modularity), `ARCHITECTURE_GUIDELINES.md` (Embrace the Unix Philosophy)
-- [ ] **Task Title:** Add Concurrency Control for API Rate Limits
+- [x] **Task Title:** Add Concurrency Control for API Rate Limits
   - **Action:** Implement a mechanism to control concurrency levels based on API rate limits. This should include configurable settings to prevent overwhelming the Gemini API.
   - **Depends On:** Implement Concurrent Model Processing
   - **AC Ref:** Issue 3
-- [ ] **Task Title:** Update Integration Tests for Concurrent Processing
+- [x] **Task Title:** Update Integration Tests for Concurrent Processing
   - **Action:** Extend existing integration tests to verify that multiple model requests are processed concurrently and results are correctly saved to their respective output files.
   - **Depends On:** Implement Concurrent Model Processing
   - **AC Ref:** Issue 3, `TESTING_STRATEGY.md` (Integration Testing Approach)

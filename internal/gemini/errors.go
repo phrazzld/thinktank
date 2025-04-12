@@ -223,7 +223,7 @@ func FormatAPIError(err error, statusCode int) *APIError {
 
 	case ErrorTypeRateLimit:
 		apiErr.Message = "Request rate limit or quota exceeded on the Gemini API"
-		apiErr.Suggestion = "Wait and try again later. Consider upgrading your API usage tier if this happens frequently."
+		apiErr.Suggestion = "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate. You can also upgrade your API usage tier if this happens frequently."
 
 	case ErrorTypeInvalidRequest:
 		apiErr.Message = "Invalid request sent to the Gemini API"

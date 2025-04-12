@@ -30,6 +30,10 @@ type CliConfig struct {
 
 	// Logging
 	LogLevel logutil.LogLevel
+
+	// Rate limiting configuration
+	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
+	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
 }
 
 // Constants for configuration

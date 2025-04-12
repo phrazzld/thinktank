@@ -14,6 +14,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/ratelimit"
 	"github.com/phrazzld/architect/internal/runutil"
 )
 
@@ -253,10 +254,29 @@ func Execute(
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 9. Process each model concurrently
+	// 9. Process each model concurrently (with rate limiting)
 	var wg sync.WaitGroup
 	// Create a buffered error channel to collect errors from goroutines
 	errChan := make(chan error, len(cliConfig.ModelNames))
+
+	// Create rate limiter from configuration
+	rateLimiter := ratelimit.NewRateLimiter(
+		cliConfig.MaxConcurrentRequests,
+		cliConfig.RateLimitRequestsPerMinute,
+	)
+
+	// Log rate limiting configuration
+	if cliConfig.MaxConcurrentRequests > 0 {
+		logger.Info("Concurrency limited to %d simultaneous requests", cliConfig.MaxConcurrentRequests)
+	} else {
+		logger.Info("No concurrency limit applied")
+	}
+
+	if cliConfig.RateLimitRequestsPerMinute > 0 {
+		logger.Info("Rate limited to %d requests per minute per model", cliConfig.RateLimitRequestsPerMinute)
+	} else {
+		logger.Info("No rate limit applied")
+	}
 
 	logger.Info("Processing %d models concurrently...", len(cliConfig.ModelNames))
 
@@ -272,6 +292,15 @@ func Execute(
 		go func() {
 			// Ensure we signal completion when goroutine exits
 			defer wg.Done()
+
+			// Acquire rate limiting permission with context
+			if err := rateLimiter.Acquire(ctx, modelName); err != nil {
+				logger.Error("Rate limiting error for model %s: %v", modelName, err)
+				errChan <- fmt.Errorf("model %s rate limit: %w", modelName, err)
+				return
+			}
+			// Release rate limiter when done
+			defer rateLimiter.Release()
 
 			// Process the model
 			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
@@ -292,8 +321,15 @@ func Execute(
 
 	// Collect any errors from the channel
 	var modelErrors []error
+	var rateLimitErrors []error
+
 	for err := range errChan {
 		modelErrors = append(modelErrors, err)
+
+		// Check if it's specifically a rate limit error
+		if strings.Contains(err.Error(), "rate limit") {
+			rateLimitErrors = append(rateLimitErrors, err)
+		}
 	}
 
 	// If there were any errors, return a combined error
@@ -302,6 +338,12 @@ func Execute(
 		for _, e := range modelErrors {
 			errMsg += "\n  - " + e.Error()
 		}
+
+		// Add additional guidance if there were rate limit errors
+		if len(rateLimitErrors) > 0 {
+			errMsg += "\n\nTip: If you're encountering rate limit errors, consider adjusting the --max-concurrent and --rate-limit flags to prevent overwhelming the API."
+		}
+
 		return errors.New(errMsg)
 	}
 
@@ -840,10 +882,29 @@ func RunInternal(
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 10. Process each model concurrently
+	// 10. Process each model concurrently (with rate limiting)
 	var wg sync.WaitGroup
 	// Create a buffered error channel to collect errors from goroutines
 	errChan := make(chan error, len(cliConfig.ModelNames))
+
+	// Create rate limiter from configuration
+	rateLimiter := ratelimit.NewRateLimiter(
+		cliConfig.MaxConcurrentRequests,
+		cliConfig.RateLimitRequestsPerMinute,
+	)
+
+	// Log rate limiting configuration
+	if cliConfig.MaxConcurrentRequests > 0 {
+		logger.Info("Concurrency limited to %d simultaneous requests", cliConfig.MaxConcurrentRequests)
+	} else {
+		logger.Info("No concurrency limit applied")
+	}
+
+	if cliConfig.RateLimitRequestsPerMinute > 0 {
+		logger.Info("Rate limited to %d requests per minute per model", cliConfig.RateLimitRequestsPerMinute)
+	} else {
+		logger.Info("No rate limit applied")
+	}
 
 	logger.Info("Processing %d models concurrently...", len(cliConfig.ModelNames))
 
@@ -859,6 +920,15 @@ func RunInternal(
 		go func() {
 			// Ensure we signal completion when goroutine exits
 			defer wg.Done()
+
+			// Acquire rate limiting permission with context
+			if err := rateLimiter.Acquire(ctx, modelName); err != nil {
+				logger.Error("Rate limiting error for model %s: %v", modelName, err)
+				errChan <- fmt.Errorf("model %s rate limit: %w", modelName, err)
+				return
+			}
+			// Release rate limiter when done
+			defer rateLimiter.Release()
 
 			// Process the model
 			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
@@ -879,8 +949,15 @@ func RunInternal(
 
 	// Collect any errors from the channel
 	var modelErrors []error
+	var rateLimitErrors []error
+
 	for err := range errChan {
 		modelErrors = append(modelErrors, err)
+
+		// Check if it's specifically a rate limit error
+		if strings.Contains(err.Error(), "rate limit") {
+			rateLimitErrors = append(rateLimitErrors, err)
+		}
 	}
 
 	// If there were any errors, return a combined error
@@ -889,6 +966,12 @@ func RunInternal(
 		for _, e := range modelErrors {
 			errMsg += "\n  - " + e.Error()
 		}
+
+		// Add additional guidance if there were rate limit errors
+		if len(rateLimitErrors) > 0 {
+			errMsg += "\n\nTip: If you're encountering rate limit errors, consider adjusting the --max-concurrent and --rate-limit flags to prevent overwhelming the API."
+		}
+
 		return errors.New(errMsg)
 	}
 

@@ -13,6 +13,10 @@ const (
 	APIKeyEnvVar      = "GEMINI_API_KEY"
 	DefaultFormat     = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 
+	// Default rate limiting values
+	DefaultMaxConcurrentRequests      = 5  // Default maximum concurrent API requests
+	DefaultRateLimitRequestsPerMinute = 60 // Default requests per minute per model
+
 	// Default excludes for file extensions
 	DefaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
 		".zip,.tar,.gz,.rar,.7z,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp," +
