@@ -18,7 +18,7 @@
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), use `flagSet.Var()` to register the `stringSliceFlag` instance for the `--model` flag. Update the usage description to indicate it's repeatable. Remove the `defaultModel` constant usage for this flag's definition.
     - **Depends On:** Implement `flag.Value` Interface for `stringSliceFlag`, Update `CliConfig` Struct
     - **AC Ref:** AC1, AC5
-- [ ] **Register `--output-dir` Flag:**
+- [x] **Register `--output-dir` Flag:**
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), add a new `flagSet.String()` for `--output-dir`, making it optional with a default empty string `""`.
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC3, AC5
