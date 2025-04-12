@@ -139,10 +139,7 @@ func Execute(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 2. Validate inputs
-	if err := validateInputs(cliConfig, logger); err != nil {
-		return fmt.Errorf("input validation failed: %w", err)
-	}
+	// Input validation is handled by cmd/architect/cli.go:ValidateInputs before execution
 
 	// 3. Create shared components
 	apiService := NewAPIService(logger)
@@ -696,10 +693,7 @@ func RunInternal(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 2. Validate inputs
-	if err := validateInputs(cliConfig, logger); err != nil {
-		return fmt.Errorf("input validation failed: %w", err)
-	}
+	// Input validation is handled by cmd/architect/cli.go:ValidateInputs before execution
 
 	// 3. Create token manager
 	tokenManager := NewTokenManager(logger)
@@ -937,37 +931,7 @@ func savePlanToFile(
 	return nil
 }
 
-// Note: HandleSpecialCommands and processTaskInput functions have been removed
+// Note: HandleSpecialCommands, processTaskInput, and validateInputs functions have been removed
 // as part of the refactoring to simplify the core application flow.
-// The functionality has been replaced with direct reading of the instructions file
-// and the prompt stitching logic.
-
-// validateInputs verifies that all required inputs are provided
-func validateInputs(cliConfig *CliConfig, logger logutil.LoggerInterface) error {
-	// Skip validation in dry-run mode
-	if cliConfig.DryRun {
-		return nil
-	}
-
-	// Validate instructions file
-	if cliConfig.InstructionsFile == "" {
-		return fmt.Errorf("instructions file is required (use --instructions)")
-	}
-
-	// Validate paths
-	if len(cliConfig.Paths) == 0 {
-		return fmt.Errorf("at least one file or directory path must be provided")
-	}
-
-	// Validate API key
-	if cliConfig.ApiKey == "" {
-		return fmt.Errorf("%s environment variable not set", APIKeyEnvVar)
-	}
-
-	// Validate model names
-	if len(cliConfig.ModelNames) == 0 {
-		return fmt.Errorf("at least one model must be specified")
-	}
-
-	return nil
-}
+// The functionality has been replaced with direct reading of the instructions file,
+// the prompt stitching logic, and comprehensive validation in cmd/architect/cli.go:ValidateInputs.

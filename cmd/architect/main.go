@@ -49,6 +49,11 @@ func Main() {
 
 	// Configuration is now managed via CLI flags and environment variables only
 
+	// Validate inputs before proceeding
+	if err := ValidateInputs(cmdConfig, logger); err != nil {
+		os.Exit(1)
+	}
+
 	// Convert cmdConfig to architect.CliConfig to pass to core logic
 	coreConfig := convertToArchitectConfig(cmdConfig)
 
