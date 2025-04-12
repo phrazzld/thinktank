@@ -70,3 +70,56 @@ func DefaultConfig() *AppConfig {
 		},
 	}
 }
+
+// CliConfig holds the parsed command-line options for the application
+type CliConfig struct {
+	// Instructions configuration
+	InstructionsFile string
+
+	// Output configuration
+	OutputDir    string
+	AuditLogFile string // Path to write structured audit logs (JSON Lines)
+	Format       string
+
+	// Context gathering options
+	Paths        []string
+	Include      string
+	Exclude      string
+	ExcludeNames string
+	DryRun       bool
+	Verbose      bool
+
+	// API configuration
+	ApiKey     string
+	ModelNames []string
+
+	// Token management
+	ConfirmTokens int
+
+	// Logging
+	LogLevel logutil.LogLevel
+
+	// Rate limiting configuration
+	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
+	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
+}
+
+// NewDefaultCliConfig returns a CliConfig with default values
+func NewDefaultCliConfig() *CliConfig {
+	return &CliConfig{
+		Format:                     DefaultFormat,
+		Exclude:                    DefaultExcludes,
+		ExcludeNames:               DefaultExcludeNames,
+		ModelNames:                 []string{DefaultModel},
+		LogLevel:                   logutil.InfoLevel,
+		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
+		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
+	}
+}
+
+// ValidateConfig checks if the configuration is valid and returns an error if not
+func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
+	// This is a placeholder for the validation function that will be moved from CLI package
+	// to maintain the API but will be implemented in the next task
+	return nil
+}

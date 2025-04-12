@@ -6,7 +6,7 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 1.1
 
-- [ ] **Task Title:** Create `internal/config` Package and Define Canonical `CliConfig`
+- [x] **Task Title:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **Action:** Create a new package `internal/config`. Move the `CliConfig` struct definition from `cmd/architect/cli.go` to `internal/config/config.go`. Define shared constants (like defaults, env vars) in this package. Use a flat structure initially with a single config object.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 1.2
