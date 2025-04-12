@@ -105,7 +105,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
-	flagSet.Var(modelFlag, "model", "Gemini model to use for generation. Can be specified multiple times.")
+	flagSet.Var(modelFlag, "model", fmt.Sprintf("Gemini model to use for generation (repeatable). Default: %s", defaultModel))
 
 	// Set custom usage message
 	flagSet.Usage = func() {
@@ -115,10 +115,10 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		fmt.Fprintf(os.Stderr, "  <path1> [path2...]   One or more file or directory paths for project context.\n\n")
 
 		fmt.Fprintf(os.Stderr, "Example Commands:\n")
-		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt ./src                Generate plan using instructions file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output custom-dir ./ Generate plans in custom directory\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./ Generate plans for multiple models\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                         Show files without generating plan\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt ./src                        Generate plan using default model\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output custom-dir ./       Generate plan in custom directory\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./  Generate plans for multiple models\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                 Show files without generating plan\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flagSet.PrintDefaults()
@@ -149,6 +149,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	if len(*modelFlag) > 0 {
 		config.ModelNames = *modelFlag
 	} else {
+		// If no models were specified on the command line, use the default model
 		config.ModelNames = []string{defaultModel}
 	}
 

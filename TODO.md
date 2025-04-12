@@ -14,7 +14,7 @@
     - **Action:** In `cmd/architect/cli.go`, modify the `CliConfig` struct: change `ModelName string` to `ModelNames []string`, add `OutputDir string`, and remove `OutputFile string`. Also update the corresponding struct in `internal/architect/types.go` and the `convertToArchitectConfig` function in `cmd/architect/main.go`.
     - **Depends On:** None
     - **AC Ref:** AC1, AC3
-- [ ] **Register Repeatable `--model` Flag:**
+- [x] **Register Repeatable `--model` Flag:**
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), use `flagSet.Var()` to register the `stringSliceFlag` instance for the `--model` flag. Update the usage description to indicate it's repeatable. Remove the `defaultModel` constant usage for this flag's definition.
     - **Depends On:** Implement `flag.Value` Interface for `stringSliceFlag`, Update `CliConfig` Struct
     - **AC Ref:** AC1, AC5
