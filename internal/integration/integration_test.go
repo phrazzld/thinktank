@@ -43,14 +43,16 @@ func add(a, b int) int {
 	// Create an instructions file (previously task file)
 	instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with the new InstructionsFile field
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
-		ModelNames:       []string{"test-model"},
+		OutputDir:        outputDir,
+		ModelNames:       []string{modelName},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -64,20 +66,20 @@ func add(a, b int) int {
 		t.Fatalf("RunTestWithConfig failed: %v", err)
 	}
 
-	// Check that the output file exists
+	// Check that the model-specific output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
+		t.Errorf("Model-specific output file was not created at %s", outputFile)
 	}
 
 	// Verify content
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("Failed to read model-specific output file: %v", err)
 	}
 
 	// Check that content includes expected text (from our mock response)
 	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+		t.Errorf("Model-specific output file does not contain expected content")
 	}
 }
 
@@ -102,13 +104,15 @@ func main() {
 	// Create an instructions file (optional for dry run, but including it for completeness)
 	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model" // Match this with testConfig.ModelNames[0]
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with dry run enabled
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		DryRun:           true,
@@ -152,13 +156,15 @@ func main() {
 	taskContent := "Implement a new feature to multiply two numbers"
 	instructionsFile := env.CreateTestFile(t, "instructions.md", taskContent)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model" // Match this with testConfig.ModelNames[0]
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration focusing on task file input
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
@@ -173,20 +179,20 @@ func main() {
 		t.Fatalf("RunTestWithConfig failed: %v", err)
 	}
 
-	// Check that the output file exists
+	// Check that the model-specific output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
+		t.Errorf("Model-specific output file was not created at %s", outputFile)
 	}
 
 	// Read the content to verify it worked
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("Failed to read model-specific output file: %v", err)
 	}
 
 	// Check that content was generated properly
 	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+		t.Errorf("Model-specific output file does not contain expected content")
 	}
 }
 
@@ -219,13 +225,15 @@ func main() {}`)
 	// Create a task file
 	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model" // Match this with testConfig.ModelNames[0]
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with file inclusion filters
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Include:          ".go,.md", // Only include Go and Markdown files
@@ -241,20 +249,20 @@ func main() {}`)
 		t.Fatalf("RunTestWithConfig failed: %v", err)
 	}
 
-	// Check that the output file exists
+	// Check that the model-specific output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
+		t.Errorf("Model-specific output file was not created at %s", outputFile)
 	}
 
 	// Read and verify content
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("Failed to read model-specific output file: %v", err)
 	}
 
 	// Check that the plan was generated
 	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+		t.Errorf("Model-specific output file does not contain expected content")
 	}
 }
 
@@ -283,13 +291,15 @@ func main() {}`)
 	// Create a task file
 	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
@@ -311,9 +321,9 @@ func main() {}`)
 		t.Errorf("Error message doesn't contain expected content. Got: %v", err)
 	}
 
-	// Check that the output file was NOT created due to the error
+	// Check that the model-specific output file was NOT created due to the error
 	if _, statErr := os.Stat(outputFile); !os.IsNotExist(statErr) {
-		t.Errorf("Output file was created despite API error")
+		t.Errorf("Model-specific output file was created despite API error")
 	}
 }
 
@@ -344,13 +354,15 @@ func main() {}`)
 	// Create a task file
 	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
@@ -372,9 +384,9 @@ func main() {}`)
 		t.Errorf("Error message doesn't mention token limits. Got: %v", err)
 	}
 
-	// Check that the output file was NOT created due to the error
+	// Check that the model-specific output file was NOT created due to the error
 	if _, statErr := os.Stat(outputFile); !os.IsNotExist(statErr) {
-		t.Errorf("Output file was created despite token limit error")
+		t.Errorf("Model-specific output file was created despite token limit error")
 	}
 }
 
@@ -403,13 +415,15 @@ func main() {}`)
 	// Simulate user input (say "yes" to confirmation)
 	env.SimulateUserInput("y\n")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with confirm-tokens
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		ConfirmTokens:    1000, // Threshold lower than our token count
@@ -425,20 +439,20 @@ func main() {}`)
 		t.Fatalf("RunTestWithConfig failed: %v", err)
 	}
 
-	// Check that the output file was created (confirmation was "y")
+	// Check that the model-specific output file was created (confirmation was "y")
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
+		t.Errorf("Model-specific output file was not created at %s", outputFile)
 	}
 
 	// Read the content to verify it worked
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("Failed to read model-specific output file: %v", err)
 	}
 
 	// Check that content was generated properly
 	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+		t.Errorf("Model-specific output file does not contain expected content")
 	}
 }
 
@@ -461,13 +475,15 @@ func main() {}`)
 	taskDescription := "Implement a new feature"
 	instructionsFile := env.CreateTestFile(t, "instructions.md", taskDescription)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
+		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
@@ -482,20 +498,20 @@ func main() {}`)
 		t.Fatalf("RunTestWithConfig failed: %v", err)
 	}
 
-	// Check that the output file exists
+	// Check that the model-specific output file exists
 	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
+		t.Errorf("Model-specific output file was not created at %s", outputFile)
 	}
 
 	// Verify that the task was used
 	content, err := os.ReadFile(outputFile)
 	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
+		t.Fatalf("Failed to read model-specific output file: %v", err)
 	}
 
 	// Check that the output contains content from our mock response
 	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+		t.Errorf("Model-specific output file does not contain expected content")
 	}
 }
 

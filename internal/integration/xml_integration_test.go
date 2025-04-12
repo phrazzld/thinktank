@@ -40,8 +40,10 @@ func helper(a, b int) int {
 	instructions := "Implement a feature to multiply two numbers"
 	instructionsFile := env.CreateTestFile(t, "instructions.md", instructions)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a variable to capture the prompt for verification
 	var capturedPrompt string
@@ -61,8 +63,8 @@ func helper(a, b int) int {
 	// Create a test configuration using the new InstructionsFile
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
-		ModelNames:       []string{"test-model"},
+		OutputDir:        outputDir,
+		ModelNames:       []string{modelName},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -138,8 +140,10 @@ func main() {}`)
 	// Create an empty instructions file
 	instructionsFile := env.CreateTestFile(t, "empty_instructions.md", "")
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a variable to capture the prompt for verification
 	var capturedPrompt string
@@ -156,8 +160,8 @@ func main() {}`)
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
-		ModelNames:       []string{"test-model"},
+		OutputDir:        outputDir,
+		ModelNames:       []string{modelName},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -236,8 +240,10 @@ The component should handle the following edge cases:
 	// Create the instructions file
 	instructionsFile := env.CreateInstructionsFile(t, instructions)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+	// Set up the output directory and model-specific output file path
+	modelName := "test-model"
+	outputDir := filepath.Join(env.TestDir, "output")
+	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Set up the XML validating client with expected content fragments
 	env.SetupXMLValidatingClient(t, "component.jsx", "template.html", "&lt;div", "&lt;html&gt;")
@@ -245,8 +251,8 @@ The component should handle the following edge cases:
 	// Create a test configuration using the new InstructionsFile
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputDir:        filepath.Dir(outputFile),
-		ModelNames:       []string{"test-model"},
+		OutputDir:        outputDir,
+		ModelNames:       []string{modelName},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,

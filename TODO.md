@@ -1,4 +1,3 @@
-```markdown
 # TODO
 
 ## [Issue 1: Redundant Validation Logic]
@@ -7,35 +6,59 @@
   - **Depends On:** None
   - **AC Ref:** Issue 1, `CORE_PRINCIPLES.md` (Simplicity), `ARCHITECTURE_GUIDELINES.md` (Separation of Concerns)
 
-## [Issue 2: Output Saving Backward Compatibility Complexity]
-- [ ] **Task Title:** Decide on Output File Backward Compatibility Strategy
-  - **Action:** Analyze test dependencies (`integration_test.go`, `xml_integration_test.go`) and any other potential consumers of the legacy `outputDir/output.md` file. Choose one strategy: A) Update tests to use new model-specific paths (`outputDir/model-name.md`) and remove the legacy write, OR B) Keep the legacy write for backward compatibility. Document the chosen strategy and rationale (e.g., in commit message, issue tracker).
+## [Issue 2: Output Directory Standardization]
+- [x] **Task Title:** Remove Backward Compatibility for --output Flag
+  - **Action:** Decision made to eliminate backward compatibility for the --output flag. Will use --output-dir exclusively for simplicity and clarity.
   - **Depends On:** None
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
-- [ ] **Task Title:** [If Strategy A] Update Integration Tests for Model-Specific Outputs
-  - **Action:** Modify `internal/integration/integration_test.go` and `internal/integration/xml_integration_test.go` to assert against the new model-specific output files (e.g., `filepath.Join(outputDir, "test-model.md")`) instead of relying on `output.md`.
-  - **Depends On:** Decide on Output File Backward Compatibility Strategy
+- [x] **Task Title:** Update Integration Tests for Model-Specific Outputs
+  - **Action:** Modify `internal/integration/integration_test.go` and `internal/integration/xml_integration_test.go` to use the new --output-dir flag and assert against the model-specific output files (e.g., `filepath.Join(outputDir, "test-model.md")`).
+  - **Depends On:** None
   - **AC Ref:** Issue 2
-- [ ] **Task Title:** [If Strategy A] Simplify `savePlanToFile` Function
-  - **Action:** Remove the conditional logic and file write operation related to the legacy `output.md` path within the `savePlanToFile` function in `internal/architect/app.go:956-1016`. Ensure only the model-specific file is written.
-  - **Depends On:** [If Strategy A] Update Integration Tests for Model-Specific Outputs
+- [ ] **Task Title:** Remove --output Flag and Logic
+  - **Action:** Remove the --output flag and all related logic from the codebase, ensuring that --output-dir is the only option for specifying output location.
+  - **Depends On:** Update Integration Tests for Model-Specific Outputs
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
-- [ ] **Task Title:** [If Strategy B] Add Explanatory Comments to `savePlanToFile`
-  - **Action:** Add clear comments within the `savePlanToFile` function (`internal/architect/app.go:956-1016`) explaining *why* the code writes to both the model-specific path and the legacy `output.md` path, explicitly mentioning the backward compatibility requirement.
-  - **Depends On:** Decide on Output File Backward Compatibility Strategy
-  - **AC Ref:** Issue 2
+- [ ] **Task Title:** Update `savePlanToFile` Function
+  - **Action:** Simplify the `savePlanToFile` function in `internal/architect/app.go` to only write to model-specific files in the output directory. Remove any legacy output path handling.
+  - **Depends On:** Remove --output Flag and Logic
+  - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
+- [ ] **Task Title:** Update Documentation
+  - **Action:** Update README.md and any other documentation to remove all references to the --output flag, ensuring only --output-dir is mentioned.
+  - **Depends On:** Remove --output Flag and Logic
+  - **AC Ref:** Issue 2, `DOCUMENTATION_APPROACH.md` (Clarity and Consistency)
 
-## [Issue 3: Inclusion of Development Artifact (`TODO.md`)]
-- [ ] **Task Title:** Remove Development `TODO.md` from Repository
-  - **Action:** Delete the `TODO.md` file from the project repository. Before deletion, ensure any relevant pending tasks or future considerations mentioned within it are captured in the project's official issue tracker or backlog.
+## [Issue 3: Performance Optimization for Multi-Model Requests]
+- [ ] **Task Title:** Implement Concurrent Model Processing
+  - **Action:** Modify the application to process requests for multiple models concurrently rather than sequentially. Use Go's concurrency primitives (goroutines and channels) to implement this feature while maintaining proper error handling and logging.
   - **Depends On:** None
-  - **AC Ref:** Issue 3, `DOCUMENTATION_APPROACH.md` (Principles 1 & 5)
+  - **AC Ref:** Issue 3, `CORE_PRINCIPLES.md` (Modularity), `ARCHITECTURE_GUIDELINES.md` (Embrace the Unix Philosophy)
+- [ ] **Task Title:** Add Concurrency Control for API Rate Limits
+  - **Action:** Implement a mechanism to control concurrency levels based on API rate limits. This should include configurable settings to prevent overwhelming the Gemini API.
+  - **Depends On:** Implement Concurrent Model Processing
+  - **AC Ref:** Issue 3
+- [ ] **Task Title:** Update Integration Tests for Concurrent Processing
+  - **Action:** Extend existing integration tests to verify that multiple model requests are processed concurrently and results are correctly saved to their respective output files.
+  - **Depends On:** Implement Concurrent Model Processing
+  - **AC Ref:** Issue 3, `TESTING_STRATEGY.md` (Integration Testing Approach)
+- [ ] **Task Title:** Update Documentation for Concurrent Processing
+  - **Action:** Update README.md to explain the concurrent processing of multiple models, including any new configuration options for controlling concurrency.
+  - **Depends On:** Implement Concurrent Model Processing
+  - **AC Ref:** Issue 3, `DOCUMENTATION_APPROACH.md` (README.md: The Essential Entry Point)
 
-## [Issue 4: HTML Escape Sequences in Go Test Files]
-- [ ] **Task Title:** Replace HTML Escape Sequences in Go Test Files
-  - **Action:** Perform a search-and-replace in the specified Go test files (`internal/runutil/runutil_test.go`, `internal/integration/xml_integration_test.go`). Replace all occurrences of `&lt;` with the literal character `<` and `&gt;` with the literal character `>`.
+## [Issue 4: Improve Logging for Broader Use Cases]
+- [ ] **Task Title:** Update Logging Terminology
+  - **Action:** Refactor logging messages throughout the codebase to replace specific "plan" terminology with more general terms reflective of the tool's broader use cases (e.g., "output", "analysis", "result").
   - **Depends On:** None
-  - **AC Ref:** Issue 4, `CODING_STANDARDS.md` (Readability/Clarity)
+  - **AC Ref:** Issue 4, `CODING_STANDARDS.md` (Meaningful Naming: Communicate Purpose)
+- [ ] **Task Title:** Enhance Logging Verbosity and Clarity
+  - **Action:** Improve log messages to be more informative about the current operation, including more context about files being processed, models being used, and operation progress. Add additional log points at appropriate places in the execution flow.
+  - **Depends On:** None
+  - **AC Ref:** Issue 4, `DOCUMENTATION_APPROACH.md` (Explicit is Better than Implicit)
+- [ ] **Task Title:** Standardize Log Level Usage
+  - **Action:** Review and standardize the use of different log levels (debug, info, warn, error) throughout the application to ensure consistency and appropriate verbosity at each level.
+  - **Depends On:** None
+  - **AC Ref:** Issue 4
 
 ## [Issue 5: Minor Documentation Inconsistencies]
 - [ ] **Task Title:** Standardize "architect" Casing in README.md
@@ -47,15 +70,3 @@
   - **Depends On:** None
   - **AC Ref:** Issue 5, `DOCUMENTATION_APPROACH.md` (Clarity and Consistency)
 
-## [Issue 6: Filename Sanitization Character]
-- [ ] **Task Title:** Correct Characters in `sanitizeFilename` Replacer
-  - **Action:** Modify the `strings.NewReplacer` call within the `sanitizeFilename` function (`internal/architect/app.go:540-542`). Change the placeholder `&lt;` to the literal character `<` and `&gt;` to the literal character `>`.
-  - **Depends On:** None
-  - **AC Ref:** Issue 6 (Potential Bug)
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-- [ ] **Issue/Assumption:** Assumed the decision for Issue 2 (Backward Compatibility) will be made and documented before dependent tasks are started.
-  - **Context:** Issue 2 tasks depend on the initial decision (Strategy A vs. Strategy B).
-- [ ] **Issue/Assumption:** Assumed that removing `TODO.md` (Issue 3) implies transferring any necessary information to a formal issue tracker if one exists.
-  - **Context:** Issue 3 suggests removing the file, but valuable context might be lost if not migrated.
-```
