@@ -77,11 +77,11 @@ func RunTestWithConfig(
 	}
 
 	// Run the architect application using the RunInternal function directly from internal/architect
-	// The updated signature no longer requires a configManager
 	return architect.RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
 		mockAPIService,
+		env.AuditLogger,
 	)
 }

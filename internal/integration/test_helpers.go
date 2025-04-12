@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -33,6 +34,9 @@ type TestEnv struct {
 
 	// Test logger
 	Logger logutil.LoggerInterface
+
+	// Mock audit logger
+	AuditLogger auditlog.AuditLogger
 
 	// Mock standard input for simulating user inputs
 	MockStdin *os.File
@@ -71,6 +75,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	// Create a logger that writes to the stderr buffer
 	logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ")
 
+	// Create a no-op audit logger for tests
+	auditLogger := auditlog.NewNoOpAuditLogger()
+
 	// Create cleanup function
 	cleanup := func() {
 		// Remove test directory and all contents
@@ -94,6 +101,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		OrigStderr:   origStderr,
 		MockClient:   mockClient,
 		Logger:       logger,
+		AuditLogger:  auditLogger,
 		MockStdin:    mockStdin,
 		OrigStdin:    origStdin,
 		Cleanup:      cleanup,

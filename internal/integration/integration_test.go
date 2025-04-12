@@ -2,13 +2,16 @@
 package integration
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -551,4 +554,263 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 		}
 	})
 	*/
+}
+
+// TestAuditLogging tests the audit logging functionality
+func TestAuditLogging(t *testing.T) {
+	t.Run("Valid audit log file", func(t *testing.T) {
+		// Set up the test environment
+		env := NewTestEnv(t)
+		defer env.Cleanup()
+
+		// Set up the mock client
+		env.SetupMockGeminiClient()
+
+		// Create some test files
+		env.CreateTestFile(t, "src/main.go", `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, world!")
+}`)
+
+		// Create an instructions file
+		instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
+
+		// Set up the output file path
+		outputFile := filepath.Join(env.TestDir, "output.md")
+
+		// Set up the audit log file path
+		auditLogFile := filepath.Join(env.TestDir, "audit.log")
+
+		// Create a custom FileAuditLogger for this test instead of the NoOpAuditLogger in the test environment
+		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
+		auditLogger, err := auditlog.NewFileAuditLogger(auditLogFile, testLogger)
+		if err != nil {
+			t.Fatalf("Failed to create audit logger: %v", err)
+		}
+		defer auditLogger.Close()
+
+		// Replace the default NoOpAuditLogger with our FileAuditLogger
+		env.AuditLogger = auditLogger
+
+		// Create a test configuration with the audit log file
+		testConfig := &architect.CliConfig{
+			InstructionsFile: instructionsFile,
+			OutputFile:       outputFile,
+			ModelName:        "test-model",
+			ApiKey:           "test-api-key",
+			Paths:            []string{env.TestDir + "/src"},
+			LogLevel:         logutil.InfoLevel,
+			AuditLogFile:     auditLogFile,
+		}
+
+		// Run the application with our test configuration
+		ctx := context.Background()
+		err = RunTestWithConfig(ctx, testConfig, env)
+
+		if err != nil {
+			t.Fatalf("RunTestWithConfig failed: %v", err)
+		}
+
+		// Check that the output file exists
+		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+			t.Errorf("Output file was not created at %s", outputFile)
+		}
+
+		// Check that the audit log file exists
+		if _, err := os.Stat(auditLogFile); os.IsNotExist(err) {
+			t.Errorf("Audit log file was not created at %s", auditLogFile)
+		}
+
+		// Read the audit log file
+		content, err := os.ReadFile(auditLogFile)
+		if err != nil {
+			t.Fatalf("Failed to read audit log file: %v", err)
+		}
+
+		// Split content by newlines
+		lines := bytes.Split(content, []byte{'\n'})
+		var entries []map[string]interface{}
+
+		// Parse each non-empty line as JSON
+		for _, line := range lines {
+			if len(line) == 0 {
+				continue
+			}
+
+			var entry map[string]interface{}
+			if err := json.Unmarshal(line, &entry); err != nil {
+				t.Errorf("Failed to parse JSON line: %v", err)
+				t.Errorf("Line content: %s", string(line))
+				continue
+			}
+			entries = append(entries, entry)
+		}
+
+		// Check that we have at least some entries
+		if len(entries) == 0 {
+			t.Error("Audit log file is empty or contains no valid JSON entries")
+			return
+		}
+
+		// Validate that the audit log contains expected operation entries
+		expectedOperations := []string{
+			"ExecuteStart",
+			"ReadInstructions",
+			"GatherContextStart",
+			"GatherContextEnd",
+			"CheckTokens",
+			"GenerateContentStart",
+			"GenerateContentEnd",
+			"SaveOutputStart",
+			"SaveOutputEnd",
+			"ExecuteEnd",
+		}
+
+		// Create a map to track which operations we found
+		foundOperations := make(map[string]bool)
+
+		// Find operations in the log entries
+		for _, entry := range entries {
+			operation, ok := entry["operation"].(string)
+			if ok {
+				foundOperations[operation] = true
+			}
+		}
+
+		// Check that all expected operations are present
+		for _, expectedOp := range expectedOperations {
+			if !foundOperations[expectedOp] {
+				t.Errorf("Expected operation '%s' not found in audit log", expectedOp)
+			}
+		}
+
+		// Validate one specific operation in detail
+		validateExecuteStart := func() bool {
+			for _, entry := range entries {
+				operation, ok := entry["operation"].(string)
+				if !ok || operation != "ExecuteStart" {
+					continue
+				}
+
+				// Check status
+				status, ok := entry["status"].(string)
+				if !ok || status != "InProgress" {
+					t.Errorf("Expected ExecuteStart status to be 'InProgress', got '%v'", status)
+					return false
+				}
+
+				// Check timestamp
+				_, hasTimestamp := entry["timestamp"]
+				if !hasTimestamp {
+					t.Error("ExecuteStart entry missing timestamp")
+					return false
+				}
+
+				// Check inputs (should include CLI flags)
+				inputs, ok := entry["inputs"].(map[string]interface{})
+				if !ok {
+					t.Error("ExecuteStart entry missing inputs")
+					return false
+				}
+
+				// Verify specific input field (model name)
+				if modelName, ok := inputs["model_name"]; !ok || modelName != "test-model" {
+					t.Errorf("ExecuteStart inputs missing or incorrect model_name, got: %v", modelName)
+					return false
+				}
+
+				return true
+			}
+			return false
+		}
+
+		if !validateExecuteStart() {
+			t.Error("Failed to validate ExecuteStart operation in audit log")
+		}
+	})
+
+	t.Run("Fallback to NoOpAuditLogger", func(t *testing.T) {
+		// Set up the test environment
+		env := NewTestEnv(t)
+		defer env.Cleanup()
+
+		// Set up the mock client
+		env.SetupMockGeminiClient()
+
+		// Create some test files
+		env.CreateTestFile(t, "src/main.go", `package main
+
+func main() {}`)
+
+		// Create an instructions file
+		instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
+
+		// Set up the output file path
+		outputFile := filepath.Join(env.TestDir, "output.md")
+
+		// Set up a test logger that captures errors
+		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
+
+		// Attempt to create a FileAuditLogger with invalid path to see if it falls back properly
+		invalidDir := filepath.Join(env.TestDir, "nonexistent-dir")
+		invalidLogFile := filepath.Join(invalidDir, "audit.log")
+
+		// Attempting to create a logger with an invalid path should return an error
+		_, err := auditlog.NewFileAuditLogger(invalidLogFile, testLogger)
+		if err == nil {
+			t.Fatal("Expected error when creating FileAuditLogger with invalid path, got nil")
+		}
+
+		// Verify error message contains expected text
+		errMsg := err.Error()
+		if !strings.Contains(errMsg, "failed to open audit log file") {
+			t.Errorf("Expected error message to contain 'failed to open audit log file', got: %s", errMsg)
+		}
+
+		// Verify the NoOpAuditLogger can be used as a fallback and works without issues
+		noopLogger := auditlog.NewNoOpAuditLogger()
+
+		// Log some entries to the NoOpLogger
+		testEntry := auditlog.AuditEntry{
+			Operation: "TestOperation",
+			Status:    "Success",
+			Message:   "Test message",
+		}
+
+		// This should not produce any errors
+		err = noopLogger.Log(testEntry)
+		if err != nil {
+			t.Fatalf("NoOpAuditLogger.Log returned error: %v", err)
+		}
+
+		// Create a test configuration
+		testConfig := &architect.CliConfig{
+			InstructionsFile: instructionsFile,
+			OutputFile:       outputFile,
+			ModelName:        "test-model",
+			ApiKey:           "test-api-key",
+			Paths:            []string{env.TestDir + "/src"},
+			LogLevel:         logutil.InfoLevel,
+		}
+
+		// Replace environment's default NoOpAuditLogger with our test NoOpLogger
+		env.AuditLogger = noopLogger
+
+		// Run the application with our test configuration and NoOpAuditLogger
+		ctx := context.Background()
+		err = RunTestWithConfig(ctx, testConfig, env)
+
+		// The application should run successfully
+		if err != nil {
+			t.Fatalf("RunTestWithConfig failed: %v", err)
+		}
+
+		// Check that the output file exists - the application should work with NoOpAuditLogger
+		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+			t.Errorf("Output file was not created at %s", outputFile)
+		}
+	})
 }
