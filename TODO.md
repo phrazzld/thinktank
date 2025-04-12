@@ -63,75 +63,80 @@
   - **Depends On:** Implement Audit Logger Initialization in Main
   - **AC Ref:** PLAN.MD Detailed Step 5
 
-- [ ] **Ensure Audit Logger Closure**
+- [x] **Ensure Audit Logger Closure**
   - **Action:** Add `defer auditLogger.Close()` in `cmd/architect/main.go` immediately after successful initialization of `auditLogger` to ensure the log file is closed properly on application exit.
   - **Depends On:** Implement Audit Logger Initialization in Main
   - **AC Ref:** PLAN.MD Detailed Step 5
 
 ## Dependency Injection
-- [ ] **Update Execute Function Signature**
+- [x] **Update Execute Function Signature**
   - **Action:** Modify the `Execute` function signature in `internal/architect/app.go` to accept `auditLogger auditlog.AuditLogger` as a parameter.
   - **Depends On:** Define Audit Logger Interface
   - **AC Ref:** PLAN.MD Detailed Step 6
 
-- [ ] **Pass Audit Logger to Execute**
+- [x] **Pass Audit Logger to Execute**
   - **Action:** Update the call to `architect.Execute` in `cmd/architect/main.go` to pass the initialized `auditLogger` instance.
   - **Depends On:** Implement Audit Logger Initialization in Main, Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 5, PLAN.MD Detailed Step 6
 
 ## Instrumentation (Core Logic)
-- [ ] **Instrument Execute Start**
+- [x] **Instrument Execute Start**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, add a call to `auditLogger.Log` at the beginning to record `Operation: "ExecuteStart"`, `Status: "InProgress"`, and relevant `Inputs` (CLI flags from `cliConfig`).
   - **Depends On:** Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
+  
+- [x] **Add Error Handling to Audit Log Calls**
+  - **Action:** Add proper error handling to all `auditLogger.Log` calls in `internal/architect/app.go` to ensure errors are properly logged and don't disrupt execution.
+  - **Depends On:** All Instrumentation Tasks
+  - **AC Ref:** Robustness and error handling best practices
 
-- [ ] **Instrument Instruction Reading**
+- [x] **Instrument Instruction Reading**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, add `auditLogger.Log` calls after reading the instructions file to record `Operation: "ReadInstructions"`, `Status: "Success/Failure"`, `Inputs: {path}`, and `Error` if applicable.
   - **Depends On:** Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
-- [ ] **Instrument Context Gathering**
+- [x] **Instrument Context Gathering**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, wrap the call to `contextGatherer.GatherContext`. Log `Operation: "GatherContextStart"`, `Status: "InProgress"`, `Inputs` before the call. After the call, log `Operation: "GatherContextEnd"`, `Status: "Success/Failure"`, calculated `DurationMs`, `Outputs` (file count/stats), and `Error` if applicable.
   - **Depends On:** Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
-- [ ] **Instrument Token Check**
+- [x] **Instrument Token Check**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, add `auditLogger.Log` calls after `tokenManager.GetTokenInfo` to record `Operation: "CheckTokens"`, `Status: "Success/Failure"`, `Inputs` (prompt length approximation if feasible, or just indicate check occurred), `Outputs` (the `TokenCountInfo` struct), and `Error` if applicable. Also log the final decision if the limit was exceeded.
   - **Depends On:** Update Execute Function Signature, Define Audit Log Data Structures
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
-- [ ] **Instrument Content Generation**
+- [x] **Instrument Content Generation**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, wrap the call to `geminiClient.GenerateContent`. Log `Operation: "GenerateContentStart"`, `Status: "InProgress"`, `Inputs` (model name) before the call. After the call, log `Operation: "GenerateContentEnd"`, `Status: "Success/Failure"`, calculated `DurationMs`, `Outputs` (finish reason, safety ratings, token counts), and `Error` if applicable.
   - **Depends On:** Update Execute Function Signature, Define Audit Log Data Structures
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
-- [ ] **Instrument Save Output**
+- [x] **Instrument Save Output**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, wrap the call to `fileWriter.SaveToFile`. Log `Operation: "SaveOutputStart"`, `Status: "InProgress"`, `Inputs` (output path) before the call. After the call, log `Operation: "SaveOutputEnd"`, `Status: "Success/Failure"`, calculated `DurationMs`, and `Error` if applicable.
   - **Depends On:** Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
-- [ ] **Instrument Execute End**
+- [x] **Instrument Execute End**
   - **Action:** In `internal/architect/app.go`'s `Execute` function, add a call to `auditLogger.Log` at the very end (e.g., in a defer block or just before returning) to record `Operation: "ExecuteEnd"`, `Status: "Success/Failure"`, and the final `Error` returned by the function.
   - **Depends On:** Update Execute Function Signature
   - **AC Ref:** PLAN.MD Detailed Step 6, PLAN.MD Step 8
 
 ## Testing
-- [ ] **Create Audit Logger Test File**
+- [x] **Create Audit Logger Test File**
   - **Action:** Create a new test file `internal/auditlog/logger_test.go`.
   - **Depends On:** Define Audit Logger Interface
   - **AC Ref:** PLAN.MD Detailed Step 9
 
-- [ ] **Add Unit Tests for FileAuditLogger**
+- [x] **Add Unit Tests for FileAuditLogger**
   - **Action:** In `internal/auditlog/logger_test.go`, add unit tests for `FileAuditLogger`. Use `t.TempDir()` to create temporary log files. Test file creation, writing valid JSON Lines format, appending to existing files, correct timestamping, handling concurrent writes (if possible in unit test context), `Close()` method, and error conditions (e.g., invalid path, write errors - potentially using filesystem mocks if needed).
   - **Depends On:** Implement FileAuditLogger, Create Audit Logger Test File
   - **AC Ref:** PLAN.MD Detailed Step 9
 
-- [ ] **Add Unit Tests for NoOpAuditLogger**
+- [x] **Add Unit Tests for NoOpAuditLogger**
   - **Action:** In `internal/auditlog/logger_test.go`, add unit tests for `NoOpAuditLogger` to verify that its `Log` and `Close` methods execute without error and have no side effects.
   - **Depends On:** Implement NoOpAuditLogger, Create Audit Logger Test File
   - **AC Ref:** PLAN.MD Detailed Step 9
 
-- [ ] **Add/Update Integration Tests for Audit Logging**
+- [x] **Add/Update Integration Tests for Audit Logging**
   - **Action:** Modify existing integration tests (or create new ones) that run the main application flow (`architect.Execute` or via `cmd/architect/main.go`). Run these tests with the `--audit-log-file` flag pointing to a temporary file. After the test run, read the temporary log file and assert that it exists, is not empty, and contains valid JSON Lines entries corresponding to the expected operations performed during the test run.
   - **Depends On:** Implement Audit Logger Initialization in Main, Pass Audit Logger to Execute, All Instrumentation Tasks
   - **AC Ref:** PLAN.MD Detailed Step 9

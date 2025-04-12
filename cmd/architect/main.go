@@ -44,8 +44,8 @@ func Main() {
 		logger.Debug("Audit logging is disabled")
 	}
 
-	// Temporarily use the logger to avoid "unused variable" error until later tasks
-	_ = auditLogger
+	// Ensure the audit logger is properly closed when the application exits
+	defer auditLogger.Close()
 
 	// Configuration is now managed via CLI flags and environment variables only
 
@@ -55,7 +55,7 @@ func Main() {
 	// CLI flags and environment variables are now the only source of configuration
 
 	// Execute the core application logic
-	err = architect.Execute(ctx, coreConfig, logger)
+	err = architect.Execute(ctx, coreConfig, logger, auditLogger)
 	if err != nil {
 		logger.Error("Application failed: %v", err)
 		os.Exit(1)
