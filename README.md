@@ -48,12 +48,15 @@ go install
 # Basic usage (Instructions in instructions.txt)
 architect --instructions instructions.txt path/to/your/project
 
-# Example: Create a plan using an instructions file (e.g., auth_instructions.txt)
+# Example: Create a plan using an instructions file
 # Contents of auth_instructions.txt: "Implement JWT-based user authentication and authorization"
 architect --instructions auth_instructions.txt ./
 
-# Specify output file (default is PLAN.md)
-architect --instructions instructions.txt --output auth_plan.md ./
+# Specify output directory (default generates a unique run name directory)
+architect --instructions instructions.txt --output-dir custom-dir ./
+
+# Generate plans with multiple models (repeatable flag)
+architect --instructions instructions.txt --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 ./
 
 # Include only specific file extensions
 architect --instructions instructions.txt --include .go,.md ./
@@ -86,8 +89,8 @@ export GEMINI_API_KEY="your-api-key-here"
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--instructions` | Path to a file containing the instructions (Required unless --dry-run is used) | `(Required)` |
-| `--output` | Output file path for the generated plan | `PLAN.md` |
-| `--model` | Gemini model to use for generation | `gemini-2.5-pro-exp-03-25` |
+| `--output-dir` | Directory path to store generated plans (one per model) | `(Auto-generated run name)` |
+| `--model` | Gemini model to use for generation (repeatable for multiple models) | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
 | `--log-level` | Set logging level (debug, info, warn, error) | `info` |
 | `--include` | Comma-separated list of file extensions to include | (All files) |
@@ -106,8 +109,9 @@ architect is configured entirely through command-line flags and the `GEMINI_API_
 
 architect comes with sensible defaults for most options:
 
-- Output file: `PLAN.md`
-- Model: `gemini-2.5-pro-exp-03-25`
+- Output directory: Auto-generated run name directory (e.g., `eloquent-rabbit`)
+- Output files: One file per model with name format `modelname.md`
+- Model: `gemini-2.5-pro-exp-03-25` (can specify multiple models with repeatable `--model` flag)
 - Log level: `info`
 - File formatting: XML-style format for context building
 - Default exclusions for common binary, media files, and directories
@@ -130,9 +134,33 @@ When token limits are exceeded, try:
 2. Using a model with a higher token limit
 3. Splitting your task into smaller, more focused requests
 
+## Multi-Model Support
+
+architect now supports generating plans with multiple AI models simultaneously:
+
+- **Multiple Models**: Specify multiple models with the repeatable `--model` flag
+- **Organized Output**: Each model's plan is saved as a separate file in the output directory
+- **Run Name Directories**: Automatically creates a uniquely named directory for each run
+- **Parallel Processing**: Processes models in sequence, but reuses context gathering for efficiency
+- **Error Isolation**: If one model fails, others will still complete successfully
+- **Backward Compatibility**: The `--output` flag is still supported as an alias for `--output-dir` but is deprecated
+
+Example:
+```bash
+# Generate plans with both Gemini 1.5 Pro and Gemini 2.5 Pro
+architect --instructions task.md --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 ./src
+```
+
+This will generate:
+```
+/current-dir/random-runname/
+  ├─ gemini-1.5-pro.md
+  └─ gemini-2.5-pro-exp-03-25.md
+```
+
 ## Generated Plan Structure
 
-The generated PLAN.md includes:
+Each generated plan file includes:
 
 1. **Overview**: Brief explanation of the task and changes involved
 2. **Task Breakdown**: Detailed list of specific tasks with effort estimates
@@ -191,6 +219,8 @@ Each log entry contains structured information that can be processed by tools, w
 - **Missing API key**: Ensure the `GEMINI_API_KEY` environment variable is set correctly
 - **Path issues**: When running commands, use absolute or correct relative paths to your project files
 - **Flag precedence**: Remember that CLI flags always take precedence over default values
+- **Model name errors**: Ensure you're using valid model names with the `--model` flag
+- **Output directory permissions**: Check you have write access to the output directory when using `--output-dir`
 
 ## Contributing
 

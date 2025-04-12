@@ -122,7 +122,7 @@
     - **AC Ref:** AC1, AC2, AC3, AC4
 
 ## Documentation
-- [ ] **Update `README.md`:**
+- [x] **Update `README.md`:**
     - **Action:** Modify `README.md` to update usage examples, showing the repeatable `--model` flag and the `--output-dir` option. Explain the new output directory structure and per-model file naming. Remove references to the old `--output` flag.
     - **Depends On:** Write/Update Integration Tests for `Execute`/`RunInternal` (to confirm final behavior)
     - **AC Ref:** AC1, AC2, AC3, AC4, AC5
