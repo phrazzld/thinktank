@@ -3,9 +3,11 @@ package architect
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
@@ -142,35 +144,12 @@ func Execute(
 		return fmt.Errorf("input validation failed: %w", err)
 	}
 
-	// 3. Initialize API client
+	// 3. Create shared components
 	apiService := NewAPIService(logger)
-	// Use the first model name for now - in a later task we'll implement the multi-model loop
-	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
-	if err != nil {
-		// Handle API client initialization errors
-		errorDetails := apiService.GetErrorDetails(err)
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Error creating Gemini client: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			if cliConfig.LogLevel == logutil.DebugLevel {
-				logger.Debug("Error details: %s", apiErr.DebugInfo())
-			}
-		} else {
-			logger.Error("Error creating Gemini client: %s", errorDetails)
-		}
-		return fmt.Errorf("failed to initialize API client: %w", err)
-	}
-	defer geminiClient.Close()
-
-	// 4. Create token manager
 	tokenManager := NewTokenManager(logger)
-
-	// 5. Create context gatherer
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
 
-	// 6. Create gather config
+	// 4. Create gather config
 	gatherConfig := GatherConfig{
 		Paths:        cliConfig.Paths,
 		Include:      cliConfig.Include,
@@ -181,8 +160,17 @@ func Execute(
 		LogLevel:     cliConfig.LogLevel,
 	}
 
-	// 7. Gather context files
-	// Log the start of context gathering
+	// 5. Initialize the reference client for context gathering only
+	// We'll create model-specific clients inside the loop later
+	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
+	if err != nil {
+		errorDetails := apiService.GetErrorDetails(err)
+		logger.Error("Error creating reference Gemini client: %s", errorDetails)
+		return fmt.Errorf("failed to initialize reference API client: %w", err)
+	}
+	defer referenceClient.Close()
+
+	// 6. Gather context files (model-independent step)
 	gatherStartTime := time.Now()
 	if logErr := auditLogger.Log(auditlog.AuditEntry{
 		Timestamp: gatherStartTime,
@@ -200,7 +188,7 @@ func Execute(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
+	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, referenceClient, gatherConfig)
 
 	// Calculate duration in milliseconds
 	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
@@ -252,9 +240,9 @@ func Execute(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 8. Handle dry run mode
+	// 7. Handle dry run mode
 	if cliConfig.DryRun {
-		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
+		err = contextGatherer.DisplayDryRunInfo(ctx, referenceClient, contextStats)
 		if err != nil {
 			logger.Error("Error displaying dry run information: %v", err)
 			return fmt.Errorf("error displaying dry run information: %w", err)
@@ -262,13 +250,68 @@ func Execute(
 		return nil
 	}
 
-	// 9. Stitch prompt
+	// 8. Stitch prompt (model-independent step)
 	stitchedPrompt := StitchPrompt(instructions, contextFiles)
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 10. Check token limits
-	logger.Info("Checking token limits...")
+	// 9. Process each model
+	var modelErrors []error
+	for _, modelName := range cliConfig.ModelNames {
+		// Process the model and collect any errors
+		err := processModel(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
+		if err != nil {
+			logger.Error("Processing model %s failed: %v", modelName, err)
+			modelErrors = append(modelErrors, fmt.Errorf("model %s: %w", modelName, err))
+		}
+	}
+
+	// If there were any errors, return a combined error
+	if len(modelErrors) > 0 {
+		errMsg := "errors occurred during model processing:"
+		for _, e := range modelErrors {
+			errMsg += "\n  - " + e.Error()
+		}
+		return errors.New(errMsg)
+	}
+
+	return nil
+}
+
+// processModel handles the processing of a single model, from client initialization to output saving
+func processModel(
+	ctx context.Context,
+	modelName string,
+	cliConfig *CliConfig,
+	logger logutil.LoggerInterface,
+	apiService APIService,
+	auditLogger auditlog.AuditLogger,
+	tokenManager TokenManager,
+	stitchedPrompt string,
+) error {
+	logger.Info("Processing model: %s", modelName)
+
+	// 1. Initialize model-specific client
+	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, modelName)
+	if err != nil {
+		errorDetails := apiService.GetErrorDetails(err)
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			logger.Error("Error creating Gemini client for model %s: %s", modelName, apiErr.Message)
+			if apiErr.Suggestion != "" {
+				logger.Error("Suggestion: %s", apiErr.Suggestion)
+			}
+			if cliConfig.LogLevel == logutil.DebugLevel {
+				logger.Debug("Error details: %s", apiErr.DebugInfo())
+			}
+		} else {
+			logger.Error("Error creating Gemini client for model %s: %s", modelName, errorDetails)
+		}
+		return fmt.Errorf("failed to initialize API client for model %s: %w", modelName, err)
+	}
+	defer geminiClient.Close()
+
+	// 2. Check token limits for this model
+	logger.Info("Checking token limits for model %s...", modelName)
 
 	// Log token check start with prompt information
 	if logErr := auditLogger.Log(auditlog.AuditEntry{
@@ -277,25 +320,24 @@ func Execute(
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
+			"model_name":    modelName,
 		},
-		Message: "Starting token count check",
+		Message: "Starting token count check for model " + modelName,
 	}); logErr != nil {
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, stitchedPrompt)
-
 	if err != nil {
-		logger.Error("Token count check failed")
+		logger.Error("Token count check failed for model %s", modelName)
 
 		// Determine error type for better categorization
 		errorType := "TokenCheckError"
-		errorMessage := fmt.Sprintf("Failed to check token count: %v", err)
+		errorMessage := fmt.Sprintf("Failed to check token count for model %s: %v", modelName, err)
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Token count check failed: %s", apiErr.Message)
+			logger.Error("Token count check failed for model %s: %s", modelName, apiErr.Message)
 			if apiErr.Suggestion != "" {
 				logger.Error("Suggestion: %s", apiErr.Suggestion)
 			}
@@ -303,7 +345,7 @@ func Execute(
 			errorType = "APIError"
 			errorMessage = apiErr.Message
 		} else {
-			logger.Error("Token count check failed: %v", err)
+			logger.Error("Token count check failed for model %s: %v", modelName, err)
 			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		}
 
@@ -314,23 +356,23 @@ func Execute(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
+				"model_name":    modelName,
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: errorMessage,
 				Type:    errorType,
 			},
-			Message: "Token count check failed",
+			Message: "Token count check failed for model " + modelName,
 		}); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("token count check failed: %w", err)
+		return fmt.Errorf("token count check failed for model %s: %w", modelName, err)
 	}
 
 	// If token limit is exceeded, abort
 	if tokenInfo.ExceedsLimit {
-		logger.Error("Token limit exceeded")
+		logger.Error("Token limit exceeded for model %s", modelName)
 		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
 		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 
@@ -341,7 +383,7 @@ func Execute(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
+				"model_name":    modelName,
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: tokenInfo.TokenCount,
@@ -352,16 +394,16 @@ func Execute(
 				Message: tokenInfo.LimitError,
 				Type:    "TokenLimitExceededError",
 			},
-			Message: "Token limit exceeded",
+			Message: "Token limit exceeded for model " + modelName,
 		}); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("token limit exceeded: %s", tokenInfo.LimitError)
+		return fmt.Errorf("token limit exceeded for model %s: %s", modelName, tokenInfo.LimitError)
 	}
 
-	logger.Info("Token check passed: %d / %d (%.1f%%)",
-		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
+	logger.Info("Token check passed for model %s: %d / %d (%.1f%%)",
+		modelName, tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
 
 	// Log the successful token check
 	if logErr := auditLogger.Log(auditlog.AuditEntry{
@@ -370,7 +412,7 @@ func Execute(
 		Status:    "Success",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
+			"model_name":    modelName,
 		},
 		Outputs: map[string]interface{}{
 			"percentage": tokenInfo.Percentage,
@@ -380,14 +422,14 @@ func Execute(
 			TotalTokens:  tokenInfo.TokenCount,
 			Limit:        tokenInfo.InputLimit,
 		},
-		Message: fmt.Sprintf("Token check passed: %d / %d (%.1f%%)",
-			tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage),
+		Message: fmt.Sprintf("Token check passed for model %s: %d / %d (%.1f%%)",
+			modelName, tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage),
 	}); logErr != nil {
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 11. Generate content
-	logger.Info("Generating plan...")
+	// 3. Generate content with this model
+	logger.Info("Generating plan with model %s...", modelName)
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
@@ -396,10 +438,10 @@ func Execute(
 		Operation: "GenerateContentStart",
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
+			"model_name":    modelName,
 			"prompt_length": len(stitchedPrompt),
 		},
-		Message: "Starting content generation with Gemini",
+		Message: "Starting content generation with Gemini model " + modelName,
 	}); logErr != nil {
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
@@ -410,15 +452,15 @@ func Execute(
 	generateDurationMs := time.Since(generateStartTime).Milliseconds()
 
 	if err != nil {
-		logger.Error("Generation failed")
+		logger.Error("Generation failed for model %s", modelName)
 
 		// Determine error type for better categorization
 		errorType := "ContentGenerationError"
-		errorMessage := fmt.Sprintf("Failed to generate content: %v", err)
+		errorMessage := fmt.Sprintf("Failed to generate content with model %s: %v", modelName, err)
 
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Error generating content: %s", apiErr.Message)
+			logger.Error("Error generating content with model %s: %s", modelName, apiErr.Message)
 			if apiErr.Suggestion != "" {
 				logger.Error("Suggestion: %s", apiErr.Suggestion)
 			}
@@ -426,7 +468,7 @@ func Execute(
 			errorType = "APIError"
 			errorMessage = apiErr.Message
 		} else {
-			logger.Error("Error generating content: %v", err)
+			logger.Error("Error generating content with model %s: %v", modelName, err)
 		}
 
 		// Log the content generation failure
@@ -436,19 +478,19 @@ func Execute(
 			Status:     "Failure",
 			DurationMs: &generateDurationMs,
 			Inputs: map[string]interface{}{
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
+				"model_name":    modelName,
 				"prompt_length": len(stitchedPrompt),
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: errorMessage,
 				Type:    errorType,
 			},
-			Message: "Content generation failed",
+			Message: "Content generation failed for model " + modelName,
 		}); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("plan generation failed: %w", err)
+		return fmt.Errorf("plan generation failed for model %s: %w", modelName, err)
 	}
 
 	// Log successful content generation
@@ -458,7 +500,7 @@ func Execute(
 		Status:     "Success",
 		DurationMs: &generateDurationMs,
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
+			"model_name":    modelName,
 			"prompt_length": len(stitchedPrompt),
 		},
 		Outputs: map[string]interface{}{
@@ -470,12 +512,12 @@ func Execute(
 			OutputTokens: int32(result.TokenCount),
 			TotalTokens:  int32(tokenInfo.TokenCount + result.TokenCount),
 		},
-		Message: "Content generation completed successfully",
+		Message: "Content generation completed successfully for model " + modelName,
 	}); logErr != nil {
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 12. Process API response
+	// 4. Process API response
 	generatedPlan, err := apiService.ProcessResponse(result)
 	if err != nil {
 		// Get detailed error information
@@ -483,29 +525,51 @@ func Execute(
 
 		// Provide specific error messages based on error type
 		if apiService.IsEmptyResponseError(err) {
-			logger.Error("Received empty or invalid response from Gemini API")
+			logger.Error("Received empty or invalid response from Gemini API for model %s", modelName)
 			logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response due to empty content: %w", err)
+			return fmt.Errorf("failed to process API response for model %s due to empty content: %w", modelName, err)
 		} else if apiService.IsSafetyBlockedError(err) {
-			logger.Error("Content was blocked by Gemini safety filters")
+			logger.Error("Content was blocked by Gemini safety filters for model %s", modelName)
 			logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response due to safety restrictions: %w", err)
+			return fmt.Errorf("failed to process API response for model %s due to safety restrictions: %w", modelName, err)
 		} else {
 			// Generic API error handling
-			return fmt.Errorf("failed to process API response: %w", err)
+			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)
 		}
 	}
-	logger.Info("Plan generated successfully")
+	logger.Info("Plan generated successfully with model %s", modelName)
 
-	// 13 & 14. Use the helper function to save the plan to file
-	// For now, use a fixed filename in the output directory - will be improved in future tasks
-	outputFilePath := cliConfig.OutputDir + "/output.md"
+	// 5. Sanitize model name for use in filename
+	sanitizedModelName := sanitizeFilename(modelName)
+
+	// 6. Construct output file path
+	outputFilePath := filepath.Join(cliConfig.OutputDir, sanitizedModelName+".md")
+
+	// 7. Save the plan to file
 	err = savePlanToFile(logger, auditLogger, outputFilePath, generatedPlan)
 	if err != nil {
-		return err // Error already logged by savePlanToFile
+		return fmt.Errorf("failed to save plan for model %s: %w", modelName, err)
 	}
 
+	logger.Info("Successfully processed model: %s", modelName)
 	return nil
+}
+
+// sanitizeFilename replaces characters that are not valid in filenames
+func sanitizeFilename(filename string) string {
+	// Replace slashes and other problematic characters with hyphens
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "-",
+		"?", "-",
+		"\"", "-",
+		"<", "-",
+		">", "-",
+		"|", "-",
+	)
+	return replacer.Replace(filename)
 }
 
 // RunInternal is the same as Execute but exported specifically for testing purposes.
@@ -637,33 +701,13 @@ func RunInternal(
 		return fmt.Errorf("input validation failed: %w", err)
 	}
 
-	// 3. Initialize the client
-	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
-	if err != nil {
-		// Handle API client initialization errors
-		errorDetails := apiService.GetErrorDetails(err)
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Error creating Gemini client: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			if cliConfig.LogLevel == logutil.DebugLevel {
-				logger.Debug("Error details: %s", apiErr.DebugInfo())
-			}
-		} else {
-			logger.Error("Error creating Gemini client: %s", errorDetails)
-		}
-		return fmt.Errorf("failed to initialize API client: %w", err)
-	}
-	defer geminiClient.Close()
-
-	// 4. Create token manager
+	// 3. Create token manager
 	tokenManager := NewTokenManager(logger)
 
-	// 5. Create context gatherer
+	// 4. Create context gatherer
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
 
-	// 6. Create gather config
+	// 5. Create gather config
 	gatherConfig := GatherConfig{
 		Paths:        cliConfig.Paths,
 		Include:      cliConfig.Include,
@@ -674,8 +718,17 @@ func RunInternal(
 		LogLevel:     cliConfig.LogLevel,
 	}
 
-	// 7. Gather context files
-	// Log the start of context gathering
+	// 6. Initialize the reference client for context gathering only
+	// We'll create model-specific clients inside the loop later
+	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
+	if err != nil {
+		errorDetails := apiService.GetErrorDetails(err)
+		logger.Error("Error creating reference Gemini client: %s", errorDetails)
+		return fmt.Errorf("failed to initialize reference API client: %w", err)
+	}
+	defer referenceClient.Close()
+
+	// 7. Gather context files (model-independent step)
 	gatherStartTime := time.Now()
 	if logErr := auditLogger.Log(auditlog.AuditEntry{
 		Timestamp: gatherStartTime,
@@ -693,7 +746,7 @@ func RunInternal(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, geminiClient, gatherConfig)
+	contextFiles, contextStats, err := contextGatherer.GatherContext(ctx, referenceClient, gatherConfig)
 
 	// Calculate duration in milliseconds
 	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
@@ -747,7 +800,7 @@ func RunInternal(
 
 	// 8. Handle dry run mode
 	if cliConfig.DryRun {
-		err = contextGatherer.DisplayDryRunInfo(ctx, geminiClient, contextStats)
+		err = contextGatherer.DisplayDryRunInfo(ctx, referenceClient, contextStats)
 		if err != nil {
 			logger.Error("Error displaying dry run information: %v", err)
 			return fmt.Errorf("error displaying dry run information: %w", err)
@@ -755,247 +808,29 @@ func RunInternal(
 		return nil
 	}
 
-	// 9. Stitch prompt
+	// 9. Stitch prompt (model-independent step)
 	stitchedPrompt := StitchPrompt(instructions, contextFiles)
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 10. Check token limits
-	logger.Info("Checking token limits...")
-
-	// Log token check start with prompt information
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: time.Now().UTC(),
-		Operation: "CheckTokensStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
-		},
-		Message: "Starting token count check",
-	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
-	}
-
-	tokenInfo, err := tokenManager.GetTokenInfo(ctx, geminiClient, stitchedPrompt)
-
-	if err != nil {
-		logger.Error("Token count check failed")
-
-		// Determine error type for better categorization
-		errorType := "TokenCheckError"
-		errorMessage := fmt.Sprintf("Failed to check token count: %v", err)
-
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Token count check failed: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			logger.Debug("Error details: %s", apiErr.DebugInfo())
-			errorType = "APIError"
-			errorMessage = apiErr.Message
-		} else {
-			logger.Error("Token count check failed: %v", err)
-			logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-		}
-
-		// Log the token check failure
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "CheckTokens",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: errorMessage,
-				Type:    errorType,
-			},
-			Message: "Token count check failed",
-		}); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
-		}
-
-		return fmt.Errorf("token count check failed: %w", err)
-	}
-
-	// If token limit is exceeded, abort
-	if tokenInfo.ExceedsLimit {
-		logger.Error("Token limit exceeded")
-		logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
-		logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-
-		// Log the token limit exceeded case
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "CheckTokens",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
-			},
-			TokenCounts: &auditlog.TokenCountInfo{
-				PromptTokens: tokenInfo.TokenCount,
-				TotalTokens:  tokenInfo.TokenCount,
-				Limit:        tokenInfo.InputLimit,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: tokenInfo.LimitError,
-				Type:    "TokenLimitExceededError",
-			},
-			Message: "Token limit exceeded",
-		}); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
-		}
-
-		return fmt.Errorf("token limit exceeded: %s", tokenInfo.LimitError)
-	}
-
-	logger.Info("Token check passed: %d / %d (%.1f%%)",
-		tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
-
-	// Log the successful token check
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: time.Now().UTC(),
-		Operation: "CheckTokens",
-		Status:    "Success",
-		Inputs: map[string]interface{}{
-			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
-		},
-		Outputs: map[string]interface{}{
-			"percentage": tokenInfo.Percentage,
-		},
-		TokenCounts: &auditlog.TokenCountInfo{
-			PromptTokens: tokenInfo.TokenCount,
-			TotalTokens:  tokenInfo.TokenCount,
-			Limit:        tokenInfo.InputLimit,
-		},
-		Message: fmt.Sprintf("Token check passed: %d / %d (%.1f%%)",
-			tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage),
-	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
-	}
-
-	// 11. Generate content
-	logger.Info("Generating plan...")
-
-	// Log the start of content generation
-	generateStartTime := time.Now()
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: generateStartTime,
-		Operation: "GenerateContentStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
-			"prompt_length": len(stitchedPrompt),
-		},
-		Message: "Starting content generation with Gemini",
-	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
-	}
-
-	result, err := geminiClient.GenerateContent(ctx, stitchedPrompt)
-
-	// Calculate duration in milliseconds
-	generateDurationMs := time.Since(generateStartTime).Milliseconds()
-
-	if err != nil {
-		logger.Error("Generation failed")
-
-		// Determine error type for better categorization
-		errorType := "ContentGenerationError"
-		errorMessage := fmt.Sprintf("Failed to generate content: %v", err)
-
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			logger.Error("Error generating content: %s", apiErr.Message)
-			if apiErr.Suggestion != "" {
-				logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			logger.Debug("Error details: %s", apiErr.DebugInfo())
-			errorType = "APIError"
-			errorMessage = apiErr.Message
-		} else {
-			logger.Error("Error generating content: %v", err)
-		}
-
-		// Log the content generation failure
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "GenerateContentEnd",
-			Status:     "Failure",
-			DurationMs: &generateDurationMs,
-			Inputs: map[string]interface{}{
-				"model_name":    cliConfig.ModelNames[0], // Using first model for now
-				"prompt_length": len(stitchedPrompt),
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: errorMessage,
-				Type:    errorType,
-			},
-			Message: "Content generation failed",
-		}); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
-		}
-
-		return fmt.Errorf("plan generation failed: %w", err)
-	}
-
-	// Log successful content generation
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "GenerateContentEnd",
-		Status:     "Success",
-		DurationMs: &generateDurationMs,
-		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelNames[0], // Using first model for now
-			"prompt_length": len(stitchedPrompt),
-		},
-		Outputs: map[string]interface{}{
-			"finish_reason":      result.FinishReason,
-			"has_safety_ratings": len(result.SafetyRatings) > 0,
-		},
-		TokenCounts: &auditlog.TokenCountInfo{
-			PromptTokens: int32(tokenInfo.TokenCount),
-			OutputTokens: int32(result.TokenCount),
-			TotalTokens:  int32(tokenInfo.TokenCount + result.TokenCount),
-		},
-		Message: "Content generation completed successfully",
-	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
-	}
-
-	// 12. Process API response
-	generatedPlan, err := apiService.ProcessResponse(result)
-	if err != nil {
-		// Get detailed error information
-		errorDetails := apiService.GetErrorDetails(err)
-
-		// Provide specific error messages based on error type
-		if apiService.IsEmptyResponseError(err) {
-			logger.Error("Received empty or invalid response from Gemini API")
-			logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response due to empty content: %w", err)
-		} else if apiService.IsSafetyBlockedError(err) {
-			logger.Error("Content was blocked by Gemini safety filters")
-			logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response due to safety restrictions: %w", err)
-		} else {
-			// Generic API error handling
-			return fmt.Errorf("failed to process API response: %w", err)
+	// 10. Process each model
+	var modelErrors []error
+	for _, modelName := range cliConfig.ModelNames {
+		// Process the model and collect any errors
+		err := processModel(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
+		if err != nil {
+			logger.Error("Processing model %s failed: %v", modelName, err)
+			modelErrors = append(modelErrors, fmt.Errorf("model %s: %w", modelName, err))
 		}
 	}
-	logger.Info("Plan generated successfully")
 
-	// 13 & 14. Use the helper function to save the plan to file
-	// For now, use a fixed filename in the output directory - will be improved in future tasks
-	outputFilePath := cliConfig.OutputDir + "/output.md"
-	err = savePlanToFile(logger, auditLogger, outputFilePath, generatedPlan)
-	if err != nil {
-		return err // Error already logged by savePlanToFile
+	// If there were any errors, return a combined error
+	if len(modelErrors) > 0 {
+		errMsg := "errors occurred during model processing:"
+		for _, e := range modelErrors {
+			errMsg += "\n  - " + e.Error()
+		}
+		return errors.New(errMsg)
 	}
 
 	return nil
@@ -1003,6 +838,7 @@ func RunInternal(
 
 // savePlanToFile is a helper function that saves the generated plan to a file
 // and includes audit logging around the file writing operation.
+// outputFilePath can be a model-specific path or a directory+"/output.md" for backward compatibility
 func savePlanToFile(
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
@@ -1011,6 +847,21 @@ func savePlanToFile(
 ) error {
 	// Create file writer
 	fileWriter := NewFileWriter(logger)
+
+	// For backward compatibility with existing tests and usages, we write to both:
+	// 1. The model-specific path (e.g., outputDir/model-name.md)
+	// 2. The legacy path (outputDir/output.md) if the model-specific path isn't already using that name
+	// This ensures both old code expecting output.md and new code expecting per-model files work correctly
+	paths := []string{outputFilePath}
+
+	// If outputFilePath doesn't end with "output.md", also write to the traditional output.md path
+	// for backward compatibility with existing tests
+	if !strings.HasSuffix(outputFilePath, "output.md") {
+		outputDir := filepath.Dir(outputFilePath)
+		legacyPath := filepath.Join(outputDir, "output.md")
+		paths = append(paths, legacyPath)
+		logger.Debug("Also writing to legacy path for backward compatibility: %s", legacyPath)
+	}
 
 	// Log the start of output saving
 	saveStartTime := time.Now()
@@ -1027,14 +878,23 @@ func savePlanToFile(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// Save output file
-	logger.Info("Writing plan to %s...", outputFilePath)
-	err := fileWriter.SaveToFile(content, outputFilePath)
+	// Save to all required paths
+	var lastErr error
+	for _, path := range paths {
+		// Save output file
+		logger.Info("Writing plan to %s...", path)
+		err := fileWriter.SaveToFile(content, path)
+		if err != nil {
+			logger.Error("Error saving plan to file %s: %v", path, err)
+			lastErr = err
+			// Continue trying other paths
+		}
+	}
 
 	// Calculate duration in milliseconds
 	saveDurationMs := time.Since(saveStartTime).Milliseconds()
 
-	if err != nil {
+	if lastErr != nil {
 		// Log failure to save output
 		if logErr := auditLogger.Log(auditlog.AuditEntry{
 			Timestamp:  time.Now().UTC(),
@@ -1045,7 +905,7 @@ func savePlanToFile(
 				"output_path": outputFilePath,
 			},
 			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to save output to file: %v", err),
+				Message: fmt.Sprintf("Failed to save output to file: %v", lastErr),
 				Type:    "FileIOError",
 			},
 			Message: "Failed to save output to file",
@@ -1053,7 +913,7 @@ func savePlanToFile(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("error saving plan to file: %w", err)
+		return fmt.Errorf("error saving plan to file: %w", lastErr)
 	}
 
 	// Log successful saving of output

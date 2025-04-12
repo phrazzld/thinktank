@@ -54,45 +54,45 @@
     - **Action:** In `Execute`/`RunInternal`, add logic at the beginning to determine the final output directory. If `cliConfig.OutputDir` is set, use it. Otherwise, call `GenerateRunName()`, construct the path in the CWD, and store it. Ensure the determined directory exists using `os.MkdirAll`. Log the determined path.
     - **Depends On:** Modify `Execute`/`RunInternal` Signatures, Implement `GenerateRunName` Utility
     - **AC Ref:** AC2, AC3
-- [ ] **Implement Main Execution Loop:**
+- [x] **Implement Main Execution Loop:**
     - **Action:** In `Execute`/`RunInternal`, replace the single execution flow with a loop iterating over `cliConfig.ModelNames`.
     - **Depends On:** Modify `Execute`/`RunInternal` Signatures
     - **AC Ref:** AC1, AC4
-- [ ] **Refactor `geminiClient` Initialization:**
+- [x] **Refactor `geminiClient` Initialization:**
     - **Action:** Move the `apiService.InitClient` call *inside* the main execution loop. Initialize a new `geminiClient` for *each* `modelName` in the loop. Ensure client resources (`Close()`) are managed correctly (e.g., defer close at the end of each iteration or manage collectively after the loop).
     - **Depends On:** Implement Main Execution Loop
     - **AC Ref:** AC1, AC4
-- [ ] **Adapt Context Gathering:**
+- [x] **Adapt Context Gathering:**
     - **Action:** Verify that context gathering (`contextGatherer.GatherContext`) can run once *before* the main loop. Ensure the gathered context (`contextFiles`, `stitchedPrompt`) is reused within the loop for each model.
     - **Depends On:** Implement Main Execution Loop
     - **AC Ref:** AC1, AC4
-- [ ] **Adapt Core Steps within Loop:**
+- [x] **Adapt Core Steps within Loop:**
     - **Action:** Inside the loop, ensure prompt stitching (if needed per model, unlikely), token checking (`tokenManager.GetTokenInfo`), content generation (`geminiClient.GenerateContent`), and response processing (`apiService.ProcessResponse`) use the *current* model's `geminiClient` instance.
     - **Depends On:** Refactor `geminiClient` Initialization, Adapt Context Gathering
     - **AC Ref:** AC1, AC4
-- [ ] **Implement Per-Model Output Path Construction:**
+- [x] **Implement Per-Model Output Path Construction:**
     - **Action:** Inside the loop, construct the specific output file path for the current model using `filepath.Join(determinedOutputDir, modelName+".md")`. Include basic sanitization for `modelName` (e.g., replace `/` with `-`).
     - **Depends On:** Implement Output Directory Determination, Implement Main Execution Loop
     - **AC Ref:** AC4
-- [ ] **Call `savePlanToFile` within Loop:**
+- [x] **Call `savePlanToFile` within Loop:**
     - **Action:** Inside the loop, call the existing `savePlanToFile` helper function (or the underlying `FileWriter.SaveToFile`) with the generated content and the specific output path constructed for the current model.
     - **Depends On:** Implement Per-Model Output Path Construction, Adapt Core Steps within Loop
     - **AC Ref:** AC4
-- [ ] **Implement Per-Model Error Handling:**
+- [x] **Implement Per-Model Error Handling:**
     - **Action:** Inside the loop, wrap the processing steps for a single model in error handling. If an error occurs (API error, token limit, etc.), log it clearly (including the model name) but allow the loop to *continue* to the next model. Consider collecting errors.
     - **Depends On:** Implement Main Execution Loop
     - **AC Ref:** AC1, AC4
-- [ ] **Remove Single `OutputFile` Logic:**
+- [x] **Remove Single `OutputFile` Logic:**
     - **Action:** Remove all code related to handling the single `cliConfig.OutputFile` from `Execute`/`RunInternal`, as output is now handled per-model within the loop.
     - **Depends On:** Call `savePlanToFile` within Loop
     - **AC Ref:** AC4
-- [ ] **Update Audit Logging:**
+- [x] **Update Audit Logging:**
     - **Action:** Review and update all `auditLogger.Log` calls within `Execute`/`RunInternal` to include the current `modelName` and specific `outputFile` path where relevant, especially for operations happening inside the loop (e.g., GenerateContent, SaveOutput). Adjust `ExecuteStart`/`ExecuteEnd` logs to reflect the multi-model nature.
     - **Depends On:** Implement Main Execution Loop
     - **AC Ref:** AC1, AC4
 
 ## Output Saving
-- [ ] **Verify `FileWriter.SaveToFile` Compatibility:**
+- [x] **Verify `FileWriter.SaveToFile` Compatibility:**
     - **Action:** Review the implementation of `savePlanToFile` and `FileWriter.SaveToFile` in `internal/architect/app.go` and `internal/architect/output.go`. Confirm that it correctly handles creating nested directories (e.g., `run-name/model.md`) using `os.MkdirAll` or similar. Make adjustments if necessary.
     - **Depends On:** Call `savePlanToFile` within Loop
     - **AC Ref:** AC3, AC4
@@ -110,7 +110,7 @@
     - **Action:** Update existing unit tests for `ParseFlagsWithEnv` and `ValidateInputs` to cover the new `--model` (repeatable), `--output-dir` flags, removal of `--output`, and updated validation rules.
     - **Depends On:** Update `ParseFlagsWithEnv` Population, Update `ValidateInputs` Logic
     - **AC Ref:** AC1, AC3, AC5
-- [ ] **Write/Update Integration Tests for `Execute`/`RunInternal`:**
+- [x] **Write/Update Integration Tests for `Execute`/`RunInternal`:**
     - **Action:** Add or modify integration tests for `Execute`/`RunInternal` to cover:
         - Running with a single `--model`.
         - Running with multiple `--model` flags.
