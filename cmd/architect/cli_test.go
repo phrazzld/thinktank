@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -18,7 +19,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		name    string
 		args    []string
 		env     map[string]string
-		want    *CliConfig
+		want    *config.CliConfig
 		wantErr bool
 	}{
 		{
@@ -30,7 +31,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1", "path2"},
 				ApiKey:           "test-api-key",
@@ -66,7 +67,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "custom-instructions.md",
 				OutputDir:        "custom-output-dir",
 				ModelNames:       []string{"custom-model"},
@@ -102,7 +103,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "custom-instructions.md",
 				OutputDir:        "custom-output-dir",
 				ModelNames:       []string{"custom-model"},
@@ -127,7 +128,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "",
 				Paths:            []string{"path1"},
 				ApiKey:           "test-api-key",
@@ -152,7 +153,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{},
 				ApiKey:           "test-api-key",
@@ -176,7 +177,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				"path1",
 			},
 			env: map[string]string{}, // No API key in environment
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1"},
 				ApiKey:           "", // Empty API key
@@ -202,7 +203,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "",
 				DryRun:           true,
 				Paths:            []string{"path1", "path2"},
@@ -229,7 +230,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
@@ -256,7 +257,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
@@ -284,7 +285,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
@@ -313,7 +314,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				OutputDir:        "",
 				ModelNames:       []string{"model1", "model2", "model3"},
@@ -340,7 +341,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				OutputDir:        "custom-output-dir",
 				ModelNames:       []string{defaultModel},
@@ -429,13 +430,13 @@ func TestParseFlagsWithEnv(t *testing.T) {
 func TestSetupLoggingCustom(t *testing.T) {
 	tests := []struct {
 		name         string
-		config       *CliConfig
+		config       *config.CliConfig
 		wantLevel    string
 		expectLogger bool // Verify whether a logger is returned
 	}{
 		{
 			name: "Debug level with verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  true,
 				LogLevel: logutil.DebugLevel,
 			},
@@ -444,7 +445,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Info level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.InfoLevel,
 			},
@@ -453,7 +454,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Warn level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.WarnLevel,
 			},
@@ -462,7 +463,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Error level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.ErrorLevel,
 			},
@@ -471,7 +472,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Verbose flag overrides any other log level",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  true,
 				LogLevel: logutil.ErrorLevel, // This would normally be error level
 			},
@@ -734,13 +735,13 @@ func TestValidateInputs(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		config        *CliConfig
+		config        *config.CliConfig
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "Valid configuration",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",
@@ -750,7 +751,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Missing instructions file",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",
@@ -760,7 +761,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Missing paths",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{}, // Empty
 				ApiKey:           "test-key",
@@ -770,7 +771,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Missing API key",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				ApiKey:           "", // Missing
@@ -780,7 +781,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Dry run allows missing instructions file",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",
@@ -790,7 +791,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Dry run still requires paths",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "",         // Missing allowed in dry run
 				Paths:            []string{}, // Empty paths still invalid
 				ApiKey:           "test-key",
@@ -801,7 +802,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Dry run still requires API key",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
 				ApiKey:           "", // Missing
@@ -812,7 +813,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Missing models",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",
@@ -823,7 +824,7 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Dry run allows missing models",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",

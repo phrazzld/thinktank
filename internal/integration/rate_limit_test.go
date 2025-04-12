@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
@@ -86,7 +87,7 @@ func main() {}`)
 	models := []string{"model1", "model2", "model3", "model4", "model5"}
 
 	// Create a test configuration with rate limiting
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
@@ -208,7 +209,7 @@ func main() {}`)
 	models := []string{"model1", "model2", "model3", "model4", "model5"}
 
 	// Create a test configuration with strict concurrency limiting but no rate limiting
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
@@ -308,7 +309,7 @@ func main() {}`)
 	models := []string{"model1", "model1", "model1", "model2", "model2", "model2"}
 
 	// Create a test configuration with rate limiting
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
@@ -438,7 +439,7 @@ func main() {}`)
 	models := []string{"normal-model", "rate-limited-model", "another-model"}
 
 	// Create a test configuration
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,

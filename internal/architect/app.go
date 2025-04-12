@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
@@ -22,7 +23,7 @@ import (
 // It configures the necessary components and calls the internal run function.
 func Execute(
 	ctx context.Context,
-	cliConfig *CliConfig,
+	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
 ) (err error) {
@@ -362,7 +363,7 @@ func Execute(
 func processModel(
 	ctx context.Context,
 	modelName string,
-	cliConfig *CliConfig,
+	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	apiService APIService,
 	auditLogger auditlog.AuditLogger,
@@ -661,7 +662,7 @@ func sanitizeFilename(filename string) string {
 // This allows integration tests to use this function directly and inject mocked services.
 func RunInternal(
 	ctx context.Context,
-	cliConfig *CliConfig,
+	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	apiService APIService,
 	auditLogger auditlog.AuditLogger,
@@ -1084,7 +1085,7 @@ func saveOutputToFile(
 func processModelConcurrently(
 	ctx context.Context,
 	modelName string,
-	cliConfig *CliConfig,
+	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	apiService APIService,
 	auditLogger auditlog.AuditLogger,

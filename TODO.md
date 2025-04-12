@@ -11,7 +11,7 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 1.2
 
-- [ ] **Task Title:** Update Code to Use `internal/config.CliConfig`
+- [x] **Task Title:** Update Code to Use `internal/config.CliConfig`
   - **Action:** Update `cmd/architect/cli.go` to use the `CliConfig` struct from `internal/config`. Update `internal/architect/app.go` and other internal packages to accept configuration values directly from the config package rather than depending on the CLI-specific struct.
   - **Depends On:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 1.2

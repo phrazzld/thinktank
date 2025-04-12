@@ -1,43 +1,14 @@
 // Package architect contains the core application logic for the architect tool
 package architect
 
-import "github.com/phrazzld/architect/internal/logutil"
+import (
+	// Import the config package which contains the canonical CliConfig
+	_ "github.com/phrazzld/architect/internal/config"
+)
 
-// CliConfig represents the command-line configuration used by the application
-type CliConfig struct {
-	// Instructions configuration
-	InstructionsFile string
-
-	// Output configuration
-	OutputDir    string
-	AuditLogFile string // Path to write structured audit logs (JSON Lines)
-	Format       string
-
-	// Context gathering options
-	Paths        []string
-	Include      string
-	Exclude      string
-	ExcludeNames string
-	DryRun       bool
-	Verbose      bool
-
-	// API configuration
-	ApiKey     string
-	ModelNames []string
-
-	// Token management
-	ConfirmTokens int
-
-	// Logging
-	LogLevel logutil.LogLevel
-
-	// Rate limiting configuration
-	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
-	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
-}
-
-// Constants for configuration
+// Configuration constants have been moved to internal/config
 const (
 	// APIKeyEnvVar is the environment variable name for the API key
+	// Kept for backward compatibility but prefer using config.APIKeyEnvVar
 	APIKeyEnvVar = "GEMINI_API_KEY"
 )

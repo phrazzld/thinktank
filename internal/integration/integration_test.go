@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/auditlog"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -49,7 +49,7 @@ func add(a, b int) int {
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with the new InstructionsFile field
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
@@ -110,7 +110,7 @@ func main() {
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with dry run enabled
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -162,7 +162,7 @@ func main() {
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration focusing on task file input
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -231,7 +231,7 @@ func main() {}`)
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with file inclusion filters
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -297,7 +297,7 @@ func main() {}`)
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -360,7 +360,7 @@ func main() {}`)
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -421,7 +421,7 @@ func main() {}`)
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration with confirm-tokens
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -481,7 +481,7 @@ func main() {}`)
 	outputFile := filepath.Join(outputDir, modelName+".md")
 
 	// Create a test configuration
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
@@ -539,7 +539,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Create a test configuration
-		testConfig := &architect.CliConfig{
+		testConfig := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			OutputDir: outputDir,
 			ModelNames:  []string{"test-model"},
@@ -616,7 +616,7 @@ func main() {
 		env.AuditLogger = auditLogger
 
 		// Create a test configuration with the audit log file
-		testConfig := &architect.CliConfig{
+		testConfig := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},
@@ -817,7 +817,7 @@ func main() {}`)
 		}
 
 		// Create a test configuration
-		testConfig := &architect.CliConfig{
+		testConfig := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},

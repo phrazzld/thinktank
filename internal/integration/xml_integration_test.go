@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -61,7 +61,7 @@ func helper(a, b int) int {
 	}
 
 	// Create a test configuration using the new InstructionsFile
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
@@ -158,7 +158,7 @@ func main() {}`)
 	}
 
 	// Create a test configuration
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
@@ -249,7 +249,7 @@ The component should handle the following edge cases:
 	env.SetupXMLValidatingClient(t, "component.jsx", "template.html", "&lt;div", "&lt;html&gt;")
 
 	// Create a test configuration using the new InstructionsFile
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},

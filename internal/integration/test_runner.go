@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -67,7 +68,7 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 // RunTestWithConfig runs the architect application with the provided test config and environment
 func RunTestWithConfig(
 	ctx context.Context,
-	testConfig *architect.CliConfig,
+	testConfig *config.CliConfig,
 	env *TestEnv,
 ) error {
 	// Create a mock API service that uses the test environment's mock client

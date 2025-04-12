@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
@@ -55,7 +56,7 @@ func main() {}`)
 
 	// Create a test configuration with multiple models
 	modelNames := []string{"model1", "model2", "model3"}
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
@@ -261,7 +262,7 @@ func main() {}`)
 
 	// Create a test configuration with multiple models
 	modelNames := []string{"model1", "model2", "model3"}
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
@@ -422,7 +423,7 @@ func main() {}`)
 
 	// Create a test configuration with multiple models
 	modelNames := []string{"model1", "model2", "model3"}
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
@@ -558,7 +559,7 @@ func main() {}`)
 
 	// Create a test configuration with multiple models
 	modelNames := []string{"model1", "model2", "model3"}
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
@@ -718,7 +719,7 @@ func main() {}`)
 
 	// Create a test configuration with multiple models
 	modelNames := []string{"model1", "model2", "model3", "model4", "model5"}
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
@@ -814,7 +815,7 @@ func main() {}`)
 	outputDir := filepath.Join(env.TestDir, "output")
 
 	// Create a test configuration with a single model
-	testConfig := &architect.CliConfig{
+	testConfig := &config.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"gemini-pro"},

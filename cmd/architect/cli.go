@@ -39,30 +39,8 @@ const (
 	defaultExcludeNames = config.DefaultExcludeNames
 )
 
-// CliConfig holds the parsed command-line options
-type CliConfig struct {
-	InstructionsFile string
-	OutputDir        string
-	AuditLogFile     string // Path to write structured audit logs (JSON Lines)
-	ModelNames       []string
-	Verbose          bool
-	LogLevel         logutil.LogLevel
-	Include          string
-	Exclude          string
-	ExcludeNames     string
-	Format           string
-	DryRun           bool
-	ConfirmTokens    int
-	Paths            []string
-	ApiKey           string
-
-	// Rate limiting configuration
-	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
-	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
-}
-
 // ValidateInputs checks if the configuration is valid and returns an error if not
-func ValidateInputs(config *CliConfig, logger logutil.LoggerInterface) error {
+func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) error {
 	// Check for instructions file
 	if config.InstructionsFile == "" && !config.DryRun {
 		logger.Error("The required --instructions flag is missing.")
@@ -91,14 +69,14 @@ func ValidateInputs(config *CliConfig, logger logutil.LoggerInterface) error {
 }
 
 // ParseFlags handles command line argument parsing and returns the configuration
-func ParseFlags() (*CliConfig, error) {
+func ParseFlags() (*config.CliConfig, error) {
 	return ParseFlagsWithEnv(flag.CommandLine, os.Args[1:], os.Getenv)
 }
 
 // ParseFlagsWithEnv handles command-line flag parsing with custom flag set and environment lookup
 // This improves testability by allowing tests to provide mock flag sets and environment functions
-func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string) string) (*CliConfig, error) {
-	config := &CliConfig{}
+func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string) string) (*config.CliConfig, error) {
+	cfg := config.NewDefaultCliConfig()
 
 	// Define flags
 	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
@@ -149,31 +127,31 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	}
 
 	// Store flag values in configuration
-	config.InstructionsFile = *instructionsFileFlag
+	cfg.InstructionsFile = *instructionsFileFlag
 
 	// Set output directory
-	config.OutputDir = *outputDirFlag
+	cfg.OutputDir = *outputDirFlag
 
-	config.AuditLogFile = *auditLogFileFlag
-	config.Verbose = *verboseFlag
-	config.Include = *includeFlag
-	config.Exclude = *excludeFlag
-	config.ExcludeNames = *excludeNamesFlag
-	config.Format = *formatFlag
-	config.DryRun = *dryRunFlag
-	config.ConfirmTokens = *confirmTokensFlag
-	config.Paths = flagSet.Args()
+	cfg.AuditLogFile = *auditLogFileFlag
+	cfg.Verbose = *verboseFlag
+	cfg.Include = *includeFlag
+	cfg.Exclude = *excludeFlag
+	cfg.ExcludeNames = *excludeNamesFlag
+	cfg.Format = *formatFlag
+	cfg.DryRun = *dryRunFlag
+	cfg.ConfirmTokens = *confirmTokensFlag
+	cfg.Paths = flagSet.Args()
 
 	// Store rate limiting configuration
-	config.MaxConcurrentRequests = *maxConcurrentFlag
-	config.RateLimitRequestsPerMinute = *rateLimitRPMFlag
+	cfg.MaxConcurrentRequests = *maxConcurrentFlag
+	cfg.RateLimitRequestsPerMinute = *rateLimitRPMFlag
 
 	// Set model names from the flag, defaulting to a single default model if none provided
 	if len(*modelFlag) > 0 {
-		config.ModelNames = *modelFlag
+		cfg.ModelNames = *modelFlag
 	} else {
 		// If no models were specified on the command line, use the default model
-		config.ModelNames = []string{defaultModel}
+		cfg.ModelNames = []string{defaultModel}
 	}
 
 	// Determine initial log level from flag
@@ -184,26 +162,26 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 			parsedLogLevel = ll
 		}
 	}
-	config.LogLevel = parsedLogLevel
+	cfg.LogLevel = parsedLogLevel
 
 	// Apply verbose override *after* parsing the specific level
-	if config.Verbose {
-		config.LogLevel = logutil.DebugLevel
+	if cfg.Verbose {
+		cfg.LogLevel = logutil.DebugLevel
 	}
-	config.ApiKey = getenv(apiKeyEnvVar)
+	cfg.ApiKey = getenv(apiKeyEnvVar)
 
 	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
 	// Validation is now exclusively handled by ValidateInputs
-	return config, nil
+	return cfg, nil
 }
 
 // SetupLogging initializes the logger based on configuration
-func SetupLogging(config *CliConfig) logutil.LoggerInterface {
+func SetupLogging(config *config.CliConfig) logutil.LoggerInterface {
 	return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
 }
 
 // SetupLoggingCustom initializes the logger with custom flag and writer for testing
-func SetupLoggingCustom(config *CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
+func SetupLoggingCustom(config *config.CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
 	// Apply verbose override if set
 	if config.Verbose {
 		config.LogLevel = logutil.DebugLevel
