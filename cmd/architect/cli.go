@@ -93,6 +93,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Define flags
 	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
 	outputDirFlag := flagSet.String("output-dir", "", "Directory path to store generated plans (one per model).")
+	// Define --output as an alias for --output-dir for backward compatibility, but mark it as deprecated
+	flagSet.String("output", "", "DEPRECATED: Use --output-dir instead. Path for output file(s).")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
@@ -134,7 +136,17 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Store flag values in configuration
 	config.InstructionsFile = *instructionsFileFlag
-	config.OutputDir = *outputDirFlag
+
+	// Handle output directory setting (from either --output-dir or the deprecated --output flag)
+	outputDir := *outputDirFlag
+	if outputDir == "" {
+		// If --output-dir is not set, check for the deprecated --output flag
+		if outputFlag := flagSet.Lookup("output"); outputFlag != nil && outputFlag.Value.String() != "" {
+			outputDir = outputFlag.Value.String()
+		}
+	}
+	config.OutputDir = outputDir
+
 	config.AuditLogFile = *auditLogFileFlag
 	config.Verbose = *verboseFlag
 	config.Include = *includeFlag

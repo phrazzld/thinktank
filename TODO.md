@@ -22,7 +22,7 @@
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), add a new `flagSet.String()` for `--output-dir`, making it optional with a default empty string `""`.
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC3, AC5
-- [ ] **Remove Old `--output` Flag:**
+- [x] **Remove Old `--output` Flag:**
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), remove the definition and parsing logic for the old `--output` flag.
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC4 (implicitly replaces single output file)
