@@ -830,7 +830,7 @@ func RunInternal(
 	return nil
 }
 
-// savePlanToFile is a helper function that saves the generated plan to a file
+// savePlanToFile is a helper function that saves the generated output to a model-specific file
 // and includes audit logging around the file writing operation.
 // outputFilePath is the model-specific output file path (e.g., outputDir/model-name.md)
 func savePlanToFile(
@@ -841,9 +841,6 @@ func savePlanToFile(
 ) error {
 	// Create file writer
 	fileWriter := NewFileWriter(logger)
-
-	// Define the path to save the output
-	paths := []string{outputFilePath}
 
 	// Log the start of output saving
 	saveStartTime := time.Now()
@@ -860,24 +857,17 @@ func savePlanToFile(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// Save to all required paths
-	var lastErr error
-	for _, path := range paths {
-		// Save output file
-		logger.Info("Writing plan to %s...", path)
-		err := fileWriter.SaveToFile(content, path)
-		if err != nil {
-			logger.Error("Error saving plan to file %s: %v", path, err)
-			lastErr = err
-			// Continue trying other paths
-		}
-	}
+	// Save output file
+	logger.Info("Writing output to %s...", outputFilePath)
+	err := fileWriter.SaveToFile(content, outputFilePath)
 
 	// Calculate duration in milliseconds
 	saveDurationMs := time.Since(saveStartTime).Milliseconds()
 
-	if lastErr != nil {
+	if err != nil {
 		// Log failure to save output
+		logger.Error("Error saving output to file %s: %v", outputFilePath, err)
+
 		if logErr := auditLogger.Log(auditlog.AuditEntry{
 			Timestamp:  time.Now().UTC(),
 			Operation:  "SaveOutputEnd",
@@ -887,7 +877,7 @@ func savePlanToFile(
 				"output_path": outputFilePath,
 			},
 			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to save output to file: %v", lastErr),
+				Message: fmt.Sprintf("Failed to save output to file: %v", err),
 				Type:    "FileIOError",
 			},
 			Message: "Failed to save output to file",
@@ -895,7 +885,7 @@ func savePlanToFile(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("error saving plan to file: %w", lastErr)
+		return fmt.Errorf("error saving output to file %s: %w", outputFilePath, err)
 	}
 
 	// Log successful saving of output
@@ -915,7 +905,7 @@ func savePlanToFile(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	logger.Info("Plan successfully generated and saved to %s", outputFilePath)
+	logger.Info("Output successfully generated and saved to %s", outputFilePath)
 	return nil
 }
 

@@ -19,7 +19,7 @@
   - **Action:** Remove the --output flag and all related logic from the codebase, ensuring that --output-dir is the only option for specifying output location.
   - **Depends On:** Update Integration Tests for Model-Specific Outputs
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
-- [ ] **Task Title:** Update `savePlanToFile` Function
+- [x] **Task Title:** Update `savePlanToFile` Function
   - **Action:** Simplify the `savePlanToFile` function in `internal/architect/app.go` to only write to model-specific files in the output directory. Remove any legacy output path handling.
   - **Depends On:** Remove --output Flag and Logic
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)
