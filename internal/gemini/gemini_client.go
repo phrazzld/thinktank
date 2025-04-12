@@ -309,6 +309,35 @@ func (c *geminiClient) Close() error {
 	return nil
 }
 
+// GetModelName returns the name of the model being used
+func (c *geminiClient) GetModelName() string {
+	return c.modelName
+}
+
+// GetTemperature returns the temperature setting for the model
+func (c *geminiClient) GetTemperature() float32 {
+	if c.model != nil && c.model.Temperature != nil {
+		return *c.model.Temperature
+	}
+	return DefaultModelConfig().Temperature
+}
+
+// GetMaxOutputTokens returns the max output tokens setting for the model
+func (c *geminiClient) GetMaxOutputTokens() int32 {
+	if c.model != nil && c.model.MaxOutputTokens != nil {
+		return int32(*c.model.MaxOutputTokens)
+	}
+	return DefaultModelConfig().MaxOutputTokens
+}
+
+// GetTopP returns the topP setting for the model
+func (c *geminiClient) GetTopP() float32 {
+	if c.model != nil && c.model.TopP != nil {
+		return *c.model.TopP
+	}
+	return DefaultModelConfig().TopP
+}
+
 // mapSafetyRatings converts genai safety ratings to our internal format
 func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating {
 	if ratings == nil {

@@ -1,162 +1,186 @@
-# Implementation Approach Analysis: Update Logging Terminology
+# Implementation Approaches Analysis: Enhance Logging Verbosity and Clarity
 
 ## Task Description
-Refactor logging messages throughout the codebase to replace specific "plan" terminology with more general terms reflective of the tool's broader use cases (e.g., "output", "analysis", "result"). Ensure consistency and adhere to coding standards for meaningful naming.
+Improve log messages to be more informative about the current operation, including more context about files being processed, models being used, and operation progress. Add additional log points at appropriate places in the execution flow.
 
-## Chosen General Term
-Based on the tool's function (generating content based on instructions and context), the term **"output"** appears to be the most suitable and versatile general replacement for "plan". We will use "output" as the primary replacement unless the specific context strongly suggests "result" or "analysis".
+## Acceptance Criteria
+- Log messages should provide more detailed context about operations
+- Add information about files being processed, models being used, and operation progress
+- Add new log points at appropriate places in the execution flow where needed
+- Follow the principle "Explicit is Better than Implicit" from `DOCUMENTATION_APPROACH.md`
 
 ---
 
-## Approach 1: Direct Manual Replacement
+## Approach 1: Direct Log Statement Enhancement
 
-### Steps
-1.  **Identify:** Use IDE search or command-line tools (like `grep` or `rg`) to find all occurrences of the word "plan" (case-insensitive) within logging statements (`logger.Info`, `logger.Warn`, `logger.Error`, `logger.Debug`, `logger.Fatal`, `fmt.Errorf` messages that might be logged).
-    *   Example search patterns: `logger\.(Info|Warn|Error|Debug|Fatal)\(".*plan.*"\)` or similar regex.
-    *   Target files: Primarily `internal/architect/app.go`, `internal/architect/api.go`, `internal/architect/output.go`, but search the entire codebase.
-2.  **Review & Replace:** Manually review each identified log message.
-    *   Replace "plan" with "output" (or occasionally "result"/"analysis" if context dictates, but prioritize "output" for consistency).
-    *   Ensure the grammatical structure and meaning of the message remain correct and clear.
-    *   Example: `logger.Info("Generating plan with model %s...", modelName)` becomes `logger.Info("Generating output with model %s...", modelName)`.
-    *   Example: `return fmt.Errorf("plan generation failed for model %s: %w", modelName, err)` becomes `return fmt.Errorf("output generation failed for model %s: %w", modelName, err)`.
-3.  **Verify Consistency:** Perform a final search for both "plan" and the chosen replacement term ("output") in log messages to ensure all instances have been addressed and the new terminology is used consistently.
-4.  **Format & Lint:** Run `goimports` and `golangci-lint` to ensure code formatting and quality standards are met.
-5.  **Test:** Run all existing tests (`go test ./...`) to confirm that functionality remains unchanged.
+**Description:** Directly modify existing `logger.Info`, `logger.Debug`, etc., calls throughout the codebase (`app.go`, `context.go`, `fileutil.go`, etc.) to include more context (file paths, model names, progress). Add new log statements where needed.
 
-### Pros
-*   **Simple:** Very straightforward approach, easy to understand and execute.
-*   **Low Risk:** Directly modifies only the string literals in log messages, minimizing the risk of introducing functional bugs.
-*   **Targeted:** Allows for nuanced replacement based on the specific context of each log message.
+**Steps:**
 
-### Cons
-*   **Tedious:** Can be time-consuming if there are many occurrences across multiple files.
-*   **Consistency Risk:** Relies heavily on manual review to ensure consistent terminology is applied everywhere. Easy to miss an instance or use slightly different wording.
-*   **Less Maintainable:** Doesn't centralize common log messages; future changes might require searching and replacing again.
+1.  **Identify Log Points:** Systematically review `internal/architect/app.go`, `internal/architect/context.go`, `internal/fileutil/fileutil.go`, `internal/gemini/gemini_client.go`, `internal/architect/token.go`, `internal/architect/output.go` to find existing log statements and locations needing new ones.
+2.  **Enhance Messages:** Update the format strings and arguments passed to `logger.X` methods. Include relevant variables like `modelName`, `filePath`, specific `cliConfig` settings (e.g., filters), loop counters, or counts (e.g., "file X of Y").
+    *   *Example (app.go):* Change `logger.Info("Processing model: %s", modelName)` to `logger.Info("[Model: %s] Starting processing...", modelName)`. Add logs for rate limiter acquisition/release.
+    *   *Example (context.go):* Add `logger.Debug("Gathering context with filters: includeExts=%v, excludeExts=%v, excludeNames=%v", config.IncludeExts, config.ExcludeExts, config.ExcludeNames)`. Change `logger.Info("Context gathered: %d files...")` to include the model name used for token counting.
+    *   *Example (fileutil.go):* Enhance `Verbose` logs (which map to `Debug` or `Info` based on CLI flag) to clearly state the reason for skipping a file (e.g., `logger.Printf("Verbose: Skipping git-ignored file: %s\n", path)`). Add progress like `logger.Printf("Verbose: Processing file (%d/%d): %s\n", config.processedFiles, config.totalFiles, path)`.
+    *   *Example (gemini_client.go):* Add logs at the start/end of API calls (`GenerateContent`, `CountTokens`, `GetModelInfo`), including the `modelName`.
+    *   *Example (output.go):* Log the specific `outputFilePath` being written to in `saveOutputToFile`. Log start/end of `StitchPrompt`.
+3.  **Add New Logs:** Insert new `logger.X` calls at the start and end of key logical blocks or operations currently lacking logging (e.g., beginning/end of `GatherContext`, `StitchPrompt`, `processModel`, API calls).
+4.  **Review Levels:** Ensure INFO is used for significant milestones and summaries, while DEBUG is used for detailed step-by-step information, skipped items, or potentially large data summaries (like listing all files).
 
-### Evaluation Against Standards
+**Pros:**
+
+*   **Simple & Direct:** Very easy to understand and implement using existing patterns. Low learning curve.
+*   **Localized Changes:** While changes are across files, each change is localized to the specific operation being logged.
+*   **No New Abstractions:** Leverages the existing `logutil.LoggerInterface` without adding new layers.
+*   **Maximum Flexibility:** Each log message can be tailored precisely as needed.
+
+**Cons:**
+
+*   **Scattered Modifications:** Changes are distributed across multiple files and packages.
+*   **Potential for Minor Repetition:** Might need to pass the same contextual variable (e.g., `modelName`) to multiple log calls within the same function.
+*   **Manual Effort:** Requires careful identification and modification of each relevant log statement.
+
+**Evaluation Against Standards:**
 
 *   **`CORE_PRINCIPLES.md`:**
-    *   **Simplicity:** Aligns well. The approach is the simplest possible way to achieve the goal.
-    *   **Modularity:** Neutral. Doesn't inherently improve or degrade modularity.
-    *   **Testability:** Aligns well. Doesn't change code logic, so existing tests remain valid. Doesn't make testing harder.
-    *   **Maintainability:** Moderate. Simple to implement, but less maintainable than centralizing messages if the terminology needs changing again.
-    *   **Explicit > Implicit:** Aligns well. Changes are directly in the log messages.
-    *   **Automation:** Neutral. The process itself is manual.
-    *   **Document Decisions:** Neutral. The change itself is self-explanatory within the code.
+    *   *Simplicity:* **High**. Most straightforward approach.
+    *   *Modularity:* **Neutral**. Doesn't change module boundaries.
+    *   *Testability:* **High**. Doesn't affect core logic testability. Log output can be tested by capturing stderr if needed, but core logic tests don't require log-related mocking.
+    *   *Maintainability:* **Moderate**. Easy to understand individual changes, but they are spread out.
+    *   *Explicit is Better than Implicit:* **High**. Makes logging details explicit in the message.
+    *   *Automate Everything:* N/A.
+    *   *Document Decisions:* N/A.
 *   **`ARCHITECTURE_GUIDELINES.md`:**
-    *   **Unix Philosophy:** Neutral.
-    *   **Separation of Concerns:** Aligns well. Changes are confined to logging statements, which are typically infrastructure/application concerns, not core domain logic.
-    *   **Dependency Inversion:** Aligns well. No impact on dependencies.
-    *   **Package by Feature:** Aligns well. Changes are made within the relevant feature packages (e.g., `architect`).
-    *   **API Design:** Neutral.
-    *   **Configuration:** Neutral.
-    *   **Error Handling:** Aligns well. Ensures error messages logged are clear and use consistent terminology.
+    *   *Unix Philosophy, Separation of Concerns, Dependency Inversion, Package Structure, API Design, Configuration Management, Error Handling:* **Neutral**. This approach doesn't significantly impact architectural aspects. Logging remains a cross-cutting concern handled via the injected logger.
 *   **`CODING_STANDARDS.md`:**
-    *   **Strictness:** Aligns well. Requires passing linters.
-    *   **Types:** Aligns well. No impact on types.
-    *   **Immutability:** Aligns well. No impact.
-    *   **Pure Functions:** Aligns well. No impact.
-    *   **Meaningful Naming:** Directly addresses this standard by replacing potentially outdated terminology ("plan") with more accurate and general terms ("output").
-    *   **Formatting:** Aligns well. Requires running `goimports`.
-    *   **Linting:** Aligns well. Requires running `golangci-lint`.
-    *   **No Suppression:** Aligns well. No need for suppression.
-    *   **Purposeful Comments:** Neutral. Comments are unlikely to be needed for this change.
-    *   **Dependency Management:** Neutral.
+    *   *Strictness, Types, Immutability, Pure Functions:* **Neutral**.
+    *   *Meaningful Naming:* **High**. Applies directly to crafting clear log messages.
+    *   *Formatting, Linting:* **High**. Standard Go formatting/linting applies.
+    *   *Address Violations:* N/A.
+    *   *Purposeful Comments:* **Neutral**.
+    *   *Dependency Management:* **Neutral**. No new dependencies.
 *   **`TESTING_STRATEGY.md`:**
-    *   **Testability:** Excellent alignment. This approach has minimal impact on testability. Since tests should not assert the exact content of log messages (Behavior > Implementation), changing log strings doesn't break well-designed tests. It requires no changes to test setup or mocking.
-    *   **Mocking Policy:** Excellent alignment. No mocking is involved or affected.
+    *   *Testability:* **High**. Adheres to the principle of minimal mocking. Core logic remains testable without needing to mock the logger itself for most tests. Integration tests can optionally capture log output.
 *   **`DOCUMENTATION_APPROACH.md`:**
-    *   **Self-Documenting Code:** Improves this slightly by making log messages more accurately reflect the tool's purpose.
-    *   **README/Comments/API/ADRs/Diagrams:** Neutral. No changes needed.
+    *   *Self-Documenting Code:* **Low/Neutral**. Log messages enhance operational understanding but aren't code documentation per se.
+    *   *Explicit is Better than Implicit:* **High**. Aligns with the documentation principle by making runtime actions explicit.
 
 ---
 
-## Approach 2: Refactor Key Messages to Constants
+## Approach 2: Contextual Logger Wrapper
 
-### Steps
-1.  **Identify Common Messages:** Use search tools (as in Approach 1) to find occurrences of "plan" in log messages. Identify recurring message *formats* related to the generation/saving process.
-    *   Examples: "Generating plan with model %s...", "Plan generated successfully with model %s", "Save the plan to file", "Failed to save plan for model %s".
-2.  **Define Constants:** In a relevant package (likely `internal/architect`), define string constants for these common message formats using the new terminology ("output").
-    *   Example:
-        ```go
-        const (
-            logOutputGenerationStartMsg = "Generating output with model %s..."
-            logOutputGenerationSuccessMsg = "Output generated successfully with model %s"
-            logSavingOutputMsg = "Saving output to %s..." // Changed from "plan"
-            errSavingOutputMsg = "failed to save output for model %s: %w" // Changed from "plan"
-        )
-        ```
-3.  **Replace Usage:** Refactor the code to use these constants in the corresponding `logger.Info/Error` or `fmt.Errorf` calls.
-    *   Example: `logger.Info("Generating plan with model %s...", modelName)` becomes `logger.Info(logOutputGenerationStartMsg, modelName)`.
-    *   Example: `return fmt.Errorf("failed to save plan for model %s: %w", modelName, err)` becomes `return fmt.Errorf(errSavingOutputMsg, modelName, err)`.
-4.  **Handle Unique Messages:** For log messages containing "plan" that don't fit a common pattern, use the Direct Manual Replacement method (Approach 1).
-5.  **Review & Verify:** Perform searches to ensure all instances are addressed and consistent.
-6.  **Format & Lint:** Run `goimports` and `golangci-lint`.
-7.  **Test:** Run all existing tests (`go test ./...`).
+**Description:** Introduce a lightweight wrapper around `logutil.LoggerInterface` or helper functions that automatically include common contextual information (e.g., `modelName`, current operation stage) in log messages.
 
-### Pros
-*   **Consistency:** Enforces consistency for common messages by defining them in one place.
-*   **Maintainability:** Easier to update terminology or message formats in the future by changing the constant definition.
-*   **Readability:** Can make logging calls slightly cleaner if message formats are long or complex (though simple formats might be less readable with constants).
+**Steps:**
 
-### Cons
-*   **Slightly More Complex:** Involves defining constants and refactoring calls, adding a minor layer of indirection.
-*   **Overhead for Few Occurrences:** Might be overkill if there are only a few distinct messages to change.
-*   **Readability Trade-off:** For very simple messages, using a constant might make the logging call slightly less immediately readable than seeing the full string inline.
+1.  **Identify Common Context:** Determine frequently needed context (e.g., `modelName` within `processModel`, `filePath` within `fileutil`).
+2.  **Create Wrapper/Helpers (in `logutil` or a new `logcontext` package):**
+    *   *Option A (Wrapper):* Define `type ContextualLogger struct { baseLogger logutil.LoggerInterface; context map[string]interface{} }`. Implement `Info`, `Debug`, etc., methods that merge context with the message.
+    *   *Option B (Helpers):* Define functions like `logutil.InfoWithFields(logger logutil.LoggerInterface, fields map[string]interface{}, format string, v ...interface{})`.
+3.  **Instantiate/Use:** In scopes where context is available (e.g., `processModel`), create a contextual logger instance or prepare a context map.
+    *   *Example (Wrapper):* `modelLogger := logutil.NewContextualLogger(logger, map[string]interface{}{"model": modelName})`
+    *   *Example (Helper):* `fields := map[string]interface{}{"model": modelName}`
+4.  **Refactor Log Calls:** Replace direct `logger.X` calls with `modelLogger.Info(...)` or `logutil.InfoWithFields(logger, fields, ...)` calls.
+5.  **Add New Logs:** Use the wrapper/helpers for new log points.
 
-### Evaluation Against Standards
+**Pros:**
+
+*   **DRY:** Reduces the need to manually add the same context fields (like `modelName`) repeatedly within a function scope.
+*   **Consistency:** Can enforce a consistent format for adding context (e.g., always prefixing with `[Model: %s]`).
+*   **Centralized Context Formatting:** Logic for how context appears in logs is centralized.
+
+**Cons:**
+
+*   **Added Abstraction:** Introduces a new struct or set of helper functions, adding a minor layer of complexity.
+*   **Management Overhead:** Requires creating/passing the wrapper instance or context map.
+*   **Potential Rigidity:** Might be slightly less flexible if a specific log message needs context formatted differently than the wrapper provides.
+
+**Evaluation Against Standards:**
 
 *   **`CORE_PRINCIPLES.md`:**
-    *   **Simplicity:** Slightly less simple than Approach 1 due to the introduction of constants, but still relatively simple.
-    *   **Modularity:** Neutral. Constants are kept within the relevant package.
-    *   **Testability:** Aligns well. No negative impact on testability for the same reasons as Approach 1.
-    *   **Maintainability:** Better maintainability for the refactored messages compared to Approach 1 if future changes are needed.
-    *   **Explicit > Implicit:** Aligns well. Constants make the intended message format explicit.
-    *   **Automation:** Neutral.
-    *   **Document Decisions:** Neutral.
+    *   *Simplicity:* **Moderate**. Adds a small abstraction.
+    *   *Modularity:* **Neutral/Slightly Positive**. Centralizes some formatting logic.
+    *   *Testability:* **High**. Wrapper is simple and testable. Core logic testability unchanged. Minimal mocking.
+    *   *Maintainability:* **Moderate/High**. Easier global updates to context format, but requires understanding the wrapper.
+    *   *Explicit is Better than Implicit:* **Moderate/High**. Context is still explicit, potentially added automatically.
+    *   *Automate Everything:* N/A.
+    *   *Document Decisions:* N/A.
 *   **`ARCHITECTURE_GUIDELINES.md`:**
-    *   **Unix Philosophy:** Neutral.
-    *   **Separation of Concerns:** Aligns well.
-    *   **Dependency Inversion:** Aligns well.
-    *   **Package by Feature:** Aligns well. Constants defined within the feature package.
-    *   **API Design:** Neutral.
-    *   **Configuration:** Neutral.
-    *   **Error Handling:** Aligns well. Ensures consistent error message formats.
+    *   **Neutral** across all guidelines. Doesn't fundamentally change architecture.
 *   **`CODING_STANDARDS.md`:**
-    *   **Strictness:** Aligns well.
-    *   **Types:** Aligns well.
-    *   **Immutability:** Aligns well.
-    *   **Pure Functions:** Aligns well.
-    *   **Meaningful Naming:** Directly addresses this standard. Also requires meaningful names for the constants themselves.
-    *   **Formatting:** Aligns well.
-    *   **Linting:** Aligns well.
-    *   **No Suppression:** Aligns well.
-    *   **Purposeful Comments:** Neutral. Comments might be useful for grouping constants.
-    *   **Dependency Management:** Neutral.
+    *   **Neutral** across most standards. Promotes DRY.
 *   **`TESTING_STRATEGY.md`:**
-    *   **Testability:** Excellent alignment. Same reasons as Approach 1 – no impact on test logic or need for mocking changes.
-    *   **Mocking Policy:** Excellent alignment. No mocking involved or affected.
+    *   *Testability:* **High**. Similar to Approach 1 regarding core logic testing. Minimal mocking needed.
 *   **`DOCUMENTATION_APPROACH.md`:**
-    *   **Self-Documenting Code:** Improves slightly by centralizing common message formats.
-    *   **README/Comments/API/ADRs/Diagrams:** Neutral.
+    *   *Self-Documenting Code:* **Low/Neutral**.
+    *   *Explicit is Better than Implicit:* **High**.
 
 ---
 
-## Recommendation: Approach 1 - Direct Manual Replacement
+## Approach 3: Structured Logging with Context Fields
 
-### Justification
+**Description:** Modify the `logutil.Logger` to natively support structured logging (key-value pairs). Pass context explicitly as fields at each call site. The logger formats the output (e.g., JSON, logfmt).
 
-While Approach 2 (Refactor Key Messages to Constants) offers slightly better long-term maintainability for the specific messages it refactors, **Approach 1 (Direct Manual Replacement)** is recommended as the best fit according to the project's standards hierarchy:
+**Steps:**
 
-1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** Approach 1 is fundamentally simpler. It involves direct, easily understandable changes without introducing new constants or indirections. The benefit of constants for maintainability seems marginal for this specific task (changing terminology once) compared to the immediate clarity of seeing the log string directly at the call site.
-2.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** Both approaches respect this principle well.
-3.  **Testability (Minimal Mocking) (`TESTING_STRATEGY.md`):** Both approaches excel here. Neither impacts testability negatively nor requires changes to mocking strategies, as log message content shouldn't be the primary focus of tests.
-4.  **Coding Conventions (`CODING_STANDARDS.md`):** Both approaches adhere to coding standards, particularly "Meaningful Naming," by updating the terminology. Approach 1 avoids adding new identifiers (constants) that also need naming.
-5.  **Documentability (`DOCUMENTATION_APPROACH.md`):** Both approaches slightly improve self-documentation by making log messages more accurate.
+1.  **Modify `logutil.Logger`:**
+    *   Change logging methods (e.g., `Info`, `Debug`) to accept variadic key-value pairs (e.g., `Info(msg string, fields ...interface{})`) or a map (`Info(msg string, fields map[string]interface{})`).
+    *   Update the internal `log` method and message formatting logic to handle these fields and output a structured format (e.g., JSON). Consider using a standard library like `log/slog` (Go 1.21+) or a third-party library internally if significant changes are needed.
+2.  **Refactor Log Calls:** Update all `logger.X` calls to pass context as key-value pairs.
+    *   *Example:* `logger.Info("Starting model processing", "model", modelName)`
+3.  **Add New Logs:** Use the new structured format for added log points.
+4.  **Choose Output Format:** Decide on JSON, logfmt, or another structured format.
 
-**Rationale Summary:**
+**Pros:**
 
-Approach 1 provides the most direct and least complex path to achieving the task's goal. The added complexity of introducing constants (Approach 2) doesn't seem justified by the potential maintainability gain for a one-off terminology update across a relatively small number of log messages (based on the provided context files). Prioritizing simplicity suggests the direct approach is preferable here. The risk of inconsistency in Approach 1 can be mitigated by careful review during the refactoring process.
+*   **Rich Context:** Explicitly captures context as structured data.
+*   **Machine Parseable:** Ideal for log aggregation and analysis tools.
+*   **Standardized:** Aligns with modern logging practices (e.g., `slog`).
 
-### Trade-offs Accepted
-*   We accept the minor trade-off that future global changes to these specific log messages might be slightly more work compared to Approach 2. However, given the nature of the change (a one-time terminology update), this seems like a low risk.
+**Cons:**
+
+*   **More Invasive:** Requires significant changes to the `logutil.Logger` implementation. Might involve adopting a new logging library/pattern like `slog`.
+*   **Verbose Call Sites:** Log statements become longer with explicit key-value pairs.
+*   **Potential Performance Overhead:** Formatting structured logs can be slightly more resource-intensive (though often negligible).
+*   **Human Readability:** Raw structured logs can be less immediately readable in the console than formatted strings.
+
+**Evaluation Against Standards:**
+
+*   **`CORE_PRINCIPLES.md`:**
+    *   *Simplicity:* **Low/Moderate**. Increases complexity of the logging system and call sites.
+    *   *Modularity:* **Positive**. Enhances the logger module's capability.
+    *   *Testability:* **High**. Core logic testability unchanged. Testing log output is easier (parsing JSON vs. regex). Minimal mocking.
+    *   *Maintainability:* **Moderate/High**. Easier to query logs later, but requires understanding structured logging.
+    *   *Explicit is Better than Implicit:* **Very High**. Context is explicit key-value data.
+    *   *Automate Everything:* **Positive**. Enables better log analysis automation.
+    *   *Document Decisions:* N/A.
+*   **`ARCHITECTURE_GUIDELINES.md`:**
+    *   **Neutral** across all guidelines.
+*   **`CODING_STANDARDS.md`:**
+    *   **Neutral** across most standards.
+*   **`TESTING_STRATEGY.md`:**
+    *   *Testability:* **High**. Core logic testing remains unchanged. Minimal mocking needed.
+*   **`DOCUMENTATION_APPROACH.md`:**
+    *   *Self-Documenting Code:* **Low/Neutral**.
+    *   *Explicit is Better than Implicit:* **Very High**.
+
+---
+
+## Recommendation
+
+**Recommended Approach:** **Approach 1: Direct Log Statement Enhancement**
+
+**Justification:**
+
+1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** Approach 1 is the simplest and most direct way to fulfill the task requirements. It involves familiar patterns (`Printf`-style logging) and avoids introducing new abstractions (Approach 2) or significantly overhauling the logging system (Approach 3). This aligns best with the "Simplicity First" principle.
+2.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** All approaches maintain the separation, as logging is handled via the injected `LoggerInterface`. Approach 1 makes the fewest assumptions about how logging should be structured beyond simple messages.
+3.  **Testability (Minimal Mocking) (`TESTING_STRATEGY.md`):** All approaches score highly here. Approach 1 requires the least change to the existing codebase and testing setup, making it the lowest risk. Core application logic remains highly testable without complex mocking related to the logging enhancements.
+4.  **Coding Conventions (`CODING_STANDARDS.md`):** Approach 1 uses standard Go formatting verbs within log messages, fitting existing conventions.
+5.  **Documentability (`DOCUMENTATION_APPROACH.md`):** By making log messages more explicit and informative, Approach 1 directly improves the runtime "documentation" of the application's behavior, aligning with the "Explicit is Better than Implicit" documentation principle.
+
+**Rationale Comparison & Trade-offs:**
+
+*   **Approach 1 vs. Approach 2:** While Approach 2 offers DRY benefits by reducing context repetition (e.g., `modelName`), the current codebase structure doesn't exhibit excessive repetition that would strongly justify the added abstraction of a wrapper or helpers. The simplicity of Approach 1 outweighs the minor potential for repetition at this stage.
+*   **Approach 1 vs. Approach 3:** Approach 3 (Structured Logging) is a significant step towards machine-parseable logs, which is valuable but overkill for the current requirement of enhancing human-readable clarity and verbosity. It introduces considerable complexity compared to Approach 1. If structured logging becomes a future requirement for integration with log analysis platforms, it should be tackled as a separate, dedicated task, potentially migrating `logutil` to use Go's standard `slog` package.
+
+**Conclusion:** Approach 1 delivers the required enhancements to logging verbosity and clarity with the least complexity, adhering best to the project's standards hierarchy, particularly Simplicity and Testability. It directly addresses the acceptance criteria without over-engineering the solution.

@@ -294,13 +294,21 @@ func Execute(
 			defer wg.Done()
 
 			// Acquire rate limiting permission with context
+			logger.Debug("Attempting to acquire rate limiter for model %s...", modelName)
+			acquireStart := time.Now()
 			if err := rateLimiter.Acquire(ctx, modelName); err != nil {
 				logger.Error("Rate limiting error for model %s: %v", modelName, err)
 				errChan <- fmt.Errorf("model %s rate limit: %w", modelName, err)
 				return
 			}
+			acquireDuration := time.Since(acquireStart)
+			logger.Debug("Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
+
 			// Release rate limiter when done
-			defer rateLimiter.Release()
+			defer func() {
+				logger.Debug("Releasing rate limiter for model %s", modelName)
+				rateLimiter.Release()
+			}()
 
 			// Process the model
 			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
@@ -474,7 +482,7 @@ func processModel(
 		return fmt.Errorf("token limit exceeded for model %s: %s", modelName, tokenInfo.LimitError)
 	}
 
-	logger.Info("Token check passed for model %s: %d / %d (%.1f%%)",
+	logger.Info("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
 		modelName, tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
 
 	// Log the successful token check
@@ -494,14 +502,17 @@ func processModel(
 			TotalTokens:  tokenInfo.TokenCount,
 			Limit:        tokenInfo.InputLimit,
 		},
-		Message: fmt.Sprintf("Token check passed for model %s: %d / %d (%.1f%%)",
+		Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
 			modelName, tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage),
 	}); logErr != nil {
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	// 3. Generate content with this model
-	logger.Info("Generating output with model %s...", modelName)
+	logger.Info("Generating output with model %s (Temperature: %.2f, MaxOutputTokens: %d)...",
+		modelName,
+		geminiClient.GetTemperature(),
+		geminiClient.GetMaxOutputTokens())
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
@@ -540,7 +551,7 @@ func processModel(
 			errorType = "APIError"
 			errorMessage = apiErr.Message
 		} else {
-			logger.Error("Error generating content with model %s: %v", modelName, err)
+			logger.Error("Error generating content with model %s: %v (Current token count: %d)", modelName, err, tokenInfo.TokenCount)
 		}
 
 		// Log the content generation failure
@@ -609,7 +620,9 @@ func processModel(
 			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)
 		}
 	}
-	logger.Info("Output generated successfully with model %s", modelName)
+	contentLength := len(generatedOutput)
+	logger.Info("Output generated successfully with model %s (content length: %d characters, tokens: %d)",
+		modelName, contentLength, result.TokenCount)
 
 	// 5. Sanitize model name for use in filename
 	sanitizedModelName := sanitizeFilename(modelName)
@@ -922,13 +935,21 @@ func RunInternal(
 			defer wg.Done()
 
 			// Acquire rate limiting permission with context
+			logger.Debug("Attempting to acquire rate limiter for model %s...", modelName)
+			acquireStart := time.Now()
 			if err := rateLimiter.Acquire(ctx, modelName); err != nil {
 				logger.Error("Rate limiting error for model %s: %v", modelName, err)
 				errChan <- fmt.Errorf("model %s rate limit: %w", modelName, err)
 				return
 			}
+			acquireDuration := time.Since(acquireStart)
+			logger.Debug("Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
+
 			// Release rate limiter when done
-			defer rateLimiter.Release()
+			defer func() {
+				logger.Debug("Releasing rate limiter for model %s", modelName)
+				rateLimiter.Release()
+			}()
 
 			// Process the model
 			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)

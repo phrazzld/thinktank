@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/phrazzld/architect/internal/gemini"
@@ -221,7 +222,8 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 
 	// If all checks pass, process it
 	config.processedFiles++
-	config.Logger.Printf("Verbose: Processing file (%d/%d): %s\n", config.processedFiles, config.totalFiles, path)
+	config.Logger.Printf("Verbose: Processing file (%d/%d): %s (size: %d bytes)\n",
+		config.processedFiles, config.totalFiles, path, len(content))
 
 	// If a file collector is set, call it
 	if config.fileCollector != nil {
@@ -307,6 +309,14 @@ func CalculateStatistics(content string) (charCount, lineCount, tokenCount int) 
 
 // CalculateStatisticsWithTokenCounting calculates accurate statistics using Gemini's token counter.
 func CalculateStatisticsWithTokenCounting(ctx context.Context, geminiClient gemini.Client, content string, logger logutil.LoggerInterface) (charCount, lineCount, tokenCount int) {
+	if content == "" {
+		logger.Debug("Empty content provided for token counting")
+		return 0, 0, 0
+	}
+
+	startTime := time.Now()
+	logger.Debug("Starting token counting for content of %d bytes", len(content))
+
 	charCount = len(content)
 	lineCount = strings.Count(content, "\n") + 1
 
@@ -331,6 +341,11 @@ func CalculateStatisticsWithTokenCounting(ctx context.Context, geminiClient gemi
 		if logger != nil {
 			logger.Debug("Using estimated token count: %d tokens", tokenCount)
 		}
+	}
+
+	duration := time.Since(startTime)
+	if logger != nil {
+		logger.Debug("Token counting completed in %v (result: %d tokens)", duration, tokenCount)
 	}
 
 	return charCount, lineCount, tokenCount

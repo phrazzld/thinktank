@@ -203,6 +203,22 @@ func (c *modelAwareClient) Close() error {
 	return c.delegateClient.Close()
 }
 
+func (c *modelAwareClient) GetModelName() string {
+	return c.delegateClient.GetModelName()
+}
+
+func (c *modelAwareClient) GetTemperature() float32 {
+	return c.delegateClient.GetTemperature()
+}
+
+func (c *modelAwareClient) GetMaxOutputTokens() int32 {
+	return c.delegateClient.GetMaxOutputTokens()
+}
+
+func (c *modelAwareClient) GetTopP() float32 {
+	return c.delegateClient.GetTopP()
+}
+
 // TestModelFailureHandling tests the behavior when one model fails but others succeed
 func TestModelFailureHandling(t *testing.T) {
 	// Set up the test environment

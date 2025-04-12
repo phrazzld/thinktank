@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -61,10 +62,16 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	// Log appropriate message based on mode
 	if cg.dryRun {
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
-		cg.logger.Debug("Processing files with include/exclude filters for dry run...")
+		cg.logger.Debug("Processing files with include filters: %v", config.Include)
+		cg.logger.Debug("Processing files with exclude filters: %v", config.Exclude)
+		cg.logger.Debug("Processing files with exclude names: %v", config.ExcludeNames)
+		cg.logger.Debug("Paths being processed: %v", config.Paths)
 	} else {
-		cg.logger.Info("Gathering project context...")
-		cg.logger.Debug("Processing files with include/exclude filters...")
+		cg.logger.Info("Gathering project context from %d paths...", len(config.Paths))
+		cg.logger.Debug("Include filters: %v", config.Include)
+		cg.logger.Debug("Exclude filters: %v", config.Exclude)
+		cg.logger.Debug("Exclude names: %v", config.ExcludeNames)
+		cg.logger.Debug("Paths being processed: %v", config.Paths)
 	}
 
 	// Setup file processing configuration
@@ -108,8 +115,11 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 	projectContext := combinedContent.String()
 
 	// Calculate token statistics
-	cg.logger.Info("Calculating token statistics...")
+	cg.logger.Info("Calculating token statistics for %d processed files...", stats.ProcessedFilesCount)
+	startTime := time.Now()
 	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, client, projectContext, cg.logger)
+	duration := time.Since(startTime)
+	cg.logger.Debug("Token calculation completed in %v", duration)
 
 	// Store statistics in the stats struct
 	stats.CharCount = charCount

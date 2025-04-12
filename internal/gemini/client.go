@@ -51,6 +51,18 @@ type Client interface {
 	// GetModelInfo retrieves information about a model (for future implementation)
 	GetModelInfo(ctx context.Context) (*ModelInfo, error)
 
+	// GetModelName returns the name of the model being used
+	GetModelName() string
+
+	// GetTemperature returns the temperature setting for the model
+	GetTemperature() float32
+
+	// GetMaxOutputTokens returns the max output tokens setting for the model
+	GetMaxOutputTokens() int32
+
+	// GetTopP returns the topP setting for the model
+	GetTopP() float32
+
 	// Close releases resources used by the client
 	Close() error
 }

@@ -79,10 +79,14 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 
 // MockGeminiClient for testing
 type mockGeminiClient struct {
-	countTokensFunc     func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	getModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
-	closeFunc           func() error
+	countTokensFunc        func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
+	generateContentFunc    func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
+	getModelInfoFunc       func(ctx context.Context) (*gemini.ModelInfo, error)
+	getModelNameFunc       func() string
+	getTemperatureFunc     func() float32
+	getMaxOutputTokensFunc func() int32
+	getTopPFunc            func() float32
+	closeFunc              func() error
 }
 
 func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
@@ -115,6 +119,34 @@ func (m *mockGeminiClient) Close() error {
 		return m.closeFunc()
 	}
 	return nil
+}
+
+func (m *mockGeminiClient) GetModelName() string {
+	if m.getModelNameFunc != nil {
+		return m.getModelNameFunc()
+	}
+	return "mock-model"
+}
+
+func (m *mockGeminiClient) GetTemperature() float32 {
+	if m.getTemperatureFunc != nil {
+		return m.getTemperatureFunc()
+	}
+	return 0.3
+}
+
+func (m *mockGeminiClient) GetMaxOutputTokens() int32 {
+	if m.getMaxOutputTokensFunc != nil {
+		return m.getMaxOutputTokensFunc()
+	}
+	return 8192
+}
+
+func (m *mockGeminiClient) GetTopP() float32 {
+	if m.getTopPFunc != nil {
+		return m.getTopPFunc()
+	}
+	return 0.9
 }
 
 // Helper function to create a temporary directory with test files
