@@ -23,10 +23,11 @@
   - **AC Ref:** Issue 4 (`internal/auditlog/logger_test.go`)
   - **Note:** This issue was already fixed. All for loops in the file correctly use the `<` operator.
 
-- [ ] **Task Title:** Correct HTML Entity in Integration Test Helper
+- [x] **Task Title:** Correct HTML Entity in Integration Test Helper
   - **Action:** In `internal/integration/test_helpers.go` (line ~176), replace the incorrect HTML entity `&gt;` with the correct Go operator `>` in the `if` condition `len(options) > 0`.
   - **Depends On:** None
   - **AC Ref:** Issue 5 (`internal/integration/test_helpers.go`)
+  - **Note:** This issue was already fixed. The condition `len(options) > 0` on line 269 correctly uses the `>` operator. Line numbers in the code review may have been inaccurate.
 
 ## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
 *(No clarifications needed based on the provided code review document)*
