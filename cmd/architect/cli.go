@@ -42,9 +42,9 @@ const (
 // CliConfig holds the parsed command-line options
 type CliConfig struct {
 	InstructionsFile string
-	OutputFile       string
+	OutputDir        string
 	AuditLogFile     string // Path to write structured audit logs (JSON Lines)
-	ModelName        string
+	ModelNames       []string
 	Verbose          bool
 	LogLevel         logutil.LogLevel
 	Include          string
@@ -92,8 +92,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define flags
 	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
-	outputFileFlag := flagSet.String("output", defaultOutputFile, "Output file path for the generated plan.")
-	modelNameFlag := flagSet.String("model", defaultModel, "Gemini model to use for generation.")
+	outputDirFlag := flagSet.String("output", "", "Output directory path for the generated plans.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
@@ -104,6 +103,10 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
 	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
 
+	// Define the model flag using our custom stringSliceFlag type to support multiple values
+	modelFlag := &stringSliceFlag{}
+	flagSet.Var(modelFlag, "model", "Gemini model to use for generation. Can be specified multiple times.")
+
 	// Set custom usage message
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s --instructions <file> [options] <path1> [path2...]\n\n", os.Args[0])
@@ -113,7 +116,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 		fmt.Fprintf(os.Stderr, "Example Commands:\n")
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt ./src                Generate plan using instructions file\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output custom.md ./ Generate plan with custom output file\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output custom-dir ./ Generate plans in custom directory\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./ Generate plans for multiple models\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                         Show files without generating plan\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -130,9 +134,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Store flag values in configuration
 	config.InstructionsFile = *instructionsFileFlag
-	config.OutputFile = *outputFileFlag
+	config.OutputDir = *outputDirFlag
 	config.AuditLogFile = *auditLogFileFlag
-	config.ModelName = *modelNameFlag
 	config.Verbose = *verboseFlag
 	config.Include = *includeFlag
 	config.Exclude = *excludeFlag
@@ -141,6 +144,13 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	config.DryRun = *dryRunFlag
 	config.ConfirmTokens = *confirmTokensFlag
 	config.Paths = flagSet.Args()
+
+	// Set model names from the flag, defaulting to a single default model if none provided
+	if len(*modelFlag) > 0 {
+		config.ModelNames = *modelFlag
+	} else {
+		config.ModelNames = []string{defaultModel}
+	}
 
 	// Determine initial log level from flag
 	parsedLogLevel := logutil.InfoLevel // Default

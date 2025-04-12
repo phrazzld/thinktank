@@ -66,7 +66,7 @@ func Main() {
 func convertToArchitectConfig(cmdConfig *CliConfig) *architect.CliConfig {
 	return &architect.CliConfig{
 		InstructionsFile: cmdConfig.InstructionsFile,
-		OutputFile:       cmdConfig.OutputFile,
+		OutputDir:        cmdConfig.OutputDir,
 		AuditLogFile:     cmdConfig.AuditLogFile,
 		Format:           cmdConfig.Format,
 		Paths:            cmdConfig.Paths,
@@ -76,7 +76,7 @@ func convertToArchitectConfig(cmdConfig *CliConfig) *architect.CliConfig {
 		DryRun:           cmdConfig.DryRun,
 		Verbose:          cmdConfig.Verbose,
 		ApiKey:           cmdConfig.ApiKey,
-		ModelName:        cmdConfig.ModelName,
+		ModelNames:       cmdConfig.ModelNames,
 		ConfirmTokens:    cmdConfig.ConfirmTokens,
 		LogLevel:         cmdConfig.LogLevel,
 	}

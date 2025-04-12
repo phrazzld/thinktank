@@ -10,7 +10,7 @@
     - **Action:** Implement the `String() string` and `Set(value string) error` methods for `stringSliceFlag`. `Set` should append the value to the slice.
     - **Depends On:** Define `stringSliceFlag` Type
     - **AC Ref:** AC1, AC5
-- [ ] **Update `CliConfig` Struct:**
+- [x] **Update `CliConfig` Struct:**
     - **Action:** In `cmd/architect/cli.go`, modify the `CliConfig` struct: change `ModelName string` to `ModelNames []string`, add `OutputDir string`, and remove `OutputFile string`. Also update the corresponding struct in `internal/architect/types.go` and the `convertToArchitectConfig` function in `cmd/architect/main.go`.
     - **Depends On:** None
     - **AC Ref:** AC1, AC3

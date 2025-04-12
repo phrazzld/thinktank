@@ -34,8 +34,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1", "path2"},
 				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -68,8 +68,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			want: &CliConfig{
 				InstructionsFile: "custom-instructions.md",
-				OutputFile:       "custom-output.md",
-				ModelName:        "custom-model",
+				OutputDir:        "custom-output.md",
+				ModelNames:       []string{"custom-model"},
 				LogLevel:         logutil.DebugLevel, // verbose overrides log-level
 				Include:          "*.go,*.md",
 				Exclude:          "*.tmp",
@@ -95,8 +95,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				InstructionsFile: "",
 				Paths:            []string{"path1"},
 				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -120,8 +120,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{},
 				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -144,8 +144,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1"},
 				ApiKey:           "", // Empty API key
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -171,8 +171,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				DryRun:           true,
 				Paths:            []string{"path1", "path2"},
 				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -195,8 +195,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			want: &CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.WarnLevel,
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -222,8 +222,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			want: &CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.InfoLevel, // Should default to info for invalid level
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -250,8 +250,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			want: &CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.DebugLevel, // Verbose overrides to debug
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -299,11 +299,11 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			if got.ApiKey != tt.want.ApiKey {
 				t.Errorf("ApiKey = %v, want %v", got.ApiKey, tt.want.ApiKey)
 			}
-			if got.OutputFile != tt.want.OutputFile {
-				t.Errorf("OutputFile = %v, want %v", got.OutputFile, tt.want.OutputFile)
+			if got.OutputDir != tt.want.OutputDir {
+				t.Errorf("OutputDir = %v, want %v", got.OutputDir, tt.want.OutputDir)
 			}
-			if got.ModelName != tt.want.ModelName {
-				t.Errorf("ModelName = %v, want %v", got.ModelName, tt.want.ModelName)
+			if !reflect.DeepEqual(got.ModelNames, tt.want.ModelNames) {
+				t.Errorf("ModelNames = %v, want %v", got.ModelNames, tt.want.ModelNames)
 			}
 			if got.Include != tt.want.Include {
 				t.Errorf("Include = %v, want %v", got.Include, tt.want.Include)
@@ -419,12 +419,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 		args                  []string
 		env                   map[string]string
 		expectedFormat        string
-		expectedModel         string
+		expectedModelNames    []string
 		expectedInclude       string
 		expectedExclude       string
 		expectedExcludeNames  string
 		expectedConfirmTokens int
-		expectedOutputFile    string
+		expectedOutputDir     string
 		expectedLogLevel      string
 		expectError           bool
 	}{
@@ -433,12 +433,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			args:                  []string{"--instructions", "instructions.txt", "./"},
 			env:                   map[string]string{apiKeyEnvVar: "test-api-key"},
 			expectedFormat:        defaultFormat,
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -447,23 +447,23 @@ func TestAdvancedConfiguration(t *testing.T) {
 			args: []string{
 				"--instructions", "custom-instructions.txt",
 				"--output", "custom-output.md",
-				"--format", "Custom: {path}\n{content}\n---\n",
 				"--model", "custom-model",
+				"--log-level", "debug",
 				"--include", "*.go,*.ts",
 				"--exclude", "*.tmp,*.bak",
 				"--exclude-names", "node_modules,dist,vendor",
-				"--log-level", "debug",
+				"--format", "Custom: {path}\n{content}\n---\n",
 				"--confirm-tokens", "1000",
 				"./src", "./tests",
 			},
 			env:                   map[string]string{apiKeyEnvVar: "custom-api-key"},
 			expectedFormat:        "Custom: {path}\n{content}\n---\n",
-			expectedModel:         "custom-model",
+			expectedModelNames:    []string{"custom-model"},
 			expectedInclude:       "*.go,*.ts",
 			expectedExclude:       "*.tmp,*.bak",
 			expectedExcludeNames:  "node_modules,dist,vendor",
 			expectedConfirmTokens: 1000,
-			expectedOutputFile:    "custom-output.md",
+			expectedOutputDir:     "custom-output.md",
 			expectedLogLevel:      "debug",
 			expectError:           false,
 		},
@@ -481,9 +481,9 @@ func TestAdvancedConfiguration(t *testing.T) {
 			expectedExclude:       "*.tmp, *.bak",
 			expectedExcludeNames:  "node_modules, dist",
 			expectedFormat:        defaultFormat,
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -496,12 +496,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			},
 			env:                   map[string]string{apiKeyEnvVar: "test-api-key"},
 			expectedFormat:        "```{path}\n{content}\n```\n",
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -513,12 +513,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			},
 			env:                   map[string]string{}, // Empty - no API key
 			expectedFormat:        defaultFormat,       // Make sure we specify default values
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false, // Not checked at flag parsing time
 		},
@@ -552,8 +552,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 				t.Errorf("Format = %q, want %q", config.Format, tc.expectedFormat)
 			}
 
-			if config.ModelName != tc.expectedModel {
-				t.Errorf("ModelName = %q, want %q", config.ModelName, tc.expectedModel)
+			if !reflect.DeepEqual(config.ModelNames, tc.expectedModelNames) {
+				t.Errorf("ModelNames = %v, want %v", config.ModelNames, tc.expectedModelNames)
 			}
 
 			if config.Include != tc.expectedInclude {
@@ -572,8 +572,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 				t.Errorf("ConfirmTokens = %d, want %d", config.ConfirmTokens, tc.expectedConfirmTokens)
 			}
 
-			if config.OutputFile != tc.expectedOutputFile {
-				t.Errorf("OutputFile = %q, want %q", config.OutputFile, tc.expectedOutputFile)
+			if config.OutputDir != tc.expectedOutputDir {
+				t.Errorf("OutputDir = %q, want %q", config.OutputDir, tc.expectedOutputDir)
 			}
 
 			// Set up logging to populate the log level

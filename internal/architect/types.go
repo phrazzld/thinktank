@@ -9,7 +9,7 @@ type CliConfig struct {
 	InstructionsFile string
 
 	// Output configuration
-	OutputFile   string
+	OutputDir    string
 	AuditLogFile string // Path to write structured audit logs (JSON Lines)
 	Format       string
 
@@ -22,8 +22,8 @@ type CliConfig struct {
 	Verbose      bool
 
 	// API configuration
-	ApiKey    string
-	ModelName string
+	ApiKey     string
+	ModelNames []string
 
 	// Token management
 	ConfirmTokens int
