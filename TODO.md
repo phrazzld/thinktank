@@ -145,6 +145,12 @@
 - [ ] **Issue/Assumption:** Assumed detailed steps in PLAN.MD serve as implicit Acceptance Criteria (ACs).
   - **Context:** No explicit AC IDs were provided in PLAN.MD. Task AC Refs point to PLAN.MD steps or overall description.
 
+## Finalization Tasks
+- [~] **Create Pull Request for Persistent Structured Logging Feature**
+  - **Action:** Create a pull request to merge the `feature/persistent-structured-logging` branch into `master`. Include a comprehensive description of the feature, its purpose, and implementation details.
+  - **Depends On:** All implementation tasks for persistent structured logging
+  - **AC Ref:** Complete feature implementation with all tasks marked as complete
+
 - [ ] **Issue/Assumption:** Assumed the `logutil.LoggerInterface` passed to `NewFileAuditLogger` is the existing console logger.
   - **Context:** PLAN.MD Step 5 implies using the console logger for `FileAuditLogger`'s internal errors.
 
