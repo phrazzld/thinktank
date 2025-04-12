@@ -50,7 +50,7 @@
     - **Action:** Update the function signatures for `Execute` and `RunInternal` in `internal/architect/app.go` to accept the modified `CliConfig` struct (with `ModelNames` and `OutputDir`).
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC1, AC3
-- [ ] **Implement Output Directory Determination:**
+- [x] **Implement Output Directory Determination:**
     - **Action:** In `Execute`/`RunInternal`, add logic at the beginning to determine the final output directory. If `cliConfig.OutputDir` is set, use it. Otherwise, call `GenerateRunName()`, construct the path in the CWD, and store it. Ensure the determined directory exists using `os.MkdirAll`. Log the determined path.
     - **Depends On:** Modify `Execute`/`RunInternal` Signatures, Implement `GenerateRunName` Utility
     - **AC Ref:** AC2, AC3

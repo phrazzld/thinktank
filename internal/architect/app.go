@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/runutil"
 )
 
 // Execute is the main entry point for the core application logic.
@@ -42,6 +44,30 @@ func Execute(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 	}()
+
+	// Determine the output directory
+	if cliConfig.OutputDir == "" {
+		// Generate a unique run name (e.g., "curious-panther")
+		runName := runutil.GenerateRunName()
+		// Get the current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			logger.Error("Error getting current working directory: %v", err)
+			return fmt.Errorf("error getting current working directory: %w", err)
+		}
+		// Set the output directory to the run name in the current working directory
+		cliConfig.OutputDir = filepath.Join(cwd, runName)
+		logger.Info("Generated output directory: %s", cliConfig.OutputDir)
+	}
+
+	// Ensure the output directory exists
+	if err := os.MkdirAll(cliConfig.OutputDir, 0755); err != nil {
+		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
+		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
+	}
+
+	logger.Info("Using output directory: %s", cliConfig.OutputDir)
+
 	// Log the start of the Execute operation
 	inputs := map[string]interface{}{
 		"instructions_file": cliConfig.InstructionsFile,
@@ -513,6 +539,30 @@ func RunInternal(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 	}()
+
+	// Determine the output directory
+	if cliConfig.OutputDir == "" {
+		// Generate a unique run name (e.g., "curious-panther")
+		runName := runutil.GenerateRunName()
+		// Get the current working directory
+		cwd, err := os.Getwd()
+		if err != nil {
+			logger.Error("Error getting current working directory: %v", err)
+			return fmt.Errorf("error getting current working directory: %w", err)
+		}
+		// Set the output directory to the run name in the current working directory
+		cliConfig.OutputDir = filepath.Join(cwd, runName)
+		logger.Info("Generated output directory: %s", cliConfig.OutputDir)
+	}
+
+	// Ensure the output directory exists
+	if err := os.MkdirAll(cliConfig.OutputDir, 0755); err != nil {
+		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
+		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
+	}
+
+	logger.Info("Using output directory: %s", cliConfig.OutputDir)
+
 	// Log the start of the RunInternal operation
 	inputs := map[string]interface{}{
 		"instructions_file": cliConfig.InstructionsFile,
@@ -537,9 +587,7 @@ func RunInternal(
 		Inputs:    inputs,
 		Message:   "Starting execution of architect tool (RunInternal)",
 	}); logErr != nil {
-
 		logger.Error("Failed to write audit log: %v", logErr)
-
 	}
 
 	// 1. Read instructions from file
