@@ -17,10 +17,11 @@
   - **AC Ref:** Issue 3 (`internal/architect/app.go`)
   - **Note:** This issue was already fixed. The code at lines 439 and 908 correctly uses the `>` operator.
 
-- [ ] **Task Title:** Correct HTML Entities in Logger Test Loops
+- [x] **Task Title:** Correct HTML Entities in Logger Test Loops
   - **Action:** In `internal/auditlog/logger_test.go` (lines ~401, ~416, ~512, ~515, ~550, ~551), replace the incorrect HTML entity `&lt;` with the correct Go operator `<` in the `for` loop conditions (e.g., `i < 3`, `i < numGoroutines`, `j < entriesPerGoroutine`).
   - **Depends On:** None
   - **AC Ref:** Issue 4 (`internal/auditlog/logger_test.go`)
+  - **Note:** This issue was already fixed. All for loops in the file correctly use the `<` operator.
 
 - [ ] **Task Title:** Correct HTML Entity in Integration Test Helper
   - **Action:** In `internal/integration/test_helpers.go` (line ~176), replace the incorrect HTML entity `&gt;` with the correct Go operator `>` in the `if` condition `len(options) > 0`.
