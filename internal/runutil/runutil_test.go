@@ -10,16 +10,14 @@ func TestGenerateRunName(t *testing.T) {
 	runs := 50
 	generatedNames := make(map[string]bool, runs)
 
+	// Compile the regex pattern once outside the loop
+	pattern := regexp.MustCompile(`^[a-z]+-[a-z]+$`)
+
 	for i := 0; i < runs; i++ {
 		name := GenerateRunName()
 
 		// Check that the name matches the expected pattern (adjective-noun)
-		pattern := `^[a-z]+-[a-z]+$`
-		matched, err := regexp.MatchString(pattern, name)
-		if err != nil {
-			t.Errorf("Regexp error: %v", err)
-		}
-		if !matched {
+		if !pattern.MatchString(name) {
 			t.Errorf("Generated name %q does not match the expected format 'adjective-noun' with hyphen", name)
 		}
 

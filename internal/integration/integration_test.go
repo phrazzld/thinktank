@@ -49,8 +49,8 @@ func add(a, b int) int {
 	// Create a test configuration with the new InstructionsFile field
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -108,8 +108,8 @@ func main() {
 	// Create a test configuration with dry run enabled
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		DryRun:           true,
 		Paths:            []string{env.TestDir + "/src"},
@@ -158,8 +158,8 @@ func main() {
 	// Create a test configuration focusing on task file input
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -225,8 +225,8 @@ func main() {}`)
 	// Create a test configuration with file inclusion filters
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Include:          ".go,.md", // Only include Go and Markdown files
 		Paths:            []string{env.TestDir + "/src"},
@@ -289,8 +289,8 @@ func main() {}`)
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -350,8 +350,8 @@ func main() {}`)
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -409,8 +409,8 @@ func main() {}`)
 	// Create a test configuration with confirm-tokens
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		ConfirmTokens:    1000, // Threshold lower than our token count
 		Paths:            []string{env.TestDir + "/src"},
@@ -467,8 +467,8 @@ func main() {}`)
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -523,8 +523,8 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 		// Create a test configuration
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputFile: outputFile,
-			ModelName:  "test-model",
+			OutputDir: filepath.Dir(outputFile),
+			ModelNames:  []string{"test-model"},
 			ApiKey:     "test-api-key",
 			Paths:      []string{env.TestDir},
 			LogLevel:   logutil.InfoLevel,
@@ -598,8 +598,8 @@ func main() {
 		// Create a test configuration with the audit log file
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputFile:       outputFile,
-			ModelName:        "test-model",
+			OutputDir:        filepath.Dir(outputFile),
+			ModelNames:       []string{"test-model"},
 			ApiKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
 			LogLevel:         logutil.InfoLevel,
@@ -716,9 +716,17 @@ func main() {
 					return false
 				}
 
-				// Verify specific input field (model name)
-				if modelName, ok := inputs["model_name"]; !ok || modelName != "test-model" {
-					t.Errorf("ExecuteStart inputs missing or incorrect model_name, got: %v", modelName)
+				// Verify specific input field (model names)
+				modelNames, ok := inputs["model_names"]
+				if !ok {
+					t.Errorf("ExecuteStart inputs missing model_names, got: %v", modelNames)
+					return false
+				}
+
+				// Verify the correct model name is included in the slice
+				modelNamesSlice, ok := modelNames.([]interface{})
+				if !ok || len(modelNamesSlice) == 0 || modelNamesSlice[0] != "test-model" {
+					t.Errorf("ExecuteStart inputs incorrect model_names, got: %v", modelNames)
 					return false
 				}
 
@@ -789,8 +797,8 @@ func main() {}`)
 		// Create a test configuration
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputFile:       outputFile,
-			ModelName:        "test-model",
+			OutputDir:        filepath.Dir(outputFile),
+			ModelNames:       []string{"test-model"},
 			ApiKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
 			LogLevel:         logutil.InfoLevel,

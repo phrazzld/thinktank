@@ -61,8 +61,8 @@ func helper(a, b int) int {
 	// Create a test configuration using the new InstructionsFile
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -156,8 +156,8 @@ func main() {}`)
 	// Create a test configuration
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -245,8 +245,8 @@ The component should handle the following edge cases:
 	// Create a test configuration using the new InstructionsFile
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
+		OutputDir:        filepath.Dir(outputFile),
+		ModelNames:       []string{"test-model"},
 		ApiKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,

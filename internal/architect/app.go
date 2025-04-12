@@ -45,7 +45,7 @@ func Execute(
 	// Log the start of the Execute operation
 	inputs := map[string]interface{}{
 		"instructions_file": cliConfig.InstructionsFile,
-		"output_file":       cliConfig.OutputFile,
+		"output_dir":        cliConfig.OutputDir,
 		"audit_log_file":    cliConfig.AuditLogFile,
 		"format":            cliConfig.Format,
 		"paths_count":       len(cliConfig.Paths),
@@ -54,7 +54,7 @@ func Execute(
 		"exclude_names":     cliConfig.ExcludeNames,
 		"dry_run":           cliConfig.DryRun,
 		"verbose":           cliConfig.Verbose,
-		"model_name":        cliConfig.ModelName,
+		"model_names":       cliConfig.ModelNames,
 		"confirm_tokens":    cliConfig.ConfirmTokens,
 		"log_level":         cliConfig.LogLevel,
 	}
@@ -118,7 +118,8 @@ func Execute(
 
 	// 3. Initialize API client
 	apiService := NewAPIService(logger)
-	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
+	// Use the first model name for now - in a later task we'll implement the multi-model loop
+	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
 	if err != nil {
 		// Handle API client initialization errors
 		errorDetails := apiService.GetErrorDetails(err)
@@ -250,7 +251,7 @@ func Execute(
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 		},
 		Message: "Starting token count check",
 	}); logErr != nil {
@@ -287,7 +288,7 @@ func Execute(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: errorMessage,
@@ -314,7 +315,7 @@ func Execute(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: tokenInfo.TokenCount,
@@ -343,7 +344,7 @@ func Execute(
 		Status:    "Success",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 		},
 		Outputs: map[string]interface{}{
 			"percentage": tokenInfo.Percentage,
@@ -369,7 +370,7 @@ func Execute(
 		Operation: "GenerateContentStart",
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			"prompt_length": len(stitchedPrompt),
 		},
 		Message: "Starting content generation with Gemini",
@@ -409,7 +410,7 @@ func Execute(
 			Status:     "Failure",
 			DurationMs: &generateDurationMs,
 			Inputs: map[string]interface{}{
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 				"prompt_length": len(stitchedPrompt),
 			},
 			Error: &auditlog.ErrorInfo{
@@ -431,7 +432,7 @@ func Execute(
 		Status:     "Success",
 		DurationMs: &generateDurationMs,
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			"prompt_length": len(stitchedPrompt),
 		},
 		Outputs: map[string]interface{}{
@@ -471,7 +472,9 @@ func Execute(
 	logger.Info("Plan generated successfully")
 
 	// 13 & 14. Use the helper function to save the plan to file
-	err = savePlanToFile(logger, auditLogger, cliConfig.OutputFile, generatedPlan)
+	// For now, use a fixed filename in the output directory - will be improved in future tasks
+	outputFilePath := cliConfig.OutputDir + "/output.md"
+	err = savePlanToFile(logger, auditLogger, outputFilePath, generatedPlan)
 	if err != nil {
 		return err // Error already logged by savePlanToFile
 	}
@@ -513,7 +516,7 @@ func RunInternal(
 	// Log the start of the RunInternal operation
 	inputs := map[string]interface{}{
 		"instructions_file": cliConfig.InstructionsFile,
-		"output_file":       cliConfig.OutputFile,
+		"output_dir":        cliConfig.OutputDir,
 		"audit_log_file":    cliConfig.AuditLogFile,
 		"format":            cliConfig.Format,
 		"paths_count":       len(cliConfig.Paths),
@@ -522,7 +525,7 @@ func RunInternal(
 		"exclude_names":     cliConfig.ExcludeNames,
 		"dry_run":           cliConfig.DryRun,
 		"verbose":           cliConfig.Verbose,
-		"model_name":        cliConfig.ModelName,
+		"model_names":       cliConfig.ModelNames,
 		"confirm_tokens":    cliConfig.ConfirmTokens,
 		"log_level":         cliConfig.LogLevel,
 	}
@@ -587,7 +590,7 @@ func RunInternal(
 	}
 
 	// 3. Initialize the client
-	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelName)
+	geminiClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
 	if err != nil {
 		// Handle API client initialization errors
 		errorDetails := apiService.GetErrorDetails(err)
@@ -719,7 +722,7 @@ func RunInternal(
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 		},
 		Message: "Starting token count check",
 	}); logErr != nil {
@@ -756,7 +759,7 @@ func RunInternal(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: errorMessage,
@@ -783,7 +786,7 @@ func RunInternal(
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(stitchedPrompt),
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: tokenInfo.TokenCount,
@@ -812,7 +815,7 @@ func RunInternal(
 		Status:    "Success",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(stitchedPrompt),
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 		},
 		Outputs: map[string]interface{}{
 			"percentage": tokenInfo.Percentage,
@@ -838,7 +841,7 @@ func RunInternal(
 		Operation: "GenerateContentStart",
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			"prompt_length": len(stitchedPrompt),
 		},
 		Message: "Starting content generation with Gemini",
@@ -878,7 +881,7 @@ func RunInternal(
 			Status:     "Failure",
 			DurationMs: &generateDurationMs,
 			Inputs: map[string]interface{}{
-				"model_name":    cliConfig.ModelName,
+				"model_name":    cliConfig.ModelNames[0], // Using first model for now
 				"prompt_length": len(stitchedPrompt),
 			},
 			Error: &auditlog.ErrorInfo{
@@ -900,7 +903,7 @@ func RunInternal(
 		Status:     "Success",
 		DurationMs: &generateDurationMs,
 		Inputs: map[string]interface{}{
-			"model_name":    cliConfig.ModelName,
+			"model_name":    cliConfig.ModelNames[0], // Using first model for now
 			"prompt_length": len(stitchedPrompt),
 		},
 		Outputs: map[string]interface{}{
@@ -940,7 +943,9 @@ func RunInternal(
 	logger.Info("Plan generated successfully")
 
 	// 13 & 14. Use the helper function to save the plan to file
-	err = savePlanToFile(logger, auditLogger, cliConfig.OutputFile, generatedPlan)
+	// For now, use a fixed filename in the output directory - will be improved in future tasks
+	outputFilePath := cliConfig.OutputDir + "/output.md"
+	err = savePlanToFile(logger, auditLogger, outputFilePath, generatedPlan)
 	if err != nil {
 		return err // Error already logged by savePlanToFile
 	}

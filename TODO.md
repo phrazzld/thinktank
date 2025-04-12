@@ -46,7 +46,7 @@
     - **AC Ref:** AC2
 
 ## Core Application Logic
-- [ ] **Modify `Execute`/`RunInternal` Signatures:**
+- [x] **Modify `Execute`/`RunInternal` Signatures:**
     - **Action:** Update the function signatures for `Execute` and `RunInternal` in `internal/architect/app.go` to accept the modified `CliConfig` struct (with `ModelNames` and `OutputDir`).
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC1, AC3
