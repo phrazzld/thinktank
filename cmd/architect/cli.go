@@ -77,6 +77,12 @@ func ValidateInputs(config *CliConfig, logger logutil.LoggerInterface) error {
 		return fmt.Errorf("API key not set")
 	}
 
+	// Check for model names
+	if len(config.ModelNames) == 0 && !config.DryRun {
+		logger.Error("At least one model must be specified with --model flag.")
+		return fmt.Errorf("no models specified")
+	}
+
 	return nil
 }
 

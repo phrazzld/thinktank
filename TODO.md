@@ -30,7 +30,7 @@
     - **Action:** Modify `ParseFlagsWithEnv` (`cmd/architect/cli.go`) to correctly populate the `CliConfig.ModelNames` slice and `CliConfig.OutputDir` string from the parsed flags.
     - **Depends On:** Register Repeatable `--model` Flag, Register `--output-dir` Flag
     - **AC Ref:** AC1, AC3
-- [ ] **Update `ValidateInputs` Logic:**
+- [x] **Update `ValidateInputs` Logic:**
     - **Action:** In `ValidateInputs` (`cmd/architect/cli.go` and `internal/architect/app.go`), update the validation logic: check `len(config.ModelNames) > 0` (unless `DryRun` is true), return an error if empty. Remove any checks related to the old `config.OutputFile`.
     - **Depends On:** Update `CliConfig` Struct, Remove Old `--output` Flag
     - **AC Ref:** AC1

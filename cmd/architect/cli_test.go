@@ -652,6 +652,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				ApiKey:           "test-key",
+				ModelNames:       []string{"model1"},
 			},
 			expectError: false,
 		},
@@ -716,6 +717,28 @@ func TestValidateInputs(t *testing.T) {
 			},
 			expectError:   true,
 			errorContains: "API key not set",
+		},
+		{
+			name: "Missing models",
+			config: &CliConfig{
+				InstructionsFile: tempFile.Name(),
+				Paths:            []string{"testfile"},
+				ApiKey:           "test-key",
+				ModelNames:       []string{}, // Empty
+			},
+			expectError:   true,
+			errorContains: "no models specified",
+		},
+		{
+			name: "Dry run allows missing models",
+			config: &CliConfig{
+				InstructionsFile: "", // Missing allowed in dry run
+				Paths:            []string{"testfile"},
+				ApiKey:           "test-key",
+				ModelNames:       []string{}, // Empty allowed in dry run
+				DryRun:           true,
+			},
+			expectError: false,
 		},
 	}
 

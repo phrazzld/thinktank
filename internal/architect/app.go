@@ -1051,5 +1051,10 @@ func validateInputs(cliConfig *CliConfig, logger logutil.LoggerInterface) error 
 		return fmt.Errorf("%s environment variable not set", APIKeyEnvVar)
 	}
 
+	// Validate model names
+	if len(cliConfig.ModelNames) == 0 {
+		return fmt.Errorf("at least one model must be specified")
+	}
+
 	return nil
 }
