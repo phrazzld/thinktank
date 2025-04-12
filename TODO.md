@@ -26,7 +26,7 @@
     - **Action:** In `ParseFlagsWithEnv` (`cmd/architect/cli.go`), remove the definition and parsing logic for the old `--output` flag.
     - **Depends On:** Update `CliConfig` Struct
     - **AC Ref:** AC4 (implicitly replaces single output file)
-- [ ] **Update `ParseFlagsWithEnv` Population:**
+- [x] **Update `ParseFlagsWithEnv` Population:**
     - **Action:** Modify `ParseFlagsWithEnv` (`cmd/architect/cli.go`) to correctly populate the `CliConfig.ModelNames` slice and `CliConfig.OutputDir` string from the parsed flags.
     - **Depends On:** Register Repeatable `--model` Flag, Register `--output-dir` Flag
     - **AC Ref:** AC1, AC3
