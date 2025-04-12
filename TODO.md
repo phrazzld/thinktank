@@ -102,7 +102,7 @@
     - **Action:** Create unit tests for the `stringSliceFlag` type, covering its `String()` and `Set()` methods.
     - **Depends On:** Implement `flag.Value` Interface for `stringSliceFlag`
     - **AC Ref:** AC1, AC5
-- [ ] **Write Unit Tests for `GenerateRunName`:**
+- [x] **Write Unit Tests for `GenerateRunName`:**
     - **Action:** Create unit tests for the `GenerateRunName` utility, ensuring it produces output in the expected format.
     - **Depends On:** Implement `GenerateRunName` Utility
     - **AC Ref:** AC2
