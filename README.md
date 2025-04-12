@@ -1,14 +1,14 @@
-# Architect
+# architect
 
 A powerful code-base context analysis and planning tool that leverages Google's Gemini AI to generate detailed, actionable technical plans for software projects.
 
 ## Overview
 
-Architect analyzes your codebase and uses Gemini AI to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, Architect provides contextually relevant guidance tailored to your specific project.
+architect analyzes your codebase and uses Gemini AI to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
 
 ## Important Update: Instruction Input Method
 
-**Please note:** The way you provide instructions to Architect has changed:
+**Please note:** The way you provide instructions to architect has changed:
 
 * The `--instructions` flag is now **required** for generating plans. You must provide the instructions in a file. This allows for more complex and structured inputs.
 * The `--task-file` flag has been **removed** and replaced with the `--instructions` flag.
@@ -100,11 +100,11 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ## Configuration
 
-Architect is configured entirely through command-line flags and the `GEMINI_API_KEY` environment variable. There are no configuration files to manage, which simplifies usage and deployment.
+architect is configured entirely through command-line flags and the `GEMINI_API_KEY` environment variable. There are no configuration files to manage, which simplifies usage and deployment.
 
 ### Default Values
 
-Architect comes with sensible defaults for most options:
+architect comes with sensible defaults for most options:
 
 - Output file: `PLAN.md`
 - Model: `gemini-2.5-pro-exp-03-25`
@@ -117,7 +117,7 @@ You can override any of these defaults using the appropriate command-line flags.
 
 ## Token Management
 
-Architect implements intelligent token management to prevent API errors and optimize context:
+architect implements intelligent token management to prevent API errors and optimize context:
 
 - **Accurate Token Counting**: Uses Gemini's API to get precise token counts for your content
 - **Pre-API Validation**: Checks token count against model limits before making API calls
@@ -144,9 +144,9 @@ The generated PLAN.md includes:
 
 ## XML-Structured Approach
 
-Architect uses a simple XML structure to organize instructions and context:
+architect uses a simple XML structure to organize instructions and context:
 
-1. Instructions are wrapped in `<instructions>...</instructions>` tags 
+1. Instructions are wrapped in `<instructions>...</instructions>` tags
 2. Context files are wrapped in `<context>...</context>` tags
 3. Each file in the context is formatted with its path and content
 4. All XML special characters in file content are properly escaped

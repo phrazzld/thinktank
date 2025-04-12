@@ -40,7 +40,7 @@
     - **AC Ref:** AC1, AC3, AC5
 
 ## Run Name Generation
-- [ ] **Implement `GenerateRunName` Utility:**
+- [x] **Implement `GenerateRunName` Utility:**
     - **Action:** Create a function `GenerateRunName()` (e.g., in a new `internal/runutil` package or a suitable existing utility location) that returns a random "adjective-noun" string using simple internal lists. Ensure hyphens are used.
     - **Depends On:** None
     - **AC Ref:** AC2
