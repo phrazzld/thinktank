@@ -27,7 +27,7 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 - **Dry Run Mode**: Preview which files would be included and see token statistics before API calls
 - **XML-Structured Approach**: Uses a simple XML structure for instructions and context
 - **Instructions File Input**: Load instructions from external files
-- **Structured Logging**: Clear, structured logs with configurable verbosity levels
+- **Structured Logging**: Clear, structured logs with configurable verbosity levels and optional audit logging
 - **User Confirmation**: Optional confirmation for large token counts
 
 ## Installation
@@ -61,6 +61,9 @@ architect --instructions instructions.txt --include .go,.md ./
 # Use a different Gemini model
 architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 ./
 
+# Enable structured audit logging (JSON Lines format)
+architect --instructions instructions.txt --audit-log-file audit.jsonl ./
+
 # Dry run to see which files would be included (without generating a plan)
 architect --dry-run ./
 
@@ -93,6 +96,7 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--format` | Format string for each file. Use {path} and {content} | `<{path}>\n```\n{content}\n```\n</{path}>\n\n` |
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
+| `--audit-log-file` | Path to write structured audit logs (JSON Lines format) | `(Disabled)` |
 
 ## Configuration
 
@@ -148,6 +152,23 @@ Architect uses a simple XML structure to organize instructions and context:
 4. All XML special characters in file content are properly escaped
 
 This approach provides a clear separation between the instructions and the codebase context, making it easier for the LLM to understand and process the input.
+
+## Audit Logging
+
+The structured audit logging feature records detailed information about each operation:
+
+- **Format**: JSON Lines format for easy machine parsing
+- **Content**: Records timestamps, operations, status, duration, token counts, and errors
+- **Usage**: Enable with `--audit-log-file audit.jsonl` (replace with your desired path)
+- **Purpose**: Provides auditability and data for programmatic analysis
+
+Each log entry contains structured information that can be processed by tools, with fields including:
+- Operation name
+- Status (success/failure)
+- Execution duration
+- Input/output details
+- Token counts
+- Error information (if applicable)
 
 ## Troubleshooting
 
