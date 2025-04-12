@@ -106,7 +106,7 @@
     - **Action:** Create unit tests for the `GenerateRunName` utility, ensuring it produces output in the expected format.
     - **Depends On:** Implement `GenerateRunName` Utility
     - **AC Ref:** AC2
-- [ ] **Update CLI Parsing Unit Tests:**
+- [x] **Update CLI Parsing Unit Tests:**
     - **Action:** Update existing unit tests for `ParseFlagsWithEnv` and `ValidateInputs` to cover the new `--model` (repeatable), `--output-dir` flags, removal of `--output`, and updated validation rules.
     - **Depends On:** Update `ParseFlagsWithEnv` Population, Update `ValidateInputs` Logic
     - **AC Ref:** AC1, AC3, AC5
