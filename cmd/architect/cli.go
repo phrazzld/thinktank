@@ -11,6 +11,11 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// stringSliceFlag is a slice of strings that implements flag.Value interface
+// to handle repeatable flags for multiple values
+// nolint:unused // This type will be used in subsequent implementation steps
+type stringSliceFlag []string
+
 // Constants referencing the config package defaults
 const (
 	defaultOutputFile   = config.DefaultOutputFile
