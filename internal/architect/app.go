@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
@@ -252,15 +253,47 @@ func Execute(
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 9. Process each model
+	// 9. Process each model concurrently
+	var wg sync.WaitGroup
+	// Create a buffered error channel to collect errors from goroutines
+	errChan := make(chan error, len(cliConfig.ModelNames))
+
+	logger.Info("Processing %d models concurrently...", len(cliConfig.ModelNames))
+
+	// Launch a goroutine for each model
+	for _, name := range cliConfig.ModelNames {
+		// Capture the loop variable to avoid data race
+		modelName := name
+
+		// Add to wait group before launching goroutine
+		wg.Add(1)
+
+		// Launch goroutine to process this model
+		go func() {
+			// Ensure we signal completion when goroutine exits
+			defer wg.Done()
+
+			// Process the model
+			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
+
+			// If there was an error, send it to the error channel
+			if err != nil {
+				logger.Error("Processing model %s failed: %v", modelName, err)
+				errChan <- fmt.Errorf("model %s: %w", modelName, err)
+			}
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Close the error channel
+	close(errChan)
+
+	// Collect any errors from the channel
 	var modelErrors []error
-	for _, modelName := range cliConfig.ModelNames {
-		// Process the model and collect any errors
-		err := processModel(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
-		if err != nil {
-			logger.Error("Processing model %s failed: %v", modelName, err)
-			modelErrors = append(modelErrors, fmt.Errorf("model %s: %w", modelName, err))
-		}
+	for err := range errChan {
+		modelErrors = append(modelErrors, err)
 	}
 
 	// If there were any errors, return a combined error
@@ -807,15 +840,47 @@ func RunInternal(
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
-	// 10. Process each model
+	// 10. Process each model concurrently
+	var wg sync.WaitGroup
+	// Create a buffered error channel to collect errors from goroutines
+	errChan := make(chan error, len(cliConfig.ModelNames))
+
+	logger.Info("Processing %d models concurrently...", len(cliConfig.ModelNames))
+
+	// Launch a goroutine for each model
+	for _, name := range cliConfig.ModelNames {
+		// Capture the loop variable to avoid data race
+		modelName := name
+
+		// Add to wait group before launching goroutine
+		wg.Add(1)
+
+		// Launch goroutine to process this model
+		go func() {
+			// Ensure we signal completion when goroutine exits
+			defer wg.Done()
+
+			// Process the model
+			err := processModelConcurrently(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
+
+			// If there was an error, send it to the error channel
+			if err != nil {
+				logger.Error("Processing model %s failed: %v", modelName, err)
+				errChan <- fmt.Errorf("model %s: %w", modelName, err)
+			}
+		}()
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+
+	// Close the error channel
+	close(errChan)
+
+	// Collect any errors from the channel
 	var modelErrors []error
-	for _, modelName := range cliConfig.ModelNames {
-		// Process the model and collect any errors
-		err := processModel(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
-		if err != nil {
-			logger.Error("Processing model %s failed: %v", modelName, err)
-			modelErrors = append(modelErrors, fmt.Errorf("model %s: %w", modelName, err))
-		}
+	for err := range errChan {
+		modelErrors = append(modelErrors, err)
 	}
 
 	// If there were any errors, return a combined error
@@ -907,6 +972,22 @@ func savePlanToFile(
 
 	logger.Info("Output successfully generated and saved to %s", outputFilePath)
 	return nil
+}
+
+// processModelConcurrently encapsulates the logic to process a single model
+// and is designed to be called from a goroutine. It handles client initialization,
+// token checking, content generation, and output file saving for a single model.
+func processModelConcurrently(
+	ctx context.Context,
+	modelName string,
+	cliConfig *CliConfig,
+	logger logutil.LoggerInterface,
+	apiService APIService,
+	auditLogger auditlog.AuditLogger,
+	tokenManager TokenManager,
+	stitchedPrompt string,
+) error {
+	return processModel(ctx, modelName, cliConfig, logger, apiService, auditLogger, tokenManager, stitchedPrompt)
 }
 
 // Note: HandleSpecialCommands, processTaskInput, and validateInputs functions have been removed
