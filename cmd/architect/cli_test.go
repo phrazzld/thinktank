@@ -84,10 +84,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "All options with deprecated output flag",
+			name: "All options with output-dir flag",
 			args: []string{
 				"--instructions", "custom-instructions.md",
-				"--output", "custom-output.md",
+				"--output-dir", "custom-output-dir",
 				"--model", "custom-model",
 				"--log-level", "debug",
 				"--include", "*.go,*.md",
@@ -104,7 +104,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			want: &CliConfig{
 				InstructionsFile: "custom-instructions.md",
-				OutputDir:        "custom-output.md", // --output populates OutputDir
+				OutputDir:        "custom-output-dir",
 				ModelNames:       []string{"custom-model"},
 				LogLevel:         logutil.DebugLevel, // verbose overrides log-level
 				Include:          "*.go,*.md",
@@ -357,33 +357,6 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			},
 			wantErr: false,
 		},
-		{
-			name: "Deprecated output flag",
-			args: []string{
-				"--instructions", "instructions.md",
-				"--output", "deprecated-output.md",
-				"path1",
-			},
-			env: map[string]string{
-				apiKeyEnvVar: "test-api-key",
-			},
-			want: &CliConfig{
-				InstructionsFile: "instructions.md",
-				OutputDir:        "deprecated-output.md", // deprecated --output populates OutputDir
-				ModelNames:       []string{defaultModel},
-				LogLevel:         logutil.InfoLevel,
-				Include:          "",
-				Exclude:          defaultExcludes,
-				ExcludeNames:     defaultExcludeNames,
-				Format:           defaultFormat,
-				ConfirmTokens:    0,
-				Verbose:          false,
-				DryRun:           false,
-				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
-			},
-			wantErr: false,
-		},
 	}
 
 	for _, tt := range tests {
@@ -565,7 +538,7 @@ func TestAdvancedConfiguration(t *testing.T) {
 			name: "All custom options",
 			args: []string{
 				"--instructions", "custom-instructions.txt",
-				"--output", "custom-output.md",
+				"--output-dir", "custom-output-dir",
 				"--model", "custom-model",
 				"--log-level", "debug",
 				"--include", "*.go,*.ts",
@@ -582,7 +555,7 @@ func TestAdvancedConfiguration(t *testing.T) {
 			expectedExclude:       "*.tmp,*.bak",
 			expectedExcludeNames:  "node_modules,dist,vendor",
 			expectedConfirmTokens: 1000,
-			expectedOutputDir:     "custom-output.md",
+			expectedOutputDir:     "custom-output-dir",
 			expectedLogLevel:      "debug",
 			expectError:           false,
 		},

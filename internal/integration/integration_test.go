@@ -534,12 +534,14 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 		instructionsFile := env.CreateTestFile(t, "instructions.md", instructionsContent)
 
 		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+		outputDir := filepath.Join(env.TestDir, "output")
+			modelName := "test-model"
+			outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Create a test configuration
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputDir: filepath.Dir(outputFile),
+			OutputDir: outputDir,
 			ModelNames:  []string{"test-model"},
 			ApiKey:     "test-api-key",
 			Paths:      []string{env.TestDir},
@@ -556,7 +558,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Check that the output file exists
 		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
+			t.Errorf("Model-specific output file was not created at %s", outputFile)
 		}
 
 		// Verify the content indicates that the file was NOT processed as a template
@@ -595,7 +597,9 @@ func main() {
 		instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
 
 		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+		outputDir := filepath.Join(env.TestDir, "output")
+		modelName := "test-model"
+		outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Set up the audit log file path
 		auditLogFile := filepath.Join(env.TestDir, "audit.log")
@@ -614,7 +618,7 @@ func main() {
 		// Create a test configuration with the audit log file
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputDir:        filepath.Dir(outputFile),
+			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},
 			ApiKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
@@ -632,7 +636,7 @@ func main() {
 
 		// Check that the output file exists
 		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
+			t.Errorf("Model-specific output file was not created at %s", outputFile)
 		}
 
 		// Check that the audit log file exists
@@ -773,7 +777,9 @@ func main() {}`)
 		instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
 
 		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+		outputDir := filepath.Join(env.TestDir, "output")
+		modelName := "test-model"
+		outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Set up a test logger that captures errors
 		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
@@ -813,7 +819,7 @@ func main() {}`)
 		// Create a test configuration
 		testConfig := &architect.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputDir:        filepath.Dir(outputFile),
+			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},
 			ApiKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
@@ -834,7 +840,7 @@ func main() {}`)
 
 		// Check that the output file exists - the application should work with NoOpAuditLogger
 		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
+			t.Errorf("Model-specific output file was not created at %s", outputFile)
 		}
 	})
 }

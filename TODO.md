@@ -15,7 +15,7 @@
   - **Action:** Modify `internal/integration/integration_test.go` and `internal/integration/xml_integration_test.go` to use the new --output-dir flag and assert against the model-specific output files (e.g., `filepath.Join(outputDir, "test-model.md")`).
   - **Depends On:** None
   - **AC Ref:** Issue 2
-- [ ] **Task Title:** Remove --output Flag and Logic
+- [x] **Task Title:** Remove --output Flag and Logic
   - **Action:** Remove the --output flag and all related logic from the codebase, ensuring that --output-dir is the only option for specifying output location.
   - **Depends On:** Update Integration Tests for Model-Specific Outputs
   - **AC Ref:** Issue 2, `CORE_PRINCIPLES.md` (Simplicity)

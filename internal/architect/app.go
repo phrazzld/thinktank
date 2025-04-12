@@ -832,7 +832,7 @@ func RunInternal(
 
 // savePlanToFile is a helper function that saves the generated plan to a file
 // and includes audit logging around the file writing operation.
-// outputFilePath can be a model-specific path or a directory+"/output.md" for backward compatibility
+// outputFilePath is the model-specific output file path (e.g., outputDir/model-name.md)
 func savePlanToFile(
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
@@ -842,20 +842,8 @@ func savePlanToFile(
 	// Create file writer
 	fileWriter := NewFileWriter(logger)
 
-	// For backward compatibility with existing tests and usages, we write to both:
-	// 1. The model-specific path (e.g., outputDir/model-name.md)
-	// 2. The legacy path (outputDir/output.md) if the model-specific path isn't already using that name
-	// This ensures both old code expecting output.md and new code expecting per-model files work correctly
+	// Define the path to save the output
 	paths := []string{outputFilePath}
-
-	// If outputFilePath doesn't end with "output.md", also write to the traditional output.md path
-	// for backward compatibility with existing tests
-	if !strings.HasSuffix(outputFilePath, "output.md") {
-		outputDir := filepath.Dir(outputFilePath)
-		legacyPath := filepath.Join(outputDir, "output.md")
-		paths = append(paths, legacyPath)
-		logger.Debug("Also writing to legacy path for backward compatibility: %s", legacyPath)
-	}
 
 	// Log the start of output saving
 	saveStartTime := time.Now()

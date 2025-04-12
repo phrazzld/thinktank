@@ -326,9 +326,9 @@ func main() {}`)
 	}
 }
 
-// TestBackwardCompatibility tests that our implementation maintains backward compatibility
-// by writing both model-specific files and the traditional output.md file
-func TestBackwardCompatibility(t *testing.T) {
+// TestModelSpecificOutput tests that our implementation only writes model-specific files
+// and no longer creates the legacy output.md file
+func TestModelSpecificOutput(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
@@ -342,12 +342,12 @@ func TestBackwardCompatibility(t *testing.T) {
 func main() {}`)
 
 	// Create an instructions file
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test backward compatibility")
+	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test model-specific output")
 
 	// Set up the output directory
 	outputDir := filepath.Join(env.TestDir, "output")
 
-	// Create a test configuration with a single model (traditional case)
+	// Create a test configuration with a single model
 	testConfig := &architect.CliConfig{
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
@@ -370,31 +370,15 @@ func main() {}`)
 		t.Errorf("Output directory was not created at %s", outputDir)
 	}
 
-	// Check that both files exist:
-	// 1. The model-specific file
+	// Check that the model-specific file exists
 	modelOutputFile := filepath.Join(outputDir, "gemini-pro.md")
 	if _, err := os.Stat(modelOutputFile); os.IsNotExist(err) {
 		t.Errorf("Model-specific output file was not created at %s", modelOutputFile)
 	}
 
-	// 2. The legacy output.md file
+	// Verify that the legacy output.md file does NOT exist
 	legacyOutputFile := filepath.Join(outputDir, "output.md")
-	if _, err := os.Stat(legacyOutputFile); os.IsNotExist(err) {
-		t.Errorf("Legacy output.md file was not created at %s", legacyOutputFile)
-	}
-
-	// Check that the content is identical in both files
-	modelContent, err := os.ReadFile(modelOutputFile)
-	if err != nil {
-		t.Fatalf("Failed to read model-specific output file: %v", err)
-	}
-
-	legacyContent, err := os.ReadFile(legacyOutputFile)
-	if err != nil {
-		t.Fatalf("Failed to read legacy output file: %v", err)
-	}
-
-	if string(modelContent) != string(legacyContent) {
-		t.Errorf("Content mismatch between model-specific file and legacy output.md file")
+	if _, err := os.Stat(legacyOutputFile); !os.IsNotExist(err) {
+		t.Errorf("Legacy output.md file still exists at %s but it should not", legacyOutputFile)
 	}
 }
