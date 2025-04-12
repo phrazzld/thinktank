@@ -798,6 +798,18 @@ func TestStringSliceFlag(t *testing.T) {
 		if got := multiFlag.String(); got != "model1,model2,model3" {
 			t.Errorf("Multiple stringSliceFlag.String() = %q, want %q", got, "model1,model2,model3")
 		}
+
+		// Flag with empty strings
+		emptyStringFlag := stringSliceFlag{"", "model1", ""}
+		if got := emptyStringFlag.String(); got != ",model1," {
+			t.Errorf("Flag with empty strings .String() = %q, want %q", got, ",model1,")
+		}
+
+		// Flag with strings containing commas
+		commaFlag := stringSliceFlag{"model,1", "model,2"}
+		if got := commaFlag.String(); got != "model,1,model,2" {
+			t.Errorf("Flag with commas .String() = %q, want %q", got, "model,1,model,2")
+		}
 	})
 
 	t.Run("Set() appends values", func(t *testing.T) {
@@ -827,6 +839,22 @@ func TestStringSliceFlag(t *testing.T) {
 		if len(*flag) != 3 || (*flag)[0] != "model1" || (*flag)[1] != "model2" || (*flag)[2] != "model3" {
 			t.Errorf("After third Set(), flag = %v, want [model1 model2 model3]", *flag)
 		}
+
+		// Empty string value
+		if err := flag.Set(""); err != nil {
+			t.Errorf("Empty string Set() error = %v", err)
+		}
+		if len(*flag) != 4 || (*flag)[3] != "" {
+			t.Errorf("After empty string Set(), flag = %v, want [model1 model2 model3 ]", *flag)
+		}
+
+		// Value containing commas
+		if err := flag.Set("model,4"); err != nil {
+			t.Errorf("Comma-containing Set() error = %v", err)
+		}
+		if len(*flag) != 5 || (*flag)[4] != "model,4" {
+			t.Errorf("After comma Set(), flag = %v, want [model1 model2 model3  model,4]", *flag)
+		}
 	})
 
 	t.Run("Usage with flag package", func(t *testing.T) {
@@ -854,6 +882,33 @@ func TestStringSliceFlag(t *testing.T) {
 		}
 		if (*modelFlag)[0] != "model1" || (*modelFlag)[1] != "model2" || (*modelFlag)[2] != "model3" {
 			t.Errorf("modelFlag = %v, want [model1 model2 model3]", *modelFlag)
+		}
+	})
+
+	t.Run("Usage with flag package - edge cases", func(t *testing.T) {
+		// Create a new FlagSet
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
+		fs.SetOutput(io.Discard) // Suppress output
+
+		// Create a stringSliceFlag and register it
+		modelFlag := &stringSliceFlag{}
+		fs.Var(modelFlag, "model", "Model name (can be specified multiple times)")
+
+		// Parse flags with edge case values (empty string, comma-containing)
+		args := []string{
+			"--model", "",
+			"--model", "model,with,commas",
+		}
+		if err := fs.Parse(args); err != nil {
+			t.Fatalf("Parse() error = %v", err)
+		}
+
+		// Check that all values were captured correctly
+		if len(*modelFlag) != 2 {
+			t.Errorf("Got %d models, want 2", len(*modelFlag))
+		}
+		if (*modelFlag)[0] != "" || (*modelFlag)[1] != "model,with,commas" {
+			t.Errorf("modelFlag = %v, want [ model,with,commas]", *modelFlag)
 		}
 	})
 }

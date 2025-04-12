@@ -98,7 +98,7 @@
     - **AC Ref:** AC3, AC4
 
 ## Testing
-- [ ] **Write Unit Tests for `stringSliceFlag`:**
+- [x] **Write Unit Tests for `stringSliceFlag`:**
     - **Action:** Create unit tests for the `stringSliceFlag` type, covering its `String()` and `Set()` methods.
     - **Depends On:** Implement `flag.Value` Interface for `stringSliceFlag`
     - **AC Ref:** AC1, AC5
