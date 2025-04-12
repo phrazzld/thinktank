@@ -501,7 +501,7 @@ func processModel(
 	}
 
 	// 3. Generate content with this model
-	logger.Info("Generating plan with model %s...", modelName)
+	logger.Info("Generating output with model %s...", modelName)
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
@@ -562,7 +562,7 @@ func processModel(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("plan generation failed for model %s: %w", modelName, err)
+		return fmt.Errorf("output generation failed for model %s: %w", modelName, err)
 	}
 
 	// Log successful content generation
@@ -590,7 +590,7 @@ func processModel(
 	}
 
 	// 4. Process API response
-	generatedPlan, err := apiService.ProcessResponse(result)
+	generatedOutput, err := apiService.ProcessResponse(result)
 	if err != nil {
 		// Get detailed error information
 		errorDetails := apiService.GetErrorDetails(err)
@@ -609,7 +609,7 @@ func processModel(
 			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)
 		}
 	}
-	logger.Info("Plan generated successfully with model %s", modelName)
+	logger.Info("Output generated successfully with model %s", modelName)
 
 	// 5. Sanitize model name for use in filename
 	sanitizedModelName := sanitizeFilename(modelName)
@@ -617,10 +617,10 @@ func processModel(
 	// 6. Construct output file path
 	outputFilePath := filepath.Join(cliConfig.OutputDir, sanitizedModelName+".md")
 
-	// 7. Save the plan to file
-	err = savePlanToFile(logger, auditLogger, outputFilePath, generatedPlan)
+	// 7. Save the output to file
+	err = saveOutputToFile(logger, auditLogger, outputFilePath, generatedOutput)
 	if err != nil {
-		return fmt.Errorf("failed to save plan for model %s: %w", modelName, err)
+		return fmt.Errorf("failed to save output for model %s: %w", modelName, err)
 	}
 
 	logger.Info("Successfully processed model: %s", modelName)
@@ -978,10 +978,10 @@ func RunInternal(
 	return nil
 }
 
-// savePlanToFile is a helper function that saves the generated output to a model-specific file
+// saveOutputToFile is a helper function that saves the generated output to a model-specific file
 // and includes audit logging around the file writing operation.
 // outputFilePath is the model-specific output file path (e.g., outputDir/model-name.md)
-func savePlanToFile(
+func saveOutputToFile(
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
 	outputFilePath string,

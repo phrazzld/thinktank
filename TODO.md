@@ -41,13 +41,13 @@
   - **Action:** Extend existing integration tests to verify that multiple model requests are processed concurrently and results are correctly saved to their respective output files.
   - **Depends On:** Implement Concurrent Model Processing
   - **AC Ref:** Issue 3, `TESTING_STRATEGY.md` (Integration Testing Approach)
-- [ ] **Task Title:** Update Documentation for Concurrent Processing
+- [x] **Task Title:** Update Documentation for Concurrent Processing
   - **Action:** Update README.md to explain the concurrent processing of multiple models, including any new configuration options for controlling concurrency.
   - **Depends On:** Implement Concurrent Model Processing
   - **AC Ref:** Issue 3, `DOCUMENTATION_APPROACH.md` (README.md: The Essential Entry Point)
 
 ## [Issue 4: Improve Logging for Broader Use Cases]
-- [ ] **Task Title:** Update Logging Terminology
+- [x] **Task Title:** Update Logging Terminology
   - **Action:** Refactor logging messages throughout the codebase to replace specific "plan" terminology with more general terms reflective of the tool's broader use cases (e.g., "output", "analysis", "result").
   - **Depends On:** None
   - **AC Ref:** Issue 4, `CODING_STANDARDS.md` (Meaningful Naming: Communicate Purpose)

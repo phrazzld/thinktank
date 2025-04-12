@@ -75,6 +75,9 @@ architect --dry-run --instructions instructions.txt ./
 
 # Request confirmation before proceeding if token count exceeds threshold
 architect --instructions instructions.txt --confirm-tokens 25000 ./
+
+# Control concurrency and rate limiting for multiple models
+architect --instructions task.txt --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 --max-concurrent 3 --rate-limit 30 ./
 ```
 
 ### Required Environment Variable
@@ -100,6 +103,8 @@ export GEMINI_API_KEY="your-api-key-here"
 | `--dry-run` | Show files that would be included and token count, but don't call the API | `false` |
 | `--confirm-tokens` | Prompt for confirmation if token count exceeds this value (0 = never prompt) | `0` |
 | `--audit-log-file` | Path to write structured audit logs (JSON Lines format) | `(Disabled)` |
+| `--max-concurrent` | Maximum number of concurrent API requests (0 = no limit) | `5` |
+| `--rate-limit` | Maximum requests per minute per model (0 = no limit) | `60` |
 
 ## Configuration
 
@@ -141,7 +146,8 @@ architect now supports generating plans with multiple AI models simultaneously:
 - **Multiple Models**: Specify multiple models with the repeatable `--model` flag
 - **Organized Output**: Each model's plan is saved as a separate file in the output directory
 - **Run Name Directories**: Automatically creates a uniquely named directory for each run
-- **Parallel Processing**: Processes models in sequence, but reuses context gathering for efficiency
+- **Concurrent Processing**: Processes multiple models in parallel using Go's concurrency primitives
+- **Rate Limiting**: Prevents overwhelming API endpoints with configurable concurrency and rate limits
 - **Error Isolation**: If one model fails, others will still complete successfully
 - **Output Files**: Each model's output is saved in its own file within the output directory
 
@@ -157,6 +163,14 @@ This will generate:
   ├─ gemini-1.5-pro.md
   └─ gemini-2.5-pro-exp-03-25.md
 ```
+
+### Concurrency Control
+
+architect processes multiple models concurrently for improved performance, with built-in safeguards to prevent overwhelming API endpoints:
+
+- **Concurrent Execution**: Multiple model requests run in parallel using goroutines
+- **Per-Model Rate Limiting**: Each model has its own rate limit bucket to prevent API throttling
+- **Configurable Limits**: Adjust concurrency and rate limits to match your API quota
 
 ## Generated Plan Structure
 
@@ -213,6 +227,14 @@ Each log entry contains structured information that can be processed by tools, w
 - Start with small, focused parts of your codebase and gradually include more
 - Use `--include` to target only relevant file types for your task
 - Set `--log-level=debug` for detailed information about the analysis process
+- Use multiple models with the `--model` flag (processed concurrently)
+- Adjust `--max-concurrent` based on your system's resources and API limits
+
+### Rate Limiting Issues
+- If you encounter API rate limit errors, reduce the `--max-concurrent` value (e.g., from 5 to 3)
+- Adjust the `--rate-limit` value to match your API quota (requests per minute per model)
+- For large projects with multiple models, consider more conservative limits (e.g., `--max-concurrent 2 --rate-limit 30`)
+- Remember that rate limits are applied per model, so using multiple models with high request rates may still encounter API throttling
 
 ### Common Issues
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included

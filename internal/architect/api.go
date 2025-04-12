@@ -17,7 +17,7 @@ var (
 	ErrEmptyResponse = errors.New("received empty response from Gemini")
 
 	// ErrWhitespaceContent indicates the API returned only whitespace content
-	ErrWhitespaceContent = errors.New("Gemini returned an empty plan text")
+	ErrWhitespaceContent = errors.New("Gemini returned an empty output text")
 
 	// ErrSafetyBlocked indicates content was blocked by safety filters
 	ErrSafetyBlocked = errors.New("content blocked by Gemini safety filters")

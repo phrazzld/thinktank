@@ -24,7 +24,7 @@ func Main() {
 
 	// Setup logging early for error reporting
 	logger := SetupLogging(cmdConfig)
-	logger.Info("Starting Architect - AI-assisted planning tool")
+	logger.Info("Starting Architect - AI-assisted content generation tool")
 
 	// Initialize the audit logger
 	// Note: The auditLogger will be passed to Execute() in a future task
