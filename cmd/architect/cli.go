@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -13,8 +14,20 @@ import (
 
 // stringSliceFlag is a slice of strings that implements flag.Value interface
 // to handle repeatable flags for multiple values
-// nolint:unused // This type will be used in subsequent implementation steps
 type stringSliceFlag []string
+
+// String returns a comma-separated string representation of the flag values
+// This method is required by the flag.Value interface
+func (s *stringSliceFlag) String() string {
+	return strings.Join(*s, ",")
+}
+
+// Set appends the value to the slice of values
+// This method is required by the flag.Value interface
+func (s *stringSliceFlag) Set(value string) error {
+	*s = append(*s, value)
+	return nil
+}
 
 // Constants referencing the config package defaults
 const (

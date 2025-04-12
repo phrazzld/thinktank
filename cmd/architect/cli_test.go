@@ -754,3 +754,83 @@ func TestUsageMessage(t *testing.T) {
 }
 
 // TestInstructionsFileRequirement is now covered by TestValidateInputs
+
+// TestStringSliceFlag tests the stringSliceFlag type's flag.Value interface implementation
+func TestStringSliceFlag(t *testing.T) {
+	t.Run("String() returns comma-separated values", func(t *testing.T) {
+		// Empty flag
+		emptyFlag := stringSliceFlag{}
+		if got := emptyFlag.String(); got != "" {
+			t.Errorf("Empty stringSliceFlag.String() = %q, want %q", got, "")
+		}
+
+		// Flag with a single value
+		singleFlag := stringSliceFlag{"model1"}
+		if got := singleFlag.String(); got != "model1" {
+			t.Errorf("Single stringSliceFlag.String() = %q, want %q", got, "model1")
+		}
+
+		// Flag with multiple values
+		multiFlag := stringSliceFlag{"model1", "model2", "model3"}
+		if got := multiFlag.String(); got != "model1,model2,model3" {
+			t.Errorf("Multiple stringSliceFlag.String() = %q, want %q", got, "model1,model2,model3")
+		}
+	})
+
+	t.Run("Set() appends values", func(t *testing.T) {
+		// New flag starts empty
+		flag := &stringSliceFlag{}
+
+		// First value
+		if err := flag.Set("model1"); err != nil {
+			t.Errorf("First Set() error = %v", err)
+		}
+		if len(*flag) != 1 || (*flag)[0] != "model1" {
+			t.Errorf("After first Set(), flag = %v, want [model1]", *flag)
+		}
+
+		// Second value
+		if err := flag.Set("model2"); err != nil {
+			t.Errorf("Second Set() error = %v", err)
+		}
+		if len(*flag) != 2 || (*flag)[0] != "model1" || (*flag)[1] != "model2" {
+			t.Errorf("After second Set(), flag = %v, want [model1 model2]", *flag)
+		}
+
+		// Third value
+		if err := flag.Set("model3"); err != nil {
+			t.Errorf("Third Set() error = %v", err)
+		}
+		if len(*flag) != 3 || (*flag)[0] != "model1" || (*flag)[1] != "model2" || (*flag)[2] != "model3" {
+			t.Errorf("After third Set(), flag = %v, want [model1 model2 model3]", *flag)
+		}
+	})
+
+	t.Run("Usage with flag package", func(t *testing.T) {
+		// Create a new FlagSet
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
+		fs.SetOutput(io.Discard) // Suppress output
+
+		// Create a stringSliceFlag and register it
+		modelFlag := &stringSliceFlag{}
+		fs.Var(modelFlag, "model", "Model name (can be specified multiple times)")
+
+		// Parse flags with multiple model values
+		args := []string{
+			"--model", "model1",
+			"--model", "model2",
+			"--model", "model3",
+		}
+		if err := fs.Parse(args); err != nil {
+			t.Fatalf("Parse() error = %v", err)
+		}
+
+		// Check that all values were captured
+		if len(*modelFlag) != 3 {
+			t.Errorf("Got %d models, want 3", len(*modelFlag))
+		}
+		if (*modelFlag)[0] != "model1" || (*modelFlag)[1] != "model2" || (*modelFlag)[2] != "model3" {
+			t.Errorf("modelFlag = %v, want [model1 model2 model3]", *modelFlag)
+		}
+	})
+}

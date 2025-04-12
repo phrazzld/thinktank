@@ -6,7 +6,7 @@
     - **Action:** In `cmd/architect/cli.go` or a new `flags.go`, define a type `stringSliceFlag` as `[]string`.
     - **Depends On:** None
     - **AC Ref:** AC1, AC5
-- [ ] **Implement `flag.Value` Interface for `stringSliceFlag`:**
+- [x] **Implement `flag.Value` Interface for `stringSliceFlag`:**
     - **Action:** Implement the `String() string` and `Set(value string) error` methods for `stringSliceFlag`. `Set` should append the value to the slice.
     - **Depends On:** Define `stringSliceFlag` Type
     - **AC Ref:** AC1, AC5
