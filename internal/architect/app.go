@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/architect/orchestrator"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
@@ -155,7 +156,7 @@ func Execute(
 	contextGathererAdapter := &ContextGathererAdapter{ContextGatherer: contextGatherer}
 	fileWriterAdapter := &FileWriterAdapter{FileWriter: fileWriter}
 
-	orch := orchestrator.NewOrchestrator(
+	orch := orchestratorConstructor(
 		apiServiceAdapter,
 		contextGathererAdapter,
 		tokenManagerAdapter,
@@ -176,6 +177,36 @@ func Execute(
 // Note: processModel, processModelConcurrently, sanitizeFilename, and saveOutputToFile functions
 // have been removed as part of the refactoring. Their functionality has been moved to the
 // ModelProcessor in the modelproc package.
+
+// Orchestrator defines the interface for the orchestration component.
+// This interface is defined here to allow for testing without introducing import cycles.
+type Orchestrator interface {
+	Run(ctx context.Context, instructions string) error
+}
+
+// orchestratorConstructor is the function used to create an Orchestrator.
+// This can be overridden in tests to return a mock orchestrator.
+var orchestratorConstructor = func(
+	apiService APIService,
+	contextGatherer interfaces.ContextGatherer,
+	tokenManager interfaces.TokenManager,
+	fileWriter interfaces.FileWriter,
+	auditLogger auditlog.AuditLogger,
+	rateLimiter *ratelimit.RateLimiter,
+	config *config.CliConfig,
+	logger logutil.LoggerInterface,
+) Orchestrator {
+	return orchestrator.NewOrchestrator(
+		apiService,
+		contextGatherer,
+		tokenManager,
+		fileWriter,
+		auditLogger,
+		rateLimiter,
+		config,
+		logger,
+	)
+}
 
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.

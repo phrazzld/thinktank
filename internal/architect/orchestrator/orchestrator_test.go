@@ -3,7 +3,10 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/auditlog"
@@ -254,6 +257,279 @@ func TestRun_GatherContextError(t *testing.T) {
 	}
 }
 
+// TestRun_EmptyModelNames tests that no error is returned when no models are specified
+// but dry run is enabled, since dry run only displays context info
+func TestRun_EmptyModelNames(t *testing.T) {
+	// Create mock dependencies
+	mockClient := &mockGeminiClient{}
+	mockAPIService := &mockAPIService{
+		client: mockClient,
+	}
+
+	mockGatherer := &mockContextGatherer{
+		contextFiles: []fileutil.FileMeta{
+			{Path: "file1.go", Content: "content1"},
+		},
+		contextStats: &interfaces.ContextStats{TokenCount: 100},
+	}
+
+	mockAuditLogger := &mockAuditLogger{}
+	mockLogger := &mockLogger{}
+	mockTokenManager := &mockTokenManager{}
+	mockFileWriter := &mockFileWriter{}
+
+	// Create a config with empty model names but with dry run enabled
+	cfg := &config.CliConfig{
+		ModelNames: []string{},
+		DryRun:     true, // Enable dry run mode
+	}
+
+	limiter := ratelimit.NewRateLimiter(1, 1)
+
+	// Create the orchestrator
+	orch := NewOrchestrator(
+		mockAPIService,
+		mockGatherer,
+		mockTokenManager,
+		mockFileWriter,
+		mockAuditLogger,
+		limiter,
+		cfg,
+		mockLogger,
+	)
+
+	// Run the orchestrator
+	err := orch.Run(context.Background(), "test instructions")
+
+	// Verify no error was returned in dry run mode
+	if err != nil {
+		t.Errorf("Expected no error with dry run enabled, got %v", err)
+	}
+}
+
+// TestRun_ModelProcessingError tests error handling when model processing fails
+func TestRun_ModelProcessingError(t *testing.T) {
+	// Create a mock client that returns an error for InitClient
+	expectedError := errors.New("model processing error")
+	mockAPIService := &mockAPIService{
+		initClientErr: expectedError,
+	}
+
+	mockGatherer := &mockContextGatherer{
+		contextFiles: []fileutil.FileMeta{
+			{Path: "file1.go", Content: "content1"},
+		},
+		contextStats: &interfaces.ContextStats{TokenCount: 100},
+	}
+
+	mockAuditLogger := &mockAuditLogger{}
+	mockLogger := &mockLogger{}
+	mockTokenManager := &mockTokenManager{}
+	mockFileWriter := &mockFileWriter{}
+
+	cfg := &config.CliConfig{
+		ModelNames: []string{"model1"},
+	}
+
+	limiter := ratelimit.NewRateLimiter(1, 1)
+
+	// Create the orchestrator
+	orch := NewOrchestrator(
+		mockAPIService,
+		mockGatherer,
+		mockTokenManager,
+		mockFileWriter,
+		mockAuditLogger,
+		limiter,
+		cfg,
+		mockLogger,
+	)
+
+	// Run the orchestrator
+	err := orch.Run(context.Background(), "test instructions")
+
+	// Verify the error was returned
+	if err == nil {
+		t.Error("Expected error, got nil")
+	}
+}
+
+// TestRun_ContextCancellation tests that processing is interrupted when context is cancelled
+func TestRun_ContextCancellation(t *testing.T) {
+	// Create mock dependencies with a delay in client initialization
+	mockAPIService := &mockAPIService{
+		initClientDelay: true, // This will simulate a slow operation that should be cancelled
+	}
+
+	mockGatherer := &mockContextGatherer{
+		contextFiles: []fileutil.FileMeta{
+			{Path: "file1.go", Content: "content1"},
+		},
+		contextStats: &interfaces.ContextStats{TokenCount: 100},
+	}
+
+	mockAuditLogger := &mockAuditLogger{}
+	mockLogger := &mockLogger{}
+	mockTokenManager := &mockTokenManager{}
+	mockFileWriter := &mockFileWriter{}
+
+	cfg := &config.CliConfig{
+		ModelNames: []string{"model1", "model2", "model3"}, // Multiple models to ensure we have time to cancel
+	}
+
+	limiter := ratelimit.NewRateLimiter(1, 1) // Slow rate limit to ensure cancellation happens
+
+	// Create the orchestrator
+	orch := NewOrchestrator(
+		mockAPIService,
+		mockGatherer,
+		mockTokenManager,
+		mockFileWriter,
+		mockAuditLogger,
+		limiter,
+		cfg,
+		mockLogger,
+	)
+
+	// Create a context that can be cancelled
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Cancel the context after a small delay
+	go func() {
+		cancel() // Cancel immediately for test purposes
+	}()
+
+	// Run the orchestrator with the cancellable context
+	err := orch.Run(ctx, "test instructions")
+
+	// Verify the error indicates context cancellation (either directly or in the aggregated error)
+	if err == nil {
+		t.Error("Expected error due to context cancellation, got nil")
+	} else if !strings.Contains(err.Error(), "context canceled") {
+		t.Errorf("Expected error to mention context cancellation, got: %v", err)
+	}
+}
+
+// TestBuildPrompt tests the buildPrompt method to ensure it properly combines
+// instructions with context files
+func TestBuildPrompt(t *testing.T) {
+	// Create some test data
+	instructions := "# Test Instructions\nThis is a test"
+	contextFiles := []fileutil.FileMeta{
+		{Path: "file1.go", Content: "package main\n\nfunc main() {}"},
+		{Path: "file2.go", Content: "package test\n\nfunc Test() {}"},
+	}
+
+	// Create an orchestrator instance
+	mockAPIService := &mockAPIService{}
+	mockGatherer := &mockContextGatherer{}
+	mockTokenManager := &mockTokenManager{}
+	mockFileWriter := &mockFileWriter{}
+	mockAuditLogger := &mockAuditLogger{}
+	mockLogger := &mockLogger{}
+	cfg := &config.CliConfig{}
+	limiter := ratelimit.NewRateLimiter(1, 1)
+
+	orch := NewOrchestrator(
+		mockAPIService,
+		mockGatherer,
+		mockTokenManager,
+		mockFileWriter,
+		mockAuditLogger,
+		limiter,
+		cfg,
+		mockLogger,
+	)
+
+	// Call the buildPrompt method
+	result := orch.buildPrompt(instructions, contextFiles)
+
+	// Verify that the result contains the instructions
+	if !strings.Contains(result, instructions) {
+		t.Errorf("Expected prompt to contain instructions, but it doesn't")
+	}
+
+	// Verify that the result contains both file paths
+	if !strings.Contains(result, "file1.go") || !strings.Contains(result, "file2.go") {
+		t.Errorf("Expected prompt to contain file paths, but it doesn't")
+	}
+
+	// Verify that the result contains both file contents
+	if !strings.Contains(result, "package main") || !strings.Contains(result, "package test") {
+		t.Errorf("Expected prompt to contain file contents, but it doesn't")
+	}
+}
+
+// TestAggregateAndFormatErrors tests the error aggregation functionality
+func TestAggregateAndFormatErrors(t *testing.T) {
+	// Create an orchestrator instance
+	mockAPIService := &mockAPIService{}
+	mockGatherer := &mockContextGatherer{}
+	mockTokenManager := &mockTokenManager{}
+	mockFileWriter := &mockFileWriter{}
+	mockAuditLogger := &mockAuditLogger{}
+	mockLogger := &mockLogger{}
+	cfg := &config.CliConfig{}
+	limiter := ratelimit.NewRateLimiter(1, 1)
+
+	orch := NewOrchestrator(
+		mockAPIService,
+		mockGatherer,
+		mockTokenManager,
+		mockFileWriter,
+		mockAuditLogger,
+		limiter,
+		cfg,
+		mockLogger,
+	)
+
+	// Test with no errors - the implementation actually always returns an error message
+	// even for empty slices, so we check that it contains the standard prefix
+	result := orch.aggregateAndFormatErrors([]error{})
+	if result == nil {
+		t.Error("Expected non-nil error even for empty slice")
+	} else if !strings.Contains(result.Error(), "errors occurred during model processing") {
+		t.Errorf("Unexpected error format: %v", result.Error())
+	}
+
+	// Test with single error
+	modelErrors := []error{
+		fmt.Errorf("model1: %w", errors.New("test error")),
+	}
+	result = orch.aggregateAndFormatErrors(modelErrors)
+	if result == nil {
+		t.Error("Expected non-nil error for non-empty errors slice")
+	} else if !strings.Contains(result.Error(), "model1") || !strings.Contains(result.Error(), "test error") {
+		t.Errorf("Error message doesn't contain expected content: %v", result)
+	}
+
+	// Test with multiple errors
+	modelErrors = []error{
+		fmt.Errorf("model1: %w", errors.New("test error 1")),
+		fmt.Errorf("model2: %w", errors.New("test error 2")),
+	}
+	result = orch.aggregateAndFormatErrors(modelErrors)
+	if result == nil {
+		t.Error("Expected non-nil error for non-empty errors slice")
+	} else if !strings.Contains(result.Error(), "model1") ||
+		!strings.Contains(result.Error(), "model2") ||
+		!strings.Contains(result.Error(), "test error 1") ||
+		!strings.Contains(result.Error(), "test error 2") {
+		t.Errorf("Error message doesn't contain expected content: %v", result)
+	}
+
+	// Test with rate limit errors
+	modelErrors = []error{
+		fmt.Errorf("model3 rate limit: %w", errors.New("rate limit exceeded")),
+	}
+	result = orch.aggregateAndFormatErrors(modelErrors)
+	if result == nil {
+		t.Error("Expected non-nil error for rate limit error")
+	} else if !strings.Contains(result.Error(), "rate limit") {
+		t.Errorf("Error message doesn't contain rate limit information: %v", result)
+	}
+}
+
 // Mock implementations of the required interfaces
 
 // mockGeminiClient implements gemini.Client
@@ -302,14 +578,38 @@ func (m *mockGeminiClient) GetTopP() float32 {
 
 // mockAPIService implements architect.APIService
 type mockAPIService struct {
-	client gemini.Client
+	client          gemini.Client
+	initClientErr   error
+	initClientDelay bool
+	processErr      error
 }
 
 func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
+	// Simulate a delay if requested
+	if m.initClientDelay {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(50 * time.Millisecond):
+			// Continue after delay
+		}
+	}
+
+	if m.initClientErr != nil {
+		return nil, m.initClientErr
+	}
 	return m.client, nil
 }
 
 func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
+	if m.processErr != nil {
+		return "", m.processErr
+	}
 	return result.Content, nil
 }
 
