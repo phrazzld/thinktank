@@ -142,6 +142,7 @@ func (tb *TokenBucket) Acquire(ctx context.Context, modelName string) error {
 
 // RateLimiter combines semaphore and token bucket limiters
 type RateLimiter struct {
+	mu          sync.Mutex // Mutex to protect concurrent access
 	semaphore   *Semaphore
 	tokenBucket *TokenBucket
 }
@@ -157,6 +158,9 @@ func NewRateLimiter(maxConcurrent, ratePerMin int) *RateLimiter {
 
 // Acquire waits to acquire both semaphore and rate limit permissions
 func (rl *RateLimiter) Acquire(ctx context.Context, modelName string) error {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
 	// First try to acquire the semaphore
 	if err := rl.semaphore.Acquire(ctx); err != nil {
 		return err
@@ -173,6 +177,9 @@ func (rl *RateLimiter) Acquire(ctx context.Context, modelName string) error {
 
 // Release releases the semaphore (token bucket doesn't need explicit release)
 func (rl *RateLimiter) Release() {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
 	rl.semaphore.Release()
 	// No explicit release needed for token bucket
 }
