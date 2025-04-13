@@ -297,26 +297,21 @@ func TestExecuteHappyPath(t *testing.T) {
 	mockAPIService.mockClient = mockClient
 	mockOrchestrator := NewMockOrchestrator()
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
-	originalNewOrchestrator := orchestratorConstructor
+	// Save original constructor for orchestrator
+	originalOrchestrator := orchestratorConstructor
 
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
+	// Override orchestrator constructor
 	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
-	// Restore original constructors when test finishes
+	// Restore original constructor when test finishes
 	defer func() {
-		NewAPIService = originalNewAPIService
-		orchestratorConstructor = originalNewOrchestrator
+		orchestratorConstructor = originalOrchestrator
 	}()
 
-	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	// Execute the function - pass mockAPIService directly
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err != nil {
@@ -386,26 +381,21 @@ func TestExecuteDryRun(t *testing.T) {
 	mockAPIService.mockClient = mockClient
 	mockOrchestrator := NewMockOrchestrator()
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
-	originalNewOrchestrator := orchestratorConstructor
+	// Save original constructor for orchestrator
+	originalOrchestrator := orchestratorConstructor
 
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
+	// Override orchestrator constructor
 	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
-	// Restore original constructors when test finishes
+	// Restore original constructor when test finishes
 	defer func() {
-		NewAPIService = originalNewAPIService
-		orchestratorConstructor = originalNewOrchestrator
+		orchestratorConstructor = originalOrchestrator
 	}()
 
-	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	// Execute the function - pass mockAPIService directly
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err != nil {
@@ -503,7 +493,7 @@ func TestExecuteInstructionsFileError(t *testing.T) {
 	}()
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err == nil {
@@ -588,7 +578,7 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	}()
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err == nil {
@@ -675,7 +665,7 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	}()
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err == nil {
@@ -766,7 +756,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	}()
 
 	// Execute the function (should fail when creating output directory)
-	err = Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger)
+	err = Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
 
 	// Verify results
 	if err == nil {

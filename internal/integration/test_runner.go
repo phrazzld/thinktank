@@ -88,12 +88,16 @@ func RunInternal(
 		architect.NewAPIService = originalNewAPIService
 	}()
 
-	// Run the Execute function directly
+	// Create an API service instance to inject
+	mockApiService := apiService
+
+	// Run the Execute function directly with the injected API service
 	return architect.Execute(
 		ctx,
 		testConfig,
 		logger,
 		auditLogger,
+		mockApiService,
 	)
 }
 
@@ -119,11 +123,18 @@ func RunTestWithConfig(
 		architect.NewAPIService = originalNewAPIService
 	}()
 
-	// Run the architect application using Execute directly
+	// Create a mock API service
+	mockApiService := &mockIntAPIService{
+		logger:     env.Logger,
+		mockClient: env.MockClient,
+	}
+
+	// Run the architect application using Execute directly with the injected API service
 	return architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
 		env.AuditLogger,
+		mockApiService,
 	)
 }

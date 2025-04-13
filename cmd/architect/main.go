@@ -56,8 +56,11 @@ func Main() {
 
 	// CLI flags and environment variables are now the only source of configuration
 
+	// Initialize APIService
+	apiService := architect.NewAPIService(logger)
+
 	// Execute the core application logic
-	err = architect.Execute(ctx, config, logger, auditLogger)
+	err = architect.Execute(ctx, config, logger, auditLogger, apiService)
 	if err != nil {
 		logger.Error("Application failed: %v", err)
 		os.Exit(1)

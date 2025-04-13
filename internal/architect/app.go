@@ -24,6 +24,7 @@ func Execute(
 	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
+	apiService APIService,
 ) (err error) {
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
@@ -122,8 +123,7 @@ func Execute(
 		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	// 4. Initialize dependencies
-	apiService := NewAPIService(logger)
+	// 4. Use the injected APIService
 
 	// Create a reference client for token counting in context gathering
 	referenceClient, err := apiService.InitClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
