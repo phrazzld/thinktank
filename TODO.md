@@ -153,7 +153,7 @@
   - **AC Ref:** Testing Strategy Section 5.3
   - **Status:** Completed. Implemented comprehensive integration tests for the Orchestrator.Run method with enhanced mocks to track function calls and verify expected interactions. Tests cover basic workflow, dry run mode, error propagation, context cancellation, rate limiting, model processing errors, and API service adapter passthrough.
 
-- [ ] **Task Title:** Implement Integration Tests for Component Interactions
+- [~] **Task Title:** Implement Integration Tests for Component Interactions
   - **Action:** Write integration tests verifying interactions between key components: 1) `ContextGatherer` with `TokenManager`/`gemini.Client` mock, 2) `ModelProcessor` with `APIService`/`TokenManager`/`FileWriter` mocks. Verify API calls, token checks, and file writes happen as expected.
   - **Depends On:** Implement Token Counting within `ContextGatherer`, Extract Model Processing Logic into `ModelProcessor.Process`
   - **AC Ref:** Testing Strategy Section 5.3
