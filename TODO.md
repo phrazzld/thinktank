@@ -147,10 +147,11 @@
   - **AC Ref:** Testing Strategy Section 5.2
   - **Status:** Completed. Added comprehensive tests for orchestrator package (92.2% coverage) and additional tests for modelproc package (60.3% coverage), complementing existing 100% coverage for prompt package. Tests cover error handling, context cancellation, file path sanitization, and all key component interactions.
 
-- [ ] **Task Title:** Implement Integration Tests for Orchestrator
+- [x] **Task Title:** Implement Integration Tests for Orchestrator
   - **Action:** Write integration tests for `Orchestrator.Run`. Mock dependencies (`ContextGatherer`, `ModelProcessor`, `FileWriter`, etc.) to verify the orchestration logic calls collaborators correctly based on inputs and configuration (e.g., dry run behavior, multiple model processing).
   - **Depends On:** Implement `Orchestrator.Run` Method
   - **AC Ref:** Testing Strategy Section 5.3
+  - **Status:** Completed. Implemented comprehensive integration tests for the Orchestrator.Run method with enhanced mocks to track function calls and verify expected interactions. Tests cover basic workflow, dry run mode, error propagation, context cancellation, rate limiting, model processing errors, and API service adapter passthrough.
 
 - [ ] **Task Title:** Implement Integration Tests for Component Interactions
   - **Action:** Write integration tests verifying interactions between key components: 1) `ContextGatherer` with `TokenManager`/`gemini.Client` mock, 2) `ModelProcessor` with `APIService`/`TokenManager`/`FileWriter` mocks. Verify API calls, token checks, and file writes happen as expected.
