@@ -65,10 +65,15 @@ jobs:
           go-version: 'stable'
           cache: true
       
-      # Run Go tests with race detection
-      - name: Run tests with race detection
-        run: go test -v -race ./...
-        timeout-minutes: 15
+      # Run integration tests with parallel execution
+      - name: Run integration tests with parallel execution
+        run: go test -v -race -parallel 4 ./internal/integration/...
+        timeout-minutes: 5
+      
+      # Run other tests with race detection
+      - name: Run other tests with race detection
+        run: go test -v -race $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration")
+        timeout-minutes: 10
         
       # Generate coverage report
       - name: Generate coverage report

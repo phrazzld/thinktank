@@ -52,7 +52,7 @@
     - **Depends On:** Modify `architect.Execute` Signature for Dependency Injection, Refactor or Remove `integration.RunTestWithConfig` Function, Update Integration Tests to Pass I/O Buffers Explicitly, Update Integration Tests Using Stdin Simulation
     - **AC Ref:** Plan Recommendation 1, Plan Recommendation 4
 
-- [ ] **Task Title:** Enable Parallel Execution for Integration Tests in CI
+- [x] **Task Title:** Enable Parallel Execution for Integration Tests in CI
     - **Action:** Update the CI configuration script/pipeline step that runs integration tests (`go test ./internal/integration/...`) to include the `-parallel N` flag (where N is a suitable number based on CI runner cores, e.g., 4).
     - **Depends On:** Update Integration Tests to Inject Dependencies
     - **AC Ref:** Plan Recommendation 1 (Benefits: Enables `go test -parallel N`)
