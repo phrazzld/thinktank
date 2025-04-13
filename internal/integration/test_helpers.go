@@ -128,6 +128,11 @@ func (env *TestEnv) GetBufferedLogger(level logutil.LogLevel, prefix string) log
 // SimulateUserInput writes data to the stdin pipe writer to simulate user input
 func (env *TestEnv) SimulateUserInput(input string) {
 	// Write the input to the pipe writer
+	// Ensure the input ends with a newline for proper line reading
+	if !strings.HasSuffix(input, "\n") {
+		input += "\n"
+	}
+
 	_, err := env.stdinWriter.WriteString(input)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to write to stdin pipe: %v", err))

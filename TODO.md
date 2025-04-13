@@ -32,7 +32,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 1 (Remove need for mock stdin files...)
 
-- [ ] **Task Title:** Update Integration Tests Using Stdin Simulation
+- [x] **Task Title:** Update Integration Tests Using Stdin Simulation
     - **Action:** Modify integration tests (`internal/integration/integration_test.go`) that use `env.SimulateUserInput`. Update them to pass the `io.Reader` provided by the refactored `TestEnv` to the relevant functions (e.g., potentially `TokenManager.PromptForConfirmation`).
     - **Depends On:** Refactor `TestEnv` Stdin Simulation to Use Buffers
     - **AC Ref:** Plan Recommendation 1 (Remove need for mock stdin files...)
