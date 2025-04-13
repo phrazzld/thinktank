@@ -39,8 +39,9 @@ type TestEnv struct {
 	AuditLogger auditlog.AuditLogger
 
 	// Mock standard input for simulating user inputs
-	MockStdin *os.File
-	OrigStdin *os.File
+	stdinReader *os.File // The read end of the pipe to use as stdin
+	stdinWriter *os.File // The write end of the pipe to simulate user input
+	OrigStdin   *os.File
 
 	// Cleanup function to run after test
 	Cleanup func()
@@ -62,10 +63,12 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	origStdout := os.Stdout
 	origStderr := os.Stderr
 
-	// Create pipes for stdin simulation
-	mockStdin, err := os.CreateTemp("", "mock-stdin-*")
+	// Create a pipe for stdin simulation (instead of a temp file)
+	// r is the read end (which will be used as stdin)
+	// w is the write end (which we'll use to simulate user input)
+	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Failed to create mock stdin file: %v", err)
+		t.Fatalf("Failed to create pipe for stdin simulation: %v", err)
 	}
 	origStdin := os.Stdin
 
@@ -87,9 +90,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		// Restore original stdin (stdout/stderr are no longer redirected globally)
 		os.Stdin = origStdin
 
-		// Close and remove mock stdin file
-		mockStdin.Close()
-		os.Remove(mockStdin.Name())
+		// Close pipe file descriptors
+		r.Close()
+		w.Close()
 	}
 
 	return &TestEnv{
@@ -101,18 +104,19 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		MockClient:   mockClient,
 		Logger:       logger,
 		AuditLogger:  auditLogger,
-		MockStdin:    mockStdin,
+		stdinReader:  r,
+		stdinWriter:  w,
 		OrigStdin:    origStdin,
 		Cleanup:      cleanup,
 	}
 }
 
 // Setup prepares the environment
-// After refactoring, this function only redirects stdin
+// After refactoring, this function redirects stdin to our pipe reader
 // StdoutBuffer and StderrBuffer should be passed explicitly where needed
 func (env *TestEnv) Setup() {
-	// Set stdin to our mock
-	os.Stdin = env.MockStdin
+	// Set stdin to our pipe reader
+	os.Stdin = env.stdinReader
 }
 
 // GetBufferedLogger returns a logger that writes to the test environment's stderr buffer
@@ -121,15 +125,12 @@ func (env *TestEnv) GetBufferedLogger(level logutil.LogLevel, prefix string) log
 	return logutil.NewLogger(level, env.StderrBuffer, prefix)
 }
 
-// SimulateUserInput writes data to mock stdin to simulate user input
+// SimulateUserInput writes data to the stdin pipe writer to simulate user input
 func (env *TestEnv) SimulateUserInput(input string) {
-	_, err := env.MockStdin.WriteString(input)
+	// Write the input to the pipe writer
+	_, err := env.stdinWriter.WriteString(input)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to write to mock stdin: %v", err))
-	}
-	_, err = env.MockStdin.Seek(0, 0) // Rewind to start
-	if err != nil {
-		panic(fmt.Sprintf("Failed to seek in mock stdin: %v", err))
+		panic(fmt.Sprintf("Failed to write to stdin pipe: %v", err))
 	}
 }
 

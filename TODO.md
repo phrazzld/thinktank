@@ -27,7 +27,7 @@
     - **Depends On:** Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection
     - **AC Ref:** Plan Recommendation 1 (Pass buffers directly...)
 
-- [ ] **Task Title:** Refactor `TestEnv` Stdin Simulation to Use Buffers
+- [x] **Task Title:** Refactor `TestEnv` Stdin Simulation to Use Buffers
     - **Action:** Modify `NewTestEnv` in `internal/integration/test_helpers.go` to remove the creation and use of a temporary file (`mockStdin`) for simulating standard input. Modify `SimulateUserInput` to write to an internal `bytes.Buffer` or similar. Provide a way for tests to pass this buffer as an `io.Reader` where stdin is needed.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 1 (Remove need for mock stdin files...)
