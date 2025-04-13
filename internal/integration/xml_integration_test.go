@@ -13,20 +13,22 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// TestXMLPromptStructure tests the new XML-structured prompt approach
-func TestXMLPromptStructure(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+// xmlTestCase defines a test case for XML prompt structure tests
+type xmlTestCase struct {
+	name                      string
+	sourceFiles               map[string]string
+	instructionsContent       string
+	expectedPromptContains    []string
+	expectedPromptNotContains []string
+	setupCustomMock           func(t *testing.T, env *TestEnv) (string, error)
+	expectedOutputContains    string
+	expectedError             bool
+}
 
-	// Create test source files
-	env.CreateTestFile(t, "src/main.go", `package main
-
-func main() {
-	println("Hello, world!")
-}`)
-
-	env.CreateTestFile(t, "src/helper.go", `package main
+// TestXMLPromptFeatures tests various aspects of XML prompt structure
+func TestXMLPromptFeatures(t *testing.T) {
+	// Define common helper function source code
+	helperGoSrc := `package main
 
 // Helper function with special characters < > to test XML escaping
 func helper(a, b int) int {
@@ -34,167 +36,15 @@ func helper(a, b int) int {
 		return a
 	}
 	return b
-}`)
+}`
 
-	// Create an instructions file (not a task file)
-	instructions := "Implement a feature to multiply two numbers"
-	instructionsFile := env.CreateTestFile(t, "instructions.md", instructions)
+	mainGoSrc := `package main
 
-	// Set up the output directory and model-specific output file path
-	modelName := "test-model"
-	outputDir := filepath.Join(env.TestDir, "output")
-	outputFile := filepath.Join(outputDir, modelName+".md")
+func main() {
+	println("Hello, world!")
+}`
 
-	// Create a variable to capture the prompt for verification
-	var capturedPrompt string
-
-	// Set up the mock client with custom implementation to capture the prompt
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		// Save the prompt for verification
-		capturedPrompt = prompt
-
-		// Return a mock response
-		return &gemini.GenerationResult{
-			Content:    "# Generated Plan\n\nImplemented as requested.",
-			TokenCount: 100,
-		}, nil
-	}
-
-	// Create a test configuration using the new InstructionsFile
-	testConfig := &config.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputDir:        outputDir,
-		ModelNames:       []string{modelName},
-		APIKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
-
-	// Run the application
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	// Check for errors
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
-
-	// Verify that the output file was created
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
-
-	// Now verify the XML structure of the captured prompt
-	if capturedPrompt == "" {
-		t.Fatal("No prompt was captured")
-	}
-
-	// Check for the instructions tag
-	if !strings.Contains(capturedPrompt, "<instructions>") || !strings.Contains(capturedPrompt, "</instructions>") {
-		t.Errorf("Prompt is missing <instructions> tags: %s", capturedPrompt)
-	}
-
-	// Check that the instructions content is included
-	if !strings.Contains(capturedPrompt, instructions) {
-		t.Errorf("Prompt doesn't contain the expected instructions content: %s", capturedPrompt)
-	}
-
-	// Check for the context tag
-	if !strings.Contains(capturedPrompt, "<context>") || !strings.Contains(capturedPrompt, "</context>") {
-		t.Errorf("Prompt is missing <context> tags: %s", capturedPrompt)
-	}
-
-	// Check for file paths
-	if !strings.Contains(capturedPrompt, "main.go") || !strings.Contains(capturedPrompt, "helper.go") {
-		t.Errorf("Prompt doesn't contain expected file paths: %s", capturedPrompt)
-	}
-
-	// Check for XML escaping of special characters
-	if !strings.Contains(capturedPrompt, "&lt;") || !strings.Contains(capturedPrompt, "&gt;") {
-		t.Errorf("Prompt doesn't have properly escaped XML characters: %s", capturedPrompt)
-	}
-
-	// Read the output file to verify the content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	// Verify the output contains the expected content
-	if !strings.Contains(string(content), "Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
-	}
-}
-
-// TestEmptyInstructionsFile tests handling empty instructions files
-func TestEmptyInstructionsFile(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
-
-	// Create test source file
-	env.CreateTestFile(t, "src/main.go", `package main
-
-func main() {}`)
-
-	// Create an empty instructions file
-	instructionsFile := env.CreateTestFile(t, "empty_instructions.md", "")
-
-	// Set up the output directory and model-specific output file path
-	modelName := "test-model"
-	outputDir := filepath.Join(env.TestDir, "output")
-	outputFile := filepath.Join(outputDir, modelName+".md")
-
-	// Create a variable to capture the prompt for verification
-	var capturedPrompt string
-
-	// Set up the mock client
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		capturedPrompt = prompt
-		return &gemini.GenerationResult{
-			Content:    "# Generated Plan\n\nPlan with empty instructions.",
-			TokenCount: 100,
-		}, nil
-	}
-
-	// Create a test configuration
-	testConfig := &config.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputDir:        outputDir,
-		ModelNames:       []string{modelName},
-		APIKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
-
-	// Run the application
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	// Check for errors
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
-
-	// Verify that the output file was created
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
-
-	// Verify the prompt structure with empty instructions
-	if !strings.Contains(capturedPrompt, "<instructions>\n</instructions>") {
-		t.Errorf("Empty instructions not handled correctly: %s", capturedPrompt)
-	}
-}
-
-// TestComplexXMLStructure tests more complex XML structure scenarios
-func TestComplexXMLStructure(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
-
-	// Create source files with XML-like content to test escaping
-	env.CreateTestFile(t, "src/component.jsx", `
+	componentJSX := `
 function Component() {
   return (
     <div className="container">
@@ -206,10 +56,9 @@ function Component() {
       ))}
     </div>
   );
-}
-`)
+}`
 
-	env.CreateTestFile(t, "src/template.html", `
+	templateHTML := `
 <!DOCTYPE html>
 <html>
 <head>
@@ -221,11 +70,9 @@ function Component() {
     <p>This is a test with <!-- comments --> and special characters: < > & " '</p>
   </div>
 </body>
-</html>
-`)
+</html>`
 
-	// Create instructions with tags that should be preserved (not escaped)
-	instructions := `# Feature Request
+	complexInstructions := `# Feature Request
 Implement a new <Component> that displays data in a <table> format.
 The component should handle the following edge cases:
 1. When data.length === 0, show "No data available"
@@ -237,49 +84,163 @@ The component should handle the following edge cases:
 - Add proper error handling for API failures
 `
 
-	// Create the instructions file
-	instructionsFile := env.CreateInstructionsFile(t, instructions)
+	// Define test cases
+	testCases := []xmlTestCase{
+		{
+			name: "Basic XML Structure",
+			sourceFiles: map[string]string{
+				"src/main.go":   mainGoSrc,
+				"src/helper.go": helperGoSrc,
+			},
+			instructionsContent: "Implement a feature to multiply two numbers",
+			expectedPromptContains: []string{
+				"<instructions>", "</instructions>",
+				"<context>", "</context>",
+				"main.go", "helper.go",
+				"&lt;", "&gt;", // Check for XML escaping
+			},
+			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
+				var capturedPrompt string
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					capturedPrompt = prompt
+					return &gemini.GenerationResult{
+						Content:    "# Generated Plan\n\nImplemented as requested.",
+						TokenCount: 100,
+					}, nil
+				}
+				return capturedPrompt, nil
+			},
+			expectedOutputContains: "Generated Plan",
+		},
+		{
+			name: "Empty Instructions",
+			sourceFiles: map[string]string{
+				"src/main.go": `package main
 
-	// Set up the output directory and model-specific output file path
-	modelName := "test-model"
-	outputDir := filepath.Join(env.TestDir, "output")
-	outputFile := filepath.Join(outputDir, modelName+".md")
-
-	// Set up the XML validating client with expected content fragments
-	env.SetupXMLValidatingClient(t, "component.jsx", "template.html", "&lt;div", "&lt;html&gt;")
-
-	// Create a test configuration using the new InstructionsFile
-	testConfig := &config.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputDir:        outputDir,
-		ModelNames:       []string{modelName},
-		APIKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
+func main() {}`,
+			},
+			instructionsContent: "",
+			expectedPromptContains: []string{
+				"<instructions>\n</instructions>",
+			},
+			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
+				var capturedPrompt string
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					capturedPrompt = prompt
+					return &gemini.GenerationResult{
+						Content:    "# Generated Plan\n\nPlan with empty instructions.",
+						TokenCount: 100,
+					}, nil
+				}
+				return capturedPrompt, nil
+			},
+			expectedOutputContains: "Generated Plan",
+		},
+		{
+			name: "Complex XML Structure",
+			sourceFiles: map[string]string{
+				"src/component.jsx": componentJSX,
+				"src/template.html": templateHTML,
+			},
+			instructionsContent:    complexInstructions,
+			expectedPromptContains: []string{
+				// XML validation is handled by SetupXMLValidatingClient
+			},
+			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
+				// Set up the XML validating client with expected content fragments
+				env.SetupXMLValidatingClient(t, "component.jsx", "template.html", "&lt;div", "&lt;html&gt;")
+				return "", nil
+			},
+			expectedOutputContains: "Validated XML Structure Plan",
+		},
 	}
 
-	// Run the application
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	// Execute each test case
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
 
-	// Check for errors
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
+			// Create source files
+			for path, content := range tc.sourceFiles {
+				env.CreateTestFile(t, path, content)
+			}
 
-	// Verify that the output file was created
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-	// Read the output file to verify the content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
+			// Set up the output directory and model-specific output file path
+			modelName := "test-model"
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, modelName+".md")
 
-	// Verify the output contains the expected content
-	if !strings.Contains(string(content), "Validated XML Structure Plan") {
-		t.Errorf("Output file does not contain expected content: %s", string(content))
+			// Set up mock client
+			var capturedPrompt string
+			var setupErr error
+			if tc.setupCustomMock != nil {
+				capturedPrompt, setupErr = tc.setupCustomMock(t, env)
+				if setupErr != nil && !tc.expectedError {
+					t.Fatalf("Failed to set up custom mock: %v", setupErr)
+				}
+			}
+
+			// Create a test configuration
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{modelName},
+				APIKey:           "test-api-key",
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
+
+			// Run the application
+			ctx := context.Background()
+			err := RunTestWithConfig(ctx, testConfig, env)
+
+			// Check for expected errors
+			if tc.expectedError {
+				if err == nil {
+					t.Errorf("Expected an error but got none")
+				}
+				return
+			} else if err != nil {
+				t.Fatalf("RunTestWithConfig failed: %v", err)
+			}
+
+			// Verify the output file was created
+			if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+				t.Errorf("Output file was not created at %s", outputFile)
+				return
+			}
+
+			// Check the prompt structure if a prompt was captured
+			if capturedPrompt != "" {
+				for _, expected := range tc.expectedPromptContains {
+					if !strings.Contains(capturedPrompt, expected) {
+						t.Errorf("Prompt doesn't contain expected content: %s", expected)
+					}
+				}
+
+				for _, unexpected := range tc.expectedPromptNotContains {
+					if strings.Contains(capturedPrompt, unexpected) {
+						t.Errorf("Prompt contains unexpected content: %s", unexpected)
+					}
+				}
+			}
+
+			// Verify the output content
+			if tc.expectedOutputContains != "" {
+				content, err := os.ReadFile(outputFile)
+				if err != nil {
+					t.Fatalf("Failed to read output file: %v", err)
+				}
+
+				if !strings.Contains(string(content), tc.expectedOutputContains) {
+					t.Errorf("Output file does not contain expected content: %s", tc.expectedOutputContains)
+				}
+			}
+		})
 	}
 }

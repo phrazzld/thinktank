@@ -47,11 +47,17 @@ func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditL
 	if client == nil {
 		return nil, fmt.Errorf("client cannot be nil for TokenManager")
 	}
+	return NewTokenManagerWithClient(logger, auditLogger, client), nil
+}
+
+// NewTokenManagerWithClient creates a TokenManager with a specific client.
+// This is defined as a variable to allow it to be mocked in tests.
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) TokenManager {
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
 		client:      client,
-	}, nil
+	}
 }
 
 // GetTokenInfo retrieves token count information and checks limits

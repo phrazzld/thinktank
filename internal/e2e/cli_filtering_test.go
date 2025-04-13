@@ -1,3 +1,9 @@
+//go:build manual_api_test
+// +build manual_api_test
+
+// Package e2e contains end-to-end tests for the architect CLI
+// These tests require a valid API key to run properly and are skipped by default
+// To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
 
 import (
