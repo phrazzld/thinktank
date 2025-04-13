@@ -1,117 +1,100 @@
 ```markdown
-# Implementation Approach Analysis: Decouple Audit Logging from Orchestration Flow
-
-## Approach 1: Direct Dependency Injection and Component-Level Logging
+## Approach 1: Modify `GatherContext` to Calculate Token Count Directly
 
 ### Steps:
-
-1.  **Modify Component Constructors:** Update the constructors of `ContextGatherer`, `ModelProcessor`, `FileWriter`, and `TokenManager` to accept an `AuditLogger` instance.
-2.  **Remove Orchestrator Logging:** Remove all `auditLogger.Log` calls from the `Orchestrator.Run` method.
-3.  **Implement Component Logging:** Within each component, add `auditLogger.Log` calls at the start and end of their primary operations (e.g., `ContextGatherer.GatherContext`, `ModelProcessor.Process`, `FileWriter.SaveToFile`, `TokenManager.CheckTokenLimit`). Ensure the log entries maintain the same structure and naming conventions as before.
-4.  **Update Orchestrator Instantiation:** Modify the `Orchestrator` instantiation in `Execute` to pass the `AuditLogger` to the constructors of the components.
-5.  **Update Tests:** Update unit and integration tests to accommodate the new `AuditLogger` dependencies in the component constructors. This might involve creating mock `AuditLogger` instances.
+1.  After collecting all file content in `GatherContext`, call `cg.client.CountTokens(ctx, projectContext)` to get the token count.
+2.  Store the returned token count in the `ContextStats` struct.
+3.  Update the return values of `GatherContext` to include the updated `ContextStats`.
+4.  Update tests to assert the token count in the returned `ContextStats`.
 
 ### Pros:
-
-*   **Clear Separation of Concerns:** Each component is responsible for its own audit logging, leading to a cleaner separation of concerns.
-*   **Improved Testability:** Components can be tested in isolation with their own audit logging, using mock `AuditLogger` instances.
-*   **Reduced Orchestrator Complexity:** The `Orchestrator.Run` method becomes simpler and easier to understand.
-*   **Flexibility:** Easier to modify or extend audit logging for specific components without affecting others.
+*   Simple and straightforward implementation.
+*   Keeps all context gathering logic in one place.
 
 ### Cons:
-
-*   **Increased Boilerplate:** Requires adding `auditLogger.Log` calls in multiple components.
-*   **Potential for Inconsistency:** Need to ensure consistent logging practices across all components.
-*   **Refactoring Effort:** Requires modifying multiple files and updating tests.
+*   Violates Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`) by mixing file gathering and token counting.
+*   Makes `GatherContext` more complex and harder to test in isolation.
+*   Tight coupling between file gathering and Gemini client.
 
 ### Evaluation Against Standards:
 
-*   **CORE_PRINCIPLES.md:** Aligns well with *Simplicity* by reducing the complexity of the `Orchestrator.Run` method. Supports *Modularity* by making each component responsible for its own logging.
-*   **ARCHITECTURE_GUIDELINES.md:** Strongly supports *Separation of Concerns* by isolating audit logging to the components performing the actions. Adheres to *Dependency Inversion Principle* as the core components depend on the `AuditLogger` interface.
-*   **CODING_STANDARDS.md:** Requires careful attention to *Meaningful Naming* and *Purposeful Comments* when adding logging calls in each component. Adherence to *Consistent Error Handling* is important when logging errors.
-*   **TESTING_STRATEGY.md:** Improves *Testability* by allowing components to be tested in isolation with mock `AuditLogger` instances. Encourages testing the *behavior* of each component, including its logging behavior.
-*   **DOCUMENTATION_APPROACH.md:** Requires updating documentation to reflect the new component constructors and the location of audit logging calls.
+*   **CORE_PRINCIPLES.md:** Violates Simplicity by adding token counting logic to the context gathering process.
+*   **ARCHITECTURE_GUIDELINES.md:** Violates Separation of Concerns by mixing file system operations with external API calls.
+*   **CODING_STANDARDS.md:** No direct violations, but the increased complexity could lead to less readable code.
+*   **TESTING_STRATEGY.md:** Makes `GatherContext` harder to test. Requires mocking the `gemini.Client` to test the file gathering logic, even if the token counting is not relevant to the test. This violates the principle of minimal mocking.
+*   **DOCUMENTATION_APPROACH.md:** Increases the complexity of `GatherContext`, potentially requiring more detailed comments to explain the combined functionality.
 
-## Approach 2: Decorator Pattern for Audit Logging
+## Approach 2: Introduce a `TokenCountingContextGatherer` Decorator
 
 ### Steps:
-
-1.  **Define Decorator Interfaces:** Create decorator interfaces for `ContextGatherer`, `ModelProcessor`, `FileWriter`, and `TokenManager` (e.g., `AuditingContextGatherer`, `AuditingModelProcessor`). These interfaces would implement the original interfaces.
-2.  **Implement Decorators:** Implement concrete decorator structs that wrap the original components and perform audit logging before and after calling the wrapped component's methods.
-3.  **Modify Orchestrator Instantiation:** In the `Execute` function, instantiate the original components and then wrap them with their respective decorators, passing the `AuditLogger` to the decorators.
-4.  **Remove Orchestrator Logging:** Remove all `auditLogger.Log` calls from the `Orchestrator.Run` method.
-5.  **Update Tests:** Update tests to accommodate the decorator pattern. Tests for the core logic can use the original components, while tests for audit logging can use the decorators with mock `AuditLogger` instances.
+1.  Create a new struct `TokenCountingContextGatherer` that implements the `ContextGatherer` interface.
+2.  `TokenCountingContextGatherer` takes an existing `ContextGatherer` and a `gemini.Client` as dependencies.
+3.  Implement the `GatherContext` method in `TokenCountingContextGatherer`. This method calls the `GatherContext` method of the inner `ContextGatherer` to get the file metadata and initial stats.
+4.  After the inner `GatherContext` returns, `TokenCountingContextGatherer` calculates the token count using the `gemini.Client` and updates the `ContextStats`.
+5.  Return the updated `ContextStats` and file metadata.
+6.  Update the orchestrator to use the `TokenCountingContextGatherer` when token counting is needed.
+7.  Update tests to verify the token counting functionality of the decorator.
 
 ### Pros:
-
-*   **Clear Separation of Concerns:** Similar to Approach 1, audit logging is separated from the core logic of the components.
-*   **Minimal Code Changes in Core Components:** The original components don't need to be modified, reducing the risk of introducing bugs.
-*   **Centralized Logging Logic:** The logging logic is encapsulated in the decorators, making it easier to maintain and modify.
+*   Adheres to Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`). The original `contextGatherer` remains focused on file gathering.
+*   Improves testability. The original `contextGatherer` can be tested independently of the token counting logic. The decorator can be tested separately with a mocked inner `ContextGatherer`.
+*   Follows the Decorator pattern, allowing for flexible addition of token counting functionality.
 
 ### Cons:
-
-*   **Increased Complexity:** Introduces additional interfaces and structs, increasing the overall complexity of the codebase.
-*   **Potential for Performance Overhead:** The decorator pattern can introduce a small performance overhead due to the extra layer of indirection.
-*   **More Boilerplate:** Requires creating decorator interfaces and structs for each component.
+*   More complex to implement than Approach 1.
+*   Requires changes to the orchestrator to use the decorator.
 
 ### Evaluation Against Standards:
 
-*   **CORE_PRINCIPLES.md:** Supports *Modularity* and *Separation of Concerns*. However, it might violate *Simplicity* due to the added complexity of the decorator pattern.
-*   **ARCHITECTURE_GUIDELINES.md:** Aligns well with *Separation of Concerns* and *Dependency Inversion Principle*.
-*   **CODING_STANDARDS.md:** Requires careful attention to *Meaningful Naming* for the decorator interfaces and structs.
-*   **TESTING_STRATEGY.md:** Improves *Testability* by allowing the core logic and audit logging to be tested separately. However, it might require more complex test setups due to the decorator pattern.
-*   **DOCUMENTATION_APPROACH.md:** Requires updating documentation to reflect the new decorator interfaces and structs.
+*   **CORE_PRINCIPLES.md:** Promotes Simplicity by keeping the core `contextGatherer` focused on its primary task.
+*   **ARCHITECTURE_GUIDELINES.md:** Adheres to Separation of Concerns by isolating token counting logic in a separate component.
+*   **CODING_STANDARDS.md:** May require more code, but the improved structure and testability can lead to more maintainable code.
+*   **TESTING_STRATEGY.md:** Improves testability by allowing independent testing of the file gathering and token counting logic. Reduces the need for complex mocking.
+*   **DOCUMENTATION_APPROACH.md:** The decorator pattern might require additional documentation to explain the interaction between the decorator and the decorated object.
 
-## Approach 3: Aspect-Oriented Programming (AOP) with Interceptors (Less Feasible in Go)
+## Approach 3: Post-Process ContextStats in the Orchestrator
 
 ### Steps:
 
-1.  **Define Audit Logging Aspect:** Create an AOP aspect that intercepts calls to specific methods in `ContextGatherer`, `ModelProcessor`, `FileWriter`, and `TokenManager`.
-2.  **Implement Interceptor Logic:** Within the aspect, implement the audit logging logic to be executed before and after the intercepted methods.
-3.  **Configure AOP Framework:** Configure the AOP framework to apply the audit logging aspect to the target methods.
-4.  **Remove Orchestrator Logging:** Remove all `auditLogger.Log` calls from the `Orchestrator.Run` method.
-5.  **Update Tests:** Update tests to verify that the audit logging aspect is correctly applied.
+1.  Keep the `GatherContext` method as is, returning the initial `ContextStats` without token counts.
+2.  In the `Orchestrator.Run` method, after calling `contextGatherer.GatherContext`, calculate the token count using the `gemini.Client` and update the `ContextStats` struct.
+3.  Update the orchestrator to use the `gemini.Client` to calculate the token count.
+4.  Update tests to verify the token counting functionality in the orchestrator.
 
 ### Pros:
 
-*   **Maximum Separation of Concerns:** Audit logging is completely separated from the core logic of the components.
-*   **Minimal Code Changes:** Requires minimal changes to the existing codebase.
-*   **Centralized Configuration:** The AOP framework provides a centralized way to configure audit logging.
+*   Minimally invasive, requiring the least amount of change to existing code.
+*   Keeps the `ContextGatherer` focused on its original responsibility.
 
 ### Cons:
 
-*   **Complexity:** AOP can be complex to understand and configure, especially in languages like Go that don't have native AOP support.
-*   **Performance Overhead:** AOP can introduce a significant performance overhead due to the dynamic interception of method calls.
-*   **Limited Tooling:** Go has limited tooling and libraries for AOP, making it difficult to implement and maintain.
-*   **Not idiomatic Go:** AOP is not a common pattern in Go, which could make the code harder to understand for other developers.
+*   Violates Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`) by placing token counting logic in the orchestrator, which is responsible for coordinating the overall workflow.
+*   Tight coupling between the orchestrator and the `gemini.Client`.
+*   Reduces testability of the context gathering process, as the token count is not directly associated with the gathered context.
 
 ### Evaluation Against Standards:
 
-*   **CORE_PRINCIPLES.md:** Violates *Simplicity* due to the complexity of AOP.
-*   **ARCHITECTURE_GUIDELINES.md:** Supports *Separation of Concerns* but might violate the *Dependency Inversion Principle* if the AOP framework introduces hidden dependencies.
-*   **CODING_STANDARDS.md:** Requires careful attention to *Meaningful Naming* for the AOP aspects and interceptors.
-*   **TESTING_STRATEGY.md:** Might make *Testability* more difficult due to the dynamic nature of AOP.
-*   **DOCUMENTATION_APPROACH.md:** Requires extensive documentation to explain the AOP configuration and the audit logging aspects.
+*   **CORE_PRINCIPLES.md:** Slightly violates Simplicity by adding token counting logic to the orchestrator.
+*   **ARCHITECTURE_GUIDELINES.md:** Violates Separation of Concerns by mixing orchestration logic with external API calls.
+*   **CODING_STANDARDS.md:** No direct violations, but the increased complexity in the orchestrator could lead to less readable code.
+*   **TESTING_STRATEGY.md:** Makes it harder to test the context gathering process in isolation, as the token count is calculated separately in the orchestrator.
+*   **DOCUMENTATION_APPROACH.md:** Increases the complexity of the orchestrator, potentially requiring more detailed comments to explain the added functionality.
 
-## Recommendation: Approach 1 - Direct Dependency Injection and Component-Level Logging
+## Recommendation
 
-**Justification:**
+**Approach 2: Introduce a `TokenCountingContextGatherer` Decorator** is the best approach.
 
-Approach 1, Direct Dependency Injection and Component-Level Logging, is the recommended approach because it best aligns with the project's standards hierarchy:
+### Justification:
 
-1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** While it involves modifying multiple files, the changes are straightforward and easy to understand. It avoids the added complexity of decorators (Approach 2) or AOP (Approach 3).
-2.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** It clearly separates audit logging from the core logic of the `Orchestrator` and assigns it to the components responsible for the actions being logged.
-3.  **Testability (Minimal Mocking) (`TESTING_STRATEGY.md`):** It allows for simple testing with minimal mocking. Each component can be tested in isolation with a mock `AuditLogger`, verifying its logging behavior.
-4.  **Coding Conventions (`CODING_STANDARDS.md`):** It requires adherence to coding conventions, such as meaningful naming and consistent error handling, when adding logging calls in each component.
-5.  **Documentability (`DOCUMENTATION_APPROACH.md`):** The changes are relatively easy to document, requiring updates to the component constructors and explanations of the new logging calls.
+Approach 2 best aligns with the project's standards hierarchy:
 
-**Trade-offs:**
+1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** While it involves more initial code than Approach 1, it ultimately leads to a simpler and more focused design by adhering to Separation of Concerns. The core `contextGatherer` remains simple, and the token counting logic is encapsulated in a separate decorator.
+2.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** This is the strongest argument for Approach 2. It cleanly separates the file gathering logic from the token counting logic, preventing the `contextGatherer` from becoming a monolithic component.
+3.  **Testability (Minimal Mocking) (`TESTING_STRATEGY.md`):** Approach 2 significantly improves testability. The original `contextGatherer` can be tested in isolation without mocking the `gemini.Client`. The `TokenCountingContextGatherer` can be tested separately with a mocked inner `ContextGatherer` and `gemini.Client`. This minimizes the need for complex mocking and ensures that tests are focused on verifying the specific behavior of each component.
+4.  **Coding Conventions (`CODING_STANDARDS.md`):** No direct violations, and the improved structure can lead to more maintainable code.
+5.  **Documentability (`DOCUMENTATION_APPROACH.md`):** The decorator pattern might require additional documentation, but the improved structure and testability make the overall system easier to understand and maintain.
 
-*   **Increased Boilerplate:** This approach does require adding `auditLogger.Log` calls in multiple components, which can be seen as boilerplate. However, this is a reasonable trade-off for the improved separation of concerns and testability.
-*   **Potential for Inconsistency:** There is a potential for inconsistency in logging practices across components. This can be mitigated by establishing clear logging guidelines and enforcing them through code reviews and linters.
+While Approach 3 is the least invasive initially, it introduces coupling and violates Separation of Concerns, making it a less desirable solution in the long run. Approach 1 is simpler than Approach 2 to implement initially, but it violates Separation of Concerns and makes testing more difficult.
 
-**Why other approaches were rejected:**
-
-*   **Approach 2 (Decorator Pattern):** While it offers a good separation of concerns, it introduces additional complexity with the decorator interfaces and structs, violating the *Simplicity* principle.
-*   **Approach 3 (AOP):** AOP is overly complex for this task and not idiomatic in Go. It also has potential performance overhead and limited tooling support, making it a less desirable option.
+The trade-off for the increased initial complexity of Approach 2 is a more modular, testable, and maintainable system that adheres to the project's core principles and architectural guidelines.
 ```

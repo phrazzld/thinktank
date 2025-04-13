@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
@@ -60,6 +61,27 @@ func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManage
 		client:       client,
 		auditLogger:  auditLogger,
 	}
+}
+
+// estimateTokenCount counts tokens simply by whitespace boundaries.
+// This is kept as a fallback method in case the API token counting fails.
+func estimateTokenCount(text string) int {
+	count := 0
+	inToken := false
+	for _, r := range text {
+		if unicode.IsSpace(r) {
+			if inToken {
+				count++
+				inToken = false
+			}
+		} else {
+			inToken = true
+		}
+	}
+	if inToken {
+		count++
+	}
+	return count
 }
 
 // GatherContext collects and processes files based on configuration
@@ -177,15 +199,15 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 		tokenResult, err := cg.client.CountTokens(ctx, projectContext)
 		if err != nil {
 			cg.logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
-			// Fall back to basic statistics
-			charCount, lineCount, tokenCount = fileutil.CalculateStatistics(projectContext)
+			// Fall back to basic statistics using internal estimation
+			tokenCount = estimateTokenCount(projectContext)
 		} else {
 			tokenCount = int(tokenResult.Total)
 			cg.logger.Debug("Accurate token count: %d tokens", tokenCount)
 		}
 	} else {
 		// Fall back to basic statistics if no client
-		charCount, lineCount, tokenCount = fileutil.CalculateStatistics(projectContext)
+		tokenCount = estimateTokenCount(projectContext)
 		cg.logger.Debug("Using estimated token count: %d tokens", tokenCount)
 	}
 

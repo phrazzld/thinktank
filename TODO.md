@@ -78,7 +78,7 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 3.2
 
-- [ ] **Task Title:** Implement Token Counting within `ContextGatherer`
+- [x] **Task Title:** Implement Token Counting within `ContextGatherer`
   - **Action:** Modify `ContextGatherer.GatherContext` to calculate the token count for the gathered context *after* collecting all file content. It should use the `gemini.Client` (passed via dependency injection) to perform the count. Update the `ContextStats` struct and return values accordingly.
   - **Depends On:** Remove `CalculateStatisticsWithTokenCounting` from `fileutil`, Ensure `gemini.Client` is Injected into `ContextGatherer`
   - **AC Ref:** Refactoring Goals, Task Group 3.2, Task Group 3.3

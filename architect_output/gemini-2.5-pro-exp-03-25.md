@@ -1,139 +1,174 @@
-Okay, let's analyze the task of decoupling audit logging from the Orchestrator and propose implementation approaches.
+# Token Counting Implementation Analysis
 
-## Task Recap
+## Task Description Recap
 
-The goal is to move detailed audit logging calls (for context gathering, token checks, content generation, file saving) from `Orchestrator.Run` into the respective components (`ContextGatherer`, `TokenManager`, `FileWriter`, `ModelProcessor`). This involves injecting the `AuditLogger` into these components and having them log their own operations.
+The task is to modify `ContextGatherer.GatherContext` to use the injected `gemini.Client` for accurate token counting after collecting file content. This involves replacing the existing estimation logic (`fileutil.CalculateStatistics`) with a call to `client.CountTokens`, handling potential errors or the absence of the client by falling back to the estimation, updating the `ContextStats` struct, and ensuring tests are updated.
 
----
+## Proposed Implementation Approaches
 
-## Approach 1: Direct Injection and Logging
+### Approach 1: Direct Replacement with Fallback in `GatherContext`
 
-*   **Steps:**
-    1.  Modify the interfaces in `internal/architect/interfaces/interfaces.go` for `ContextGatherer`, `TokenManager`, and `FileWriter` to conceptually include the responsibility of handling their own audit logging (though the interface signature might not change if the logger is injected via constructor).
-    2.  Update the concrete implementations (`architect.contextGatherer`, `architect.tokenManager`, `architect.fileWriter`) to accept `auditlog.AuditLogger` via their constructors (`NewContextGatherer`, `NewTokenManager`, `NewFileWriter`) and store it as a field.
-    3.  Implement logging within the core methods:
-        *   In `contextGatherer.GatherContext`: Add `GatherContextStart` log at the beginning and `GatherContextEnd` log (success/failure with duration, stats, error) at the end. Remove these logs from `Orchestrator.Run`.
-        *   In `tokenManager.GetTokenInfo` (or potentially `CheckTokenLimit`): Add `CheckTokensStart` log at the beginning and `CheckTokensEnd` log (success/failure with duration, token info, error) at the end. Remove these logs from `modelproc.Processor.Process`. *Decision: `GetTokenInfo` seems more appropriate as it performs the core calculation and check.*
-        *   In `fileWriter.SaveToFile`: Add `SaveOutputStart` log at the beginning and `SaveOutputEnd` log (success/failure with duration, path, error) at the end. Remove these logs from `modelproc.Processor.Process`.
-    4.  Verify `modelproc.Processor.Process` continues to log `GenerateContentStart/End` but *removes* the calls for `CheckTokensStart/End` and `SaveOutputStart/End`.
-    5.  Update `app.Execute` to instantiate `contextGatherer`, `tokenManager`, `fileWriter` with the `AuditLogger` instance.
-    6.  Remove the detailed logging calls (`GatherContext*`, etc.) from `Orchestrator.Run`. The orchestrator might retain very high-level logs if needed, but the operational details move out.
-    7.  Update relevant unit and integration tests for `Orchestrator`, `ContextGatherer`, `TokenManager`, `FileWriter`, and `ModelProcessor`. Inject mock `AuditLogger` instances into the components under test and verify the expected log calls.
+**Steps:**
 
-*   **Pros:**
-    *   Clear separation of concerns: Orchestrator focuses on orchestration, components handle their specific tasks including logging them.
-    *   Directly fulfills the task requirements.
-    *   Relatively straightforward refactoring path.
-    *   Improves testability of individual components regarding their specific logging side effects.
-    *   Reduces clutter and responsibility in the `Orchestrator`.
+1.  Locate the section in `GatherContext` after `projectContext` (the combined content string) is created.
+2.  Keep the existing direct calculation for `charCount` and `lineCount`.
+3.  Add a check: `if cg.client != nil`.
+4.  **Inside the `if` block:**
+    *   Call `tokenResult, err := cg.client.CountTokens(ctx, projectContext)`.
+    *   If `err == nil`:
+        *   Set `stats.TokenCount = tokenResult.Total`.
+        *   Log that an accurate token count was obtained.
+    *   If `err != nil`:
+        *   Log a warning about the failure to count tokens accurately (including the error).
+        *   Call `_, _, estimatedTokenCount := fileutil.CalculateStatistics(projectContext)`.
+        *   Set `stats.TokenCount = int32(estimatedTokenCount)`.
+        *   Log that an estimated token count is being used.
+5.  **Inside an `else` block (for `cg.client == nil`):**
+    *   Log a debug message indicating fallback due to nil client.
+    *   Call `_, _, estimatedTokenCount := fileutil.CalculateStatistics(projectContext)`.
+    *   Set `stats.TokenCount = int32(estimatedTokenCount)`.
+    *   Log that an estimated token count is being used.
+6.  Ensure the final logging (`cg.logger.Info("Context gathered: ...")`) uses the calculated `stats.TokenCount`.
+7.  Update the audit log entry (`GatherContextEnd`) to include the final `stats.TokenCount` in the `Outputs` map. Add a field indicating if the count is estimated or accurate, if desired.
+8.  Update tests in `context_test.go`:
+    *   Enhance `mockGeminiClient` to allow mocking `CountTokens` behavior (success, error).
+    *   Add test cases verifying successful token counting via the mocked client.
+    *   Add test cases verifying fallback to estimation when `CountTokens` returns an error.
+    *   Add test cases verifying fallback to estimation when the injected client is `nil`.
+    *   Verify audit log entries contain the correct token count.
 
-*   **Cons:**
-    *   Increases the number of constructor dependencies for `ContextGatherer`, `TokenManager`, `FileWriter`.
-    *   Requires careful modification and testing of multiple components.
+**Pros:**
 
-*   **Evaluation Against Standards:**
-    *   `CORE_PRINCIPLES.md`:
-        *   *Simplicity*: Good. Reduces complexity in Orchestrator. Component complexity increase is minimal and logical (logging own actions).
-        *   *Modularity*: Excellent. Enhances modularity by encapsulating logging concerns within the responsible component.
-        *   *Testability*: Good. Components are testable with a mock logger. Orchestrator test becomes simpler.
-        *   *Maintainability*: Good. Logging logic is co-located with the operation being logged.
-        *   *Explicit*: Good. Dependencies (logger) are explicit via constructor injection.
-    *   `ARCHITECTURE_GUIDELINES.md`:
-        *   *Unix Philosophy*: Good. Components remain focused; audit logging their primary action is part of "doing it well".
-        *   *Separation of Concerns*: Excellent. Orchestration concern separated from detailed operational logging concern.
-        *   *Dependency Inversion*: Good. Components depend on the `AuditLogger` abstraction.
-        *   *Package Structure*: N/A (No change needed).
-        *   *API Design*: N/A.
-        *   *Configuration*: N/A.
-        *   *Error Handling*: N/A.
-    *   `CODING_STANDARDS.md`:
-        *   *Types*: Good. Uses interfaces (`AuditLogger`).
-        *   *Dependencies*: Adds `AuditLogger` dependency, acceptable for a cross-cutting concern.
-        *   Adherence expected for naming, formatting, linting, comments, etc.
-    *   `TESTING_STRATEGY.md`:
-        *   *Behavior Over Implementation*: Good. Tests verify components log correctly via the `AuditLogger` interface.
-        *   *Testability as Design Constraint*: Good. Design supports testing with injected dependencies.
-        *   *Unit Testing*: Good. Component unit tests verify logging logic.
-        *   *Integration Testing*: Good. Orchestrator integration tests are simplified.
-        *   *Mocking Policy*: Excellent. Adheres strictly. Mocks only the `AuditLogger` interface (representing an external system boundary - the logging mechanism). No internal mocking required for this change.
-        *   *FIRST*: Good. Tests should remain Fast, Independent, Repeatable, Self-Validating, Timely.
-    *   `DOCUMENTATION_APPROACH.md`:
-        *   *Self-Documenting Code*: Good. Orchestrator code becomes cleaner. Component methods are slightly longer but encapsulate their full behavior including auditing.
-        *   *ADRs*: Low significance, might not require a formal ADR, but the change should be clear in commit messages/PRs.
+*   **Simple & Direct:** Integrates the logic directly into the existing flow with minimal structural changes.
+*   **Localized Logic:** Keeps context gathering and its quantification (including token count) within the same method.
+*   **Clear Fallback:** Explicit conditional logic for handling client absence or API errors.
 
----
+**Cons:**
 
-## Approach 2: Decorator Pattern for Logging
+*   **Method Complexity:** Slightly increases the conditional logic and length of the `GatherContext` method.
 
-*   **Steps:**
-    1.  Keep the core interfaces (`interfaces.ContextGatherer`, `interfaces.TokenManager`, `interfaces.FileWriter`) and their implementations (`architect.*`) unchanged regarding logging dependencies.
-    2.  Create new decorator types (e.g., `loggingContextGatherer`, `loggingTokenManager`, `loggingFileWriter`) in a suitable package (e.g., `internal/architect/decorators` or within the respective component packages).
-    3.  Each decorator struct will embed the original interface (e.g., `inner interfaces.ContextGatherer`) and hold an `auditlog.AuditLogger`.
-    4.  Implement the interface methods on the decorators. Each method will:
-        *   Log the "Start" event using the `AuditLogger`.
-        *   Record the start time.
-        *   Call the corresponding method on the `inner` (wrapped) component instance.
-        *   Record the end time, calculate duration.
-        *   Log the "End" event (success or failure) using the `AuditLogger`, including duration, results, and any error returned by the inner call.
-    5.  Modify `app.Execute`:
-        *   Instantiate the original components (`contextGatherer`, `tokenManager`, `fileWriter`) *without* the logger.
-        *   Instantiate the logging decorators, passing the original component instance and the `AuditLogger`.
-        *   Inject these *decorated* instances into the `Orchestrator` and `ModelProcessor` where needed. (Note: `ModelProcessor` already takes `FileWriter` and `TokenManager` interfaces, so it would receive the decorated versions).
-    6.  Remove the detailed logging calls from `Orchestrator.Run`.
-    7.  Remove the `CheckTokensStart/End` and `SaveOutputStart/End` logging from `ModelProcessor` (as the decorated `TokenManager` and `FileWriter` will handle this). `ModelProcessor` keeps `GenerateContentStart/End`.
-    8.  Update tests:
-        *   Tests for the *core* components (`architect.*`) remain unchanged (no logger mock needed).
-        *   Add new unit tests specifically for the logging decorators, verifying they call the inner component and log correctly (mocking the `AuditLogger` and the inner component interface).
-        *   Update tests for `Orchestrator` and `ModelProcessor` to use either mocks of the decorated interfaces or the actual decorators wrapping mocks of the core components.
+**Evaluation Against Standards:**
 
-*   **Pros:**
-    *   Excellent separation of concerns: Logging logic is completely isolated in decorators. Core components remain focused solely on their primary task.
-    *   Adheres to the Open/Closed Principle: Logging can be added/removed without modifying the core component code.
-    *   Core component tests are simpler (no `AuditLogger` mocking needed).
+*   **`CORE_PRINCIPLES.md`:**
+    *   *Simplicity:* High. Minimal changes to existing structure.
+    *   *Modularity:* Acceptable. Token counting is part of quantifying the gathered context.
+    *   *Testability:* High. Relies on mocking the `gemini.Client` interface.
+    *   *Maintainability:* High. Logic is straightforward.
+    *   *Explicit:* Explicit checks for client and errors.
+*   **`ARCHITECTURE_GUIDELINES.md`:**
+    *   *Unix Philosophy:* `ContextGatherer` still focuses on gathering/quantifying context. Good.
+    *   *Separation of Concerns:* Core file gathering (`fileutil`) is separate. Infrastructure interaction (`gemini.Client`) is via an interface. Good.
+    *   *Dependency Inversion:* Depends on `gemini.Client` interface. Good.
+    *   *Package Structure:* No change needed.
+    *   *Error Handling:* Explicit handling of `CountTokens` error. Good.
+*   **`CODING_STANDARDS.md`:**
+    *   Adheres well. Requires clear comments for fallback logic.
+*   **`TESTING_STRATEGY.md`:**
+    *   *Testability:* Excellent. Mocking `gemini.Client` fits the strategy perfectly (mocking external boundaries via interfaces). Minimal mocking required.
+*   **`DOCUMENTATION_APPROACH.md`:**
+    *   Requires minor updates to code comments within `GatherContext`. No ADR needed.
 
-*   **Cons:**
-    *   Increases structural complexity: Introduces several new types (decorator structs).
-    *   More boilerplate code required to implement the decorators.
-    *   Dependency injection setup in `app.Execute` becomes slightly more verbose.
+### Approach 2: Dedicated Private Helper Method for Stats Calculation
 
-*   **Evaluation Against Standards:**
-    *   `CORE_PRINCIPLES.md`:
-        *   *Simplicity*: Fair. Overall system structure is less simple due to extra types/layers, but the *core* components become simpler.
-        *   *Modularity*: Excellent. Logging is a distinct, composable module (decorator).
-        *   *Testability*: Excellent. Core components tested without logger. Decorators tested in isolation. Orchestrator/ModelProcessor tests interact with the decorated interface.
-        *   *Maintainability*: Good. Logging changes are isolated to decorators.
-        *   *Explicit*: Good. Composition via decorators is explicit during instantiation.
-    *   `ARCHITECTURE_GUIDELINES.md`:
-        *   *Unix Philosophy*: Good. Decorators enhance a focused component with a single additional concern (logging).
-        *   *Separation of Concerns*: Excellent. Strong separation between core logic and logging.
-        *   *Dependency Inversion*: Good. Decorators depend on abstractions (core interface, logger interface). Core components don't depend on logger.
-        *   *Package Structure*: May warrant a `decorators` sub-package or placing decorators near their core counterparts.
-    *   `CODING_STANDARDS.md`:
-        *   *Types*: Good. Relies heavily on interfaces.
-        *   *Dependencies*: Core components have fewer dependencies. Decorators add dependencies.
-        *   Adherence expected for naming, formatting, linting, comments, etc.
-    *   `TESTING_STRATEGY.md`:
-        *   *Behavior Over Implementation*: Excellent. Tests verify decorator behavior (logging) and core component behavior separately through their respective interfaces.
-        *   *Testability as Design Constraint*: Excellent. Design explicitly separates concerns, enhancing testability.
-        *   *Unit Testing*: Excellent. Core components tested easily. Decorators tested easily.
-        *   *Integration Testing*: Good. Orchestrator tests use decorated components.
-        *   *Mocking Policy*: Excellent. Core components need no mocks for logging. Decorators mock the `AuditLogger` interface and potentially the inner component interface (which is fine as it's testing the decorator's interaction with its dependency). No internal mocking.
-        *   *FIRST*: Good. Tests should remain FIRST.
-    *   `DOCUMENTATION_APPROACH.md`:
-        *   *Self-Documenting Code*: Fair. Code structure is clear but requires understanding the decorator pattern.
-        *   *ADRs*: Might warrant a small ADR explaining the choice and application of the decorator pattern for logging.
+**Steps:**
 
----
+1.  Define a new private method: `func (cg *contextGatherer) calculateStats(ctx context.Context, content string) (charCount, lineCount int, tokenCount int32, isEstimate bool, err error)`.
+2.  Move the logic for calculating char count, line count, and token count (API call, fallback) into `calculateStats`.
+    *   Calculate `charCount` and `lineCount` directly.
+    *   Check `cg.client != nil`.
+    *   Attempt `cg.client.CountTokens`.
+    *   Handle errors/nil client, falling back to `fileutil.CalculateStatistics` for `tokenCount`.
+    *   Set `isEstimate` flag accordingly.
+    *   Return the calculated values.
+3.  In `GatherContext`, after creating `projectContext`:
+    *   Call `charCount, lineCount, tokenCount, isEstimate, calcErr := cg.calculateStats(ctx, projectContext)`.
+    *   Handle `calcErr` if necessary (though likely just logs warnings internally).
+    *   Update the `stats` struct: `stats.CharCount = charCount`, `stats.LineCount = lineCount`, `stats.TokenCount = tokenCount`.
+4.  Update logging messages to indicate if the count is estimated based on the `isEstimate` flag.
+5.  Update audit logs as in Approach 1.
+6.  Update tests as in Approach 1. Testing the private method directly is possible but testing via the public `GatherContext` is preferred.
 
-## Recommendation: Approach 1 (Direct Injection)
+**Pros:**
 
-While Approach 2 (Decorator Pattern) offers a purer separation of concerns and aligns well with the Open/Closed principle, **Approach 1 (Direct Injection) is recommended** for this specific task within this project context.
+*   **Improved Internal Separation:** Isolates statistics calculation logic, making `GatherContext` slightly cleaner.
+*   **Focused Helper:** The `calculateStats` method has a single, clear responsibility.
+
+**Cons:**
+
+*   **Increased Structure:** Adds a private method, slightly increasing the overall number of methods in the type.
+*   **Data Flow:** Requires passing data back from the helper method to update the main `stats` struct.
+
+**Evaluation Against Standards:**
+
+*   **`CORE_PRINCIPLES.md`:**
+    *   *Simplicity:* Comparable to Approach 1. `GatherContext` is simpler, but overall structure is slightly more complex.
+    *   *Modularity:* Better internal modularity within `contextGatherer`.
+    *   *Testability:* Same as Approach 1 (mocking `gemini.Client`).
+    *   *Maintainability:* Potentially slightly improved due to separation.
+    *   *Explicit:* Logic remains explicit.
+*   **`ARCHITECTURE_GUIDELINES.md`:**
+    *   *Unix Philosophy:* Helper method adheres well ("do one thing"). Good.
+    *   *Separation of Concerns:* Good internal separation. External separation unchanged.
+    *   *Dependency Inversion:* Same as Approach 1.
+    *   *Package Structure:* No change needed.
+    *   *Error Handling:* Encapsulated within the helper. Good.
+*   **`CODING_STANDARDS.md`:**
+    *   Adheres well. Requires clear naming and comments for the new method.
+*   **`TESTING_STRATEGY.md`:**
+    *   *Testability:* Excellent. Same reasoning as Approach 1 – relies on mocking the external `gemini.Client` interface.
+*   **`DOCUMENTATION_APPROACH.md`:**
+    *   Requires comments for the new private method and updates within `GatherContext`. No ADR needed.
+
+### Approach 3: Inject a Dedicated `TokenCounter` Service (Overkill)
+
+**Steps:**
+
+1.  Define `type TokenCounter interface { CountTokens(ctx context.Context, content string) (int32, error) }`.
+2.  Implement `type geminiTokenCounter struct { client gemini.Client }` which satisfies `TokenCounter`.
+3.  Modify `contextGatherer` to take `tokenCounter TokenCounter` instead of `gemini.Client`.
+4.  In `GatherContext`, call `tokenCount, err := cg.tokenCounter.CountTokens(ctx, projectContext)`.
+5.  Handle `err` or `cg.tokenCounter == nil`, falling back to `fileutil.CalculateStatistics`. (Fallback logic still needs to live somewhere, likely `ContextGatherer`).
+6.  Update dependency injection setup to create and pass `geminiTokenCounter`.
+7.  Update tests to mock `TokenCounter` instead of `gemini.Client`.
+
+**Pros:**
+
+*   **Maximum Separation:** Token counting is fully decoupled.
+*   **Simplified Gatherer:** `ContextGatherer` has fewer direct dependencies.
+
+**Cons:**
+
+*   **Over-Engineering:** Introduces significant structural complexity (new interface, implementation, DI changes) for a single API call. Violates YAGNI.
+*   **Complexity Shift:** Fallback logic still needs handling, potentially complicating the `ContextGatherer` or requiring a complex composite `TokenCounter`.
+*   **Increased Components:** More pieces to manage.
+
+**Evaluation Against Standards:**
+
+*   **`CORE_PRINCIPLES.md`:**
+    *   *Simplicity:* Poor. Increases overall system complexity unnecessarily.
+    *   *Modularity:* Excellent, but likely excessive.
+    *   *Testability:* Excellent via the new interface, but Approach 1 is already highly testable per the strategy.
+*   **`ARCHITECTURE_GUIDELINES.md`:**
+    *   *Unix Philosophy:* Creates a focused `TokenCounter`. Good.
+    *   *Separation of Concerns:* Maximized. Good.
+    *   *Dependency Inversion:* Good, uses new abstraction.
+*   **`CODING_STANDARDS.md`:**
+    *   Adheres, but adds more code surface.
+*   **`TESTING_STRATEGY.md`:**
+    *   *Testability:* Excellent, but introduces an arguably unnecessary mock point. The existing `gemini.Client` interface is already the correct boundary according to the strategy.
+*   **`DOCUMENTATION_APPROACH.md`:**
+    *   Requires documenting the new interface/implementation.
+
+## Recommendation
+
+**Recommended Approach: Approach 1: Direct Replacement with Fallback in `GatherContext`**
 
 **Justification:**
 
-1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** Approach 1 provides the simplest and most direct solution to the problem. It avoids introducing new layers of abstraction (decorators) and the associated boilerplate code. The increase in dependencies for the core components is minimal and logical for a cross-cutting concern like audit logging. This aligns best with the *Simplicity First* principle.
-2.  **Pragmatism & Maintainability (`CORE_PRINCIPLES.md`):** Modifying the existing components is less disruptive than introducing a new pattern across multiple components. The logging logic, while technically a separate concern, is tightly coupled to the execution of the component's primary method (start/end/duration/result). Co-locating this logging logic within the method itself (Approach 1) can be argued as more maintainable in practice than tracing logic through a separate decorator file, especially for straightforward start/end logging.
-3.  **Testability (`TESTING_STRATEGY.md`):** Approach 1 achieves excellent testability that fully complies with the project's testing strategy. Mocking the `AuditLogger` interface is simple, standard practice, and adheres strictly to the mocking policy (mocking external boundaries). While Approach 2 also offers excellent testability, the overall setup for Approach 1 is slightly less complex (fewer types to test).
-4.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** Approach 1 still achieves the primary goal of separating the *orchestration* logic from the *detailed operational logging*. The logging is now correctly placed within the component responsible for the operation, which is a significant improvement over the current state. While not as "pure" as decorators, it's a substantial and sufficient separation for this requirement.
+1.  **Simplicity/Clarity (`CORE_PRINCIPLES.md`):** Approach 1 is the simplest and most direct way to achieve the goal. It modifies existing code minimally without adding new structural elements like helper methods or interfaces, making it easy to understand and maintain. Approach 3 is overly complex (violates YAGNI), and Approach 2 adds a helper method which, while separating concerns internally, offers marginal benefit over Approach 1 for this specific task.
+2.  **Separation of Concerns (`ARCHITECTURE_GUIDELINES.md`):** Approach 1 respects the crucial separation between the application logic (`ContextGatherer`) and infrastructure (`gemini.Client`) by using the injected interface. The token counting is a direct quantification of the context gathered, making its inclusion within `GatherContext` reasonable. The core file processing remains delegated to `fileutil`.
+3.  **Testability (Minimal Mocking) (`TESTING_STRATEGY.md`):** This is a key differentiator. Approach 1 aligns perfectly with the testing strategy by requiring mocking only at the existing, appropriate external boundary – the `gemini.Client` interface. It avoids introducing new interfaces or unnecessary layers of mocking. Minimal, targeted mocking is preferred.
+4.  **Coding Conventions (`CODING_STANDARDS.md`):** Approach 1 requires the least amount of new code, fitting naturally into the existing structure and adhering to conventions.
+5.  **Documentability (`DOCUMENTATION_APPROACH.md`):** Requires the least documentation effort – only updating comments within the affected method.
 
-**Conclusion:** Approach 1 strikes the best balance between achieving the desired decoupling, maintaining simplicity, ensuring high testability according to project standards, and minimizing implementation overhead. The benefits of the decorator pattern (Approach 2) do not appear to outweigh the added complexity for this specific, relatively contained refactoring task.
+Approach 1 delivers the required functionality with the least complexity, adheres strongly to the principle of simplicity, and leverages the existing architecture and testing strategy effectively without introducing unnecessary abstractions. The slight increase in the `GatherContext` method's length is an acceptable trade-off for overall system simplicity and adherence to the testing strategy's emphasis on mocking true external boundaries.
