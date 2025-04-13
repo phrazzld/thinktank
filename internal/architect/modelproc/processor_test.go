@@ -16,15 +16,15 @@ import (
 
 // Mock implementations
 type mockAPIService struct {
-	initClientFunc           func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	initClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
 }
 
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	return m.initClientFunc(ctx, apiKey, modelName)
+func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	return m.initClientFunc(ctx, apiKey, modelName, apiEndpoint)
 }
 
 func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
@@ -195,7 +195,7 @@ func newNoOpLogger() logutil.LoggerInterface {
 func TestModelProcessor_Process_Success(t *testing.T) {
 	// Setup mocks
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return &gemini.GenerationResult{
@@ -303,7 +303,7 @@ func TestModelProcessor_Process_Success(t *testing.T) {
 func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	// Setup mocks
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
 					return &gemini.ModelInfo{
@@ -375,7 +375,7 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 	// Setup mocks
 	expectedErr := errors.New("client init error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return nil, expectedErr
 		},
 	}
@@ -419,7 +419,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	// Setup mocks
 	expectedErr := errors.New("generation error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, expectedErr
@@ -477,7 +477,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	// Setup mocks
 	expectedErr := errors.New("save error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return &gemini.GenerationResult{
@@ -571,7 +571,7 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 
 	// Setup mocks
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
 					return &gemini.ModelInfo{
@@ -648,7 +648,7 @@ func TestSanitizeFilename(t *testing.T) {
 			// We're calling the unexported sanitizeFilename indirectly through Process
 			// by creating a mock setup that lets us check the file path
 			mockAPI := &mockAPIService{
-				initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+				initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 					return &mockClient{
 						generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 							return &gemini.GenerationResult{
@@ -761,7 +761,7 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 
 	// Create mock API service that returns an error from ProcessResponse
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return &gemini.GenerationResult{
@@ -828,7 +828,7 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 
 	// Create mock API service that identifies empty response errors
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, generationErr
@@ -895,7 +895,7 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 
 	// Create mock API service that identifies safety blocked errors
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 			return &mockClient{
 				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, generationErr

@@ -272,8 +272,8 @@ type APIServiceAdapter struct {
 
 // InitClient initializes and returns a Gemini client for the specified model.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	return a.APIService.InitClient(ctx, apiKey, modelName)
+func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
 // ProcessResponse extracts content from the API response.

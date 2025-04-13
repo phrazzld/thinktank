@@ -20,11 +20,12 @@ import (
 
 // geminiClient implements the Client interface using Google's genai SDK
 type geminiClient struct {
-	client    *genai.Client
-	model     *genai.GenerativeModel
-	modelName string
-	apiKey    string
-	logger    logutil.LoggerInterface
+	client      *genai.Client
+	model       *genai.GenerativeModel
+	modelName   string
+	apiKey      string
+	apiEndpoint string
+	logger      logutil.LoggerInterface
 
 	// Model info caching
 	modelInfoCache map[string]*ModelInfo
@@ -33,7 +34,7 @@ type geminiClient struct {
 }
 
 // newGeminiClient creates a new Gemini client with Google's genai SDK
-func newGeminiClient(ctx context.Context, apiKey, modelName string) (Client, error) {
+func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) {
 	if apiKey == "" {
 		return nil, errors.New("API key cannot be empty")
 	}
@@ -45,8 +46,22 @@ func newGeminiClient(ctx context.Context, apiKey, modelName string) (Client, err
 	// Create standard logger for internal client use
 	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ")
 
+	// Prepare client options
+	var opts []option.ClientOption
+
+	if apiEndpoint != "" {
+		// Custom endpoint (likely for testing)
+		logger.Debug("Using custom Gemini API endpoint: %s", apiEndpoint)
+		opts = append(opts,
+			option.WithEndpoint(apiEndpoint),
+			option.WithoutAuthentication()) // Skip auth for mock server
+	} else {
+		// Default endpoint with API key
+		opts = append(opts, option.WithAPIKey(apiKey))
+	}
+
 	// Initialize the Google genai client
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	client, err := genai.NewClient(ctx, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
@@ -63,6 +78,7 @@ func newGeminiClient(ctx context.Context, apiKey, modelName string) (Client, err
 		model:          model,
 		modelName:      modelName,
 		apiKey:         apiKey,
+		apiEndpoint:    apiEndpoint,
 		logger:         logger,
 		modelInfoCache: make(map[string]*ModelInfo),
 		modelInfoMutex: sync.RWMutex{},
@@ -219,9 +235,17 @@ func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) {
 
 // fetchModelInfo calls the Generative Language API to get model details
 func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*ModelInfo, error) {
-	// Construct API URL
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s?key=%s",
-		modelName, c.apiKey)
+	var url string
+
+	if c.apiEndpoint != "" {
+		// Use custom endpoint with no authentication
+		url = fmt.Sprintf("%s/v1beta/models/%s",
+			strings.TrimSuffix(c.apiEndpoint, "/"), modelName)
+	} else {
+		// Use default endpoint with API key
+		url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s?key=%s",
+			modelName, c.apiKey)
+	}
 
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

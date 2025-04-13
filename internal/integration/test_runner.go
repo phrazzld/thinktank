@@ -20,8 +20,8 @@ type mockIntAPIService struct {
 }
 
 // InitClient returns the mock client instead of creating a real one
-func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	// Always return the mock client, ignoring the API key and model name
+func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	// Always return the mock client, ignoring the API key, model name, and API endpoint
 	return s.mockClient, nil
 }
 

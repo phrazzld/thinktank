@@ -142,7 +142,7 @@ type mockModelTrackingAPIService struct {
 }
 
 // InitClient returns the mock client and stores model name in context
-func (s *mockModelTrackingAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (s *mockModelTrackingAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	// Create a new context with the model name
 	ctx = context.WithValue(ctx, modelNameKey, modelName)
 

@@ -848,8 +848,9 @@ type mockAPIService struct {
 
 // initClientCall tracks a call to InitClient
 type initClientCall struct {
-	apiKey    string
-	modelName string
+	apiKey      string
+	modelName   string
+	apiEndpoint string
 }
 
 // processResponseCall tracks a call to ProcessResponse
@@ -882,11 +883,12 @@ func (m *mockAPIService) SetClient(client gemini.Client) {
 	m.client = client
 }
 
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	m.mu.Lock()
 	m.initClientCalls = append(m.initClientCalls, initClientCall{
-		apiKey:    apiKey,
-		modelName: modelName,
+		apiKey:      apiKey,
+		modelName:   modelName,
+		apiEndpoint: apiEndpoint,
 	})
 
 	// Check for model-specific error
@@ -1547,7 +1549,7 @@ func TestIntegration_APIServiceAdapterPassthrough(t *testing.T) {
 	adapter := &APIServiceAdapter{APIService: deps.APIService}
 
 	// Test InitClient
-	client, err := adapter.InitClient(context.Background(), "test-api-key", "test-model")
+	client, err := adapter.InitClient(context.Background(), "test-api-key", "test-model", "")
 	if err != nil {
 		t.Errorf("Expected no error from InitClient, got: %v", err)
 	}

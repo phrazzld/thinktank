@@ -23,7 +23,7 @@ type TokenResult struct {
 // APIService defines the interface for API-related operations
 type APIService interface {
 	// InitClient initializes and returns a Gemini client
-	InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 
 	// ProcessResponse processes the API response and extracts content
 	ProcessResponse(result *gemini.GenerationResult) (string, error)

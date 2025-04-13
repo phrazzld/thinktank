@@ -32,7 +32,7 @@ var (
 // APIService defines the interface for API-related operations
 type APIService interface {
 	// InitClient initializes and returns a Gemini client
-	InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 
 	// ProcessResponse processes the API response and extracts content
 	ProcessResponse(result *gemini.GenerationResult) (string, error)
@@ -51,7 +51,7 @@ type APIService interface {
 type apiService struct {
 	logger logutil.LoggerInterface
 	// For testing
-	newClientFunc func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	newClientFunc func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 }
 
 // NewAPIService is a variable that holds the factory function for creating a new APIService
@@ -64,7 +64,7 @@ var NewAPIService = func(logger logutil.LoggerInterface) APIService {
 }
 
 // InitClient initializes and returns a Gemini client
-func (s *apiService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (s *apiService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	// Check for empty required parameters
 	if apiKey == "" {
 		return nil, fmt.Errorf("%w: API key is required", ErrClientInitialization)
@@ -78,8 +78,13 @@ func (s *apiService) InitClient(ctx context.Context, apiKey, modelName string) (
 		return nil, fmt.Errorf("%w: %v", ErrClientInitialization, ctx.Err())
 	}
 
+	// Log custom endpoint if provided
+	if apiEndpoint != "" {
+		s.logger.Debug("Using custom API endpoint: %s", apiEndpoint)
+	}
+
 	// Initialize the client (using a function that can be swapped out in tests)
-	client, err := s.newClientFunc(ctx, apiKey, modelName)
+	client, err := s.newClientFunc(ctx, apiKey, modelName, apiEndpoint)
 	if err != nil {
 		// Check if it's already an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(err); ok {

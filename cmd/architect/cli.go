@@ -34,6 +34,7 @@ const (
 	defaultOutputFile   = config.DefaultOutputFile
 	defaultModel        = config.DefaultModel
 	apiKeyEnvVar        = config.APIKeyEnvVar
+	apiEndpointEnvVar   = config.APIEndpointEnvVar
 	defaultFormat       = config.DefaultFormat
 	defaultExcludes     = config.DefaultExcludes
 	defaultExcludeNames = config.DefaultExcludeNames
@@ -169,6 +170,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		cfg.LogLevel = logutil.DebugLevel
 	}
 	cfg.APIKey = getenv(apiKeyEnvVar)
+	cfg.APIEndpoint = getenv(apiEndpointEnvVar)
 
 	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
 	// Validation is now exclusively handled by ValidateInputs

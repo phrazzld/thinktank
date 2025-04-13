@@ -96,7 +96,7 @@ func TestInitClient(t *testing.T) {
 			defer cancel()
 
 			// Call the method being tested
-			client, err := api.InitClient(ctx, tc.apiKey, tc.modelName)
+			client, err := api.InitClient(ctx, tc.apiKey, tc.modelName, "")
 
 			// Check error expectations
 			if tc.wantErr && err == nil {

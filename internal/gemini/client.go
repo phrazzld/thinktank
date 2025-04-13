@@ -67,9 +67,9 @@ type Client interface {
 	Close() error
 }
 
-// NewClient creates a new Gemini client with the given API key and model name
-func NewClient(ctx context.Context, apiKey, modelName string) (Client, error) {
-	return newGeminiClient(ctx, apiKey, modelName)
+// NewClient creates a new Gemini client with the given API key, model name, and optional API endpoint
+func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) {
+	return newGeminiClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
 // DefaultModelConfig returns a reasonable default model configuration

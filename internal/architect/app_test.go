@@ -129,7 +129,7 @@ func NewMockAPIService() *MockAPIService {
 	}
 }
 
-func (m *MockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (m *MockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	if m.initClientErr != nil {
 		return nil, m.initClientErr
 	}

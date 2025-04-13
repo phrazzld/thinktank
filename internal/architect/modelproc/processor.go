@@ -19,7 +19,7 @@ import (
 // APIService defines the interface for API-related operations
 type APIService interface {
 	// InitClient initializes and returns a Gemini client
-	InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 
 	// ProcessResponse processes the API response and extracts content
 	ProcessResponse(result *gemini.GenerationResult) (string, error)
@@ -341,7 +341,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	p.logger.Info("Processing model: %s", modelName)
 
 	// 1. Initialize model-specific client
-	geminiClient, err := p.apiService.InitClient(ctx, p.config.APIKey, modelName)
+	geminiClient, err := p.apiService.InitClient(ctx, p.config.APIKey, modelName, p.config.APIEndpoint)
 	if err != nil {
 		errorDetails := p.apiService.GetErrorDetails(err)
 		if apiErr, ok := gemini.IsAPIError(err); ok {

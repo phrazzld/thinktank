@@ -22,7 +22,7 @@ import (
 type integrationMockAPIService struct {
 	initClientCalls          []initClientCall
 	processResponseCalls     []processResponseCall
-	initClientFunc           func(ctx context.Context, apiKey, modelName string) (gemini.Client, error)
+	initClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
@@ -30,9 +30,10 @@ type integrationMockAPIService struct {
 }
 
 type initClientCall struct {
-	apiKey    string
-	modelName string
-	ctx       context.Context
+	apiKey      string
+	modelName   string
+	apiEndpoint string
+	ctx         context.Context
 }
 
 type processResponseCall struct {
@@ -49,15 +50,16 @@ func newIntegrationMockAPIService() *integrationMockAPIService {
 	}
 }
 
-func (m *integrationMockAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+func (m *integrationMockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	m.initClientCalls = append(m.initClientCalls, initClientCall{
-		apiKey:    apiKey,
-		modelName: modelName,
-		ctx:       ctx,
+		apiKey:      apiKey,
+		modelName:   modelName,
+		apiEndpoint: apiEndpoint,
+		ctx:         ctx,
 	})
 
 	if m.initClientFunc != nil {
-		return m.initClientFunc(ctx, apiKey, modelName)
+		return m.initClientFunc(ctx, apiKey, modelName, apiEndpoint)
 	}
 
 	// Default mock client
@@ -400,7 +402,7 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 		}, nil
 	}
 
-	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 		return mockClient, nil
 	}
 
@@ -543,7 +545,7 @@ func TestIntegration_ModelProcessor_FileWriter(t *testing.T) {
 		}, nil
 	}
 
-	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 		return mockClient, nil
 	}
 
@@ -611,7 +613,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 		{
 			name: "API client initialization error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 					return nil, errors.New("API client initialization failed")
 				}
 			},
@@ -632,7 +634,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 				client.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
 					return nil, errors.New("content generation failed")
 				}
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 					return client, nil
 				}
 			},
@@ -642,7 +644,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 			name: "Response processing error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
 				client := newIntegrationMockGeminiClient()
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
+				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 					return client, nil
 				}
 				api.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {

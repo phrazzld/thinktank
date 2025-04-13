@@ -15,6 +15,7 @@ const (
 	DefaultOutputFile = "PLAN.md"
 	DefaultModel      = "gemini-2.5-pro-exp-03-25"
 	APIKeyEnvVar      = "GEMINI_API_KEY"
+	APIEndpointEnvVar = "GEMINI_API_URL"
 	DefaultFormat     = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 
 	// Default rate limiting values
@@ -98,8 +99,9 @@ type CliConfig struct {
 	Verbose      bool
 
 	// API configuration
-	APIKey     string
-	ModelNames []string
+	APIKey      string
+	APIEndpoint string
+	ModelNames  []string
 
 	// Token management
 	ConfirmTokens int

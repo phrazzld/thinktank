@@ -14,8 +14,8 @@ type APIServiceAdapter struct {
 	APIService APIService
 }
 
-func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	return a.APIService.InitClient(ctx, apiKey, modelName)
+func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
 func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
