@@ -62,8 +62,16 @@ func NewOrchestrator(
 	}
 }
 
-// Run executes the main application workflow.
-// It manages context gathering, prompt creation, and model processing.
+// Run executes the main application workflow, representing the core business logic.
+// It coordinates the entire process from context gathering to model processing:
+// 1. Gather context from project files based on configuration
+// 2. Handle dry run mode by displaying statistics (if enabled)
+// 3. Build the complete prompt by combining instructions with context
+// 4. Process all configured models concurrently with rate limiting
+// 5. Handle and format any errors that occurred during processing
+//
+// The method enforces a clear separation of concerns by delegating specific tasks
+// to helper methods, making the high-level workflow easy to understand.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	// STEP 1: Gather context from files
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
@@ -147,7 +155,14 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 }
 
 // processModels processes each model concurrently with rate limiting.
-// Returns a slice of errors encountered during processing.
+// This is a key orchestration method that manages the concurrent execution
+// of model processing while respecting rate limits. It coordinates multiple
+// goroutines, each handling a different model, and collects any errors that
+// occur during processing. This approach significantly improves throughput
+// when multiple models are specified.
+//
+// Returns a slice of errors encountered during processing, which will be empty
+// if all models were processed successfully.
 func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) []error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, len(o.config.ModelNames))
@@ -218,6 +233,11 @@ func (o *Orchestrator) processModelWithRateLimit(
 }
 
 // aggregateAndFormatErrors combines multiple errors into a single, user-friendly error message.
+// This method consolidates errors from multiple model processing operations into
+// a coherent error message for the user. It specially handles rate limit errors
+// by providing additional guidance on how to adjust configuration parameters
+// to avoid these errors in the future. This approach ensures users receive
+// actionable feedback when errors occur.
 func (o *Orchestrator) aggregateAndFormatErrors(modelErrors []error) error {
 	// Count rate limit errors
 	var rateLimitErrors []error
@@ -241,32 +261,48 @@ func (o *Orchestrator) aggregateAndFormatErrors(modelErrors []error) error {
 	return errors.New(errMsg)
 }
 
-// APIServiceAdapter adapts interfaces.APIService to modelproc.APIService
+// APIServiceAdapter adapts interfaces.APIService to modelproc.APIService.
+// This adapter pattern resolves potential interface incompatibilities between
+// packages without requiring changes to either interface. It allows the orchestrator
+// to work with the interfaces.APIService while providing the modelproc package with
+// a compatible interface implementation, preventing circular dependencies.
 type APIServiceAdapter struct {
 	APIService interfaces.APIService
 }
 
+// InitClient initializes and returns a Gemini client for the specified model.
+// It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
 	return a.APIService.InitClient(ctx, apiKey, modelName)
 }
 
+// ProcessResponse extracts content from the API response.
+// It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
 	return a.APIService.ProcessResponse(result)
 }
 
+// IsEmptyResponseError checks if an error is related to empty API responses.
+// It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool {
 	return a.APIService.IsEmptyResponseError(err)
 }
 
+// IsSafetyBlockedError checks if an error is related to safety filters.
+// It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
 	return a.APIService.IsSafetyBlockedError(err)
 }
 
+// GetErrorDetails extracts detailed information from an error.
+// It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
-// TokenManagerAdapter adapts interfaces.TokenManager to modelproc.TokenManager
-// TokenManagerAdapter is no longer needed since we create TokenManagers in the Process method
-// The ModelProcessor now creates its own TokenManager directly with the specific client
-// This adapter remains as a placeholder but is not used, and will be removed in future refactoring
+// TokenManagerAdapter is a deprecated adapter that was used to adapt interfaces.TokenManager
+// to modelproc.TokenManager. It is no longer needed since TokenManagers are now created directly
+// in the ModelProcessor.Process method with model-specific clients.
+// This documentation is kept as a historical note, as the adapter code has been removed.
+// The current design eliminates the need for this adapter by having ModelProcessor create
+// its own TokenManager instances tailored to each specific model, improving encapsulation.

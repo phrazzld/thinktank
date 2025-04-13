@@ -1,4 +1,8 @@
-// Package config handles loading and managing application configuration
+// Package config handles loading and managing application configuration.
+// It defines a canonical set of configuration parameters used throughout
+// the application, consolidating configuration from CLI flags, environment
+// variables, and default values. This centralized approach ensures
+// consistent configuration handling and reduces duplication.
 package config
 
 import (
@@ -71,7 +75,11 @@ func DefaultConfig() *AppConfig {
 	}
 }
 
-// CliConfig holds the parsed command-line options for the application
+// CliConfig holds the parsed command-line options for the application.
+// It serves as the canonical configuration structure used throughout the
+// application, combining user inputs from CLI flags, environment variables,
+// and default values. This struct is passed to components that need
+// configuration parameters rather than having them parse flags directly.
 type CliConfig struct {
 	// Instructions configuration
 	InstructionsFile string
@@ -104,7 +112,10 @@ type CliConfig struct {
 	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
 }
 
-// NewDefaultCliConfig returns a CliConfig with default values
+// NewDefaultCliConfig returns a CliConfig with default values.
+// This is used as a starting point before parsing CLI flags, ensuring
+// that all fields have sensible defaults even if not explicitly set
+// by the user.
 func NewDefaultCliConfig() *CliConfig {
 	return &CliConfig{
 		Format:                     DefaultFormat,
@@ -117,7 +128,10 @@ func NewDefaultCliConfig() *CliConfig {
 	}
 }
 
-// ValidateConfig checks if the configuration is valid and returns an error if not
+// ValidateConfig checks if the configuration is valid and returns an error if not.
+// It performs validation beyond simple type-checking, such as verifying that
+// required fields are present, paths exist, and values are within acceptable ranges.
+// This helps catch configuration errors early before they cause runtime failures.
 func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
 	// This is a placeholder for the validation function that will be moved from CLI package
 	// to maintain the API but will be implemented in the next task

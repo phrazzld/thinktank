@@ -1,5 +1,8 @@
 // Package architect contains the core application logic for the architect tool.
-// This file implements the FileWriter interface for saving generated content to files.
+// This file implements the FileWriter interface for saving generated content to files,
+// handling file creation, directory resolution, and related audit logging.
+// The FileWriter component is responsible for the final output step in the workflow,
+// writing the generated plan content to disk with proper error handling.
 package architect
 
 import (
@@ -24,7 +27,9 @@ type fileWriter struct {
 	auditLogger auditlog.AuditLogger
 }
 
-// NewFileWriter creates a new FileWriter instance
+// NewFileWriter creates a new FileWriter instance with the specified dependencies.
+// It injects the required logger and audit logger to ensure proper output
+// handling and audit trail generation during file operations.
 func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) FileWriter {
 	return &fileWriter{
 		logger:      logger,
@@ -32,7 +37,10 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 	}
 }
 
-// SaveToFile writes the content to the specified file
+// SaveToFile writes the content to the specified file and handles audit logging.
+// It ensures proper directory existence, resolves relative paths to absolute paths,
+// and generates appropriate audit log entries for the operation's start and completion.
+// The method handles errors gracefully and ensures they are properly logged.
 func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
