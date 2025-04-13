@@ -95,10 +95,18 @@
     - **AC Ref:** Plan Recommendation 2 (Enable Parallel E2E Tests)
     - **Implementation:** Added dedicated CI step to run E2E tests with `-parallel 4` flag. Set appropriate timeout (8 minutes) and excluded E2E tests from the "other tests" step.
 
-- [ ] **Task Title:** Review and Reduce E2E Test Suite Scope
+- [x] **Task Title:** Review and Reduce E2E Test Suite Scope
     - **Action:** Analyze the existing E2E tests in `internal/e2e/e2e_test.go`. Identify tests covering scenarios that are (or could be) adequately covered by integration tests. Remove redundant E2E tests, focusing on essential user flows.
     - **Depends On:** Update Integration Tests to Inject Dependencies
     - **AC Ref:** Plan Recommendation 2 (Reduce E2E Test Count)
+    - **Implementation:** Reduced the E2E test suite by removing `TestTokenLimit` and `TestMultipleDirectories` tests, which were redundant with integration tests. Simplified `TestFileFiltering` to a single representative test case. Updated `TestVerboseFlagAndLogLevel` to focus on only the essential combinations. Simplified `TestAuditLogging` to verify only file creation and basic log content. Used helper functions to reduce code duplication and improve maintainability. Note: The tests currently need adjustments to properly account for API key environment variables in the mock server setup - this has been added as a follow-up task "Fix E2E Test Environment Setup".
+
+## 2.1 Additional E2E Test Improvements
+
+- [ ] **Task Title:** Fix E2E Test Environment Setup
+    - **Action:** Address issues with API key environment variables in the mock server setup for E2E tests. Ensure all E2E tests can run successfully with the mock server. Update the environment setup process to consistently use the mock API URL and API key across all tests.
+    - **Depends On:** Review and Reduce E2E Test Suite Scope
+    - **AC Ref:** Plan Recommendation 2 (Improve E2E Test Reliability)
 
 ## 3. Reduce Test Setup Overhead
 
