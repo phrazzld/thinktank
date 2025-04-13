@@ -145,10 +145,11 @@
     - **AC Ref:** Plan Recommendation 4 (Test Smaller Units)
     - **Implementation:** Completed a thorough analysis of all integration tests that use full `architect.Execute`. Identified several tests that can be refactored to test smaller units, such as `TestFilteringBehaviors` (should test `fileutil.GatherProjectContext`), `TestUserInteractions` (should test `TokenManager` directly), and others. Created a detailed analysis document at `docs/analysis/integration-test-refactoring-candidates.md` with specific recommendations for each test, including implementation approach and rationale aligned with our testing strategy.
 
-- [ ] **Task Title:** Refactor Overly Broad Integration Tests
+- [x] **Task Title:** Refactor Overly Broad Integration Tests
     - **Action:** For tests identified in the previous task, refactor them to directly test the specific components or collaborations involved (e.g., instantiate `ContextGatherer` and test its `GatherContext` method directly) instead of running the entire application flow via `Execute`. Inject necessary dependencies/mocks.
     - **Depends On:** Analyze Integration Tests Running Full `Execute`
     - **AC Ref:** Plan Recommendation 4 (Test Smaller Units, Focus on Boundaries)
+    - **Implementation:** Created focused tests that directly target specific components rather than running the full application flow. Implemented `TestGatherProjectContextFiltering` in fileutil package to directly test file filtering functionality without the overhead of running the full architecture.Execute flow. Added `TestTokenManagerPromptForConfirmation` and `TestTokenManagerGetTokenInfo` to test token manager behavior directly. These tests are faster, more reliable, and better isolate the specific component behaviors. Following the project's testing philosophy, these tests focus on behavior rather than implementation details and avoid unnecessary mocking of internal components.
 
 ## 5. Profile & Optimize
 
