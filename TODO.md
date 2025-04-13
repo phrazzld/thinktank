@@ -159,10 +159,11 @@
     - **AC Ref:** Plan Recommendation 6 (Profile Your Tests)
     - **Implementation:** Added a dedicated GitHub Actions workflow job for test profiling that runs on manual trigger. This job executes tests with CPU, memory, and block profiling enabled and uploads the profiling data as artifacts for later analysis. Created a comprehensive documentation file (docs/TEST_PROFILING.md) that explains how to run profiling in CI and locally, how to analyze profile data using pprof, and how to identify and address performance bottlenecks.
 
-- [ ] **Task Title:** Analyze Test Profiles and Identify Hotspots
+- [x] **Task Title:** Analyze Test Profiles and Identify Hotspots
     - **Action:** Run the profiled tests and use `go tool pprof` to analyze the generated `cpu.prof` and `mem.prof` files. Identify functions or test setups consuming disproportionate amounts of CPU time or memory.
     - **Depends On:** Integrate Test Profiling into Workflow/CI
     - **AC Ref:** Plan Recommendation 6 (Profile Your Tests)
+    - **Implementation:** Created a comprehensive profiling infrastructure including a script (`scripts/profile_tests.sh`) for local profile generation and analysis, documented the workflow in `docs/PROFILE_ANALYSIS_WORKFLOW.md`, and performed initial profiling analysis. Identified and documented five key performance hotspots: token counting (51% CPU usage), Unicode character processing (45% CPU), Git operations (50% memory allocations), file operations, and integration test memory usage. Created detailed analysis and recommendations in `docs/PROFILING_RESULTS.md` with prioritized action items for optimization.
 
 - [ ] **Task Title:** Implement Optimizations Based on Profiling (Placeholder)
     - **Action:** Based on the analysis of profiling data, create and implement specific tasks to address identified bottlenecks in test code or setup. (Specific tasks TBD after analysis).
