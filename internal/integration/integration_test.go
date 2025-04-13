@@ -10,20 +10,26 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// createMockAPIService creates a mock API service from a TestEnv
+func createMockAPIService(env *TestEnv) *mockIntAPIService {
+	return &mockIntAPIService{
+		logger:     env.Logger,
+		mockClient: env.MockClient,
+	}
+}
+
 // TestBasicPlanGeneration tests the basic workflow of the application
 func TestBasicPlanGeneration(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-
-	// Set up redirects for stdin/stdout/stderr
-	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
@@ -61,12 +67,21 @@ func add(a, b int) int {
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the model-specific output file exists
@@ -91,9 +106,6 @@ func TestDryRunMode(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-
-	// Set up redirects for stdin/stdout/stderr
-	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
@@ -126,12 +138,21 @@ func main() {
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the output file was NOT created in dry run mode
@@ -145,9 +166,6 @@ func TestInstructionsFileInput(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-
-	// Set up redirects for stdin/stdout/stderr
-	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
@@ -180,12 +198,21 @@ func main() {
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the model-specific output file exists
@@ -250,12 +277,21 @@ func main() {}`)
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the model-specific output file exists
@@ -315,9 +351,18 @@ func main() {}`)
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application and expect an error
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	// The application should return an error
 	if err == nil {
@@ -378,9 +423,18 @@ func main() {}`)
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application and expect a token limit error
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	// The application should report an error for token count exceeding limits
 	if err == nil {
@@ -404,9 +458,6 @@ func TestUserConfirmation(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
-
-	// Set up redirects for stdin/stdout/stderr
-	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
@@ -443,12 +494,21 @@ func main() {}`)
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the model-specific output file was created (confirmation was "y")
@@ -502,12 +562,21 @@ func main() {}`)
 		LogLevel:         logutil.InfoLevel,
 	}
 
-	// Run the application with our test configuration
+	// Create a mock API service
+	mockApiService := createMockAPIService(env)
+
+	// Run the application with our test configuration using direct dependency injection
 	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	err := architect.Execute(
+		ctx,
+		testConfig,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
 
 	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
+		t.Fatalf("architect.Execute failed: %v", err)
 	}
 
 	// Check that the model-specific output file exists
@@ -639,12 +708,21 @@ func main() {
 			AuditLogFile:     auditLogFile,
 		}
 
-		// Run the application with our test configuration
+		// Create a mock API service
+		mockApiService := createMockAPIService(env)
+
+		// Run the application with our test configuration using direct dependency injection
 		ctx := context.Background()
-		err = RunTestWithConfig(ctx, testConfig, env)
+		err = architect.Execute(
+			ctx,
+			testConfig,
+			env.Logger,
+			env.AuditLogger,
+			mockApiService,
+		)
 
 		if err != nil {
-			t.Fatalf("RunTestWithConfig failed: %v", err)
+			t.Fatalf("architect.Execute failed: %v", err)
 		}
 
 		// Check that the output file exists
@@ -843,13 +921,22 @@ func main() {}`)
 		// Replace environment's default NoOpAuditLogger with our test NoOpLogger
 		env.AuditLogger = noopLogger
 
-		// Run the application with our test configuration and NoOpAuditLogger
+		// Create a mock API service
+		mockApiService := createMockAPIService(env)
+
+		// Run the application with our test configuration using direct dependency injection
 		ctx := context.Background()
-		err = RunTestWithConfig(ctx, testConfig, env)
+		err = architect.Execute(
+			ctx,
+			testConfig,
+			env.Logger,
+			env.AuditLogger,
+			mockApiService,
+		)
 
 		// The application should run successfully
 		if err != nil {
-			t.Fatalf("RunTestWithConfig failed: %v", err)
+			t.Fatalf("architect.Execute failed: %v", err)
 		}
 
 		// Check that the output file exists - the application should work with NoOpAuditLogger

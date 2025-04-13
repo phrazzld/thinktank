@@ -47,7 +47,7 @@
     - **Depends On:** Modify `architect.Execute` Signature for Dependency Injection, Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection, Refactor `TestEnv` Stdin Simulation to Use Buffers
     - **AC Ref:** Plan Recommendation 1 (Refactor problematic pattern)
 
-- [ ] **Task Title:** Update Integration Tests to Inject Dependencies
+- [x] **Task Title:** Update Integration Tests to Inject Dependencies
     - **Action:** Modify tests in `internal/integration/integration_test.go`. Instead of using `RunTestWithConfig` (or after refactoring it), directly call the modified `architect.Execute` or test smaller units, ensuring all necessary dependencies (mock `APIService`, loggers with buffers, config) are correctly instantiated and passed.
     - **Depends On:** Modify `architect.Execute` Signature for Dependency Injection, Refactor or Remove `integration.RunTestWithConfig` Function, Update Integration Tests to Pass I/O Buffers Explicitly, Update Integration Tests Using Stdin Simulation
     - **AC Ref:** Plan Recommendation 1, Plan Recommendation 4
