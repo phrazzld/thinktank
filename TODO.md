@@ -32,7 +32,7 @@
   - **Depends On:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 2.1
 
-- [ ] **Task Title:** Create `internal/architect/prompt` Package
+- [x] **Task Title:** Create `internal/architect/prompt` Package
   - **Action:** Create a new package `internal/architect/prompt` and corresponding files.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 2.2
