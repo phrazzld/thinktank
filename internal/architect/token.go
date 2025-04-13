@@ -119,6 +119,7 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, client gemini.Clien
 func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
 	if threshold <= 0 || int32(threshold) > tokenCount {
 		// No confirmation needed if threshold is disabled (0) or token count is below threshold
+		tm.logger.Debug("No confirmation needed: threshold=%d, tokenCount=%d", threshold, tokenCount)
 		return true
 	}
 
@@ -132,9 +133,15 @@ func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) b
 		return false
 	}
 
+	// Log the raw response for debugging
+	tm.logger.Debug("User confirmation response (raw): %q", response)
+
 	// Trim whitespace and convert to lowercase
 	response = strings.ToLower(strings.TrimSpace(response))
+	tm.logger.Debug("User confirmation response (processed): %q", response)
 
 	// Only proceed if the user explicitly confirms with 'y' or 'yes'
-	return response == "y" || response == "yes"
+	result := response == "y" || response == "yes"
+	tm.logger.Debug("User confirmation result: %v", result)
+	return result
 }

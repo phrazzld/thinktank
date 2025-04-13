@@ -47,12 +47,12 @@
   - **Depends On:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 2.3
 
-- [ ] **Task Title:** Extract Model Processing Logic into `ModelProcessor.Process`
+- [x] **Task Title:** Extract Model Processing Logic into `ModelProcessor.Process`
   - **Action:** Create a `Process(ctx context.Context, modelName string, stitchedPrompt string) error` method on the `ModelProcessor` struct. Move the logic currently inside the `processModel` / `processModelConcurrently` functions (client init per model, token check, generation, response processing, saving) into this method. Ensure it uses its injected dependencies. Remove the old functions from `app.go`.
   - **Depends On:** Create `internal/architect/modelproc` Package and Define `ModelProcessor` Struct, Move Prompt Logic to `internal/architect/prompt`
   - **AC Ref:** Refactoring Goals, Task Group 2.3
 
-- [ ] **Task Title:** Extract Configuration Handling Logic from `app.go`
+- [x] **Task Title:** Extract Configuration Handling Logic from `app.go`
   - **Action:** Move the logic related to setting up the output directory (checking if empty, generating run name, creating directory) from the beginning of `Execute` into a dedicated setup phase or helper function within `app.go`. This setup should occur before the `Orchestrator` is initialized.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 2.5

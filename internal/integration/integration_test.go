@@ -22,6 +22,9 @@ func TestBasicPlanGeneration(t *testing.T) {
 	env := NewTestEnv(t)
 	defer env.Cleanup()
 
+	// Set up redirects for stdin/stdout/stderr
+	env.Setup()
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
 
@@ -89,6 +92,9 @@ func TestDryRunMode(t *testing.T) {
 	env := NewTestEnv(t)
 	defer env.Cleanup()
 
+	// Set up redirects for stdin/stdout/stderr
+	env.Setup()
+
 	// Set up the mock client
 	env.SetupMockGeminiClient()
 
@@ -139,6 +145,9 @@ func TestInstructionsFileInput(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
+
+	// Set up redirects for stdin/stdout/stderr
+	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
@@ -395,6 +404,9 @@ func TestUserConfirmation(t *testing.T) {
 	// Set up the test environment
 	env := NewTestEnv(t)
 	defer env.Cleanup()
+
+	// Set up redirects for stdin/stdout/stderr
+	env.Setup()
 
 	// Set up the mock client
 	env.SetupMockGeminiClient()
