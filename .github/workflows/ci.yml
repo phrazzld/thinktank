@@ -111,7 +111,7 @@ jobs:
       
       # Run E2E tests with parallel execution
       - name: Run E2E tests with parallel execution
-        run: go test -v -race -parallel 4 ./internal/e2e/...
+        run: ./internal/e2e/run_e2e_tests.sh --verbose --short
         timeout-minutes: 8
       
       # Run other tests with race detection
