@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 1 (Modify `architect.Execute`...)
 
-- [ ] **Task Title:** Update `main.go` to Inject `APIService` into `Execute`
+- [x] **Task Title:** Update `main.go` to Inject `APIService` into `Execute`
     - **Action:** Modify the main application entry point (`cmd/architect/main.go` - *path assumed*) to instantiate the concrete `APIService` and pass it into the refactored `architect.Execute` function.
     - **Depends On:** Modify `architect.Execute` Signature for Dependency Injection
     - **AC Ref:** Plan Recommendation 1 (Modify `architect.Execute`...)
@@ -17,7 +17,7 @@
     - **Depends On:** Update `main.go` to Inject `APIService` into `Execute`, Update Integration Tests to Inject Dependencies
     - **AC Ref:** Plan Recommendation 1 (Refactor problematic pattern)
 
-- [ ] **Task Title:** Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection
+- [x] **Task Title:** Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection
     - **Action:** Remove the code in `internal/integration/test_helpers.go` (`TestEnv.Setup`) that redirects `os.Stdout` and `os.Stderr` using `os.Pipe`. The `StdoutBuffer` and `StderrBuffer` should still exist but will need to be passed explicitly where needed.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 1 (Remove global I/O redirection...)

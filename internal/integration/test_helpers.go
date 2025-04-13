@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -84,9 +83,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		// Remove test directory and all contents
 		os.RemoveAll(testDir)
 
-		// Restore original stdout/stderr/stdin
-		os.Stdout = origStdout
-		os.Stderr = origStderr
+		// Restore original stdin (stdout/stderr are no longer redirected globally)
 		os.Stdin = origStdin
 
 		// Close and remove mock stdin file
@@ -109,27 +106,10 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	}
 }
 
-// Setup redirects stdout/stderr and prepares the environment
+// Setup prepares the environment
+// Note: After refactoring, this function no longer redirects stdout/stderr globally
+// StdoutBuffer and StderrBuffer should be passed explicitly where needed
 func (env *TestEnv) Setup() {
-	// Redirect stdout/stderr to our buffers
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	go func() {
-		if _, err := io.Copy(env.StdoutBuffer, r); err != nil {
-			panic(fmt.Sprintf("Failed to copy stdout: %v", err))
-		}
-	}()
-
-	r2, w2, _ := os.Pipe()
-	os.Stderr = w2
-
-	go func() {
-		if _, err := io.Copy(env.StderrBuffer, r2); err != nil {
-			panic(fmt.Sprintf("Failed to copy stderr: %v", err))
-		}
-	}()
-
 	// Set stdin to our mock
 	os.Stdin = env.MockStdin
 }
