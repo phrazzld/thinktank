@@ -22,7 +22,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 1 (Remove global I/O redirection...)
 
-- [ ] **Task Title:** Update Integration Tests to Pass I/O Buffers Explicitly
+- [x] **Task Title:** Update Integration Tests to Pass I/O Buffers Explicitly
     - **Action:** Modify integration tests (`internal/integration/integration_test.go`) that use `TestEnv`. Pass `env.StdoutBuffer` and `env.StderrBuffer` directly to functions or components (like `logutil.NewLogger`) that require `io.Writer` instead of relying on the removed global redirection.
     - **Depends On:** Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection
     - **AC Ref:** Plan Recommendation 1 (Pass buffers directly...)

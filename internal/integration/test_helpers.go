@@ -73,6 +73,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	mockClient := gemini.NewMockClient()
 
 	// Create a logger that writes to the stderr buffer
+	// StderrBuffer is passed explicitly since we no longer rely on global redirection
 	logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ")
 
 	// Create a no-op audit logger for tests
@@ -107,11 +108,17 @@ func NewTestEnv(t *testing.T) *TestEnv {
 }
 
 // Setup prepares the environment
-// Note: After refactoring, this function no longer redirects stdout/stderr globally
+// After refactoring, this function only redirects stdin
 // StdoutBuffer and StderrBuffer should be passed explicitly where needed
 func (env *TestEnv) Setup() {
 	// Set stdin to our mock
 	os.Stdin = env.MockStdin
+}
+
+// GetBufferedLogger returns a logger that writes to the test environment's stderr buffer
+// Use this when you need a fresh logger that writes to the environment's buffer
+func (env *TestEnv) GetBufferedLogger(level logutil.LogLevel, prefix string) logutil.LoggerInterface {
+	return logutil.NewLogger(level, env.StderrBuffer, prefix)
 }
 
 // SimulateUserInput writes data to mock stdin to simulate user input

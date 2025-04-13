@@ -617,7 +617,8 @@ func main() {
 		auditLogFile := filepath.Join(env.TestDir, "audit.log")
 
 		// Create a custom FileAuditLogger for this test instead of the NoOpAuditLogger in the test environment
-		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
+		// Use the helper method to get a logger writing to the environment's buffer
+		testLogger := env.GetBufferedLogger(logutil.DebugLevel, "[test] ")
 		auditLogger, err := auditlog.NewFileAuditLogger(auditLogFile, testLogger)
 		if err != nil {
 			t.Fatalf("Failed to create audit logger: %v", err)
@@ -794,7 +795,8 @@ func main() {}`)
 		outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Set up a test logger that captures errors
-		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
+		// Use the helper method to get a logger writing to the environment's buffer
+		testLogger := env.GetBufferedLogger(logutil.DebugLevel, "[test] ")
 
 		// Attempt to create a FileAuditLogger with invalid path to see if it falls back properly
 		invalidDir := filepath.Join(env.TestDir, "nonexistent-dir")
