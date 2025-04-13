@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -65,24 +66,64 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
+// RunInternal is a replacement for the removed architect.RunInternal function
+// It's used for backwards compatibility with the existing integration tests
+func RunInternal(
+	ctx context.Context,
+	testConfig *config.CliConfig,
+	logger logutil.LoggerInterface,
+	apiService architect.APIService,
+	auditLogger auditlog.AuditLogger,
+) error {
+	// Save the original NewAPIService function
+	originalNewAPIService := architect.NewAPIService
+
+	// Override the API Service creation function for this test to use the provided service
+	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
+		return apiService
+	}
+
+	// Restore the original NewAPIService when done
+	defer func() {
+		architect.NewAPIService = originalNewAPIService
+	}()
+
+	// Run the Execute function directly
+	return architect.Execute(
+		ctx,
+		testConfig,
+		logger,
+		auditLogger,
+	)
+}
+
 // RunTestWithConfig runs the architect application with the provided test config and environment
 func RunTestWithConfig(
 	ctx context.Context,
 	testConfig *config.CliConfig,
 	env *TestEnv,
 ) error {
-	// Create a mock API service that uses the test environment's mock client
-	mockAPIService := &mockIntAPIService{
-		logger:     env.Logger,
-		mockClient: env.MockClient,
+	// Set up the original API Service for architect.Execute
+	originalNewAPIService := architect.NewAPIService
+
+	// Override the API Service creation function for this test
+	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
+		return &mockIntAPIService{
+			logger:     env.Logger,
+			mockClient: env.MockClient,
+		}
 	}
 
-	// Run the architect application using the RunInternal function directly from internal/architect
-	return architect.RunInternal(
+	// Restore the original API Service creation function when done
+	defer func() {
+		architect.NewAPIService = originalNewAPIService
+	}()
+
+	// Run the architect application using Execute directly
+	return architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
 	)
 }

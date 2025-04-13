@@ -21,7 +21,7 @@
   - **Depends On:** Update Code to Use `internal/config.CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 1.2
 
-- [ ] **Task Title:** Remove `RunInternal` Function from `internal/architect/app.go`
+- [x] **Task Title:** Remove `RunInternal` Function from `internal/architect/app.go`
   - **Action:** Delete the `RunInternal` function. Identify any tests using `RunInternal` and refactor them to use the primary `Execute` function, potentially by injecting mocked dependencies via a new orchestrator struct's constructor or options pattern.
   - **Depends On:** Create `Orchestrator` Struct and Define `Orchestrator.Run` Method
   - **AC Ref:** Refactoring Goals, Task Group 1.3
@@ -57,12 +57,12 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 2.5
 
-- [ ] **Task Title:** Simplify `internal/architect/app.go#Execute` Function
+- [x] **Task Title:** Simplify `internal/architect/app.go#Execute` Function
   - **Action:** Refactor the `Execute` function in `app.go` to primarily handle: 1) Initial setup (output dir, logging, audit logging), 2) Reading instructions, 3) Initializing dependencies (APIService, TokenManager, ContextGatherer, FileWriter, RateLimiter, AuditLogger, ModelProcessor, Orchestrator), 4) Calling `Orchestrator.Run`, and 5) Handling the final error and top-level audit logging (ExecuteEnd).
   - **Depends On:** Create `internal/architect/orchestrator` Package and Define `Orchestrator` Struct, Create `internal/architect/modelproc` Package and Define `ModelProcessor` Struct, Extract Configuration Handling Logic from `app.go`
   - **AC Ref:** Refactoring Goals, Task Group 2.1
 
-- [ ] **Task Title:** Implement `Orchestrator.Run` Method
+- [x] **Task Title:** Implement `Orchestrator.Run` Method
   - **Action:** Create a `Run(ctx context.Context) error` method on the `Orchestrator` struct. Move the main execution flow logic (context gathering, dry run handling, prompt stitching, concurrent model processing loop using rate limiter and calling `ModelProcessor.Process`, error aggregation, final audit log) from the old `Execute` function into this method.
   - **Depends On:** Create `internal/architect/orchestrator` Package and Define `Orchestrator` Struct, Extract Model Processing Logic into `ModelProcessor.Process`, Simplify `internal/architect/app.go#Execute` Function
   - **AC Ref:** Refactoring Goals, Task Group 2.1, Task Group 2.4

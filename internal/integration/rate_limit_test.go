@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -107,7 +106,7 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := architect.RunInternal(
+	err := RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
@@ -232,7 +231,7 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := architect.RunInternal(
+	err := RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
@@ -329,7 +328,7 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := architect.RunInternal(
+	err := RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
@@ -459,7 +458,7 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := architect.RunInternal(
+	err := RunInternal(
 		ctx,
 		testConfig,
 		env.Logger,
