@@ -56,7 +56,7 @@ func add(a, b int) int {
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -120,7 +120,7 @@ func main() {
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		DryRun:           true,
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -175,7 +175,7 @@ func main() {
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -244,7 +244,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Include:          ".go,.md", // Only include Go and Markdown files
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -310,7 +310,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -373,7 +373,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -437,7 +437,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		ConfirmTokens:    1000, // Threshold lower than our token count
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
@@ -497,7 +497,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"test-model"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -555,7 +555,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 			InstructionsFile: instructionsFile,
 			OutputDir: outputDir,
 			ModelNames:  []string{"test-model"},
-			ApiKey:     "test-api-key",
+			APIKey:     "test-api-key",
 			Paths:      []string{env.TestDir},
 			LogLevel:   logutil.InfoLevel,
 		}
@@ -632,7 +632,7 @@ func main() {
 			InstructionsFile: instructionsFile,
 			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},
-			ApiKey:           "test-api-key",
+			APIKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
 			LogLevel:         logutil.InfoLevel,
 			AuditLogFile:     auditLogFile,
@@ -833,7 +833,7 @@ func main() {}`)
 			InstructionsFile: instructionsFile,
 			OutputDir:        outputDir,
 			ModelNames:       []string{"test-model"},
-			ApiKey:           "test-api-key",
+			APIKey:           "test-api-key",
 			Paths:            []string{env.TestDir + "/src"},
 			LogLevel:         logutil.InfoLevel,
 		}

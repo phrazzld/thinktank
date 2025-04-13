@@ -116,7 +116,7 @@
   - **Status:** Completed. Renamed file to filewriter.go with improved package comments. Moved tests to filewriter_test.go and removed test functions specific to prompt functionality.
 
 ## Task Group 4: Improve Readability and Maintainability
-- [ ] **Task Title:** Review and Improve Naming Conventions
+- [~] **Task Title:** Review and Improve Naming Conventions
   - **Action:** Review variable, function, struct, and package names in all newly created and modified files (`orchestrator`, `modelproc`, `prompt`, `config`, `filewriter`, refactored `app`, `context`, `token`, `api`). Ensure names are clear, consistent, and adhere to Go conventions (PascalCase for exported, camelCase for unexported, short package names).
   - **Depends On:** Refine and Rename `internal/architect/output.go`, Implement `Orchestrator.Run` Method, Decouple Audit Logging from Orchestration Flow
   - **AC Ref:** Refactoring Goals, Task Group 4.1

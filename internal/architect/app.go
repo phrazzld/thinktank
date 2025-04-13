@@ -125,7 +125,7 @@ func Execute(
 	apiService := NewAPIService(logger)
 
 	// Create a reference client for token counting in context gathering
-	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
+	referenceClient, err := apiService.InitClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0])
 	if err != nil {
 		logger.Error("Failed to initialize reference client for context gathering: %v", err)
 		return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)

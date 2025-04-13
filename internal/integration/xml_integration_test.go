@@ -65,7 +65,7 @@ func helper(a, b int) int {
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -162,7 +162,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -253,7 +253,7 @@ The component should handle the following edge cases:
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{modelName},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}

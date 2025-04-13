@@ -90,7 +90,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 		// Add rate limiting configuration
@@ -212,7 +212,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 		// Add rate limiting configuration - restrict concurrency only
@@ -312,7 +312,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 		// Add rate limiting configuration - focus on per-model rate limiting
@@ -442,7 +442,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       models,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 		// Add rate limiting configuration (not actually used in this test)

@@ -64,7 +64,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -279,7 +279,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -444,7 +444,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -586,7 +586,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}
@@ -746,7 +746,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       modelNames,
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 		// No rate limiting to focus on testing concurrency
@@ -842,7 +842,7 @@ func main() {}`)
 		InstructionsFile: instructionsFile,
 		OutputDir:        outputDir,
 		ModelNames:       []string{"gemini-pro"},
-		ApiKey:           "test-api-key",
+		APIKey:           "test-api-key",
 		Paths:            []string{env.TestDir + "/src"},
 		LogLevel:         logutil.InfoLevel,
 	}

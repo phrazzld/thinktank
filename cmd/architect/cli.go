@@ -54,7 +54,7 @@ func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) er
 	}
 
 	// Check for API key
-	if config.ApiKey == "" {
+	if config.APIKey == "" {
 		logger.Error("%s environment variable not set.", apiKeyEnvVar)
 		return fmt.Errorf("API key not set")
 	}
@@ -168,7 +168,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	if cfg.Verbose {
 		cfg.LogLevel = logutil.DebugLevel
 	}
-	cfg.ApiKey = getenv(apiKeyEnvVar)
+	cfg.APIKey = getenv(apiKeyEnvVar)
 
 	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
 	// Validation is now exclusively handled by ValidateInputs

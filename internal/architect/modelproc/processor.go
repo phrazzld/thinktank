@@ -341,7 +341,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	p.logger.Info("Processing model: %s", modelName)
 
 	// 1. Initialize model-specific client
-	geminiClient, err := p.apiService.InitClient(ctx, p.config.ApiKey, modelName)
+	geminiClient, err := p.apiService.InitClient(ctx, p.config.APIKey, modelName)
 	if err != nil {
 		errorDetails := p.apiService.GetErrorDetails(err)
 		if apiErr, ok := gemini.IsAPIError(err); ok {

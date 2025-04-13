@@ -247,7 +247,7 @@ func TestModelProcessor_Process_Success(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
 	// Create processor
@@ -340,7 +340,7 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
 	// Create processor
@@ -384,7 +384,7 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
 	// Create processor
@@ -442,7 +442,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
 	// Create processor
@@ -511,7 +511,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
 	// Create processor
@@ -602,7 +602,7 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 
 	// Setup config
 	cfg := config.NewDefaultCliConfig()
-	cfg.ApiKey = "test-api-key"
+	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 	cfg.ConfirmTokens = 50 // Set a threshold that will trigger confirmation
 
@@ -687,7 +687,7 @@ func TestSanitizeFilename(t *testing.T) {
 
 			// Setup config
 			cfg := config.NewDefaultCliConfig()
-			cfg.ApiKey = "test-api-key"
+			cfg.APIKey = "test-api-key"
 			cfg.OutputDir = "/tmp/test-output"
 
 			// Create processor

@@ -34,7 +34,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1", "path2"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
@@ -80,7 +80,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          true,
 				DryRun:           true,
 				Paths:            []string{"path1", "path2", "path3"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -116,7 +116,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          true,
 				DryRun:           true,
 				Paths:            []string{"path1", "path2", "path3"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -131,7 +131,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			want: &config.CliConfig{
 				InstructionsFile: "",
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
@@ -156,7 +156,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
@@ -180,7 +180,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1"},
-				ApiKey:           "", // Empty API key
+				APIKey:           "", // Empty API key
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
@@ -207,7 +207,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				InstructionsFile: "",
 				DryRun:           true,
 				Paths:            []string{"path1", "path2"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 				OutputDir:        "",
 				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
@@ -243,7 +243,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -270,7 +270,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -298,7 +298,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          true,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -327,7 +327,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -354,7 +354,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -389,8 +389,8 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			if !reflect.DeepEqual(got.Paths, tt.want.Paths) {
 				t.Errorf("Paths = %v, want %v", got.Paths, tt.want.Paths)
 			}
-			if got.ApiKey != tt.want.ApiKey {
-				t.Errorf("ApiKey = %v, want %v", got.ApiKey, tt.want.ApiKey)
+			if got.APIKey != tt.want.APIKey {
+				t.Errorf("APIKey = %v, want %v", got.APIKey, tt.want.APIKey)
 			}
 			if got.OutputDir != tt.want.OutputDir {
 				t.Errorf("OutputDir = %v, want %v", got.OutputDir, tt.want.OutputDir)
@@ -678,8 +678,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 
 			// Check for API key if expected
 			if apiKey, exists := tc.env[apiKeyEnvVar]; exists {
-				if config.ApiKey != apiKey {
-					t.Errorf("ApiKey = %q, want %q", config.ApiKey, apiKey)
+				if config.APIKey != apiKey {
+					t.Errorf("APIKey = %q, want %q", config.APIKey, apiKey)
 				}
 			}
 		})
@@ -744,7 +744,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				ModelNames:       []string{"model1"},
 			},
 			expectError: false,
@@ -754,7 +754,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 			},
 			expectError:   true,
 			errorContains: "missing required --instructions flag",
@@ -764,7 +764,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{}, // Empty
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 			},
 			expectError:   true,
 			errorContains: "no paths specified",
@@ -774,7 +774,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				ApiKey:           "", // Missing
+				APIKey:           "", // Missing
 			},
 			expectError:   true,
 			errorContains: "API key not set",
@@ -784,7 +784,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				DryRun:           true, // Dry run mode
 			},
 			expectError: false,
@@ -794,7 +794,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "",         // Missing allowed in dry run
 				Paths:            []string{}, // Empty paths still invalid
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				DryRun:           true,
 			},
 			expectError:   true,
@@ -805,7 +805,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
-				ApiKey:           "", // Missing
+				APIKey:           "", // Missing
 				DryRun:           true,
 			},
 			expectError:   true,
@@ -816,7 +816,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				ModelNames:       []string{}, // Empty
 			},
 			expectError:   true,
@@ -827,7 +827,7 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				ModelNames:       []string{}, // Empty allowed in dry run
 				DryRun:           true,
 			},

@@ -90,7 +90,7 @@ type CliConfig struct {
 	Verbose      bool
 
 	// API configuration
-	ApiKey     string
+	APIKey     string
 	ModelNames []string
 
 	// Token management
