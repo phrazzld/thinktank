@@ -66,6 +66,9 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
+// NOTE: RunInternal is no longer needed and should be removed once all tests are updated.
+// It's maintained as a deprecated function for backward compatibility.
+//
 // RunInternal is a replacement for the removed architect.RunInternal function
 // It's used for backwards compatibility with the existing integration tests
 func RunInternal(
@@ -75,29 +78,14 @@ func RunInternal(
 	apiService architect.APIService,
 	auditLogger auditlog.AuditLogger,
 ) error {
-	// Save the original NewAPIService function
-	originalNewAPIService := architect.NewAPIService
-
-	// Override the API Service creation function for this test to use the provided service
-	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
-		return apiService
-	}
-
-	// Restore the original NewAPIService when done
-	defer func() {
-		architect.NewAPIService = originalNewAPIService
-	}()
-
-	// Create an API service instance to inject
-	mockApiService := apiService
-
-	// Run the Execute function directly with the injected API service
+	// In the new architecture, we simply pass the API service directly
+	// using dependency injection instead of global variable overriding
 	return architect.Execute(
 		ctx,
 		testConfig,
 		logger,
 		auditLogger,
-		mockApiService,
+		apiService,
 	)
 }
 

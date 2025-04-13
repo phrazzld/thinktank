@@ -3,6 +3,7 @@ package architect
 
 import (
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // Re-export error types from internal/architect for backward compatibility with tests
@@ -18,4 +19,6 @@ var (
 type APIService = architect.APIService
 
 // NewAPIService is a wrapper for the internal one
-var NewAPIService = architect.NewAPIService
+func NewAPIService(logger logutil.LoggerInterface) APIService {
+	return architect.NewAPIService(logger)
+}

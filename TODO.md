@@ -12,10 +12,11 @@
     - **Depends On:** Modify `architect.Execute` Signature for Dependency Injection
     - **AC Ref:** Plan Recommendation 1 (Modify `architect.Execute`...)
 
-- [ ] **Task Title:** Remove Global `architect.NewAPIService` Variable
+- [x] **Task Title:** Remove Global `architect.NewAPIService` Variable
     - **Action:** Delete the global `var NewAPIService = func(...)` definition from `internal/architect/api.go`. Remove any remaining code that reads or writes to this variable.
     - **Depends On:** Update `main.go` to Inject `APIService` into `Execute`, Update Integration Tests to Inject Dependencies
     - **AC Ref:** Plan Recommendation 1 (Refactor problematic pattern)
+    - **Implementation:** Replaced the global variable with a regular function, updated all references in both the internal and cmd packages, and updated tests to use direct dependency injection rather than relying on global variable modification. The integration tests now pass with the new dependency injection pattern.
 
 - [x] **Task Title:** Refactor `TestEnv.Setup` to Eliminate Global I/O Redirection
     - **Action:** Remove the code in `internal/integration/test_helpers.go` (`TestEnv.Setup`) that redirects `os.Stdout` and `os.Stderr` using `os.Pipe`. The `StdoutBuffer` and `StderrBuffer` should still exist but will need to be passed explicitly where needed.

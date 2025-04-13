@@ -474,21 +474,16 @@ func TestExecuteInstructionsFileError(t *testing.T) {
 	mockAPIService.mockClient = mockClient
 	mockOrchestrator := NewMockOrchestrator()
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
+	// Save original constructor for orchestrator
 	originalNewOrchestrator := orchestratorConstructor
 
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
+	// Override orchestrator constructor
 	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
-	// Restore original constructors when test finishes
+	// Restore original constructor when test finishes
 	defer func() {
-		NewAPIService = originalNewAPIService
 		orchestratorConstructor = originalNewOrchestrator
 	}()
 
@@ -559,21 +554,16 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	mockAPIService.initClientErr = errors.New("API client initialization error")
 	mockOrchestrator := NewMockOrchestrator()
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
+	// Save original constructor for orchestrator
 	originalNewOrchestrator := orchestratorConstructor
 
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
+	// Override orchestrator constructor
 	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
-	// Restore original constructors when test finishes
+	// Restore original constructor when test finishes
 	defer func() {
-		NewAPIService = originalNewAPIService
 		orchestratorConstructor = originalNewOrchestrator
 	}()
 
@@ -646,21 +636,16 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	mockOrchestrator := NewMockOrchestrator()
 	mockOrchestrator.runErr = errors.New("orchestrator run error")
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
+	// Save original constructor for orchestrator
 	originalNewOrchestrator := orchestratorConstructor
 
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
+	// Override orchestrator constructor
 	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
-	// Restore original constructors when test finishes
+	// Restore original constructor when test finishes
 	defer func() {
-		NewAPIService = originalNewAPIService
 		orchestratorConstructor = originalNewOrchestrator
 	}()
 
@@ -742,18 +727,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	mockAPIService := NewMockAPIService()
 	mockAPIService.mockClient = mockClient
 
-	// Save original constructors
-	originalNewAPIService := NewAPIService
-
-	// Override constructors
-	NewAPIService = func(logger logutil.LoggerInterface) APIService {
-		return mockAPIService
-	}
-
-	// Restore original constructors when test finishes
-	defer func() {
-		NewAPIService = originalNewAPIService
-	}()
+	// No need to override any constructors here, since we're passing mockAPIService directly
 
 	// Execute the function (should fail when creating output directory)
 	err = Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)

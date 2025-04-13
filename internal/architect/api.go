@@ -54,9 +54,8 @@ type apiService struct {
 	newClientFunc func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 }
 
-// NewAPIService is a variable that holds the factory function for creating a new APIService
-// It's defined as a variable to allow mocking in tests
-var NewAPIService = func(logger logutil.LoggerInterface) APIService {
+// NewAPIService creates a new instance of APIService
+func NewAPIService(logger logutil.LoggerInterface) APIService {
 	return &apiService{
 		logger:        logger,
 		newClientFunc: gemini.NewClient, // Default to the real implementation
