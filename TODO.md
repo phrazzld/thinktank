@@ -16,7 +16,7 @@
   - **Depends On:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 1.2
 
-- [ ] **Task Title:** Remove `internal/architect/types.go`
+- [x] **Task Title:** Remove `internal/architect/types.go`
   - **Action:** Delete the file `internal/architect/types.go` after its contents have been successfully consolidated into `internal/config/config.go`. Ensure no compilation errors arise from the removal.
   - **Depends On:** Update Code to Use `internal/config.CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 1.2
