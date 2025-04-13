@@ -73,7 +73,7 @@
   - **Depends On:** Implement `Orchestrator.Run` Method, Extract Model Processing Logic into `ModelProcessor.Process`
   - **AC Ref:** Refactoring Goals, Task Group 3.1
 
-- [ ] **Task Title:** Remove `CalculateStatisticsWithTokenCounting` from `fileutil`
+- [x] **Task Title:** Remove `CalculateStatisticsWithTokenCounting` from `fileutil`
   - **Action:** Delete the `CalculateStatisticsWithTokenCounting` function from `internal/fileutil/fileutil.go`. Update `internal/fileutil/fileutil_test.go` accordingly. Ensure `fileutil` no longer imports `internal/gemini`.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 3.2

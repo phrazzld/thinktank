@@ -87,7 +87,29 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 
 	// Calculate token statistics
 	cg.logger.Info("Calculating token statistics...")
-	charCount, lineCount, tokenCount := fileutil.CalculateStatisticsWithTokenCounting(ctx, client, projectContext, cg.logger)
+
+	// Calculate character and line counts directly
+	charCount := len(projectContext)
+	lineCount := strings.Count(projectContext, "\n") + 1
+
+	// Use token manager for token counting via the gemini client
+	tokenCount := 0
+	if client != nil {
+		// Use the gemini client to count tokens
+		tokenResult, err := client.CountTokens(ctx, projectContext)
+		if err != nil {
+			cg.logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
+			// Fall back to basic statistics
+			charCount, lineCount, tokenCount = fileutil.CalculateStatistics(projectContext)
+		} else {
+			tokenCount = int(tokenResult.Total)
+			cg.logger.Debug("Accurate token count: %d tokens", tokenCount)
+		}
+	} else {
+		// Fall back to basic statistics if no client
+		charCount, lineCount, tokenCount = fileutil.CalculateStatistics(projectContext)
+		cg.logger.Debug("Using estimated token count: %d tokens", tokenCount)
+	}
 
 	// Store statistics in the stats struct
 	stats.CharCount = charCount

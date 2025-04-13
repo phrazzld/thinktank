@@ -2,13 +2,9 @@
 package fileutil
 
 import (
-	"context"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/logutil"
 )
 
 func TestEstimateTokenCount(t *testing.T) {
@@ -82,51 +78,6 @@ func TestCalculateStatistics(t *testing.T) {
 
 	if tokens != expectedTokens {
 		t.Errorf("Token count: got %d, want %d", tokens, expectedTokens)
-	}
-}
-
-func TestCalculateStatisticsWithTokenCounting(t *testing.T) {
-	input := "Hello world, this is a test of the token counting system."
-	ctx := context.Background()
-
-	// Setup a mock client that will return a predefined token count
-	mockClient := &gemini.MockClient{
-		CountTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-			return &gemini.TokenCount{Total: 15}, nil
-		},
-	}
-
-	// Create a mock logger
-	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
-
-	// Test with mock client
-	chars, lines, tokens := CalculateStatisticsWithTokenCounting(ctx, mockClient, input, logger)
-
-	// Verify character count
-	expectedChars := len(input)
-	if chars != expectedChars {
-		t.Errorf("Character count: got %d, want %d", chars, expectedChars)
-	}
-
-	// Verify line count
-	expectedLines := 1
-	if lines != expectedLines {
-		t.Errorf("Line count: got %d, want %d", lines, expectedLines)
-	}
-
-	// Verify token count from mock client
-	expectedTokens := 15 // From our mock
-	if tokens != expectedTokens {
-		t.Errorf("Token count: got %d, want %d", tokens, expectedTokens)
-	}
-
-	// Now test fallback behavior when client is nil
-	_, _, tokens = CalculateStatisticsWithTokenCounting(ctx, nil, input, logger)
-
-	// Should use estimation
-	expectedTokensFallback := estimateTokenCount(input)
-	if tokens != expectedTokensFallback {
-		t.Errorf("Fallback token count: got %d, want %d", tokens, expectedTokensFallback)
 	}
 }
 

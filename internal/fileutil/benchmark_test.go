@@ -1,12 +1,8 @@
 package fileutil
 
 import (
-	"context"
 	"strings"
 	"testing"
-
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // BenchmarkEstimateTokenCount benchmarks the estimateTokenCount function
@@ -50,14 +46,14 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "Simple Path No Filters",
 			path: "test.txt",
 			config: &Config{
-				Logger: logutil.NewLogger(logutil.WarnLevel, nil, ""), // Minimal logging
+				Logger: NewMockLogger(), // Use mock logger for testing
 			},
 		},
 		{
 			name: "With Include Filters",
 			path: "src/main.go",
 			config: &Config{
-				Logger:      logutil.NewLogger(logutil.WarnLevel, nil, ""),
+				Logger:      NewMockLogger(),
 				IncludeExts: []string{".go", ".md", ".txt"},
 			},
 		},
@@ -65,7 +61,7 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "With Exclude Filters",
 			path: "dist/bundle.js",
 			config: &Config{
-				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, ""),
+				Logger:       NewMockLogger(),
 				ExcludeExts:  []string{".exe", ".bin", ".obj"},
 				ExcludeNames: []string{"node_modules", "dist", "build"},
 			},
@@ -74,7 +70,7 @@ func BenchmarkShouldProcess(b *testing.B) {
 			name: "With All Filters",
 			path: "src/components/App.tsx",
 			config: &Config{
-				Logger:       logutil.NewLogger(logutil.WarnLevel, nil, ""),
+				Logger:       NewMockLogger(),
 				IncludeExts:  []string{".go", ".md", ".ts", ".tsx"},
 				ExcludeExts:  []string{".exe", ".bin", ".obj"},
 				ExcludeNames: []string{"node_modules", "dist", "build"},
@@ -89,28 +85,6 @@ func BenchmarkShouldProcess(b *testing.B) {
 				_ = shouldProcess(bm.path, bm.config)
 			}
 		})
-	}
-}
-
-// BenchmarkCalculateStatisticsWithTokenCounting benchmarks the CalculateStatisticsWithTokenCounting function
-func BenchmarkCalculateStatisticsWithTokenCounting(b *testing.B) {
-	text := strings.Repeat("This is a benchmark test for token counting statistics calculation. ", 100)
-	ctx := context.Background()
-
-	// Mock client that returns a constant token count
-	mockClient := &gemini.MockClient{
-		CountTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-			// Simulate processing time
-			return &gemini.TokenCount{Total: int32(len(prompt) / 5)}, nil
-		},
-	}
-
-	logger := logutil.NewLogger(logutil.WarnLevel, nil, "")
-
-	b.ResetTimer()
-	b.ReportAllocs()
-	for i := 0; i < b.N; i++ {
-		_, _, _ = CalculateStatisticsWithTokenCounting(ctx, mockClient, text, logger)
 	}
 }
 
