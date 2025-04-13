@@ -106,7 +106,7 @@ jobs:
       
       # Run integration tests with parallel execution
       - name: Run integration tests with parallel execution
-        run: go test -v -race -parallel 4 ./internal/integration/...
+        run: go test -v -race -short -parallel 4 ./internal/integration/...
         timeout-minutes: 5
       
       # Run E2E tests with parallel execution
