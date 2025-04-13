@@ -27,7 +27,7 @@
   - **AC Ref:** Refactoring Goals, Task Group 1.3
 
 ## Task Group 2: Restructure `internal/architect/app.go`
-- [ ] **Task Title:** Create `internal/architect/orchestrator` Package and Define `Orchestrator` Struct
+- [x] **Task Title:** Create `internal/architect/orchestrator` Package and Define `Orchestrator` Struct
   - **Action:** Create a new package `internal/architect/orchestrator`. Define the `Orchestrator` struct within `orchestrator.go`, including fields for dependencies (APIService, ContextGatherer, TokenManager, FileWriter, AuditLogger, RateLimiter, config, logger). Define a `NewOrchestrator` constructor function.
   - **Depends On:** Create `internal/config` Package and Define Canonical `CliConfig`
   - **AC Ref:** Refactoring Goals, Task Group 2.1
