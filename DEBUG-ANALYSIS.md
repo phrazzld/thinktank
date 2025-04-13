@@ -1,65 +1,82 @@
-# Debug Analysis
+# Debug Analysis for Rate Limiter Deadlock
 
-## Summary of Hypotheses
-Based on the analysis from all Gemini models, the following key hypotheses emerged:
+## Root Cause Analysis
+All three Gemini models identified the same root cause for the deadlock:
 
-1. **Rate Limit Tests** - Tests in `rate_limit_test.go` contain intentional delays for simulating rate limiting (time.Sleep), which may be causing the timeouts. These tests have a `-short` flag option but it's not being used in CI.
+The deadlock is caused by an **overly broad locking strategy** in the `RateLimiter` implementation. Specifically:
 
-2. **Parallelism Issues** - The `-parallel 4` setting may be:
-   - Creating resource contention on the CI runner
-   - Not optimal for the available resources
-   - Causing subtle deadlocks or extreme slowdowns
+1. The `RateLimiter` holds its primary mutex (`rl.mu`) across potentially long-blocking operations:
+   - `rl.semaphore.Acquire(ctx)` - blocks when no semaphore tickets are available
+   - `rl.tokenBucket.Acquire(ctx, modelName)` - blocks when rate limit is hit
 
-3. **Specific Slow Tests** - Individual test cases may be taking exceptionally long to run, dragging down the overall execution time.
+2. This creates a classic deadlock scenario:
+   - Goroutine A calls `Acquire`, locks `rl.mu`, then blocks inside `semaphore.Acquire` waiting for a ticket
+   - Goroutine B finishes its task and calls `Release` to free a ticket, but can't proceed because it's trying to acquire `rl.mu` (held by Goroutine A)
+   - Goroutine A can't proceed without Goroutine B releasing a ticket, but Goroutine B can't proceed without Goroutine A releasing the mutex
 
-4. **Test Setup/Teardown Inefficiency** - The test environment setup or cleanup might be consuming significant time.
+3. The mutex `rl.mu` is unnecessary because:
+   - The underlying `Semaphore` (channel-based) and `TokenBucket` (using its own `RWMutex`) already safely handle their own concurrency
+   - The critical operation is acquiring these resources sequentially, not locking around both operations
 
-## Key Implementation Details
+## Recommended Fix
+All models recommend the same fix: removing the unnecessary mutex entirely from the `RateLimiter`:
 
-The integration tests have several characteristics that could contribute to timeouts:
+```diff
+// RateLimiter combines semaphore and token bucket limiters
+type RateLimiter struct {
+-	mu          sync.Mutex // Mutex to protect concurrent access
+	semaphore   *Semaphore
+	tokenBucket *TokenBucket
+}
 
-1. **Deliberate Time Delays**: Several tests use `time.Sleep()` to simulate real-world conditions:
-   - `rate_limit_test.go` has tests that deliberately introduce delays to simulate rate limiting
-   - `multi_model_test.go` includes concurrency tests with sleeps
+// Acquire waits to acquire both semaphore and rate limit permissions
+func (rl *RateLimiter) Acquire(ctx context.Context, modelName string) error {
+-	rl.mu.Lock()
+-	defer rl.mu.Unlock()
 
-2. **Race Detection**: The `-race` flag adds significant overhead to test execution
+	// First try to acquire the semaphore
+	if err := rl.semaphore.Acquire(ctx); err != nil {
+		return err
+	}
 
-3. **No Short Mode**: The CI configuration isn't using the `-short` flag, which would skip known long-running tests
+	// If we got the semaphore but fail to get the rate limit, release the semaphore
+	if err := rl.tokenBucket.Acquire(ctx, modelName); err != nil {
+		rl.semaphore.Release()
+		return err
+	}
 
-## Recommended Next Test
+	return nil
+}
 
-All models agree that modifying the CI workflow is the logical next step, though they differ slightly on the approach:
+// Release releases the semaphore (token bucket doesn't need explicit release)
+func (rl *RateLimiter) Release() {
+-	rl.mu.Lock()
+-	defer rl.mu.Unlock()
 
-1. **Option 1**: Add the `-short` flag to skip tests that are known to be slow:
-   ```yaml
-   run: go test -v -race -short -parallel 4 ./internal/integration/...
-   ```
+	rl.semaphore.Release()
+	// No explicit release needed for token bucket
+}
+```
 
-2. **Option 2**: Run tests sequentially to identify slow tests:
-   ```yaml
-   run: go test -v -race -parallel 1 ./internal/integration/...
-   ```
+Inline comments should explain:
+```go
+// BUGFIX: Remove unnecessary mutex causing deadlocks in concurrent Acquire/Release calls.
+// CAUSE: Holding rl.mu across blocking calls (semaphore.Acquire, tokenBucket.Acquire)
+//        prevented Release calls (which also needed rl.mu) from freeing resources,
+//        leading to deadlock when resources were contended.
+// FIX: Removed rl.mu entirely. Acquire semaphore then token bucket sequentially.
+//      Release semaphore immediately if token bucket acquisition fails.
+//      The underlying Semaphore and TokenBucket handle their own concurrency.
+```
 
-3. **Option 3**: Run each test individually to measure execution times:
+## Verification
+To verify the fix:
+1. Apply the changes to `internal/ratelimit/ratelimit.go`
+2. Run the tests focusing on the rate limit features:
    ```bash
-   for test_case in $(go test -list ./internal/integration/... | grep "^Test"); do
-     echo "Running test case: $test_case"
-     start_time=$(date +%s)
-     go test -v -race -run "$test_case" ./internal/integration/...
-     end_time=$(date +%s)
-     duration=$((end_time - start_time))
-     echo "Test case '$test_case' took $duration seconds"
-   done
+   go test ./internal/integration/... -v -count=1 -race -run TestRateLimitFeatures
    ```
-
-Given our constraint of diagnosing with minimal changes first, option 2 seems most appropriate as the first test - it maintains all tests while giving us valuable timing data without significant script changes.
-
-## Long-term Recommendations
-
-Once the specific cause is identified, potential fixes might include:
-
-1. Always use `-short` flag in CI for integration tests
-2. Refactor tests to use mock time instead of real `time.Sleep()`
-3. Split integration tests into separate jobs with different timeouts
-4. Increase the timeout for the integration test step (currently 5 minutes)
-5. Optimize test setup/teardown procedures
+3. Run the full test suite to ensure no regressions:
+   ```bash
+   go test ./... -v -count=1 -race
+   ```

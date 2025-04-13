@@ -1,24 +1,18 @@
 # Bug Analysis and Fix Instructions
 
 ## Bug Report
-- **Bug Description:** The CI workflow is failing at the test step with the following message: "Error: The action 'Run integration tests with parallel execution' has timed out after 5 minutes."
-- **Expected Behavior:** Integration tests should complete within the 5-minute timeout limit.
-- **Actual Behavior:** Integration tests are taking longer than 5 minutes to complete, causing the CI workflow to time out and fail.
-- **Key Components/Files Mentioned:** 
-  - CI workflow (in `.github/workflows/ci.yml`)
-  - Integration tests (in `internal/integration/` directory)
-- **Status:** Investigating
+- **Bug Description:** The CI workflow is failing with a deadlock in the rate limiting tests. The error shows several goroutines locked in a mutex deadlock state.
+- **Actual Behavior:** Tests are deadlocking, with multiple goroutines stuck in mutex locks. The test eventually times out after 10 minutes, producing a panic and stack trace showing goroutines waiting on `sync.Mutex.Lock` in either `RateLimiter.Acquire` or `RateLimiter.Release` methods.
+- **Key Components:** 
+  - `internal/ratelimit/ratelimit.go`: Contains the rate limiter implementation 
+  - `internal/architect/orchestrator/orchestrator.go`: The orchestrator handling multiple models, using rate limiting
+  - `internal/integration/rate_limit_test.go`: Contains the test that's timing out
 
-## Current Investigation
-I've identified three main hypotheses:
-
-1. **Intentional Delays in Rate Limit Tests**: The `rate_limit_test.go` tests explicitly use `time.Sleep()` for simulating rate limiting and are marked to be skipped in short mode, but the CI workflow doesn't use the `-short` flag.
-
-2. **Excessive Sleep in Concurrency Tests**: The `multi_model_test.go` file's concurrency tests use substantial sleeps (50-150ms per model) to simulate API delays.
-
-3. **Race Detector Overhead**: Running with `-race` adds significant overhead, especially with parallel execution and goroutines.
-
-My planned first test is to add the `-short` flag to the CI workflow's integration test command.
+## Current Hypotheses
+1. **Nested Lock Acquisition in RateLimiter**: The deadlock may be caused by nested lock acquisition in the `RateLimiter` implementation.
+2. **Panic During Release Causing Deadlock**: A panic occurring within the `Release` method could leave locks in an inconsistent state.
+3. **Concurrent Modification of Shared Resources**: Multiple goroutines may be improperly accessing shared resources in test setup.
+4. **Mutex Not Released in Error Path**: A mutex may be acquired but not released in certain error cases.
 
 You are an expert AI debugger. Your task is to analyze a reported bug, systematically investigate its root cause using the provided context, and formulate a precise fix.
 
