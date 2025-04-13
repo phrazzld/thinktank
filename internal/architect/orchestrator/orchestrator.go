@@ -75,14 +75,8 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		LogLevel:     o.config.LogLevel,
 	}
 
-	// 2. Initialize the reference client for context gathering
-	referenceClient, err := o.apiService.InitClient(ctx, o.config.ApiKey, o.config.ModelNames[0])
-	if err != nil {
-		errorDetails := o.apiService.GetErrorDetails(err)
-		o.logger.Error("Error creating reference Gemini client: %s", errorDetails)
-		return fmt.Errorf("failed to initialize reference API client: %w", err)
-	}
-	defer referenceClient.Close()
+	// Note: The contextGatherer now has its own client injected,
+	// so we don't need to create one here
 
 	// 3. Gather context files (model-independent step)
 	gatherStartTime := time.Now()
@@ -102,7 +96,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		o.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, referenceClient, gatherConfig)
+	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
 
 	// Calculate duration in milliseconds
 	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
@@ -156,7 +150,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 	// 4. Handle dry run mode
 	if o.config.DryRun {
-		err = o.contextGatherer.DisplayDryRunInfo(ctx, referenceClient, contextStats)
+		err = o.contextGatherer.DisplayDryRunInfo(ctx, contextStats)
 		if err != nil {
 			o.logger.Error("Error displaying dry run information: %v", err)
 			return fmt.Errorf("error displaying dry run information: %w", err)

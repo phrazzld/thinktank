@@ -334,7 +334,7 @@ type mockContextGatherer struct {
 	displayDryRunCalled bool
 }
 
-func (m *mockContextGatherer) GatherContext(ctx context.Context, client gemini.Client, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
+func (m *mockContextGatherer) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 	m.gatherContextCalled = true
 	if m.gatherContextError != nil {
 		return nil, nil, m.gatherContextError
@@ -342,7 +342,7 @@ func (m *mockContextGatherer) GatherContext(ctx context.Context, client gemini.C
 	return m.contextFiles, m.contextStats, nil
 }
 
-func (m *mockContextGatherer) DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *interfaces.ContextStats) error {
+func (m *mockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
 	m.displayDryRunCalled = true
 	return nil
 }

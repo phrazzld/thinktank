@@ -79,7 +79,7 @@ type ContextGathererAdapter struct {
 	ContextGatherer ContextGatherer
 }
 
-func (c *ContextGathererAdapter) GatherContext(ctx context.Context, client gemini.Client, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
+func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
 	// Convert interfaces.GatherConfig to internal GatherConfig
 	internalConfig := GatherConfig{
 		Paths:        config.Paths,
@@ -91,7 +91,7 @@ func (c *ContextGathererAdapter) GatherContext(ctx context.Context, client gemin
 		LogLevel:     config.LogLevel,
 	}
 
-	files, stats, err := c.ContextGatherer.GatherContext(ctx, client, internalConfig)
+	files, stats, err := c.ContextGatherer.GatherContext(ctx, internalConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -108,7 +108,7 @@ func (c *ContextGathererAdapter) GatherContext(ctx context.Context, client gemin
 	return files, interfaceStats, nil
 }
 
-func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *interfaces.ContextStats) error {
+func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
 	// Convert interfaces.ContextStats to internal ContextStats
 	internalStats := &ContextStats{
 		ProcessedFilesCount: stats.ProcessedFilesCount,
@@ -118,7 +118,7 @@ func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, client g
 		ProcessedFiles:      stats.ProcessedFiles,
 	}
 
-	return c.ContextGatherer.DisplayDryRunInfo(ctx, client, internalStats)
+	return c.ContextGatherer.DisplayDryRunInfo(ctx, internalStats)
 }
 
 // FileWriterAdapter adapts internal FileWriter to interfaces.FileWriter

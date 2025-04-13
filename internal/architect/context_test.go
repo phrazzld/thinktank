@@ -12,7 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// MockLogger for testing
+// mockContextLogger for testing
 type mockContextLogger struct {
 	logutil.LoggerInterface
 	debugMessages []string
@@ -49,7 +49,7 @@ func (m *mockContextLogger) Println(v ...interface{}) {
 	m.infoMessages = append(m.infoMessages, fmt.Sprint(v...))
 }
 
-// MockTokenManager for testing
+// mockTokenManager for testing
 type mockTokenManager struct {
 	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
 	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
@@ -77,7 +77,7 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 	return true
 }
 
-// MockGeminiClient for testing
+// mockGeminiClient for testing
 type mockGeminiClient struct {
 	countTokensFunc        func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
 	generateContentFunc    func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
@@ -190,8 +190,10 @@ func createTestDirectory(t *testing.T) (string, func()) {
 func TestNewContextGatherer(t *testing.T) {
 	logger := &mockContextLogger{}
 	tokenManager := &mockTokenManager{}
+	// Pass nil client since we're just testing object creation
+	client := gemini.Client(nil)
 
-	gatherer := NewContextGatherer(logger, true, tokenManager)
+	gatherer := NewContextGatherer(logger, true, tokenManager, client)
 	if gatherer == nil {
 		t.Error("Expected non-nil ContextGatherer, got nil")
 	}
@@ -213,7 +215,7 @@ func TestGatherContext(t *testing.T) {
 			},
 		}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -226,7 +228,7 @@ func TestGatherContext(t *testing.T) {
 			LogLevel:     logutil.DebugLevel,
 		}
 
-		projectContext, stats, err := gatherer.GatherContext(ctx, client, config)
+		projectContext, stats, err := gatherer.GatherContext(ctx, config)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -251,7 +253,7 @@ func TestGatherContext(t *testing.T) {
 		tokenManager := &mockTokenManager{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -264,7 +266,7 @@ func TestGatherContext(t *testing.T) {
 			LogLevel:     logutil.DebugLevel,
 		}
 
-		_, stats, err := gatherer.GatherContext(ctx, client, config)
+		_, stats, err := gatherer.GatherContext(ctx, config)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -281,7 +283,7 @@ func TestGatherContext(t *testing.T) {
 		tokenManager := &mockTokenManager{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -294,7 +296,7 @@ func TestGatherContext(t *testing.T) {
 			LogLevel:     logutil.DebugLevel,
 		}
 
-		projectContext, stats, err := gatherer.GatherContext(ctx, client, config)
+		projectContext, stats, err := gatherer.GatherContext(ctx, config)
 
 		// The refactored implementation returns an empty result with no error
 		// when path doesn't exist (which is an acceptable behavior)
@@ -321,7 +323,7 @@ func TestGatherContext(t *testing.T) {
 		tokenManager := &mockTokenManager{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, true, tokenManager)
+		gatherer := NewContextGatherer(logger, true, tokenManager, client)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -334,7 +336,7 @@ func TestGatherContext(t *testing.T) {
 			LogLevel:     logutil.DebugLevel,
 		}
 
-		_, stats, err := gatherer.GatherContext(ctx, client, config)
+		_, stats, err := gatherer.GatherContext(ctx, config)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -362,12 +364,13 @@ func TestGatherContext(t *testing.T) {
 func TestDisplayDryRunInfo(t *testing.T) {
 	logger := &mockContextLogger{}
 	tokenManager := &mockTokenManager{}
-	gatherer := NewContextGatherer(logger, true, tokenManager)
+	client := &mockGeminiClient{}
+	gatherer := NewContextGatherer(logger, true, tokenManager, client)
 	ctx := context.Background()
 
 	// Normal case with model info available
 	t.Run("NormalCase", func(t *testing.T) {
-		client := &mockGeminiClient{
+		mockClient := &mockGeminiClient{
 			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
 				return &gemini.ModelInfo{
 					Name:             "test-model",
@@ -377,6 +380,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			},
 		}
 
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
+
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
 			CharCount:           1000,
@@ -385,7 +390,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			ProcessedFiles:      []string{"file1.go", "file2.txt", "file3.md"},
 		}
 
-		err := gatherer.DisplayDryRunInfo(ctx, client, stats)
+		err := testGatherer.DisplayDryRunInfo(ctx, stats)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -410,11 +415,13 @@ func TestDisplayDryRunInfo(t *testing.T) {
 
 	// Error getting model info
 	t.Run("ModelInfoError", func(t *testing.T) {
-		client := &mockGeminiClient{
+		mockClient := &mockGeminiClient{
 			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
 				return nil, errors.New("model info error")
 			},
 		}
+
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
 
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
@@ -424,7 +431,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			ProcessedFiles:      []string{"file1.go", "file2.txt", "file3.md"},
 		}
 
-		err := gatherer.DisplayDryRunInfo(ctx, client, stats)
+		err := testGatherer.DisplayDryRunInfo(ctx, stats)
 		if err != nil {
 			t.Errorf("Expected no error (should handle model info error gracefully), got %v", err)
 		}
@@ -444,7 +451,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 
 	// Token limit exceeded
 	t.Run("TokenLimitExceeded", func(t *testing.T) {
-		client := &mockGeminiClient{
+		mockClient := &mockGeminiClient{
 			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
 				return &gemini.ModelInfo{
 					Name:             "test-model",
@@ -454,6 +461,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			},
 		}
 
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
+
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
 			CharCount:           1000,
@@ -462,7 +471,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			ProcessedFiles:      []string{"file1.go", "file2.txt", "file3.md"},
 		}
 
-		err := gatherer.DisplayDryRunInfo(ctx, client, stats)
+		err := testGatherer.DisplayDryRunInfo(ctx, stats)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
@@ -482,7 +491,9 @@ func TestDisplayDryRunInfo(t *testing.T) {
 
 	// No files processed
 	t.Run("NoFilesProcessed", func(t *testing.T) {
-		client := &mockGeminiClient{}
+		// Reset the logger
+		logger.infoMessages = []string{}
+
 		stats := &ContextStats{
 			ProcessedFilesCount: 0,
 			CharCount:           0,
@@ -491,7 +502,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			ProcessedFiles:      []string{},
 		}
 
-		err := gatherer.DisplayDryRunInfo(ctx, client, stats)
+		err := gatherer.DisplayDryRunInfo(ctx, stats)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}

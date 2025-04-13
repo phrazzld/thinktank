@@ -35,10 +35,10 @@ type GatherConfig struct {
 // ContextGatherer defines the interface for gathering project context
 type ContextGatherer interface {
 	// GatherContext collects and processes files based on configuration
-	GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
+	GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
 
 	// DisplayDryRunInfo shows detailed information for dry run mode
-	DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *ContextStats) error
+	DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error
 }
 
 // contextGatherer implements the ContextGatherer interface
@@ -46,19 +46,21 @@ type contextGatherer struct {
 	logger       logutil.LoggerInterface
 	dryRun       bool
 	tokenManager TokenManager
+	client       gemini.Client
 }
 
 // NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager) ContextGatherer {
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client gemini.Client) ContextGatherer {
 	return &contextGatherer{
 		logger:       logger,
 		dryRun:       dryRun,
 		tokenManager: tokenManager,
+		client:       client,
 	}
 }
 
 // GatherContext collects and processes files based on configuration
-func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
 	// Log appropriate message based on mode
 	if cg.dryRun {
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
@@ -124,9 +126,9 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 
 	// Use token manager for token counting via the gemini client
 	tokenCount := 0
-	if client != nil {
+	if cg.client != nil {
 		// Use the gemini client to count tokens
-		tokenResult, err := client.CountTokens(ctx, projectContext)
+		tokenResult, err := cg.client.CountTokens(ctx, projectContext)
 		if err != nil {
 			cg.logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
 			// Fall back to basic statistics
@@ -165,7 +167,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, client gemini.Clie
 }
 
 // DisplayDryRunInfo shows detailed information for dry run mode
-func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *ContextStats) error {
+func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error {
 	cg.logger.Info("Files that would be included in context:")
 	if stats.ProcessedFilesCount == 0 {
 		cg.logger.Info("  No files matched the current filters.")
@@ -182,7 +184,7 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, client gemini.
 	cg.logger.Info("  Tokens: %d", stats.TokenCount)
 
 	// Get model info for token limit comparison
-	modelInfo, modelInfoErr := client.GetModelInfo(ctx)
+	modelInfo, modelInfoErr := cg.client.GetModelInfo(ctx)
 	if modelInfoErr != nil {
 		// Check if it's an API error with enhanced details
 		if apiErr, ok := gemini.IsAPIError(modelInfoErr); ok {

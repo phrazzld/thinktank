@@ -34,3 +34,4 @@
 * review and significantly improve the clarity, detail, and actionability of all error messages throughout the application
 * enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
+* support a "modify my instructions" flag that extracts intent from the passed instructions and sends it to a model to rewrite according to best prompt engineering practices before sending your actual request complete with context to your target models

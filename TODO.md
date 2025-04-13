@@ -83,7 +83,22 @@
   - **Depends On:** Remove `CalculateStatisticsWithTokenCounting` from `fileutil`, Ensure `gemini.Client` is Injected into `ContextGatherer`
   - **AC Ref:** Refactoring Goals, Task Group 3.2, Task Group 3.3
 
-- [ ] **Task Title:** Ensure `gemini.Client` is Injected into `ContextGatherer`
+- [x] **Task Title:** Refactor ContextGatherer Implementation to Eliminate Duplication
+  - **Action:** Remove the duplicated `ContextGatherer` implementation in `cmd/architect/context.go` and update any necessary imports to use the implementation from `internal/architect/context.go`. Ensure all required functionality is maintained.
+  - **Depends On:** None
+  - **AC Ref:** Refactoring Goals, Task Group 3.3, Core Principles (Simplicity, Modularity)
+
+- [x] **Task Title:** Clean Up ContextGatherer Interface by Removing Redundant Parameters
+  - **Action:** Remove the redundant `gemini.Client` parameter from the `GatherContext` and `DisplayDryRunInfo` method signatures in the `interfaces.ContextGatherer` interface and its implementations. Update all callers to use the clean interface.
+  - **Depends On:** Refactor ContextGatherer Implementation to Eliminate Duplication
+  - **AC Ref:** Refactoring Goals, Task Group 3.3, Core Principles (Simplicity, Explicit over Implicit)
+
+- [x] **Task Title:** Update ContextGatherer Tests for New Interface
+  - **Action:** Update the test files to work with the new ContextGatherer interface, providing mock clients via constructor injection. Ensure the tests verify the behavior correctly.
+  - **Depends On:** Clean Up ContextGatherer Interface by Removing Redundant Parameters
+  - **AC Ref:** Refactoring Goals, Task Group 3.3, Testing Strategy
+
+- [x] **Task Title:** Ensure `gemini.Client` is Injected into `ContextGatherer` (Original)
   - **Action:** Modify `NewContextGatherer` to accept a `gemini.Client` interface as a dependency. Update the initialization point (in `app.go#Execute`) to pass the client. Ensure `GatherContext` uses this injected client for token counting.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 3.3

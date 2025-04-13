@@ -124,7 +124,16 @@ func Execute(
 	// 4. Initialize dependencies
 	apiService := NewAPIService(logger)
 	tokenManager := NewTokenManager(logger)
-	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager)
+
+	// Create a reference client for token counting in context gathering
+	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
+	if err != nil {
+		logger.Error("Failed to initialize reference client for context gathering: %v", err)
+		return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+	}
+	defer referenceClient.Close()
+
+	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient)
 	fileWriter := NewFileWriter(logger)
 
 	// Create rate limiter from configuration

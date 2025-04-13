@@ -73,10 +73,10 @@ type GatherConfig struct {
 // ContextGatherer defines the interface for gathering project context
 type ContextGatherer interface {
 	// GatherContext collects and processes files based on configuration
-	GatherContext(ctx context.Context, client gemini.Client, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
+	GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
 
 	// DisplayDryRunInfo shows detailed information for dry run mode
-	DisplayDryRunInfo(ctx context.Context, client gemini.Client, stats *ContextStats) error
+	DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error
 }
 
 // FileWriter defines the interface for file output writing
