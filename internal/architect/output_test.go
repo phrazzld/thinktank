@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/architect/prompt"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -264,13 +265,30 @@ func TestStitchPrompt(t *testing.T) {
 	}
 }
 
+// mockAuditLogger for testing FileWriter
+type mockAuditLogger struct {
+	entries []auditlog.AuditEntry
+}
+
+func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
+	m.entries = append(m.entries, entry)
+	return nil
+}
+
+func (m *mockAuditLogger) Close() error {
+	return nil
+}
+
 // TestSaveToFile tests the SaveToFile method
 func TestSaveToFile(t *testing.T) {
 	// Create a logger for testing
 	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
+	// Create mock audit logger
+	auditLogger := &mockAuditLogger{}
+
 	// Create a file writer
-	fileWriter := architect.NewFileWriter(logger)
+	fileWriter := architect.NewFileWriter(logger, auditLogger)
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "output_test")

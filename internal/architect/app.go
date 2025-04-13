@@ -123,7 +123,7 @@ func Execute(
 
 	// 4. Initialize dependencies
 	apiService := NewAPIService(logger)
-	tokenManager := NewTokenManager(logger)
+	tokenManager := NewTokenManager(logger, auditLogger)
 
 	// Create a reference client for token counting in context gathering
 	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
@@ -133,8 +133,8 @@ func Execute(
 	}
 	defer referenceClient.Close()
 
-	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient)
-	fileWriter := NewFileWriter(logger)
+	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient, auditLogger)
+	fileWriter := NewFileWriter(logger, auditLogger)
 
 	// Create rate limiter from configuration
 	rateLimiter := ratelimit.NewRateLimiter(

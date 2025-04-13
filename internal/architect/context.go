@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -47,20 +48,40 @@ type contextGatherer struct {
 	dryRun       bool
 	tokenManager TokenManager
 	client       gemini.Client
+	auditLogger  auditlog.AuditLogger
 }
 
 // NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client gemini.Client) ContextGatherer {
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client gemini.Client, auditLogger auditlog.AuditLogger) ContextGatherer {
 	return &contextGatherer{
 		logger:       logger,
 		dryRun:       dryRun,
 		tokenManager: tokenManager,
 		client:       client,
+		auditLogger:  auditLogger,
 	}
 }
 
 // GatherContext collects and processes files based on configuration
 func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+	// Log start of context gathering operation to audit log
+	gatherStartTime := time.Now()
+	if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+		Timestamp: gatherStartTime,
+		Operation: "GatherContextStart",
+		Status:    "InProgress",
+		Inputs: map[string]interface{}{
+			"paths":         config.Paths,
+			"include":       config.Include,
+			"exclude":       config.Exclude,
+			"exclude_names": config.ExcludeNames,
+			"format":        config.Format,
+		},
+		Message: "Starting to gather project context files",
+	}); logErr != nil {
+		cg.logger.Error("Failed to write audit log: %v", logErr)
+	}
+
 	// Log appropriate message based on mode
 	if cg.dryRun {
 		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
@@ -94,8 +115,33 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 
 	// Gather project context
 	contextFiles, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
+
+	// Calculate duration in milliseconds
+	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
+
 	if err != nil {
 		cg.logger.Error("Failed during project context gathering: %v", err)
+
+		// Log the failure of context gathering to audit log
+		if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+			Timestamp:  time.Now().UTC(),
+			Operation:  "GatherContextEnd",
+			Status:     "Failure",
+			DurationMs: &gatherDurationMs,
+			Inputs: map[string]interface{}{
+				"paths":         config.Paths,
+				"include":       config.Include,
+				"exclude":       config.Exclude,
+				"exclude_names": config.ExcludeNames,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: fmt.Sprintf("Failed to gather project context: %v", err),
+				Type:    "ContextGatheringError",
+			},
+		}); logErr != nil {
+			cg.logger.Error("Failed to write audit log: %v", logErr)
+		}
+
 		return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
 	}
 
@@ -161,6 +207,30 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 			cg.logger.Debug("Context details: files=%d, lines=%d, chars=%d, tokens=%d",
 				processedFilesCount, lineCount, charCount, tokenCount)
 		}
+	}
+
+	// Log the successful completion of context gathering to audit log
+	if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+		Timestamp:  time.Now().UTC(),
+		Operation:  "GatherContextEnd",
+		Status:     "Success",
+		DurationMs: &gatherDurationMs,
+		Inputs: map[string]interface{}{
+			"paths":         config.Paths,
+			"include":       config.Include,
+			"exclude":       config.Exclude,
+			"exclude_names": config.ExcludeNames,
+		},
+		Outputs: map[string]interface{}{
+			"processed_files_count": stats.ProcessedFilesCount,
+			"char_count":            stats.CharCount,
+			"line_count":            stats.LineCount,
+			"token_count":           stats.TokenCount,
+			"files_count":           len(contextFiles),
+		},
+		Message: "Successfully gathered project context files",
+	}); logErr != nil {
+		cg.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	return contextFiles, stats, nil

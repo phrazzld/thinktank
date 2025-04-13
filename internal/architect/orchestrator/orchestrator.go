@@ -75,77 +75,13 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		LogLevel:     o.config.LogLevel,
 	}
 
-	// Note: The contextGatherer now has its own client injected,
-	// so we don't need to create one here
+	// Note: The contextGatherer now has its own client injected and handles its own audit logging
+	// so we don't need to create a client or perform audit logging here
 
 	// 3. Gather context files (model-independent step)
-	gatherStartTime := time.Now()
-	if logErr := o.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: gatherStartTime,
-		Operation: "GatherContextStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"paths":         o.config.Paths,
-			"include":       o.config.Include,
-			"exclude":       o.config.Exclude,
-			"exclude_names": o.config.ExcludeNames,
-			"format":        o.config.Format,
-		},
-		Message: "Starting to gather project context files",
-	}); logErr != nil {
-		o.logger.Error("Failed to write audit log: %v", logErr)
-	}
-
 	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
-
-	// Calculate duration in milliseconds
-	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
-
 	if err != nil {
-		// Log the failure of context gathering
-		if logErr := o.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "GatherContextEnd",
-			Status:     "Failure",
-			DurationMs: &gatherDurationMs,
-			Inputs: map[string]interface{}{
-				"paths":         o.config.Paths,
-				"include":       o.config.Include,
-				"exclude":       o.config.Exclude,
-				"exclude_names": o.config.ExcludeNames,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to gather project context: %v", err),
-				Type:    "ContextGatheringError",
-			},
-		}); logErr != nil {
-			o.logger.Error("Failed to write audit log: %v", logErr)
-		}
 		return fmt.Errorf("failed during project context gathering: %w", err)
-	}
-
-	// Log the successful completion of context gathering
-	if logErr := o.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "GatherContextEnd",
-		Status:     "Success",
-		DurationMs: &gatherDurationMs,
-		Inputs: map[string]interface{}{
-			"paths":         o.config.Paths,
-			"include":       o.config.Include,
-			"exclude":       o.config.Exclude,
-			"exclude_names": o.config.ExcludeNames,
-		},
-		Outputs: map[string]interface{}{
-			"processed_files_count": contextStats.ProcessedFilesCount,
-			"char_count":            contextStats.CharCount,
-			"line_count":            contextStats.LineCount,
-			"token_count":           contextStats.TokenCount,
-			"files_count":           len(contextFiles),
-		},
-		Message: "Successfully gathered project context files",
-	}); logErr != nil {
-		o.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	// 4. Handle dry run mode

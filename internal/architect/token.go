@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -35,18 +37,35 @@ type TokenManager interface {
 
 // tokenManager implements the TokenManager interface
 type tokenManager struct {
-	logger logutil.LoggerInterface
+	logger      logutil.LoggerInterface
+	auditLogger auditlog.AuditLogger
 }
 
 // NewTokenManager creates a new TokenManager instance
-func NewTokenManager(logger logutil.LoggerInterface) TokenManager {
+func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) TokenManager {
 	return &tokenManager{
-		logger: logger,
+		logger:      logger,
+		auditLogger: auditLogger,
 	}
 }
 
 // GetTokenInfo retrieves token count information and checks limits
 func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+	// Log the start of token checking
+	checkStartTime := time.Now()
+	if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+		Timestamp: checkStartTime,
+		Operation: "CheckTokensStart",
+		Status:    "InProgress",
+		Inputs: map[string]interface{}{
+			"prompt_length": len(prompt),
+			"model_name":    client.GetModelName(),
+		},
+		Message: "Starting token count check for model " + client.GetModelName(),
+	}); logErr != nil {
+		tm.logger.Error("Failed to write audit log: %v", logErr)
+	}
+
 	// Create result structure
 	result := &TokenResult{
 		ExceedsLimit: false,
@@ -56,8 +75,44 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	modelInfo, err := client.GetModelInfo(ctx)
 	if err != nil {
 		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
-			return nil, err
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			// Log the token check failure
+			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+				Timestamp: time.Now().UTC(),
+				Operation: "CheckTokens",
+				Status:    "Failure",
+				Inputs: map[string]interface{}{
+					"prompt_length": len(prompt),
+					"model_name":    client.GetModelName(),
+				},
+				Error: &auditlog.ErrorInfo{
+					Message: apiErr.Message,
+					Type:    "APIError",
+				},
+				Message: "Token count check failed for model " + client.GetModelName(),
+			}); logErr != nil {
+				tm.logger.Error("Failed to write audit log: %v", logErr)
+			}
+
+			return nil, apiErr
+		}
+
+		// Log the token check failure for other errors
+		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+			Timestamp: time.Now().UTC(),
+			Operation: "CheckTokens",
+			Status:    "Failure",
+			Inputs: map[string]interface{}{
+				"prompt_length": len(prompt),
+				"model_name":    client.GetModelName(),
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: fmt.Sprintf("Failed to get model info: %v", err),
+				Type:    "TokenCheckError",
+			},
+			Message: "Token count check failed for model " + client.GetModelName(),
+		}); logErr != nil {
+			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
 		// Wrap other errors
@@ -71,8 +126,44 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	tokenResult, err := client.CountTokens(ctx, prompt)
 	if err != nil {
 		// Pass through API errors directly for better error messages
-		if _, ok := gemini.IsAPIError(err); ok {
-			return nil, err
+		if apiErr, ok := gemini.IsAPIError(err); ok {
+			// Log the token check failure
+			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+				Timestamp: time.Now().UTC(),
+				Operation: "CheckTokens",
+				Status:    "Failure",
+				Inputs: map[string]interface{}{
+					"prompt_length": len(prompt),
+					"model_name":    client.GetModelName(),
+				},
+				Error: &auditlog.ErrorInfo{
+					Message: apiErr.Message,
+					Type:    "APIError",
+				},
+				Message: "Token count check failed for model " + client.GetModelName(),
+			}); logErr != nil {
+				tm.logger.Error("Failed to write audit log: %v", logErr)
+			}
+
+			return nil, apiErr
+		}
+
+		// Log the token check failure for other errors
+		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+			Timestamp: time.Now().UTC(),
+			Operation: "CheckTokens",
+			Status:    "Failure",
+			Inputs: map[string]interface{}{
+				"prompt_length": len(prompt),
+				"model_name":    client.GetModelName(),
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: fmt.Sprintf("Failed to count tokens: %v", err),
+				Type:    "TokenCheckError",
+			},
+			Message: "Token count check failed for model " + client.GetModelName(),
+		}); logErr != nil {
+			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
 		// Wrap other errors
@@ -96,6 +187,52 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 		result.ExceedsLimit = true
 		result.LimitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
 			result.TokenCount, result.InputLimit)
+
+		// Log the token limit exceeded case
+		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+			Timestamp: time.Now().UTC(),
+			Operation: "CheckTokens",
+			Status:    "Failure",
+			Inputs: map[string]interface{}{
+				"prompt_length": len(prompt),
+				"model_name":    client.GetModelName(),
+			},
+			TokenCounts: &auditlog.TokenCountInfo{
+				PromptTokens: result.TokenCount,
+				TotalTokens:  result.TokenCount,
+				Limit:        result.InputLimit,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: result.LimitError,
+				Type:    "TokenLimitExceededError",
+			},
+			Message: "Token limit exceeded for model " + client.GetModelName(),
+		}); logErr != nil {
+			tm.logger.Error("Failed to write audit log: %v", logErr)
+		}
+	} else {
+		// Log the successful token check
+		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+			Timestamp: time.Now().UTC(),
+			Operation: "CheckTokens",
+			Status:    "Success",
+			Inputs: map[string]interface{}{
+				"prompt_length": len(prompt),
+				"model_name":    client.GetModelName(),
+			},
+			Outputs: map[string]interface{}{
+				"percentage": result.Percentage,
+			},
+			TokenCounts: &auditlog.TokenCountInfo{
+				PromptTokens: result.TokenCount,
+				TotalTokens:  result.TokenCount,
+				Limit:        result.InputLimit,
+			},
+			Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
+				client.GetModelName(), result.TokenCount, result.InputLimit, result.Percentage),
+		}); logErr != nil {
+			tm.logger.Error("Failed to write audit log: %v", logErr)
+		}
 	}
 
 	return result, nil

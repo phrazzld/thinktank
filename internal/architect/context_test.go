@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -186,14 +187,30 @@ func createTestDirectory(t *testing.T) (string, func()) {
 	}
 }
 
+// mockAuditLogger for testing
+type mockAuditLogger struct {
+	auditlog.AuditLogger
+	entries []auditlog.AuditEntry
+}
+
+func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
+	m.entries = append(m.entries, entry)
+	return nil
+}
+
+func (m *mockAuditLogger) Close() error {
+	return nil
+}
+
 // TestNewContextGatherer tests the constructor
 func TestNewContextGatherer(t *testing.T) {
 	logger := &mockContextLogger{}
 	tokenManager := &mockTokenManager{}
+	auditLogger := &mockAuditLogger{}
 	// Pass nil client since we're just testing object creation
 	client := gemini.Client(nil)
 
-	gatherer := NewContextGatherer(logger, true, tokenManager, client)
+	gatherer := NewContextGatherer(logger, true, tokenManager, client, auditLogger)
 	if gatherer == nil {
 		t.Error("Expected non-nil ContextGatherer, got nil")
 	}
@@ -209,13 +226,14 @@ func TestGatherContext(t *testing.T) {
 	t.Run("BasicGathering", func(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
+		auditLogger := &mockAuditLogger{}
 		client := &mockGeminiClient{
 			countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
 				return &gemini.TokenCount{Total: 100}, nil
 			},
 		}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager, client)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client, auditLogger)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -245,15 +263,44 @@ func TestGatherContext(t *testing.T) {
 				t.Errorf("Expected at least 3 processed files, got %d", stats.ProcessedFilesCount)
 			}
 		}
+
+		// Verify audit log entries
+		if len(auditLogger.entries) < 2 {
+			t.Errorf("Expected at least 2 audit log entries, got %d", len(auditLogger.entries))
+		}
+
+		// Check for start and end entries
+		var hasStartEntry, hasEndEntry bool
+		for _, entry := range auditLogger.entries {
+			if entry.Operation == "GatherContextStart" && entry.Status == "InProgress" {
+				hasStartEntry = true
+			}
+			if entry.Operation == "GatherContextEnd" && entry.Status == "Success" {
+				hasEndEntry = true
+
+				// Verify outputs
+				if entry.Outputs["token_count"] != int32(100) {
+					t.Errorf("Expected token_count output to be 100, got %v", entry.Outputs["token_count"])
+				}
+			}
+		}
+
+		if !hasStartEntry {
+			t.Error("Missing GatherContextStart audit log entry")
+		}
+		if !hasEndEntry {
+			t.Error("Missing GatherContextEnd audit log entry")
+		}
 	})
 
 	// Test with file filtering
 	t.Run("FileFiltering", func(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
+		auditLogger := &mockAuditLogger{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager, client)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client, auditLogger)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -275,15 +322,28 @@ func TestGatherContext(t *testing.T) {
 		if stats.ProcessedFilesCount != 1 {
 			t.Errorf("Expected 1 processed file, got %d", stats.ProcessedFilesCount)
 		}
+
+		// Verify audit logging
+		var hasSuccessEndLog bool
+		for _, entry := range auditLogger.entries {
+			if entry.Operation == "GatherContextEnd" && entry.Status == "Success" {
+				hasSuccessEndLog = true
+				break
+			}
+		}
+		if !hasSuccessEndLog {
+			t.Error("Missing successful GatherContextEnd audit log entry")
+		}
 	})
 
 	// Test handling of non-existent paths
 	t.Run("FileAccessError", func(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
+		auditLogger := &mockAuditLogger{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, false, tokenManager, client)
+		gatherer := NewContextGatherer(logger, false, tokenManager, client, auditLogger)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -303,6 +363,21 @@ func TestGatherContext(t *testing.T) {
 		// Verify that no files were processed
 		if err != nil {
 			// If it returns an error, that's also acceptable
+
+			// Check for error audit log
+			var hasErrorLog bool
+			for _, entry := range auditLogger.entries {
+				if entry.Operation == "GatherContextEnd" && entry.Status == "Failure" {
+					hasErrorLog = true
+					if entry.Error == nil {
+						t.Error("Error audit log missing error info")
+					}
+					break
+				}
+			}
+			if !hasErrorLog {
+				t.Error("Missing failed GatherContextEnd audit log entry")
+			}
 			return
 		}
 
@@ -321,9 +396,10 @@ func TestGatherContext(t *testing.T) {
 	t.Run("DryRunMode", func(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
+		auditLogger := &mockAuditLogger{}
 		client := &mockGeminiClient{}
 
-		gatherer := NewContextGatherer(logger, true, tokenManager, client)
+		gatherer := NewContextGatherer(logger, true, tokenManager, client, auditLogger)
 		ctx := context.Background()
 
 		config := GatherConfig{
@@ -357,6 +433,24 @@ func TestGatherContext(t *testing.T) {
 		if !found {
 			t.Error("Expected dry run mode message in logs")
 		}
+
+		// Verify audit logging in dry run mode
+		var hasStartLog, hasEndLog bool
+		for _, entry := range auditLogger.entries {
+			if entry.Operation == "GatherContextStart" {
+				hasStartLog = true
+			}
+			if entry.Operation == "GatherContextEnd" && entry.Status == "Success" {
+				hasEndLog = true
+				break
+			}
+		}
+		if !hasStartLog {
+			t.Error("Missing GatherContextStart audit log entry in dry run mode")
+		}
+		if !hasEndLog {
+			t.Error("Missing successful GatherContextEnd audit log entry in dry run mode")
+		}
 	})
 }
 
@@ -365,7 +459,6 @@ func TestDisplayDryRunInfo(t *testing.T) {
 	logger := &mockContextLogger{}
 	tokenManager := &mockTokenManager{}
 	client := &mockGeminiClient{}
-	gatherer := NewContextGatherer(logger, true, tokenManager, client)
 	ctx := context.Background()
 
 	// Normal case with model info available
@@ -380,7 +473,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			},
 		}
 
-		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
+		mockAuditLogger := &mockAuditLogger{}
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient, mockAuditLogger)
 
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
@@ -421,7 +515,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			},
 		}
 
-		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
+		mockAuditLogger := &mockAuditLogger{}
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient, mockAuditLogger)
 
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
@@ -461,7 +556,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			},
 		}
 
-		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient)
+		mockAuditLogger := &mockAuditLogger{}
+		testGatherer := NewContextGatherer(logger, true, tokenManager, mockClient, mockAuditLogger)
 
 		stats := &ContextStats{
 			ProcessedFilesCount: 3,
@@ -493,6 +589,9 @@ func TestDisplayDryRunInfo(t *testing.T) {
 	t.Run("NoFilesProcessed", func(t *testing.T) {
 		// Reset the logger
 		logger.infoMessages = []string{}
+		mockAuditLogger := &mockAuditLogger{}
+
+		newGatherer := NewContextGatherer(logger, true, tokenManager, client, mockAuditLogger)
 
 		stats := &ContextStats{
 			ProcessedFilesCount: 0,
@@ -502,7 +601,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 			ProcessedFiles:      []string{},
 		}
 
-		err := gatherer.DisplayDryRunInfo(ctx, stats)
+		err := newGatherer.DisplayDryRunInfo(ctx, stats)
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}

@@ -68,7 +68,7 @@
   - **AC Ref:** Refactoring Goals, Task Group 2.1, Task Group 2.4
 
 ## Task Group 3: Improve Separation of Concerns & Dependencies
-- [ ] **Task Title:** Decouple Audit Logging from Orchestration Flow
+- [x] **Task Title:** Decouple Audit Logging from Orchestration Flow
   - **Action:** Remove detailed audit logging calls (e.g., `GatherContextStart/End`, `CheckTokensStart/End`, `GenerateContentStart/End`, `SaveOutputStart/End`) from the `Orchestrator.Run` method. Pass the `AuditLogger` instance to the relevant components (`ContextGatherer`, `ModelProcessor`, `FileWriter`, `TokenManager`) via their constructors. Modify these components to perform their own specific audit logging for their primary operations.
   - **Depends On:** Implement `Orchestrator.Run` Method, Extract Model Processing Logic into `ModelProcessor.Process`
   - **AC Ref:** Refactoring Goals, Task Group 3.1
