@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +15,9 @@ import (
 	"strings"
 	"testing"
 )
+
+// architectBinaryPath stores the path to the compiled binary, set once in TestMain
+var architectBinaryPath string
 
 const (
 	// Mock API responses
@@ -94,17 +98,17 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	// Create a temporary directory for the test
 	tempDir := t.TempDir()
 
-	// Locate the architect binary
-	binaryPath, err := findOrBuildBinary()
-	if err != nil {
-		t.Fatalf("Failed to locate or build architect binary: %v", err)
+	// Ensure the binary path was set by TestMain
+	if architectBinaryPath == "" {
+		// This should not happen if TestMain ran correctly
+		t.Fatal("FATAL: architectBinaryPath not set by TestMain. E2E test setup failed.")
 	}
 
-	// Initialize the test environment
+	// Initialize the test environment using the binary path set by TestMain
 	env := &TestEnv{
 		t:          t,
 		TempDir:    tempDir,
-		BinaryPath: binaryPath,
+		BinaryPath: architectBinaryPath,
 	}
 
 	// Set up default mock handlers
@@ -430,48 +434,73 @@ func (e *TestEnv) RunWithFlags(flags testFlags, additionalArgs []string) (stdout
 
 // findOrBuildBinary locates or builds the architect binary
 func findOrBuildBinary() (string, error) {
-	// First, try to find the binary in the current directory or bin directory
-	candidates := []string{
-		"architect",
-		"./architect",
-		"bin/architect",
-		"./bin/architect",
+	// Determine the project root directory relative to this test file
+	projectRoot, err := os.Getwd() // Start from current dir
+	if err != nil {
+		return "", fmt.Errorf("failed to get current working directory: %v", err)
 	}
 
+	// If tests are run from within internal/e2e, go up two levels
+	if strings.HasSuffix(projectRoot, "internal/e2e") {
+		projectRoot = filepath.Dir(filepath.Dir(projectRoot))
+	} else if strings.HasSuffix(projectRoot, "e2e") { // If run from e2e directly
+		projectRoot = filepath.Dir(projectRoot)
+	}
+	// Additional logic could be added here to detect the project root more robustly
+	// e.g., searching upward for go.mod file
+
+	// Define potential binary locations relative to the project root
+	binaryName := "architect"
+	if os.PathSeparator == '\\' { // Handle Windows executable extension
+		binaryName += ".exe"
+	}
+
+	candidates := []string{
+		filepath.Join(projectRoot, binaryName),
+		filepath.Join(projectRoot, "bin", binaryName),
+		// Add additional common locations if needed
+	}
+
+	// Check for existing binary
 	for _, candidate := range candidates {
 		if _, err := os.Stat(candidate); err == nil {
 			absPath, err := filepath.Abs(candidate)
 			if err != nil {
 				return "", fmt.Errorf("failed to get absolute path for %s: %v", candidate, err)
 			}
+			fmt.Printf("Found architect binary at: %s\n", absPath)
 			return absPath, nil
 		}
 	}
 
 	// If not found, build it
-	fmt.Println("Building architect binary...")
-	// Build from the main package
-	cmd := exec.Command("go", "build", "-o", "architect", "github.com/phrazzld/architect")
+	fmt.Println("Architect binary not found, building from source...")
+	buildOutput := filepath.Join(projectRoot, binaryName)
+
+	// Build command targeting the main package
+	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/architect/cmd/architect")
+	cmd.Dir = projectRoot // Ensure the build runs from the project root
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
+
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to build architect binary: %v\nStdout: %s\nStderr: %s",
-			err, stdout.String(), stderr.String())
+		return "", fmt.Errorf("failed to build architect binary: %v\nBuild Directory: %s\nStdout: %s\nStderr: %s",
+			err, projectRoot, stdout.String(), stderr.String())
 	}
 
 	// Verify the binary was built
-	if _, err := os.Stat("architect"); err != nil {
-		return "", fmt.Errorf("failed to find built binary: %v", err)
+	if _, err := os.Stat(buildOutput); err != nil {
+		return "", fmt.Errorf("failed to find built binary at %s after build attempt: %v", buildOutput, err)
 	}
 
-	absPath, err := filepath.Abs("architect")
+	absPath, err := filepath.Abs(buildOutput)
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute path for built binary: %v", err)
 	}
 
-	fmt.Println("Successfully built architect binary at:", absPath)
+	fmt.Printf("Successfully built architect binary at: %s\n", absPath)
 	return absPath, nil
 }
 
@@ -497,16 +526,23 @@ func SimulateUserInput(input string) io.Reader {
 	return strings.NewReader(input)
 }
 
-// TestMain runs once before all tests
+// TestMain runs once before all tests in the package.
+// It finds or builds the architect binary needed for the tests.
 func TestMain(m *testing.M) {
-	// Set up any global test environment (if needed)
-	// ...
+	// Find or build the binary only once for all tests
+	var err error
+	architectBinaryPath, err = findOrBuildBinary()
+	if err != nil {
+		// Use log.Fatalf for cleaner exit on failure during setup
+		log.Fatalf("FATAL: Failed to find or build architect binary for E2E tests: %v", err)
+	}
 
-	// Run tests
+	// Run all tests in the package
 	exitCode := m.Run()
 
-	// Clean up (if needed)
-	// ...
+	// Perform any global cleanup here if needed
+	// Note: we don't remove the binary as it might be reused in subsequent test runs
 
+	// Exit with the status code from the test run
 	os.Exit(exitCode)
 }

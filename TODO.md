@@ -59,7 +59,7 @@
 
 ## 2. Optimize E2E Test Execution
 
-- [ ] **Task Title:** Implement `TestMain` in E2E Tests to Build Binary Once
+- [x] **Task Title:** Implement `TestMain` in E2E Tests to Build Binary Once
     - **Action:** Add or modify the `TestMain` function in `internal/e2e/e2e_test.go`. Implement logic within `TestMain` to call `findOrBuildBinary` (or a similar function) *once* before any tests are run. Store the resulting binary path in a package-level variable. Handle potential build errors gracefully.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 2 (Build Binary Once)
