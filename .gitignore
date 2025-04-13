@@ -33,7 +33,12 @@ Thumbs.db
 PLAN.md
 
 # Temporary files
-*.bak
+*.bak*
+*~
+*.backup
+*.old
+*.swp
+*.swo
 test-results/
 thinktank-output/
 architect_output/
