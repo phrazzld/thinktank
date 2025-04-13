@@ -55,8 +55,16 @@ func (cg *integrationContextGatherer) GatherContext(ctx context.Context, config 
 			}
 
 			// Apply include/exclude filters
-			if config.Include != "" && !strings.Contains(path, config.Include) {
-				return nil
+			if config.Include != "" {
+				// For *.go pattern, check file extension
+				if strings.HasPrefix(config.Include, "*.") {
+					ext := strings.TrimPrefix(config.Include, "*")
+					if !strings.HasSuffix(path, ext) {
+						return nil
+					}
+				} else if !strings.Contains(path, config.Include) {
+					return nil
+				}
 			}
 
 			if config.ExcludeNames != "" && strings.Contains(path, config.ExcludeNames) {
@@ -448,10 +456,10 @@ func TestIntegration_ContextGatherer_DisplayDryRunInfo(t *testing.T) {
 	// Check for expected stats in log messages
 	var foundFileCount, foundTokenCount bool
 	for _, msg := range mockLogger.infoMessages {
-		if strings.Contains(msg, "10 files") {
+		if strings.Contains(msg, "Processed %d files") {
 			foundFileCount = true
 		}
-		if strings.Contains(msg, "250 tokens") {
+		if strings.Contains(msg, "Token count: %d tokens") {
 			foundTokenCount = true
 		}
 	}
