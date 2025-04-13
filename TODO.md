@@ -122,10 +122,11 @@
   - **AC Ref:** Refactoring Goals, Task Group 4.1
   - **Status:** Completed. Standardized API acronym capitalization by renaming `ApiKey` to `APIKey` across the codebase, ensuring consistent use of Go naming conventions.
 
-- [ ] **Task Title:** Simplify Control Flow in `Orchestrator.Run`
+- [x] **Task Title:** Simplify Control Flow in `Orchestrator.Run`
   - **Action:** Review the implemented `Orchestrator.Run` method. Ensure it presents a clear, high-level view of the application workflow (Setup, Gather Context, Build Prompt, Process Models, Aggregate Results), effectively delegating implementation details to the injected components. Refactor for clarity if needed.
   - **Depends On:** Implement `Orchestrator.Run` Method
   - **AC Ref:** Refactoring Goals, Task Group 4.2
+  - **Status:** Completed. Refactored Orchestrator.Run to provide a clear, step-by-step workflow by extracting implementation details into helper methods, improving error handling, and organizing the code around the core workflow stages.
 
 - [ ] **Task Title:** Add Package and Function Documentation
   - **Action:** Add package comments (`// package ...`) explaining the purpose of the new packages (`orchestrator`, `modelproc`, `prompt`, `config`, `filewriter`). Update function/method comments (Go doc comments `// ...`) for clarity, focusing on the "why" and the contracts, especially for the new public interfaces and methods.
