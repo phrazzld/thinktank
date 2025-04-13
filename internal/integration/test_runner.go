@@ -107,29 +107,13 @@ func RunTestWithConfig(
 	testConfig *config.CliConfig,
 	env *TestEnv,
 ) error {
-	// Set up the original API Service for architect.Execute
-	originalNewAPIService := architect.NewAPIService
-
-	// Override the API Service creation function for this test
-	architect.NewAPIService = func(logger logutil.LoggerInterface) architect.APIService {
-		return &mockIntAPIService{
-			logger:     env.Logger,
-			mockClient: env.MockClient,
-		}
-	}
-
-	// Restore the original API Service creation function when done
-	defer func() {
-		architect.NewAPIService = originalNewAPIService
-	}()
-
-	// Create a mock API service
+	// Create a mock API service directly without modifying any global variables
 	mockApiService := &mockIntAPIService{
 		logger:     env.Logger,
 		mockClient: env.MockClient,
 	}
 
-	// Run the architect application using Execute directly with the injected API service
+	// Run the architect application using Execute with the mock API service
 	return architect.Execute(
 		ctx,
 		testConfig,
