@@ -153,10 +153,11 @@
 
 ## 5. Profile & Optimize
 
-- [ ] **Task Title:** Integrate Test Profiling into Workflow/CI
+- [x] **Task Title:** Integrate Test Profiling into Workflow/CI
     - **Action:** Add steps to the CI pipeline or document a manual process for running tests with profiling enabled (`go test ./... -cpuprofile cpu.prof -memprofile mem.prof -parallel N`). Ensure profiles can be easily collected and accessed.
     - **Depends On:** Enable Parallel Execution for Integration Tests in CI
     - **AC Ref:** Plan Recommendation 6 (Profile Your Tests)
+    - **Implementation:** Added a dedicated GitHub Actions workflow job for test profiling that runs on manual trigger. This job executes tests with CPU, memory, and block profiling enabled and uploads the profiling data as artifacts for later analysis. Created a comprehensive documentation file (docs/TEST_PROFILING.md) that explains how to run profiling in CI and locally, how to analyze profile data using pprof, and how to identify and address performance bottlenecks.
 
 - [ ] **Task Title:** Analyze Test Profiles and Identify Hotspots
     - **Action:** Run the profiled tests and use `go tool pprof` to analyze the generated `cpu.prof` and `mem.prof` files. Identify functions or test setups consuming disproportionate amounts of CPU time or memory.

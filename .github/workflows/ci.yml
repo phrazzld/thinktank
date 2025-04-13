@@ -1,11 +1,18 @@
 name: Go CI
 
-# Trigger events for the master branch
+# Trigger events for the master branch and manual profiling
 on:
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      profile_tests:
+        description: 'Run tests with profiling'
+        required: false
+        default: false
+        type: boolean
 
 # Jobs will be implemented incrementally in subsequent tasks
 jobs:
@@ -129,4 +136,46 @@ jobs:
         with:
           name: architect-binary
           path: architect
+          retention-days: 7
+          
+  # Profiling job for analyzing test performance (runs on manual trigger)
+  profile:
+    name: Profile Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile_tests == 'true'
+    needs: lint
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+      
+      # Run all tests with CPU profiling
+      - name: Run tests with CPU profiling
+        run: go test -v -cpuprofile=cpu.prof ./...
+        timeout-minutes: 10
+      
+      # Run all tests with memory profiling
+      - name: Run tests with memory profiling
+        run: go test -v -memprofile=mem.prof ./...
+        timeout-minutes: 10
+        
+      # Run all tests with block profiling
+      - name: Run tests with block profiling
+        run: go test -v -blockprofile=block.prof ./...
+        timeout-minutes: 10
+
+      # Upload profiling data as artifact
+      - name: Upload profiling data
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-profiles
+          path: |
+            *.prof
           retention-days: 7
