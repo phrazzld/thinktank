@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -77,16 +78,16 @@ func main() {}`)
 
 	// Run the application directly with our custom mock API service
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	if err != nil {
-		t.Fatalf("RunInternal failed: %v", err)
+		t.Fatalf("Execute failed: %v", err)
 	}
 
 	// Check that the output directory exists
@@ -292,17 +293,17 @@ func main() {}`)
 
 	// Run the application directly with our custom mock API service
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Should have an error because model2 failed
 	if err == nil {
-		t.Fatalf("Expected RunInternal to fail due to model2 error, but it succeeded")
+		t.Fatalf("Expected Execute to fail due to model2 error, but it succeeded")
 	}
 
 	// Error should mention model2
@@ -465,16 +466,16 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	if err != nil {
-		t.Fatalf("RunInternal failed: %v", err)
+		t.Fatalf("Execute failed: %v", err)
 	}
 
 	// Wait for all models to complete
@@ -607,17 +608,17 @@ func main() {}`)
 
 	// Run the application, expecting errors
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Should have errors from model1 and model3
 	if err == nil {
-		t.Fatalf("Expected RunInternal to return errors, but got nil")
+		t.Fatalf("Expected Execute to return errors, but got nil")
 	}
 
 	// Verify that the error contains information about both failed models
@@ -770,16 +771,16 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	if err != nil {
-		t.Fatalf("RunInternal failed: %v", err)
+		t.Fatalf("Execute failed: %v", err)
 	}
 
 	// Wait for all models to complete

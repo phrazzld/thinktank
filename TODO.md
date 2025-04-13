@@ -38,10 +38,11 @@
     - **Depends On:** Refactor `TestEnv` Stdin Simulation to Use Buffers
     - **AC Ref:** Plan Recommendation 1 (Remove need for mock stdin files...)
 
-- [ ] **Task Title:** Remove Obsolete `integration.RunInternal` Function
+- [x] **Task Title:** Remove Obsolete `integration.RunInternal` Function
     - **Action:** Delete the `RunInternal` function from `internal/integration/test_runner.go` as it relies on the removed global variable modification pattern.
     - **Depends On:** Remove Global `architect.NewAPIService` Variable
     - **AC Ref:** Plan Recommendation 1 (Refactor problematic pattern)
+    - **Implementation:** Removed the RunInternal function from test_runner.go and updated all tests in multi_model_test.go and rate_limit_test.go to directly use architect.Execute with the appropriate parameter order. Also updated test output messages to reference "Execute" instead of "RunInternal".
 
 - [x] **Task Title:** Refactor or Remove `integration.RunTestWithConfig` Function
     - **Action:** Analyze `RunTestWithConfig` in `internal/integration/test_runner.go`. Refactor it to call the modified `architect.Execute` by injecting the mock `APIService` from the `TestEnv`, or remove it entirely if tests can call `Execute` directly.

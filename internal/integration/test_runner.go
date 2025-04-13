@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/phrazzld/architect/internal/architect"
-	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -64,29 +63,6 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 		return ""
 	}
 	return err.Error()
-}
-
-// NOTE: RunInternal is no longer needed and should be removed once all tests are updated.
-// It's maintained as a deprecated function for backward compatibility.
-//
-// RunInternal is a replacement for the removed architect.RunInternal function
-// It's used for backwards compatibility with the existing integration tests
-func RunInternal(
-	ctx context.Context,
-	testConfig *config.CliConfig,
-	logger logutil.LoggerInterface,
-	apiService architect.APIService,
-	auditLogger auditlog.AuditLogger,
-) error {
-	// In the new architecture, we simply pass the API service directly
-	// using dependency injection instead of global variable overriding
-	return architect.Execute(
-		ctx,
-		testConfig,
-		logger,
-		auditLogger,
-		apiService,
-	)
 }
 
 // RunTestWithConfig runs the architect application with the provided test config and environment

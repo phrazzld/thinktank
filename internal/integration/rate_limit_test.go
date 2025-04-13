@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -106,12 +107,12 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Verify execution
@@ -231,12 +232,12 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Verify execution
@@ -328,12 +329,12 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Verify execution
@@ -458,12 +459,12 @@ func main() {}`)
 
 	// Run the application
 	ctx := context.Background()
-	err := RunInternal(
+	err := architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockAPIService,
 	)
 
 	// Verify execution
