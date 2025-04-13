@@ -115,10 +115,13 @@
     - **Depends On:** Update Integration Tests to Inject Dependencies
     - **AC Ref:** Plan Recommendation 3 (Use Sub-tests)
 
-- [ ] **Task Title:** Create Helper Functions for Common Test Setup Logic
+- [x] **Task Title:** Create Helper Functions for Common Test Setup Logic
     - **Action:** Identify recurring setup patterns within integration (`integration_test.go`) and E2E (`e2e_test.go`) tests (e.g., creating specific file structures, configuring mock responses). Extract this logic into reusable helper functions within the respective test packages.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 3 (Helper Functions)
+    - **Implementation:** Added helper functions following a two-phased approach:
+      1. **Integration Test Helpers:** Enhanced test_helpers.go with comprehensive functions for creating Go source files, standard configs, token limit testing, and common output verification. Implemented the functional options pattern (ConfigOption) for flexible test configuration.
+      2. **E2E Test Helpers:** Created a minimal, focused set of helper functions in helpers.go for creating Go source files, standard CLI arguments, and output verification. Took an incremental approach to ensure simplicity and reliability.
 
 ## 4. Refine Integration Test Scope
 
