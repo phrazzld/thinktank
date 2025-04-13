@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phrazzld/architect/internal/architect/prompt"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
@@ -251,7 +252,7 @@ func Execute(
 	}
 
 	// 8. Stitch prompt (model-independent step)
-	stitchedPrompt := StitchPrompt(instructions, contextFiles)
+	stitchedPrompt := prompt.StitchPrompt(instructions, contextFiles)
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 
@@ -892,7 +893,7 @@ func RunInternal(
 	}
 
 	// 9. Stitch prompt (model-independent step)
-	stitchedPrompt := StitchPrompt(instructions, contextFiles)
+	stitchedPrompt := prompt.StitchPrompt(instructions, contextFiles)
 	logger.Info("Prompt constructed successfully")
 	logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
 

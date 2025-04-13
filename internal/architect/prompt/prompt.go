@@ -3,7 +3,44 @@
 // prompts with context files and proper escaping of content.
 package prompt
 
-// Package is intentionally left empty as the functionality
-// will be moved in a follow-up task that depends on this package creation.
-// The functions that will be moved here are StitchPrompt and EscapeContent from
-// internal/architect/output.go.
+import (
+	"strings"
+
+	"github.com/phrazzld/architect/internal/fileutil"
+)
+
+// EscapeContent helps prevent conflicts with XML-like tags by escaping < and > characters
+func EscapeContent(content string) string {
+	escaped := strings.ReplaceAll(content, "<", "&lt;")
+	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
+	return escaped
+}
+
+// StitchPrompt combines instructions and file context into the final prompt string with XML-like tags
+func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string {
+	var sb strings.Builder
+
+	// Add instructions block
+	sb.WriteString("<instructions>\n")
+	if instructions != "" {
+		sb.WriteString(instructions)
+		sb.WriteString("\n")
+	}
+	sb.WriteString("</instructions>\n")
+
+	// Add context block
+	sb.WriteString("<context>\n")
+	for _, file := range contextFiles {
+		// Add file path tag
+		sb.WriteString("<path>")
+		sb.WriteString(file.Path)
+		sb.WriteString("</path>\n")
+
+		// Add file content with escaping
+		sb.WriteString(EscapeContent(file.Content))
+		sb.WriteString("\n\n")
+	}
+	sb.WriteString("</context>")
+
+	return sb.String()
+}

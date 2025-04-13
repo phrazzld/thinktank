@@ -37,7 +37,7 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 2.2
 
-- [ ] **Task Title:** Move Prompt Logic to `internal/architect/prompt`
+- [x] **Task Title:** Move Prompt Logic to `internal/architect/prompt`
   - **Action:** Move the `StitchPrompt` and `EscapeContent` functions from `internal/architect/output.go` to the new `internal/architect/prompt/prompt.go` file. Update callers (currently `internal/architect/app.go`) to use the functions from the new package.
   - **Depends On:** Create `internal/architect/prompt` Package
   - **AC Ref:** Refactoring Goals, Task Group 2.2
