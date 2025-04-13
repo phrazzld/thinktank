@@ -64,30 +64,34 @@
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 2 (Build Binary Once)
 
-- [ ] **Task Title:** Update E2E Tests to Use Pre-Built Binary Path
+- [x] **Task Title:** Update E2E Tests to Use Pre-Built Binary Path
     - **Action:** Modify the `RunArchitect` or `RunWithFlags` helper functions in `internal/e2e/e2e_test.go` to use the binary path stored in the package-level variable set by `TestMain`, instead of calling `findOrBuildBinary` repeatedly or relying on a hardcoded path.
     - **Depends On:** Implement `TestMain` in E2E Tests to Build Binary Once
     - **AC Ref:** Plan Recommendation 2 (Build Binary Once)
 
-- [ ] **Task Title:** Investigate Sharing `httptest.Server` in E2E `TestMain`
+- [x] **Task Title:** Investigate Sharing `httptest.Server` in E2E `TestMain`
     - **Action:** Analyze the mock server setup (`startMockServer`) and usage in `internal/e2e/e2e_test.go`. Determine if a single mock server instance started in `TestMain` can serve all E2E tests or if individual tests require distinct server behaviors that prevent sharing. Document findings.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 2 (Consider Shared Mock Server)
+    - **Findings:** Analysis complete. Due to test-specific server configurations and the need for isolation, continuing with separate server instances is recommended. Full analysis documented in httptest-server-sharing-analysis.md.
 
-- [ ] **Task Title:** Implement Shared `httptest.Server` if Feasible
+- [x] **Task Title:** Implement Shared `httptest.Server` if Feasible
     - **Action:** Based on the investigation, if feasible, move the `httptest.Server` setup to `TestMain` in `internal/e2e/e2e_test.go`. Ensure proper server shutdown in `TestMain`. Update tests to use the shared server URL.
     - **Depends On:** Investigate Sharing `httptest.Server` in E2E `TestMain`
     - **AC Ref:** Plan Recommendation 2 (Consider Shared Mock Server)
+    - **Result:** Not feasible. Analysis showed that tests require independent server configurations and maintaining separate server instances is the most maintainable approach. No implementation needed.
 
-- [ ] **Task Title:** Verify E2E Test Isolation
+- [x] **Task Title:** Verify E2E Test Isolation
     - **Action:** Confirm that each E2E test uses isolated resources, particularly temporary directories (`t.TempDir()`) and potentially unique ports or configurations if not using a shared server, to allow for parallel execution.
     - **Depends On:** None
     - **AC Ref:** Plan Recommendation 2 (Enable Parallel E2E Tests)
+    - **Findings:** Analysis complete. E2E tests have good isolation practices and would work well with parallel execution. Each test uses isolated temporary directories (via `t.TempDir()`), has its own mock server instance with dynamic ports, and properly cleans up resources. Implementation plan created in enable-e2e-parallel-execution-plan.md.
 
-- [ ] **Task Title:** Enable Parallel Execution for E2E Tests in CI (Optional)
+- [x] **Task Title:** Enable Parallel Execution for E2E Tests in CI (Optional)
     - **Action:** If resources allow and tests are confirmed to be isolated, update the CI configuration script/pipeline step that runs E2E tests (`go test ./internal/e2e/...`) to include the `-parallel N` flag. Monitor for flakiness.
     - **Depends On:** Verify E2E Test Isolation
     - **AC Ref:** Plan Recommendation 2 (Enable Parallel E2E Tests)
+    - **Implementation:** Added dedicated CI step to run E2E tests with `-parallel 4` flag. Set appropriate timeout (8 minutes) and excluded E2E tests from the "other tests" step.
 
 - [ ] **Task Title:** Review and Reduce E2E Test Suite Scope
     - **Action:** Analyze the existing E2E tests in `internal/e2e/e2e_test.go`. Identify tests covering scenarios that are (or could be) adequately covered by integration tests. Remove redundant E2E tests, focusing on essential user flows.

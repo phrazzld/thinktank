@@ -70,10 +70,15 @@ jobs:
         run: go test -v -race -parallel 4 ./internal/integration/...
         timeout-minutes: 5
       
+      # Run E2E tests with parallel execution
+      - name: Run E2E tests with parallel execution
+        run: go test -v -race -parallel 4 ./internal/e2e/...
+        timeout-minutes: 8
+      
       # Run other tests with race detection
       - name: Run other tests with race detection
-        run: go test -v -race $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration")
-        timeout-minutes: 10
+        run: go test -v -race $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
+        timeout-minutes: 5
         
       # Generate coverage report
       - name: Generate coverage report
