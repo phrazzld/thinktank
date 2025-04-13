@@ -26,10 +26,10 @@ type TokenResult struct {
 // TokenManager defines the interface for token counting and management
 type TokenManager interface {
 	// GetTokenInfo retrieves token count information and checks limits
-	GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
+	GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
 
 	// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-	CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error
+	CheckTokenLimit(ctx context.Context, prompt string) error
 
 	// PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
 	PromptForConfirmation(tokenCount int32, threshold int) bool
@@ -39,18 +39,26 @@ type TokenManager interface {
 type tokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
+	client      gemini.Client
 }
 
 // NewTokenManager creates a new TokenManager instance
-func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) TokenManager {
+func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) (TokenManager, error) {
+	if client == nil {
+		return nil, fmt.Errorf("client cannot be nil for TokenManager")
+	}
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
-	}
+		client:      client,
+	}, nil
 }
 
 // GetTokenInfo retrieves token count information and checks limits
-func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
+	// Get the model name from the injected client
+	modelName := tm.client.GetModelName()
+
 	// Log the start of token checking
 	checkStartTime := time.Now()
 	if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
@@ -59,9 +67,9 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
 			"prompt_length": len(prompt),
-			"model_name":    client.GetModelName(),
+			"model_name":    modelName,
 		},
-		Message: "Starting token count check for model " + client.GetModelName(),
+		Message: "Starting token count check for model " + modelName,
 	}); logErr != nil {
 		tm.logger.Error("Failed to write audit log: %v", logErr)
 	}
@@ -72,7 +80,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	}
 
 	// Get model information (limits)
-	modelInfo, err := client.GetModelInfo(ctx)
+	modelInfo, err := tm.client.GetModelInfo(ctx)
 	if err != nil {
 		// Pass through API errors directly for better error messages
 		if apiErr, ok := gemini.IsAPIError(err); ok {
@@ -83,13 +91,13 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 				Status:    "Failure",
 				Inputs: map[string]interface{}{
 					"prompt_length": len(prompt),
-					"model_name":    client.GetModelName(),
+					"model_name":    modelName,
 				},
 				Error: &auditlog.ErrorInfo{
 					Message: apiErr.Message,
 					Type:    "APIError",
 				},
-				Message: "Token count check failed for model " + client.GetModelName(),
+				Message: "Token count check failed for model " + modelName,
 			}); logErr != nil {
 				tm.logger.Error("Failed to write audit log: %v", logErr)
 			}
@@ -104,13 +112,13 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(prompt),
-				"model_name":    client.GetModelName(),
+				"model_name":    modelName,
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: fmt.Sprintf("Failed to get model info: %v", err),
 				Type:    "TokenCheckError",
 			},
-			Message: "Token count check failed for model " + client.GetModelName(),
+			Message: "Token count check failed for model " + modelName,
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
@@ -123,7 +131,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	result.InputLimit = modelInfo.InputTokenLimit
 
 	// Count tokens in the prompt
-	tokenResult, err := client.CountTokens(ctx, prompt)
+	tokenResult, err := tm.client.CountTokens(ctx, prompt)
 	if err != nil {
 		// Pass through API errors directly for better error messages
 		if apiErr, ok := gemini.IsAPIError(err); ok {
@@ -134,13 +142,13 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 				Status:    "Failure",
 				Inputs: map[string]interface{}{
 					"prompt_length": len(prompt),
-					"model_name":    client.GetModelName(),
+					"model_name":    modelName,
 				},
 				Error: &auditlog.ErrorInfo{
 					Message: apiErr.Message,
 					Type:    "APIError",
 				},
-				Message: "Token count check failed for model " + client.GetModelName(),
+				Message: "Token count check failed for model " + modelName,
 			}); logErr != nil {
 				tm.logger.Error("Failed to write audit log: %v", logErr)
 			}
@@ -155,13 +163,13 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(prompt),
-				"model_name":    client.GetModelName(),
+				"model_name":    modelName,
 			},
 			Error: &auditlog.ErrorInfo{
 				Message: fmt.Sprintf("Failed to count tokens: %v", err),
 				Type:    "TokenCheckError",
 			},
-			Message: "Token count check failed for model " + client.GetModelName(),
+			Message: "Token count check failed for model " + modelName,
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
@@ -195,7 +203,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(prompt),
-				"model_name":    client.GetModelName(),
+				"model_name":    modelName,
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: result.TokenCount,
@@ -206,7 +214,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 				Message: result.LimitError,
 				Type:    "TokenLimitExceededError",
 			},
-			Message: "Token limit exceeded for model " + client.GetModelName(),
+			Message: "Token limit exceeded for model " + modelName,
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
@@ -218,7 +226,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 			Status:    "Success",
 			Inputs: map[string]interface{}{
 				"prompt_length": len(prompt),
-				"model_name":    client.GetModelName(),
+				"model_name":    modelName,
 			},
 			Outputs: map[string]interface{}{
 				"percentage": result.Percentage,
@@ -229,7 +237,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 				Limit:        result.InputLimit,
 			},
 			Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
-				client.GetModelName(), result.TokenCount, result.InputLimit, result.Percentage),
+				modelName, result.TokenCount, result.InputLimit, result.Percentage),
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
@@ -239,8 +247,8 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 }
 
 // CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-func (tm *tokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	tokenInfo, err := tm.GetTokenInfo(ctx, client, prompt)
+func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
+	tokenInfo, err := tm.GetTokenInfo(ctx, prompt)
 	if err != nil {
 		return err
 	}

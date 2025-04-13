@@ -41,10 +41,10 @@ type APIService interface {
 // TokenManager defines the interface for token counting and management
 type TokenManager interface {
 	// GetTokenInfo retrieves token count information and checks limits
-	GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
+	GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
 
 	// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-	CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error
+	CheckTokenLimit(ctx context.Context, prompt string) error
 
 	// PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
 	PromptForConfirmation(tokenCount int32, threshold int) bool

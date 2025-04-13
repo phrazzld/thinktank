@@ -151,11 +151,12 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 			// Create adapters for interfaces
 			apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
-			tokenManagerAdapter := &TokenManagerAdapter{TokenManager: o.tokenManager}
 
+			// We no longer need the TokenManagerAdapter since ModelProcessor creates its own TokenManager
+			// with the specific client. Passing nil here since it won't be used.
 			processor := modelproc.NewProcessor(
 				apiServiceAdapter,
-				tokenManagerAdapter,
+				nil, // tokenManager is now created inside the Process method
 				o.fileWriter,
 				o.auditLogger,
 				o.logger,
@@ -236,30 +237,6 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 }
 
 // TokenManagerAdapter adapts interfaces.TokenManager to modelproc.TokenManager
-type TokenManagerAdapter struct {
-	TokenManager interfaces.TokenManager
-}
-
-func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	return t.TokenManager.CheckTokenLimit(ctx, client, prompt)
-}
-
-func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
-	result, err := t.TokenManager.GetTokenInfo(ctx, client, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert TokenResult
-	return &modelproc.TokenResult{
-		TokenCount:   result.TokenCount,
-		InputLimit:   result.InputLimit,
-		ExceedsLimit: result.ExceedsLimit,
-		LimitError:   result.LimitError,
-		Percentage:   result.Percentage,
-	}, nil
-}
-
-func (t *TokenManagerAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool {
-	return t.TokenManager.PromptForConfirmation(tokenCount, threshold)
-}
+// TokenManagerAdapter is no longer needed since we create TokenManagers in the Process method
+// The ModelProcessor now creates its own TokenManager directly with the specific client
+// This adapter remains as a placeholder but is not used, and will be removed in future refactoring

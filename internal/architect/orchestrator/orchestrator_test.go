@@ -350,7 +350,7 @@ func (m *mockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 // mockTokenManager implements interfaces.TokenManager
 type mockTokenManager struct{}
 
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*interfaces.TokenResult, error) {
+func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) {
 	// Return a non-nil token result for the test
 	return &interfaces.TokenResult{
 		TokenCount:   100,
@@ -361,7 +361,7 @@ func (m *mockTokenManager) GetTokenInfo(ctx context.Context, client gemini.Clien
 	}, nil
 }
 
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
+func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
 	return nil
 }
 

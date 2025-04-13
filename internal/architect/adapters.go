@@ -50,12 +50,12 @@ type TokenManagerAdapter struct {
 	TokenManager TokenManager
 }
 
-func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	return t.TokenManager.CheckTokenLimit(ctx, client, prompt)
+func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
+	return t.TokenManager.CheckTokenLimit(ctx, prompt)
 }
 
-func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*interfaces.TokenResult, error) {
-	result, err := t.TokenManager.GetTokenInfo(ctx, client, prompt)
+func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) {
+	result, err := t.TokenManager.GetTokenInfo(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}

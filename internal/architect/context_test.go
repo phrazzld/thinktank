@@ -52,21 +52,21 @@ func (m *mockContextLogger) Println(v ...interface{}) {
 
 // mockTokenManager for testing
 type mockTokenManager struct {
-	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
-	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
+	getTokenInfoFunc          func(ctx context.Context, prompt string) (*TokenResult, error)
+	checkTokenLimitFunc       func(ctx context.Context, prompt string) error
 	promptForConfirmationFunc func(tokenCount int32, threshold int) bool
 }
 
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
 	if m.getTokenInfoFunc != nil {
-		return m.getTokenInfoFunc(ctx, client, prompt)
+		return m.getTokenInfoFunc(ctx, prompt)
 	}
 	return &TokenResult{TokenCount: 100, InputLimit: 1000, Percentage: 10.0}, nil
 }
 
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
+func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
 	if m.checkTokenLimitFunc != nil {
-		return m.checkTokenLimitFunc(ctx, client, prompt)
+		return m.checkTokenLimitFunc(ctx, prompt)
 	}
 	return nil
 }

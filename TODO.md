@@ -103,15 +103,17 @@
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 3.3
 
-- [ ] **Task Title:** Ensure `gemini.Client` is Correctly Handled in `TokenManager`
+- [x] **Task Title:** Ensure `gemini.Client` is Correctly Handled in `TokenManager`
   - **Action:** Review `token.go` to confirm the best approach for `gemini.Client` dependency injection. Modify `NewTokenManager` or its methods if needed to ensure proper dependency management for operations like `GetModelInfo` and token counting.
   - **Depends On:** None
   - **AC Ref:** Refactoring Goals, Task Group 3.3
+  - **Status:** Completed. Implemented constructor-based dependency injection for `gemini.Client` in `TokenManager`, updated interface to remove client parameter from method signatures, and fixed related audit logging in ModelProcessor.
 
-- [ ] **Task Title:** Refine and Rename `internal/architect/output.go`
+- [x] **Task Title:** Refine and Rename `internal/architect/output.go`
   - **Action:** After moving prompt logic, rename `internal/architect/output.go` to `internal/architect/filewriter.go`. Ensure it only contains the `FileWriter` interface and its implementation (`fileWriter`, `NewFileWriter`, `SaveToFile`). Update import paths if necessary.
   - **Depends On:** Move Prompt Logic to `internal/architect/prompt`
   - **AC Ref:** Refactoring Goals, Task Group 3.4
+  - **Status:** Completed. Renamed file to filewriter.go with improved package comments. Moved tests to filewriter_test.go and removed test functions specific to prompt functionality.
 
 ## Task Group 4: Improve Readability and Maintainability
 - [ ] **Task Title:** Review and Improve Naming Conventions

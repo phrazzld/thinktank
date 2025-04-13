@@ -52,20 +52,28 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 }
 
 type mockTokenManager struct {
-	checkTokenLimitFunc       func(ctx context.Context, client gemini.Client, prompt string) error
-	getTokenInfoFunc          func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error)
+	checkTokenLimitFunc       func(ctx context.Context, prompt string) error
+	getTokenInfoFunc          func(ctx context.Context, prompt string) (*modelproc.TokenResult, error)
 	promptForConfirmationFunc func(tokenCount int32, threshold int) bool
 }
 
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
+func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
 	if m.checkTokenLimitFunc != nil {
-		return m.checkTokenLimitFunc(ctx, client, prompt)
+		return m.checkTokenLimitFunc(ctx, prompt)
 	}
 	return nil
 }
 
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
-	return m.getTokenInfoFunc(ctx, client, prompt)
+func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
+	if m.getTokenInfoFunc != nil {
+		return m.getTokenInfoFunc(ctx, prompt)
+	}
+	return &modelproc.TokenResult{
+		TokenCount:   100,
+		InputLimit:   1000,
+		ExceedsLimit: false,
+		Percentage:   10.0,
+	}, nil
 }
 
 func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
@@ -200,7 +208,7 @@ func TestModelProcessor_Process_Success(t *testing.T) {
 	}
 
 	mockToken := &mockTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
+		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
 				TokenCount:   100,
 				InputLimit:   1000,
@@ -293,12 +301,29 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	// Setup mocks
 	mockAPI := &mockAPIService{
 		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-			return &mockClient{}, nil
+			return &mockClient{
+				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
+					return &gemini.ModelInfo{
+						Name:             "test-model",
+						InputTokenLimit:  4000,
+						OutputTokenLimit: 1000,
+					}, nil
+				},
+				countTokensFunc: func(ctx context.Context, text string) (*gemini.TokenCount, error) {
+					return &gemini.TokenCount{Total: 5000}, nil
+				},
+				getModelNameFunc: func() string {
+					return "test-model"
+				},
+				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					// This should not be called in the token exceeded case
+					return nil, errors.New("should not be called")
+				},
+			}, nil
 		},
 	}
-
 	mockToken := &mockTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
+		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
 				TokenCount:   5000,
 				InputLimit:   4000,
@@ -401,7 +426,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	}
 
 	mockToken := &mockTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
+		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
 				TokenCount:   100,
 				InputLimit:   1000,
@@ -465,7 +490,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	}
 
 	mockToken := &mockTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
+		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
 				TokenCount:   100,
 				InputLimit:   1000,
@@ -515,31 +540,64 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 }
 
 func TestModelProcessor_Process_UserCancellation(t *testing.T) {
+	// Create a fake implementation of NewTokenManagerWithClient to control the confirmation
+	originalNewTokenManagerWithClient := modelproc.NewTokenManagerWithClient
+
+	// Store the original implementation to restore it after the test
+	defer func() {
+		modelproc.NewTokenManagerWithClient = originalNewTokenManagerWithClient
+	}()
+
+	// Replace with our mock that will return user cancellation
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) modelproc.TokenManager {
+		return &mockTokenManager{
+			getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
+				return &modelproc.TokenResult{
+					TokenCount:   100,
+					InputLimit:   1000,
+					ExceedsLimit: false,
+					Percentage:   10.0,
+				}, nil
+			},
+			promptForConfirmationFunc: func(tokenCount int32, threshold int) bool {
+				// Return false to simulate user cancellation
+				return false
+			},
+		}
+	}
+
 	// Setup mocks
 	mockAPI := &mockAPIService{
 		initClientFunc: func(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-			return &mockClient{}, nil
-		},
-	}
-
-	mockToken := &mockTokenManager{
-		getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
-			return &modelproc.TokenResult{
-				TokenCount:   100,
-				InputLimit:   1000,
-				ExceedsLimit: false,
-				Percentage:   10.0,
+			return &mockClient{
+				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
+					return &gemini.ModelInfo{
+						Name:             "test-model",
+						InputTokenLimit:  1000,
+						OutputTokenLimit: 1000,
+					}, nil
+				},
+				countTokensFunc: func(ctx context.Context, text string) (*gemini.TokenCount, error) {
+					return &gemini.TokenCount{Total: 100}, nil
+				},
+				getModelNameFunc: func() string {
+					return "test-model"
+				},
+				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					// Should not be called in this test
+					t.Error("GenerateContent should not be called when user cancels")
+					return nil, errors.New("should not be called")
+				},
 			}, nil
 		},
-		promptForConfirmationFunc: func(tokenCount int32, threshold int) bool {
-			return false // User cancels
-		},
 	}
 
-	generationCalled := false
+	// Create a token manager - this won't be used directly but needed for the NewProcessor call
+	mockToken := &mockTokenManager{}
 
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
+	// The operation will be logged when tokenInfo is fetched
 	mockLogger := newNoOpLogger()
 
 	// Setup config
@@ -565,13 +623,9 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 		"Test prompt",
 	)
 
-	// Verify results
+	// Verify results - if generateContent was called, the test would fail with t.Error in the mock
 	if err != nil {
 		t.Errorf("Expected no error on user cancellation, got %v", err)
-	}
-
-	if generationCalled {
-		t.Errorf("Generation should not be called after user cancellation")
 	}
 }
 
@@ -606,7 +660,7 @@ func TestSanitizeFilename(t *testing.T) {
 			}
 
 			mockToken := &mockTokenManager{
-				getTokenInfoFunc: func(ctx context.Context, client gemini.Client, prompt string) (*modelproc.TokenResult, error) {
+				getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 					return &modelproc.TokenResult{
 						TokenCount:   100,
 						InputLimit:   1000,

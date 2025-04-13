@@ -123,7 +123,6 @@ func Execute(
 
 	// 4. Initialize dependencies
 	apiService := NewAPIService(logger)
-	tokenManager := NewTokenManager(logger, auditLogger)
 
 	// Create a reference client for token counting in context gathering
 	referenceClient, err := apiService.InitClient(ctx, cliConfig.ApiKey, cliConfig.ModelNames[0])
@@ -132,6 +131,13 @@ func Execute(
 		return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
 	}
 	defer referenceClient.Close()
+
+	// Create TokenManager with the reference client
+	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClient)
+	if tokenManagerErr != nil {
+		logger.Error("Failed to create token manager: %v", tokenManagerErr)
+		return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
+	}
 
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient, auditLogger)
 	fileWriter := NewFileWriter(logger, auditLogger)

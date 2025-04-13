@@ -1,4 +1,5 @@
-// Package architect contains the core application logic for the architect tool
+// Package architect contains the core application logic for the architect tool.
+// This file implements the FileWriter interface for saving generated content to files.
 package architect
 
 import (

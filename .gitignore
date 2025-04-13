@@ -36,5 +36,6 @@ PLAN.md
 *.bak
 test-results/
 thinktank-output/
+architect_output/
 *-TASK.md
 *-PLAN.md

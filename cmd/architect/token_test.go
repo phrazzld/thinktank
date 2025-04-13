@@ -31,7 +31,6 @@ func (m *mockLogger) Error(format string, args ...interface{}) {
 func TestGetTokenInfo(t *testing.T) {
 	ctx := context.Background()
 	logger := &mockLogger{}
-	tokenManager := NewTokenManager(logger)
 
 	// Test normal operation
 	t.Run("NormalOperation", func(t *testing.T) {
@@ -48,7 +47,12 @@ func TestGetTokenInfo(t *testing.T) {
 			},
 		}
 
-		info, err := tokenManager.GetTokenInfo(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		info, err := tokenManager.GetTokenInfo(ctx, "test prompt")
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -84,7 +88,12 @@ func TestGetTokenInfo(t *testing.T) {
 			},
 		}
 
-		info, err := tokenManager.GetTokenInfo(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		info, err := tokenManager.GetTokenInfo(ctx, "test prompt")
 		if err != nil {
 			t.Errorf("Expected no error, got: %v", err)
 		}
@@ -113,7 +122,12 @@ func TestGetTokenInfo(t *testing.T) {
 			},
 		}
 
-		_, err := tokenManager.GetTokenInfo(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		_, err = tokenManager.GetTokenInfo(ctx, "test prompt")
 		if err == nil {
 			t.Error("Expected error when GetModelInfo fails, got nil")
 		}
@@ -134,7 +148,12 @@ func TestGetTokenInfo(t *testing.T) {
 			},
 		}
 
-		_, err := tokenManager.GetTokenInfo(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		_, err = tokenManager.GetTokenInfo(ctx, "test prompt")
 		if err == nil {
 			t.Error("Expected error when CountTokens fails, got nil")
 		}
@@ -152,9 +171,22 @@ func TestGetTokenInfo(t *testing.T) {
 			},
 		}
 
-		_, err := tokenManager.GetTokenInfo(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		_, err = tokenManager.GetTokenInfo(ctx, "test prompt")
 		if err != apiErr {
 			t.Errorf("Expected API error to be passed through, got: %v", err)
+		}
+	})
+
+	// Test nil client
+	t.Run("NilClient", func(t *testing.T) {
+		_, err := NewTokenManager(logger, nil)
+		if err == nil {
+			t.Error("Expected error when client is nil, got nil")
 		}
 	})
 }
@@ -162,7 +194,6 @@ func TestGetTokenInfo(t *testing.T) {
 func TestCheckTokenLimit(t *testing.T) {
 	ctx := context.Background()
 	logger := &mockLogger{}
-	tokenManager := NewTokenManager(logger)
 
 	// Test token count within limits
 	t.Run("TokenCountWithinLimits", func(t *testing.T) {
@@ -179,7 +210,12 @@ func TestCheckTokenLimit(t *testing.T) {
 			},
 		}
 
-		err := tokenManager.CheckTokenLimit(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		err = tokenManager.CheckTokenLimit(ctx, "test prompt")
 		if err != nil {
 			t.Errorf("Expected no error for token count within limits, got: %v", err)
 		}
@@ -200,7 +236,12 @@ func TestCheckTokenLimit(t *testing.T) {
 			},
 		}
 
-		err := tokenManager.CheckTokenLimit(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		err = tokenManager.CheckTokenLimit(ctx, "test prompt")
 		if err == nil {
 			t.Error("Expected error for token count exceeding limits, got nil")
 		}
@@ -214,7 +255,12 @@ func TestCheckTokenLimit(t *testing.T) {
 			},
 		}
 
-		err := tokenManager.CheckTokenLimit(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		err = tokenManager.CheckTokenLimit(ctx, "test prompt")
 		if err == nil {
 			t.Error("Expected error when getting model info fails, got nil")
 		}
@@ -235,7 +281,12 @@ func TestCheckTokenLimit(t *testing.T) {
 			},
 		}
 
-		err := tokenManager.CheckTokenLimit(ctx, mockClient, "test prompt")
+		tokenManager, err := NewTokenManager(logger, mockClient)
+		if err != nil {
+			t.Fatalf("Failed to create token manager: %v", err)
+		}
+
+		err = tokenManager.CheckTokenLimit(ctx, "test prompt")
 		if err == nil {
 			t.Error("Expected error when counting tokens fails, got nil")
 		}
@@ -244,7 +295,12 @@ func TestCheckTokenLimit(t *testing.T) {
 
 func TestPromptForConfirmation(t *testing.T) {
 	logger := &mockLogger{}
-	tokenManager := NewTokenManager(logger)
+	mockClient := &gemini.MockClient{}
+
+	tokenManager, err := NewTokenManager(logger, mockClient)
+	if err != nil {
+		t.Fatalf("Failed to create token manager: %v", err)
+	}
 
 	// Test threshold = 0 (disabled)
 	t.Run("ThresholdDisabled", func(t *testing.T) {
