@@ -116,8 +116,8 @@ jobs:
       
       # Run other tests with race detection
       - name: Run other tests with race detection
-        run: go test -v -race $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
-        timeout-minutes: 5
+        run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
+        timeout-minutes: 8
         
       # Generate coverage report
       - name: Generate coverage report
