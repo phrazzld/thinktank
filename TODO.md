@@ -98,7 +98,7 @@
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1
 
-- [ ] **Task Title:** Implement Token-Related Adapter Tests
+- [x] **Task Title:** Implement Token-Related Adapter Tests
   - **Action:** Add tests for `TokenResultAdapter` (verify correct field mapping) and `TokenManagerAdapter` methods (`CheckTokenLimit`, `GetTokenInfo`, `PromptForConfirmation`). Use mocks/fakes for the underlying `TokenManager` to verify argument passing, return value conversion, and delegation.
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1

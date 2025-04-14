@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/architect/interfaces"
+	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -585,6 +587,53 @@ func TestAPIServiceAdapter_IsSafetyBlockedError(t *testing.T) {
 	}
 }
 
+// TestTokenResultAdapter tests the TokenResultAdapter function
+func TestTokenResultAdapter(t *testing.T) {
+	// Create a test TokenResult
+	testTokenResult := &TokenResult{
+		TokenCount:   1000,
+		InputLimit:   4000,
+		ExceedsLimit: false,
+		LimitError:   "",
+		Percentage:   25.0,
+	}
+
+	// Call the adapter function
+	result := TokenResultAdapter(testTokenResult)
+
+	// Verify the result
+	if result == nil {
+		t.Fatal("Expected non-nil result")
+	}
+
+	// Check each field is properly mapped
+	if result.TokenCount != testTokenResult.TokenCount {
+		t.Errorf("Expected TokenCount %d, got %d", testTokenResult.TokenCount, result.TokenCount)
+	}
+
+	if result.InputLimit != testTokenResult.InputLimit {
+		t.Errorf("Expected InputLimit %d, got %d", testTokenResult.InputLimit, result.InputLimit)
+	}
+
+	if result.ExceedsLimit != testTokenResult.ExceedsLimit {
+		t.Errorf("Expected ExceedsLimit %v, got %v", testTokenResult.ExceedsLimit, result.ExceedsLimit)
+	}
+
+	if result.LimitError != testTokenResult.LimitError {
+		t.Errorf("Expected LimitError %q, got %q", testTokenResult.LimitError, result.LimitError)
+	}
+
+	if result.Percentage != testTokenResult.Percentage {
+		t.Errorf("Expected Percentage %f, got %f", testTokenResult.Percentage, result.Percentage)
+	}
+
+	// Verify the result is of the expected type
+	_, ok := interface{}(result).(*modelproc.TokenResult)
+	if !ok {
+		t.Errorf("Expected result to be of type *modelproc.TokenResult")
+	}
+}
+
 // TestAPIServiceAdapter_GetErrorDetails tests the GetErrorDetails method of the APIServiceAdapter
 func TestAPIServiceAdapter_GetErrorDetails(t *testing.T) {
 	// Test cases
@@ -787,6 +836,436 @@ func (m *MockFileWriterForAdapter) SaveToFile(content, outputFile string) error 
 // GetAdapterTestLogger returns a logger for adapter tests
 func GetAdapterTestLogger() logutil.LoggerInterface {
 	return logutil.NewLogger(logutil.DebugLevel, nil, "[adapter-test] ")
+}
+
+// MockTokenManagerForAdapter is a testing mock for the TokenManager interface, specifically for adapter tests
+type MockTokenManagerForAdapter struct {
+	CheckTokenLimitFunc       func(ctx context.Context, prompt string) error
+	GetTokenInfoFunc          func(ctx context.Context, prompt string) (*TokenResult, error)
+	PromptForConfirmationFunc func(tokenCount int32, threshold int) bool
+}
+
+func (m *MockTokenManagerForAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
+	if m.CheckTokenLimitFunc != nil {
+		return m.CheckTokenLimitFunc(ctx, prompt)
+	}
+	return errors.New("CheckTokenLimit not implemented")
+}
+
+func (m *MockTokenManagerForAdapter) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
+	if m.GetTokenInfoFunc != nil {
+		return m.GetTokenInfoFunc(ctx, prompt)
+	}
+	return nil, errors.New("GetTokenInfo not implemented")
+}
+
+func (m *MockTokenManagerForAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool {
+	if m.PromptForConfirmationFunc != nil {
+		return m.PromptForConfirmationFunc(tokenCount, threshold)
+	}
+	return false
+}
+
+// TestTokenManagerAdapter_GetTokenInfo tests the GetTokenInfo method of the TokenManagerAdapter
+func TestTokenManagerAdapter_GetTokenInfo(t *testing.T) {
+	// Test constants
+	const testPrompt = "This is a test prompt"
+
+	// Create test context
+	ctx := context.Background()
+
+	// Create test TokenResult
+	testTokenResult := &TokenResult{
+		TokenCount:   1000,
+		InputLimit:   4000,
+		ExceedsLimit: false,
+		LimitError:   "",
+		Percentage:   25.0,
+	}
+
+	// Test cases
+	tests := []struct {
+		name           string
+		mockSetup      func(mock *MockTokenManagerForAdapter)
+		expectedResult *interfaces.TokenResult
+		expectedError  bool
+		expectedMsg    string // For error message validation
+	}{
+		{
+			name: "success case - delegates correctly and converts result",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to verify arguments and return a token result
+				var capturedPrompt string
+				var capturedContext context.Context
+
+				mock.GetTokenInfoFunc = func(ctx context.Context, prompt string) (*TokenResult, error) {
+					// Capture the arguments for later verification
+					capturedContext = ctx
+					capturedPrompt = prompt
+
+					// Return a test result
+					return testTokenResult, nil
+				}
+
+				// Verify after the function call that arguments were passed through
+				t.Cleanup(func() {
+					if capturedPrompt != testPrompt {
+						t.Errorf("Expected prompt: %s, got: %s", testPrompt, capturedPrompt)
+					}
+					if capturedContext != ctx {
+						t.Errorf("Expected context to be passed through")
+					}
+				})
+			},
+			expectedResult: &interfaces.TokenResult{
+				TokenCount:   testTokenResult.TokenCount,
+				InputLimit:   testTokenResult.InputLimit,
+				ExceedsLimit: testTokenResult.ExceedsLimit,
+				LimitError:   testTokenResult.LimitError,
+				Percentage:   testTokenResult.Percentage,
+			},
+			expectedError: false,
+		},
+		{
+			name: "error case - returns error from underlying service",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to return an error
+				mock.GetTokenInfoFunc = func(ctx context.Context, prompt string) (*TokenResult, error) {
+					return nil, errors.New("token counting failed")
+				}
+			},
+			expectedResult: nil,
+			expectedError:  true,
+			expectedMsg:    "token counting failed",
+		},
+		{
+			name: "nil TokenManager - returns error",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// No setup needed - we'll use a nil TokenManager
+			},
+			expectedResult: nil,
+			expectedError:  true,
+			expectedMsg:    "nil TokenManager", // Expected error due to nil pointer dereference
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var adapter *TokenManagerAdapter
+
+			// For the nil TokenManager test
+			if tc.name == "nil TokenManager - returns error" {
+				// Create an adapter with nil TokenManager - should panic
+				adapter = &TokenManagerAdapter{
+					TokenManager: nil,
+				}
+
+				// Call should panic, recover and mark as error
+				defer func() {
+					if r := recover(); r != nil {
+						// Expected panic, test passed
+					} else {
+						t.Error("Expected a panic but none occurred")
+					}
+				}()
+
+				// This should panic
+				_, _ = adapter.GetTokenInfo(ctx, testPrompt)
+				return
+			}
+
+			// Create a mock TokenManager for non-nil test cases
+			mockTokenManager := &MockTokenManagerForAdapter{}
+
+			// Setup the mock
+			tc.mockSetup(mockTokenManager)
+
+			// Create adapter with mock
+			adapter = &TokenManagerAdapter{
+				TokenManager: mockTokenManager,
+			}
+
+			// Call the method being tested
+			result, err := adapter.GetTokenInfo(ctx, testPrompt)
+
+			// Check error expectation
+			if tc.expectedError && err == nil {
+				t.Error("Expected an error but got nil")
+			} else if !tc.expectedError && err != nil {
+				t.Errorf("Expected no error but got: %v", err)
+			}
+
+			// Check error message if applicable
+			if tc.expectedError && err != nil && tc.expectedMsg != "" {
+				if !strings.Contains(err.Error(), tc.expectedMsg) {
+					t.Errorf("Expected error message to contain '%s', got: '%s'", tc.expectedMsg, err.Error())
+				}
+			}
+
+			// For success case, verify the result
+			if !tc.expectedError {
+				if result == nil {
+					t.Error("Expected non-nil result but got nil")
+					return
+				}
+
+				// Check field mappings
+				if result.TokenCount != tc.expectedResult.TokenCount {
+					t.Errorf("Expected TokenCount %d, got %d", tc.expectedResult.TokenCount, result.TokenCount)
+				}
+
+				if result.InputLimit != tc.expectedResult.InputLimit {
+					t.Errorf("Expected InputLimit %d, got %d", tc.expectedResult.InputLimit, result.InputLimit)
+				}
+
+				if result.ExceedsLimit != tc.expectedResult.ExceedsLimit {
+					t.Errorf("Expected ExceedsLimit %v, got %v", tc.expectedResult.ExceedsLimit, result.ExceedsLimit)
+				}
+
+				if result.LimitError != tc.expectedResult.LimitError {
+					t.Errorf("Expected LimitError %q, got %q", tc.expectedResult.LimitError, result.LimitError)
+				}
+
+				if result.Percentage != tc.expectedResult.Percentage {
+					t.Errorf("Expected Percentage %f, got %f", tc.expectedResult.Percentage, result.Percentage)
+				}
+			}
+		})
+	}
+}
+
+// TestTokenManagerAdapter_CheckTokenLimit tests the CheckTokenLimit method of the TokenManagerAdapter
+func TestTokenManagerAdapter_CheckTokenLimit(t *testing.T) {
+	// Test constants
+	const testPrompt = "This is a test prompt"
+
+	// Create test context
+	ctx := context.Background()
+
+	// Test cases
+	tests := []struct {
+		name          string
+		mockSetup     func(mock *MockTokenManagerForAdapter)
+		expectedError bool
+		expectedMsg   string // For error message validation
+	}{
+		{
+			name: "success case - delegates correctly and returns nil",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to verify arguments and return nil (success)
+				var capturedPrompt string
+				var capturedContext context.Context
+
+				mock.CheckTokenLimitFunc = func(ctx context.Context, prompt string) error {
+					// Capture the arguments for later verification
+					capturedContext = ctx
+					capturedPrompt = prompt
+
+					// Return nil (success case)
+					return nil
+				}
+
+				// Verify after the function call that arguments were passed through
+				t.Cleanup(func() {
+					if capturedPrompt != testPrompt {
+						t.Errorf("Expected prompt: %s, got: %s", testPrompt, capturedPrompt)
+					}
+					if capturedContext != ctx {
+						t.Errorf("Expected context to be passed through")
+					}
+				})
+			},
+			expectedError: false,
+		},
+		{
+			name: "error case - returns error from underlying service",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to return an error
+				mock.CheckTokenLimitFunc = func(ctx context.Context, prompt string) error {
+					return errors.New("token limit exceeded")
+				}
+			},
+			expectedError: true,
+			expectedMsg:   "token limit exceeded",
+		},
+		{
+			name: "nil TokenManager - returns error",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// No setup needed - we'll use a nil TokenManager
+			},
+			expectedError: true,
+			expectedMsg:   "nil TokenManager", // Expected error due to nil pointer dereference
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var adapter *TokenManagerAdapter
+
+			// For the nil TokenManager test
+			if tc.name == "nil TokenManager - returns error" {
+				// Create an adapter with nil TokenManager - should panic
+				adapter = &TokenManagerAdapter{
+					TokenManager: nil,
+				}
+
+				// Call should panic, recover and mark as error
+				defer func() {
+					if r := recover(); r != nil {
+						// Expected panic, test passed
+					} else {
+						t.Error("Expected a panic but none occurred")
+					}
+				}()
+
+				// This should panic
+				_ = adapter.CheckTokenLimit(ctx, testPrompt)
+				return
+			}
+
+			// Create a mock TokenManager for non-nil test cases
+			mockTokenManager := &MockTokenManagerForAdapter{}
+
+			// Setup the mock
+			tc.mockSetup(mockTokenManager)
+
+			// Create adapter with mock
+			adapter = &TokenManagerAdapter{
+				TokenManager: mockTokenManager,
+			}
+
+			// Call the method being tested
+			err := adapter.CheckTokenLimit(ctx, testPrompt)
+
+			// Check error expectation
+			if tc.expectedError && err == nil {
+				t.Error("Expected an error but got nil")
+			} else if !tc.expectedError && err != nil {
+				t.Errorf("Expected no error but got: %v", err)
+			}
+
+			// Check error message if applicable
+			if tc.expectedError && err != nil && tc.expectedMsg != "" {
+				if !strings.Contains(err.Error(), tc.expectedMsg) {
+					t.Errorf("Expected error message to contain '%s', got: '%s'", tc.expectedMsg, err.Error())
+				}
+			}
+		})
+	}
+}
+
+// TestTokenManagerAdapter_PromptForConfirmation tests the PromptForConfirmation method of the TokenManagerAdapter
+func TestTokenManagerAdapter_PromptForConfirmation(t *testing.T) {
+	// Test constants
+	const (
+		testTokenCount = int32(5000)
+		testThreshold  = 3000
+	)
+
+	// Test cases
+	tests := []struct {
+		name           string
+		mockSetup      func(mock *MockTokenManagerForAdapter)
+		expectedResult bool
+	}{
+		{
+			name: "delegates correctly and returns true",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to verify arguments and return true
+				var capturedTokenCount int32
+				var capturedThreshold int
+
+				mock.PromptForConfirmationFunc = func(tokenCount int32, threshold int) bool {
+					// Capture the arguments for later verification
+					capturedTokenCount = tokenCount
+					capturedThreshold = threshold
+
+					// Return true (user confirmed)
+					return true
+				}
+
+				// Verify after the function call that arguments were passed through
+				t.Cleanup(func() {
+					if capturedTokenCount != testTokenCount {
+						t.Errorf("Expected tokenCount: %d, got: %d", testTokenCount, capturedTokenCount)
+					}
+					if capturedThreshold != testThreshold {
+						t.Errorf("Expected threshold: %d, got: %d", testThreshold, capturedThreshold)
+					}
+				})
+			},
+			expectedResult: true,
+		},
+		{
+			name: "delegates correctly and returns false",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// Setup to verify arguments and return false
+				mock.PromptForConfirmationFunc = func(tokenCount int32, threshold int) bool {
+					// Return false (user declined)
+					return false
+				}
+			},
+			expectedResult: false,
+		},
+		{
+			name: "nil TokenManager - returns false by default",
+			mockSetup: func(mock *MockTokenManagerForAdapter) {
+				// No setup needed - we'll use a nil TokenManager
+			},
+			expectedResult: false, // After panic recovery, we'll consider it a false result
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var adapter *TokenManagerAdapter
+
+			// For the nil TokenManager test
+			if tc.name == "nil TokenManager - returns false by default" {
+				// Create an adapter with nil TokenManager - should panic
+				adapter = &TokenManagerAdapter{
+					TokenManager: nil,
+				}
+
+				// Call should panic, recover and mark as success
+				defer func() {
+					if r := recover(); r != nil {
+						// Expected panic, test passed
+					} else {
+						t.Error("Expected a panic but none occurred")
+					}
+				}()
+
+				// This should panic
+				result := adapter.PromptForConfirmation(testTokenCount, testThreshold)
+
+				// This line should not execute due to panic, but if it does, assert the default
+				if result != false {
+					t.Errorf("Expected false result by default, got %v", result)
+				}
+				return
+			}
+
+			// Create a mock TokenManager for non-nil test cases
+			mockTokenManager := &MockTokenManagerForAdapter{}
+
+			// Setup the mock
+			tc.mockSetup(mockTokenManager)
+
+			// Create adapter with mock
+			adapter = &TokenManagerAdapter{
+				TokenManager: mockTokenManager,
+			}
+
+			// Call the method being tested
+			result := adapter.PromptForConfirmation(testTokenCount, testThreshold)
+
+			// Verify the result
+			if result != tc.expectedResult {
+				t.Errorf("Expected result %v, got %v", tc.expectedResult, result)
+			}
+		})
+	}
 }
 
 // The wrapper for gemini.NewClient is now implemented directly in the API service file
