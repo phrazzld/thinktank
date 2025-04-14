@@ -109,7 +109,7 @@
   - **AC Ref:** Plan Section 3.1
 
 ## 4. Improve Config and File Utility Testing
-- [ ] **Task Title:** Extend `config_test.go` for `DefaultConfig`
+- [x] **Task Title:** Extend `config_test.go` for `DefaultConfig`
   - **Action:** Add tests in `internal/config/config_test.go` to verify that `DefaultConfig()` returns a struct with the expected default values for all fields, including nested structures.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 4.1
