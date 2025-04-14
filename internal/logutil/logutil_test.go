@@ -9,6 +9,8 @@ import (
 	"testing"
 )
 
+// Note: osExit is defined in logutil.go
+
 func TestLogLevelString(t *testing.T) {
 	tests := []struct {
 		level    LogLevel
@@ -106,6 +108,43 @@ func TestLoggerAllLevels(t *testing.T) {
 	}
 }
 
+// TestLoggerFatal tests the Fatal method without calling os.Exit
+func TestLoggerFatal(t *testing.T) {
+	// Save original os.Exit function
+	originalOsExit := osExit
+	defer func() { osExit = originalOsExit }()
+
+	// Mock os.Exit to record if it was called and prevent actual exit
+	exitCalled := false
+	osExit = func(code int) {
+		exitCalled = true
+		if code != 1 {
+			t.Errorf("Expected exit code 1, got %d", code)
+		}
+	}
+
+	// Create logger and test Fatal
+	buf := new(bytes.Buffer)
+	logger := NewLogger(DebugLevel, buf, "")
+
+	// Call Fatal
+	logger.Fatal("fatal %s", "message")
+
+	// Check if exit was called
+	if !exitCalled {
+		t.Error("os.Exit was not called by Fatal method")
+	}
+
+	// Check the output
+	output := buf.String()
+	if !strings.Contains(output, "ERROR") {
+		t.Errorf("Expected log output to contain level ERROR, got: %s", output)
+	}
+	if !strings.Contains(output, "fatal message") {
+		t.Errorf("Expected log output to contain message 'fatal message', got: %s", output)
+	}
+}
+
 func TestLoggerPrintFunctions(t *testing.T) {
 	buf := new(bytes.Buffer)
 	logger := NewLogger(DebugLevel, buf, "")
@@ -186,6 +225,47 @@ func TestStdLoggerAdapter(t *testing.T) {
 	adapter.Printf("Format %s", "test")
 	if !strings.Contains(buf.String(), "Format test") {
 		t.Errorf("Printf output incorrect, got: %s", buf.String())
+	}
+}
+
+// TestStdLoggerAdapterFatal tests the Fatal method of StdLoggerAdapter
+func TestStdLoggerAdapterFatal(t *testing.T) {
+	// Save original os.Exit and replace it
+	originalOsExit := osExit
+	defer func() { osExit = originalOsExit }()
+
+	// Mock os.Exit
+	exitCalled := false
+	exitCode := 0
+	osExit = func(code int) {
+		exitCalled = true
+		exitCode = code
+	}
+
+	// Create a buffer and logger
+	buf := new(bytes.Buffer)
+	stdLogger := log.New(buf, "", log.LstdFlags)
+	adapter := NewStdLoggerAdapter(stdLogger)
+
+	// Call Fatal
+	adapter.Fatal("fatal error: %s", "test")
+
+	// Check that os.Exit was called
+	if !exitCalled {
+		t.Error("os.Exit was not called")
+	}
+
+	if exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+
+	// Check the output
+	output := buf.String()
+	if !strings.Contains(output, "[FATAL]") {
+		t.Errorf("Expected log output to contain [FATAL], got: %s", output)
+	}
+	if !strings.Contains(output, "fatal error: test") {
+		t.Errorf("Expected log output to contain 'fatal error: test', got: %s", output)
 	}
 }
 

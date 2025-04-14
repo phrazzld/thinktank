@@ -39,7 +39,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: Current test coverage percentage is determined)
 
-- [ ] **Add tests for logger adapter methods:**
+- [x] **Add tests for logger adapter methods:**
   - **Action:** Implement unit tests for the standard logger adapter methods (Debug, Info, Warn, Error, Fatal) in `internal/logutil/logutil.go` (`StdLoggerAdapter`). Ensure adequate coverage for these methods.
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: `StdLoggerAdapter` methods have sufficient test coverage)
