@@ -23,7 +23,7 @@
   - **AC Ref:** N/A (Implied: CI workflow runs pre-commit checks)
 
 ## Code Quality (CODING_STANDARDS.md)
-- [ ] **Address unused code warnings:**
+- [x] **Address unused code warnings:**
   - **Action:** Run `golangci-lint` and identify all instances of unused code warnings. Remove the unused code or add comments explaining why it needs to be kept (e.g., `//nolint:unused` with justification).
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: `golangci-lint` reports no unused code warnings)

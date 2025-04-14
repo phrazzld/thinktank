@@ -272,7 +272,7 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) erro
 	}
 
 	if tokenInfo.ExceedsLimit {
-		return fmt.Errorf(tokenInfo.LimitError)
+		return fmt.Errorf("%s", tokenInfo.LimitError)
 	}
 
 	return nil
