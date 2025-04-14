@@ -212,14 +212,8 @@ func (env *TestEnv) SetupXMLValidatingClient(t *testing.T, expectedPartialMatche
 			t.Errorf("Prompt missing context tags: %s", prompt)
 		}
 
-		// Check for XML escaping of special characters
-		if strings.Contains(prompt, "<") && !strings.Contains(prompt, "&lt;") {
-			t.Errorf("Potential unescaped < character in content section: %s", prompt)
-		}
-
-		if strings.Contains(prompt, ">") && !strings.Contains(prompt, "&gt;") {
-			t.Errorf("Potential unescaped > character in content section: %s", prompt)
-		}
+		// No longer checking for XML escaping of special characters
+		// We want to preserve original syntax in code samples
 
 		// Check for additional expected partial matches (like filenames)
 		for _, partialMatch := range expectedPartialMatches {

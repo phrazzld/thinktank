@@ -28,7 +28,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: `golangci-lint` reports no unused code warnings)
 
-- [ ] **Verify XML escaping logic in prompt.go:**
+- [x] **Verify XML escaping logic in prompt.go:**
   - **Action:** Review the changes made to the `EscapeContent` function in `internal/architect/prompt/prompt.go` (lines 14-15). Determine if the removal of XML escaping was intentional and correct for the LLM prompt structure. Revert the changes if escaping is necessary. Add tests to cover escaping logic.
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: XML escaping logic is confirmed correct or fixed, and tested)

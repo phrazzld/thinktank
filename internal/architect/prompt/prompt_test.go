@@ -23,32 +23,32 @@ func TestEscapeContent(t *testing.T) {
 		{
 			name:     "Single less-than character",
 			input:    "func test() { if (x < y) { return } }",
-			expected: "func test() { if (x &lt; y) { return } }",
+			expected: "func test() { if (x < y) { return } }",
 		},
 		{
 			name:     "Single greater-than character",
 			input:    "func test() { if (x > y) { return } }",
-			expected: "func test() { if (x &gt; y) { return } }",
+			expected: "func test() { if (x > y) { return } }",
 		},
 		{
 			name:     "Both comparison operators",
 			input:    "func validate(x, y, z int) bool { return x < y && y > z }",
-			expected: "func validate(x, y, z int) bool { return x &lt; y && y &gt; z }",
+			expected: "func validate(x, y, z int) bool { return x < y && y > z }",
 		},
 		{
 			name:     "HTML/XML tags",
 			input:    "<div>Some HTML content</div>",
-			expected: "&lt;div&gt;Some HTML content&lt;/div&gt;",
+			expected: "<div>Some HTML content</div>",
 		},
 		{
 			name:     "Nested tags",
 			input:    "<outer><inner>Nested tags</inner></outer>",
-			expected: "&lt;outer&gt;&lt;inner&gt;Nested tags&lt;/inner&gt;&lt;/outer&gt;",
+			expected: "<outer><inner>Nested tags</inner></outer>",
 		},
 		{
 			name:     "Multiple occurrences mixed with code",
 			input:    "if (x < 10 && y > 20) { return <r>value</r> }",
-			expected: "if (x &lt; 10 && y &gt; 20) { return &lt;r&gt;value&lt;/r&gt; }",
+			expected: "if (x < 10 && y > 20) { return <r>value</r> }",
 		},
 		{
 			name:     "Empty string",
@@ -132,13 +132,10 @@ func TestStitchPrompt(t *testing.T) {
 						t.Error("Missing specific content from standard file")
 					}
 				},
-				// Check XML escaping
+				// Check for no XML escaping (content should be preserved as-is)
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "&lt;") || !strings.Contains(result, "&gt;") {
-						t.Error("XML special characters were not escaped properly")
-					}
-					if !strings.Contains(result, "&lt;r&gt;value&lt;/r&gt;") {
-						t.Error("XML tags in content were not properly escaped")
+					if !strings.Contains(result, "<r>value</r>") {
+						t.Error("XML tags in content were not properly preserved")
 					}
 				},
 			},

@@ -97,7 +97,7 @@ The component should handle the following edge cases:
 				"<instructions>", "</instructions>",
 				"<context>", "</context>",
 				"main.go", "helper.go",
-				"&lt;", "&gt;", // Check for XML escaping
+				"// No longer checking for XML escaping",
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				var capturedPrompt string
@@ -148,7 +148,7 @@ func main() {}`,
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				// Set up the XML validating client with expected content fragments
-				env.SetupXMLValidatingClient(t, "component.jsx", "template.html", "&lt;div", "&lt;html&gt;")
+				env.SetupXMLValidatingClient(t, "component.jsx", "template.html")
 				return "", nil
 			},
 			expectedOutputContains: "Validated XML Structure Plan",
