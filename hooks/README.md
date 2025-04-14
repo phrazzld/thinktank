@@ -1,10 +1,10 @@
 # Git Hooks
 
-This directory contains templates for Git hooks that can be used to enforce quality standards before commits.
+This directory contains documentation for Git hooks used in this project.
 
 ## Pre-commit Hook
 
-The pre-commit hook runs automatically before each commit and performs the following checks:
+We use the [pre-commit](https://pre-commit.com/) framework for managing pre-commit hooks. The pre-commit hook runs automatically before each commit and performs the following checks:
 
 1. **Code formatting**: Formats all Go files using `go fmt`
 2. **Linting**: Runs `golangci-lint` to catch common issues
@@ -14,27 +14,32 @@ The pre-commit hook runs automatically before each commit and performs the follo
 
 ## Installation
 
-To use these hooks, you can either:
+To set up the hooks:
 
-### Option 1: Install directly
+### Prerequisites
 
-```bash
-# From the project root
-cp hooks/pre-commit .git/hooks/
-chmod +x .git/hooks/pre-commit
-```
+1. Install the pre-commit framework:
+   ```bash
+   # Using pip
+   pip install pre-commit
 
-### Option 2: Use symlinks
+   # OR using Homebrew
+   brew install pre-commit
+   ```
 
-```bash
-# From the project root
-ln -sf "$(pwd)/hooks/pre-commit" .git/hooks/pre-commit
-```
+2. Install the hooks:
+   ```bash
+   # From the project root
+   pre-commit install
+   ```
 
-## Requirements
+## Usage
 
-- The pre-commit hook requires `golangci-lint` to be installed.
-- Install with: `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
+- The hooks will run automatically on `git commit`
+- To run all hooks manually:
+  ```bash
+  pre-commit run --all-files
+  ```
 
 ## Skipping Hooks
 
@@ -48,6 +53,6 @@ git commit --no-verify -m "Your message"
 
 If you encounter issues with the hooks:
 
-1. Ensure they are executable: `chmod +x .git/hooks/pre-commit`
-2. Check that all required tools are installed
-3. Try running the commands manually to identify specific errors
+1. Ensure pre-commit is installed: `pre-commit --version`
+2. Check the configuration in `.pre-commit-config.yaml`
+3. Try running individual hooks manually, e.g.: `pre-commit run go-fmt`

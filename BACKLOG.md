@@ -3,7 +3,6 @@
 ## sooner
 
 * switch to pre-commit framework rather than hardcoded manual precommit hook
-* increase github action testing threshold from 30 to 80, and meet it
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 * support arbitrary providers
 ## later
@@ -34,3 +33,7 @@
 * enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
 * support a "modify my instructions" flag that extracts intent from the passed instructions and sends it to a model to rewrite according to best prompt engineering practices before sending your actual request complete with context to your target models
+
+## completed
+
+* increase github action testing threshold from 30 to 80, and meet it

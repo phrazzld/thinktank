@@ -69,7 +69,7 @@ go tool pprof -top "$OUTPUT_DIR/mem.prof" > "$OUTPUT_DIR/mem_top.txt"
 if command -v dot &> /dev/null; then
   echo "Generating CPU profile graph..."
   go tool pprof -png "$OUTPUT_DIR/cpu.prof" > "$OUTPUT_DIR/cpu_graph.png"
-  
+
   echo "Generating memory allocation graph..."
   go tool pprof -png "$OUTPUT_DIR/mem.prof" > "$OUTPUT_DIR/mem_graph.png"
 else

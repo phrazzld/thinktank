@@ -54,77 +54,77 @@
 		<div id="topbar">
 			<div id="nav">
 				<select id="files">
-				
+
 				<option value="file0">github.com/phrazzld/architect/cmd/architect/api.go (100.0%)</option>
-				
+
 				<option value="file1">github.com/phrazzld/architect/cmd/architect/api_test_helper.go (0.0%)</option>
-				
+
 				<option value="file2">github.com/phrazzld/architect/cmd/architect/cli.go (98.8%)</option>
-				
+
 				<option value="file3">github.com/phrazzld/architect/cmd/architect/main.go (0.0%)</option>
-				
+
 				<option value="file4">github.com/phrazzld/architect/cmd/architect/output.go (78.9%)</option>
-				
+
 				<option value="file5">github.com/phrazzld/architect/cmd/architect/token.go (97.4%)</option>
-				
+
 				<option value="file6">github.com/phrazzld/architect/internal/architect/adapters.go (100.0%)</option>
-				
+
 				<option value="file7">github.com/phrazzld/architect/internal/architect/api.go (0.0%)</option>
-				
+
 				<option value="file8">github.com/phrazzld/architect/internal/architect/app.go (74.5%)</option>
-				
+
 				<option value="file9">github.com/phrazzld/architect/internal/architect/context.go (77.0%)</option>
-				
+
 				<option value="file10">github.com/phrazzld/architect/internal/architect/filewriter.go (51.5%)</option>
-				
+
 				<option value="file11">github.com/phrazzld/architect/internal/architect/modelproc/processor.go (64.2%)</option>
-				
+
 				<option value="file12">github.com/phrazzld/architect/internal/architect/orchestrator/orchestrator.go (93.5%)</option>
-				
+
 				<option value="file13">github.com/phrazzld/architect/internal/architect/prompt/prompt.go (100.0%)</option>
-				
+
 				<option value="file14">github.com/phrazzld/architect/internal/architect/token.go (57.4%)</option>
-				
+
 				<option value="file15">github.com/phrazzld/architect/internal/auditlog/logger.go (80.6%)</option>
-				
+
 				<option value="file16">github.com/phrazzld/architect/internal/config/config.go (100.0%)</option>
-				
+
 				<option value="file17">github.com/phrazzld/architect/internal/fileutil/fileutil.go (97.8%)</option>
-				
+
 				<option value="file18">github.com/phrazzld/architect/internal/fileutil/mock_logger.go (24.1%)</option>
-				
+
 				<option value="file19">github.com/phrazzld/architect/internal/gemini/client.go (77.8%)</option>
-				
+
 				<option value="file20">github.com/phrazzld/architect/internal/gemini/errors.go (100.0%)</option>
-				
+
 				<option value="file21">github.com/phrazzld/architect/internal/gemini/gemini_client.go (64.1%)</option>
-				
+
 				<option value="file22">github.com/phrazzld/architect/internal/gemini/mock_client.go (96.2%)</option>
-				
+
 				<option value="file23">github.com/phrazzld/architect/internal/integration/test_helpers.go (36.4%)</option>
-				
+
 				<option value="file24">github.com/phrazzld/architect/internal/integration/test_runner.go (35.3%)</option>
-				
+
 				<option value="file25">github.com/phrazzld/architect/internal/logutil/logutil.go (66.7%)</option>
-				
+
 				<option value="file26">github.com/phrazzld/architect/internal/ratelimit/ratelimit.go (82.4%)</option>
-				
+
 				<option value="file27">github.com/phrazzld/architect/internal/runutil/runutil.go (100.0%)</option>
-				
+
 				<option value="file28">github.com/phrazzld/architect/main.go (0.0%)</option>
-				
+
 				</select>
 			</div>
 			<div id="legend">
 				<span>not tracked</span>
-			
+
 				<span class="cov0">not covered</span>
 				<span class="cov8">covered</span>
-			
+
 			</div>
 		</div>
 		<div id="content">
-		
+
 		<pre class="file" id="file0" style="display: none">// Package architect provides the command-line interface for the architect tool
 package architect
 
@@ -150,7 +150,7 @@ func NewAPIService(logger logutil.LoggerInterface) APIService <span class="cov8"
         return architect.NewAPIService(logger)
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file1" style="display: none">package architect
 
 import (
@@ -194,7 +194,7 @@ func (m *MockClient) Close() error <span class="cov0" title="0">{
         <span class="cov0" title="0">return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file2" style="display: none">// Package architect provides the command-line interface for the architect tool
 package architect
 
@@ -394,7 +394,7 @@ func SetupLogging(config *config.CliConfig) logutil.LoggerInterface <span class=
         return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file3" style="display: none">// Package architect provides the command-line interface for the architect tool
 package architect
 
@@ -464,7 +464,7 @@ func Main() <span class="cov0" title="0">{
         }</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file4" style="display: none">// Package architect provides the command-line interface for the architect tool
 package architect
 
@@ -526,7 +526,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error <span class="
         return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file5" style="display: none">// Package architect provides the command-line interface for the architect tool
 package architect
 
@@ -673,7 +673,7 @@ func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) b
         return response == "y" || response == "yes"</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file6" style="display: none">package architect
 
 import (
@@ -806,7 +806,7 @@ func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error <span c
         return f.FileWriter.SaveToFile(content, outputFile)
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file7" style="display: none">// Package architect contains the core application logic for the architect tool
 package architect
 
@@ -988,7 +988,7 @@ func (s *apiService) GetErrorDetails(err error) string <span class="cov0" title=
         <span class="cov0" title="0">return err.Error()</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file8" style="display: none">// Package architect contains the core application logic for the architect tool
 package architect
 
@@ -1226,7 +1226,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
         return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file9" style="display: none">// Package architect contains the core application logic for the architect tool
 package architect
 
@@ -1539,7 +1539,7 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *Context
         return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file10" style="display: none">// Package architect contains the core application logic for the architect tool.
 // This file implements the FileWriter interface for saving generated content to files,
 // handling file creation, directory resolution, and related audit logging.
@@ -1709,7 +1709,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error <span class="
         return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file11" style="display: none">// Package modelproc provides model processing functionality for the architect tool.
 // It encapsulates the logic for interacting with AI models, managing tokens,
 // writing outputs, and logging operations.
@@ -2351,7 +2351,7 @@ func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error 
         return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file12" style="display: none">// Package orchestrator is responsible for coordinating the core application workflow.
 // It brings together various components like context gathering, API interaction,
 // token management, and output writing to execute the main task defined
@@ -2661,7 +2661,7 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string <span class="cov8"
 // The current design eliminates the need for this adapter by having ModelProcessor create
 // its own TokenManager instances tailored to each specific model, improving encapsulation.
 </pre>
-		
+
 		<pre class="file" id="file13" style="display: none">// Package prompt handles the creation and manipulation of prompts
 // sent to the generative AI models. It provides functions for constructing
 // prompts with context files and proper escaping of content.
@@ -2709,7 +2709,7 @@ func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string 
         return sb.String()</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file14" style="display: none">// Package architect contains the core application logic for the architect tool
 package architect
 
@@ -3009,7 +3009,7 @@ func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) b
         return result</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file15" style="display: none">// Package auditlog provides structured logging for audit purposes
 package auditlog
 
@@ -3130,7 +3130,7 @@ func (l *NoOpAuditLogger) Close() error <span class="cov8" title="1">{
 var _ AuditLogger = (*FileAuditLogger)(nil)
 var _ AuditLogger = (*NoOpAuditLogger)(nil)
 </pre>
-		
+
 		<pre class="file" id="file16" style="display: none">// Package config handles loading and managing application configuration.
 // It defines a canonical set of configuration parameters used throughout
 // the application, consolidating configuration from CLI flags, environment
@@ -3322,7 +3322,7 @@ func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error <sp
         <span class="cov8" title="1">return nil</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file17" style="display: none">// internal/fileutil/fileutil.go
 package fileutil
 
@@ -3650,7 +3650,7 @@ func estimateTokenCount(text string) int <span class="cov8" title="1">{
         <span class="cov8" title="1">return count</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file18" style="display: none">package fileutil
 
 import (
@@ -3855,7 +3855,7 @@ func (m *MockLogger) SetVerbose(verbose bool) <span class="cov8" title="1">{
         m.verboseMode = verbose
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file19" style="display: none">// internal/gemini/client.go
 package gemini
 
@@ -3965,7 +3965,7 @@ func DefaultModelConfig() ModelConfig <span class="cov8" title="1">{
         }
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file20" style="display: none">// Package gemini provides a client for interacting with Google's Gemini API
 package gemini
 
@@ -4229,7 +4229,7 @@ func FormatAPIError(err error, statusCode int) *APIError <span class="cov8" titl
         <span class="cov8" title="1">return apiErr</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file21" style="display: none">// internal/gemini/gemini_client.go
 package gemini
 
@@ -4628,7 +4628,7 @@ func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating <span class=
         <span class="cov8" title="1">return result</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file22" style="display: none">// internal/gemini/mock_client.go
 package gemini
 
@@ -4729,7 +4729,7 @@ func NewMockClient() *MockClient <span class="cov8" title="1">{
         }
 }
 </pre>
-		
+
 		<pre class="file" id="file23" style="display: none">// internal/integration/test_helpers.go
 package integration
 
@@ -5322,7 +5322,7 @@ func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (error, 
         <span class="cov0" title="0">return err, outputPath</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file24" style="display: none">// internal/integration/test_runner.go
 package integration
 
@@ -5412,7 +5412,7 @@ func RunTestWithConfig(
         )
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file25" style="display: none">// internal/logutil/logutil.go
 package logutil
 
@@ -5619,7 +5619,7 @@ func ParseLogLevel(level string) (LogLevel, error) <span class="cov8" title="1">
         }
 }
 </pre>
-		
+
 		<pre class="file" id="file26" style="display: none">// Package ratelimit provides concurrency control and rate limiting functionality
 package ratelimit
 
@@ -5824,7 +5824,7 @@ func max(a, b int) int <span class="cov0" title="0">{
         <span class="cov0" title="0">return b</span>
 }
 </pre>
-		
+
 		<pre class="file" id="file27" style="display: none">// Package runutil provides utilities for generating and managing run names
 package runutil
 
@@ -5883,7 +5883,7 @@ func GenerateRunName() string <span class="cov8" title="1">{
         return adjective + "-" + noun
 }</span>
 </pre>
-		
+
 		<pre class="file" id="file28" style="display: none">// main.go - Simple entry point for architect
 package main
 
@@ -5894,7 +5894,7 @@ func main() <span class="cov0" title="0">{
         architect.Main()
 }</span>
 </pre>
-		
+
 		</div>
 	</body>
 	<script>

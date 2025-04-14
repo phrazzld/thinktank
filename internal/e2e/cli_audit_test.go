@@ -15,7 +15,7 @@ import (
 
 // TestAuditLogging tests the basic functionality of audit logging
 // Simplified from the original to focus on file creation and basic content
-// 
+//
 // Note on E2E Test Verification:
 // These tests use a non-enforcing verification approach that logs rather than fails
 // when expected files aren't created. This is because the mock API environment
@@ -57,7 +57,7 @@ func TestAuditLogging(t *testing.T) {
 	// In a test environment with mock API, we'll just log output file status
 	outputPath := filepath.Join("output", "test-model.md")
 	alternateOutputPath := filepath.Join("output", "gemini-test-model.md")
-	
+
 	if !(env.FileExists(outputPath) || env.FileExists(alternateOutputPath)) {
 		t.Logf("Note: Output file was not created - this is expected with mock API issues")
 	} else {

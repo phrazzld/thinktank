@@ -165,7 +165,7 @@ if [ "$1" = "-C" ] && [ "$3" = "rev-parse" ] && [ "$4" = "--is-inside-work-tree"
 elif [ "$1" = "-C" ] && [ "$3" = "check-ignore" ] && [ "$4" = "-q" ]; then
   # Check if the file should be ignored
   filename="$5"
-  
+
   # Files to ignore
   if [ "$filename" = "ignored.txt" ] || [ "$filename" = "build.log" ] || [ "$filename" = "node_modules" ]; then
     exit 0  # Exit code 0: file IS ignored

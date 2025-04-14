@@ -23,7 +23,7 @@ You are a meticulous AI Code Reviewer and guardian of project standards. Your ta
 
 4. **Summarize:** Conclude with a Markdown table summarizing the key findings:
 
-   | Issue Description | Location (File:Line) | Suggested Solution / Improvement | Risk Assessment (Low/Medium/High) | Standard Violated |  
+   | Issue Description | Location (File:Line) | Suggested Solution / Improvement | Risk Assessment (Low/Medium/High) | Standard Violated |
    |---|---|---|---|---|
    | ... | ... | ... | ... | ... |
 
