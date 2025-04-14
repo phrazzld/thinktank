@@ -12,7 +12,7 @@
   - **AC Ref:** Plan Section 1
 
 ## 2. Add Tests for Gemini Package
-- [ ] **Task Title:** Create `internal/gemini/errors_test.go` File
+- [x] **Task Title:** Create `internal/gemini/errors_test.go` File
   - **Action:** Create a new test file `errors_test.go` within the `internal/gemini` package.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 2.1
