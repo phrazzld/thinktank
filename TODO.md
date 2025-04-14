@@ -124,7 +124,7 @@
   - **Depends On:** Implement `ValidateConfig` Tests
   - **AC Ref:** Plan Section 4.1
 
-- [ ] **Task Title:** Enhance `fileutil` Tests for `shouldProcess`
+- [x] **Task Title:** Enhance `fileutil` Tests for `shouldProcess`
   - **Action:** Add more comprehensive tests in `internal/fileutil/fileutil_test.go` for the `shouldProcess` function. Test various combinations of file paths, extensions, include patterns, exclude patterns, and exclude names to ensure correct filtering behavior.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 4.2
