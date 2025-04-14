@@ -129,7 +129,7 @@
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 4.2
 
-- [ ] **Task Title:** Enhance `fileutil` Tests for `isGitIgnored`
+- [x] **Task Title:** Enhance `fileutil` Tests for `isGitIgnored`
   - **Action:** Add tests in `internal/fileutil/fileutil_test.go` for the `isGitIgnored` function. Set up mock `.gitignore` files with different patterns and test various file paths to ensure correct identification of ignored files.
   - **Depends On:** Enhance `fileutil` Tests for `shouldProcess`
   - **AC Ref:** Plan Section 4.2
