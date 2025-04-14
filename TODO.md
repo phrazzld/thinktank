@@ -17,7 +17,7 @@
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 2.1
 
-- [ ] **Task Title:** Implement Basic Error Tests
+- [x] **Task Title:** Implement Basic Error Tests
   - **Action:** Add unit tests for `APIError.Error()`, `APIError.Unwrap()`, `APIError.UserFacingError()`, and `APIError.DebugInfo()` to verify they return the expected outputs.
   - **Depends On:** Create `internal/gemini/errors_test.go` File
   - **AC Ref:** Plan Section 2.1
