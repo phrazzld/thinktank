@@ -6,7 +6,7 @@
   - **Depends On:** None
   - **AC Ref:** Plan Section 1
 
-- [ ] **Task Title:** Identify Specific Low-Coverage Functions
+- [x] **Task Title:** Identify Specific Low-Coverage Functions
   - **Action:** Review the generated coverage reports (function and HTML) to pinpoint specific functions and code paths with low or zero coverage, especially within `internal/gemini`, `internal/architect/adapters.go`, `internal/config`, `internal/fileutil`, and `cmd/architect`. Document these areas.
   - **Depends On:** Run Detailed Coverage Analysis
   - **AC Ref:** Plan Section 1
