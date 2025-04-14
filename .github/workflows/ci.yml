@@ -72,7 +72,9 @@ jobs:
           # CAUSE: The CI was failing with error "you are using a configuration file for golangci-lint v2 with golangci-lint v1"
           # FIX: Use the latest v2.x version which is compatible with our v2 configuration format
           version: v2.1.1
+          # BUGFIX: Removed --out-format flag which isn't supported in v2.1.1
           args: --timeout=5m
+          # The action automatically uses the appropriate output format for GitHub Actions
 
       # Install and run pre-commit checks
       - name: Install pre-commit
