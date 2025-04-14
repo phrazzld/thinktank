@@ -310,29 +310,6 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
-// TestImplementation provides a simple implementation for testing
-type TestImplementation struct{}
-
-func (t *TestImplementation) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	return nil, errors.New("test implementation")
-}
-
-func (t *TestImplementation) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return "", errors.New("test implementation")
-}
-
-func (t *TestImplementation) IsEmptyResponseError(err error) bool {
-	return false
-}
-
-func (t *TestImplementation) IsSafetyBlockedError(err error) bool {
-	return false
-}
-
-func (t *TestImplementation) GetErrorDetails(err error) string {
-	return "test implementation"
-}
-
 // TokenManagerAdapter is a deprecated adapter that was used to adapt interfaces.TokenManager
 // to modelproc.TokenManager. It is no longer needed since TokenManagers are now created directly
 // in the ModelProcessor.Process method with model-specific clients.

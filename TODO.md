@@ -6,7 +6,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: `setup.sh` verifies pre-commit installation)
 
-- [ ] **Remove TestImplementation struct from orchestrator.go:**
+- [x] **Remove TestImplementation struct from orchestrator.go:**
   - **Action:** Delete the `TestImplementation` struct and its associated methods (lines 303-319) from `internal/architect/orchestrator/orchestrator.go` as it appears to be leftover test code.
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: Test code is removed from production file)
