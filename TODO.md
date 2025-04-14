@@ -183,17 +183,17 @@
   - **AC Ref:** Plan Section 7
 
 ## 8. Test File Refactoring
-- [ ] **Task Title:** Refactor `adapters_test.go` for Improved Organization
+- [x] **Task Title:** Refactor `adapters_test.go` for Improved Organization
   - **Action:** Break down the large `internal/architect/adapters_test.go` (1764 lines) into multiple smaller test files, each focusing on a specific adapter group or functionality. Create new files like `api_adapter_test.go`, `token_adapter_test.go`, `context_adapter_test.go`.
   - **Depends On:** None
   - **Expected Result:** Smaller, more maintainable test files with clear focus on specific adapter functionality.
 
-- [ ] **Task Title:** Refactor `orchestrator_test.go` for Improved Readability
+- [x] **Task Title:** Refactor `orchestrator_test.go` for Improved Readability
   - **Action:** Break down the large `internal/architect/orchestrator/orchestrator_test.go` (1612 lines) into multiple smaller test files, each focusing on specific orchestrator methods or behaviors. Create new files like `orchestrator_init_test.go`, `orchestrator_process_test.go`, `orchestrator_error_test.go`.
   - **Depends On:** None
   - **Expected Result:** Improved test organization with better separation of concerns.
 
-- [ ] **Task Title:** Refactor `fileutil_test.go` for Better Test Structure
+- [x] **Task Title:** Refactor `fileutil_test.go` for Better Test Structure
   - **Action:** Refactor `internal/fileutil/fileutil_test.go` (1603 lines) by grouping related tests into separate files based on functionality, such as `path_handling_test.go`, `filtering_test.go`, `git_operations_test.go`.
   - **Depends On:** None
   - **Expected Result:** Smaller, more focused test files with better organization.

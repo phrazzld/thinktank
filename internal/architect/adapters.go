@@ -36,6 +36,9 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 
 // TokenResultAdapter adapts TokenResult to modelproc.TokenResult
 func TokenResultAdapter(tr *TokenResult) *modelproc.TokenResult {
+	if tr == nil {
+		return nil
+	}
 	return &modelproc.TokenResult{
 		TokenCount:   tr.TokenCount,
 		InputLimit:   tr.InputLimit,
