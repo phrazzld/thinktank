@@ -5,13 +5,15 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/auditlog"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -39,8 +41,9 @@ type TestEnv struct {
 	AuditLogger auditlog.AuditLogger
 
 	// Mock standard input for simulating user inputs
-	MockStdin *os.File
-	OrigStdin *os.File
+	stdinReader *os.File // The read end of the pipe to use as stdin
+	stdinWriter *os.File // The write end of the pipe to simulate user input
+	OrigStdin   *os.File
 
 	// Cleanup function to run after test
 	Cleanup func()
@@ -62,10 +65,12 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	origStdout := os.Stdout
 	origStderr := os.Stderr
 
-	// Create pipes for stdin simulation
-	mockStdin, err := os.CreateTemp("", "mock-stdin-*")
+	// Create a pipe for stdin simulation (instead of a temp file)
+	// r is the read end (which will be used as stdin)
+	// w is the write end (which we'll use to simulate user input)
+	r, w, err := os.Pipe()
 	if err != nil {
-		t.Fatalf("Failed to create mock stdin file: %v", err)
+		t.Fatalf("Failed to create pipe for stdin simulation: %v", err)
 	}
 	origStdin := os.Stdin
 
@@ -73,6 +78,7 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	mockClient := gemini.NewMockClient()
 
 	// Create a logger that writes to the stderr buffer
+	// StderrBuffer is passed explicitly since we no longer rely on global redirection
 	logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ")
 
 	// Create a no-op audit logger for tests
@@ -83,14 +89,12 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		// Remove test directory and all contents
 		os.RemoveAll(testDir)
 
-		// Restore original stdout/stderr/stdin
-		os.Stdout = origStdout
-		os.Stderr = origStderr
+		// Restore original stdin (stdout/stderr are no longer redirected globally)
 		os.Stdin = origStdin
 
-		// Close and remove mock stdin file
-		mockStdin.Close()
-		os.Remove(mockStdin.Name())
+		// Close pipe file descriptors
+		r.Close()
+		w.Close()
 	}
 
 	return &TestEnv{
@@ -102,46 +106,38 @@ func NewTestEnv(t *testing.T) *TestEnv {
 		MockClient:   mockClient,
 		Logger:       logger,
 		AuditLogger:  auditLogger,
-		MockStdin:    mockStdin,
+		stdinReader:  r,
+		stdinWriter:  w,
 		OrigStdin:    origStdin,
 		Cleanup:      cleanup,
 	}
 }
 
-// Setup redirects stdout/stderr and prepares the environment
+// Setup prepares the environment
+// After refactoring, this function redirects stdin to our pipe reader
+// StdoutBuffer and StderrBuffer should be passed explicitly where needed
 func (env *TestEnv) Setup() {
-	// Redirect stdout/stderr to our buffers
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	go func() {
-		if _, err := io.Copy(env.StdoutBuffer, r); err != nil {
-			panic(fmt.Sprintf("Failed to copy stdout: %v", err))
-		}
-	}()
-
-	r2, w2, _ := os.Pipe()
-	os.Stderr = w2
-
-	go func() {
-		if _, err := io.Copy(env.StderrBuffer, r2); err != nil {
-			panic(fmt.Sprintf("Failed to copy stderr: %v", err))
-		}
-	}()
-
-	// Set stdin to our mock
-	os.Stdin = env.MockStdin
+	// Set stdin to our pipe reader
+	os.Stdin = env.stdinReader
 }
 
-// SimulateUserInput writes data to mock stdin to simulate user input
+// GetBufferedLogger returns a logger that writes to the test environment's stderr buffer
+// Use this when you need a fresh logger that writes to the environment's buffer
+func (env *TestEnv) GetBufferedLogger(level logutil.LogLevel, prefix string) logutil.LoggerInterface {
+	return logutil.NewLogger(level, env.StderrBuffer, prefix)
+}
+
+// SimulateUserInput writes data to the stdin pipe writer to simulate user input
 func (env *TestEnv) SimulateUserInput(input string) {
-	_, err := env.MockStdin.WriteString(input)
-	if err != nil {
-		panic(fmt.Sprintf("Failed to write to mock stdin: %v", err))
+	// Write the input to the pipe writer
+	// Ensure the input ends with a newline for proper line reading
+	if !strings.HasSuffix(input, "\n") {
+		input += "\n"
 	}
-	_, err = env.MockStdin.Seek(0, 0) // Rewind to start
+
+	_, err := env.stdinWriter.WriteString(input)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to seek in mock stdin: %v", err))
+		panic(fmt.Sprintf("Failed to write to stdin pipe: %v", err))
 	}
 }
 
@@ -272,4 +268,324 @@ func (env *TestEnv) CreateInstructionsFile(t *testing.T, content string, options
 
 	// Create the instruction file
 	return env.CreateTestFile(t, relativePath, content)
+}
+
+// TimeInterval represents a start and end time for measuring concurrent execution
+type TimeInterval struct {
+	Start time.Time
+	End   time.Time
+}
+
+// areIntervalsConcurrent checks if a set of time intervals overlap significantly,
+// indicating concurrent execution. Returns true if at least half of the intervals
+// overlap with at least one other interval.
+func areIntervalsConcurrent(intervals []TimeInterval) bool {
+	if len(intervals) < 2 {
+		return false
+	}
+
+	// Count overlapping intervals
+	overlappingIntervals := 0
+
+	for i := 0; i < len(intervals); i++ {
+		hasOverlap := false
+		for j := 0; j < len(intervals); j++ {
+			if i == j {
+				continue
+			}
+
+			// Check if intervals overlap
+			if (intervals[i].Start.Before(intervals[j].End) || intervals[i].Start.Equal(intervals[j].End)) &&
+				(intervals[j].Start.Before(intervals[i].End) || intervals[j].Start.Equal(intervals[i].End)) {
+				hasOverlap = true
+				break
+			}
+		}
+
+		if hasOverlap {
+			overlappingIntervals++
+		}
+	}
+
+	// Require that at least half of the intervals have overlaps
+	return overlappingIntervals >= len(intervals)/2
+}
+
+// ------------------------------------------------------------------------
+// Common Helper Functions for Integration Tests
+// ------------------------------------------------------------------------
+
+// Note: mockIntAPIService is defined in test_runner.go
+// We use it here directly to avoid duplication
+
+// CreateGoSourceFile creates a Go source file with customizable content
+// It provides a simple way to create standard Go files with default content
+// which can be overridden by specifying content.
+func (env *TestEnv) CreateGoSourceFile(t *testing.T, relativePath string, content ...string) string {
+	t.Helper()
+
+	// Default content if none provided
+	fileContent := `package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("Hello, world!")
+}
+`
+	// Use provided content if specified
+	if len(content) > 0 && content[0] != "" {
+		fileContent = content[0]
+	}
+
+	return env.CreateTestFile(t, relativePath, fileContent)
+}
+
+// CreateStandardConfig creates a standard test configuration with common settings
+// It returns a config.CliConfig with defaults that can be customized through parameters
+func (env *TestEnv) CreateStandardConfig(t *testing.T, opts ...ConfigOption) *config.CliConfig {
+	t.Helper()
+
+	// Create a task file with default content
+	instructionsContent := "Implement a new feature to multiply two numbers"
+	instructionsFile := env.CreateInstructionsFile(t, instructionsContent)
+
+	// Default model name
+	modelName := "test-model"
+
+	// Default output directory
+	outputDir := filepath.Join(env.TestDir, "output")
+
+	// Create the default config
+	cfg := &config.CliConfig{
+		InstructionsFile: instructionsFile,
+		OutputDir:        outputDir,
+		ModelNames:       []string{modelName},
+		APIKey:           "test-api-key",
+		Paths:            []string{env.TestDir + "/src"},
+		LogLevel:         logutil.InfoLevel,
+	}
+
+	// Apply any custom options
+	for _, opt := range opts {
+		opt(cfg)
+	}
+
+	return cfg
+}
+
+// ConfigOption defines a function type for customizing config
+type ConfigOption func(*config.CliConfig)
+
+// WithDryRun sets the dry run option
+func WithDryRun(dryRun bool) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.DryRun = dryRun
+	}
+}
+
+// WithInstructionsContent sets custom instructions content and creates the file
+func (env *TestEnv) WithInstructionsContent(t *testing.T, content string) ConfigOption {
+	t.Helper()
+	instructionsFile := env.CreateInstructionsFile(t, content)
+	return func(c *config.CliConfig) {
+		c.InstructionsFile = instructionsFile
+	}
+}
+
+// WithModelNames sets the model names
+func WithModelNames(names ...string) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.ModelNames = names
+	}
+}
+
+// WithIncludeFilter sets the include filter
+func WithIncludeFilter(include string) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.Include = include
+	}
+}
+
+// WithExcludeFilter sets the exclude filter
+func WithExcludeFilter(exclude string) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.Exclude = exclude
+	}
+}
+
+// WithConfirmTokens sets the confirm tokens threshold
+func WithConfirmTokens(threshold int) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.ConfirmTokens = threshold
+	}
+}
+
+// WithLogLevel sets the log level
+func WithLogLevel(level logutil.LogLevel) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.LogLevel = level
+	}
+}
+
+// WithAuditLogFile sets the audit log file
+func WithAuditLogFile(file string) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.AuditLogFile = file
+	}
+}
+
+// WithPaths sets the paths to analyze
+func WithPaths(paths ...string) ConfigOption {
+	return func(c *config.CliConfig) {
+		c.Paths = paths
+	}
+}
+
+// SetupErrorResponse configures the mock API client to return an error
+// This simplifies testing error handling scenarios
+func (env *TestEnv) SetupErrorResponse(message string, statusCode int, suggestion string) {
+	apiError := &gemini.APIError{
+		Message:    message,
+		StatusCode: statusCode,
+		Suggestion: suggestion,
+	}
+
+	// Configure the mock client to return the error for GenerateContent
+	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		return nil, apiError
+	}
+}
+
+// SetupTokenLimitExceeded configures the mock client to simulate a token limit exceeded scenario
+func (env *TestEnv) SetupTokenLimitExceeded(tokenCount int, modelLimit int) {
+	// Configure the token count response
+	env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+		return &gemini.TokenCount{Total: int32(tokenCount)}, nil
+	}
+
+	// Configure the model info with a lower limit
+	env.MockClient.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) {
+		return &gemini.ModelInfo{
+			Name:             "test-model",
+			InputTokenLimit:  int32(modelLimit),
+			OutputTokenLimit: int32(8192),
+		}, nil
+	}
+}
+
+// ExecuteArchitectWithConfig runs architect.Execute with the given config and verifies output
+// Returns the error from Execute so tests can further examine it
+func (env *TestEnv) ExecuteArchitectWithConfig(t *testing.T, ctx context.Context, cfg *config.CliConfig) error {
+	t.Helper()
+
+	// Create a mock API service
+	mockApiService := &mockIntAPIService{
+		logger:     env.Logger,
+		mockClient: env.MockClient,
+	}
+
+	// Run architect.Execute with the configured parameters
+	return architect.Execute(
+		ctx,
+		cfg,
+		env.Logger,
+		env.AuditLogger,
+		mockApiService,
+	)
+}
+
+// VerifyOutputFile checks if an output file exists and contains expected content
+func (env *TestEnv) VerifyOutputFile(t *testing.T, relativePath, expectedContent string) bool {
+	t.Helper()
+
+	// Full path to the file
+	fullPath := filepath.Join(env.TestDir, relativePath)
+
+	// Check if file exists
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		t.Errorf("Output file was not created at %s", fullPath)
+		return false
+	}
+
+	// Read the content
+	content, err := os.ReadFile(fullPath)
+	if err != nil {
+		t.Fatalf("Failed to read output file: %v", err)
+		return false
+	}
+
+	// Check content
+	if !strings.Contains(string(content), expectedContent) {
+		t.Errorf("Output file does not contain expected content %q", expectedContent)
+		return false
+	}
+
+	return true
+}
+
+// VerifyOutputFileNotExists checks that an output file does not exist
+func (env *TestEnv) VerifyOutputFileNotExists(t *testing.T, relativePath string) bool {
+	t.Helper()
+
+	// Full path to the file
+	fullPath := filepath.Join(env.TestDir, relativePath)
+
+	// Check if file exists
+	if _, err := os.Stat(fullPath); !os.IsNotExist(err) {
+		t.Errorf("Output file was created when it should not have been: %s", fullPath)
+		return false
+	}
+
+	return true
+}
+
+// SetupStandardTestFiles creates a standard set of test files in the /src directory
+// Returns the path to the created directory
+func (env *TestEnv) SetupStandardTestFiles(t *testing.T) string {
+	t.Helper()
+
+	// Create source directory
+	srcDir := env.CreateTestDirectory(t, "src")
+
+	// Create main.go
+	env.CreateGoSourceFile(t, "src/main.go", "")
+
+	// Create utils.go
+	env.CreateTestFile(t, "src/utils.go", `package main
+
+func add(a, b int) int {
+	return a + b
+}`)
+
+	return srcDir
+}
+
+// RunStandardTest runs a standard test with configurable options
+// This encapsulates the common pattern of setting up a test environment,
+// configuring it, and running architect.Execute
+func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (error, string) {
+	t.Helper()
+
+	// Set up the mock client with standard responses
+	env.SetupMockGeminiClient()
+
+	// Create standard files
+	env.SetupStandardTestFiles(t)
+
+	// Create config with the provided options
+	cfg := env.CreateStandardConfig(t, opts...)
+
+	// Run architect.Execute
+	ctx := context.Background()
+	err := env.ExecuteArchitectWithConfig(t, ctx, cfg)
+
+	// Calculate the expected output file path
+	var outputPath string
+	if len(cfg.ModelNames) > 0 {
+		modelName := cfg.ModelNames[0]
+		outputPath = filepath.Join("output", modelName+".md")
+	}
+
+	return err, outputPath
 }

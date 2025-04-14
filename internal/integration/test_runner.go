@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/phrazzld/architect/internal/architect"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -18,8 +19,8 @@ type mockIntAPIService struct {
 }
 
 // InitClient returns the mock client instead of creating a real one
-func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName string) (gemini.Client, error) {
-	// Always return the mock client, ignoring the API key and model name
+func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	// Always return the mock client, ignoring the API key, model name, and API endpoint
 	return s.mockClient, nil
 }
 
@@ -67,21 +68,21 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 // RunTestWithConfig runs the architect application with the provided test config and environment
 func RunTestWithConfig(
 	ctx context.Context,
-	testConfig *architect.CliConfig,
+	testConfig *config.CliConfig,
 	env *TestEnv,
 ) error {
-	// Create a mock API service that uses the test environment's mock client
-	mockAPIService := &mockIntAPIService{
+	// Create a mock API service directly without modifying any global variables
+	mockApiService := &mockIntAPIService{
 		logger:     env.Logger,
 		mockClient: env.MockClient,
 	}
 
-	// Run the architect application using the RunInternal function directly from internal/architect
-	return architect.RunInternal(
+	// Run the architect application using Execute with the mock API service
+	return architect.Execute(
 		ctx,
 		testConfig,
 		env.Logger,
-		mockAPIService,
 		env.AuditLogger,
+		mockApiService,
 	)
 }

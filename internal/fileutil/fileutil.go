@@ -3,7 +3,6 @@ package fileutil
 
 import (
 	"bytes"
-	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -12,7 +11,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -221,7 +219,8 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 
 	// If all checks pass, process it
 	config.processedFiles++
-	config.Logger.Printf("Verbose: Processing file (%d/%d): %s\n", config.processedFiles, config.totalFiles, path)
+	config.Logger.Printf("Verbose: Processing file (%d/%d): %s (size: %d bytes)\n",
+		config.processedFiles, config.totalFiles, path, len(content))
 
 	// If a file collector is set, call it
 	if config.fileCollector != nil {
@@ -302,37 +301,6 @@ func CalculateStatistics(content string) (charCount, lineCount, tokenCount int) 
 	charCount = len(content)
 	lineCount = strings.Count(content, "\n") + 1
 	tokenCount = estimateTokenCount(content) // Fallback estimation
-	return charCount, lineCount, tokenCount
-}
-
-// CalculateStatisticsWithTokenCounting calculates accurate statistics using Gemini's token counter.
-func CalculateStatisticsWithTokenCounting(ctx context.Context, geminiClient gemini.Client, content string, logger logutil.LoggerInterface) (charCount, lineCount, tokenCount int) {
-	charCount = len(content)
-	lineCount = strings.Count(content, "\n") + 1
-
-	// Use the Gemini API for accurate token counting
-	if geminiClient != nil {
-		tokenResult, err := geminiClient.CountTokens(ctx, content)
-		if err != nil {
-			// Log the error and fall back to estimation
-			if logger != nil {
-				logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
-			}
-			tokenCount = estimateTokenCount(content)
-		} else {
-			tokenCount = int(tokenResult.Total)
-			if logger != nil {
-				logger.Debug("Accurate token count: %d tokens", tokenCount)
-			}
-		}
-	} else {
-		// Fall back to estimation if no client provided
-		tokenCount = estimateTokenCount(content)
-		if logger != nil {
-			logger.Debug("Using estimated token count: %d tokens", tokenCount)
-		}
-	}
-
 	return charCount, lineCount, tokenCount
 }
 

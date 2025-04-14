@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -86,9 +87,10 @@ func (l LogLevel) String() string {
 
 // Logger provides structured logging with levels
 type Logger struct {
-	level  LogLevel  // Current log level
-	writer io.Writer // Where to write logs (typically os.Stderr)
-	prefix string    // Prefix for all log messages
+	mu     sync.Mutex // Mutex to protect concurrent access
+	level  LogLevel   // Current log level
+	writer io.Writer  // Where to write logs (typically os.Stderr)
+	prefix string     // Prefix for all log messages
 }
 
 // Ensure Logger implements LoggerInterface
@@ -118,6 +120,9 @@ func (l *Logger) formatMessage(level LogLevel, format string, args ...interface{
 
 // log logs a message at the specified level if it meets the threshold
 func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	if level < l.level {
 		return
 	}
@@ -154,11 +159,15 @@ func (l *Logger) Fatal(format string, args ...interface{}) {
 
 // SetLevel changes the current log level
 func (l *Logger) SetLevel(level LogLevel) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.level = level
 }
 
 // SetPrefix changes the prefix used in log messages
 func (l *Logger) SetPrefix(prefix string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.prefix = prefix
 }
 

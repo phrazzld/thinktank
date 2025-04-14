@@ -12,490 +12,650 @@ import (
 
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/auditlog"
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
-// TestBasicPlanGeneration tests the basic workflow of the application
-func TestBasicPlanGeneration(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+// createMockAPIService creates a mock API service from a TestEnv
+func createMockAPIService(env *TestEnv) *mockIntAPIService {
+	return &mockIntAPIService{
+		logger:     env.Logger,
+		mockClient: env.MockClient,
+	}
+}
 
-	// Set up the mock client
-	env.SetupMockGeminiClient()
+// TestBasicExecutionFlows tests various basic execution flows of the application
+// using a table-driven approach to reduce repetitive test code.
+func TestBasicExecutionFlows(t *testing.T) {
+	// Define the test case struct for basic execution test scenarios
+	type basicExecutionTestCase struct {
+		name                string
+		instructionsContent string
+		srcFiles            map[string]string
+		modelName           string
+		expectedContent     string
+	}
 
-	// Create some test files
-	env.CreateTestFile(t, "src/main.go", `package main
+	// Define test cases based on the original individual tests
+	tests := []basicExecutionTestCase{
+		{
+			name:                "Basic Plan Generation",
+			instructionsContent: "Implement a new feature to multiply two numbers",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
 import "fmt"
 
 func main() {
 	fmt.Println("Hello, world!")
-}`)
-
-	env.CreateTestFile(t, "src/utils.go", `package main
+}`,
+				"utils.go": `package main
 
 func add(a, b int) int {
 	return a + b
-}`)
-
-	// Create an instructions file (previously task file)
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
-
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration with the new InstructionsFile field
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
-
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
-
-	// Check that the output file exists
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
-
-	// Verify content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	// Check that content includes expected text (from our mock response)
-	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
-	}
-}
-
-// TestDryRunMode tests the dry run mode of the application
-func TestDryRunMode(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
-
-	// Set up the mock client
-	env.SetupMockGeminiClient()
-
-	// Create some test files
-	env.CreateTestFile(t, "src/main.go", `package main
+}`,
+			},
+			modelName:       "test-model",
+			expectedContent: "Test Generated Plan",
+		},
+		{
+			name:                "Instructions File Input",
+			instructionsContent: "Implement a new feature to multiply two numbers",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
 import "fmt"
 
 func main() {
 	fmt.Println("Hello, world!")
-}`)
+}`,
+			},
+			modelName:       "test-model",
+			expectedContent: "Test Generated Plan",
+		},
+		{
+			name:                "Task Execution",
+			instructionsContent: "Implement a new feature",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
-	// Create an instructions file (optional for dry run, but including it for completeness)
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
-
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration with dry run enabled
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		DryRun:           true,
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
+func main() {}`,
+			},
+			modelName:       "test-model",
+			expectedContent: "Test Generated Plan",
+		},
 	}
 
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
 
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
+			// Set up the mock client with default responses
+			env.SetupMockGeminiClient()
 
-	// Check that the output file was NOT created in dry run mode
-	if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
-		t.Errorf("Output file was created in dry run mode at %s", outputFile)
+			// Create source files from the map
+			for filename, content := range tc.srcFiles {
+				env.CreateTestFile(t, "src/"+filename, content)
+			}
+
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
+
+			// Set up the output directory and model-specific output file path
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, tc.modelName+".md")
+
+			// Create a test configuration
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{tc.modelName},
+				APIKey:           "test-api-key",
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
+
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
+
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err := architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
+
+			// Verify execution succeeded
+			if err != nil {
+				t.Fatalf("architect.Execute failed: %v", err)
+			}
+
+			// Check that the model-specific output file exists
+			if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+				t.Errorf("Model-specific output file was not created at %s", outputFile)
+			}
+
+			// Verify content
+			content, err := os.ReadFile(outputFile)
+			if err != nil {
+				t.Fatalf("Failed to read model-specific output file: %v", err)
+			}
+
+			// Check that content includes expected text
+			if !strings.Contains(string(content), tc.expectedContent) {
+				t.Errorf("Model-specific output file does not contain expected content: %s", tc.expectedContent)
+			}
+		})
 	}
 }
 
-// TestInstructionsFileInput tests using an instructions file
-func TestInstructionsFileInput(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+// TestModeVariations tests different execution modes of the application
+// using a table-driven approach to reduce repetitive test code.
+func TestModeVariations(t *testing.T) {
+	// Define the test case struct for mode variation test scenarios
+	type modeTestCase struct {
+		name                string
+		instructionsContent string
+		srcFiles            map[string]string
+		modelName           string
+		dryRun              bool
+		outputShouldExist   bool
+		expectedContent     string
+	}
 
-	// Set up the mock client
-	env.SetupMockGeminiClient()
-
-	// Create some test files
-	env.CreateTestFile(t, "src/main.go", `package main
+	// Define test cases based on the original tests
+	tests := []modeTestCase{
+		{
+			name:                "Dry Run Mode",
+			instructionsContent: "Test instructions",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
 import "fmt"
 
 func main() {
 	fmt.Println("Hello, world!")
-}`)
-
-	// Create a task file with special content for testing
-	taskContent := "Implement a new feature to multiply two numbers"
-	instructionsFile := env.CreateTestFile(t, "instructions.md", taskContent)
-
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration focusing on task file input
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
+}`,
+			},
+			modelName:         "test-model",
+			dryRun:            true,
+			outputShouldExist: false,
+			expectedContent:   "", // Not needed for dry run
+		},
+		// Add more mode variations here if needed
 	}
 
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
 
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
+			// Set up the mock client with default responses
+			env.SetupMockGeminiClient()
 
-	// Check that the output file exists
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
+			// Create source files from the map
+			for filename, content := range tc.srcFiles {
+				env.CreateTestFile(t, "src/"+filename, content)
+			}
 
-	// Read the content to verify it worked
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-	// Check that content was generated properly
-	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
-	}
-}
+			// Set up the output directory and model-specific output file path
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, tc.modelName+".md")
 
-// TestFilteredFileInclusion tests including only specific file extensions
-func TestFilteredFileInclusion(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+			// Create a test configuration
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{tc.modelName},
+				APIKey:           "test-api-key",
+				DryRun:           tc.dryRun,
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
 
-	// Set up the mock client with a custom implementation that verifies the context content
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		// In a real implementation, we would check the actual context
-		// You could add checks here for specific file content to verify filtering works
-		return &gemini.GenerationResult{
-			Content:      "# Test Generated Plan\n\nThis is a test plan generated by the mock client.",
-			TokenCount:   1000,
-			FinishReason: "STOP",
-		}, nil
-	}
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
 
-	// Create test files of different types
-	env.CreateTestFile(t, "src/main.go", `package main
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err := architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
 
-func main() {}`)
+			// Verify execution succeeded
+			if err != nil {
+				t.Fatalf("architect.Execute failed: %v", err)
+			}
 
-	env.CreateTestFile(t, "src/README.md", "# Test Project")
+			// Check if output file exists or not based on expectation
+			fileExists := false
+			if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+				fileExists = true
+			}
 
-	env.CreateTestFile(t, "src/config.json", `{"key": "value"}`)
+			if tc.outputShouldExist && !fileExists {
+				t.Errorf("Expected output file to exist, but it doesn't: %s", outputFile)
+			} else if !tc.outputShouldExist && fileExists {
+				t.Errorf("Output file was created when it shouldn't have been: %s", outputFile)
+			}
 
-	// Create a task file
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
+			// Verify content if we expect the file to exist
+			if tc.outputShouldExist && fileExists && tc.expectedContent != "" {
+				content, err := os.ReadFile(outputFile)
+				if err != nil {
+					t.Fatalf("Failed to read output file: %v", err)
+				}
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration with file inclusion filters
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Include:          ".go,.md", // Only include Go and Markdown files
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
-
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
-
-	// Check that the output file exists
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
-
-	// Read and verify content
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	// Check that the plan was generated
-	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+				if !strings.Contains(string(content), tc.expectedContent) {
+					t.Errorf("Output file does not contain expected content: %s", tc.expectedContent)
+				}
+			}
+		})
 	}
 }
 
-// TestErrorHandling tests error handling scenarios
-func TestErrorHandling(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
-
-	// Mock an error from the Gemini API
-	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		// Create a simple API error
-		apiError := &gemini.APIError{
-			Message:    "API quota exceeded",
-			Suggestion: "Try again later",
-			StatusCode: 429,
-		}
-		return nil, apiError
+// TestFilteringBehaviors tests file filtering functions using a table-driven approach
+func TestFilteringBehaviors(t *testing.T) {
+	// Define the test case struct for filtering scenarios
+	type filterTestCase struct {
+		name                string
+		instructionsContent string
+		fileContents        map[string]string
+		includeFilter       string
+		excludeFilter       string
+		excludeNames        string
+		outputShouldExist   bool
+		expectedContent     string
+		verifyFilteringFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
 	}
 
-	// Create a test file
-	env.CreateTestFile(t, "src/main.go", `package main
-
-func main() {}`)
-
-	// Create a task file
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
-
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
+	// Define default files for filter tests
+	defaultFiles := map[string]string{
+		"src/main.go":       "package main\n\nfunc main() {}\n",
+		"src/README.md":     "# Test Project",
+		"src/config.json":   `{"key": "value"}`,
+		"src/utils/util.js": "function helper() { return true; }",
 	}
 
-	// Run the application and expect an error
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	// The application should return an error
-	if err == nil {
-		t.Fatalf("Expected an error from API client, but got nil")
+	// Define test cases based on the original filtering test
+	tests := []filterTestCase{
+		{
+			name:                "Include Go and Markdown Files",
+			instructionsContent: "Test task",
+			fileContents:        defaultFiles,
+			includeFilter:       ".go,.md", // Only include Go and Markdown files
+			excludeFilter:       "",
+			excludeNames:        "",
+			outputShouldExist:   true,
+			expectedContent:     "Test Generated Plan",
+			verifyFilteringFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				// In a real implementation, we would check the actual context to ensure
+				// that only Go and Markdown files are included
+				// We're just returning a successful result here, but could add more verification
+				return &gemini.GenerationResult{
+					Content:      "# Test Generated Plan\n\nThis is a test plan generated by the mock client.",
+					TokenCount:   1000,
+					FinishReason: "STOP",
+				}, nil
+			},
+		},
+		// Additional filtering test cases could be added here
 	}
 
-	// Verify the error message contains relevant information
-	if !strings.Contains(err.Error(), "API quota exceeded") &&
-		!strings.Contains(err.Error(), "generating") {
-		t.Errorf("Error message doesn't contain expected content. Got: %v", err)
-	}
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
 
-	// Check that the output file was NOT created due to the error
-	if _, statErr := os.Stat(outputFile); !os.IsNotExist(statErr) {
-		t.Errorf("Output file was created despite API error")
-	}
-}
+			// Set up the custom mock client that verifies context content
+			if tc.verifyFilteringFunc != nil {
+				env.MockClient.GenerateContentFunc = tc.verifyFilteringFunc
+			}
 
-// TestTokenCountExceeded tests the behavior when token count exceeds limits
-func TestTokenCountExceeded(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+			// Create all the test files
+			for path, content := range tc.fileContents {
+				env.CreateTestFile(t, path, content)
+			}
 
-	// Mock a token count that exceeds limits
-	env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-		return &gemini.TokenCount{Total: 1000000}, nil // Very large count
-	}
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-	env.MockClient.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) {
-		return &gemini.ModelInfo{
-			Name:             "test-model",
-			InputTokenLimit:  10000, // Smaller than the count
-			OutputTokenLimit: 8192,
-		}, nil
-	}
+			// Set up the output directory and model-specific output file path
+			modelName := "test-model"
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, modelName+".md")
 
-	// Create a test file
-	env.CreateTestFile(t, "src/main.go", `package main
+			// Create a test configuration with filtering options
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{modelName},
+				APIKey:           "test-api-key",
+				Include:          tc.includeFilter,
+				Exclude:          tc.excludeFilter,
+				ExcludeNames:     tc.excludeNames,
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
 
-func main() {}`)
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
 
-	// Create a task file
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err := architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+			// Verify execution succeeded
+			if err != nil {
+				t.Fatalf("architect.Execute failed: %v", err)
+			}
 
-	// Create a test configuration
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
+			// Check file existence based on expectation
+			fileExists := false
+			if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+				fileExists = true
+			}
 
-	// Run the application and expect a token limit error
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+			if tc.outputShouldExist && !fileExists {
+				t.Errorf("Expected output file to exist, but it doesn't: %s", outputFile)
+			} else if !tc.outputShouldExist && fileExists {
+				t.Errorf("Output file was created when it shouldn't have been: %s", outputFile)
+			}
 
-	// The application should report an error for token count exceeding limits
-	if err == nil {
-		t.Fatalf("Expected an error for token count exceeding limits, but got nil")
-	}
+			// Verify content if we expect the file to exist
+			if tc.outputShouldExist && fileExists && tc.expectedContent != "" {
+				content, err := os.ReadFile(outputFile)
+				if err != nil {
+					t.Fatalf("Failed to read output file: %v", err)
+				}
 
-	// Verify the error message contains token limit information
-	if !strings.Contains(err.Error(), "token") &&
-		!strings.Contains(err.Error(), "limit") {
-		t.Errorf("Error message doesn't mention token limits. Got: %v", err)
-	}
-
-	// Check that the output file was NOT created due to the error
-	if _, statErr := os.Stat(outputFile); !os.IsNotExist(statErr) {
-		t.Errorf("Output file was created despite token limit error")
-	}
-}
-
-// TestUserConfirmation tests the confirmation prompt for large token counts
-func TestUserConfirmation(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
-
-	// Set up the mock client
-	env.SetupMockGeminiClient()
-
-	// Mock token count
-	env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-		return &gemini.TokenCount{Total: 5000}, nil
-	}
-
-	// Create a test file
-	env.CreateTestFile(t, "src/main.go", `package main
-
-func main() {}`)
-
-	// Create a task file
-	instructionsFile := env.CreateTestFile(t, "instructions.md", "Test task")
-
-	// Simulate user input (say "yes" to confirmation)
-	env.SimulateUserInput("y\n")
-
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
-
-	// Create a test configuration with confirm-tokens
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		ConfirmTokens:    1000, // Threshold lower than our token count
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
-
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
-
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
-
-	// Check that the output file was created (confirmation was "y")
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
-
-	// Read the content to verify it worked
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
-
-	// Check that content was generated properly
-	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+				if !strings.Contains(string(content), tc.expectedContent) {
+					t.Errorf("Output file does not contain expected content: %s", tc.expectedContent)
+				}
+			}
+		})
 	}
 }
 
-// TestTaskExecution tests the basic task execution without clarification
-// (replaces the old TestTaskClarification test that depended on the removed clarify feature)
-func TestTaskExecution(t *testing.T) {
-	// Set up the test environment
-	env := NewTestEnv(t)
-	defer env.Cleanup()
+// TestErrorScenarios tests error handling using a table-driven approach
+func TestErrorScenarios(t *testing.T) {
+	// Define the test case struct for error handling scenarios
+	type errorTestCase struct {
+		name                 string
+		instructionsContent  string
+		setupMock            func(*gemini.MockClient)
+		expectedErrorContent string
+		outputShouldExist    bool
+	}
 
-	// Set up the mock client with default responses
-	env.SetupMockGeminiClient()
+	// Define test cases based on the original error tests
+	tests := []errorTestCase{
+		{
+			name:                "API Error Handling",
+			instructionsContent: "Test task",
+			setupMock: func(mc *gemini.MockClient) {
+				mc.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					// Create a simple API error
+					apiError := &gemini.APIError{
+						Message:    "API quota exceeded",
+						Suggestion: "Try again later",
+						StatusCode: 429,
+					}
+					return nil, apiError
+				}
+			},
+			expectedErrorContent: "API quota exceeded",
+			outputShouldExist:    false,
+		},
+		{
+			name:                "Token Count Exceeded",
+			instructionsContent: "Test task",
+			setupMock: func(mc *gemini.MockClient) {
+				mc.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+					return &gemini.TokenCount{Total: 1000000}, nil // Very large count
+				}
+				mc.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) {
+					return &gemini.ModelInfo{
+						Name:             "test-model",
+						InputTokenLimit:  10000, // Smaller than the count
+						OutputTokenLimit: 8192,
+					}, nil
+				}
+			},
+			expectedErrorContent: "token",
+			outputShouldExist:    false,
+		},
+	}
 
-	// Create a test file
-	env.CreateTestFile(t, "src/main.go", `package main
+	// Basic source file content for all tests
+	srcFileContent := `package main
+
+func main() {}`
+
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
+
+			// Set up the mock client with test-specific configuration
+			tc.setupMock(env.MockClient)
+
+			// Create a test file
+			env.CreateTestFile(t, "src/main.go", srcFileContent)
+
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
+
+			// Set up the output directory and model-specific output file path
+			modelName := "test-model"
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, modelName+".md")
+
+			// Create a test configuration
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{modelName},
+				APIKey:           "test-api-key",
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
+
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
+
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err := architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
+
+			// Verify that an error was returned
+			if err == nil {
+				t.Fatalf("Expected an error, but got nil")
+			}
+
+			// Verify the error message contains expected content
+			if !strings.Contains(err.Error(), tc.expectedErrorContent) {
+				t.Errorf("Error message doesn't contain expected content %q. Got: %v",
+					tc.expectedErrorContent, err)
+			}
+
+			// Check file existence based on expectation
+			fileExists := false
+			if _, statErr := os.Stat(outputFile); !os.IsNotExist(statErr) {
+				fileExists = true
+			}
+
+			if tc.outputShouldExist && !fileExists {
+				t.Errorf("Expected output file to exist, but it doesn't: %s", outputFile)
+			} else if !tc.outputShouldExist && fileExists {
+				t.Errorf("Output file was created when it shouldn't have been: %s", outputFile)
+			}
+		})
+	}
+}
+
+// TestUserInteractions tests user input scenarios using a table-driven approach
+func TestUserInteractions(t *testing.T) {
+	// Define the test case struct for user interaction test scenarios
+	type userInputTestCase struct {
+		name                string
+		instructionsContent string
+		userInput           string
+		confirmTokens       int
+		tokenCount          int
+		outputShouldExist   bool
+		expectedContent     string
+	}
+
+	// Define test cases based on the original user confirmation test
+	tests := []userInputTestCase{
+		{
+			name:                "User Confirms with 'y'",
+			instructionsContent: "Test task",
+			userInput:           "y\n",
+			confirmTokens:       1000,
+			tokenCount:          5000, // Higher than threshold to trigger confirmation
+			outputShouldExist:   true,
+			expectedContent:     "Test Generated Plan",
+		},
+		// Skipping the user rejection test for now as it requires more complex mocking
+		// {
+		// 	name:                "User Rejects with 'n'",
+		// 	instructionsContent: "Test task",
+		// 	userInput:           "n\n",
+		// 	confirmTokens:       1000,
+		// 	tokenCount:          5000,  // Higher than threshold to trigger confirmation
+		// 	outputShouldExist:   false, // File should not be created when user cancels
+		// 	expectedContent:     "",    // No content expected as generation should be skipped
+		// },
+		// Test case with lower token count (no confirmation needed)
+		{
+			name:                "No Confirmation Below Threshold",
+			instructionsContent: "Test task without confirmation",
+			userInput:           "", // No input needed
+			confirmTokens:       5000,
+			tokenCount:          1000, // Lower than threshold, no confirmation
+			outputShouldExist:   true,
+			expectedContent:     "Test Generated Plan",
+		},
+	}
+
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
+
+			// Set up the mock client
+			env.SetupMockGeminiClient()
+
+			// Mock token count
+			env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+				return &gemini.TokenCount{Total: int32(tc.tokenCount)}, nil
+			}
+
+			// Create a test file
+			env.CreateTestFile(t, "src/main.go", `package main
 
 func main() {}`)
 
-	// Create a task file
-	taskDescription := "Implement a new feature"
-	instructionsFile := env.CreateTestFile(t, "instructions.md", taskDescription)
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-	// Set up the output file path
-	outputFile := filepath.Join(env.TestDir, "output.md")
+			// Simulate user input
+			env.SimulateUserInput(tc.userInput)
 
-	// Create a test configuration
-	testConfig := &architect.CliConfig{
-		InstructionsFile: instructionsFile,
-		OutputFile:       outputFile,
-		ModelName:        "test-model",
-		ApiKey:           "test-api-key",
-		Paths:            []string{env.TestDir + "/src"},
-		LogLevel:         logutil.InfoLevel,
-	}
+			// Set up the output directory and model-specific output file path
+			modelName := "test-model"
+			outputDir := filepath.Join(env.TestDir, "output")
+			outputFile := filepath.Join(outputDir, modelName+".md")
 
-	// Run the application with our test configuration
-	ctx := context.Background()
-	err := RunTestWithConfig(ctx, testConfig, env)
+			// Create a test configuration with confirm-tokens
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{modelName},
+				APIKey:           "test-api-key",
+				ConfirmTokens:    tc.confirmTokens,
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+			}
 
-	if err != nil {
-		t.Fatalf("RunTestWithConfig failed: %v", err)
-	}
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
 
-	// Check that the output file exists
-	if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-		t.Errorf("Output file was not created at %s", outputFile)
-	}
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err := architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
 
-	// Verify that the task was used
-	content, err := os.ReadFile(outputFile)
-	if err != nil {
-		t.Fatalf("Failed to read output file: %v", err)
-	}
+			// Verify execution succeeded
+			if err != nil {
+				t.Fatalf("architect.Execute failed: %v", err)
+			}
 
-	// Check that the output contains content from our mock response
-	if !strings.Contains(string(content), "Test Generated Plan") {
-		t.Errorf("Output file does not contain expected content")
+			// Check file existence based on expectation
+			fileExists := false
+			if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+				fileExists = true
+			}
+
+			if tc.outputShouldExist && !fileExists {
+				t.Errorf("Expected output file to exist, but it doesn't: %s", outputFile)
+			} else if !tc.outputShouldExist && fileExists {
+				t.Errorf("Output file was created when it shouldn't have been: %s", outputFile)
+			}
+
+			// Verify content if we expect the file to exist
+			if tc.outputShouldExist && fileExists && tc.expectedContent != "" {
+				content, err := os.ReadFile(outputFile)
+				if err != nil {
+					t.Fatalf("Failed to read output file: %v", err)
+				}
+
+				if !strings.Contains(string(content), tc.expectedContent) {
+					t.Errorf("Output file does not contain expected content: %s", tc.expectedContent)
+				}
+			}
+		})
 	}
 }
 
@@ -518,14 +678,16 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 		instructionsFile := env.CreateTestFile(t, "instructions.md", instructionsContent)
 
 		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+		outputDir := filepath.Join(env.TestDir, "output")
+			modelName := "test-model"
+			outputFile := filepath.Join(outputDir, modelName+".md")
 
 		// Create a test configuration
-		testConfig := &architect.CliConfig{
+		testConfig := &config.CliConfig{
 			InstructionsFile: instructionsFile,
-			OutputFile: outputFile,
-			ModelName:  "test-model",
-			ApiKey:     "test-api-key",
+			OutputDir: outputDir,
+			ModelNames:  []string{"test-model"},
+			APIKey:     "test-api-key",
 			Paths:      []string{env.TestDir},
 			LogLevel:   logutil.InfoLevel,
 		}
@@ -540,7 +702,7 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 
 		// Check that the output file exists
 		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
+			t.Errorf("Model-specific output file was not created at %s", outputFile)
 		}
 
 		// Verify the content indicates that the file was NOT processed as a template
@@ -556,261 +718,294 @@ func TestPromptFileTemplateHandling(t *testing.T) {
 	*/
 }
 
-// TestAuditLogging tests the audit logging functionality
-func TestAuditLogging(t *testing.T) {
-	t.Run("Valid audit log file", func(t *testing.T) {
-		// Set up the test environment
-		env := NewTestEnv(t)
-		defer env.Cleanup()
+// TestAuditLogFunctionality tests the audit logging functionality
+// using a table-driven approach to reduce repetitive test code.
+func TestAuditLogFunctionality(t *testing.T) {
+	// Define the test case struct for audit logging scenarios
+	type auditLogTestCase struct {
+		name                string
+		instructionsContent string
+		srcFiles            map[string]string
+		loggerSetup         func(*TestEnv, *testing.T) (auditlog.AuditLogger, error)
+		expectedLogEntries  []string
+		validateLogFunc     func([]map[string]interface{}, *testing.T) bool
+		shouldCreateLogFile bool
+		outputShouldExist   bool
+	}
 
-		// Set up the mock client
-		env.SetupMockGeminiClient()
-
-		// Create some test files
-		env.CreateTestFile(t, "src/main.go", `package main
+	// Define test cases based on the original audit logging tests
+	tests := []auditLogTestCase{
+		{
+			name:                "Valid audit log file",
+			instructionsContent: "Implement a new feature to multiply two numbers",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
 import "fmt"
 
 func main() {
 	fmt.Println("Hello, world!")
-}`)
+}`,
+			},
+			loggerSetup: func(env *TestEnv, t *testing.T) (auditlog.AuditLogger, error) {
+				// Set up the audit log file path
+				auditLogFile := filepath.Join(env.TestDir, "audit.log")
 
-		// Create an instructions file
-		instructionsFile := env.CreateTestFile(t, "instructions.md", "Implement a new feature to multiply two numbers")
+				// Create a custom FileAuditLogger
+				testLogger := env.GetBufferedLogger(logutil.DebugLevel, "[test] ")
+				return auditlog.NewFileAuditLogger(auditLogFile, testLogger)
+			},
+			expectedLogEntries: []string{
+				"ExecuteStart",
+				"ReadInstructions",
+				"GatherContextStart",
+				"GatherContextEnd",
+				"CheckTokens",
+				"GenerateContentStart",
+				"GenerateContentEnd",
+				"SaveOutputStart",
+				"SaveOutputEnd",
+				"ExecuteEnd",
+			},
+			validateLogFunc: func(entries []map[string]interface{}, t *testing.T) bool {
+				// Validate ExecuteStart operation in detail
+				for _, entry := range entries {
+					operation, ok := entry["operation"].(string)
+					if !ok || operation != "ExecuteStart" {
+						continue
+					}
 
-		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+					// Check status
+					status, ok := entry["status"].(string)
+					if !ok || status != "InProgress" {
+						t.Errorf("Expected ExecuteStart status to be 'InProgress', got '%v'", status)
+						return false
+					}
 
-		// Set up the audit log file path
-		auditLogFile := filepath.Join(env.TestDir, "audit.log")
+					// Check timestamp
+					_, hasTimestamp := entry["timestamp"]
+					if !hasTimestamp {
+						t.Error("ExecuteStart entry missing timestamp")
+						return false
+					}
 
-		// Create a custom FileAuditLogger for this test instead of the NoOpAuditLogger in the test environment
-		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
-		auditLogger, err := auditlog.NewFileAuditLogger(auditLogFile, testLogger)
-		if err != nil {
-			t.Fatalf("Failed to create audit logger: %v", err)
-		}
-		defer auditLogger.Close()
+					// Check inputs (should include CLI flags)
+					inputs, ok := entry["inputs"].(map[string]interface{})
+					if !ok {
+						t.Error("ExecuteStart entry missing inputs")
+						return false
+					}
 
-		// Replace the default NoOpAuditLogger with our FileAuditLogger
-		env.AuditLogger = auditLogger
+					// Verify specific input field (model names)
+					modelNames, ok := inputs["model_names"]
+					if !ok {
+						t.Errorf("ExecuteStart inputs missing model_names, got: %v", modelNames)
+						return false
+					}
 
-		// Create a test configuration with the audit log file
-		testConfig := &architect.CliConfig{
-			InstructionsFile: instructionsFile,
-			OutputFile:       outputFile,
-			ModelName:        "test-model",
-			ApiKey:           "test-api-key",
-			Paths:            []string{env.TestDir + "/src"},
-			LogLevel:         logutil.InfoLevel,
-			AuditLogFile:     auditLogFile,
-		}
+					// Verify the correct model name is included in the slice
+					modelNamesSlice, ok := modelNames.([]interface{})
+					if !ok || len(modelNamesSlice) == 0 || modelNamesSlice[0] != "test-model" {
+						t.Errorf("ExecuteStart inputs incorrect model_names, got: %v", modelNames)
+						return false
+					}
 
-		// Run the application with our test configuration
-		ctx := context.Background()
-		err = RunTestWithConfig(ctx, testConfig, env)
+					return true
+				}
+				t.Error("ExecuteStart operation not found in audit log")
+				return false
+			},
+			shouldCreateLogFile: true,
+			outputShouldExist:   true,
+		},
+		{
+			name:                "Fallback to NoOpAuditLogger",
+			instructionsContent: "Test instructions",
+			srcFiles: map[string]string{
+				"main.go": `package main
 
-		if err != nil {
-			t.Fatalf("RunTestWithConfig failed: %v", err)
-		}
+func main() {}`,
+			},
+			loggerSetup: func(env *TestEnv, t *testing.T) (auditlog.AuditLogger, error) {
+				// Set up a test logger that captures errors
+				testLogger := env.GetBufferedLogger(logutil.DebugLevel, "[test] ")
 
-		// Check that the output file exists
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
-		}
+				// Attempt to create a FileAuditLogger with invalid path (will fail)
+				invalidDir := filepath.Join(env.TestDir, "nonexistent-dir")
+				invalidLogFile := filepath.Join(invalidDir, "audit.log")
+				_, err := auditlog.NewFileAuditLogger(invalidLogFile, testLogger)
 
-		// Check that the audit log file exists
-		if _, err := os.Stat(auditLogFile); os.IsNotExist(err) {
-			t.Errorf("Audit log file was not created at %s", auditLogFile)
-		}
-
-		// Read the audit log file
-		content, err := os.ReadFile(auditLogFile)
-		if err != nil {
-			t.Fatalf("Failed to read audit log file: %v", err)
-		}
-
-		// Split content by newlines
-		lines := bytes.Split(content, []byte{'\n'})
-		var entries []map[string]interface{}
-
-		// Parse each non-empty line as JSON
-		for _, line := range lines {
-			if len(line) == 0 {
-				continue
-			}
-
-			var entry map[string]interface{}
-			if err := json.Unmarshal(line, &entry); err != nil {
-				t.Errorf("Failed to parse JSON line: %v", err)
-				t.Errorf("Line content: %s", string(line))
-				continue
-			}
-			entries = append(entries, entry)
-		}
-
-		// Check that we have at least some entries
-		if len(entries) == 0 {
-			t.Error("Audit log file is empty or contains no valid JSON entries")
-			return
-		}
-
-		// Validate that the audit log contains expected operation entries
-		expectedOperations := []string{
-			"ExecuteStart",
-			"ReadInstructions",
-			"GatherContextStart",
-			"GatherContextEnd",
-			"CheckTokens",
-			"GenerateContentStart",
-			"GenerateContentEnd",
-			"SaveOutputStart",
-			"SaveOutputEnd",
-			"ExecuteEnd",
-		}
-
-		// Create a map to track which operations we found
-		foundOperations := make(map[string]bool)
-
-		// Find operations in the log entries
-		for _, entry := range entries {
-			operation, ok := entry["operation"].(string)
-			if ok {
-				foundOperations[operation] = true
-			}
-		}
-
-		// Check that all expected operations are present
-		for _, expectedOp := range expectedOperations {
-			if !foundOperations[expectedOp] {
-				t.Errorf("Expected operation '%s' not found in audit log", expectedOp)
-			}
-		}
-
-		// Validate one specific operation in detail
-		validateExecuteStart := func() bool {
-			for _, entry := range entries {
-				operation, ok := entry["operation"].(string)
-				if !ok || operation != "ExecuteStart" {
-					continue
+				// Verify error message contains expected text
+				if err != nil {
+					if !strings.Contains(err.Error(), "failed to open audit log file") {
+						t.Errorf("Expected error message to contain 'failed to open audit log file', got: %s", err.Error())
+					}
+				} else {
+					t.Error("Expected error when creating FileAuditLogger with invalid path, got nil")
 				}
 
-				// Check status
-				status, ok := entry["status"].(string)
-				if !ok || status != "InProgress" {
-					t.Errorf("Expected ExecuteStart status to be 'InProgress', got '%v'", status)
-					return false
-				}
-
-				// Check timestamp
-				_, hasTimestamp := entry["timestamp"]
-				if !hasTimestamp {
-					t.Error("ExecuteStart entry missing timestamp")
-					return false
-				}
-
-				// Check inputs (should include CLI flags)
-				inputs, ok := entry["inputs"].(map[string]interface{})
-				if !ok {
-					t.Error("ExecuteStart entry missing inputs")
-					return false
-				}
-
-				// Verify specific input field (model name)
-				if modelName, ok := inputs["model_name"]; !ok || modelName != "test-model" {
-					t.Errorf("ExecuteStart inputs missing or incorrect model_name, got: %v", modelName)
-					return false
-				}
-
+				// Return a NoOpAuditLogger as fallback
+				return auditlog.NewNoOpAuditLogger(), nil
+			},
+			expectedLogEntries: nil, // No entries expected with NoOpAuditLogger
+			validateLogFunc: func(entries []map[string]interface{}, t *testing.T) bool {
+				// NoOpAuditLogger doesn't create any log entries, so we just verify
+				// that the application ran successfully
 				return true
+			},
+			shouldCreateLogFile: false,
+			outputShouldExist:   true,
+		},
+	}
+
+	// Execute each test case
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up test environment
+			env := NewTestEnv(t)
+			defer env.Cleanup()
+
+			// Set up the mock client
+			env.SetupMockGeminiClient()
+
+			// Create source files from the map
+			for filename, content := range tc.srcFiles {
+				env.CreateTestFile(t, "src/"+filename, content)
 			}
-			return false
-		}
 
-		if !validateExecuteStart() {
-			t.Error("Failed to validate ExecuteStart operation in audit log")
-		}
-	})
+			// Create instructions file
+			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-	t.Run("Fallback to NoOpAuditLogger", func(t *testing.T) {
-		// Set up the test environment
-		env := NewTestEnv(t)
-		defer env.Cleanup()
+			// Set up the output directory and model-specific output file path
+			outputDir := filepath.Join(env.TestDir, "output")
+			modelName := "test-model"
+			outputFile := filepath.Join(outputDir, modelName+".md")
+			auditLogFile := filepath.Join(env.TestDir, "audit.log")
 
-		// Set up the mock client
-		env.SetupMockGeminiClient()
+			// Set up the custom audit logger using the test case's setup function
+			auditLogger, err := tc.loggerSetup(env, t)
+			if err != nil {
+				// If logger setup fails, the test case should handle this
+				// and provide a fallback logger
+				if auditLogger == nil {
+					t.Fatalf("Logger setup failed and no fallback provided: %v", err)
+				}
+			}
 
-		// Create some test files
-		env.CreateTestFile(t, "src/main.go", `package main
+			// If we got a FileAuditLogger, make sure to close it
+			if fileLogger, ok := auditLogger.(*auditlog.FileAuditLogger); ok {
+				defer fileLogger.Close()
+			}
 
-func main() {}`)
+			// Replace the default NoOpAuditLogger with our test logger
+			env.AuditLogger = auditLogger
 
-		// Create an instructions file
-		instructionsFile := env.CreateTestFile(t, "instructions.md", "Test instructions")
+			// Create a test configuration with the audit log file path
+			testConfig := &config.CliConfig{
+				InstructionsFile: instructionsFile,
+				OutputDir:        outputDir,
+				ModelNames:       []string{modelName},
+				APIKey:           "test-api-key",
+				Paths:            []string{env.TestDir + "/src"},
+				LogLevel:         logutil.InfoLevel,
+				AuditLogFile:     auditLogFile,
+			}
 
-		// Set up the output file path
-		outputFile := filepath.Join(env.TestDir, "output.md")
+			// Create a mock API service
+			mockApiService := createMockAPIService(env)
 
-		// Set up a test logger that captures errors
-		testLogger := logutil.NewLogger(logutil.DebugLevel, env.StderrBuffer, "[test] ")
+			// Run the application with our test configuration
+			ctx := context.Background()
+			err = architect.Execute(
+				ctx,
+				testConfig,
+				env.Logger,
+				env.AuditLogger,
+				mockApiService,
+			)
 
-		// Attempt to create a FileAuditLogger with invalid path to see if it falls back properly
-		invalidDir := filepath.Join(env.TestDir, "nonexistent-dir")
-		invalidLogFile := filepath.Join(invalidDir, "audit.log")
+			// Verify execution succeeded
+			if err != nil {
+				t.Fatalf("architect.Execute failed: %v", err)
+			}
 
-		// Attempting to create a logger with an invalid path should return an error
-		_, err := auditlog.NewFileAuditLogger(invalidLogFile, testLogger)
-		if err == nil {
-			t.Fatal("Expected error when creating FileAuditLogger with invalid path, got nil")
-		}
+			// Check if output file exists based on expectation
+			if tc.outputShouldExist {
+				if _, err := os.Stat(outputFile); os.IsNotExist(err) {
+					t.Errorf("Expected output file to exist, but it doesn't: %s", outputFile)
+				}
+			} else {
+				if _, err := os.Stat(outputFile); !os.IsNotExist(err) {
+					t.Errorf("Output file was created when it shouldn't have been: %s", outputFile)
+				}
+			}
 
-		// Verify error message contains expected text
-		errMsg := err.Error()
-		if !strings.Contains(errMsg, "failed to open audit log file") {
-			t.Errorf("Expected error message to contain 'failed to open audit log file', got: %s", errMsg)
-		}
+			// Validate audit log if we expect it to be created
+			if tc.shouldCreateLogFile {
+				// Check that the audit log file exists
+				if _, err := os.Stat(auditLogFile); os.IsNotExist(err) {
+					t.Errorf("Audit log file was not created at %s", auditLogFile)
+					return
+				}
 
-		// Verify the NoOpAuditLogger can be used as a fallback and works without issues
-		noopLogger := auditlog.NewNoOpAuditLogger()
+				// Read and parse the audit log file
+				content, err := os.ReadFile(auditLogFile)
+				if err != nil {
+					t.Fatalf("Failed to read audit log file: %v", err)
+				}
 
-		// Log some entries to the NoOpLogger
-		testEntry := auditlog.AuditEntry{
-			Operation: "TestOperation",
-			Status:    "Success",
-			Message:   "Test message",
-		}
+				// Parse JSON entries
+				lines := bytes.Split(content, []byte{'\n'})
+				var entries []map[string]interface{}
 
-		// This should not produce any errors
-		err = noopLogger.Log(testEntry)
-		if err != nil {
-			t.Fatalf("NoOpAuditLogger.Log returned error: %v", err)
-		}
+				for _, line := range lines {
+					if len(line) == 0 {
+						continue
+					}
 
-		// Create a test configuration
-		testConfig := &architect.CliConfig{
-			InstructionsFile: instructionsFile,
-			OutputFile:       outputFile,
-			ModelName:        "test-model",
-			ApiKey:           "test-api-key",
-			Paths:            []string{env.TestDir + "/src"},
-			LogLevel:         logutil.InfoLevel,
-		}
+					var entry map[string]interface{}
+					if err := json.Unmarshal(line, &entry); err != nil {
+						t.Errorf("Failed to parse JSON line: %v", err)
+						t.Errorf("Line content: %s", string(line))
+						continue
+					}
+					entries = append(entries, entry)
+				}
 
-		// Replace environment's default NoOpAuditLogger with our test NoOpLogger
-		env.AuditLogger = noopLogger
+				// Check that we have at least some entries
+				if len(entries) == 0 {
+					t.Error("Audit log file is empty or contains no valid JSON entries")
+					return
+				}
 
-		// Run the application with our test configuration and NoOpAuditLogger
-		ctx := context.Background()
-		err = RunTestWithConfig(ctx, testConfig, env)
+				// Validate expected log entries
+				if tc.expectedLogEntries != nil {
+					// Create a map to track which operations we found
+					foundOperations := make(map[string]bool)
 
-		// The application should run successfully
-		if err != nil {
-			t.Fatalf("RunTestWithConfig failed: %v", err)
-		}
+					// Find operations in the log entries
+					for _, entry := range entries {
+						operation, ok := entry["operation"].(string)
+						if ok {
+							foundOperations[operation] = true
+						}
+					}
 
-		// Check that the output file exists - the application should work with NoOpAuditLogger
-		if _, err := os.Stat(outputFile); os.IsNotExist(err) {
-			t.Errorf("Output file was not created at %s", outputFile)
-		}
-	})
+					// Check that all expected operations are present
+					for _, expectedOp := range tc.expectedLogEntries {
+						if !foundOperations[expectedOp] {
+							t.Errorf("Expected operation '%s' not found in audit log", expectedOp)
+						}
+					}
+				}
+
+				// Run custom validation function if provided
+				if tc.validateLogFunc != nil {
+					if !tc.validateLogFunc(entries, t) {
+						t.Error("Custom validation of audit log entries failed")
+					}
+				}
+			}
+		})
+	}
 }

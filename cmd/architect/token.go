@@ -24,10 +24,10 @@ type TokenResult struct {
 // TokenManager defines the interface for token counting and management
 type TokenManager interface {
 	// GetTokenInfo retrieves token count information and checks limits
-	GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error)
+	GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
 
 	// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-	CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error
+	CheckTokenLimit(ctx context.Context, prompt string) error
 
 	// PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
 	PromptForConfirmation(tokenCount int32, threshold int) bool
@@ -36,24 +36,29 @@ type TokenManager interface {
 // tokenManager implements the TokenManager interface
 type tokenManager struct {
 	logger logutil.LoggerInterface
+	client gemini.Client
 }
 
 // NewTokenManager creates a new TokenManager instance
-func NewTokenManager(logger logutil.LoggerInterface) TokenManager {
+func NewTokenManager(logger logutil.LoggerInterface, client gemini.Client) (TokenManager, error) {
+	if client == nil {
+		return nil, fmt.Errorf("client cannot be nil for TokenManager")
+	}
 	return &tokenManager{
 		logger: logger,
-	}
+		client: client,
+	}, nil
 }
 
 // GetTokenInfo retrieves token count information and checks limits
-func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, prompt string) (*TokenResult, error) {
+func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
 	// Create result structure
 	result := &TokenResult{
 		ExceedsLimit: false,
 	}
 
 	// Get model information (limits)
-	modelInfo, err := client.GetModelInfo(ctx)
+	modelInfo, err := tm.client.GetModelInfo(ctx)
 	if err != nil {
 		// Pass through API errors directly for better error messages
 		if _, ok := gemini.IsAPIError(err); ok {
@@ -68,7 +73,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 	result.InputLimit = modelInfo.InputTokenLimit
 
 	// Count tokens in the prompt
-	tokenResult, err := client.CountTokens(ctx, prompt)
+	tokenResult, err := tm.client.CountTokens(ctx, prompt)
 	if err != nil {
 		// Pass through API errors directly for better error messages
 		if _, ok := gemini.IsAPIError(err); ok {
@@ -102,8 +107,8 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, client gemini.Client, 
 }
 
 // CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-func (tm *tokenManager) CheckTokenLimit(ctx context.Context, client gemini.Client, prompt string) error {
-	tokenInfo, err := tm.GetTokenInfo(ctx, client, prompt)
+func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
+	tokenInfo, err := tm.GetTokenInfo(ctx, prompt)
 	if err != nil {
 		return err
 	}

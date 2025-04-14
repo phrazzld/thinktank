@@ -2,13 +2,10 @@
 package fileutil
 
 import (
-	"context"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/logutil"
 )
 
 func TestEstimateTokenCount(t *testing.T) {
@@ -82,51 +79,6 @@ func TestCalculateStatistics(t *testing.T) {
 
 	if tokens != expectedTokens {
 		t.Errorf("Token count: got %d, want %d", tokens, expectedTokens)
-	}
-}
-
-func TestCalculateStatisticsWithTokenCounting(t *testing.T) {
-	input := "Hello world, this is a test of the token counting system."
-	ctx := context.Background()
-
-	// Setup a mock client that will return a predefined token count
-	mockClient := &gemini.MockClient{
-		CountTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-			return &gemini.TokenCount{Total: 15}, nil
-		},
-	}
-
-	// Create a mock logger
-	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
-
-	// Test with mock client
-	chars, lines, tokens := CalculateStatisticsWithTokenCounting(ctx, mockClient, input, logger)
-
-	// Verify character count
-	expectedChars := len(input)
-	if chars != expectedChars {
-		t.Errorf("Character count: got %d, want %d", chars, expectedChars)
-	}
-
-	// Verify line count
-	expectedLines := 1
-	if lines != expectedLines {
-		t.Errorf("Line count: got %d, want %d", lines, expectedLines)
-	}
-
-	// Verify token count from mock client
-	expectedTokens := 15 // From our mock
-	if tokens != expectedTokens {
-		t.Errorf("Token count: got %d, want %d", tokens, expectedTokens)
-	}
-
-	// Now test fallback behavior when client is nil
-	_, _, tokens = CalculateStatisticsWithTokenCounting(ctx, nil, input, logger)
-
-	// Should use estimation
-	expectedTokensFallback := estimateTokenCount(input)
-	if tokens != expectedTokensFallback {
-		t.Errorf("Fallback token count: got %d, want %d", tokens, expectedTokensFallback)
 	}
 }
 
@@ -477,6 +429,207 @@ func TestShouldProcess(t *testing.T) {
 			// Check logs if needed
 			if tt.checkLogging != nil {
 				tt.checkLogging(t, logger)
+			}
+		})
+	}
+}
+
+// TestGatherProjectContextFiltering tests the filtering behavior of GatherProjectContext directly.
+// This test verifies that the file filtering functionality works correctly without
+// running the entire application flow through architect.Execute.
+func TestGatherProjectContextFiltering(t *testing.T) {
+	type filterTestCase struct {
+		name                    string
+		fileContents            map[string]string // Map of relative paths to file contents
+		includeFilter           string
+		excludeFilter           string
+		excludeNames            string
+		expectedIncludedFiles   []string
+		expectedExcludedFiles   []string
+		expectedProcessedCount  int
+		expectedFilteredMessage string
+	}
+
+	tests := []filterTestCase{
+		{
+			name: "Include Go and Markdown Files",
+			fileContents: map[string]string{
+				"main.go":       "package main\n\nfunc main() {}\n",
+				"README.md":     "# Test Project",
+				"config.json":   `{"key": "value"}`,
+				"utils/util.js": "function helper() { return true; }",
+			},
+			includeFilter: ".go,.md",
+			excludeFilter: "",
+			excludeNames:  "",
+			expectedIncludedFiles: []string{
+				"main.go",
+				"README.md",
+			},
+			expectedExcludedFiles: []string{
+				"config.json",
+				"utils/util.js",
+			},
+			expectedProcessedCount: 2, // Should only process the .go and .md files
+		},
+		{
+			name: "Exclude JSON Files",
+			fileContents: map[string]string{
+				"main.go":       "package main\n\nfunc main() {}\n",
+				"README.md":     "# Test Project",
+				"config.json":   `{"key": "value"}`,
+				"data.json":     `{"data": [1,2,3]}`,
+				"utils/util.js": "function helper() { return true; }",
+			},
+			includeFilter: "",
+			excludeFilter: ".json",
+			excludeNames:  "",
+			expectedIncludedFiles: []string{
+				"main.go",
+				"README.md",
+				"utils/util.js",
+			},
+			expectedExcludedFiles: []string{
+				"config.json",
+				"data.json",
+			},
+			expectedProcessedCount: 3, // Should process everything except the .json files
+		},
+		{
+			name: "Exclude Directory Names",
+			fileContents: map[string]string{
+				"main.go":               "package main\n\nfunc main() {}\n",
+				"README.md":             "# Test Project",
+				"node_modules/index.js": "module.exports = {};",
+				"dist/bundle.js":        "console.log('bundled');",
+				"utils/util.js":         "function helper() { return true; }",
+			},
+			includeFilter: "",
+			excludeFilter: "",
+			excludeNames:  "node_modules,dist",
+			expectedIncludedFiles: []string{
+				"main.go",
+				"README.md",
+				"utils/util.js",
+			},
+			expectedExcludedFiles: []string{
+				"node_modules/index.js",
+				"dist/bundle.js",
+			},
+			expectedProcessedCount: 3, // Should skip the excluded directory names
+		},
+		{
+			name: "Complex Filter Combination",
+			fileContents: map[string]string{
+				"src/main.go":              "package main\n\nfunc main() {}\n",
+				"src/util.go":              "package main\n\nfunc util() {}\n",
+				"docs/README.md":           "# Test Project",
+				"docs/USAGE.md":            "## Usage Instructions",
+				"config.json":              `{"key": "value"}`,
+				"node_modules/index.js":    "module.exports = {};",
+				"src/vendor/lib.js":        "function lib() { return true; }",
+				"build/output.exe":         "binary content",
+				"src/tests/test_main.go":   "package test\n\nfunc TestMain() {}\n",
+				"src/tests/test_helper.go": "package test\n\nfunc TestHelper() {}\n",
+			},
+			includeFilter: ".go,.md",
+			excludeFilter: ".exe",
+			excludeNames:  "node_modules,vendor",
+			expectedIncludedFiles: []string{
+				"src/main.go",
+				"src/util.go",
+				"docs/README.md",
+				"docs/USAGE.md",
+				"src/tests/test_main.go",
+				"src/tests/test_helper.go",
+			},
+			expectedExcludedFiles: []string{
+				"config.json",
+				"node_modules/index.js",
+				"src/vendor/lib.js",
+				"build/output.exe",
+			},
+			expectedProcessedCount: 6, // Should match only the included extensions while respecting the exclusions
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a temporary directory for each test
+			tempDir := t.TempDir()
+
+			// Set up a logger to capture logs
+			logger := NewMockLogger()
+			logger.SetVerbose(true)
+
+			// Create files based on the test case
+			for relativePath, content := range tc.fileContents {
+				fullPath := filepath.Join(tempDir, relativePath)
+
+				// Ensure the parent directory exists
+				err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+				if err != nil {
+					t.Fatalf("Failed to create directory: %v", err)
+				}
+
+				// Create the file
+				err = os.WriteFile(fullPath, []byte(content), 0644)
+				if err != nil {
+					t.Fatalf("Failed to write file: %v", err)
+				}
+			}
+
+			// Create config for the test
+			config := NewConfig(true, tc.includeFilter, tc.excludeFilter, tc.excludeNames, "format", logger)
+
+			// Call GatherProjectContext directly
+			files, processedCount, err := GatherProjectContext([]string{tempDir}, config)
+			if err != nil {
+				t.Fatalf("GatherProjectContext returned an error: %v", err)
+			}
+
+			// Verify processed count
+			if processedCount != tc.expectedProcessedCount {
+				t.Errorf("Processed count: got %d, want %d", processedCount, tc.expectedProcessedCount)
+			}
+
+			// Get the list of actual file paths (relative to the temp dir for easier comparison)
+			var includedFiles []string
+			for _, file := range files {
+				// Convert absolute path to a path relative to the temp dir
+				relativePath, err := filepath.Rel(tempDir, file.Path)
+				if err != nil {
+					t.Fatalf("Failed to get relative path: %v", err)
+				}
+				includedFiles = append(includedFiles, relativePath)
+			}
+
+			// Check that all expected files are included
+			for _, expected := range tc.expectedIncludedFiles {
+				found := false
+				for _, actual := range includedFiles {
+					if filepath.ToSlash(actual) == filepath.ToSlash(expected) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected file %s to be included, but it wasn't", expected)
+				}
+			}
+
+			// Check that expected excluded files are not included
+			for _, excluded := range tc.expectedExcludedFiles {
+				for _, actual := range includedFiles {
+					if filepath.ToSlash(actual) == filepath.ToSlash(excluded) {
+						t.Errorf("Expected file %s to be excluded, but it was included", excluded)
+					}
+				}
+			}
+
+			// Check for expected filter messages in the logs
+			if tc.expectedFilteredMessage != "" && !logger.ContainsMessage(tc.expectedFilteredMessage) {
+				t.Errorf("Expected log message about %s but didn't find it", tc.expectedFilteredMessage)
 			}
 		})
 	}

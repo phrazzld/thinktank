@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -18,7 +19,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 		name    string
 		args    []string
 		env     map[string]string
-		want    *CliConfig
+		want    *config.CliConfig
 		wantErr bool
 	}{
 		{
@@ -30,12 +31,12 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1", "path2"},
-				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				APIKey:           "test-api-key",
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -48,10 +49,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "All options specified",
+			name: "All options with output-dir",
 			args: []string{
 				"--instructions", "custom-instructions.md",
-				"--output", "custom-output.md",
+				"--output-dir", "custom-output-dir",
 				"--model", "custom-model",
 				"--log-level", "debug",
 				"--include", "*.go,*.md",
@@ -66,10 +67,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "custom-instructions.md",
-				OutputFile:       "custom-output.md",
-				ModelName:        "custom-model",
+				OutputDir:        "custom-output-dir",
+				ModelNames:       []string{"custom-model"},
 				LogLevel:         logutil.DebugLevel, // verbose overrides log-level
 				Include:          "*.go,*.md",
 				Exclude:          "*.tmp",
@@ -79,7 +80,43 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          true,
 				DryRun:           true,
 				Paths:            []string{"path1", "path2", "path3"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "All options with output-dir flag",
+			args: []string{
+				"--instructions", "custom-instructions.md",
+				"--output-dir", "custom-output-dir",
+				"--model", "custom-model",
+				"--log-level", "debug",
+				"--include", "*.go,*.md",
+				"--exclude", "*.tmp",
+				"--exclude-names", "node_modules,dist",
+				"--format", "Custom: {path}\n{content}",
+				"--confirm-tokens", "500",
+				"--verbose",
+				"--dry-run",
+				"path1", "path2", "path3",
+			},
+			env: map[string]string{
+				apiKeyEnvVar: "test-api-key",
+			},
+			want: &config.CliConfig{
+				InstructionsFile: "custom-instructions.md",
+				OutputDir:        "custom-output-dir",
+				ModelNames:       []string{"custom-model"},
+				LogLevel:         logutil.DebugLevel, // verbose overrides log-level
+				Include:          "*.go,*.md",
+				Exclude:          "*.tmp",
+				ExcludeNames:     "node_modules,dist",
+				Format:           "Custom: {path}\n{content}",
+				ConfirmTokens:    500,
+				Verbose:          true,
+				DryRun:           true,
+				Paths:            []string{"path1", "path2", "path3"},
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -91,12 +128,12 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "",
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				APIKey:           "test-api-key",
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -116,12 +153,12 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{},
-				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				APIKey:           "test-api-key",
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -140,12 +177,12 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				"path1",
 			},
 			env: map[string]string{}, // No API key in environment
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"path1"},
-				ApiKey:           "", // Empty API key
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				APIKey:           "", // Empty API key
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -166,13 +203,13 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "",
 				DryRun:           true,
 				Paths:            []string{"path1", "path2"},
-				ApiKey:           "test-api-key",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				APIKey:           "test-api-key",
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				Exclude:          defaultExcludes,
 				ExcludeNames:     defaultExcludeNames,
 				Format:           defaultFormat,
@@ -193,10 +230,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.WarnLevel,
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -206,7 +243,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -220,10 +257,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.InfoLevel, // Should default to info for invalid level
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -233,7 +270,7 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          false,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -248,10 +285,10 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			env: map[string]string{
 				apiKeyEnvVar: "test-api-key",
 			},
-			want: &CliConfig{
+			want: &config.CliConfig{
 				InstructionsFile: "instructions.md",
-				OutputFile:       defaultOutputFile,
-				ModelName:        defaultModel,
+				OutputDir:        "",
+				ModelNames:       []string{defaultModel},
 				LogLevel:         logutil.DebugLevel, // Verbose overrides to debug
 				Include:          "",
 				Exclude:          defaultExcludes,
@@ -261,7 +298,63 @@ func TestParseFlagsWithEnv(t *testing.T) {
 				Verbose:          true,
 				DryRun:           false,
 				Paths:            []string{"path1"},
-				ApiKey:           "test-api-key",
+				APIKey:           "test-api-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Multiple model flags",
+			args: []string{
+				"--instructions", "instructions.md",
+				"--model", "model1",
+				"--model", "model2",
+				"--model", "model3",
+				"path1",
+			},
+			env: map[string]string{
+				apiKeyEnvVar: "test-api-key",
+			},
+			want: &config.CliConfig{
+				InstructionsFile: "instructions.md",
+				OutputDir:        "",
+				ModelNames:       []string{"model1", "model2", "model3"},
+				LogLevel:         logutil.InfoLevel,
+				Include:          "",
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
+				ConfirmTokens:    0,
+				Verbose:          false,
+				DryRun:           false,
+				Paths:            []string{"path1"},
+				APIKey:           "test-api-key",
+			},
+			wantErr: false,
+		},
+		{
+			name: "Output dir flag",
+			args: []string{
+				"--instructions", "instructions.md",
+				"--output-dir", "custom-output-dir",
+				"path1",
+			},
+			env: map[string]string{
+				apiKeyEnvVar: "test-api-key",
+			},
+			want: &config.CliConfig{
+				InstructionsFile: "instructions.md",
+				OutputDir:        "custom-output-dir",
+				ModelNames:       []string{defaultModel},
+				LogLevel:         logutil.InfoLevel,
+				Include:          "",
+				Exclude:          defaultExcludes,
+				ExcludeNames:     defaultExcludeNames,
+				Format:           defaultFormat,
+				ConfirmTokens:    0,
+				Verbose:          false,
+				DryRun:           false,
+				Paths:            []string{"path1"},
+				APIKey:           "test-api-key",
 			},
 			wantErr: false,
 		},
@@ -296,14 +389,14 @@ func TestParseFlagsWithEnv(t *testing.T) {
 			if !reflect.DeepEqual(got.Paths, tt.want.Paths) {
 				t.Errorf("Paths = %v, want %v", got.Paths, tt.want.Paths)
 			}
-			if got.ApiKey != tt.want.ApiKey {
-				t.Errorf("ApiKey = %v, want %v", got.ApiKey, tt.want.ApiKey)
+			if got.APIKey != tt.want.APIKey {
+				t.Errorf("APIKey = %v, want %v", got.APIKey, tt.want.APIKey)
 			}
-			if got.OutputFile != tt.want.OutputFile {
-				t.Errorf("OutputFile = %v, want %v", got.OutputFile, tt.want.OutputFile)
+			if got.OutputDir != tt.want.OutputDir {
+				t.Errorf("OutputDir = %v, want %v", got.OutputDir, tt.want.OutputDir)
 			}
-			if got.ModelName != tt.want.ModelName {
-				t.Errorf("ModelName = %v, want %v", got.ModelName, tt.want.ModelName)
+			if !reflect.DeepEqual(got.ModelNames, tt.want.ModelNames) {
+				t.Errorf("ModelNames = %v, want %v", got.ModelNames, tt.want.ModelNames)
 			}
 			if got.Include != tt.want.Include {
 				t.Errorf("Include = %v, want %v", got.Include, tt.want.Include)
@@ -337,13 +430,13 @@ func TestParseFlagsWithEnv(t *testing.T) {
 func TestSetupLoggingCustom(t *testing.T) {
 	tests := []struct {
 		name         string
-		config       *CliConfig
+		config       *config.CliConfig
 		wantLevel    string
 		expectLogger bool // Verify whether a logger is returned
 	}{
 		{
 			name: "Debug level with verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  true,
 				LogLevel: logutil.DebugLevel,
 			},
@@ -352,7 +445,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Info level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.InfoLevel,
 			},
@@ -361,7 +454,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Warn level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.WarnLevel,
 			},
@@ -370,7 +463,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Error level without verbose flag",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  false,
 				LogLevel: logutil.ErrorLevel,
 			},
@@ -379,7 +472,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 		},
 		{
 			name: "Verbose flag overrides any other log level",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				Verbose:  true,
 				LogLevel: logutil.ErrorLevel, // This would normally be error level
 			},
@@ -419,12 +512,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 		args                  []string
 		env                   map[string]string
 		expectedFormat        string
-		expectedModel         string
+		expectedModelNames    []string
 		expectedInclude       string
 		expectedExclude       string
 		expectedExcludeNames  string
 		expectedConfirmTokens int
-		expectedOutputFile    string
+		expectedOutputDir     string
 		expectedLogLevel      string
 		expectError           bool
 	}{
@@ -433,12 +526,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			args:                  []string{"--instructions", "instructions.txt", "./"},
 			env:                   map[string]string{apiKeyEnvVar: "test-api-key"},
 			expectedFormat:        defaultFormat,
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -446,24 +539,24 @@ func TestAdvancedConfiguration(t *testing.T) {
 			name: "All custom options",
 			args: []string{
 				"--instructions", "custom-instructions.txt",
-				"--output", "custom-output.md",
-				"--format", "Custom: {path}\n{content}\n---\n",
+				"--output-dir", "custom-output-dir",
 				"--model", "custom-model",
+				"--log-level", "debug",
 				"--include", "*.go,*.ts",
 				"--exclude", "*.tmp,*.bak",
 				"--exclude-names", "node_modules,dist,vendor",
-				"--log-level", "debug",
+				"--format", "Custom: {path}\n{content}\n---\n",
 				"--confirm-tokens", "1000",
 				"./src", "./tests",
 			},
 			env:                   map[string]string{apiKeyEnvVar: "custom-api-key"},
 			expectedFormat:        "Custom: {path}\n{content}\n---\n",
-			expectedModel:         "custom-model",
+			expectedModelNames:    []string{"custom-model"},
 			expectedInclude:       "*.go,*.ts",
 			expectedExclude:       "*.tmp,*.bak",
 			expectedExcludeNames:  "node_modules,dist,vendor",
 			expectedConfirmTokens: 1000,
-			expectedOutputFile:    "custom-output.md",
+			expectedOutputDir:     "custom-output-dir",
 			expectedLogLevel:      "debug",
 			expectError:           false,
 		},
@@ -481,9 +574,9 @@ func TestAdvancedConfiguration(t *testing.T) {
 			expectedExclude:       "*.tmp, *.bak",
 			expectedExcludeNames:  "node_modules, dist",
 			expectedFormat:        defaultFormat,
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -496,12 +589,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			},
 			env:                   map[string]string{apiKeyEnvVar: "test-api-key"},
 			expectedFormat:        "```{path}\n{content}\n```\n",
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false,
 		},
@@ -513,12 +606,12 @@ func TestAdvancedConfiguration(t *testing.T) {
 			},
 			env:                   map[string]string{}, // Empty - no API key
 			expectedFormat:        defaultFormat,       // Make sure we specify default values
-			expectedModel:         defaultModel,
+			expectedModelNames:    []string{defaultModel},
 			expectedInclude:       "",
 			expectedExclude:       defaultExcludes,
 			expectedExcludeNames:  defaultExcludeNames,
 			expectedConfirmTokens: 0,
-			expectedOutputFile:    defaultOutputFile,
+			expectedOutputDir:     "",
 			expectedLogLevel:      "info",
 			expectError:           false, // Not checked at flag parsing time
 		},
@@ -552,8 +645,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 				t.Errorf("Format = %q, want %q", config.Format, tc.expectedFormat)
 			}
 
-			if config.ModelName != tc.expectedModel {
-				t.Errorf("ModelName = %q, want %q", config.ModelName, tc.expectedModel)
+			if !reflect.DeepEqual(config.ModelNames, tc.expectedModelNames) {
+				t.Errorf("ModelNames = %v, want %v", config.ModelNames, tc.expectedModelNames)
 			}
 
 			if config.Include != tc.expectedInclude {
@@ -572,8 +665,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 				t.Errorf("ConfirmTokens = %d, want %d", config.ConfirmTokens, tc.expectedConfirmTokens)
 			}
 
-			if config.OutputFile != tc.expectedOutputFile {
-				t.Errorf("OutputFile = %q, want %q", config.OutputFile, tc.expectedOutputFile)
+			if config.OutputDir != tc.expectedOutputDir {
+				t.Errorf("OutputDir = %q, want %q", config.OutputDir, tc.expectedOutputDir)
 			}
 
 			// Set up logging to populate the log level
@@ -585,8 +678,8 @@ func TestAdvancedConfiguration(t *testing.T) {
 
 			// Check for API key if expected
 			if apiKey, exists := tc.env[apiKeyEnvVar]; exists {
-				if config.ApiKey != apiKey {
-					t.Errorf("ApiKey = %q, want %q", config.ApiKey, apiKey)
+				if config.APIKey != apiKey {
+					t.Errorf("APIKey = %q, want %q", config.APIKey, apiKey)
 				}
 			}
 		})
@@ -642,65 +735,66 @@ func TestValidateInputs(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		config        *CliConfig
+		config        *config.CliConfig
 		expectError   bool
 		errorContains string
 	}{
 		{
 			name: "Valid configuration",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
+				ModelNames:       []string{"model1"},
 			},
 			expectError: false,
 		},
 		{
 			name: "Missing instructions file",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 			},
 			expectError:   true,
 			errorContains: "missing required --instructions flag",
 		},
 		{
 			name: "Missing paths",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{}, // Empty
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 			},
 			expectError:   true,
 			errorContains: "no paths specified",
 		},
 		{
 			name: "Missing API key",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				ApiKey:           "", // Missing
+				APIKey:           "", // Missing
 			},
 			expectError:   true,
 			errorContains: "API key not set",
 		},
 		{
 			name: "Dry run allows missing instructions file",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing
 				Paths:            []string{"testfile"},
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				DryRun:           true, // Dry run mode
 			},
 			expectError: false,
 		},
 		{
 			name: "Dry run still requires paths",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "",         // Missing allowed in dry run
 				Paths:            []string{}, // Empty paths still invalid
-				ApiKey:           "test-key",
+				APIKey:           "test-key",
 				DryRun:           true,
 			},
 			expectError:   true,
@@ -708,14 +802,36 @@ func TestValidateInputs(t *testing.T) {
 		},
 		{
 			name: "Dry run still requires API key",
-			config: &CliConfig{
+			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
-				ApiKey:           "", // Missing
+				APIKey:           "", // Missing
 				DryRun:           true,
 			},
 			expectError:   true,
 			errorContains: "API key not set",
+		},
+		{
+			name: "Missing models",
+			config: &config.CliConfig{
+				InstructionsFile: tempFile.Name(),
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",
+				ModelNames:       []string{}, // Empty
+			},
+			expectError:   true,
+			errorContains: "no models specified",
+		},
+		{
+			name: "Dry run allows missing models",
+			config: &config.CliConfig{
+				InstructionsFile: "", // Missing allowed in dry run
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",
+				ModelNames:       []string{}, // Empty allowed in dry run
+				DryRun:           true,
+			},
+			expectError: false,
 		},
 	}
 
@@ -754,3 +870,138 @@ func TestUsageMessage(t *testing.T) {
 }
 
 // TestInstructionsFileRequirement is now covered by TestValidateInputs
+
+// TestStringSliceFlag tests the stringSliceFlag type's flag.Value interface implementation
+func TestStringSliceFlag(t *testing.T) {
+	t.Run("String() returns comma-separated values", func(t *testing.T) {
+		// Empty flag
+		emptyFlag := stringSliceFlag{}
+		if got := emptyFlag.String(); got != "" {
+			t.Errorf("Empty stringSliceFlag.String() = %q, want %q", got, "")
+		}
+
+		// Flag with a single value
+		singleFlag := stringSliceFlag{"model1"}
+		if got := singleFlag.String(); got != "model1" {
+			t.Errorf("Single stringSliceFlag.String() = %q, want %q", got, "model1")
+		}
+
+		// Flag with multiple values
+		multiFlag := stringSliceFlag{"model1", "model2", "model3"}
+		if got := multiFlag.String(); got != "model1,model2,model3" {
+			t.Errorf("Multiple stringSliceFlag.String() = %q, want %q", got, "model1,model2,model3")
+		}
+
+		// Flag with empty strings
+		emptyStringFlag := stringSliceFlag{"", "model1", ""}
+		if got := emptyStringFlag.String(); got != ",model1," {
+			t.Errorf("Flag with empty strings .String() = %q, want %q", got, ",model1,")
+		}
+
+		// Flag with strings containing commas
+		commaFlag := stringSliceFlag{"model,1", "model,2"}
+		if got := commaFlag.String(); got != "model,1,model,2" {
+			t.Errorf("Flag with commas .String() = %q, want %q", got, "model,1,model,2")
+		}
+	})
+
+	t.Run("Set() appends values", func(t *testing.T) {
+		// New flag starts empty
+		flag := &stringSliceFlag{}
+
+		// First value
+		if err := flag.Set("model1"); err != nil {
+			t.Errorf("First Set() error = %v", err)
+		}
+		if len(*flag) != 1 || (*flag)[0] != "model1" {
+			t.Errorf("After first Set(), flag = %v, want [model1]", *flag)
+		}
+
+		// Second value
+		if err := flag.Set("model2"); err != nil {
+			t.Errorf("Second Set() error = %v", err)
+		}
+		if len(*flag) != 2 || (*flag)[0] != "model1" || (*flag)[1] != "model2" {
+			t.Errorf("After second Set(), flag = %v, want [model1 model2]", *flag)
+		}
+
+		// Third value
+		if err := flag.Set("model3"); err != nil {
+			t.Errorf("Third Set() error = %v", err)
+		}
+		if len(*flag) != 3 || (*flag)[0] != "model1" || (*flag)[1] != "model2" || (*flag)[2] != "model3" {
+			t.Errorf("After third Set(), flag = %v, want [model1 model2 model3]", *flag)
+		}
+
+		// Empty string value
+		if err := flag.Set(""); err != nil {
+			t.Errorf("Empty string Set() error = %v", err)
+		}
+		if len(*flag) != 4 || (*flag)[3] != "" {
+			t.Errorf("After empty string Set(), flag = %v, want [model1 model2 model3 ]", *flag)
+		}
+
+		// Value containing commas
+		if err := flag.Set("model,4"); err != nil {
+			t.Errorf("Comma-containing Set() error = %v", err)
+		}
+		if len(*flag) != 5 || (*flag)[4] != "model,4" {
+			t.Errorf("After comma Set(), flag = %v, want [model1 model2 model3  model,4]", *flag)
+		}
+	})
+
+	t.Run("Usage with flag package", func(t *testing.T) {
+		// Create a new FlagSet
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
+		fs.SetOutput(io.Discard) // Suppress output
+
+		// Create a stringSliceFlag and register it
+		modelFlag := &stringSliceFlag{}
+		fs.Var(modelFlag, "model", "Model name (can be specified multiple times)")
+
+		// Parse flags with multiple model values
+		args := []string{
+			"--model", "model1",
+			"--model", "model2",
+			"--model", "model3",
+		}
+		if err := fs.Parse(args); err != nil {
+			t.Fatalf("Parse() error = %v", err)
+		}
+
+		// Check that all values were captured
+		if len(*modelFlag) != 3 {
+			t.Errorf("Got %d models, want 3", len(*modelFlag))
+		}
+		if (*modelFlag)[0] != "model1" || (*modelFlag)[1] != "model2" || (*modelFlag)[2] != "model3" {
+			t.Errorf("modelFlag = %v, want [model1 model2 model3]", *modelFlag)
+		}
+	})
+
+	t.Run("Usage with flag package - edge cases", func(t *testing.T) {
+		// Create a new FlagSet
+		fs := flag.NewFlagSet("test", flag.ContinueOnError)
+		fs.SetOutput(io.Discard) // Suppress output
+
+		// Create a stringSliceFlag and register it
+		modelFlag := &stringSliceFlag{}
+		fs.Var(modelFlag, "model", "Model name (can be specified multiple times)")
+
+		// Parse flags with edge case values (empty string, comma-containing)
+		args := []string{
+			"--model", "",
+			"--model", "model,with,commas",
+		}
+		if err := fs.Parse(args); err != nil {
+			t.Fatalf("Parse() error = %v", err)
+		}
+
+		// Check that all values were captured correctly
+		if len(*modelFlag) != 2 {
+			t.Errorf("Got %d models, want 2", len(*modelFlag))
+		}
+		if (*modelFlag)[0] != "" || (*modelFlag)[1] != "model,with,commas" {
+			t.Errorf("modelFlag = %v, want [ model,with,commas]", *modelFlag)
+		}
+	})
+}
