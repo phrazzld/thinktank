@@ -49,7 +49,7 @@ func setupTestDir(t *testing.T) (string, func()) {
 
 	// Return the test directory and cleanup function
 	return testDir, func() {
-		os.RemoveAll(testDir)
+		_ = os.RemoveAll(testDir)
 	}
 }
 

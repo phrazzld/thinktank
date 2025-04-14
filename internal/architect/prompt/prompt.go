@@ -9,11 +9,12 @@ import (
 	"github.com/phrazzld/architect/internal/fileutil"
 )
 
-// EscapeContent helps prevent conflicts with XML-like tags by escaping < and > characters
+// EscapeContent previously escaped XML-like characters, but this was determined to be incorrect
+// as it modifies the actual code content. This function now returns content unchanged to preserve
+// the original syntax including < and > characters.
 func EscapeContent(content string) string {
-	escaped := strings.ReplaceAll(content, "<", "&lt;")
-	escaped = strings.ReplaceAll(escaped, ">", "&gt;")
-	return escaped
+	// No escaping is performed to preserve original code syntax
+	return content
 }
 
 // StitchPrompt combines instructions and file context into the final prompt string with XML-like tags

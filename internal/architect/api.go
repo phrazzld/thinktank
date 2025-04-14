@@ -17,7 +17,7 @@ var (
 	ErrEmptyResponse = errors.New("received empty response from Gemini")
 
 	// ErrWhitespaceContent indicates the API returned only whitespace content
-	ErrWhitespaceContent = errors.New("Gemini returned an empty output text")
+	ErrWhitespaceContent = errors.New("gemini returned an empty output text")
 
 	// ErrSafetyBlocked indicates content was blocked by safety filters
 	ErrSafetyBlocked = errors.New("content blocked by Gemini safety filters")
@@ -54,11 +54,16 @@ type apiService struct {
 	newClientFunc func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 }
 
+// newClientWrapper wraps gemini.NewClient to match the expected signature
+func newClientWrapper(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	return gemini.NewClient(ctx, apiKey, modelName, apiEndpoint)
+}
+
 // NewAPIService creates a new instance of APIService
 func NewAPIService(logger logutil.LoggerInterface) APIService {
 	return &apiService{
 		logger:        logger,
-		newClientFunc: gemini.NewClient, // Default to the real implementation
+		newClientFunc: newClientWrapper, // Use our wrapper to match signatures
 	}
 }
 

@@ -1,39 +1,54 @@
 # Git Hooks
 
-This directory contains templates for Git hooks that can be used to enforce quality standards before commits.
+This directory contains documentation for Git hooks used in this project.
 
 ## Pre-commit Hook
 
-The pre-commit hook runs automatically before each commit and performs the following checks:
+We use the [pre-commit](https://pre-commit.com/) framework for managing pre-commit hooks. The pre-commit hook runs automatically before each commit and performs the following checks:
 
 1. **Code formatting**: Formats all Go files using `go fmt`
 2. **Linting**: Runs `golangci-lint` to catch common issues
 3. **Build verification**: Ensures the code builds without errors
-4. **Quick tests**: Runs the fast unit tests
+4. **Quick tests**: Runs a subset of unit tests with the `-short` flag, excluding the orchestrator package which has tests that may fail in the pre-commit environment
+5. **Large file detection**: Warns about Go files exceeding 1000 lines, encouraging refactoring
 
 ## Installation
 
-To use these hooks, you can either:
+There are two ways to set up the hooks:
 
-### Option 1: Install directly
+### Option 1: Using the Setup Script (Recommended)
 
-```bash
-# From the project root
-cp hooks/pre-commit .git/hooks/
-chmod +x .git/hooks/pre-commit
-```
-
-### Option 2: Use symlinks
+Run our setup script, which will check for and install required dependencies (including pre-commit):
 
 ```bash
 # From the project root
-ln -sf "$(pwd)/hooks/pre-commit" .git/hooks/pre-commit
+./scripts/setup.sh
 ```
 
-## Requirements
+### Option 2: Manual Installation
 
-- The pre-commit hook requires `golangci-lint` to be installed.
-- Install with: `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`
+1. Install the pre-commit framework:
+   ```bash
+   # Using pip
+   pip install pre-commit
+
+   # OR using Homebrew
+   brew install pre-commit
+   ```
+
+2. Install the hooks:
+   ```bash
+   # From the project root
+   pre-commit install
+   ```
+
+## Usage
+
+- The hooks will run automatically on `git commit`
+- To run all hooks manually:
+  ```bash
+  pre-commit run --all-files
+  ```
 
 ## Skipping Hooks
 
@@ -47,6 +62,7 @@ git commit --no-verify -m "Your message"
 
 If you encounter issues with the hooks:
 
-1. Ensure they are executable: `chmod +x .git/hooks/pre-commit`
-2. Check that all required tools are installed
-3. Try running the commands manually to identify specific errors
+1. Ensure pre-commit is installed: `pre-commit --version`
+2. Check the configuration in `.pre-commit-config.yaml`
+3. Try running individual hooks manually, e.g.: `pre-commit run go-fmt`
+4. For unit test issues, you can run the tests directly with: `go test -short ./cmd/architect/... ./internal/architect/interfaces ./internal/architect/modelproc ./internal/architect/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil`

@@ -34,7 +34,7 @@ Based on your assessment above:
 
 * **If aligned, efficient, progressing, and compliant:**
     Respond with: "Assessment complete. Current approach remains valid and aligned with all standards. Resuming task."
-    
+
 * **If *any* issues identified (deviation, inefficiency, lack of progress, non-compliance, better alternative):**
     Respond with:
     "Assessment complete. Course correction recommended."

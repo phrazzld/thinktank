@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// Variable to allow mocking os.Exit in tests
+var osExit = os.Exit
+
 // LoggerInterface defines the common logging interface
 // This allows both our structured Logger and the standard log.Logger
 // to be used interchangeably
@@ -35,27 +38,28 @@ func NewStdLoggerAdapter(logger *log.Logger) *StdLoggerAdapter {
 
 // Debug implements LoggerInterface.Debug
 func (s *StdLoggerAdapter) Debug(format string, v ...interface{}) {
-	s.Logger.Printf("[DEBUG] "+format, v...)
+	s.Printf("[DEBUG] "+format, v...)
 }
 
 // Info implements LoggerInterface.Info
 func (s *StdLoggerAdapter) Info(format string, v ...interface{}) {
-	s.Logger.Printf("[INFO] "+format, v...)
+	s.Printf("[INFO] "+format, v...)
 }
 
 // Warn implements LoggerInterface.Warn
 func (s *StdLoggerAdapter) Warn(format string, v ...interface{}) {
-	s.Logger.Printf("[WARN] "+format, v...)
+	s.Printf("[WARN] "+format, v...)
 }
 
 // Error implements LoggerInterface.Error
 func (s *StdLoggerAdapter) Error(format string, v ...interface{}) {
-	s.Logger.Printf("[ERROR] "+format, v...)
+	s.Printf("[ERROR] "+format, v...)
 }
 
 // Fatal implements LoggerInterface.Fatal
 func (s *StdLoggerAdapter) Fatal(format string, v ...interface{}) {
-	s.Logger.Fatalf("[FATAL] "+format, v...)
+	s.Printf("[FATAL] "+format, v...)
+	osExit(1)
 }
 
 // LogLevel represents different logging severity levels
@@ -128,7 +132,7 @@ func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
 	}
 
 	formattedMsg := l.formatMessage(level, format, args...)
-	fmt.Fprintln(l.writer, formattedMsg)
+	_, _ = fmt.Fprintln(l.writer, formattedMsg)
 }
 
 // Debug logs a message at DEBUG level
@@ -154,7 +158,7 @@ func (l *Logger) Error(format string, args ...interface{}) {
 // Fatal logs a message at ERROR level and then exits the program
 func (l *Logger) Fatal(format string, args ...interface{}) {
 	l.log(ErrorLevel, format, args...)
-	os.Exit(1)
+	osExit(1)
 }
 
 // SetLevel changes the current log level
@@ -169,6 +173,13 @@ func (l *Logger) SetPrefix(prefix string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	l.prefix = prefix
+}
+
+// GetLevel returns the current log level
+func (l *Logger) GetLevel() LogLevel {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.level
 }
 
 // Println implements LoggerInterface by logging at info level

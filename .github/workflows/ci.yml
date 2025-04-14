@@ -42,7 +42,7 @@ jobs:
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-build-
-            
+
       # Log cache usage for monitoring
       - name: Cache status report
         run: |
@@ -65,11 +65,20 @@ jobs:
         run: go vet ./...
 
       # Run comprehensive linting
-      - name: Install and run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
-          args: --timeout=5m
+      - name: Install golangci-lint and run it directly
+        run: |
+          # Install golangci-lint v2.1.1 directly
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+          # Run golangci-lint directly without using the action to avoid --out-format flag issues
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m
+
+      # Install and run pre-commit checks
+      - name: Install pre-commit
+        run: |
+          pip install pre-commit
+
+      - name: Run pre-commit checks
+        run: pre-commit run --all-files
 
   # Test job for running Go tests
   test:
@@ -88,7 +97,7 @@ jobs:
           go-version: 'stable'
           cache: true
           cache-dependency-path: go.sum
-          
+
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
@@ -98,41 +107,41 @@ jobs:
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-build-
-            
+
       # Log cache usage for monitoring
       - name: Cache status report
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
-      
+
       # Run integration tests with parallel execution
       - name: Run integration tests with parallel execution
         run: go test -v -race -short -parallel 4 ./internal/integration/...
         timeout-minutes: 5
-      
+
       # Run E2E tests with parallel execution
       - name: Run E2E tests with parallel execution
         run: ./internal/e2e/run_e2e_tests.sh --verbose --short
         timeout-minutes: 8
-      
+
       # Run other tests with race detection
       - name: Run other tests with race detection
         run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
         timeout-minutes: 8
-        
+
       # Generate coverage report with short flag to skip long-running tests
       - name: Generate coverage report
         run: go test -short -coverprofile=coverage.out ./...
         timeout-minutes: 5
-        
+
       # Display coverage summary
       - name: Display coverage summary
         run: go tool cover -func=coverage.out
-        
+
       # Check coverage threshold
       - name: Check coverage threshold
         run: |
           COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          THRESHOLD=30
+          THRESHOLD=70
           COVERAGE_INT=${COVERAGE%.*}  # Remove decimal part for integer comparison
           echo "Code coverage: $COVERAGE%"
           if [ "$COVERAGE_INT" -lt "$THRESHOLD" ]; then
@@ -158,7 +167,7 @@ jobs:
           go-version: 'stable'
           cache: true
           cache-dependency-path: go.sum
-          
+
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
@@ -168,17 +177,17 @@ jobs:
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-build-
-            
+
       # Log cache usage for monitoring
       - name: Cache status report
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
-      
+
       # Build the project
       - name: Build
         run: go build -v -ldflags="-s -w" -o architect
         timeout-minutes: 5
-      
+
       # Upload binary as artifact
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -186,7 +195,7 @@ jobs:
           name: architect-binary
           path: architect
           retention-days: 7
-          
+
   # Profiling job for analyzing test performance (runs on manual trigger)
   profile:
     name: Profile Tests
@@ -205,7 +214,7 @@ jobs:
           go-version: 'stable'
           cache: true
           cache-dependency-path: go.sum
-          
+
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
@@ -215,22 +224,22 @@ jobs:
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
           restore-keys: |
             ${{ runner.os }}-go-build-
-            
+
       # Log cache usage for monitoring
       - name: Cache status report
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
-      
+
       # Run all tests with CPU profiling
       - name: Run tests with CPU profiling
         run: go test -v -cpuprofile=cpu.prof ./...
         timeout-minutes: 10
-      
+
       # Run all tests with memory profiling
       - name: Run tests with memory profiling
         run: go test -v -memprofile=mem.prof ./...
         timeout-minutes: 10
-        
+
       # Run all tests with block profiling
       - name: Run tests with block profiling
         run: go test -v -blockprofile=block.prof ./...

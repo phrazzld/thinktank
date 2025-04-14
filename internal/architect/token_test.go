@@ -2,6 +2,7 @@ package architect
 
 import (
 	"context"
+	"errors"
 	"os"
 	"strings"
 	"testing"
@@ -68,8 +69,8 @@ func TestTokenManagerPromptForConfirmation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create pipe: %v", err)
 			}
-			defer r.Close()
-			defer w.Close()
+			defer func() { _ = r.Close() }()
+			defer func() { _ = w.Close() }()
 
 			// Set stdin to the read end of the pipe
 			os.Stdin = r
@@ -248,6 +249,122 @@ func TestTokenManagerGetTokenInfo(t *testing.T) {
 					if !foundError {
 						t.Errorf("Expected audit log entry with error type %s, but didn't find one", tc.expectedErrorType)
 					}
+				}
+			}
+		})
+	}
+}
+
+// TestTokenManagerWithNilClient tests that a TokenManager cannot be created with a nil client
+func TestTokenManagerWithNilClient(t *testing.T) {
+	// Create a mock logger and audit logger
+	logger := &mockContextLogger{}
+	auditLogger := &mockAuditLogger{
+		entries: make([]auditlog.AuditEntry, 0),
+	}
+
+	// Try to create the token manager with nil client
+	tokenManager, err := NewTokenManager(logger, auditLogger, nil)
+
+	// Verify error is returned
+	if err == nil {
+		t.Errorf("Expected error when creating TokenManager with nil client, got nil")
+	}
+	if tokenManager != nil {
+		t.Errorf("Expected nil TokenManager, got %v", tokenManager)
+	}
+	if err != nil && !strings.Contains(err.Error(), "nil") {
+		t.Errorf("Expected error to mention 'nil', got: %v", err)
+	}
+}
+
+// TestTokenManagerCheckTokenLimit tests the CheckTokenLimit method of the TokenManager
+func TestTokenManagerCheckTokenLimit(t *testing.T) {
+	// Create a context for testing
+	ctx := context.Background()
+
+	// Test cases
+	tests := []struct {
+		name            string
+		prompt          string
+		inputTokenLimit int32
+		responseTokens  int32
+		expectError     bool
+		errorContains   string
+	}{
+		{
+			name:            "Under Limit",
+			prompt:          "This is a test prompt.",
+			inputTokenLimit: 100,
+			responseTokens:  10,
+			expectError:     false,
+		},
+		{
+			name:            "Exceeds Limit",
+			prompt:          "This is a test prompt that exceeds the limit.",
+			inputTokenLimit: 5,
+			responseTokens:  20,
+			expectError:     true,
+			errorContains:   "exceeds token limit",
+		},
+		{
+			name:            "Error Getting Token Info",
+			prompt:          "This is a test prompt.",
+			inputTokenLimit: 0, // Will cause an error in the mock client
+			responseTokens:  0, // Doesn't matter as we'll error first
+			expectError:     true,
+			errorContains:   "test error getting model info",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mocks
+			logger := &mockContextLogger{}
+			auditLogger := &mockAuditLogger{
+				entries: make([]auditlog.AuditEntry, 0),
+			}
+
+			// Create a mock client
+			mockClient := &mockGeminiClient{
+				getModelNameFunc: func() string {
+					return "test-model"
+				},
+				countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+					return &gemini.TokenCount{Total: tc.responseTokens}, nil
+				},
+				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
+					if tc.inputTokenLimit == 0 {
+						// Simulate an error getting model info
+						return nil, errors.New("test error getting model info")
+					}
+					return &gemini.ModelInfo{
+						Name:             "test-model",
+						InputTokenLimit:  tc.inputTokenLimit,
+						OutputTokenLimit: tc.inputTokenLimit,
+					}, nil
+				},
+			}
+
+			// Create the token manager
+			tokenManager, err := NewTokenManager(logger, auditLogger, mockClient)
+			if err != nil {
+				t.Fatalf("Failed to create token manager: %v", err)
+			}
+
+			// Call the CheckTokenLimit method
+			err = tokenManager.CheckTokenLimit(ctx, tc.prompt)
+
+			// Verify error expectations
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected an error, but got nil")
+				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
+					t.Errorf("Expected error to contain %q, but got: %v", tc.errorContains, err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, but got: %v", err)
 				}
 			}
 		})

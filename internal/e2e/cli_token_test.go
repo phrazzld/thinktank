@@ -100,16 +100,16 @@ func TestUserConfirmation(t *testing.T) {
 			// but in our test environment with mock API, we'll just log instead of failing
 			outputPath := filepath.Join("output", "test-model.md")
 			alternateOutputPath := filepath.Join("output", "gemini-test-model.md")
-			
+
 			hasOutputFile := env.FileExists(outputPath) || env.FileExists(alternateOutputPath)
-			
+
 			// Log status but don't fail test - this accounts for mock API issues
 			if tc.shouldGenerate && !hasOutputFile {
 				t.Logf("Note: Expected output file to be created, but it wasn't (likely due to mock API)")
 			} else if !tc.shouldGenerate && hasOutputFile {
 				t.Logf("Note: Output file was created unexpectedly (consider investigating)")
 			} else {
-				t.Logf("Output file state as expected: shouldGenerate=%v, hasOutputFile=%v", 
+				t.Logf("Output file state as expected: shouldGenerate=%v, hasOutputFile=%v",
 					tc.shouldGenerate, hasOutputFile)
 			}
 		})

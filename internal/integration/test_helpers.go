@@ -87,14 +87,14 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	// Create cleanup function
 	cleanup := func() {
 		// Remove test directory and all contents
-		os.RemoveAll(testDir)
+		_ = os.RemoveAll(testDir)
 
 		// Restore original stdin (stdout/stderr are no longer redirected globally)
 		os.Stdin = origStdin
 
 		// Close pipe file descriptors
-		r.Close()
-		w.Close()
+		_ = r.Close()
+		_ = w.Close()
 	}
 
 	return &TestEnv{
@@ -212,14 +212,8 @@ func (env *TestEnv) SetupXMLValidatingClient(t *testing.T, expectedPartialMatche
 			t.Errorf("Prompt missing context tags: %s", prompt)
 		}
 
-		// Check for XML escaping of special characters
-		if strings.Contains(prompt, "<") && !strings.Contains(prompt, "&lt;") {
-			t.Errorf("Potential unescaped < character in content section: %s", prompt)
-		}
-
-		if strings.Contains(prompt, ">") && !strings.Contains(prompt, "&gt;") {
-			t.Errorf("Potential unescaped > character in content section: %s", prompt)
-		}
+		// No longer checking for XML escaping of special characters
+		// We want to preserve original syntax in code samples
 
 		// Check for additional expected partial matches (like filenames)
 		for _, partialMatch := range expectedPartialMatches {
@@ -564,7 +558,7 @@ func add(a, b int) int {
 // RunStandardTest runs a standard test with configurable options
 // This encapsulates the common pattern of setting up a test environment,
 // configuring it, and running architect.Execute
-func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (error, string) {
+func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (string, error) {
 	t.Helper()
 
 	// Set up the mock client with standard responses
@@ -587,5 +581,5 @@ func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (error, 
 		outputPath = filepath.Join("output", modelName+".md")
 	}
 
-	return err, outputPath
+	return outputPath, err
 }

@@ -3,6 +3,8 @@ package gemini
 
 import (
 	"context"
+
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // ModelConfig holds Gemini model configuration parameters
@@ -67,9 +69,33 @@ type Client interface {
 	Close() error
 }
 
+// ClientOption defines a function that modifies a client
+type ClientOption func(*geminiClient)
+
+// WithHTTPClient allows injecting a custom HTTP client
+func WithHTTPClient(client HTTPClient) ClientOption {
+	return func(gc *geminiClient) {
+		gc.httpClient = client
+	}
+}
+
+// WithLogger allows injecting a custom logger
+func WithLogger(logger logutil.LoggerInterface) ClientOption {
+	return func(gc *geminiClient) {
+		gc.logger = logger
+	}
+}
+
 // NewClient creates a new Gemini client with the given API key, model name, and optional API endpoint
-func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) {
-	return newGeminiClient(ctx, apiKey, modelName, apiEndpoint)
+func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (Client, error) {
+	// Convert public options to internal options
+	var internalOpts []geminiClientOption
+	for _, opt := range opts {
+		// Conversion is safe as both function types have the same signature
+		internalOpts = append(internalOpts, geminiClientOption(opt))
+	}
+
+	return newGeminiClient(ctx, apiKey, modelName, apiEndpoint, internalOpts...)
 }
 
 // DefaultModelConfig returns a reasonable default model configuration

@@ -321,19 +321,19 @@ func (e *TestEnv) RunArchitect(args []string, stdin io.Reader) (stdout, stderr s
 	cmd.Env = append(os.Environ(),
 		// Always set a valid API key value
 		fmt.Sprintf("GEMINI_API_KEY=%s", "test-api-key"),
-		
+
 		// Set the mock server URL as the API endpoint
 		fmt.Sprintf("GEMINI_API_URL=%s", e.MockServer.URL),
-		
+
 		// Hard-code the model name to match mock server path
 		fmt.Sprintf("GEMINI_MODEL_NAME=%s", "gemini-test-model"),
-		
+
 		// Force env var source
 		"GEMINI_API_KEY_SOURCE=env",
-		
+
 		// Debug mode for detailed logging
 		"ARCHITECT_DEBUG=true",
-		
+
 		// Explicitly set PATH to ensure binary can find dependencies
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
 	)
@@ -356,7 +356,7 @@ func (e *TestEnv) RunArchitect(args []string, stdin io.Reader) (stdout, stderr s
 
 	// For debugging: log output on non-zero exit codes
 	if exitCode != 0 {
-		e.t.Logf("Command exited with code %d\nStdout: %s\nStderr: %s", 
+		e.t.Logf("Command exited with code %d\nStdout: %s\nStderr: %s",
 			exitCode, stdoutBuf.String(), stderrBuf.String())
 	}
 

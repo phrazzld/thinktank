@@ -131,7 +131,7 @@ func Execute(
 		logger.Error("Failed to initialize reference client for context gathering: %v", err)
 		return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
 	}
-	defer referenceClient.Close()
+	defer func() { _ = referenceClient.Close() }()
 
 	// Create TokenManager with the reference client
 	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClient)

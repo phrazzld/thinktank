@@ -70,7 +70,7 @@ func VerifyOutputWithExpectations(t *testing.T, stdout, stderr string, exitCode 
 	combinedOutput := stdout + stderr
 
 	// Log the full output for debugging
-	t.Logf("Command output:\nExit code: %d\nStdout: %s\nStderr: %s", 
+	t.Logf("Command output:\nExit code: %d\nStdout: %s\nStderr: %s",
 		exitCode, stdout, stderr)
 
 	// Track validation results
@@ -81,7 +81,7 @@ func VerifyOutputWithExpectations(t *testing.T, stdout, stderr string, exitCode 
 	for _, expect := range expectations {
 		// Validate exit code if specified
 		if expect.ExpectedCode != 0 && exitCode != expect.ExpectedCode {
-			message := getFailureMessage(expect.Name, "exit code", 
+			message := getFailureMessage(expect.Name, "exit code",
 				expect.ExpectedCode, exitCode, expect.IsRequired)
 			if expect.IsRequired {
 				failures = append(failures, message)
@@ -93,7 +93,7 @@ func VerifyOutputWithExpectations(t *testing.T, stdout, stderr string, exitCode 
 		// Validate expected output if specified
 		if expect.ExpectedOutput != "" {
 			if !strings.Contains(combinedOutput, expect.ExpectedOutput) {
-				message := getFailureMessage(expect.Name, "output content", 
+				message := getFailureMessage(expect.Name, "output content",
 					expect.ExpectedOutput, "not found", expect.IsRequired)
 				if expect.IsRequired {
 					failures = append(failures, message)
@@ -154,9 +154,9 @@ func AssertCommandSuccess(t *testing.T, stdout, stderr string, exitCode int, exp
 
 	// Command must succeed with exit code 0
 	expectations = append(expectations, TestExpectation{
-		Name:           "Command Exit Code",
-		ExpectedCode:   0,
-		IsRequired:     true, // Must have exit code 0 to be considered successful
+		Name:         "Command Exit Code",
+		ExpectedCode: 0,
+		IsRequired:   true, // Must have exit code 0 to be considered successful
 	})
 
 	// Add each expected output as a required expectation
@@ -171,7 +171,7 @@ func AssertCommandSuccess(t *testing.T, stdout, stderr string, exitCode int, exp
 	// Command must not contain error messages
 	for _, errorPattern := range []string{
 		"error:", "ERROR:", "failed:",
-		"panic:", "fatal:", "FATAL:", 
+		"panic:", "fatal:", "FATAL:",
 	} {
 		// Make these non-required to avoid false positives
 		expectations = append(expectations, TestExpectation{
@@ -187,22 +187,22 @@ func AssertCommandSuccess(t *testing.T, stdout, stderr string, exitCode int, exp
 // AssertAPICommandSuccess verifies success but allows for API-related differences
 func AssertAPICommandSuccess(t *testing.T, stdout, stderr string, exitCode int, expectedOutputs ...string) {
 	t.Helper()
-	
+
 	// Check if output contains API connection issues
 	combinedOutput := stdout + stderr
 	apiIssues := []string{
 		"API key", "failed to create", "environment variable",
 		"authentication", "model not found", "connection failed", "context gathering",
 	}
-	
+
 	// If API issues are detected, log it and skip strict validation
 	for _, issue := range apiIssues {
 		if strings.Contains(combinedOutput, issue) {
 			t.Logf("API issue detected (%s) - relaxing test assertions", issue)
-			
+
 			// Create relaxed expectations for API-related tests
 			expectations := []TestExpectation{}
-			
+
 			// Add each expected output as optional
 			for i, output := range expectedOutputs {
 				expectations = append(expectations, TestExpectation{
@@ -211,12 +211,12 @@ func AssertAPICommandSuccess(t *testing.T, stdout, stderr string, exitCode int, 
 					IsRequired:     false, // Non-required due to API issues
 				})
 			}
-			
+
 			VerifyOutputWithExpectations(t, stdout, stderr, exitCode, expectations)
 			return
 		}
 	}
-	
+
 	// If no API issues, use strict validation
 	AssertCommandSuccess(t, stdout, stderr, exitCode, expectedOutputs...)
 }
@@ -228,9 +228,9 @@ func AssertCommandFailure(t *testing.T, stdout, stderr string, exitCode int, exp
 
 	// Command must fail with non-zero exit code
 	expectations = append(expectations, TestExpectation{
-		Name:           "Command Exit Code",
-		ExpectedCode:   expectedExitCode,
-		IsRequired:     true, // Must have expected exit code
+		Name:         "Command Exit Code",
+		ExpectedCode: expectedExitCode,
+		IsRequired:   true, // Must have expected exit code
 	})
 
 	// Add each error message as a required expectation
@@ -248,24 +248,24 @@ func AssertCommandFailure(t *testing.T, stdout, stderr string, exitCode int, exp
 // AssertFileContent validates that a file exists and contains expected content
 func AssertFileContent(t *testing.T, env *TestEnv, relativePath string, expectedContent ...string) {
 	t.Helper()
-	
+
 	// Check if file exists
 	if !env.FileExists(relativePath) {
 		t.Errorf("File does not exist: %s", relativePath)
 		return
 	}
-	
+
 	// Read the file content
 	content, err := env.ReadFile(relativePath)
 	if err != nil {
 		t.Errorf("Failed to read file %s: %v", relativePath, err)
 		return
 	}
-	
+
 	// Check each expected content
 	for i, expected := range expectedContent {
 		if !strings.Contains(content, expected) {
-			t.Errorf("File %s does not contain expected content #%d: %q", 
+			t.Errorf("File %s does not contain expected content #%d: %q",
 				relativePath, i+1, expected)
 		}
 	}
@@ -275,26 +275,26 @@ func AssertFileContent(t *testing.T, env *TestEnv, relativePath string, expected
 // This is useful for API-dependent tests where file generation may be unreliable
 func AssertFileMayExist(t *testing.T, env *TestEnv, relativePath string, expectedContent ...string) {
 	t.Helper()
-	
+
 	if !env.FileExists(relativePath) {
 		t.Logf("File does not exist (this may be acceptable with mock API): %s", relativePath)
 		return
 	}
-	
+
 	// If the file exists, validate its content
 	content, err := env.ReadFile(relativePath)
 	if err != nil {
 		t.Logf("Note: Failed to read file %s: %v", relativePath, err)
 		return
 	}
-	
+
 	// Check each expected content
 	for i, expected := range expectedContent {
 		if !strings.Contains(content, expected) {
-			t.Logf("Note: File %s does not contain expected content #%d: %q", 
+			t.Logf("Note: File %s does not contain expected content #%d: %q",
 				relativePath, i+1, expected)
 		} else {
-			t.Logf("File %s contains expected content #%d: %q", 
+			t.Logf("File %s contains expected content #%d: %q",
 				relativePath, i+1, expected)
 		}
 	}

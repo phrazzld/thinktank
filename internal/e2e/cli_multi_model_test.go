@@ -95,7 +95,7 @@ func main() {
 			continue
 		} else {
 			t.Logf("Output file for model %s exists", modelName)
-			
+
 			// Verify output file content
 			content, err := env.ReadFile(outputFile)
 			if err != nil {
@@ -185,13 +185,13 @@ func main() {}`)
 	// Check if output files were created
 	successFile := filepath.Join("output", "success-model.md")
 	errorFile := filepath.Join("output", "error-model.md")
-	
+
 	if env.FileExists(successFile) {
 		t.Logf("Note: Output file for success-model was created (not expected with error simulation)")
 	} else {
 		t.Logf("No output file created for success-model (expected behavior)")
 	}
-	
+
 	if env.FileExists(errorFile) {
 		t.Logf("Note: Output file for error-model was created (not expected with error simulation)")
 	}

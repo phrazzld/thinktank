@@ -40,13 +40,13 @@ func TestBasicExecution(t *testing.T) {
 	}
 
 	// Use our new API-aware assertion helper that allows for mock API issues
-	AssertAPICommandSuccess(t, stdout, stderr, exitCode, 
+	AssertAPICommandSuccess(t, stdout, stderr, exitCode,
 		"Gathering context", "Generating plan")
 
 	// Check for output file using the relaxed assertion helper
 	outputPath := filepath.Join("output", modelName+".md")
 	alternateOutputPath := filepath.Join("output", "gemini-test-model.md")
-	
+
 	// Try both possible output paths
 	if env.FileExists(outputPath) {
 		AssertFileMayExist(t, env, outputPath, "Test Generated Plan")
@@ -83,13 +83,13 @@ func TestDryRunMode(t *testing.T) {
 	}
 
 	// For dry run, we specifically expect to see these messages
-	AssertAPICommandSuccess(t, stdout, stderr, exitCode, 
+	AssertAPICommandSuccess(t, stdout, stderr, exitCode,
 		"Dry run mode", "would process")
 
 	// In dry run mode, output file should not be created
 	outputPath := filepath.Join("output", modelName+".md")
 	alternateOutputPath := filepath.Join("output", "gemini-test-model.md")
-	
+
 	// If either file exists, it's only acceptable in our mock environment
 	if env.FileExists(outputPath) || env.FileExists(alternateOutputPath) {
 		t.Logf("Note: Output file was created in dry run mode (acceptable in mock environment)")
@@ -175,16 +175,16 @@ func main() {}`)
 
 	// Skip this test since we no longer can run without API keys due to the mock server setup
 	t.Skip("Skipping API key error test as we now use mock server")
-	
-	/*
-	// Run the architect binary without API key in environment
-	stdout, stderr, exitCode, err := runWithoutAPIKey(args)
-	if err != nil && err.Error() != "exit status 1" {
-		t.Fatalf("Failed to run architect: %v", err)
-	}
 
-	// Verify exit code and error message
-	AssertCommandFailure(t, stdout, stderr, exitCode, 1, "API key not set")
+	/*
+		// Run the architect binary without API key in environment
+		stdout, stderr, exitCode, err := runWithoutAPIKey(args)
+		if err != nil && err.Error() != "exit status 1" {
+			t.Fatalf("Failed to run architect: %v", err)
+		}
+
+		// Verify exit code and error message
+		AssertCommandFailure(t, stdout, stderr, exitCode, 1, "API key not set")
 	*/
 }
 

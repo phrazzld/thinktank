@@ -413,13 +413,14 @@ func TestMultiModelFeatures(t *testing.T) {
 					time.Sleep(50 * time.Millisecond)
 
 					// Make models 1 and 3 fail with different errors
-					if modelName == "model1" {
+					switch modelName {
+					case "model1":
 						modelData.Lock()
 						modelData.failed[modelName] = true
 						modelData.Unlock()
 
 						return nil, fmt.Errorf("simulated error 1 for model %s", modelName)
-					} else if modelName == "model3" {
+					case "model3":
 						modelData.Lock()
 						modelData.failed[modelName] = true
 						modelData.Unlock()

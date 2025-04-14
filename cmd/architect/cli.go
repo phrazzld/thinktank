@@ -177,13 +177,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	return cfg, nil
 }
 
-// SetupLogging initializes the logger based on configuration
-func SetupLogging(config *config.CliConfig) logutil.LoggerInterface {
-	return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
-}
-
-// SetupLoggingCustom initializes the logger with custom flag and writer for testing
-func SetupLoggingCustom(config *config.CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
+// setupLoggingCustomImpl is the implementation of SetupLoggingCustom
+func setupLoggingCustomImpl(config *config.CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface {
 	// Apply verbose override if set
 	if config.Verbose {
 		config.LogLevel = logutil.DebugLevel
@@ -192,4 +187,12 @@ func SetupLoggingCustom(config *config.CliConfig, _ *flag.Flag, output io.Writer
 	// Use the LogLevel set in the config
 	logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
 	return logger
+}
+
+// SetupLoggingCustom is a variable holding the implementation for easier testing
+var SetupLoggingCustom = setupLoggingCustomImpl
+
+// SetupLogging initializes the logger based on configuration
+func SetupLogging(config *config.CliConfig) logutil.LoggerInterface {
+	return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
 }

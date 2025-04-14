@@ -12,6 +12,7 @@
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+*.html
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
@@ -48,5 +49,6 @@ CONSULT-REQUEST.md
 CONSULTANT-PLAN.md
 BUG.md
 BUGFIXPLAN.md
+TASK-PROMPT.md
 # Profiling data
 profile_data/
