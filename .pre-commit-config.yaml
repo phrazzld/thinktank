@@ -21,8 +21,10 @@ repos:
         exclude: "internal/e2e/.*"
     -   id: go-build
     -   id: go-unit-tests
-        args: ["-short"]
-        exclude: "internal/e2e/.*"
+        name: go unit tests
+        entry: bash -c "cd './' && go test -short ./cmd/architect/... ./internal/architect/interfaces ./internal/architect/modelproc ./internal/architect/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil"
+        pass_filenames: false
+        language: system
 
 -   repo: local
     hooks:

@@ -10,8 +10,6 @@ import (
 	"testing"
 
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // mockTokenManager is a simplified mock for testing CLI token management integration
@@ -252,33 +250,4 @@ func runWithTokenManager(ctx context.Context, cfg *config.CliConfig, factory *mo
 // ClientFactory interface mocks how CLI would create token manager
 type ClientFactory interface {
 	CreateTokenManager(config *config.CliConfig) (TokenManager, error)
-}
-
-// realClientFactory would be the actual implementation in production code
-type realClientFactory struct {
-	logger logutil.LoggerInterface
-}
-
-func (f *realClientFactory) CreateTokenManager(cfg *config.CliConfig) (TokenManager, error) {
-	// Create a context for client creation
-	ctx := context.Background()
-
-	// Create a Gemini client
-	apiEndpoint := cfg.APIEndpoint
-	if apiEndpoint == "" {
-		apiEndpoint = "https://generativelanguage.googleapis.com" // Default endpoint
-	}
-
-	client, err := gemini.NewClient(ctx, cfg.APIKey, cfg.ModelNames[0], apiEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create client: %w", err)
-	}
-
-	// Create token manager
-	tokenManager, err := NewTokenManager(f.logger, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create token manager: %w", err)
-	}
-
-	return tokenManager, nil
 }

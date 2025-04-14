@@ -362,10 +362,7 @@ func TestAPIServiceAdapter_IsEmptyResponseError(t *testing.T) {
 			mockSetup: func(mock *MockAPIServiceForAdapter, err error) {
 				// Setup to handle nil error
 				mock.IsEmptyResponseErrorFunc = func(err error) bool {
-					if err == nil {
-						return false
-					}
-					return true
+					return err != nil
 				}
 			},
 			expectedVal: false,
@@ -490,10 +487,7 @@ func TestAPIServiceAdapter_IsSafetyBlockedError(t *testing.T) {
 			mockSetup: func(mock *MockAPIServiceForAdapter, err error) {
 				// Setup to handle nil error
 				mock.IsSafetyBlockedErrorFunc = func(err error) bool {
-					if err == nil {
-						return false
-					}
-					return true
+					return err != nil
 				}
 			},
 			expectedVal: false,

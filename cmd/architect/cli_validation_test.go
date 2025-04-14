@@ -16,13 +16,13 @@ func TestValidateInputs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temporary instructions file: %v", err)
 	}
-	defer os.Remove(tempFile.Name())
+	defer func() { _ = os.Remove(tempFile.Name()) }()
 
 	_, err = tempFile.WriteString("Test instructions content")
 	if err != nil {
 		t.Fatalf("Failed to write to temporary instructions file: %v", err)
 	}
-	tempFile.Close()
+	_ = tempFile.Close()
 
 	tests := []struct {
 		name          string

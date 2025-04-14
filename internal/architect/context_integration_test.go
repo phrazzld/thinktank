@@ -304,7 +304,7 @@ func TestIntegration_ContextGatherer_TokenManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test files
 	testFiles := []struct {
@@ -376,7 +376,7 @@ func TestIntegration_ContextGatherer_TokenCountingError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test file
 	testFilePath := filepath.Join(tempDir, "file1.go")
@@ -479,7 +479,7 @@ func TestIntegration_ContextGatherer_Configuration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Create test files in subdirectories
 	subDir := filepath.Join(tempDir, "subdir")

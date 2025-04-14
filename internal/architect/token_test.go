@@ -69,8 +69,8 @@ func TestTokenManagerPromptForConfirmation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Failed to create pipe: %v", err)
 			}
-			defer r.Close()
-			defer w.Close()
+			defer func() { _ = r.Close() }()
+			defer func() { _ = w.Close() }()
 
 			// Set stdin to the read end of the pipe
 			os.Stdin = r

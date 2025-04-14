@@ -42,7 +42,7 @@ func TestSaveToFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Define test cases
 	tests := []struct {
@@ -69,7 +69,7 @@ func TestSaveToFile(t *testing.T) {
 			cleanFunc: func() {
 				// Clean up relative path file
 				cwd, _ := os.Getwd()
-				os.Remove(filepath.Join(cwd, "test_output_relative.md"))
+				_ = os.Remove(filepath.Join(cwd, "test_output_relative.md"))
 			},
 			wantErr: false,
 		},

@@ -210,9 +210,9 @@ exit /b 2
 	// Add tempDir to PATH temporarily for this test
 	origPath := os.Getenv("PATH")
 	t.Cleanup(func() {
-		os.Setenv("PATH", origPath) // Restore original PATH
+		_ = os.Setenv("PATH", origPath) // Restore original PATH
 	})
-	os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
+	_ = os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
 
 	// Create a config with git available
 	config := &Config{
@@ -356,9 +356,9 @@ exit /b 2
 	// Add tempDir to PATH temporarily for this test
 	origPath := os.Getenv("PATH")
 	t.Cleanup(func() {
-		os.Setenv("PATH", origPath) // Restore original PATH
+		_ = os.Setenv("PATH", origPath) // Restore original PATH
 	})
-	os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
+	_ = os.Setenv("PATH", tempDir+string(filepath.ListSeparator)+origPath)
 
 	// Create a config with git available
 	config := &Config{

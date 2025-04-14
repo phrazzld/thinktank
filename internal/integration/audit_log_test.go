@@ -192,7 +192,7 @@ func main() {}`,
 
 			// If we got a FileAuditLogger, make sure to close it
 			if fileLogger, ok := auditLogger.(*auditlog.FileAuditLogger); ok {
-				defer fileLogger.Close()
+				defer func() { _ = fileLogger.Close() }()
 			}
 
 			// Replace the default NoOpAuditLogger with our test logger

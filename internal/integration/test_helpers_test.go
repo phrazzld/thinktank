@@ -62,7 +62,7 @@ func TestCleanup(t *testing.T) {
 	if _, err := os.Stat(testDirPath); !os.IsNotExist(err) {
 		t.Errorf("Test directory was not removed at %s", testDirPath)
 		// Clean it up anyway for test idempotence
-		os.RemoveAll(testDirPath)
+		_ = os.RemoveAll(testDirPath)
 	}
 }
 
@@ -471,7 +471,7 @@ func TestRunStandardTest(t *testing.T) {
 	defer env.Cleanup()
 
 	// Run a standard test with default options
-	err, outputPath := env.RunStandardTest(t)
+	outputPath, err := env.RunStandardTest(t)
 
 	// Verify execution succeeded
 	require.NoError(t, err, "RunStandardTest should not return an error")
@@ -484,7 +484,7 @@ func TestRunStandardTest(t *testing.T) {
 	}
 
 	// Run a standard test with custom options
-	err, customOutputPath := env.RunStandardTest(t,
+	customOutputPath, err := env.RunStandardTest(t,
 		WithDryRun(true),
 		WithModelNames("custom-model"),
 	)

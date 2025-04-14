@@ -287,7 +287,7 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 		}
 		return nil, apiErr
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	// Check status code
 	if resp.StatusCode != http.StatusOK {

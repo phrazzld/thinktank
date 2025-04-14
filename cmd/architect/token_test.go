@@ -371,8 +371,8 @@ func TestPromptForConfirmation(t *testing.T) {
 
 		// Write "yes" to the input
 		go func() {
-			w.Write([]byte("yes\n"))
-			w.Close()
+			_, _ = w.Write([]byte("yes\n"))
+			_ = w.Close()
 		}()
 
 		logger.Reset()
@@ -401,8 +401,8 @@ func TestPromptForConfirmation(t *testing.T) {
 
 		// Write "y" to the input
 		go func() {
-			w.Write([]byte("y\n"))
-			w.Close()
+			_, _ = w.Write([]byte("y\n"))
+			_ = w.Close()
 		}()
 
 		logger.Reset()
@@ -426,8 +426,8 @@ func TestPromptForConfirmation(t *testing.T) {
 
 		// Write "no" to the input
 		go func() {
-			w.Write([]byte("no\n"))
-			w.Close()
+			_, _ = w.Write([]byte("no\n"))
+			_ = w.Close()
 		}()
 
 		logger.Reset()
@@ -451,8 +451,8 @@ func TestPromptForConfirmation(t *testing.T) {
 
 		// Write just a newline (empty response)
 		go func() {
-			w.Write([]byte("\n"))
-			w.Close()
+			_, _ = w.Write([]byte("\n"))
+			_ = w.Close()
 		}()
 
 		logger.Reset()
@@ -472,7 +472,7 @@ func TestPromptForConfirmation(t *testing.T) {
 
 		// Create a closed pipe to simulate read error
 		r, w, _ := os.Pipe()
-		w.Close() // Close the write end immediately to cause read error
+		_ = w.Close() // Close the write end immediately to cause read error
 		os.Stdin = r
 
 		logger.Reset()

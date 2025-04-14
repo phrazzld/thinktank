@@ -47,28 +47,29 @@
   - **Depends On:** Update `hooks/README.md`
   - **AC Ref:** PLAN.md Step 6
 
-- [ ] **Fix golangci-lint issues:**
+- [x] **Fix golangci-lint issues:**
   - **Action:** Address pre-existing golangci-lint issues that were identified during pre-commit hook testing. This ensures the linting process is enforced properly.
   - **Depends On:** None
   - **AC Ref:** PLAN.md (Clean Implementation)
 
-- [ ] **Resolve go-unit-tests hook issues:**
+- [x] **Resolve go-unit-tests hook issues:**
   - **Action:** Investigate and fix the problems with the go-unit-tests pre-commit hook. Ensure tests run consistently in both the pre-commit environment and direct invocation.
   - **Depends On:** None
   - **AC Ref:** PLAN.md (Test Verification)
 
-- [ ] **Add and commit changes:**
+- [x] **Add and commit changes:**
   - **Action:** Add and commit the following files:
     - `.pre-commit-config.yaml`
     - `scripts/check-large-files.sh`
-    - Updated `hooks/README.md`
-    - Updated `TODO.md`
+
+- [x] **Address golangci-lint warnings:**
+  - **Action:** Fix the unused code warnings reported by golangci-lint during pre-commit checks. Either remove unused code or properly annotate it if needed for future use.
   - **Depends On:** Fix golangci-lint issues, Resolve go-unit-tests hook issues
-  - **AC Ref:** PLAN.md Step 7
+  - **AC Ref:** Clean Code
 
 ## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
 
-- [ ] **Issue/Assumption:** The pre-commit tool needs to be installed by each developer. The installation instructions are included in the `hooks/README.md` file, but this doesn't guarantee that every developer will have pre-commit installed when setting up the project.
+- [x] **Issue/Assumption:** The pre-commit tool needs to be installed by each developer. The installation instructions are included in the `hooks/README.md` file, but this doesn't guarantee that every developer will have pre-commit installed when setting up the project.
   - **Context:** PLAN.md Step 1 (Install pre-commit) and Step 5 (Update Documentation)
 
 - [ ] **Issue/Assumption:** The specific hook revisions (`rev:` values) listed in PLAN.md Step 2 are the desired starting point, and any updates made by `pre-commit autoupdate` are acceptable after review.

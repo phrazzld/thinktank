@@ -74,10 +74,18 @@ func (d *orchestratorTestDeps) setupBasicContext() {
 
 // setupGeminiClient sets up a mock Gemini client
 func (d *orchestratorTestDeps) setupGeminiClient() *mockGeminiClient {
+	// Create a shared mock client with default implementation
 	client := &mockGeminiClient{}
+
+	// Configure the API service to return a model-specific client
 	d.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-		return client, nil
+		// Create a new client for each model to avoid race conditions
+		modelClient := &mockGeminiClient{
+			modelName: modelName,
+		}
+		return modelClient, nil
 	}
+
 	return client
 }
 
@@ -122,18 +130,18 @@ func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
 	}
 }
 
-// buildFullPrompt simulates the full prompt construction with instructions and context
-func (d *orchestratorTestDeps) buildFullPrompt(modelName string) string {
-	// This is a simplified version just for testing
-	return d.instructions + " [processed with " + modelName + "]"
-}
-
 // Mock implementations for dependencies
 
 // mockGeminiClient is a mock implementation of gemini.Client
-type mockGeminiClient struct{}
+type mockGeminiClient struct {
+	modelName           string
+	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
+}
 
 func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+	if m.generateContentFunc != nil {
+		return m.generateContentFunc(ctx, prompt)
+	}
 	return &gemini.GenerationResult{
 		Content: "Generated content for: " + prompt,
 	}, nil
@@ -147,14 +155,14 @@ func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gem
 
 func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
 	return &gemini.ModelInfo{
-		Name:             "test-model",
+		Name:             m.modelName,
 		InputTokenLimit:  1000,
 		OutputTokenLimit: 1000,
 	}, nil
 }
 
 func (m *mockGeminiClient) GetModelName() string {
-	return "test-model"
+	return m.modelName
 }
 
 func (m *mockGeminiClient) GetTemperature() float32 {

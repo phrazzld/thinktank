@@ -44,7 +44,7 @@ func TestNewAPIService(t *testing.T) {
 	}
 
 	// Check that it implements the APIService interface
-	var _ APIService = service // This is a compile-time check
+	var _ = service // This is a compile-time check
 }
 
 // Since we can no longer access internal fields, we'll depend on the

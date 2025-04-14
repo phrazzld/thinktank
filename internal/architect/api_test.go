@@ -42,32 +42,6 @@ func (m *mockAPILogger) Println(v ...interface{}) {}
 
 func (m *mockAPILogger) Printf(format string, v ...interface{}) {}
 
-type mockGeminiAPIError struct {
-	message    string
-	suggestion string
-	debugInfo  string
-}
-
-func (e *mockGeminiAPIError) Error() string {
-	return e.message
-}
-
-func (e *mockGeminiAPIError) Message() string {
-	return e.message
-}
-
-func (e *mockGeminiAPIError) Suggestion() string {
-	return e.suggestion
-}
-
-func (e *mockGeminiAPIError) DebugInfo() string {
-	return e.debugInfo
-}
-
-func (e *mockGeminiAPIError) UserFacingError() string {
-	return e.message + " (suggestion: " + e.suggestion + ")"
-}
-
 // TestProcessResponse tests the ProcessResponse method of APIService
 func TestProcessResponse(t *testing.T) {
 	// Create API service

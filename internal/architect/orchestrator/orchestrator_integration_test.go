@@ -50,6 +50,9 @@ func TestIntegration_BasicWorkflow(t *testing.T) {
 func TestIntegration_DryRunMode(t *testing.T) {
 	ctx := context.Background()
 	deps := newTestDeps()
+	// Setup with a model name even though we're in dry run mode
+	modelNames := []string{"model1"}
+	deps.setupMultiModelConfig(modelNames)
 	deps.setupDryRunConfig()
 	deps.setupBasicContext()
 
@@ -231,13 +234,23 @@ func TestIntegration_ModelProcessingError(t *testing.T) {
 	deps.setupMultiModelConfig(modelNames)
 	deps.setupBasicContext()
 
-	// Setup API client with an error for one model
-	deps.setupGeminiClient()
-	deps.apiService.ProcessResponseFunc = func(result *gemini.GenerationResult) (string, error) {
-		if result.Content == "Generated content for: "+deps.buildFullPrompt("model2") {
-			return "", errors.New("model2 processing error")
+	// Create a model-specific error for model2 by setting up InitClient
+	deps.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+		if modelName == "model2" {
+			// For model2, return a client that will generate an error
+			client := &mockGeminiClient{
+				modelName: modelName,
+				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+					return nil, errors.New("model2 processing error")
+				},
+			}
+			return client, nil
 		}
-		return result.Content, nil
+
+		// For other models, return a regular mock client
+		return &mockGeminiClient{
+			modelName: modelName,
+		}, nil
 	}
 
 	// Run the orchestrator

@@ -142,7 +142,7 @@ func TestFileAuditLogger_New(t *testing.T) {
 		}
 
 		// Clean up
-		logger.Close()
+		_ = logger.Close()
 	})
 
 	t.Run("invalid file path", func(t *testing.T) {
@@ -179,7 +179,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create audit logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	t.Run("log basic entry", func(t *testing.T) {
 		// Create a sample audit entry
@@ -509,7 +509,7 @@ func TestFileAuditLogger_Concurrency(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create audit logger: %v", err)
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// Number of goroutines and entries per goroutine
 	numGoroutines := 10

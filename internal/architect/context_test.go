@@ -171,19 +171,19 @@ func createTestDirectory(t *testing.T) (string, func()) {
 
 		// Create directory if it doesn't exist
 		if err := os.MkdirAll(dirPath, 0755); err != nil {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 			t.Fatalf("Failed to create directory %s: %v", dirPath, err)
 		}
 
 		// Write file
 		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
-			os.RemoveAll(tempDir)
+			_ = os.RemoveAll(tempDir)
 			t.Fatalf("Failed to write test file %s: %v", fullPath, err)
 		}
 	}
 
 	return tempDir, func() {
-		os.RemoveAll(tempDir)
+		_ = os.RemoveAll(tempDir)
 	}
 }
 

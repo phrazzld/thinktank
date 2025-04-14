@@ -49,7 +49,7 @@ func TestSaveToFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name           string
@@ -141,7 +141,7 @@ func TestSaveToFile(t *testing.T) {
 				// For relative paths, the file should be in the current working directory
 				filePath = filepath.Join(cwd, tt.outputFilePath)
 				// Clean up relative path files at the end of the test
-				defer os.Remove(filePath)
+				defer func() { _ = os.Remove(filePath) }()
 			}
 
 			// Read the file content
@@ -172,7 +172,7 @@ func TestSaveToFile_ErrorConditions(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer os.RemoveAll(tempDir)
+	defer func() { _ = os.RemoveAll(tempDir) }()
 
 	// Test error with current working directory
 	t.Run("Error getting current working directory", func(t *testing.T) {

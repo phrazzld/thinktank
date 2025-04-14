@@ -364,7 +364,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	// FIX: Add safety check in defer to prevent a panic if client is nil for any reason
 	defer func() {
 		if geminiClient != nil {
-			geminiClient.Close()
+			_ = geminiClient.Close()
 		}
 	}()
 

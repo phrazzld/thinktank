@@ -35,27 +35,27 @@ func NewStdLoggerAdapter(logger *log.Logger) *StdLoggerAdapter {
 
 // Debug implements LoggerInterface.Debug
 func (s *StdLoggerAdapter) Debug(format string, v ...interface{}) {
-	s.Logger.Printf("[DEBUG] "+format, v...)
+	s.Printf("[DEBUG] "+format, v...)
 }
 
 // Info implements LoggerInterface.Info
 func (s *StdLoggerAdapter) Info(format string, v ...interface{}) {
-	s.Logger.Printf("[INFO] "+format, v...)
+	s.Printf("[INFO] "+format, v...)
 }
 
 // Warn implements LoggerInterface.Warn
 func (s *StdLoggerAdapter) Warn(format string, v ...interface{}) {
-	s.Logger.Printf("[WARN] "+format, v...)
+	s.Printf("[WARN] "+format, v...)
 }
 
 // Error implements LoggerInterface.Error
 func (s *StdLoggerAdapter) Error(format string, v ...interface{}) {
-	s.Logger.Printf("[ERROR] "+format, v...)
+	s.Printf("[ERROR] "+format, v...)
 }
 
 // Fatal implements LoggerInterface.Fatal
 func (s *StdLoggerAdapter) Fatal(format string, v ...interface{}) {
-	s.Logger.Fatalf("[FATAL] "+format, v...)
+	s.Fatalf("[FATAL] "+format, v...)
 }
 
 // LogLevel represents different logging severity levels
@@ -128,7 +128,7 @@ func (l *Logger) log(level LogLevel, format string, args ...interface{}) {
 	}
 
 	formattedMsg := l.formatMessage(level, format, args...)
-	fmt.Fprintln(l.writer, formattedMsg)
+	_, _ = fmt.Fprintln(l.writer, formattedMsg)
 }
 
 // Debug logs a message at DEBUG level

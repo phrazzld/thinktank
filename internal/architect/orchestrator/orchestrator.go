@@ -73,6 +73,11 @@ func NewOrchestrator(
 // The method enforces a clear separation of concerns by delegating specific tasks
 // to helper methods, making the high-level workflow easy to understand.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
+	// Validate that models are specified
+	if len(o.config.ModelNames) == 0 {
+		return errors.New("no model names specified, at least one model is required")
+	}
+
 	// STEP 1: Gather context from files
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
 	if err != nil {
@@ -239,6 +244,11 @@ func (o *Orchestrator) processModelWithRateLimit(
 // to avoid these errors in the future. This approach ensures users receive
 // actionable feedback when errors occur.
 func (o *Orchestrator) aggregateAndFormatErrors(modelErrors []error) error {
+	// If there are no errors, return nil
+	if len(modelErrors) == 0 {
+		return nil
+	}
+
 	// Count rate limit errors
 	var rateLimitErrors []error
 	for _, err := range modelErrors {

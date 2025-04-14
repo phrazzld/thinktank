@@ -36,11 +36,18 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 # Build from source
 git clone https://github.com/yourusername/architect.git
 cd architect
+
+# Recommended: Run the setup script to check dependencies and install pre-commit hooks
+./scripts/setup.sh
+
+# Or build manually
 go build
 
 # Install globally
 go install
 ```
+
+The setup script checks for required dependencies (like Go and pre-commit), offers to install them if missing, and configures the development environment automatically.
 
 ## Usage
 

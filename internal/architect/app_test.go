@@ -693,7 +693,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
-	defer os.RemoveAll(parentDir)
+	defer func() { _ = os.RemoveAll(parentDir) }()
 
 	// Create a file with the same name where we will try to create a directory
 	invalidDirPath := filepath.Join(parentDir, "cannot-be-dir")

@@ -45,7 +45,7 @@ func Main() {
 	}
 
 	// Ensure the audit logger is properly closed when the application exits
-	defer auditLogger.Close()
+	defer func() { _ = auditLogger.Close() }()
 
 	// Configuration is now managed via CLI flags and environment variables only
 
