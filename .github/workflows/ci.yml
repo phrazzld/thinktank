@@ -68,7 +68,10 @@ jobs:
       - name: Install and run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
-          version: latest
+          # BUGFIX: Specify a compatible version instead of 'latest'
+          # CAUSE: The CI was failing with error "you are using a configuration file for golangci-lint v2 with golangci-lint v1"
+          # FIX: Use the latest v2.x version which is compatible with our v2 configuration format
+          version: v2.1.1
           args: --timeout=5m
 
       # Install and run pre-commit checks
