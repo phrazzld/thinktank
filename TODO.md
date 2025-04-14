@@ -203,7 +203,7 @@
   - **Depends On:** None
   - **Expected Result:** Better test organization with clear separation of different client functionalities.
 
-- [ ] **Task Title:** Refactor `integration_test.go` for Better Readability
+- [x] **Task Title:** Refactor `integration_test.go` for Better Readability
   - **Action:** Refactor `internal/integration/integration_test.go` (1011 lines) by splitting tests into focused files based on specific integration scenarios or components being tested.
   - **Depends On:** None
   - **Expected Result:** Improved test structure with better separation of different integration test scenarios.
