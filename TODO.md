@@ -103,7 +103,7 @@
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1
 
-- [ ] **Task Title:** Implement Context/File Handling Adapter Tests
+- [x] **Task Title:** Implement Context/File Handling Adapter Tests
   - **Action:** Add tests for `ContextGathererAdapter` methods (`GatherContext`, `DisplayDryRunInfo`) and `FileWriterAdapter.SaveToFile`. Use mocks/fakes for the underlying interfaces, verify config/stats conversion, argument passing, and return values/errors.
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1
