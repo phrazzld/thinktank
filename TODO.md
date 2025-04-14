@@ -208,7 +208,7 @@
   - **Depends On:** None
   - **Expected Result:** Improved test structure with better separation of different integration test scenarios.
 
-- [ ] **Task Title:** Refactor `cli_test.go` for Better Organization
+- [x] **Task Title:** Refactor `cli_test.go` for Better Organization
   - **Action:** Restructure `cmd/architect/cli_test.go` (1007 lines) into multiple test files based on the CLI functionality being tested, such as `cli_args_test.go`, `cli_config_test.go`, `cli_execution_test.go`.
   - **Depends On:** None
   - **Expected Result:** Better organized CLI tests with clear focus on specific functionality.
