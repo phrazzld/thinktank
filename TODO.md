@@ -1,79 +1,56 @@
 # TODO
 
-## Pre-commit Framework Migration
-
-- [x] **Create `scripts` Directory:**
-  - **Action:** Create a `scripts` directory at the root of the project if it doesn't already exist.
+## Design Principles (CORE_PRINCIPLES.md)
+- [x] **Enhance setup.sh for pre-commit verification:**
+  - **Action:** Modify the `scripts/setup.sh` script to check if `pre-commit` is installed in the user's environment. If not found, prompt the user to install it automatically or provide instructions.
   - **Depends On:** None
-  - **AC Ref:** PLAN.md Step 3
+  - **AC Ref:** N/A (Implied: `setup.sh` verifies pre-commit installation)
 
-- [x] **Create `scripts/check-large-files.sh` Script:**
-  - **Action:** Create the bash script at `scripts/check-large-files.sh` with the exact content provided in PLAN.md Step 3. Ensure the script has execute permissions (`chmod +x scripts/check-large-files.sh`).
-  - **Depends On:** Create `scripts` Directory
-  - **AC Ref:** PLAN.md Step 3
-
-- [x] **Create `.pre-commit-config.yaml`:**
-  - **Action:** Create the `.pre-commit-config.yaml` file at the project root. Populate it with the YAML configuration specified in PLAN.md Step 2, including hooks for `pre-commit-hooks`, `golangci-lint`, `dnephin/pre-commit-golang`, and the `local` hook referencing the script from the previous task.
-  - **Depends On:** Create `scripts/check-large-files.sh` Script
-  - **AC Ref:** PLAN.md Step 2
-
-- [x] **Run `pre-commit autoupdate`:**
-  - **Action:** Run `pre-commit autoupdate` in the terminal to ensure hook revisions are up-to-date. If this command modifies the `rev` fields in `.pre-commit-config.yaml`, review the changes to ensure they are acceptable.
-  - **Depends On:** Create `.pre-commit-config.yaml`
-  - **AC Ref:** PLAN.md Step 4
-
-- [x] **Install pre-commit hook:**
-  - **Action:** Run `pre-commit install` from the project root to install the pre-commit hook in the git repository.
-  - **Depends On:** Run `pre-commit autoupdate`
-  - **AC Ref:** PLAN.md Step 4
-
-- [x] **Test pre-commit hooks:**
-  - **Action:** Run `pre-commit run --all-files` to test all hooks against all files in the repository. Verify hooks work correctly.
-  - **Depends On:** Install pre-commit hook
-  - **AC Ref:** PLAN.md Step 4
-
-- [x] **Verify hook works on real changes:**
-  - **Action:** Make a test change (e.g., add trailing whitespace to a Go file) and attempt to commit to verify the hook works correctly. Then remove the whitespace and commit successfully.
-  - **Depends On:** Test pre-commit hooks
-  - **AC Ref:** PLAN.md Step 4
-
-- [x] **Update `hooks/README.md`:**
-  - **Action:** Replace the entire content of the existing `hooks/README.md` file with the new Markdown content provided in PLAN.md Step 5. This new content should accurately describe the `pre-commit` framework setup, installation, and usage.
-  - **Depends On:** Verify hook works on real changes
-  - **AC Ref:** PLAN.md Step 5
-
-- [x] **Remove Old `hooks/pre-commit` Script:**
-  - **Action:** Delete the legacy shell script located at `hooks/pre-commit` after confirming the new pre-commit framework setup is fully functional and documented.
-  - **Depends On:** Update `hooks/README.md`
-  - **AC Ref:** PLAN.md Step 6
-
-- [x] **Fix golangci-lint issues:**
-  - **Action:** Address pre-existing golangci-lint issues that were identified during pre-commit hook testing. This ensures the linting process is enforced properly.
+- [ ] **Remove TestImplementation struct from orchestrator.go:**
+  - **Action:** Delete the `TestImplementation` struct and its associated methods (lines 303-319) from `internal/architect/orchestrator/orchestrator.go` as it appears to be leftover test code.
   - **Depends On:** None
-  - **AC Ref:** PLAN.md (Clean Implementation)
+  - **AC Ref:** N/A (Implied: Test code is removed from production file)
 
-- [x] **Resolve go-unit-tests hook issues:**
-  - **Action:** Investigate and fix the problems with the go-unit-tests pre-commit hook. Ensure tests run consistently in both the pre-commit environment and direct invocation.
+- [ ] **Refactor large test file cli_test.go:**
+  - **Action:** Break down the `cmd/architect/cli_test.go` file into multiple smaller, focused test files (e.g., `cli_args_test.go`, `cli_logging_test.go`, `cli_validation_test.go`). Each new file should test a specific aspect of the CLI functionality.
   - **Depends On:** None
-  - **AC Ref:** PLAN.md (Test Verification)
+  - **AC Ref:** N/A (Implied: `cli_test.go` is refactored into smaller, focused files)
 
-- [x] **Add and commit changes:**
-  - **Action:** Add and commit the following files:
-    - `.pre-commit-config.yaml`
-    - `scripts/check-large-files.sh`
+## Architectural Patterns (ARCHITECTURE_GUIDELINES.md)
+- [ ] **Add pre-commit check step to CI workflow:**
+  - **Action:** Modify the `.github/workflows/ci.yml` file to include a new step that executes `pre-commit run --all-files`. This ensures that pre-commit checks are enforced in the CI pipeline.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: CI workflow runs pre-commit checks)
 
-- [x] **Address golangci-lint warnings:**
-  - **Action:** Fix the unused code warnings reported by golangci-lint during pre-commit checks. Either remove unused code or properly annotate it if needed for future use.
-  - **Depends On:** Fix golangci-lint issues, Resolve go-unit-tests hook issues
-  - **AC Ref:** Clean Code
+## Code Quality (CODING_STANDARDS.md)
+- [ ] **Address unused code warnings:**
+  - **Action:** Run `golangci-lint` and identify all instances of unused code warnings. Remove the unused code or add comments explaining why it needs to be kept (e.g., `//nolint:unused` with justification).
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: `golangci-lint` reports no unused code warnings)
 
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
+- [ ] **Verify XML escaping logic in prompt.go:**
+  - **Action:** Review the changes made to the `EscapeContent` function in `internal/architect/prompt/prompt.go` (lines 14-15). Determine if the removal of XML escaping was intentional and correct for the LLM prompt structure. Revert the changes if escaping is necessary. Add tests to cover escaping logic.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: XML escaping logic is confirmed correct or fixed, and tested)
 
-- [x] **Issue/Assumption:** The pre-commit tool needs to be installed by each developer. The installation instructions are included in the `hooks/README.md` file, but this doesn't guarantee that every developer will have pre-commit installed when setting up the project.
-  - **Context:** PLAN.md Step 1 (Install pre-commit) and Step 5 (Update Documentation)
+## Test Quality (TESTING_STRATEGY.md)
+- [ ] **Verify test coverage meets 80% threshold:**
+  - **Action:** Run the test suite with coverage analysis (`go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out`). Check if the total coverage meets or exceeds the 80% threshold defined in `.github/workflows/ci.yml`.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: Current test coverage percentage is determined)
 
-- [ ] **Issue/Assumption:** The specific hook revisions (`rev:` values) listed in PLAN.md Step 2 are the desired starting point, and any updates made by `pre-commit autoupdate` are acceptable after review.
-  - **Context:** PLAN.md Step 2 (Create Configuration File) and Step 4 (autoupdate part)
+- [ ] **Add tests for logger adapter methods:**
+  - **Action:** Implement unit tests for the standard logger adapter methods (Debug, Info, Warn, Error, Fatal) in `internal/logutil/logutil.go` (`StdLoggerAdapter`). Ensure adequate coverage for these methods.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: `StdLoggerAdapter` methods have sufficient test coverage)
 
-- [ ] **Issue/Assumption:** The approach doesn't include changes to the CI workflow to ensure pre-commit checks run in CI as well, which could lead to inconsistencies between local development and CI environments.
-  - **Context:** The overall implementation plan doesn't mention CI integration
+- [ ] **Add tests for integration test helpers:**
+  - **Action:** Implement unit tests for the helper functions defined in `internal/integration/test_helpers.go`. Focus on covering the logic within these helpers to increase their coverage.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: Test helper functions in `test_helpers.go` have sufficient test coverage)
+
+## Documentation Practices (DOCUMENTATION_APPROACH.md)
+- [ ] **Enhance pre-commit documentation in hooks/README.md:**
+  - **Action:** Update `hooks/README.md` to provide more context on the benefits of using `pre-commit` hooks. Explain how they help maintain code quality, enforce standards, and improve the development workflow, aligning with project principles.
+  - **Depends On:** None
+  - **AC Ref:** N/A (Implied: `hooks/README.md` clearly explains the benefits of pre-commit)

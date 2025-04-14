@@ -47,11 +47,14 @@ if command -v pre-commit >/dev/null 2>&1; then
     print_success "pre-commit is installed: $PRECOMMIT_VERSION"
 else
     print_warning "pre-commit framework is not installed"
-    echo "The pre-commit framework is required for our Git hooks."
-    echo "Would you like to install pre-commit now? (y/n)"
+    echo "The pre-commit framework is REQUIRED for this project's development workflow."
+    echo "Without pre-commit, commits will not be properly validated, which may lead to CI failures."
+
+    # Offer automatic installation with stronger messaging
+    echo "Would you like to install pre-commit automatically? (y/n) [y recommended]"
     read -r INSTALL_PRECOMMIT
 
-    if [[ $INSTALL_PRECOMMIT =~ ^[Yy]$ ]]; then
+    if [[ $INSTALL_PRECOMMIT =~ ^[Yy]$ ]] || [[ -z $INSTALL_PRECOMMIT ]]; then
         echo "Installing pre-commit..."
 
         if command -v pip >/dev/null 2>&1; then
@@ -62,7 +65,10 @@ else
             brew install pre-commit
         else
             print_error "Could not find pip, pip3, or brew to install pre-commit"
-            echo "Please install pre-commit manually: https://pre-commit.com/#install"
+            echo "Please install pre-commit manually following these steps:"
+            echo "  1. Visit https://pre-commit.com/#install"
+            echo "  2. Follow the installation instructions for your platform"
+            echo "  3. Run this setup script again"
             exit 1
         fi
 
@@ -70,13 +76,31 @@ else
             print_success "pre-commit installed successfully"
         else
             print_error "Failed to install pre-commit"
-            echo "Please install pre-commit manually: https://pre-commit.com/#install"
+            echo "Please install pre-commit manually following these steps:"
+            echo "  1. Visit https://pre-commit.com/#install"
+            echo "  2. Follow the installation instructions for your platform"
+            echo "  3. Run this setup script again"
             exit 1
         fi
     else
-        print_warning "Skipping pre-commit installation"
-        echo "Note: pre-commit is required for development. Please install it later."
-        echo "See hooks/README.md for installation instructions."
+        print_error "pre-commit installation skipped, but it is required for development"
+        echo "Please be aware that:"
+        echo "  - Your commits may not meet project standards"
+        echo "  - CI checks may fail on your pull requests"
+        echo "  - Other developers may need to fix issues in your code"
+        echo ""
+        echo "To install pre-commit later, see hooks/README.md or visit https://pre-commit.com/#install"
+
+        # Ask if they want to continue without pre-commit
+        echo "Do you want to continue setup without pre-commit? (y/n) [n recommended]"
+        read -r CONTINUE_WITHOUT_PRECOMMIT
+
+        if [[ ! $CONTINUE_WITHOUT_PRECOMMIT =~ ^[Yy]$ ]]; then
+            print_error "Setup aborted. Please install pre-commit and run setup again."
+            exit 1
+        fi
+
+        print_warning "Continuing setup without pre-commit (not recommended)"
     fi
 fi
 
