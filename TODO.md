@@ -114,7 +114,7 @@
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 4.1
 
-- [ ] **Task Title:** Implement `ValidateConfig` Tests
+- [x] **Task Title:** Implement `ValidateConfig` Tests
   - **Action:** Add tests in `internal/config/config_test.go` for `ValidateConfig()`. Provide various valid and invalid `CliConfig` inputs (e.g., missing required fields, invalid log levels) and verify it returns nil or an appropriate error.
   - **Depends On:** Extend `config_test.go` for `DefaultConfig`
   - **AC Ref:** Plan Section 4.1

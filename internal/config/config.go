@@ -6,6 +6,7 @@
 package config
 
 import (
+	"fmt"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -135,7 +136,29 @@ func NewDefaultCliConfig() *CliConfig {
 // required fields are present, paths exist, and values are within acceptable ranges.
 // This helps catch configuration errors early before they cause runtime failures.
 func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
-	// This is a placeholder for the validation function that will be moved from CLI package
-	// to maintain the API but will be implemented in the next task
+	// Check for instructions file (required unless in dry run mode)
+	if config.InstructionsFile == "" && !config.DryRun {
+		logger.Error("The required --instructions flag is missing.")
+		return fmt.Errorf("missing required --instructions flag")
+	}
+
+	// Check for input paths (always required)
+	if len(config.Paths) == 0 {
+		logger.Error("At least one file or directory path must be provided as an argument.")
+		return fmt.Errorf("no paths specified")
+	}
+
+	// Check for API key (always required)
+	if config.APIKey == "" {
+		logger.Error("%s environment variable not set.", APIKeyEnvVar)
+		return fmt.Errorf("API key not set")
+	}
+
+	// Check for model names (required unless in dry run mode)
+	if len(config.ModelNames) == 0 && !config.DryRun {
+		logger.Error("At least one model must be specified with --model flag.")
+		return fmt.Errorf("no models specified")
+	}
+
 	return nil
 }
