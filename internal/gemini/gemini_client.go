@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 
 	genai "github.com/google/generative-ai-go/genai"
@@ -394,4 +395,166 @@ func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating {
 	}
 
 	return result
+}
+
+// Implement llm.LLMClient interface alongside the original Client interface
+
+// toProviderSafety converts Gemini safety ratings to provider-agnostic safety info
+func toProviderSafety(ratings []SafetyRating) []llm.Safety {
+	if ratings == nil {
+		return nil
+	}
+
+	safetyInfo := make([]llm.Safety, len(ratings))
+	for i, rating := range ratings {
+		safetyInfo[i] = llm.Safety{
+			Category: rating.Category,
+			Blocked:  rating.Blocked,
+			Score:    rating.Score,
+		}
+	}
+	return safetyInfo
+}
+
+// Adapter methods for implementing llm.LLMClient interface
+
+// llmGenerateContent implements the llm.LLMClient interface for geminiClient
+// This is an adapter method that calls the original GenerateContent method
+// and converts the result to the provider-agnostic format
+func (c *geminiClient) llmGenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	// Call the original method
+	result, err := c.GenerateContent(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to provider-agnostic format
+	return &llm.ProviderResult{
+		Content:      result.Content,
+		FinishReason: result.FinishReason,
+		TokenCount:   result.TokenCount,
+		Truncated:    result.Truncated,
+		SafetyInfo:   toProviderSafety(result.SafetyRatings),
+	}, nil
+}
+
+// llmCountTokens implements the llm.LLMClient interface for geminiClient
+// This is an adapter method that calls the original CountTokens method
+// and converts the result to the provider-agnostic format
+func (c *geminiClient) llmCountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	// Call the original method
+	result, err := c.CountTokens(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to provider-agnostic format
+	return &llm.ProviderTokenCount{
+		Total: result.Total,
+	}, nil
+}
+
+// llmGetModelInfo implements the llm.LLMClient interface for geminiClient
+// This is an adapter method that calls the original GetModelInfo method
+// and converts the result to the provider-agnostic format
+func (c *geminiClient) llmGetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	// Call the original method
+	info, err := c.GetModelInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert to provider-agnostic format
+	return &llm.ProviderModelInfo{
+		Name:             info.Name,
+		InputTokenLimit:  info.InputTokenLimit,
+		OutputTokenLimit: info.OutputTokenLimit,
+	}, nil
+}
+
+// AsLLMClient returns a gemini.Client as an llm.LLMClient
+// This is a constructor function that adapts the gemini.Client to the llm.LLMClient interface
+func AsLLMClient(client Client) llm.LLMClient {
+	// If it's already a geminiClient, return it directly
+	if gc, ok := client.(*geminiClient); ok {
+		return &geminiLLMAdapter{gc}
+	}
+
+	// Otherwise, wrap it in an adapter
+	return &geminiLLMAdapter{client}
+}
+
+// geminiLLMAdapter adapts the gemini.Client to the llm.LLMClient interface
+type geminiLLMAdapter struct {
+	client Client
+}
+
+// GenerateContent implements the llm.LLMClient interface for the adapter
+func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	// If the client is a geminiClient, use its method directly
+	if gc, ok := a.client.(*geminiClient); ok {
+		return gc.llmGenerateContent(ctx, prompt)
+	}
+
+	// Otherwise, call the client method and convert the result
+	result, err := a.client.GenerateContent(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &llm.ProviderResult{
+		Content:      result.Content,
+		FinishReason: result.FinishReason,
+		TokenCount:   result.TokenCount,
+		Truncated:    result.Truncated,
+		SafetyInfo:   toProviderSafety(result.SafetyRatings),
+	}, nil
+}
+
+// CountTokens implements the llm.LLMClient interface for the adapter
+func (a *geminiLLMAdapter) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	// If the client is a geminiClient, use its method directly
+	if gc, ok := a.client.(*geminiClient); ok {
+		return gc.llmCountTokens(ctx, prompt)
+	}
+
+	// Otherwise, call the client method and convert the result
+	result, err := a.client.CountTokens(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	return &llm.ProviderTokenCount{
+		Total: result.Total,
+	}, nil
+}
+
+// GetModelInfo implements the llm.LLMClient interface for the adapter
+func (a *geminiLLMAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	// If the client is a geminiClient, use its method directly
+	if gc, ok := a.client.(*geminiClient); ok {
+		return gc.llmGetModelInfo(ctx)
+	}
+
+	// Otherwise, call the client method and convert the result
+	info, err := a.client.GetModelInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &llm.ProviderModelInfo{
+		Name:             info.Name,
+		InputTokenLimit:  info.InputTokenLimit,
+		OutputTokenLimit: info.OutputTokenLimit,
+	}, nil
+}
+
+// GetModelName implements the llm.LLMClient interface for the adapter
+func (a *geminiLLMAdapter) GetModelName() string {
+	return a.client.GetModelName()
+}
+
+// Close implements the llm.LLMClient interface for the adapter
+func (a *geminiLLMAdapter) Close() error {
+	return a.client.Close()
 }

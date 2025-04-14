@@ -25,7 +25,7 @@ Create `internal/llm/client.go` with the `LLMClient` interface, `ProviderResult`
 
 **Priority**: Must-Have
 
-### Task ID: TASK-002
+### Task ID: TASK-002 [x]
 
 **Title**: Refactor Gemini Client to Implement LLMClient Interface
 

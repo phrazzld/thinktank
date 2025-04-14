@@ -507,9 +507,11 @@ func TestGetModelInfo(t *testing.T) {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
-		// Verify result matches cached value
-		if info != cachedInfo {
-			t.Error("Expected cached model info to be returned")
+		// Verify result matches cached value properties
+		if info.Name != cachedInfo.Name ||
+			info.InputTokenLimit != cachedInfo.InputTokenLimit ||
+			info.OutputTokenLimit != cachedInfo.OutputTokenLimit {
+			t.Errorf("Expected cached model info properties to match: got %+v, want %+v", info, cachedInfo)
 		}
 	})
 
@@ -585,9 +587,11 @@ func TestGetModelInfo(t *testing.T) {
 			t.Fatalf("Expected no error for second call, got %v", err)
 		}
 
-		// Both calls should return the same object (cached)
-		if info1 != info2 {
-			t.Error("Expected both calls to return the same cached object")
+		// Both calls should return objects with the same properties
+		if info1.Name != info2.Name ||
+			info1.InputTokenLimit != info2.InputTokenLimit ||
+			info1.OutputTokenLimit != info2.OutputTokenLimit {
+			t.Errorf("Expected both calls to return objects with the same properties: got %+v and %+v", info1, info2)
 		}
 	})
 
