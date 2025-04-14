@@ -1,6 +1,7 @@
 # backlog
 
-* support openai as a provider
+* support openai as a provider using the openai/openai-go package
+* add support for grounding with gemini models
 * support openrouter as a provider
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 * refactor output handling to use standard streams (stdout for primary results, stderr for logs/errors) and add a json output mode flag (`--output-format json`) for machine-readable results.
