@@ -46,7 +46,7 @@ Modify `internal/gemini/gemini_client.go` to implement the `llm.LLMClient` inter
 
 **Priority**: Must-Have
 
-### Task ID: TASK-003
+### Task ID: TASK-003 [x]
 
 **Title**: Add Official OpenAI Go Package Dependency
 
