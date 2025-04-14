@@ -66,7 +66,7 @@ Run `go get github.com/openai/openai-go` to add the official OpenAI Go package a
 
 **Priority**: Must-Have
 
-### Task ID: TASK-004
+### Task ID: TASK-004 [x]
 
 **Title**: Implement OpenAI Client
 
@@ -88,7 +88,7 @@ Create `internal/openai/openai_client.go` implementing the `llm.LLMClient` inter
 
 **Priority**: Must-Have
 
-### Task ID: TASK-005
+### Task ID: TASK-005 [~]
 
 **Title**: Create OpenAI Client Tests
 
