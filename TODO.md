@@ -22,7 +22,7 @@
   - **Depends On:** Create `internal/gemini/errors_test.go` File
   - **AC Ref:** Plan Section 2.1
 
-- [ ] **Task Title:** Implement Error Classification Tests
+- [x] **Task Title:** Implement Error Classification Tests
   - **Action:** Add unit tests for `IsAPIError()` and `GetErrorType()` to verify they correctly identify API errors and error types based on different error messages and status codes.
   - **Depends On:** Create `internal/gemini/errors_test.go` File
   - **AC Ref:** Plan Section 2.1

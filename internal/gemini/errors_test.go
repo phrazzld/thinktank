@@ -3,6 +3,7 @@ package gemini
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -186,4 +187,210 @@ func TestAPIError_DebugInfo(t *testing.T) {
 			}
 		}
 	})
+}
+
+// TestIsAPIError tests the IsAPIError function
+func TestIsAPIError(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		wantErr   *APIError
+		wantIsAPI bool
+	}{
+		{
+			name:      "nil error",
+			err:       nil,
+			wantErr:   nil,
+			wantIsAPI: false,
+		},
+		{
+			name:      "regular error",
+			err:       newTestError("regular error"),
+			wantErr:   nil,
+			wantIsAPI: false,
+		},
+		{
+			name:      "APIError",
+			err:       createTestAPIError(),
+			wantErr:   createTestAPIError(),
+			wantIsAPI: true,
+		},
+		{
+			name: "wrapped APIError",
+			err: fmt.Errorf("wrapped: %w", &APIError{
+				Type:    ErrorTypeAuth,
+				Message: "wrapped APIError",
+			}),
+			wantIsAPI: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotErr, gotIsAPI := IsAPIError(tt.err)
+
+			if gotIsAPI != tt.wantIsAPI {
+				t.Errorf("IsAPIError() isAPI = %v, want %v", gotIsAPI, tt.wantIsAPI)
+			}
+
+			if tt.wantIsAPI {
+				if gotErr == nil {
+					t.Errorf("IsAPIError() returned nil APIError when expected non-nil")
+				}
+			} else {
+				if gotErr != nil {
+					t.Errorf("IsAPIError() returned non-nil APIError when expected nil")
+				}
+			}
+		})
+	}
+}
+
+// TestGetErrorType tests the GetErrorType function
+func TestGetErrorType(t *testing.T) {
+	tests := []struct {
+		name       string
+		err        error
+		statusCode int
+		want       ErrorType
+	}{
+		{
+			name:       "nil error",
+			err:        nil,
+			statusCode: 0,
+			want:       ErrorTypeUnknown,
+		},
+		// Status code based classification
+		{
+			name:       "unauthorized status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusUnauthorized,
+			want:       ErrorTypeAuth,
+		},
+		{
+			name:       "forbidden status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusForbidden,
+			want:       ErrorTypeAuth,
+		},
+		{
+			name:       "too many requests status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusTooManyRequests,
+			want:       ErrorTypeRateLimit,
+		},
+		{
+			name:       "bad request status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusBadRequest,
+			want:       ErrorTypeInvalidRequest,
+		},
+		{
+			name:       "not found status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusNotFound,
+			want:       ErrorTypeNotFound,
+		},
+		{
+			name:       "server error status",
+			err:        errors.New("any error"),
+			statusCode: http.StatusInternalServerError,
+			want:       ErrorTypeServer,
+		},
+
+		// Message based classification
+		{
+			name:       "rate limit in message",
+			err:        errors.New("rate limit exceeded"),
+			statusCode: 0,
+			want:       ErrorTypeRateLimit,
+		},
+		{
+			name:       "quota in message",
+			err:        errors.New("quota exceeded"),
+			statusCode: 0,
+			want:       ErrorTypeRateLimit,
+		},
+		{
+			name:       "safety in message",
+			err:        errors.New("safety setting triggered"),
+			statusCode: 0,
+			want:       ErrorTypeContentFiltered,
+		},
+		{
+			name:       "blocked in message",
+			err:        errors.New("content blocked"),
+			statusCode: 0,
+			want:       ErrorTypeContentFiltered,
+		},
+		{
+			name:       "filtered in message",
+			err:        errors.New("content filtered"),
+			statusCode: 0,
+			want:       ErrorTypeContentFiltered,
+		},
+		{
+			name:       "token limit in message",
+			err:        errors.New("token limit exceeded"),
+			statusCode: 0,
+			want:       ErrorTypeInputLimit,
+		},
+		{
+			name:       "tokens exceeds in message",
+			err:        errors.New("tokens exceeds limit"),
+			statusCode: 0,
+			want:       ErrorTypeInputLimit,
+		},
+		{
+			name:       "network in message",
+			err:        errors.New("network error"),
+			statusCode: 0,
+			want:       ErrorTypeNetwork,
+		},
+		{
+			name:       "connection in message",
+			err:        errors.New("connection failed"),
+			statusCode: 0,
+			want:       ErrorTypeNetwork,
+		},
+		{
+			name:       "timeout in message",
+			err:        errors.New("timeout occurred"),
+			statusCode: 0,
+			want:       ErrorTypeNetwork,
+		},
+		{
+			name:       "canceled in message",
+			err:        errors.New("request canceled"),
+			statusCode: 0,
+			want:       ErrorTypeCancelled,
+		},
+		{
+			name:       "cancelled in message (UK spelling)",
+			err:        errors.New("request cancelled"),
+			statusCode: 0,
+			want:       ErrorTypeCancelled,
+		},
+		{
+			name:       "deadline exceeded in message",
+			err:        errors.New("deadline exceeded"),
+			statusCode: 0,
+			want:       ErrorTypeCancelled,
+		},
+		{
+			name:       "unknown error",
+			err:        errors.New("unknown error"),
+			statusCode: 0,
+			want:       ErrorTypeUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetErrorType(tt.err, tt.statusCode)
+			if got != tt.want {
+				t.Errorf("GetErrorType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
