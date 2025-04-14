@@ -357,7 +357,16 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		}
 		return fmt.Errorf("failed to initialize API client for model %s: %w", modelName, err)
 	}
-	defer geminiClient.Close()
+
+	// BUGFIX: Ensure geminiClient is not nil before attempting to close it
+	// CAUSE: There was a race condition in tests where geminiClient could be nil
+	//        when concurrent tests interact with rate limiting, leading to nil pointer dereference
+	// FIX: Add safety check in defer to prevent a panic if client is nil for any reason
+	defer func() {
+		if geminiClient != nil {
+			geminiClient.Close()
+		}
+	}()
 
 	// 2. Check token limits for this model
 	p.logger.Info("Checking token limits for model %s...", modelName)

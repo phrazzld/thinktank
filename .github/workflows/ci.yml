@@ -119,9 +119,10 @@ jobs:
         run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
         timeout-minutes: 8
         
-      # Generate coverage report
+      # Generate coverage report with short flag to skip long-running tests
       - name: Generate coverage report
-        run: go test -coverprofile=coverage.out ./...
+        run: go test -short -coverprofile=coverage.out ./...
+        timeout-minutes: 5
         
       # Display coverage summary
       - name: Display coverage summary
