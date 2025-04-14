@@ -119,7 +119,7 @@
   - **Depends On:** Extend `config_test.go` for `DefaultConfig`
   - **AC Ref:** Plan Section 4.1
 
-- [ ] **Task Title:** Add Edge Case/Error Handling Tests for Config
+- [x] **Task Title:** Add Edge Case/Error Handling Tests for Config
   - **Action:** Review `internal/config/config.go` for any potential edge cases or error conditions not covered by previous tests and add specific tests for them (e.g., handling of empty strings).
   - **Depends On:** Implement `ValidateConfig` Tests
   - **AC Ref:** Plan Section 4.1
