@@ -20,10 +20,9 @@ repos:
     -   id: go-vet
         exclude: "internal/e2e/.*"
     -   id: go-build
-# Temporarily disabled - failing despite passing tests
-#    -   id: go-unit-tests
-#        args: ["-short"]
-#        exclude: "internal/e2e/.*"
+    -   id: go-unit-tests
+        args: ["-short"]
+        exclude: "internal/e2e/.*"
 
 -   repo: local
     hooks:

@@ -47,12 +47,23 @@
   - **Depends On:** Update `hooks/README.md`
   - **AC Ref:** PLAN.md Step 6
 
-- [~] **Add and commit changes:**
+- [ ] **Fix golangci-lint issues:**
+  - **Action:** Address pre-existing golangci-lint issues that were identified during pre-commit hook testing. This ensures the linting process is enforced properly.
+  - **Depends On:** None
+  - **AC Ref:** PLAN.md (Clean Implementation)
+
+- [ ] **Resolve go-unit-tests hook issues:**
+  - **Action:** Investigate and fix the problems with the go-unit-tests pre-commit hook. Ensure tests run consistently in both the pre-commit environment and direct invocation.
+  - **Depends On:** None
+  - **AC Ref:** PLAN.md (Test Verification)
+
+- [ ] **Add and commit changes:**
   - **Action:** Add and commit the following files:
     - `.pre-commit-config.yaml`
     - `scripts/check-large-files.sh`
     - Updated `hooks/README.md`
-  - **Depends On:** Remove Old `hooks/pre-commit` Script
+    - Updated `TODO.md`
+  - **Depends On:** Fix golangci-lint issues, Resolve go-unit-tests hook issues
   - **AC Ref:** PLAN.md Step 7
 
 ## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
