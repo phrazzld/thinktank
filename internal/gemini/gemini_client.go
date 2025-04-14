@@ -18,6 +18,11 @@ import (
 	"google.golang.org/api/option"
 )
 
+// HTTPClient is an interface for an HTTP client
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // geminiClient implements the Client interface using Google's genai SDK
 type geminiClient struct {
 	client      *genai.Client
@@ -30,11 +35,14 @@ type geminiClient struct {
 	// Model info caching
 	modelInfoCache map[string]*ModelInfo
 	modelInfoMutex sync.RWMutex
-	httpClient     *http.Client
+	httpClient     HTTPClient
 }
 
+// geminiClientOption defines a function type for applying options to geminiClient
+type geminiClientOption func(*geminiClient)
+
 // newGeminiClient creates a new Gemini client with Google's genai SDK
-func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) {
+func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...geminiClientOption) (Client, error) {
 	if apiKey == "" {
 		return nil, errors.New("API key cannot be empty")
 	}
@@ -47,21 +55,21 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string)
 	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ")
 
 	// Prepare client options
-	var opts []option.ClientOption
+	var clientOpts []option.ClientOption
 
 	if apiEndpoint != "" {
 		// Custom endpoint (likely for testing)
 		logger.Debug("Using custom Gemini API endpoint: %s", apiEndpoint)
-		opts = append(opts,
+		clientOpts = append(clientOpts,
 			option.WithEndpoint(apiEndpoint),
 			option.WithoutAuthentication()) // Skip auth for mock server
 	} else {
 		// Default endpoint with API key
-		opts = append(opts, option.WithAPIKey(apiKey))
+		clientOpts = append(clientOpts, option.WithAPIKey(apiKey))
 	}
 
 	// Initialize the Google genai client
-	client, err := genai.NewClient(ctx, opts...)
+	client, err := genai.NewClient(ctx, clientOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
@@ -73,7 +81,8 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string)
 	model.SetTemperature(config.Temperature)
 	model.SetTopP(config.TopP)
 
-	return &geminiClient{
+	// Create the client with default values
+	gc := &geminiClient{
 		client:         client,
 		model:          model,
 		modelName:      modelName,
@@ -82,8 +91,15 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string)
 		logger:         logger,
 		modelInfoCache: make(map[string]*ModelInfo),
 		modelInfoMutex: sync.RWMutex{},
-		httpClient:     &http.Client{Timeout: 10 * time.Second},
-	}, nil
+		httpClient:     &http.Client{Timeout: 10 * time.Second}, // Default HTTP client
+	}
+
+	// Apply any custom options
+	for _, opt := range opts {
+		opt(gc)
+	}
+
+	return gc, nil
 }
 
 // GenerateContent sends a text prompt to Gemini and returns the generated content

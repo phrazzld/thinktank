@@ -27,73 +27,73 @@
   - **Depends On:** Create `internal/gemini/errors_test.go` File
   - **AC Ref:** Plan Section 2.1
 
-- [ ] **Task Title:** Implement Table-Driven Tests for `FormatAPIError()`
+- [x] **Task Title:** Implement Table-Driven Tests for `FormatAPIError()`
   - **Action:** Create comprehensive table-driven tests for `FormatAPIError()` covering different error types, status codes, and verifying the resulting `APIError` fields (Type, Message, Suggestion).
   - **Depends On:** Implement Error Classification Tests
   - **AC Ref:** Plan Section 2.1
 
-- [ ] **Task Title:** Extend `client_test.go` for Constructor and Defaults
+- [x] **Task Title:** Extend `client_test.go` for Constructor and Defaults
   - **Action:** Add or improve tests in `internal/gemini/client_test.go` to cover `NewClient()` initialization logic (including error cases like missing API key/model name) and `DefaultModelConfig()` correctness.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 2.2
 
-- [ ] **Task Title:** Enhance Mock Client Tests
+- [x] **Task Title:** Enhance Mock Client Tests
   - **Action:** Review and enhance existing tests for any mock client implementation to ensure comprehensive coverage of its methods and behaviors.
   - **Depends On:** Extend `client_test.go` for Constructor and Defaults
   - **AC Ref:** Plan Section 2.2
 
-- [ ] **Task Title:** Refactor `geminiClient` for HTTP Client Injection
+- [x] **Task Title:** Refactor `geminiClient` for HTTP Client Injection
   - **Action:** Modify `internal/gemini/gemini_client.go` struct to accept an `httpClient` interface (e.g., `interface{ Do(*http.Request) (*http.Response, error) }`) via its constructor. Update internal methods like `fetchModelInfo` to use this injected client. Ensure the default `http.Client` is used when no custom client is provided.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Create `internal/gemini/gemini_client_test.go` File
+- [x] **Task Title:** Create `internal/gemini/gemini_client_test.go` File
   - **Action:** Create a new test file `gemini_client_test.go` within the `internal/gemini` package.
   - **Depends On:** Refactor `geminiClient` for HTTP Client Injection
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Implement Mock HTTP Transport for Tests
+- [x] **Task Title:** Implement Mock HTTP Transport for Tests
   - **Action:** Create a mock HTTP client or transport that allows simulating various HTTP responses (success, errors, different status codes, specific body content) for testing `geminiClient` methods that make HTTP calls.
   - **Depends On:** Create `internal/gemini/gemini_client_test.go` File
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Implement `GenerateContent` Tests
+- [x] **Task Title:** Implement `GenerateContent` Tests
   - **Action:** Add tests for the `GenerateContent` method using the mock HTTP client to simulate successful responses, API errors (e.g., rate limits, auth errors), empty responses, and safety filter responses. Verify the returned `GenerationResult` or `APIError`.
   - **Depends On:** Implement Mock HTTP Transport for Tests
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Implement `CountTokens` Tests
+- [x] **Task Title:** Implement `CountTokens` Tests
   - **Action:** Add tests for the `CountTokens` method using the mock HTTP client to simulate successful responses and API errors. Verify the returned `TokenCount` or `APIError`. Test the empty prompt case.
   - **Depends On:** Implement Mock HTTP Transport for Tests
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Implement `GetModelInfo` Tests
+- [x] **Task Title:** Implement `GetModelInfo` Tests
   - **Action:** Add tests for the `GetModelInfo` method using the mock HTTP client to simulate successful responses, API errors, and invalid JSON responses. Test the caching mechanism. Verify the returned `ModelInfo` or `APIError`.
   - **Depends On:** Implement Mock HTTP Transport for Tests
   - **AC Ref:** Plan Section 2.3
 
-- [ ] **Task Title:** Implement Helper Method Tests
+- [x] **Task Title:** Implement Helper Method Tests
   - **Action:** Add tests for helper methods like `mapSafetyRatings`, `GetModelName`, `GetTemperature`, `GetMaxOutputTokens`, and `GetTopP`. These might not require the mock HTTP client.
   - **Depends On:** Create `internal/gemini/gemini_client_test.go` File
   - **AC Ref:** Plan Section 2.3
 
 ## 3. Implement Tests for Adapter Code
-- [ ] **Task Title:** Create `internal/architect/adapters_test.go` File
+- [x] **Task Title:** Create `internal/architect/adapters_test.go` File
   - **Action:** Create a new test file `adapters_test.go` within the `internal/architect` package.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 3.1
 
-- [ ] **Task Title:** Implement Client Initialization Adapter Tests
+- [x] **Task Title:** Implement Client Initialization Adapter Tests
   - **Action:** Add tests for `APIServiceAdapter.InitClient`. Use simple mocks/fakes for the underlying `APIService` to verify the adapter correctly passes arguments and returns values/errors.
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1
 
-- [ ] **Task Title:** Implement Response Processing Adapter Tests
+- [x] **Task Title:** Implement Response Processing Adapter Tests
   - **Action:** Add tests for `APIServiceAdapter.ProcessResponse`. Use mocks/fakes for `APIService` and provide sample `gemini.GenerationResult` inputs to verify the adapter's behavior.
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1
 
-- [ ] **Task Title:** Implement Error Handling Adapter Tests
+- [x] **Task Title:** Implement Error Handling Adapter Tests
   - **Action:** Add tests for `APIServiceAdapter.IsEmptyResponseError`, `IsSafetyBlockedError`, and `GetErrorDetails`. Use mocks/fakes for `APIService` and sample errors to verify correct delegation and return values.
   - **Depends On:** Create `internal/architect/adapters_test.go` File
   - **AC Ref:** Plan Section 3.1

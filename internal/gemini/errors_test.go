@@ -394,3 +394,177 @@ func TestGetErrorType(t *testing.T) {
 		})
 	}
 }
+
+// TestFormatAPIError tests the FormatAPIError function
+func TestFormatAPIError(t *testing.T) {
+	tests := []struct {
+		name           string
+		err            error
+		statusCode     int
+		wantType       ErrorType
+		wantMessage    string
+		wantSuggestion string
+		wantNil        bool
+	}{
+		{
+			name:    "nil error",
+			err:     nil,
+			wantNil: true,
+		},
+		{
+			name: "already an APIError",
+			err: &APIError{
+				Type:       ErrorTypeAuth,
+				Message:    "Original message",
+				Suggestion: "Original suggestion",
+				StatusCode: http.StatusUnauthorized,
+				Original:   errors.New("original"),
+			},
+			statusCode:     0, // Should be ignored
+			wantType:       ErrorTypeAuth,
+			wantMessage:    "Original message",
+			wantSuggestion: "Original suggestion",
+		},
+		// Test each error type to ensure the correct formatting is applied
+		{
+			name:           "auth error",
+			err:            errors.New("some auth error"),
+			statusCode:     http.StatusUnauthorized,
+			wantType:       ErrorTypeAuth,
+			wantMessage:    "Authentication failed with the Gemini API",
+			wantSuggestion: "Check that your API key is valid and has not expired. Ensure environment variables are set correctly.",
+		},
+		{
+			name:           "rate limit error by status",
+			err:            errors.New("some rate limit error"),
+			statusCode:     http.StatusTooManyRequests,
+			wantType:       ErrorTypeRateLimit,
+			wantMessage:    "Request rate limit or quota exceeded on the Gemini API",
+			wantSuggestion: "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate. You can also upgrade your API usage tier if this happens frequently.",
+		},
+		{
+			name:           "rate limit error by message",
+			err:            errors.New("rate limit exceeded"),
+			statusCode:     http.StatusOK, // Status code doesn't indicate rate limiting
+			wantType:       ErrorTypeRateLimit,
+			wantMessage:    "Request rate limit or quota exceeded on the Gemini API",
+			wantSuggestion: "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate. You can also upgrade your API usage tier if this happens frequently.",
+		},
+		{
+			name:           "invalid request error",
+			err:            errors.New("some invalid request"),
+			statusCode:     http.StatusBadRequest,
+			wantType:       ErrorTypeInvalidRequest,
+			wantMessage:    "Invalid request sent to the Gemini API",
+			wantSuggestion: "Check the prompt format and parameters. Ensure they comply with the API requirements.",
+		},
+		{
+			name:           "not found error",
+			err:            errors.New("model not found"),
+			statusCode:     http.StatusNotFound,
+			wantType:       ErrorTypeNotFound,
+			wantMessage:    "The requested model or resource was not found",
+			wantSuggestion: "Verify that the model name is correct and that the model is available in your region.",
+		},
+		{
+			name:           "server error",
+			err:            errors.New("internal server error"),
+			statusCode:     http.StatusInternalServerError,
+			wantType:       ErrorTypeServer,
+			wantMessage:    "Gemini API server error occurred",
+			wantSuggestion: "This is typically a temporary issue. Wait a few moments and try again.",
+		},
+		{
+			name:           "network error",
+			err:            errors.New("network error occurred"),
+			statusCode:     0,
+			wantType:       ErrorTypeNetwork,
+			wantMessage:    "Network error while connecting to the Gemini API",
+			wantSuggestion: "Check your internet connection and try again. If persistent, there may be connectivity issues to Google's servers.",
+		},
+		{
+			name:           "cancelled error",
+			err:            errors.New("request cancelled"),
+			statusCode:     0,
+			wantType:       ErrorTypeCancelled,
+			wantMessage:    "Request to Gemini API was cancelled",
+			wantSuggestion: "The operation was interrupted. Try again with a longer timeout if needed.",
+		},
+		{
+			name:           "input limit error",
+			err:            errors.New("token limit exceeded"),
+			statusCode:     0,
+			wantType:       ErrorTypeInputLimit,
+			wantMessage:    "Input token limit exceeded for the Gemini model",
+			wantSuggestion: "Reduce the input size by using --include, --exclude, or --exclude-names flags to filter the context.",
+		},
+		{
+			name:           "content filtered error",
+			err:            errors.New("content blocked by safety settings"),
+			statusCode:     0,
+			wantType:       ErrorTypeContentFiltered,
+			wantMessage:    "Content was filtered by Gemini API safety settings",
+			wantSuggestion: "Your prompt or content may have triggered safety filters. Review and modify your input to comply with content policies.",
+		},
+		{
+			name:           "unknown error",
+			err:            errors.New("some unknown error"),
+			statusCode:     0,
+			wantType:       ErrorTypeUnknown,
+			wantMessage:    "Error calling Gemini API: some unknown error",
+			wantSuggestion: "Check the logs for more details or try again.",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatAPIError(tt.err, tt.statusCode)
+
+			if tt.wantNil {
+				if result != nil {
+					t.Errorf("FormatAPIError() = %v, want nil", result)
+				}
+				return
+			}
+
+			if result == nil {
+				t.Fatal("FormatAPIError() returned nil, want non-nil")
+			}
+
+			// For already APIError cases, check the error is returned as-is
+			if apiErr, ok := tt.err.(*APIError); ok {
+				// For existing APIError, the function should return the same object
+				if result != apiErr {
+					t.Errorf("FormatAPIError() should return the same APIError instance for an existing APIError")
+				}
+				return
+			}
+
+			// For regular errors, check error properties
+			// Check error type
+			if result.Type != tt.wantType {
+				t.Errorf("FormatAPIError().Type = %v, want %v", result.Type, tt.wantType)
+			}
+
+			// Check message
+			if result.Message != tt.wantMessage {
+				t.Errorf("FormatAPIError().Message = %q, want %q", result.Message, tt.wantMessage)
+			}
+
+			// Check suggestion
+			if result.Suggestion != tt.wantSuggestion {
+				t.Errorf("FormatAPIError().Suggestion = %q, want %q", result.Suggestion, tt.wantSuggestion)
+			}
+
+			// Check that original error is preserved
+			if result.Original != tt.err {
+				t.Errorf("FormatAPIError().Original = %v, want %v", result.Original, tt.err)
+			}
+
+			// Check status code
+			if result.StatusCode != tt.statusCode {
+				t.Errorf("FormatAPIError().StatusCode = %v, want %v", result.StatusCode, tt.statusCode)
+			}
+		})
+	}
+}

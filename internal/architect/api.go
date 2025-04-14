@@ -54,11 +54,16 @@ type apiService struct {
 	newClientFunc func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 }
 
+// newClientWrapper wraps gemini.NewClient to match the expected signature
+func newClientWrapper(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	return gemini.NewClient(ctx, apiKey, modelName, apiEndpoint)
+}
+
 // NewAPIService creates a new instance of APIService
 func NewAPIService(logger logutil.LoggerInterface) APIService {
 	return &apiService{
 		logger:        logger,
-		newClientFunc: gemini.NewClient, // Default to the real implementation
+		newClientFunc: newClientWrapper, // Use our wrapper to match signatures
 	}
 }
 
