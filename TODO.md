@@ -198,8 +198,8 @@
   - **Depends On:** None
   - **Expected Result:** Smaller, more focused test files with better organization.
 
-- [ ] **Task Title:** Refactor `gemini_client_test.go` for Improved Maintainability
-  - **Action:** Restructure `internal/gemini/gemini_client_test.go` (1574 lines) into multiple test files organized by API functionality, such as `client_generation_test.go`, `client_tokens_test.go`, `client_model_info_test.go`.
+- [x] **Task Title:** Refactor `gemini_client_test.go` for Improved Maintainability
+  - **Action:** Restructure `internal/gemini/gemini_client_test.go` (1574 lines) into multiple test files organized by API functionality, such as `mocks_test.go`, `model_info_test.go`, `generate_content_test.go`, `token_counting_test.go`, and `helper_methods_test.go`.
   - **Depends On:** None
   - **Expected Result:** Better test organization with clear separation of different client functionalities.
 
