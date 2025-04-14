@@ -171,6 +171,13 @@ func (l *Logger) SetPrefix(prefix string) {
 	l.prefix = prefix
 }
 
+// GetLevel returns the current log level
+func (l *Logger) GetLevel() LogLevel {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.level
+}
+
 // Println implements LoggerInterface by logging at info level
 func (l *Logger) Println(v ...interface{}) {
 	l.Info(fmt.Sprintln(v...))

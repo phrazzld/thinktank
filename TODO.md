@@ -140,47 +140,83 @@
   - **AC Ref:** Plan Section 4.2
 
 ## 5. Complete Command Package Testing
-- [ ] **Task Title:** Improve Flag Parsing Tests
+- [x] **Task Title:** Improve Flag Parsing Tests
   - **Action:** Add or enhance tests in `cmd/architect` package for CLI flag parsing functions (`ParseFlags`, `ParseFlagsWithEnv`). Test various combinations of flags, environment variables, default values, and invalid inputs.
   - **Depends On:** Identify Specific Low-Coverage Functions
   - **AC Ref:** Plan Section 5.1
 
-- [ ] **Task Title:** Implement Logging Setup Tests
+- [x] **Task Title:** Implement Logging Setup Tests
   - **Action:** Add tests in `cmd/architect` package for `SetupLogging` or equivalent logging initialization logic. Verify that the correct log level and output are configured based on flags/config.
   - **Depends On:** Improve Flag Parsing Tests
   - **AC Ref:** Plan Section 5.1
 
-- [ ] **Task Title:** Implement File Writing Tests
+- [x] **Task Title:** Implement File Writing Tests
   - **Action:** Add tests in `cmd/architect` package for `SaveToFile` or equivalent output file writing logic. Test successful writing, handling of existing files, and error conditions (e.g., invalid path, permissions). Use temporary files/directories for testing.
   - **Depends On:** Implement Logging Setup Tests
   - **AC Ref:** Plan Section 5.1
 
-- [ ] **Task Title:** Implement Token Management Tests
+- [x] **Task Title:** Implement Token Management Tests
   - **Action:** Add tests in `cmd/architect` package for token management CLI interactions, such as handling the `--confirm-tokens` flag, interacting with the `TokenManager`, and potentially simulating user confirmation prompts.
   - **Depends On:** Implement File Writing Tests
   - **AC Ref:** Plan Section 5.1
 
 ## 6. Update CI Configuration
-- [ ] **Task Title:** Update Coverage Threshold in CI Workflow
+- [x] **Task Title:** Update Coverage Threshold in CI Workflow
   - **Action:** Modify the `Check coverage threshold` step in `.github/workflows/ci.yml`. Change the `THRESHOLD` variable from `30` to `80`. Ensure the comparison logic remains correct.
   - **Depends On:** Run Full Test Suite and Verify Coverage Exceeds 80%
   - **AC Ref:** Plan Section 6.1
 
 ## 7. Verify Final Coverage
-- [ ] **Task Title:** Run Full Test Suite and Verify Coverage Exceeds 80%
+- [x] **Task Title:** Run Full Test Suite and Verify Coverage Exceeds 80%
   - **Action:** After implementing the above tests, run the full test suite with coverage analysis (`go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out`). Check if the total coverage meets or exceeds 80%.
   - **Depends On:** All test implementation tasks from Sections 2-5
   - **AC Ref:** Plan Section 7
 
-- [ ] **Task Title:** Add Supplementary Tests if Needed
+- [x] **Task Title:** Add Supplementary Tests if Needed
   - **Action:** If the coverage is below 80%, re-analyze the coverage report (`go tool cover -html=coverage.out`) to identify remaining significant gaps and add targeted tests to reach the threshold.
   - **Depends On:** Run Full Test Suite and Verify Coverage Exceeds 80%
   - **AC Ref:** Plan Section 7
 
-- [ ] **Task Title:** Commit Changes and Verify CI Pipeline Pass
+- [~] **Task Title:** Commit Changes and Verify CI Pipeline Pass
   - **Action:** Commit all test additions, refactoring, and the CI configuration change. Push the changes and monitor the GitHub Actions CI pipeline to ensure all jobs (lint, test, build) pass, including the new 80% coverage check.
   - **Depends On:** Update Coverage Threshold in CI Workflow, Add Supplementary Tests if Needed (if required)
   - **AC Ref:** Plan Section 7
+
+## 8. Test File Refactoring
+- [ ] **Task Title:** Refactor `adapters_test.go` for Improved Organization
+  - **Action:** Break down the large `internal/architect/adapters_test.go` (1764 lines) into multiple smaller test files, each focusing on a specific adapter group or functionality. Create new files like `api_adapter_test.go`, `token_adapter_test.go`, `context_adapter_test.go`.
+  - **Depends On:** None
+  - **Expected Result:** Smaller, more maintainable test files with clear focus on specific adapter functionality.
+
+- [ ] **Task Title:** Refactor `orchestrator_test.go` for Improved Readability
+  - **Action:** Break down the large `internal/architect/orchestrator/orchestrator_test.go` (1612 lines) into multiple smaller test files, each focusing on specific orchestrator methods or behaviors. Create new files like `orchestrator_init_test.go`, `orchestrator_process_test.go`, `orchestrator_error_test.go`.
+  - **Depends On:** None
+  - **Expected Result:** Improved test organization with better separation of concerns.
+
+- [ ] **Task Title:** Refactor `fileutil_test.go` for Better Test Structure
+  - **Action:** Refactor `internal/fileutil/fileutil_test.go` (1603 lines) by grouping related tests into separate files based on functionality, such as `path_handling_test.go`, `filtering_test.go`, `git_operations_test.go`.
+  - **Depends On:** None
+  - **Expected Result:** Smaller, more focused test files with better organization.
+
+- [ ] **Task Title:** Refactor `gemini_client_test.go` for Improved Maintainability
+  - **Action:** Restructure `internal/gemini/gemini_client_test.go` (1574 lines) into multiple test files organized by API functionality, such as `client_generation_test.go`, `client_tokens_test.go`, `client_model_info_test.go`.
+  - **Depends On:** None
+  - **Expected Result:** Better test organization with clear separation of different client functionalities.
+
+- [ ] **Task Title:** Refactor `integration_test.go` for Better Readability
+  - **Action:** Refactor `internal/integration/integration_test.go` (1011 lines) by splitting tests into focused files based on specific integration scenarios or components being tested.
+  - **Depends On:** None
+  - **Expected Result:** Improved test structure with better separation of different integration test scenarios.
+
+- [ ] **Task Title:** Refactor `cli_test.go` for Better Organization
+  - **Action:** Restructure `cmd/architect/cli_test.go` (1007 lines) into multiple test files based on the CLI functionality being tested, such as `cli_args_test.go`, `cli_config_test.go`, `cli_execution_test.go`.
+  - **Depends On:** None
+  - **Expected Result:** Better organized CLI tests with clear focus on specific functionality.
+
+- [ ] **Task Title:** Refactor `processor_test.go` for Improved Maintainability
+  - **Action:** Reorganize `internal/architect/modelproc/processor_test.go` (959 lines) into multiple test files based on specific processor behaviors or methods being tested.
+  - **Depends On:** None
+  - **Expected Result:** Smaller, more maintainable test files with better organization.
 
 ## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
 - [ ] **Issue/Assumption:** The plan assumes that the existing tests are generally valid and well-structured. Significant refactoring of existing tests might affect the estimated effort.

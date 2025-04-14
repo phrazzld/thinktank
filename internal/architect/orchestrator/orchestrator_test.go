@@ -374,6 +374,9 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 	// Configure API service to delay client initialization
 	deps.APIService.initClientDelay = true
 
+	// Ensure client is not nil to avoid dereference panic
+	deps.APIService.client = &mockGeminiClient{}
+
 	// Create a context that can be cancelled
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -439,6 +442,9 @@ func TestIntegration_RateLimiting(t *testing.T) {
 	// Configure API service with delay to ensure rate limiting kicks in
 	deps.APIService.initClientDelay = true
 
+	// Ensure client is not nil to avoid dereference panic
+	deps.APIService.client = &mockGeminiClient{}
+
 	// Run orchestrator
 	startTime := time.Now()
 	err := deps.runOrchestrator(context.Background(), "test instructions")
@@ -489,7 +495,8 @@ func TestRun_ContextCancellation(t *testing.T) {
 	}
 	// Create mock dependencies with a delay in client initialization
 	mockAPIService := newMockAPIService()
-	mockAPIService.initClientDelay = true // This will simulate a slow operation that should be cancelled
+	mockAPIService.initClientDelay = true       // This will simulate a slow operation that should be cancelled
+	mockAPIService.client = &mockGeminiClient{} // Ensure client is not nil to avoid dereference panic
 
 	mockGatherer := &mockContextGatherer{
 		contextFiles: []fileutil.FileMeta{
@@ -861,6 +868,8 @@ type processResponseCall struct {
 func newMockAPIService() *mockAPIService {
 	mock := &mockAPIService{
 		errorResponses: make(map[string]error),
+		// Initialize with a default client to avoid nil pointer dereference
+		client: &mockGeminiClient{},
 	}
 
 	// Set default handler functions

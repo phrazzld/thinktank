@@ -32,4 +32,25 @@ go build ./...
 echo "Running quick tests..."
 go test -short ./...
 
+# Check for large files (>1000 lines)
+echo "Checking for large files (>1000 lines)..."
+LINE_THRESHOLD=1000
+# Get all Go files in the repository
+GO_FILES=$(find . -path "./vendor" -prune -o -name "*.go" -print)
+LARGE_FILES=()
+
+for file in $GO_FILES; do
+  LINES=$(wc -l < "$file")
+  if [ "$LINES" -gt "$LINE_THRESHOLD" ]; then
+    LARGE_FILES+=("$file: $LINES lines")
+  fi
+done
+
+if [ ${#LARGE_FILES[@]} -gt 0 ]; then
+  echo "⚠️  WARNING: The following files exceed $LINE_THRESHOLD lines:"
+  printf "  %s\n" "${LARGE_FILES[@]}"
+  echo "  Consider refactoring these files for better maintainability."
+  echo "  Check TODO.md for refactoring guidelines."
+fi
+
 echo "Pre-commit checks completed successfully!"

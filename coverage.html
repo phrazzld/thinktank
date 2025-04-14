@@ -59,39 +59,59 @@
 				
 				<option value="file1">github.com/phrazzld/architect/cmd/architect/api_test_helper.go (0.0%)</option>
 				
-				<option value="file2">github.com/phrazzld/architect/cmd/architect/cli.go (81.2%)</option>
+				<option value="file2">github.com/phrazzld/architect/cmd/architect/cli.go (98.8%)</option>
 				
 				<option value="file3">github.com/phrazzld/architect/cmd/architect/main.go (0.0%)</option>
 				
-				<option value="file4">github.com/phrazzld/architect/cmd/architect/output.go (0.0%)</option>
+				<option value="file4">github.com/phrazzld/architect/cmd/architect/output.go (78.9%)</option>
 				
-				<option value="file5">github.com/phrazzld/architect/cmd/architect/token.go (74.4%)</option>
+				<option value="file5">github.com/phrazzld/architect/cmd/architect/token.go (97.4%)</option>
 				
-				<option value="file6">github.com/phrazzld/architect/internal/architect/modelproc/processor.go (64.2%)</option>
+				<option value="file6">github.com/phrazzld/architect/internal/architect/adapters.go (100.0%)</option>
 				
-				<option value="file7">github.com/phrazzld/architect/internal/architect/prompt/prompt.go (100.0%)</option>
+				<option value="file7">github.com/phrazzld/architect/internal/architect/api.go (0.0%)</option>
 				
-				<option value="file8">github.com/phrazzld/architect/internal/auditlog/logger.go (80.6%)</option>
+				<option value="file8">github.com/phrazzld/architect/internal/architect/app.go (74.5%)</option>
 				
-				<option value="file9">github.com/phrazzld/architect/internal/config/config.go (33.3%)</option>
+				<option value="file9">github.com/phrazzld/architect/internal/architect/context.go (77.0%)</option>
 				
-				<option value="file10">github.com/phrazzld/architect/internal/fileutil/fileutil.go (88.2%)</option>
+				<option value="file10">github.com/phrazzld/architect/internal/architect/filewriter.go (51.5%)</option>
 				
-				<option value="file11">github.com/phrazzld/architect/internal/fileutil/mock_logger.go (13.8%)</option>
+				<option value="file11">github.com/phrazzld/architect/internal/architect/modelproc/processor.go (64.2%)</option>
 				
-				<option value="file12">github.com/phrazzld/architect/internal/gemini/client.go (50.0%)</option>
+				<option value="file12">github.com/phrazzld/architect/internal/architect/orchestrator/orchestrator.go (93.5%)</option>
 				
-				<option value="file13">github.com/phrazzld/architect/internal/gemini/errors.go (0.0%)</option>
+				<option value="file13">github.com/phrazzld/architect/internal/architect/prompt/prompt.go (100.0%)</option>
 				
-				<option value="file14">github.com/phrazzld/architect/internal/gemini/gemini_client.go (0.0%)</option>
+				<option value="file14">github.com/phrazzld/architect/internal/architect/token.go (57.4%)</option>
 				
-				<option value="file15">github.com/phrazzld/architect/internal/gemini/mock_client.go (15.4%)</option>
+				<option value="file15">github.com/phrazzld/architect/internal/auditlog/logger.go (80.6%)</option>
 				
-				<option value="file16">github.com/phrazzld/architect/internal/logutil/logutil.go (71.1%)</option>
+				<option value="file16">github.com/phrazzld/architect/internal/config/config.go (100.0%)</option>
 				
-				<option value="file17">github.com/phrazzld/architect/internal/ratelimit/ratelimit.go (82.4%)</option>
+				<option value="file17">github.com/phrazzld/architect/internal/fileutil/fileutil.go (97.8%)</option>
 				
-				<option value="file18">github.com/phrazzld/architect/internal/runutil/runutil.go (100.0%)</option>
+				<option value="file18">github.com/phrazzld/architect/internal/fileutil/mock_logger.go (24.1%)</option>
+				
+				<option value="file19">github.com/phrazzld/architect/internal/gemini/client.go (77.8%)</option>
+				
+				<option value="file20">github.com/phrazzld/architect/internal/gemini/errors.go (100.0%)</option>
+				
+				<option value="file21">github.com/phrazzld/architect/internal/gemini/gemini_client.go (64.1%)</option>
+				
+				<option value="file22">github.com/phrazzld/architect/internal/gemini/mock_client.go (96.2%)</option>
+				
+				<option value="file23">github.com/phrazzld/architect/internal/integration/test_helpers.go (36.4%)</option>
+				
+				<option value="file24">github.com/phrazzld/architect/internal/integration/test_runner.go (35.3%)</option>
+				
+				<option value="file25">github.com/phrazzld/architect/internal/logutil/logutil.go (66.7%)</option>
+				
+				<option value="file26">github.com/phrazzld/architect/internal/ratelimit/ratelimit.go (82.4%)</option>
+				
+				<option value="file27">github.com/phrazzld/architect/internal/runutil/runutil.go (100.0%)</option>
+				
+				<option value="file28">github.com/phrazzld/architect/main.go (0.0%)</option>
 				
 				</select>
 			</div>
@@ -280,7 +300,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
         flagSet.Var(modelFlag, "model", fmt.Sprintf("Gemini model to use for generation (repeatable). Default: %s", defaultModel))
 
         // Set custom usage message
-        flagSet.Usage = func() </span><span class="cov0" title="0">{
+        flagSet.Usage = func() </span><span class="cov8" title="1">{
                 fmt.Fprintf(os.Stderr, "Usage: %s --instructions &lt;file&gt; [options] &lt;path1&gt; [path2...]\n\n", os.Args[0])
 
                 fmt.Fprintf(os.Stderr, "Arguments:\n")
@@ -300,7 +320,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
         }</span>
 
         // Parse the flags
-        <span class="cov8" title="1">if err := flagSet.Parse(args); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if err := flagSet.Parse(args); err != nil </span><span class="cov8" title="1">{
                 return nil, fmt.Errorf("error parsing flags: %w", err)
         }</span>
 
@@ -354,13 +374,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
         return cfg, nil</span>
 }
 
-// SetupLogging initializes the logger based on configuration
-func SetupLogging(config *config.CliConfig) logutil.LoggerInterface <span class="cov0" title="0">{
-        return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
-}</span>
-
-// SetupLoggingCustom initializes the logger with custom flag and writer for testing
-func SetupLoggingCustom(config *config.CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface <span class="cov8" title="1">{
+// setupLoggingCustomImpl is the implementation of SetupLoggingCustom
+func setupLoggingCustomImpl(config *config.CliConfig, _ *flag.Flag, output io.Writer) logutil.LoggerInterface <span class="cov8" title="1">{
         // Apply verbose override if set
         if config.Verbose </span><span class="cov8" title="1">{
                 config.LogLevel = logutil.DebugLevel
@@ -370,6 +385,14 @@ func SetupLoggingCustom(config *config.CliConfig, _ *flag.Flag, output io.Writer
         <span class="cov8" title="1">logger := logutil.NewLogger(config.LogLevel, output, "[architect] ")
         return logger</span>
 }
+
+// SetupLoggingCustom is a variable holding the implementation for easier testing
+var SetupLoggingCustom = setupLoggingCustomImpl
+
+// SetupLogging initializes the logger based on configuration
+func SetupLogging(config *config.CliConfig) logutil.LoggerInterface <span class="cov8" title="1">{
+        return SetupLoggingCustom(config, flag.Lookup("log-level"), os.Stderr)
+}</span>
 </pre>
 		
 		<pre class="file" id="file3" style="display: none">// Package architect provides the command-line interface for the architect tool
@@ -465,41 +488,41 @@ type fileWriter struct {
 }
 
 // NewFileWriter creates a new FileWriter instance
-func NewFileWriter(logger logutil.LoggerInterface) FileWriter <span class="cov0" title="0">{
+func NewFileWriter(logger logutil.LoggerInterface) FileWriter <span class="cov8" title="1">{
         return &amp;fileWriter{
                 logger: logger,
         }
 }</span>
 
 // SaveToFile writes content to the specified file
-func (fw *fileWriter) SaveToFile(content, outputFile string) error <span class="cov0" title="0">{
+func (fw *fileWriter) SaveToFile(content, outputFile string) error <span class="cov8" title="1">{
         // Ensure output path is absolute
         outputPath := outputFile
-        if !filepath.IsAbs(outputPath) </span><span class="cov0" title="0">{
+        if !filepath.IsAbs(outputPath) </span><span class="cov8" title="1">{
                 cwd, err := os.Getwd()
                 if err != nil </span><span class="cov0" title="0">{
                         fw.logger.Error("Error getting current working directory: %v", err)
                         return fmt.Errorf("error getting current working directory: %w", err)
                 }</span>
-                <span class="cov0" title="0">outputPath = filepath.Join(cwd, outputPath)</span>
+                <span class="cov8" title="1">outputPath = filepath.Join(cwd, outputPath)</span>
         }
 
         // Ensure the output directory exists
-        <span class="cov0" title="0">outputDir := filepath.Dir(outputPath)
-        if err := os.MkdirAll(outputDir, 0755); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">outputDir := filepath.Dir(outputPath)
+        if err := os.MkdirAll(outputDir, 0755); err != nil </span><span class="cov8" title="1">{
                 fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
                 return fmt.Errorf("error creating output directory %s: %w", outputDir, err)
         }</span>
 
         // Write to file
-        <span class="cov0" title="0">fw.logger.Info("Writing to file %s...", outputPath)
+        <span class="cov8" title="1">fw.logger.Info("Writing to file %s...", outputPath)
         err := os.WriteFile(outputPath, []byte(content), 0644)
         if err != nil </span><span class="cov0" title="0">{
                 fw.logger.Error("Error writing to file %s: %v", outputPath, err)
                 return fmt.Errorf("error writing to file %s: %w", outputPath, err)
         }</span>
 
-        <span class="cov0" title="0">fw.logger.Info("Successfully saved to %s", outputPath)
+        <span class="cov8" title="1">fw.logger.Info("Successfully saved to %s", outputPath)
         return nil</span>
 }
 </pre>
@@ -633,25 +656,1061 @@ func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) b
                 return true
         }</span>
 
-        <span class="cov0" title="0">tm.logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
+        <span class="cov8" title="1">tm.logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
         tm.logger.Info("Do you want to proceed with the API call? [y/N]: ")
 
         reader := bufio.NewReader(os.Stdin)
         response, err := reader.ReadString('\n')
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 tm.logger.Error("Error reading input: %v", err)
                 return false
         }</span>
 
         // Trim whitespace and convert to lowercase
-        <span class="cov0" title="0">response = strings.ToLower(strings.TrimSpace(response))
+        <span class="cov8" title="1">response = strings.ToLower(strings.TrimSpace(response))
 
         // Only proceed if the user explicitly confirms with 'y' or 'yes'
         return response == "y" || response == "yes"</span>
 }
 </pre>
 		
-		<pre class="file" id="file6" style="display: none">// Package modelproc provides model processing functionality for the architect tool.
+		<pre class="file" id="file6" style="display: none">package architect
+
+import (
+        "context"
+
+        "github.com/phrazzld/architect/internal/architect/interfaces"
+        "github.com/phrazzld/architect/internal/architect/modelproc"
+        "github.com/phrazzld/architect/internal/fileutil"
+        "github.com/phrazzld/architect/internal/gemini"
+)
+
+// APIServiceAdapter adapts internal APIService to interfaces.APIService
+type APIServiceAdapter struct {
+        APIService APIService
+}
+
+func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) <span class="cov8" title="1">{
+        return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
+}</span>
+
+func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) <span class="cov8" title="1">{
+        return a.APIService.ProcessResponse(result)
+}</span>
+
+func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool <span class="cov8" title="1">{
+        return a.APIService.IsEmptyResponseError(err)
+}</span>
+
+func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool <span class="cov8" title="1">{
+        return a.APIService.IsSafetyBlockedError(err)
+}</span>
+
+func (a *APIServiceAdapter) GetErrorDetails(err error) string <span class="cov8" title="1">{
+        return a.APIService.GetErrorDetails(err)
+}</span>
+
+// TokenResultAdapter adapts TokenResult to modelproc.TokenResult
+func TokenResultAdapter(tr *TokenResult) *modelproc.TokenResult <span class="cov8" title="1">{
+        return &amp;modelproc.TokenResult{
+                TokenCount:   tr.TokenCount,
+                InputLimit:   tr.InputLimit,
+                ExceedsLimit: tr.ExceedsLimit,
+                LimitError:   tr.LimitError,
+                Percentage:   tr.Percentage,
+        }
+}</span>
+
+// TokenManagerAdapter adapts internal TokenManager to interfaces.TokenManager
+type TokenManagerAdapter struct {
+        TokenManager TokenManager
+}
+
+func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, prompt string) error <span class="cov8" title="1">{
+        return t.TokenManager.CheckTokenLimit(ctx, prompt)
+}</span>
+
+func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) <span class="cov8" title="1">{
+        result, err := t.TokenManager.GetTokenInfo(ctx, prompt)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        // Convert the TokenResult to interfaces.TokenResult
+        <span class="cov8" title="1">return &amp;interfaces.TokenResult{
+                TokenCount:   result.TokenCount,
+                InputLimit:   result.InputLimit,
+                ExceedsLimit: result.ExceedsLimit,
+                LimitError:   result.LimitError,
+                Percentage:   result.Percentage,
+        }, nil</span>
+}
+
+func (t *TokenManagerAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool <span class="cov8" title="1">{
+        return t.TokenManager.PromptForConfirmation(tokenCount, threshold)
+}</span>
+
+// ContextGathererAdapter adapts internal ContextGatherer to interfaces.ContextGatherer
+type ContextGathererAdapter struct {
+        ContextGatherer ContextGatherer
+}
+
+func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) <span class="cov8" title="1">{
+        // Convert interfaces.GatherConfig to internal GatherConfig
+        internalConfig := GatherConfig{
+                Paths:        config.Paths,
+                Include:      config.Include,
+                Exclude:      config.Exclude,
+                ExcludeNames: config.ExcludeNames,
+                Format:       config.Format,
+                Verbose:      config.Verbose,
+                LogLevel:     config.LogLevel,
+        }
+
+        files, stats, err := c.ContextGatherer.GatherContext(ctx, internalConfig)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, nil, err
+        }</span>
+
+        // Convert internal ContextStats to interfaces.ContextStats
+        <span class="cov8" title="1">interfaceStats := &amp;interfaces.ContextStats{
+                ProcessedFilesCount: stats.ProcessedFilesCount,
+                CharCount:           stats.CharCount,
+                LineCount:           stats.LineCount,
+                TokenCount:          stats.TokenCount,
+                ProcessedFiles:      stats.ProcessedFiles,
+        }
+
+        return files, interfaceStats, nil</span>
+}
+
+func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error <span class="cov8" title="1">{
+        // Convert interfaces.ContextStats to internal ContextStats
+        internalStats := &amp;ContextStats{
+                ProcessedFilesCount: stats.ProcessedFilesCount,
+                CharCount:           stats.CharCount,
+                LineCount:           stats.LineCount,
+                TokenCount:          stats.TokenCount,
+                ProcessedFiles:      stats.ProcessedFiles,
+        }
+
+        return c.ContextGatherer.DisplayDryRunInfo(ctx, internalStats)
+}</span>
+
+// FileWriterAdapter adapts internal FileWriter to interfaces.FileWriter
+type FileWriterAdapter struct {
+        FileWriter FileWriter
+}
+
+func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error <span class="cov8" title="1">{
+        return f.FileWriter.SaveToFile(content, outputFile)
+}</span>
+</pre>
+		
+		<pre class="file" id="file7" style="display: none">// Package architect contains the core application logic for the architect tool
+package architect
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "strings"
+
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// Define package-level error types for better error handling
+var (
+        // ErrEmptyResponse indicates the API returned an empty response
+        ErrEmptyResponse = errors.New("received empty response from Gemini")
+
+        // ErrWhitespaceContent indicates the API returned only whitespace content
+        ErrWhitespaceContent = errors.New("Gemini returned an empty output text")
+
+        // ErrSafetyBlocked indicates content was blocked by safety filters
+        ErrSafetyBlocked = errors.New("content blocked by Gemini safety filters")
+
+        // ErrAPICall indicates a general API call error
+        ErrAPICall = errors.New("error calling Gemini API")
+
+        // ErrClientInitialization indicates client initialization failed
+        ErrClientInitialization = errors.New("error creating Gemini client")
+)
+
+// APIService defines the interface for API-related operations
+type APIService interface {
+        // InitClient initializes and returns a Gemini client
+        InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
+
+        // ProcessResponse processes the API response and extracts content
+        ProcessResponse(result *gemini.GenerationResult) (string, error)
+
+        // IsEmptyResponseError checks if an error is related to empty API responses
+        IsEmptyResponseError(err error) bool
+
+        // IsSafetyBlockedError checks if an error is related to safety filters
+        IsSafetyBlockedError(err error) bool
+
+        // GetErrorDetails extracts detailed information from an error
+        GetErrorDetails(err error) string
+}
+
+// apiService implements the APIService interface
+type apiService struct {
+        logger logutil.LoggerInterface
+        // For testing
+        newClientFunc func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
+}
+
+// newClientWrapper wraps gemini.NewClient to match the expected signature
+func newClientWrapper(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) <span class="cov0" title="0">{
+        return gemini.NewClient(ctx, apiKey, modelName, apiEndpoint)
+}</span>
+
+// NewAPIService creates a new instance of APIService
+func NewAPIService(logger logutil.LoggerInterface) APIService <span class="cov0" title="0">{
+        return &amp;apiService{
+                logger:        logger,
+                newClientFunc: newClientWrapper, // Use our wrapper to match signatures
+        }
+}</span>
+
+// InitClient initializes and returns a Gemini client
+func (s *apiService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) <span class="cov0" title="0">{
+        // Check for empty required parameters
+        if apiKey == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%w: API key is required", ErrClientInitialization)
+        }</span>
+        <span class="cov0" title="0">if modelName == "" </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%w: model name is required", ErrClientInitialization)
+        }</span>
+
+        // Check for context cancellation
+        <span class="cov0" title="0">if ctx.Err() != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("%w: %v", ErrClientInitialization, ctx.Err())
+        }</span>
+
+        // Log custom endpoint if provided
+        <span class="cov0" title="0">if apiEndpoint != "" </span><span class="cov0" title="0">{
+                s.logger.Debug("Using custom API endpoint: %s", apiEndpoint)
+        }</span>
+
+        // Initialize the client (using a function that can be swapped out in tests)
+        <span class="cov0" title="0">client, err := s.newClientFunc(ctx, apiKey, modelName, apiEndpoint)
+        if err != nil </span><span class="cov0" title="0">{
+                // Check if it's already an API error with enhanced details
+                if apiErr, ok := gemini.IsAPIError(err); ok </span><span class="cov0" title="0">{
+                        return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
+                }</span>
+
+                // Wrap the original error
+                <span class="cov0" title="0">return nil, fmt.Errorf("%w: %v", ErrClientInitialization, err)</span>
+        }
+
+        <span class="cov0" title="0">return client, nil</span>
+}
+
+// ProcessResponse processes the API response and extracts content
+func (s *apiService) ProcessResponse(result *gemini.GenerationResult) (string, error) <span class="cov0" title="0">{
+        // Check for nil result
+        if result == nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("%w: result is nil", ErrEmptyResponse)
+        }</span>
+
+        // Check for empty content
+        <span class="cov0" title="0">if result.Content == "" </span><span class="cov0" title="0">{
+                var errDetails strings.Builder
+
+                // Add finish reason if available
+                if result.FinishReason != "" </span><span class="cov0" title="0">{
+                        fmt.Fprintf(&amp;errDetails, " (Finish Reason: %s)", result.FinishReason)
+                }</span>
+
+                // Check for safety blocks
+                <span class="cov0" title="0">if len(result.SafetyRatings) &gt; 0 </span><span class="cov0" title="0">{
+                        blocked := false
+                        safetyInfo := ""
+                        for _, rating := range result.SafetyRatings </span><span class="cov0" title="0">{
+                                if rating.Blocked </span><span class="cov0" title="0">{
+                                        blocked = true
+                                        safetyInfo += fmt.Sprintf(" Blocked by Safety Category: %s;", rating.Category)
+                                }</span>
+                        }
+
+                        <span class="cov0" title="0">if blocked </span><span class="cov0" title="0">{
+                                if errDetails.Len() &gt; 0 </span><span class="cov0" title="0">{
+                                        errDetails.WriteString(" ")
+                                }</span>
+                                <span class="cov0" title="0">errDetails.WriteString("Safety Blocking:")
+                                errDetails.WriteString(safetyInfo)
+
+                                // If we have safety blocks, use the specific safety error
+                                return "", fmt.Errorf("%w%s", ErrSafetyBlocked, errDetails.String())</span>
+                        }
+                }
+
+                // If we don't have safety blocks, use the generic empty response error
+                <span class="cov0" title="0">return "", fmt.Errorf("%w%s", ErrEmptyResponse, errDetails.String())</span>
+        }
+
+        // Check for whitespace-only content
+        <span class="cov0" title="0">if strings.TrimSpace(result.Content) == "" </span><span class="cov0" title="0">{
+                return "", ErrWhitespaceContent
+        }</span>
+
+        <span class="cov0" title="0">return result.Content, nil</span>
+}
+
+// IsEmptyResponseError checks if an error is related to empty API responses
+func (s *apiService) IsEmptyResponseError(err error) bool <span class="cov0" title="0">{
+        return errors.Is(err, ErrEmptyResponse) || errors.Is(err, ErrWhitespaceContent)
+}</span>
+
+// IsSafetyBlockedError checks if an error is related to safety filters
+func (s *apiService) IsSafetyBlockedError(err error) bool <span class="cov0" title="0">{
+        return errors.Is(err, ErrSafetyBlocked)
+}</span>
+
+// GetErrorDetails extracts detailed information from an error
+func (s *apiService) GetErrorDetails(err error) string <span class="cov0" title="0">{
+        // Handle nil error case
+        if err == nil </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+
+        // Check if it's an API error with enhanced details
+        <span class="cov0" title="0">if apiErr, ok := gemini.IsAPIError(err); ok </span><span class="cov0" title="0">{
+                return apiErr.UserFacingError()
+        }</span>
+
+        // Return the error string for other error types
+        <span class="cov0" title="0">return err.Error()</span>
+}
+</pre>
+		
+		<pre class="file" id="file8" style="display: none">// Package architect contains the core application logic for the architect tool
+package architect
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+
+        "github.com/phrazzld/architect/internal/architect/interfaces"
+        "github.com/phrazzld/architect/internal/architect/orchestrator"
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/config"
+        "github.com/phrazzld/architect/internal/logutil"
+        "github.com/phrazzld/architect/internal/ratelimit"
+        "github.com/phrazzld/architect/internal/runutil"
+)
+
+// Execute is the main entry point for the core application logic.
+// It handles initial setup, logging, dependency initialization, and orchestration.
+func Execute(
+        ctx context.Context,
+        cliConfig *config.CliConfig,
+        logger logutil.LoggerInterface,
+        auditLogger auditlog.AuditLogger,
+        apiService APIService,
+) (err error) <span class="cov8" title="1">{
+        // Use a deferred function to ensure ExecuteEnd is always logged
+        defer func() </span><span class="cov8" title="1">{
+                status := "Success"
+                var errorInfo *auditlog.ErrorInfo
+                if err != nil </span><span class="cov8" title="1">{
+                        status = "Failure"
+                        errorInfo = &amp;auditlog.ErrorInfo{
+                                Message: err.Error(),
+                                Type:    "ExecutionError",
+                        }
+                }</span>
+
+                <span class="cov8" title="1">if logErr := auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "ExecuteEnd",
+                        Status:    status,
+                        Error:     errorInfo,
+                        Message:   fmt.Sprintf("Execution completed with status: %s", status),
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+        }()
+
+        // 1. Set up the output directory
+        <span class="cov8" title="1">if err := setupOutputDirectory(cliConfig, logger); err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        // 2. Log the start of the Execute operation
+        <span class="cov8" title="1">inputs := map[string]interface{}{
+                "instructions_file": cliConfig.InstructionsFile,
+                "output_dir":        cliConfig.OutputDir,
+                "audit_log_file":    cliConfig.AuditLogFile,
+                "format":            cliConfig.Format,
+                "paths_count":       len(cliConfig.Paths),
+                "include":           cliConfig.Include,
+                "exclude":           cliConfig.Exclude,
+                "exclude_names":     cliConfig.ExcludeNames,
+                "dry_run":           cliConfig.DryRun,
+                "verbose":           cliConfig.Verbose,
+                "model_names":       cliConfig.ModelNames,
+                "confirm_tokens":    cliConfig.ConfirmTokens,
+                "log_level":         cliConfig.LogLevel,
+        }
+
+        if err := auditLogger.Log(auditlog.AuditEntry{
+                Timestamp: time.Now().UTC(),
+                Operation: "ExecuteStart",
+                Status:    "InProgress",
+                Inputs:    inputs,
+                Message:   "Starting execution of architect tool",
+        }); err != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to write audit log: %v", err)
+        }</span>
+
+        // 3. Read instructions from file
+        <span class="cov8" title="1">instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+
+                // Log the failure to read the instructions file to the audit log
+                if logErr := auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "ReadInstructions",
+                        Status:    "Failure",
+                        Inputs: map[string]interface{}{
+                                "path": cliConfig.InstructionsFile,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Failed to read instructions file: %v", err),
+                                Type:    "FileIOError",
+                        },
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                <span class="cov8" title="1">return fmt.Errorf("failed to read instructions file %s: %w", cliConfig.InstructionsFile, err)</span>
+        }
+        <span class="cov8" title="1">instructions := string(instructionsContent)
+        logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
+
+        // Log the successful reading of the instructions file to the audit log
+        if logErr := auditLogger.Log(auditlog.AuditEntry{
+                Timestamp: time.Now().UTC(),
+                Operation: "ReadInstructions",
+                Status:    "Success",
+                Inputs: map[string]interface{}{
+                        "path": cliConfig.InstructionsFile,
+                },
+                Outputs: map[string]interface{}{
+                        "content_length": len(instructions),
+                },
+                Message: "Successfully read instructions file",
+        }); logErr != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        // 4. Use the injected APIService
+
+        // Create a reference client for token counting in context gathering
+        <span class="cov8" title="1">referenceClient, err := apiService.InitClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
+        if err != nil </span><span class="cov8" title="1">{
+                logger.Error("Failed to initialize reference client for context gathering: %v", err)
+                return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+        }</span>
+        <span class="cov8" title="1">defer referenceClient.Close()
+
+        // Create TokenManager with the reference client
+        tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClient)
+        if tokenManagerErr != nil </span><span class="cov0" title="0">{
+                logger.Error("Failed to create token manager: %v", tokenManagerErr)
+                return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
+        }</span>
+
+        <span class="cov8" title="1">contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient, auditLogger)
+        fileWriter := NewFileWriter(logger, auditLogger)
+
+        // Create rate limiter from configuration
+        rateLimiter := ratelimit.NewRateLimiter(
+                cliConfig.MaxConcurrentRequests,
+                cliConfig.RateLimitRequestsPerMinute,
+        )
+
+        // 5. Create and run the orchestrator
+        // Create adapters for the interfaces
+        apiServiceAdapter := &amp;APIServiceAdapter{APIService: apiService}
+        tokenManagerAdapter := &amp;TokenManagerAdapter{TokenManager: tokenManager}
+        contextGathererAdapter := &amp;ContextGathererAdapter{ContextGatherer: contextGatherer}
+        fileWriterAdapter := &amp;FileWriterAdapter{FileWriter: fileWriter}
+
+        orch := orchestratorConstructor(
+                apiServiceAdapter,
+                contextGathererAdapter,
+                tokenManagerAdapter,
+                fileWriterAdapter,
+                auditLogger,
+                rateLimiter,
+                cliConfig,
+                logger,
+        )
+
+        return orch.Run(ctx, instructions)</span>
+}
+
+// Note: RunInternal has been removed as part of the refactoring.
+// The Execute function now properly handles dependency injection and can be
+// used directly for testing by providing appropriate mocks.
+
+// Note: processModel, processModelConcurrently, sanitizeFilename, and saveOutputToFile functions
+// have been removed as part of the refactoring. Their functionality has been moved to the
+// ModelProcessor in the modelproc package.
+
+// Orchestrator defines the interface for the orchestration component.
+// This interface is defined here to allow for testing without introducing import cycles.
+type Orchestrator interface {
+        Run(ctx context.Context, instructions string) error
+}
+
+// orchestratorConstructor is the function used to create an Orchestrator.
+// This can be overridden in tests to return a mock orchestrator.
+var orchestratorConstructor = func(
+        apiService APIService,
+        contextGatherer interfaces.ContextGatherer,
+        tokenManager interfaces.TokenManager,
+        fileWriter interfaces.FileWriter,
+        auditLogger auditlog.AuditLogger,
+        rateLimiter *ratelimit.RateLimiter,
+        config *config.CliConfig,
+        logger logutil.LoggerInterface,
+) Orchestrator <span class="cov0" title="0">{
+        return orchestrator.NewOrchestrator(
+                apiService,
+                contextGatherer,
+                tokenManager,
+                fileWriter,
+                auditLogger,
+                rateLimiter,
+                config,
+                logger,
+        )
+}</span>
+
+// setupOutputDirectory ensures that the output directory is set and exists.
+// If outputDir in cliConfig is empty, it generates a unique directory name.
+func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error <span class="cov8" title="1">{
+        if cliConfig.OutputDir == "" </span><span class="cov0" title="0">{
+                // Generate a unique run name (e.g., "curious-panther")
+                runName := runutil.GenerateRunName()
+                // Get the current working directory
+                cwd, err := os.Getwd()
+                if err != nil </span><span class="cov0" title="0">{
+                        logger.Error("Error getting current working directory: %v", err)
+                        return fmt.Errorf("error getting current working directory: %w", err)
+                }</span>
+                // Set the output directory to the run name in the current working directory
+                <span class="cov0" title="0">cliConfig.OutputDir = filepath.Join(cwd, runName)
+                logger.Info("Generated output directory: %s", cliConfig.OutputDir)</span>
+        }
+
+        // Ensure the output directory exists
+        <span class="cov8" title="1">if err := os.MkdirAll(cliConfig.OutputDir, 0755); err != nil </span><span class="cov8" title="1">{
+                logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
+                return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
+        }</span>
+
+        <span class="cov8" title="1">logger.Info("Using output directory: %s", cliConfig.OutputDir)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file9" style="display: none">// Package architect contains the core application logic for the architect tool
+package architect
+
+import (
+        "context"
+        "fmt"
+        "strings"
+        "time"
+        "unicode"
+
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/fileutil"
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// ContextStats holds information about processed files and context size
+type ContextStats struct {
+        ProcessedFilesCount int
+        CharCount           int
+        LineCount           int
+        TokenCount          int32
+        ProcessedFiles      []string
+}
+
+// GatherConfig holds parameters needed for gathering context
+type GatherConfig struct {
+        Paths        []string
+        Include      string
+        Exclude      string
+        ExcludeNames string
+        Format       string
+        Verbose      bool
+        LogLevel     logutil.LogLevel
+}
+
+// ContextGatherer defines the interface for gathering project context
+type ContextGatherer interface {
+        // GatherContext collects and processes files based on configuration
+        GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
+
+        // DisplayDryRunInfo shows detailed information for dry run mode
+        DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error
+}
+
+// contextGatherer implements the ContextGatherer interface
+type contextGatherer struct {
+        logger       logutil.LoggerInterface
+        dryRun       bool
+        tokenManager TokenManager
+        client       gemini.Client
+        auditLogger  auditlog.AuditLogger
+}
+
+// NewContextGatherer creates a new ContextGatherer instance
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client gemini.Client, auditLogger auditlog.AuditLogger) ContextGatherer <span class="cov8" title="1">{
+        return &amp;contextGatherer{
+                logger:       logger,
+                dryRun:       dryRun,
+                tokenManager: tokenManager,
+                client:       client,
+                auditLogger:  auditLogger,
+        }
+}</span>
+
+// estimateTokenCount counts tokens simply by whitespace boundaries.
+// This is kept as a fallback method in case the API token counting fails.
+func estimateTokenCount(text string) int <span class="cov0" title="0">{
+        count := 0
+        inToken := false
+        for _, r := range text </span><span class="cov0" title="0">{
+                if unicode.IsSpace(r) </span><span class="cov0" title="0">{
+                        if inToken </span><span class="cov0" title="0">{
+                                count++
+                                inToken = false
+                        }</span>
+                } else<span class="cov0" title="0"> {
+                        inToken = true
+                }</span>
+        }
+        <span class="cov0" title="0">if inToken </span><span class="cov0" title="0">{
+                count++
+        }</span>
+        <span class="cov0" title="0">return count</span>
+}
+
+// GatherContext collects and processes files based on configuration
+func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) <span class="cov8" title="1">{
+        // Log start of context gathering operation to audit log
+        gatherStartTime := time.Now()
+        if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+                Timestamp: gatherStartTime,
+                Operation: "GatherContextStart",
+                Status:    "InProgress",
+                Inputs: map[string]interface{}{
+                        "paths":         config.Paths,
+                        "include":       config.Include,
+                        "exclude":       config.Exclude,
+                        "exclude_names": config.ExcludeNames,
+                        "format":        config.Format,
+                },
+                Message: "Starting to gather project context files",
+        }); logErr != nil </span><span class="cov0" title="0">{
+                cg.logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        // Log appropriate message based on mode
+        <span class="cov8" title="1">if cg.dryRun </span><span class="cov8" title="1">{
+                cg.logger.Info("Dry run mode: gathering files that would be included in context...")
+                cg.logger.Debug("Processing files with include filters: %v", config.Include)
+                cg.logger.Debug("Processing files with exclude filters: %v", config.Exclude)
+                cg.logger.Debug("Processing files with exclude names: %v", config.ExcludeNames)
+                cg.logger.Debug("Paths being processed: %v", config.Paths)
+        }</span> else<span class="cov8" title="1"> {
+                cg.logger.Info("Gathering project context from %d paths...", len(config.Paths))
+                cg.logger.Debug("Include filters: %v", config.Include)
+                cg.logger.Debug("Exclude filters: %v", config.Exclude)
+                cg.logger.Debug("Exclude names: %v", config.ExcludeNames)
+                cg.logger.Debug("Paths being processed: %v", config.Paths)
+        }</span>
+
+        // Setup file processing configuration
+        <span class="cov8" title="1">fileConfig := fileutil.NewConfig(config.Verbose, config.Include, config.Exclude, config.ExcludeNames, config.Format, cg.logger)
+
+        // Initialize ContextStats
+        stats := &amp;ContextStats{
+                ProcessedFiles: make([]string, 0),
+        }
+
+        // Track processed files for dry run mode
+        if cg.dryRun </span><span class="cov8" title="1">{
+                collector := func(path string) </span><span class="cov8" title="1">{
+                        stats.ProcessedFiles = append(stats.ProcessedFiles, path)
+                }</span>
+                <span class="cov8" title="1">fileConfig.SetFileCollector(collector)</span>
+        }
+
+        // Gather project context
+        <span class="cov8" title="1">contextFiles, processedFilesCount, err := fileutil.GatherProjectContext(config.Paths, fileConfig)
+
+        // Calculate duration in milliseconds
+        gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
+
+        if err != nil </span><span class="cov0" title="0">{
+                cg.logger.Error("Failed during project context gathering: %v", err)
+
+                // Log the failure of context gathering to audit log
+                if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp:  time.Now().UTC(),
+                        Operation:  "GatherContextEnd",
+                        Status:     "Failure",
+                        DurationMs: &amp;gatherDurationMs,
+                        Inputs: map[string]interface{}{
+                                "paths":         config.Paths,
+                                "include":       config.Include,
+                                "exclude":       config.Exclude,
+                                "exclude_names": config.ExcludeNames,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Failed to gather project context: %v", err),
+                                Type:    "ContextGatheringError",
+                        },
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        cg.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                <span class="cov0" title="0">return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)</span>
+        }
+
+        // Set the processed files count in stats
+        <span class="cov8" title="1">stats.ProcessedFilesCount = processedFilesCount
+
+        // Log warning if no files were processed
+        if processedFilesCount == 0 </span><span class="cov8" title="1">{
+                cg.logger.Warn("No files were processed for context. Check paths and filters.")
+                return contextFiles, stats, nil
+        }</span>
+
+        // Create a combined string for token counting
+        <span class="cov8" title="1">var combinedContent strings.Builder
+        for _, file := range contextFiles </span><span class="cov8" title="1">{
+                combinedContent.WriteString(file.Content)
+                combinedContent.WriteString("\n")
+        }</span>
+        <span class="cov8" title="1">projectContext := combinedContent.String()
+
+        // Calculate basic statistics
+        cg.logger.Info("Calculating token statistics for %d processed files...", stats.ProcessedFilesCount)
+        startTime := time.Now()
+
+        // Calculate character and line counts directly
+        charCount := len(projectContext)
+        lineCount := strings.Count(projectContext, "\n") + 1
+
+        // Use token manager for token counting via the gemini client
+        tokenCount := 0
+        if cg.client != nil </span><span class="cov8" title="1">{
+                // Use the gemini client to count tokens
+                tokenResult, err := cg.client.CountTokens(ctx, projectContext)
+                if err != nil </span><span class="cov0" title="0">{
+                        cg.logger.Warn("Failed to count tokens accurately: %v. Using estimation instead.", err)
+                        // Fall back to basic statistics using internal estimation
+                        tokenCount = estimateTokenCount(projectContext)
+                }</span> else<span class="cov8" title="1"> {
+                        tokenCount = int(tokenResult.Total)
+                        cg.logger.Debug("Accurate token count: %d tokens", tokenCount)
+                }</span>
+        } else<span class="cov0" title="0"> {
+                // Fall back to basic statistics if no client
+                tokenCount = estimateTokenCount(projectContext)
+                cg.logger.Debug("Using estimated token count: %d tokens", tokenCount)
+        }</span>
+
+        <span class="cov8" title="1">duration := time.Since(startTime)
+        cg.logger.Debug("Token calculation completed in %v", duration)
+
+        // Store statistics in the stats struct
+        stats.CharCount = charCount
+        stats.LineCount = lineCount
+        stats.TokenCount = int32(tokenCount)
+
+        // Handle output based on mode
+        if processedFilesCount &gt; 0 </span><span class="cov8" title="1">{
+                cg.logger.Info("Context gathered: %d files, %d lines, %d chars, %d tokens",
+                        processedFilesCount, lineCount, charCount, tokenCount)
+
+                // Additional detailed debug information if needed
+                if config.LogLevel == logutil.DebugLevel &amp;&amp; !cg.dryRun </span><span class="cov8" title="1">{
+                        cg.logger.Debug("Context details: files=%d, lines=%d, chars=%d, tokens=%d",
+                                processedFilesCount, lineCount, charCount, tokenCount)
+                }</span>
+        }
+
+        // Log the successful completion of context gathering to audit log
+        <span class="cov8" title="1">if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
+                Timestamp:  time.Now().UTC(),
+                Operation:  "GatherContextEnd",
+                Status:     "Success",
+                DurationMs: &amp;gatherDurationMs,
+                Inputs: map[string]interface{}{
+                        "paths":         config.Paths,
+                        "include":       config.Include,
+                        "exclude":       config.Exclude,
+                        "exclude_names": config.ExcludeNames,
+                },
+                Outputs: map[string]interface{}{
+                        "processed_files_count": stats.ProcessedFilesCount,
+                        "char_count":            stats.CharCount,
+                        "line_count":            stats.LineCount,
+                        "token_count":           stats.TokenCount,
+                        "files_count":           len(contextFiles),
+                },
+                Message: "Successfully gathered project context files",
+        }); logErr != nil </span><span class="cov0" title="0">{
+                cg.logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        <span class="cov8" title="1">return contextFiles, stats, nil</span>
+}
+
+// DisplayDryRunInfo shows detailed information for dry run mode
+func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error <span class="cov8" title="1">{
+        cg.logger.Info("Files that would be included in context:")
+        if stats.ProcessedFilesCount == 0 </span><span class="cov8" title="1">{
+                cg.logger.Info("  No files matched the current filters.")
+        }</span> else<span class="cov8" title="1"> {
+                for i, file := range stats.ProcessedFiles </span><span class="cov8" title="1">{
+                        cg.logger.Info("  %d. %s", i+1, file)
+                }</span>
+        }
+
+        <span class="cov8" title="1">cg.logger.Info("Context statistics:")
+        cg.logger.Info("  Files: %d", stats.ProcessedFilesCount)
+        cg.logger.Info("  Lines: %d", stats.LineCount)
+        cg.logger.Info("  Characters: %d", stats.CharCount)
+        cg.logger.Info("  Tokens: %d", stats.TokenCount)
+
+        // Get model info for token limit comparison
+        modelInfo, modelInfoErr := cg.client.GetModelInfo(ctx)
+        if modelInfoErr != nil </span><span class="cov8" title="1">{
+                // Check if it's an API error with enhanced details
+                if apiErr, ok := gemini.IsAPIError(modelInfoErr); ok </span><span class="cov0" title="0">{
+                        cg.logger.Warn("Could not get model information: %s", apiErr.Message)
+                        // Only show detailed info in debug logs
+                        cg.logger.Debug("Model info error details: %s", apiErr.DebugInfo())
+                }</span> else<span class="cov8" title="1"> {
+                        cg.logger.Warn("Could not get model information: %v", modelInfoErr)
+                }</span>
+                // Continue - this is not a fatal error for dry run mode
+        } else<span class="cov8" title="1"> {
+                // Convert to int32 for comparison with model limits
+                tokenCountInt32 := stats.TokenCount
+                percentOfLimit := float64(tokenCountInt32) / float64(modelInfo.InputTokenLimit) * 100
+                cg.logger.Info("Token usage: %d / %d (%.1f%% of model's limit)",
+                        tokenCountInt32, modelInfo.InputTokenLimit, percentOfLimit)
+
+                // Check if token count exceeds limit
+                if tokenCountInt32 &gt; modelInfo.InputTokenLimit </span><span class="cov8" title="1">{
+                        cg.logger.Error("WARNING: Token count exceeds model's limit by %d tokens",
+                                tokenCountInt32-modelInfo.InputTokenLimit)
+                        cg.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+                }</span> else<span class="cov8" title="1"> {
+                        cg.logger.Info("Context size is within the model's token limit")
+                }</span>
+        }
+
+        <span class="cov8" title="1">cg.logger.Info("Dry run completed successfully.")
+        cg.logger.Info("To generate content, run without the --dry-run flag.")
+
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file10" style="display: none">// Package architect contains the core application logic for the architect tool.
+// This file implements the FileWriter interface for saving generated content to files,
+// handling file creation, directory resolution, and related audit logging.
+// The FileWriter component is responsible for the final output step in the workflow,
+// writing the generated plan content to disk with proper error handling.
+package architect
+
+import (
+        "fmt"
+        "os"
+        "path/filepath"
+        "time"
+
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// FileWriter defines the interface for file output writing
+type FileWriter interface {
+        // SaveToFile writes content to the specified file
+        SaveToFile(content, outputFile string) error
+}
+
+// fileWriter implements the FileWriter interface
+type fileWriter struct {
+        logger      logutil.LoggerInterface
+        auditLogger auditlog.AuditLogger
+}
+
+// NewFileWriter creates a new FileWriter instance with the specified dependencies.
+// It injects the required logger and audit logger to ensure proper output
+// handling and audit trail generation during file operations.
+func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) FileWriter <span class="cov8" title="1">{
+        return &amp;fileWriter{
+                logger:      logger,
+                auditLogger: auditLogger,
+        }
+}</span>
+
+// SaveToFile writes the content to the specified file and handles audit logging.
+// It ensures proper directory existence, resolves relative paths to absolute paths,
+// and generates appropriate audit log entries for the operation's start and completion.
+// The method handles errors gracefully and ensures they are properly logged.
+func (fw *fileWriter) SaveToFile(content, outputFile string) error <span class="cov8" title="1">{
+        // Log the start of output saving
+        saveStartTime := time.Now()
+        if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
+                Timestamp: saveStartTime,
+                Operation: "SaveOutputStart",
+                Status:    "InProgress",
+                Inputs: map[string]interface{}{
+                        "output_path":    outputFile,
+                        "content_length": len(content),
+                },
+                Message: "Starting to save output to file",
+        }); logErr != nil </span><span class="cov0" title="0">{
+                fw.logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        // Ensure output path is absolute
+        <span class="cov8" title="1">outputPath := outputFile
+        if !filepath.IsAbs(outputPath) </span><span class="cov8" title="1">{
+                cwd, err := os.Getwd()
+                if err != nil </span><span class="cov0" title="0">{
+                        fw.logger.Error("Error getting current working directory: %v", err)
+
+                        // Log failure to save output
+                        saveDurationMs := time.Since(saveStartTime).Milliseconds()
+                        if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
+                                Timestamp:  time.Now().UTC(),
+                                Operation:  "SaveOutputEnd",
+                                Status:     "Failure",
+                                DurationMs: &amp;saveDurationMs,
+                                Inputs: map[string]interface{}{
+                                        "output_path": outputFile,
+                                },
+                                Error: &amp;auditlog.ErrorInfo{
+                                        Message: fmt.Sprintf("Error getting current working directory: %v", err),
+                                        Type:    "FileIOError",
+                                },
+                                Message: "Failed to save output to file",
+                        }); logErr != nil </span><span class="cov0" title="0">{
+                                fw.logger.Error("Failed to write audit log: %v", logErr)
+                        }</span>
+
+                        <span class="cov0" title="0">return fmt.Errorf("error getting current working directory: %w", err)</span>
+                }
+                <span class="cov8" title="1">outputPath = filepath.Join(cwd, outputPath)</span>
+        }
+
+        // Ensure the output directory exists
+        <span class="cov8" title="1">outputDir := filepath.Dir(outputPath)
+        if err := os.MkdirAll(outputDir, 0755); err != nil </span><span class="cov0" title="0">{
+                fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
+
+                // Log failure to save output
+                saveDurationMs := time.Since(saveStartTime).Milliseconds()
+                if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp:  time.Now().UTC(),
+                        Operation:  "SaveOutputEnd",
+                        Status:     "Failure",
+                        DurationMs: &amp;saveDurationMs,
+                        Inputs: map[string]interface{}{
+                                "output_path": outputPath,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Error creating output directory %s: %v", outputDir, err),
+                                Type:    "FileIOError",
+                        },
+                        Message: "Failed to save output to file",
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        fw.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                <span class="cov0" title="0">return fmt.Errorf("error creating output directory %s: %w", outputDir, err)</span>
+        }
+
+        // Write to file
+        <span class="cov8" title="1">fw.logger.Info("Writing to file %s...", outputPath)
+        err := os.WriteFile(outputPath, []byte(content), 0644)
+
+        // Calculate duration in milliseconds
+        saveDurationMs := time.Since(saveStartTime).Milliseconds()
+
+        if err != nil </span><span class="cov0" title="0">{
+                fw.logger.Error("Error writing to file %s: %v", outputPath, err)
+
+                // Log failure to save output
+                if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp:  time.Now().UTC(),
+                        Operation:  "SaveOutputEnd",
+                        Status:     "Failure",
+                        DurationMs: &amp;saveDurationMs,
+                        Inputs: map[string]interface{}{
+                                "output_path": outputPath,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Error writing to file %s: %v", outputPath, err),
+                                Type:    "FileIOError",
+                        },
+                        Message: "Failed to save output to file",
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        fw.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                <span class="cov0" title="0">return fmt.Errorf("error writing to file %s: %w", outputPath, err)</span>
+        }
+
+        // Log successful saving of output
+        <span class="cov8" title="1">if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
+                Timestamp:  time.Now().UTC(),
+                Operation:  "SaveOutputEnd",
+                Status:     "Success",
+                DurationMs: &amp;saveDurationMs,
+                Inputs: map[string]interface{}{
+                        "output_path": outputPath,
+                },
+                Outputs: map[string]interface{}{
+                        "content_length": len(content),
+                },
+                Message: "Successfully saved output to file",
+        }); logErr != nil </span><span class="cov0" title="0">{
+                fw.logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        <span class="cov8" title="1">fw.logger.Info("Successfully saved to %s", outputPath)
+        return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file11" style="display: none">// Package modelproc provides model processing functionality for the architect tool.
 // It encapsulates the logic for interacting with AI models, managing tokens,
 // writing outputs, and logging operations.
 package modelproc
@@ -1293,7 +2352,317 @@ func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error 
 }
 </pre>
 		
-		<pre class="file" id="file7" style="display: none">// Package prompt handles the creation and manipulation of prompts
+		<pre class="file" id="file12" style="display: none">// Package orchestrator is responsible for coordinating the core application workflow.
+// It brings together various components like context gathering, API interaction,
+// token management, and output writing to execute the main task defined
+// by user instructions and configuration.
+package orchestrator
+
+import (
+        "context"
+        "errors"
+        "fmt"
+        "strings"
+        "sync"
+        "time"
+
+        "github.com/phrazzld/architect/internal/architect/interfaces"
+        "github.com/phrazzld/architect/internal/architect/modelproc"
+        "github.com/phrazzld/architect/internal/architect/prompt"
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/config"
+        "github.com/phrazzld/architect/internal/fileutil"
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+        "github.com/phrazzld/architect/internal/ratelimit"
+)
+
+// Orchestrator coordinates the main application logic.
+// It depends on various services to perform tasks like interacting with the API,
+// gathering context, managing tokens, writing files, logging audits, and handling rate limits.
+type Orchestrator struct {
+        apiService      interfaces.APIService
+        contextGatherer interfaces.ContextGatherer
+        tokenManager    interfaces.TokenManager
+        fileWriter      interfaces.FileWriter
+        auditLogger     auditlog.AuditLogger
+        rateLimiter     *ratelimit.RateLimiter
+        config          *config.CliConfig
+        logger          logutil.LoggerInterface
+}
+
+// NewOrchestrator creates a new instance of the Orchestrator.
+// It requires all necessary dependencies to be provided during construction,
+// ensuring that the orchestrator is properly configured to execute its tasks.
+func NewOrchestrator(
+        apiService interfaces.APIService,
+        contextGatherer interfaces.ContextGatherer,
+        tokenManager interfaces.TokenManager,
+        fileWriter interfaces.FileWriter,
+        auditLogger auditlog.AuditLogger,
+        rateLimiter *ratelimit.RateLimiter,
+        config *config.CliConfig,
+        logger logutil.LoggerInterface,
+) *Orchestrator <span class="cov8" title="1">{
+        return &amp;Orchestrator{
+                apiService:      apiService,
+                contextGatherer: contextGatherer,
+                tokenManager:    tokenManager,
+                fileWriter:      fileWriter,
+                auditLogger:     auditLogger,
+                rateLimiter:     rateLimiter,
+                config:          config,
+                logger:          logger,
+        }
+}</span>
+
+// Run executes the main application workflow, representing the core business logic.
+// It coordinates the entire process from context gathering to model processing:
+// 1. Gather context from project files based on configuration
+// 2. Handle dry run mode by displaying statistics (if enabled)
+// 3. Build the complete prompt by combining instructions with context
+// 4. Process all configured models concurrently with rate limiting
+// 5. Handle and format any errors that occurred during processing
+//
+// The method enforces a clear separation of concerns by delegating specific tasks
+// to helper methods, making the high-level workflow easy to understand.
+func (o *Orchestrator) Run(ctx context.Context, instructions string) error <span class="cov8" title="1">{
+        // STEP 1: Gather context from files
+        contextFiles, contextStats, err := o.gatherProjectContext(ctx)
+        if err != nil </span><span class="cov8" title="1">{
+                return err
+        }</span>
+
+        // STEP 2: Handle dry run mode (short-circuit if dry run)
+        <span class="cov8" title="1">if o.config.DryRun </span><span class="cov8" title="1">{
+                return o.handleDryRun(ctx, contextStats)
+        }</span>
+
+        // STEP 3: Build prompt by combining instructions and context
+        <span class="cov8" title="1">stitchedPrompt := o.buildPrompt(instructions, contextFiles)
+
+        // STEP 4: Process models concurrently
+        o.logRateLimitingConfiguration()
+        modelErrors := o.processModels(ctx, stitchedPrompt)
+
+        // STEP 5: Handle any errors from model processing
+        if len(modelErrors) &gt; 0 </span><span class="cov8" title="1">{
+                return o.aggregateAndFormatErrors(modelErrors)
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
+
+// gatherProjectContext collects relevant files from the project based on configuration.
+func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.FileMeta, *interfaces.ContextStats, error) <span class="cov8" title="1">{
+        gatherConfig := interfaces.GatherConfig{
+                Paths:        o.config.Paths,
+                Include:      o.config.Include,
+                Exclude:      o.config.Exclude,
+                ExcludeNames: o.config.ExcludeNames,
+                Format:       o.config.Format,
+                Verbose:      o.config.Verbose,
+                LogLevel:     o.config.LogLevel,
+        }
+
+        contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
+        }</span>
+
+        <span class="cov8" title="1">return contextFiles, contextStats, nil</span>
+}
+
+// handleDryRun displays context statistics without performing API calls.
+func (o *Orchestrator) handleDryRun(ctx context.Context, stats *interfaces.ContextStats) error <span class="cov8" title="1">{
+        err := o.contextGatherer.DisplayDryRunInfo(ctx, stats)
+        if err != nil </span><span class="cov0" title="0">{
+                o.logger.Error("Error displaying dry run information: %v", err)
+                return fmt.Errorf("error displaying dry run information: %w", err)
+        }</span>
+        <span class="cov8" title="1">return nil</span>
+}
+
+// buildPrompt creates the complete prompt by combining instructions with context files.
+func (o *Orchestrator) buildPrompt(instructions string, contextFiles []fileutil.FileMeta) string <span class="cov8" title="1">{
+        stitchedPrompt := prompt.StitchPrompt(instructions, contextFiles)
+        o.logger.Info("Prompt constructed successfully")
+        o.logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
+        return stitchedPrompt
+}</span>
+
+// logRateLimitingConfiguration logs information about concurrency and rate limits.
+func (o *Orchestrator) logRateLimitingConfiguration() <span class="cov8" title="1">{
+        if o.config.MaxConcurrentRequests &gt; 0 </span><span class="cov8" title="1">{
+                o.logger.Info("Concurrency limited to %d simultaneous requests", o.config.MaxConcurrentRequests)
+        }</span> else<span class="cov8" title="1"> {
+                o.logger.Info("No concurrency limit applied")
+        }</span>
+
+        <span class="cov8" title="1">if o.config.RateLimitRequestsPerMinute &gt; 0 </span><span class="cov8" title="1">{
+                o.logger.Info("Rate limited to %d requests per minute per model", o.config.RateLimitRequestsPerMinute)
+        }</span> else<span class="cov8" title="1"> {
+                o.logger.Info("No rate limit applied")
+        }</span>
+
+        <span class="cov8" title="1">o.logger.Info("Processing %d models concurrently...", len(o.config.ModelNames))</span>
+}
+
+// processModels processes each model concurrently with rate limiting.
+// This is a key orchestration method that manages the concurrent execution
+// of model processing while respecting rate limits. It coordinates multiple
+// goroutines, each handling a different model, and collects any errors that
+// occur during processing. This approach significantly improves throughput
+// when multiple models are specified.
+//
+// Returns a slice of errors encountered during processing, which will be empty
+// if all models were processed successfully.
+func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) []error <span class="cov8" title="1">{
+        var wg sync.WaitGroup
+        errChan := make(chan error, len(o.config.ModelNames))
+
+        // Launch a goroutine for each model
+        for _, modelName := range o.config.ModelNames </span><span class="cov8" title="1">{
+                wg.Add(1)
+                go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, &amp;wg, errChan)
+        }</span>
+
+        // Wait for all goroutines to complete
+        <span class="cov8" title="1">wg.Wait()
+        close(errChan)
+
+        // Collect errors from the channel
+        var modelErrors []error
+        for err := range errChan </span><span class="cov8" title="1">{
+                modelErrors = append(modelErrors, err)
+        }</span>
+
+        <span class="cov8" title="1">return modelErrors</span>
+}
+
+// processModelWithRateLimit processes a single model with rate limiting.
+func (o *Orchestrator) processModelWithRateLimit(
+        ctx context.Context,
+        modelName string,
+        stitchedPrompt string,
+        wg *sync.WaitGroup,
+        errChan chan&lt;- error,
+) <span class="cov8" title="1">{
+        defer wg.Done()
+
+        // Acquire rate limiting permission
+        o.logger.Debug("Attempting to acquire rate limiter for model %s...", modelName)
+        acquireStart := time.Now()
+        if err := o.rateLimiter.Acquire(ctx, modelName); err != nil </span><span class="cov0" title="0">{
+                o.logger.Error("Rate limiting error for model %s: %v", modelName, err)
+                errChan &lt;- fmt.Errorf("model %s rate limit: %w", modelName, err)
+                return
+        }</span>
+        <span class="cov8" title="1">acquireDuration := time.Since(acquireStart)
+        o.logger.Debug("Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
+
+        // Release rate limiter when done
+        defer func() </span><span class="cov8" title="1">{
+                o.logger.Debug("Releasing rate limiter for model %s", modelName)
+                o.rateLimiter.Release()
+        }</span>()
+
+        // Create API service adapter and model processor
+        <span class="cov8" title="1">apiServiceAdapter := &amp;APIServiceAdapter{APIService: o.apiService}
+        processor := modelproc.NewProcessor(
+                apiServiceAdapter,
+                nil, // tokenManager is created inside the Process method
+                o.fileWriter,
+                o.auditLogger,
+                o.logger,
+                o.config,
+        )
+
+        // Process the model
+        err := processor.Process(ctx, modelName, stitchedPrompt)
+        if err != nil </span><span class="cov8" title="1">{
+                o.logger.Error("Processing model %s failed: %v", modelName, err)
+                errChan &lt;- fmt.Errorf("model %s: %w", modelName, err)
+        }</span>
+}
+
+// aggregateAndFormatErrors combines multiple errors into a single, user-friendly error message.
+// This method consolidates errors from multiple model processing operations into
+// a coherent error message for the user. It specially handles rate limit errors
+// by providing additional guidance on how to adjust configuration parameters
+// to avoid these errors in the future. This approach ensures users receive
+// actionable feedback when errors occur.
+func (o *Orchestrator) aggregateAndFormatErrors(modelErrors []error) error <span class="cov8" title="1">{
+        // Count rate limit errors
+        var rateLimitErrors []error
+        for _, err := range modelErrors </span><span class="cov8" title="1">{
+                if strings.Contains(err.Error(), "rate limit") </span><span class="cov8" title="1">{
+                        rateLimitErrors = append(rateLimitErrors, err)
+                }</span>
+        }
+
+        // Build the error message
+        <span class="cov8" title="1">errMsg := "errors occurred during model processing:"
+        for _, e := range modelErrors </span><span class="cov8" title="1">{
+                errMsg += "\n  - " + e.Error()
+        }</span>
+
+        // Add rate limit guidance if applicable
+        <span class="cov8" title="1">if len(rateLimitErrors) &gt; 0 </span><span class="cov8" title="1">{
+                errMsg += "\n\nTip: If you're encountering rate limit errors, consider adjusting the --max-concurrent and --rate-limit flags to prevent overwhelming the API."
+        }</span>
+
+        <span class="cov8" title="1">return errors.New(errMsg)</span>
+}
+
+// APIServiceAdapter adapts interfaces.APIService to modelproc.APIService.
+// This adapter pattern resolves potential interface incompatibilities between
+// packages without requiring changes to either interface. It allows the orchestrator
+// to work with the interfaces.APIService while providing the modelproc package with
+// a compatible interface implementation, preventing circular dependencies.
+type APIServiceAdapter struct {
+        APIService interfaces.APIService
+}
+
+// InitClient initializes and returns a Gemini client for the specified model.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) <span class="cov8" title="1">{
+        return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
+}</span>
+
+// ProcessResponse extracts content from the API response.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) <span class="cov8" title="1">{
+        return a.APIService.ProcessResponse(result)
+}</span>
+
+// IsEmptyResponseError checks if an error is related to empty API responses.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool <span class="cov8" title="1">{
+        return a.APIService.IsEmptyResponseError(err)
+}</span>
+
+// IsSafetyBlockedError checks if an error is related to safety filters.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool <span class="cov8" title="1">{
+        return a.APIService.IsSafetyBlockedError(err)
+}</span>
+
+// GetErrorDetails extracts detailed information from an error.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetErrorDetails(err error) string <span class="cov8" title="1">{
+        return a.APIService.GetErrorDetails(err)
+}</span>
+
+// TokenManagerAdapter is a deprecated adapter that was used to adapt interfaces.TokenManager
+// to modelproc.TokenManager. It is no longer needed since TokenManagers are now created directly
+// in the ModelProcessor.Process method with model-specific clients.
+// This documentation is kept as a historical note, as the adapter code has been removed.
+// The current design eliminates the need for this adapter by having ModelProcessor create
+// its own TokenManager instances tailored to each specific model, improving encapsulation.
+</pre>
+		
+		<pre class="file" id="file13" style="display: none">// Package prompt handles the creation and manipulation of prompts
 // sent to the generative AI models. It provides functions for constructing
 // prompts with context files and proper escaping of content.
 package prompt
@@ -1341,7 +2710,307 @@ func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string 
 }
 </pre>
 		
-		<pre class="file" id="file8" style="display: none">// Package auditlog provides structured logging for audit purposes
+		<pre class="file" id="file14" style="display: none">// Package architect contains the core application logic for the architect tool
+package architect
+
+import (
+        "bufio"
+        "context"
+        "fmt"
+        "os"
+        "strings"
+        "time"
+
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// TokenResult holds information about token counts and limits
+type TokenResult struct {
+        TokenCount   int32
+        InputLimit   int32
+        ExceedsLimit bool
+        LimitError   string
+        Percentage   float64
+}
+
+// TokenManager defines the interface for token counting and management
+type TokenManager interface {
+        // GetTokenInfo retrieves token count information and checks limits
+        GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
+
+        // CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
+        CheckTokenLimit(ctx context.Context, prompt string) error
+
+        // PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
+        PromptForConfirmation(tokenCount int32, threshold int) bool
+}
+
+// tokenManager implements the TokenManager interface
+type tokenManager struct {
+        logger      logutil.LoggerInterface
+        auditLogger auditlog.AuditLogger
+        client      gemini.Client
+}
+
+// NewTokenManager creates a new TokenManager instance
+func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) (TokenManager, error) <span class="cov8" title="1">{
+        if client == nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("client cannot be nil for TokenManager")
+        }</span>
+        <span class="cov8" title="1">return NewTokenManagerWithClient(logger, auditLogger, client), nil</span>
+}
+
+// NewTokenManagerWithClient creates a TokenManager with a specific client.
+// This is defined as a variable to allow it to be mocked in tests.
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) TokenManager <span class="cov8" title="1">{
+        return &amp;tokenManager{
+                logger:      logger,
+                auditLogger: auditLogger,
+                client:      client,
+        }
+}</span>
+
+// GetTokenInfo retrieves token count information and checks limits
+func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) <span class="cov8" title="1">{
+        // Get the model name from the injected client
+        modelName := tm.client.GetModelName()
+
+        // Log the start of token checking
+        checkStartTime := time.Now()
+        if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                Timestamp: checkStartTime,
+                Operation: "CheckTokensStart",
+                Status:    "InProgress",
+                Inputs: map[string]interface{}{
+                        "prompt_length": len(prompt),
+                        "model_name":    modelName,
+                },
+                Message: "Starting token count check for model " + modelName,
+        }); logErr != nil </span><span class="cov0" title="0">{
+                tm.logger.Error("Failed to write audit log: %v", logErr)
+        }</span>
+
+        // Create result structure
+        <span class="cov8" title="1">result := &amp;TokenResult{
+                ExceedsLimit: false,
+        }
+
+        // Get model information (limits)
+        modelInfo, err := tm.client.GetModelInfo(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                // Pass through API errors directly for better error messages
+                if apiErr, ok := gemini.IsAPIError(err); ok </span><span class="cov0" title="0">{
+                        // Log the token check failure
+                        if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                                Timestamp: time.Now().UTC(),
+                                Operation: "CheckTokens",
+                                Status:    "Failure",
+                                Inputs: map[string]interface{}{
+                                        "prompt_length": len(prompt),
+                                        "model_name":    modelName,
+                                },
+                                Error: &amp;auditlog.ErrorInfo{
+                                        Message: apiErr.Message,
+                                        Type:    "APIError",
+                                },
+                                Message: "Token count check failed for model " + modelName,
+                        }); logErr != nil </span><span class="cov0" title="0">{
+                                tm.logger.Error("Failed to write audit log: %v", logErr)
+                        }</span>
+
+                        <span class="cov0" title="0">return nil, apiErr</span>
+                }
+
+                // Log the token check failure for other errors
+                <span class="cov0" title="0">if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "CheckTokens",
+                        Status:    "Failure",
+                        Inputs: map[string]interface{}{
+                                "prompt_length": len(prompt),
+                                "model_name":    modelName,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Failed to get model info: %v", err),
+                                Type:    "TokenCheckError",
+                        },
+                        Message: "Token count check failed for model " + modelName,
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        tm.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                // Wrap other errors
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)</span>
+        }
+
+        // Store input limit
+        <span class="cov8" title="1">result.InputLimit = modelInfo.InputTokenLimit
+
+        // Count tokens in the prompt
+        tokenResult, err := tm.client.CountTokens(ctx, prompt)
+        if err != nil </span><span class="cov0" title="0">{
+                // Pass through API errors directly for better error messages
+                if apiErr, ok := gemini.IsAPIError(err); ok </span><span class="cov0" title="0">{
+                        // Log the token check failure
+                        if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                                Timestamp: time.Now().UTC(),
+                                Operation: "CheckTokens",
+                                Status:    "Failure",
+                                Inputs: map[string]interface{}{
+                                        "prompt_length": len(prompt),
+                                        "model_name":    modelName,
+                                },
+                                Error: &amp;auditlog.ErrorInfo{
+                                        Message: apiErr.Message,
+                                        Type:    "APIError",
+                                },
+                                Message: "Token count check failed for model " + modelName,
+                        }); logErr != nil </span><span class="cov0" title="0">{
+                                tm.logger.Error("Failed to write audit log: %v", logErr)
+                        }</span>
+
+                        <span class="cov0" title="0">return nil, apiErr</span>
+                }
+
+                // Log the token check failure for other errors
+                <span class="cov0" title="0">if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "CheckTokens",
+                        Status:    "Failure",
+                        Inputs: map[string]interface{}{
+                                "prompt_length": len(prompt),
+                                "model_name":    modelName,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: fmt.Sprintf("Failed to count tokens: %v", err),
+                                Type:    "TokenCheckError",
+                        },
+                        Message: "Token count check failed for model " + modelName,
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        tm.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+
+                // Wrap other errors
+                <span class="cov0" title="0">return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)</span>
+        }
+
+        // Store token count
+        <span class="cov8" title="1">result.TokenCount = tokenResult.Total
+
+        // Calculate percentage of limit
+        result.Percentage = float64(result.TokenCount) / float64(result.InputLimit) * 100
+
+        // Log token usage information
+        tm.logger.Debug("Token usage: %d / %d (%.1f%%)",
+                result.TokenCount,
+                result.InputLimit,
+                result.Percentage)
+
+        // Check if the prompt exceeds the token limit
+        if result.TokenCount &gt; result.InputLimit </span><span class="cov8" title="1">{
+                result.ExceedsLimit = true
+                result.LimitError = fmt.Sprintf("prompt exceeds token limit (%d tokens &gt; %d token limit)",
+                        result.TokenCount, result.InputLimit)
+
+                // Log the token limit exceeded case
+                if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "CheckTokens",
+                        Status:    "Failure",
+                        Inputs: map[string]interface{}{
+                                "prompt_length": len(prompt),
+                                "model_name":    modelName,
+                        },
+                        TokenCounts: &amp;auditlog.TokenCountInfo{
+                                PromptTokens: result.TokenCount,
+                                TotalTokens:  result.TokenCount,
+                                Limit:        result.InputLimit,
+                        },
+                        Error: &amp;auditlog.ErrorInfo{
+                                Message: result.LimitError,
+                                Type:    "TokenLimitExceededError",
+                        },
+                        Message: "Token limit exceeded for model " + modelName,
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        tm.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+        } else<span class="cov8" title="1"> {
+                // Log the successful token check
+                if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+                        Timestamp: time.Now().UTC(),
+                        Operation: "CheckTokens",
+                        Status:    "Success",
+                        Inputs: map[string]interface{}{
+                                "prompt_length": len(prompt),
+                                "model_name":    modelName,
+                        },
+                        Outputs: map[string]interface{}{
+                                "percentage": result.Percentage,
+                        },
+                        TokenCounts: &amp;auditlog.TokenCountInfo{
+                                PromptTokens: result.TokenCount,
+                                TotalTokens:  result.TokenCount,
+                                Limit:        result.InputLimit,
+                        },
+                        Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
+                                modelName, result.TokenCount, result.InputLimit, result.Percentage),
+                }); logErr != nil </span><span class="cov0" title="0">{
+                        tm.logger.Error("Failed to write audit log: %v", logErr)
+                }</span>
+        }
+
+        <span class="cov8" title="1">return result, nil</span>
+}
+
+// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
+func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) error <span class="cov0" title="0">{
+        tokenInfo, err := tm.GetTokenInfo(ctx, prompt)
+        if err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+
+        <span class="cov0" title="0">if tokenInfo.ExceedsLimit </span><span class="cov0" title="0">{
+                return fmt.Errorf(tokenInfo.LimitError)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+// PromptForConfirmation asks for user confirmation to proceed
+func (tm *tokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool <span class="cov8" title="1">{
+        if threshold &lt;= 0 || int32(threshold) &gt; tokenCount </span><span class="cov8" title="1">{
+                // No confirmation needed if threshold is disabled (0) or token count is below threshold
+                tm.logger.Debug("No confirmation needed: threshold=%d, tokenCount=%d", threshold, tokenCount)
+                return true
+        }</span>
+
+        <span class="cov8" title="1">tm.logger.Info("Token count (%d) exceeds confirmation threshold (%d).", tokenCount, threshold)
+        tm.logger.Info("Do you want to proceed with the API call? [y/N]: ")
+
+        reader := bufio.NewReader(os.Stdin)
+        response, err := reader.ReadString('\n')
+        if err != nil </span><span class="cov0" title="0">{
+                tm.logger.Error("Error reading input: %v", err)
+                return false
+        }</span>
+
+        // Log the raw response for debugging
+        <span class="cov8" title="1">tm.logger.Debug("User confirmation response (raw): %q", response)
+
+        // Trim whitespace and convert to lowercase
+        response = strings.ToLower(strings.TrimSpace(response))
+        tm.logger.Debug("User confirmation response (processed): %q", response)
+
+        // Only proceed if the user explicitly confirms with 'y' or 'yes'
+        result := response == "y" || response == "yes"
+        tm.logger.Debug("User confirmation result: %v", result)
+        return result</span>
+}
+</pre>
+		
+		<pre class="file" id="file15" style="display: none">// Package auditlog provides structured logging for audit purposes
 package auditlog
 
 import (
@@ -1462,7 +3131,7 @@ var _ AuditLogger = (*FileAuditLogger)(nil)
 var _ AuditLogger = (*NoOpAuditLogger)(nil)
 </pre>
 		
-		<pre class="file" id="file9" style="display: none">// Package config handles loading and managing application configuration.
+		<pre class="file" id="file16" style="display: none">// Package config handles loading and managing application configuration.
 // It defines a canonical set of configuration parameters used throughout
 // the application, consolidating configuration from CLI flags, environment
 // variables, and default values. This centralized approach ensures
@@ -1470,7 +3139,9 @@ var _ AuditLogger = (*NoOpAuditLogger)(nil)
 package config
 
 import (
+        "fmt"
         "github.com/phrazzld/architect/internal/logutil"
+        "strings"
 )
 
 // Configuration constants
@@ -1526,7 +3197,7 @@ type AppConfig struct {
 }
 
 // DefaultConfig returns a new AppConfig instance with default values
-func DefaultConfig() *AppConfig <span class="cov0" title="0">{
+func DefaultConfig() *AppConfig <span class="cov8" title="1">{
         return &amp;AppConfig{
                 OutputFile:    DefaultOutputFile,
                 ModelName:     DefaultModel,
@@ -1598,14 +3269,61 @@ func NewDefaultCliConfig() *CliConfig <span class="cov8" title="1">{
 // It performs validation beyond simple type-checking, such as verifying that
 // required fields are present, paths exist, and values are within acceptable ranges.
 // This helps catch configuration errors early before they cause runtime failures.
-func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error <span class="cov0" title="0">{
-        // This is a placeholder for the validation function that will be moved from CLI package
-        // to maintain the API but will be implemented in the next task
-        return nil
-}</span>
+func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error <span class="cov8" title="1">{
+        // Handle nil config
+        if config == nil </span><span class="cov8" title="1">{
+                if logger != nil </span><span class="cov8" title="1">{
+                        logger.Error("Configuration is nil")
+                }</span>
+                <span class="cov8" title="1">return fmt.Errorf("nil config provided")</span>
+        }
+
+        // Define a safe logger function that won't panic if logger is nil
+        <span class="cov8" title="1">logError := func(format string, args ...interface{}) </span><span class="cov8" title="1">{
+                if logger != nil </span><span class="cov8" title="1">{
+                        logger.Error(format, args...)
+                }</span>
+        }
+
+        // Check for valid paths (always required)
+        <span class="cov8" title="1">validPaths := false
+        if len(config.Paths) &gt; 0 </span><span class="cov8" title="1">{
+                for _, path := range config.Paths </span><span class="cov8" title="1">{
+                        if len(strings.TrimSpace(path)) &gt; 0 </span><span class="cov8" title="1">{
+                                validPaths = true
+                                break</span>
+                        }
+                }
+        }
+
+        <span class="cov8" title="1">if !validPaths </span><span class="cov8" title="1">{
+                logError("At least one file or directory path must be provided as an argument.")
+                return fmt.Errorf("no paths specified")
+        }</span>
+
+        // Check for instructions file (required unless in dry run mode)
+        <span class="cov8" title="1">if config.InstructionsFile == "" &amp;&amp; !config.DryRun </span><span class="cov8" title="1">{
+                logError("The required --instructions flag is missing.")
+                return fmt.Errorf("missing required --instructions flag")
+        }</span>
+
+        // Check for API key (always required)
+        <span class="cov8" title="1">if config.APIKey == "" </span><span class="cov8" title="1">{
+                logError("%s environment variable not set.", APIKeyEnvVar)
+                return fmt.Errorf("API key not set")
+        }</span>
+
+        // Check for model names (required unless in dry run mode)
+        <span class="cov8" title="1">if len(config.ModelNames) == 0 &amp;&amp; !config.DryRun </span><span class="cov8" title="1">{
+                logError("At least one model must be specified with --model flag.")
+                return fmt.Errorf("no models specified")
+        }</span>
+
+        <span class="cov8" title="1">return nil</span>
+}
 </pre>
 		
-		<pre class="file" id="file10" style="display: none">// internal/fileutil/fileutil.go
+		<pre class="file" id="file17" style="display: none">// internal/fileutil/fileutil.go
 package fileutil
 
 import (
@@ -1709,17 +3427,17 @@ func isGitIgnored(path string, config *Config) bool <span class="cov8" title="1"
                 dir := filepath.Dir(path)
                 // Check if the directory is actually a git repo first
                 gitRepoCheck := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
-                if gitRepoCheck.Run() == nil </span><span class="cov0" title="0">{ // If it is a git repo
+                if gitRepoCheck.Run() == nil </span><span class="cov8" title="1">{ // If it is a git repo
                         cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", base)
                         err := cmd.Run()
-                        if err == nil </span><span class="cov0" title="0">{ // Exit code 0: file IS ignored
+                        if err == nil </span><span class="cov8" title="1">{ // Exit code 0: file IS ignored
                                 config.Logger.Printf("Verbose: Git ignored: %s\n", path)
                                 return true
                         }</span>
-                        <span class="cov0" title="0">if exitErr, ok := err.(*exec.ExitError); ok &amp;&amp; exitErr.ExitCode() == 1 </span>{<span class="cov0" title="0">
+                        <span class="cov8" title="1">if exitErr, ok := err.(*exec.ExitError); ok &amp;&amp; exitErr.ExitCode() == 1 </span>{<span class="cov8" title="1">
                                 // Exit code 1: file is NOT ignored
                                 // Continue to other checks like hidden files
-                        }</span> else<span class="cov0" title="0"> if err != nil </span><span class="cov0" title="0">{
+                        }</span> else<span class="cov8" title="1"> if err != nil </span><span class="cov8" title="1">{
                                 // Other errors running check-ignore, log it but fall back
                                 config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
                         }</span>
@@ -1814,7 +3532,7 @@ func processFile(path string, files *[]FileMeta, config *Config) <span class="co
         }</span>
 
         <span class="cov8" title="1">content, err := os.ReadFile(path)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 config.Logger.Printf("Warning: Cannot read file %s: %v\n", path, err)
                 return
         }</span>
@@ -1869,7 +3587,7 @@ func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, erro
                 <span class="cov8" title="1">if info.IsDir() </span><span class="cov8" title="1">{
                         // Walk the directory
                         err := filepath.WalkDir(p, func(subPath string, d os.DirEntry, err error) error </span><span class="cov8" title="1">{
-                                if err != nil </span><span class="cov0" title="0">{
+                                if err != nil </span><span class="cov8" title="1">{
                                         config.Logger.Printf("Warning: Error accessing path %s during walk: %v\n", subPath, err)
                                         return err // Report error up
                                 }</span>
@@ -1890,7 +3608,7 @@ func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, erro
 
                                 <span class="cov8" title="1">return nil</span> // Continue walking
                         })
-                        <span class="cov8" title="1">if err != nil </span><span class="cov0" title="0">{
+                        <span class="cov8" title="1">if err != nil </span><span class="cov8" title="1">{
                                 config.Logger.Printf("Error walking directory %s: %v\n", p, err)
                                 // Continue with other paths if possible
                         }</span>
@@ -1933,7 +3651,7 @@ func estimateTokenCount(text string) int <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file11" style="display: none">package fileutil
+		<pre class="file" id="file18" style="display: none">package fileutil
 
 import (
         "fmt"
@@ -2109,7 +3827,7 @@ func (m *MockLogger) GetFatalMessages() []string <span class="cov0" title="0">{
 }</span>
 
 // ClearMessages clears all logged messages
-func (m *MockLogger) ClearMessages() <span class="cov0" title="0">{
+func (m *MockLogger) ClearMessages() <span class="cov8" title="1">{
         m.mutex.Lock()
         defer m.mutex.Unlock()
         m.messages = make([]string, 0)
@@ -2129,7 +3847,7 @@ func (m *MockLogger) ContainsMessage(substr string) bool <span class="cov8" titl
                         return true
                 }</span>
         }
-        <span class="cov0" title="0">return false</span>
+        <span class="cov8" title="1">return false</span>
 }
 
 // SetVerbose sets the verbose mode for testing
@@ -2138,11 +3856,13 @@ func (m *MockLogger) SetVerbose(verbose bool) <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file12" style="display: none">// internal/gemini/client.go
+		<pre class="file" id="file19" style="display: none">// internal/gemini/client.go
 package gemini
 
 import (
         "context"
+
+        "github.com/phrazzld/architect/internal/logutil"
 )
 
 // ModelConfig holds Gemini model configuration parameters
@@ -2207,10 +3927,34 @@ type Client interface {
         Close() error
 }
 
+// ClientOption defines a function that modifies a client
+type ClientOption func(*geminiClient)
+
+// WithHTTPClient allows injecting a custom HTTP client
+func WithHTTPClient(client HTTPClient) ClientOption <span class="cov8" title="1">{
+        return func(gc *geminiClient) </span><span class="cov8" title="1">{
+                gc.httpClient = client
+        }</span>
+}
+
+// WithLogger allows injecting a custom logger
+func WithLogger(logger logutil.LoggerInterface) ClientOption <span class="cov0" title="0">{
+        return func(gc *geminiClient) </span><span class="cov0" title="0">{
+                gc.logger = logger
+        }</span>
+}
+
 // NewClient creates a new Gemini client with the given API key, model name, and optional API endpoint
-func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) <span class="cov0" title="0">{
-        return newGeminiClient(ctx, apiKey, modelName, apiEndpoint)
-}</span>
+func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (Client, error) <span class="cov8" title="1">{
+        // Convert public options to internal options
+        var internalOpts []geminiClientOption
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                // Conversion is safe as both function types have the same signature
+                internalOpts = append(internalOpts, geminiClientOption(opt))
+        }</span>
+
+        <span class="cov8" title="1">return newGeminiClient(ctx, apiKey, modelName, apiEndpoint, internalOpts...)</span>
+}
 
 // DefaultModelConfig returns a reasonable default model configuration
 func DefaultModelConfig() ModelConfig <span class="cov8" title="1">{
@@ -2222,7 +3966,7 @@ func DefaultModelConfig() ModelConfig <span class="cov8" title="1">{
 }</span>
 </pre>
 		
-		<pre class="file" id="file13" style="display: none">// Package gemini provides a client for interacting with Google's Gemini API
+		<pre class="file" id="file20" style="display: none">// Package gemini provides a client for interacting with Google's Gemini API
 package gemini
 
 import (
@@ -2289,147 +4033,147 @@ type APIError struct {
 }
 
 // Error implements the error interface
-func (e *APIError) Error() string <span class="cov0" title="0">{
-        if e.Original != nil </span><span class="cov0" title="0">{
+func (e *APIError) Error() string <span class="cov8" title="1">{
+        if e.Original != nil </span><span class="cov8" title="1">{
                 return fmt.Sprintf("%s: %v", e.Message, e.Original)
         }</span>
-        <span class="cov0" title="0">return e.Message</span>
+        <span class="cov8" title="1">return e.Message</span>
 }
 
 // Unwrap returns the original error
-func (e *APIError) Unwrap() error <span class="cov0" title="0">{
+func (e *APIError) Unwrap() error <span class="cov8" title="1">{
         return e.Original
 }</span>
 
 // UserFacingError returns a user-friendly error message with suggestions
-func (e *APIError) UserFacingError() string <span class="cov0" title="0">{
+func (e *APIError) UserFacingError() string <span class="cov8" title="1">{
         var sb strings.Builder
 
         // Start with the error message
         sb.WriteString(e.Message)
 
         // Add suggestions if available
-        if e.Suggestion != "" </span><span class="cov0" title="0">{
+        if e.Suggestion != "" </span><span class="cov8" title="1">{
                 sb.WriteString("\n\nSuggestion: ")
                 sb.WriteString(e.Suggestion)
         }</span>
 
-        <span class="cov0" title="0">return sb.String()</span>
+        <span class="cov8" title="1">return sb.String()</span>
 }
 
 // DebugInfo returns detailed debugging information about the error
-func (e *APIError) DebugInfo() string <span class="cov0" title="0">{
+func (e *APIError) DebugInfo() string <span class="cov8" title="1">{
         var sb strings.Builder
 
         sb.WriteString(fmt.Sprintf("Error Type: %v\n", e.Type))
         sb.WriteString(fmt.Sprintf("Message: %s\n", e.Message))
 
-        if e.StatusCode != 0 </span><span class="cov0" title="0">{
+        if e.StatusCode != 0 </span><span class="cov8" title="1">{
                 sb.WriteString(fmt.Sprintf("Status Code: %d\n", e.StatusCode))
         }</span>
 
-        <span class="cov0" title="0">if e.Original != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if e.Original != nil </span><span class="cov8" title="1">{
                 sb.WriteString(fmt.Sprintf("Original Error: %v\n", e.Original))
         }</span>
 
-        <span class="cov0" title="0">if e.Details != "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if e.Details != "" </span><span class="cov8" title="1">{
                 sb.WriteString(fmt.Sprintf("Details: %s\n", e.Details))
         }</span>
 
-        <span class="cov0" title="0">if e.Suggestion != "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if e.Suggestion != "" </span><span class="cov8" title="1">{
                 sb.WriteString(fmt.Sprintf("Suggestion: %s\n", e.Suggestion))
         }</span>
 
-        <span class="cov0" title="0">return sb.String()</span>
+        <span class="cov8" title="1">return sb.String()</span>
 }
 
 // IsAPIError checks if an error is an APIError and returns it
-func IsAPIError(err error) (*APIError, bool) <span class="cov0" title="0">{
+func IsAPIError(err error) (*APIError, bool) <span class="cov8" title="1">{
         var apiErr *APIError
-        if errors.As(err, &amp;apiErr) </span><span class="cov0" title="0">{
+        if errors.As(err, &amp;apiErr) </span><span class="cov8" title="1">{
                 return apiErr, true
         }</span>
-        <span class="cov0" title="0">return nil, false</span>
+        <span class="cov8" title="1">return nil, false</span>
 }
 
 // GetErrorType determines the error type based on the error message and status code
-func GetErrorType(err error, statusCode int) ErrorType <span class="cov0" title="0">{
-        if err == nil </span><span class="cov0" title="0">{
+func GetErrorType(err error, statusCode int) ErrorType <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
                 return ErrorTypeUnknown
         }</span>
 
-        <span class="cov0" title="0">errMsg := err.Error()
+        <span class="cov8" title="1">errMsg := err.Error()
 
         // Check for authorization errors
-        if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden </span><span class="cov0" title="0">{
+        if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden </span><span class="cov8" title="1">{
                 return ErrorTypeAuth
         }</span>
 
         // Check for rate limit or quota errors
-        <span class="cov0" title="0">if statusCode == http.StatusTooManyRequests ||
+        <span class="cov8" title="1">if statusCode == http.StatusTooManyRequests ||
                 strings.Contains(errMsg, "rate limit") ||
-                strings.Contains(errMsg, "quota") </span><span class="cov0" title="0">{
+                strings.Contains(errMsg, "quota") </span><span class="cov8" title="1">{
                 return ErrorTypeRateLimit
         }</span>
 
         // Check for invalid request errors
-        <span class="cov0" title="0">if statusCode == http.StatusBadRequest </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if statusCode == http.StatusBadRequest </span><span class="cov8" title="1">{
                 return ErrorTypeInvalidRequest
         }</span>
 
         // Check for not found errors
-        <span class="cov0" title="0">if statusCode == http.StatusNotFound </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if statusCode == http.StatusNotFound </span><span class="cov8" title="1">{
                 return ErrorTypeNotFound
         }</span>
 
         // Check for server errors
-        <span class="cov0" title="0">if statusCode &gt;= 500 &amp;&amp; statusCode &lt; 600 </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if statusCode &gt;= 500 &amp;&amp; statusCode &lt; 600 </span><span class="cov8" title="1">{
                 return ErrorTypeServer
         }</span>
 
         // Check for content filtering
-        <span class="cov0" title="0">if strings.Contains(errMsg, "safety") ||
+        <span class="cov8" title="1">if strings.Contains(errMsg, "safety") ||
                 strings.Contains(errMsg, "blocked") ||
-                strings.Contains(errMsg, "filtered") </span><span class="cov0" title="0">{
+                strings.Contains(errMsg, "filtered") </span><span class="cov8" title="1">{
                 return ErrorTypeContentFiltered
         }</span>
 
         // Check for token limit errors
-        <span class="cov0" title="0">if strings.Contains(errMsg, "token limit") ||
-                strings.Contains(errMsg, "tokens exceeds") </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if strings.Contains(errMsg, "token limit") ||
+                strings.Contains(errMsg, "tokens exceeds") </span><span class="cov8" title="1">{
                 return ErrorTypeInputLimit
         }</span>
 
         // Check for network errors
-        <span class="cov0" title="0">if strings.Contains(errMsg, "network") ||
+        <span class="cov8" title="1">if strings.Contains(errMsg, "network") ||
                 strings.Contains(errMsg, "connection") ||
-                strings.Contains(errMsg, "timeout") </span><span class="cov0" title="0">{
+                strings.Contains(errMsg, "timeout") </span><span class="cov8" title="1">{
                 return ErrorTypeNetwork
         }</span>
 
         // Check for cancellation
-        <span class="cov0" title="0">if strings.Contains(errMsg, "canceled") ||
+        <span class="cov8" title="1">if strings.Contains(errMsg, "canceled") ||
                 strings.Contains(errMsg, "cancelled") ||
-                strings.Contains(errMsg, "deadline exceeded") </span><span class="cov0" title="0">{
+                strings.Contains(errMsg, "deadline exceeded") </span><span class="cov8" title="1">{
                 return ErrorTypeCancelled
         }</span>
 
-        <span class="cov0" title="0">return ErrorTypeUnknown</span>
+        <span class="cov8" title="1">return ErrorTypeUnknown</span>
 }
 
 // FormatAPIError creates a detailed API error from a standard error
-func FormatAPIError(err error, statusCode int) *APIError <span class="cov0" title="0">{
-        if err == nil </span><span class="cov0" title="0">{
+func FormatAPIError(err error, statusCode int) *APIError <span class="cov8" title="1">{
+        if err == nil </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
         // Check if it's already an APIError
-        <span class="cov0" title="0">if apiErr, ok := IsAPIError(err); ok </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if apiErr, ok := IsAPIError(err); ok </span><span class="cov8" title="1">{
                 return apiErr
         }</span>
 
         // Determine error type
-        <span class="cov0" title="0">errType := GetErrorType(err, statusCode)
+        <span class="cov8" title="1">errType := GetErrorType(err, statusCode)
 
         // Create base API error
         apiErr := &amp;APIError{
@@ -2441,52 +4185,52 @@ func FormatAPIError(err error, statusCode int) *APIError <span class="cov0" titl
 
         // Enhance error details based on type
         switch errType </span>{
-        case ErrorTypeAuth:<span class="cov0" title="0">
+        case ErrorTypeAuth:<span class="cov8" title="1">
                 apiErr.Message = "Authentication failed with the Gemini API"
                 apiErr.Suggestion = "Check that your API key is valid and has not expired. Ensure environment variables are set correctly."</span>
 
-        case ErrorTypeRateLimit:<span class="cov0" title="0">
+        case ErrorTypeRateLimit:<span class="cov8" title="1">
                 apiErr.Message = "Request rate limit or quota exceeded on the Gemini API"
                 apiErr.Suggestion = "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate. You can also upgrade your API usage tier if this happens frequently."</span>
 
-        case ErrorTypeInvalidRequest:<span class="cov0" title="0">
+        case ErrorTypeInvalidRequest:<span class="cov8" title="1">
                 apiErr.Message = "Invalid request sent to the Gemini API"
                 apiErr.Suggestion = "Check the prompt format and parameters. Ensure they comply with the API requirements."</span>
 
-        case ErrorTypeNotFound:<span class="cov0" title="0">
+        case ErrorTypeNotFound:<span class="cov8" title="1">
                 apiErr.Message = "The requested model or resource was not found"
                 apiErr.Suggestion = "Verify that the model name is correct and that the model is available in your region."</span>
 
-        case ErrorTypeServer:<span class="cov0" title="0">
+        case ErrorTypeServer:<span class="cov8" title="1">
                 apiErr.Message = "Gemini API server error occurred"
                 apiErr.Suggestion = "This is typically a temporary issue. Wait a few moments and try again."</span>
 
-        case ErrorTypeNetwork:<span class="cov0" title="0">
+        case ErrorTypeNetwork:<span class="cov8" title="1">
                 apiErr.Message = "Network error while connecting to the Gemini API"
                 apiErr.Suggestion = "Check your internet connection and try again. If persistent, there may be connectivity issues to Google's servers."</span>
 
-        case ErrorTypeCancelled:<span class="cov0" title="0">
+        case ErrorTypeCancelled:<span class="cov8" title="1">
                 apiErr.Message = "Request to Gemini API was cancelled"
                 apiErr.Suggestion = "The operation was interrupted. Try again with a longer timeout if needed."</span>
 
-        case ErrorTypeInputLimit:<span class="cov0" title="0">
+        case ErrorTypeInputLimit:<span class="cov8" title="1">
                 apiErr.Message = "Input token limit exceeded for the Gemini model"
                 apiErr.Suggestion = "Reduce the input size by using --include, --exclude, or --exclude-names flags to filter the context."</span>
 
-        case ErrorTypeContentFiltered:<span class="cov0" title="0">
+        case ErrorTypeContentFiltered:<span class="cov8" title="1">
                 apiErr.Message = "Content was filtered by Gemini API safety settings"
                 apiErr.Suggestion = "Your prompt or content may have triggered safety filters. Review and modify your input to comply with content policies."</span>
 
-        default:<span class="cov0" title="0">
+        default:<span class="cov8" title="1">
                 apiErr.Message = fmt.Sprintf("Error calling Gemini API: %v", err)
                 apiErr.Suggestion = "Check the logs for more details or try again."</span>
         }
 
-        <span class="cov0" title="0">return apiErr</span>
+        <span class="cov8" title="1">return apiErr</span>
 }
 </pre>
 		
-		<pre class="file" id="file14" style="display: none">// internal/gemini/gemini_client.go
+		<pre class="file" id="file21" style="display: none">// internal/gemini/gemini_client.go
 package gemini
 
 import (
@@ -2506,6 +4250,11 @@ import (
         "google.golang.org/api/option"
 )
 
+// HTTPClient is an interface for an HTTP client
+type HTTPClient interface {
+        Do(req *http.Request) (*http.Response, error)
+}
+
 // geminiClient implements the Client interface using Google's genai SDK
 type geminiClient struct {
         client      *genai.Client
@@ -2518,50 +4267,54 @@ type geminiClient struct {
         // Model info caching
         modelInfoCache map[string]*ModelInfo
         modelInfoMutex sync.RWMutex
-        httpClient     *http.Client
+        httpClient     HTTPClient
 }
 
+// geminiClientOption defines a function type for applying options to geminiClient
+type geminiClientOption func(*geminiClient)
+
 // newGeminiClient creates a new Gemini client with Google's genai SDK
-func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (Client, error) <span class="cov0" title="0">{
-        if apiKey == "" </span><span class="cov0" title="0">{
+func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...geminiClientOption) (Client, error) <span class="cov8" title="1">{
+        if apiKey == "" </span><span class="cov8" title="1">{
                 return nil, errors.New("API key cannot be empty")
         }</span>
 
-        <span class="cov0" title="0">if modelName == "" </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">if modelName == "" </span><span class="cov8" title="1">{
                 return nil, errors.New("model name cannot be empty")
         }</span>
 
         // Create standard logger for internal client use
-        <span class="cov0" title="0">logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ")
+        <span class="cov8" title="1">logger := logutil.NewLogger(logutil.InfoLevel, nil, "[gemini] ")
 
         // Prepare client options
-        var opts []option.ClientOption
+        var clientOpts []option.ClientOption
 
         if apiEndpoint != "" </span><span class="cov0" title="0">{
                 // Custom endpoint (likely for testing)
                 logger.Debug("Using custom Gemini API endpoint: %s", apiEndpoint)
-                opts = append(opts,
+                clientOpts = append(clientOpts,
                         option.WithEndpoint(apiEndpoint),
                         option.WithoutAuthentication()) // Skip auth for mock server
-        }</span> else<span class="cov0" title="0"> {
+        }</span> else<span class="cov8" title="1"> {
                 // Default endpoint with API key
-                opts = append(opts, option.WithAPIKey(apiKey))
+                clientOpts = append(clientOpts, option.WithAPIKey(apiKey))
         }</span>
 
         // Initialize the Google genai client
-        <span class="cov0" title="0">client, err := genai.NewClient(ctx, opts...)
+        <span class="cov8" title="1">client, err := genai.NewClient(ctx, clientOpts...)
         if err != nil </span><span class="cov0" title="0">{
                 return nil, fmt.Errorf("failed to create Gemini client: %w", err)
         }</span>
 
         // Initialize the model with default settings
-        <span class="cov0" title="0">model := client.GenerativeModel(modelName)
+        <span class="cov8" title="1">model := client.GenerativeModel(modelName)
         config := DefaultModelConfig()
         model.SetMaxOutputTokens(config.MaxOutputTokens)
         model.SetTemperature(config.Temperature)
         model.SetTopP(config.TopP)
 
-        return &amp;geminiClient{
+        // Create the client with default values
+        gc := &amp;geminiClient{
                 client:         client,
                 model:          model,
                 modelName:      modelName,
@@ -2570,13 +4323,20 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string)
                 logger:         logger,
                 modelInfoCache: make(map[string]*ModelInfo),
                 modelInfoMutex: sync.RWMutex{},
-                httpClient:     &amp;http.Client{Timeout: 10 * time.Second},
-        }, nil</span>
+                httpClient:     &amp;http.Client{Timeout: 10 * time.Second}, // Default HTTP client
+        }
+
+        // Apply any custom options
+        for _, opt := range opts </span><span class="cov8" title="1">{
+                opt(gc)
+        }</span>
+
+        <span class="cov8" title="1">return gc, nil</span>
 }
 
 // GenerateContent sends a text prompt to Gemini and returns the generated content
-func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) <span class="cov0" title="0">{
-        if prompt == "" </span><span class="cov0" title="0">{
+func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) <span class="cov8" title="1">{
+        if prompt == "" </span><span class="cov8" title="1">{
                 return nil, &amp;APIError{
                         Original:   errors.New("prompt cannot be empty"),
                         Type:       ErrorTypeInvalidRequest,
@@ -2691,18 +4451,18 @@ type ModelDetailsResponse struct {
 }
 
 // GetModelInfo retrieves information about the current model
-func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) <span class="cov0" title="0">{
+func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) <span class="cov8" title="1">{
         // Check cache first
         c.modelInfoMutex.RLock()
-        if info, ok := c.modelInfoCache[c.modelName]; ok </span><span class="cov0" title="0">{
+        if info, ok := c.modelInfoCache[c.modelName]; ok </span><span class="cov8" title="1">{
                 c.modelInfoMutex.RUnlock()
                 return info, nil
         }</span>
-        <span class="cov0" title="0">c.modelInfoMutex.RUnlock()
+        <span class="cov8" title="1">c.modelInfoMutex.RUnlock()
 
         // Not in cache, fetch from API
         info, err := c.fetchModelInfo(ctx, c.modelName)
-        if err != nil </span><span class="cov0" title="0">{
+        if err != nil </span><span class="cov8" title="1">{
                 // If API fetch fails, use conservative defaults
                 c.logger.Warn("Failed to fetch model info for %s: %v. Using default values.", c.modelName, err)
 
@@ -2714,7 +4474,7 @@ func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) <sp
         }</span>
 
         // Cache the result (even default values to avoid repeated failures)
-        <span class="cov0" title="0">c.modelInfoMutex.Lock()
+        <span class="cov8" title="1">c.modelInfoMutex.Lock()
         c.modelInfoCache[c.modelName] = info
         c.modelInfoMutex.Unlock()
 
@@ -2722,21 +4482,21 @@ func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) <sp
 }
 
 // fetchModelInfo calls the Generative Language API to get model details
-func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*ModelInfo, error) <span class="cov0" title="0">{
+func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*ModelInfo, error) <span class="cov8" title="1">{
         var url string
 
-        if c.apiEndpoint != "" </span><span class="cov0" title="0">{
+        if c.apiEndpoint != "" </span><span class="cov8" title="1">{
                 // Use custom endpoint with no authentication
                 url = fmt.Sprintf("%s/v1beta/models/%s",
                         strings.TrimSuffix(c.apiEndpoint, "/"), modelName)
-        }</span> else<span class="cov0" title="0"> {
+        }</span> else<span class="cov8" title="1"> {
                 // Use default endpoint with API key
                 url = fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s?key=%s",
                         modelName, c.apiKey)
         }</span>
 
         // Create request
-        <span class="cov0" title="0">req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+        <span class="cov8" title="1">req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
         if err != nil </span><span class="cov0" title="0">{
                 apiErr := &amp;APIError{
                         Original:   err,
@@ -2748,8 +4508,8 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
         }</span>
 
         // Make the request
-        <span class="cov0" title="0">resp, err := c.httpClient.Do(req)
-        if err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">resp, err := c.httpClient.Do(req)
+        if err != nil </span><span class="cov8" title="1">{
                 apiErr := &amp;APIError{
                         Original:   err,
                         Type:       ErrorTypeNetwork,
@@ -2759,10 +4519,10 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
                 }
                 return nil, apiErr
         }</span>
-        <span class="cov0" title="0">defer resp.Body.Close()
+        <span class="cov8" title="1">defer resp.Body.Close()
 
         // Check status code
-        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+        if resp.StatusCode != http.StatusOK </span><span class="cov8" title="1">{
                 body, _ := io.ReadAll(resp.Body)
                 bodyStr := string(body)
 
@@ -2776,20 +4536,20 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
                         modelName, resp.StatusCode, bodyStr)
 
                 // For 404 errors, provide more context about the model
-                if resp.StatusCode == http.StatusNotFound </span><span class="cov0" title="0">{
+                if resp.StatusCode == http.StatusNotFound </span><span class="cov8" title="1">{
                         apiErr.Message = fmt.Sprintf("Model '%s' not found or not accessible", modelName)
                         apiErr.Suggestion = "Check that the model name is correct and that you have access to it. Consider using a different model."
                 }</span>
 
                 // Log detailed error for debugging
-                <span class="cov0" title="0">c.logger.Debug("Model info error: %s", apiErr.DebugInfo())
+                <span class="cov8" title="1">c.logger.Debug("Model info error: %s", apiErr.DebugInfo())
 
                 return nil, apiErr</span>
         }
 
         // Parse response
-        <span class="cov0" title="0">var modelDetails ModelDetailsResponse
-        if err := json.NewDecoder(resp.Body).Decode(&amp;modelDetails); err != nil </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">var modelDetails ModelDetailsResponse
+        if err := json.NewDecoder(resp.Body).Decode(&amp;modelDetails); err != nil </span><span class="cov8" title="1">{
                 apiErr := &amp;APIError{
                         Original:   err,
                         Type:       ErrorTypeInvalidRequest,
@@ -2801,7 +4561,7 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
         }</span>
 
         // Convert to our internal model
-        <span class="cov0" title="0">info := &amp;ModelInfo{
+        <span class="cov8" title="1">info := &amp;ModelInfo{
                 Name:             modelDetails.Name,
                 InputTokenLimit:  modelDetails.InputTokenLimit,
                 OutputTokenLimit: modelDetails.OutputTokenLimit,
@@ -2822,42 +4582,42 @@ func (c *geminiClient) Close() error <span class="cov0" title="0">{
 }
 
 // GetModelName returns the name of the model being used
-func (c *geminiClient) GetModelName() string <span class="cov0" title="0">{
+func (c *geminiClient) GetModelName() string <span class="cov8" title="1">{
         return c.modelName
 }</span>
 
 // GetTemperature returns the temperature setting for the model
-func (c *geminiClient) GetTemperature() float32 <span class="cov0" title="0">{
+func (c *geminiClient) GetTemperature() float32 <span class="cov8" title="1">{
         if c.model != nil &amp;&amp; c.model.Temperature != nil </span><span class="cov0" title="0">{
                 return *c.model.Temperature
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().Temperature</span>
+        <span class="cov8" title="1">return DefaultModelConfig().Temperature</span>
 }
 
 // GetMaxOutputTokens returns the max output tokens setting for the model
-func (c *geminiClient) GetMaxOutputTokens() int32 <span class="cov0" title="0">{
+func (c *geminiClient) GetMaxOutputTokens() int32 <span class="cov8" title="1">{
         if c.model != nil &amp;&amp; c.model.MaxOutputTokens != nil </span><span class="cov0" title="0">{
                 return int32(*c.model.MaxOutputTokens)
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().MaxOutputTokens</span>
+        <span class="cov8" title="1">return DefaultModelConfig().MaxOutputTokens</span>
 }
 
 // GetTopP returns the topP setting for the model
-func (c *geminiClient) GetTopP() float32 <span class="cov0" title="0">{
+func (c *geminiClient) GetTopP() float32 <span class="cov8" title="1">{
         if c.model != nil &amp;&amp; c.model.TopP != nil </span><span class="cov0" title="0">{
                 return *c.model.TopP
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().TopP</span>
+        <span class="cov8" title="1">return DefaultModelConfig().TopP</span>
 }
 
 // mapSafetyRatings converts genai safety ratings to our internal format
-func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating <span class="cov0" title="0">{
-        if ratings == nil </span><span class="cov0" title="0">{
+func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating <span class="cov8" title="1">{
+        if ratings == nil </span><span class="cov8" title="1">{
                 return nil
         }</span>
 
-        <span class="cov0" title="0">result := make([]SafetyRating, len(ratings))
-        for i, rating := range ratings </span><span class="cov0" title="0">{
+        <span class="cov8" title="1">result := make([]SafetyRating, len(ratings))
+        for i, rating := range ratings </span><span class="cov8" title="1">{
                 result[i] = SafetyRating{
                         Category: string(rating.Category),
                         Blocked:  rating.Blocked,
@@ -2865,11 +4625,11 @@ func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating <span class=
                 }
         }</span>
 
-        <span class="cov0" title="0">return result</span>
+        <span class="cov8" title="1">return result</span>
 }
 </pre>
 		
-		<pre class="file" id="file15" style="display: none">// internal/gemini/mock_client.go
+		<pre class="file" id="file22" style="display: none">// internal/gemini/mock_client.go
 package gemini
 
 import (
@@ -2889,19 +4649,19 @@ type MockClient struct {
 }
 
 // GenerateContent calls the mocked implementation
-func (m *MockClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) <span class="cov0" title="0">{
-        if m.GenerateContentFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) <span class="cov8" title="1">{
+        if m.GenerateContentFunc != nil </span><span class="cov8" title="1">{
                 return m.GenerateContentFunc(ctx, prompt)
         }</span>
-        <span class="cov0" title="0">return &amp;GenerationResult{Content: "Mock response"}, nil</span>
+        <span class="cov8" title="1">return &amp;GenerationResult{Content: "Mock response"}, nil</span>
 }
 
 // CountTokens calls the mocked implementation
-func (m *MockClient) CountTokens(ctx context.Context, prompt string) (*TokenCount, error) <span class="cov0" title="0">{
-        if m.CountTokensFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) CountTokens(ctx context.Context, prompt string) (*TokenCount, error) <span class="cov8" title="1">{
+        if m.CountTokensFunc != nil </span><span class="cov8" title="1">{
                 return m.CountTokensFunc(ctx, prompt)
         }</span>
-        <span class="cov0" title="0">return &amp;TokenCount{Total: 10}, nil</span> // Simple default
+        <span class="cov8" title="1">return &amp;TokenCount{Total: 10}, nil</span> // Simple default
 }
 
 // GetModelInfo calls the mocked implementation
@@ -2917,43 +4677,43 @@ func (m *MockClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) <span
 }
 
 // Close calls the mocked implementation
-func (m *MockClient) Close() error <span class="cov0" title="0">{
-        if m.CloseFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) Close() error <span class="cov8" title="1">{
+        if m.CloseFunc != nil </span><span class="cov8" title="1">{
                 return m.CloseFunc()
         }</span>
-        <span class="cov0" title="0">return nil</span>
+        <span class="cov8" title="1">return nil</span>
 }
 
 // GetModelName returns the mocked model name
-func (m *MockClient) GetModelName() string <span class="cov0" title="0">{
-        if m.GetModelNameFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) GetModelName() string <span class="cov8" title="1">{
+        if m.GetModelNameFunc != nil </span><span class="cov8" title="1">{
                 return m.GetModelNameFunc()
         }</span>
-        <span class="cov0" title="0">return "mock-model"</span>
+        <span class="cov8" title="1">return "mock-model"</span>
 }
 
 // GetTemperature returns the mocked temperature
-func (m *MockClient) GetTemperature() float32 <span class="cov0" title="0">{
-        if m.GetTemperatureFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) GetTemperature() float32 <span class="cov8" title="1">{
+        if m.GetTemperatureFunc != nil </span><span class="cov8" title="1">{
                 return m.GetTemperatureFunc()
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().Temperature</span>
+        <span class="cov8" title="1">return DefaultModelConfig().Temperature</span>
 }
 
 // GetMaxOutputTokens returns the mocked max output tokens
-func (m *MockClient) GetMaxOutputTokens() int32 <span class="cov0" title="0">{
-        if m.GetMaxOutputTokensFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) GetMaxOutputTokens() int32 <span class="cov8" title="1">{
+        if m.GetMaxOutputTokensFunc != nil </span><span class="cov8" title="1">{
                 return m.GetMaxOutputTokensFunc()
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().MaxOutputTokens</span>
+        <span class="cov8" title="1">return DefaultModelConfig().MaxOutputTokens</span>
 }
 
 // GetTopP returns the mocked topP
-func (m *MockClient) GetTopP() float32 <span class="cov0" title="0">{
-        if m.GetTopPFunc != nil </span><span class="cov0" title="0">{
+func (m *MockClient) GetTopP() float32 <span class="cov8" title="1">{
+        if m.GetTopPFunc != nil </span><span class="cov8" title="1">{
                 return m.GetTopPFunc()
         }</span>
-        <span class="cov0" title="0">return DefaultModelConfig().TopP</span>
+        <span class="cov8" title="1">return DefaultModelConfig().TopP</span>
 }
 
 // NewMockClient creates a new mock client for testing
@@ -2970,7 +4730,690 @@ func NewMockClient() *MockClient <span class="cov8" title="1">{
 }
 </pre>
 		
-		<pre class="file" id="file16" style="display: none">// internal/logutil/logutil.go
+		<pre class="file" id="file23" style="display: none">// internal/integration/test_helpers.go
+package integration
+
+import (
+        "bytes"
+        "context"
+        "fmt"
+        "os"
+        "path/filepath"
+        "strings"
+        "testing"
+        "time"
+
+        "github.com/phrazzld/architect/internal/architect"
+        "github.com/phrazzld/architect/internal/auditlog"
+        "github.com/phrazzld/architect/internal/config"
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// TestEnv holds the testing environment
+type TestEnv struct {
+        // Test directory where we'll create test files
+        TestDir string
+
+        // Captures stdout/stderr
+        StdoutBuffer *bytes.Buffer
+        StderrBuffer *bytes.Buffer
+
+        // Original stdout/stderr for restoring after test
+        OrigStdout *os.File
+        OrigStderr *os.File
+
+        // Mock Gemini client
+        MockClient *gemini.MockClient
+
+        // Test logger
+        Logger logutil.LoggerInterface
+
+        // Mock audit logger
+        AuditLogger auditlog.AuditLogger
+
+        // Mock standard input for simulating user inputs
+        stdinReader *os.File // The read end of the pipe to use as stdin
+        stdinWriter *os.File // The write end of the pipe to simulate user input
+        OrigStdin   *os.File
+
+        // Cleanup function to run after test
+        Cleanup func()
+}
+
+// NewTestEnv creates a new test environment
+func NewTestEnv(t *testing.T) *TestEnv <span class="cov8" title="1">{
+        // Create a temporary directory for test files
+        testDir, err := os.MkdirTemp("", "architect-integration-test-*")
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to create test directory: %v", err)
+        }</span>
+
+        // Create buffers to capture stdout/stderr
+        <span class="cov8" title="1">stdoutBuffer := &amp;bytes.Buffer{}
+        stderrBuffer := &amp;bytes.Buffer{}
+
+        // Save original stdout/stderr
+        origStdout := os.Stdout
+        origStderr := os.Stderr
+
+        // Create a pipe for stdin simulation (instead of a temp file)
+        // r is the read end (which will be used as stdin)
+        // w is the write end (which we'll use to simulate user input)
+        r, w, err := os.Pipe()
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to create pipe for stdin simulation: %v", err)
+        }</span>
+        <span class="cov8" title="1">origStdin := os.Stdin
+
+        // Create a mock client
+        mockClient := gemini.NewMockClient()
+
+        // Create a logger that writes to the stderr buffer
+        // StderrBuffer is passed explicitly since we no longer rely on global redirection
+        logger := logutil.NewLogger(logutil.DebugLevel, stderrBuffer, "[test] ")
+
+        // Create a no-op audit logger for tests
+        auditLogger := auditlog.NewNoOpAuditLogger()
+
+        // Create cleanup function
+        cleanup := func() </span><span class="cov8" title="1">{
+                // Remove test directory and all contents
+                os.RemoveAll(testDir)
+
+                // Restore original stdin (stdout/stderr are no longer redirected globally)
+                os.Stdin = origStdin
+
+                // Close pipe file descriptors
+                r.Close()
+                w.Close()
+        }</span>
+
+        <span class="cov8" title="1">return &amp;TestEnv{
+                TestDir:      testDir,
+                StdoutBuffer: stdoutBuffer,
+                StderrBuffer: stderrBuffer,
+                OrigStdout:   origStdout,
+                OrigStderr:   origStderr,
+                MockClient:   mockClient,
+                Logger:       logger,
+                AuditLogger:  auditLogger,
+                stdinReader:  r,
+                stdinWriter:  w,
+                OrigStdin:    origStdin,
+                Cleanup:      cleanup,
+        }</span>
+}
+
+// Setup prepares the environment
+// After refactoring, this function redirects stdin to our pipe reader
+// StdoutBuffer and StderrBuffer should be passed explicitly where needed
+func (env *TestEnv) Setup() <span class="cov0" title="0">{
+        // Set stdin to our pipe reader
+        os.Stdin = env.stdinReader
+}</span>
+
+// GetBufferedLogger returns a logger that writes to the test environment's stderr buffer
+// Use this when you need a fresh logger that writes to the environment's buffer
+func (env *TestEnv) GetBufferedLogger(level logutil.LogLevel, prefix string) logutil.LoggerInterface <span class="cov8" title="1">{
+        return logutil.NewLogger(level, env.StderrBuffer, prefix)
+}</span>
+
+// SimulateUserInput writes data to the stdin pipe writer to simulate user input
+func (env *TestEnv) SimulateUserInput(input string) <span class="cov8" title="1">{
+        // Write the input to the pipe writer
+        // Ensure the input ends with a newline for proper line reading
+        if !strings.HasSuffix(input, "\n") </span><span class="cov8" title="1">{
+                input += "\n"
+        }</span>
+
+        <span class="cov8" title="1">_, err := env.stdinWriter.WriteString(input)
+        if err != nil </span><span class="cov0" title="0">{
+                panic(fmt.Sprintf("Failed to write to stdin pipe: %v", err))</span>
+        }
+}
+
+// CreateTestFile creates a file with the given content in the test directory
+func (env *TestEnv) CreateTestFile(t *testing.T, relativePath, content string) string <span class="cov8" title="1">{
+        // Ensure parent directories exist
+        fullPath := filepath.Join(env.TestDir, relativePath)
+        parentDir := filepath.Dir(fullPath)
+
+        err := os.MkdirAll(parentDir, 0755)
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to create directories for test file: %v", err)
+        }</span>
+
+        // Write the file
+        <span class="cov8" title="1">err = os.WriteFile(fullPath, []byte(content), 0644)
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to write test file: %v", err)
+        }</span>
+
+        <span class="cov8" title="1">return fullPath</span>
+}
+
+// CreateTestDirectory creates a directory in the test environment
+func (env *TestEnv) CreateTestDirectory(t *testing.T, relativePath string) string <span class="cov0" title="0">{
+        fullPath := filepath.Join(env.TestDir, relativePath)
+
+        err := os.MkdirAll(fullPath, 0755)
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to create test directory: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return fullPath</span>
+}
+
+// SetupMockGeminiClient configures the mock client with standard test responses
+func (env *TestEnv) SetupMockGeminiClient() <span class="cov8" title="1">{
+        // Mock CountTokens
+        env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) </span><span class="cov8" title="1">{
+                return &amp;gemini.TokenCount{Total: int32(len(prompt) / 4)}, nil // Simple estimation
+        }</span>
+
+        // Mock GetModelInfo
+        <span class="cov8" title="1">env.MockClient.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) </span><span class="cov8" title="1">{
+                return &amp;gemini.ModelInfo{
+                        Name:             "test-model",
+                        InputTokenLimit:  100000, // Large enough for most tests
+                        OutputTokenLimit: 8192,
+                }, nil
+        }</span>
+
+        // Mock GenerateContent
+        <span class="cov8" title="1">env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) </span><span class="cov8" title="1">{
+                return &amp;gemini.GenerationResult{
+                        Content:      "# Test Generated Plan\n\nThis is a test plan generated by the mock client.\n\n## Details\n\nThe plan would normally contain implementation details based on the prompt.",
+                        TokenCount:   1000,
+                        FinishReason: "STOP",
+                }, nil
+        }</span>
+}
+
+// SetupXMLValidatingClient configures the mock client to validate XML structure in prompts
+func (env *TestEnv) SetupXMLValidatingClient(t *testing.T, expectedPartialMatches ...string) <span class="cov8" title="1">{
+        // Mock GenerateContent with XML structure validation
+        env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) </span><span class="cov8" title="1">{
+                // Basic validation - checks for existence of tags
+                if !strings.Contains(prompt, "&lt;instructions&gt;") || !strings.Contains(prompt, "&lt;/instructions&gt;") </span><span class="cov0" title="0">{
+                        t.Errorf("Prompt missing instructions tags: %s", prompt)
+                }</span>
+
+                <span class="cov8" title="1">if !strings.Contains(prompt, "&lt;context&gt;") || !strings.Contains(prompt, "&lt;/context&gt;") </span><span class="cov0" title="0">{
+                        t.Errorf("Prompt missing context tags: %s", prompt)
+                }</span>
+
+                // Check for XML escaping of special characters
+                <span class="cov8" title="1">if strings.Contains(prompt, "&lt;") &amp;&amp; !strings.Contains(prompt, "&amp;lt;") </span><span class="cov0" title="0">{
+                        t.Errorf("Potential unescaped &lt; character in content section: %s", prompt)
+                }</span>
+
+                <span class="cov8" title="1">if strings.Contains(prompt, "&gt;") &amp;&amp; !strings.Contains(prompt, "&amp;gt;") </span><span class="cov0" title="0">{
+                        t.Errorf("Potential unescaped &gt; character in content section: %s", prompt)
+                }</span>
+
+                // Check for additional expected partial matches (like filenames)
+                <span class="cov8" title="1">for _, partialMatch := range expectedPartialMatches </span><span class="cov8" title="1">{
+                        found := false
+                        // For each partial match, check if it exists anywhere in the prompt
+                        if strings.Contains(prompt, partialMatch) </span><span class="cov8" title="1">{
+                                found = true
+                        }</span>
+
+                        <span class="cov8" title="1">if !found </span><span class="cov0" title="0">{
+                                t.Errorf("Prompt missing expected content %s: %s", partialMatch, prompt)
+                        }</span>
+                }
+
+                // If we get here, the validation passed
+                <span class="cov8" title="1">return &amp;gemini.GenerationResult{
+                        Content:      "# Validated XML Structure Plan\n\nThis content was generated after validating the XML structure of the prompt.",
+                        TokenCount:   1000,
+                        FinishReason: "STOP",
+                }, nil</span>
+        }
+}
+
+// GetOutputFile reads the content of a file in the test directory
+func (env *TestEnv) GetOutputFile(t *testing.T, relativePath string) string <span class="cov0" title="0">{
+        fullPath := filepath.Join(env.TestDir, relativePath)
+
+        content, err := os.ReadFile(fullPath)
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to read output file: %v", err)
+        }</span>
+
+        <span class="cov0" title="0">return string(content)</span>
+}
+
+// CreateInstructionsFile creates a new instructions file for testing
+// This helper encapsulates the process of creating properly formatted instruction files
+func (env *TestEnv) CreateInstructionsFile(t *testing.T, content string, options ...string) string <span class="cov0" title="0">{
+        // Default relative path
+        relativePath := "instructions.md"
+
+        // If an option is provided, use it as the relative path
+        if len(options) &gt; 0 &amp;&amp; options[0] != "" </span><span class="cov0" title="0">{
+                relativePath = options[0]
+        }</span>
+
+        // Create the instruction file
+        <span class="cov0" title="0">return env.CreateTestFile(t, relativePath, content)</span>
+}
+
+// TimeInterval represents a start and end time for measuring concurrent execution
+type TimeInterval struct {
+        Start time.Time
+        End   time.Time
+}
+
+// areIntervalsConcurrent checks if a set of time intervals overlap significantly,
+// indicating concurrent execution. Returns true if at least half of the intervals
+// overlap with at least one other interval.
+func areIntervalsConcurrent(intervals []TimeInterval) bool <span class="cov8" title="1">{
+        if len(intervals) &lt; 2 </span><span class="cov0" title="0">{
+                return false
+        }</span>
+
+        // Count overlapping intervals
+        <span class="cov8" title="1">overlappingIntervals := 0
+
+        for i := 0; i &lt; len(intervals); i++ </span><span class="cov8" title="1">{
+                hasOverlap := false
+                for j := 0; j &lt; len(intervals); j++ </span><span class="cov8" title="1">{
+                        if i == j </span><span class="cov8" title="1">{
+                                continue</span>
+                        }
+
+                        // Check if intervals overlap
+                        <span class="cov8" title="1">if (intervals[i].Start.Before(intervals[j].End) || intervals[i].Start.Equal(intervals[j].End)) &amp;&amp;
+                                (intervals[j].Start.Before(intervals[i].End) || intervals[j].Start.Equal(intervals[i].End)) </span><span class="cov8" title="1">{
+                                hasOverlap = true
+                                break</span>
+                        }
+                }
+
+                <span class="cov8" title="1">if hasOverlap </span><span class="cov8" title="1">{
+                        overlappingIntervals++
+                }</span>
+        }
+
+        // Require that at least half of the intervals have overlaps
+        <span class="cov8" title="1">return overlappingIntervals &gt;= len(intervals)/2</span>
+}
+
+// ------------------------------------------------------------------------
+// Common Helper Functions for Integration Tests
+// ------------------------------------------------------------------------
+
+// Note: mockIntAPIService is defined in test_runner.go
+// We use it here directly to avoid duplication
+
+// CreateGoSourceFile creates a Go source file with customizable content
+// It provides a simple way to create standard Go files with default content
+// which can be overridden by specifying content.
+func (env *TestEnv) CreateGoSourceFile(t *testing.T, relativePath string, content ...string) string <span class="cov0" title="0">{
+        t.Helper()
+
+        // Default content if none provided
+        fileContent := `package main
+
+import "fmt"
+
+func main() {
+        fmt.Println("Hello, world!")
+}
+`
+        // Use provided content if specified
+        if len(content) &gt; 0 &amp;&amp; content[0] != "" </span><span class="cov0" title="0">{
+                fileContent = content[0]
+        }</span>
+
+        <span class="cov0" title="0">return env.CreateTestFile(t, relativePath, fileContent)</span>
+}
+
+// CreateStandardConfig creates a standard test configuration with common settings
+// It returns a config.CliConfig with defaults that can be customized through parameters
+func (env *TestEnv) CreateStandardConfig(t *testing.T, opts ...ConfigOption) *config.CliConfig <span class="cov0" title="0">{
+        t.Helper()
+
+        // Create a task file with default content
+        instructionsContent := "Implement a new feature to multiply two numbers"
+        instructionsFile := env.CreateInstructionsFile(t, instructionsContent)
+
+        // Default model name
+        modelName := "test-model"
+
+        // Default output directory
+        outputDir := filepath.Join(env.TestDir, "output")
+
+        // Create the default config
+        cfg := &amp;config.CliConfig{
+                InstructionsFile: instructionsFile,
+                OutputDir:        outputDir,
+                ModelNames:       []string{modelName},
+                APIKey:           "test-api-key",
+                Paths:            []string{env.TestDir + "/src"},
+                LogLevel:         logutil.InfoLevel,
+        }
+
+        // Apply any custom options
+        for _, opt := range opts </span><span class="cov0" title="0">{
+                opt(cfg)
+        }</span>
+
+        <span class="cov0" title="0">return cfg</span>
+}
+
+// ConfigOption defines a function type for customizing config
+type ConfigOption func(*config.CliConfig)
+
+// WithDryRun sets the dry run option
+func WithDryRun(dryRun bool) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.DryRun = dryRun
+        }</span>
+}
+
+// WithInstructionsContent sets custom instructions content and creates the file
+func (env *TestEnv) WithInstructionsContent(t *testing.T, content string) ConfigOption <span class="cov0" title="0">{
+        t.Helper()
+        instructionsFile := env.CreateInstructionsFile(t, content)
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.InstructionsFile = instructionsFile
+        }</span>
+}
+
+// WithModelNames sets the model names
+func WithModelNames(names ...string) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.ModelNames = names
+        }</span>
+}
+
+// WithIncludeFilter sets the include filter
+func WithIncludeFilter(include string) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.Include = include
+        }</span>
+}
+
+// WithExcludeFilter sets the exclude filter
+func WithExcludeFilter(exclude string) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.Exclude = exclude
+        }</span>
+}
+
+// WithConfirmTokens sets the confirm tokens threshold
+func WithConfirmTokens(threshold int) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.ConfirmTokens = threshold
+        }</span>
+}
+
+// WithLogLevel sets the log level
+func WithLogLevel(level logutil.LogLevel) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.LogLevel = level
+        }</span>
+}
+
+// WithAuditLogFile sets the audit log file
+func WithAuditLogFile(file string) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.AuditLogFile = file
+        }</span>
+}
+
+// WithPaths sets the paths to analyze
+func WithPaths(paths ...string) ConfigOption <span class="cov0" title="0">{
+        return func(c *config.CliConfig) </span><span class="cov0" title="0">{
+                c.Paths = paths
+        }</span>
+}
+
+// SetupErrorResponse configures the mock API client to return an error
+// This simplifies testing error handling scenarios
+func (env *TestEnv) SetupErrorResponse(message string, statusCode int, suggestion string) <span class="cov0" title="0">{
+        apiError := &amp;gemini.APIError{
+                Message:    message,
+                StatusCode: statusCode,
+                Suggestion: suggestion,
+        }
+
+        // Configure the mock client to return the error for GenerateContent
+        env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) </span><span class="cov0" title="0">{
+                return nil, apiError
+        }</span>
+}
+
+// SetupTokenLimitExceeded configures the mock client to simulate a token limit exceeded scenario
+func (env *TestEnv) SetupTokenLimitExceeded(tokenCount int, modelLimit int) <span class="cov0" title="0">{
+        // Configure the token count response
+        env.MockClient.CountTokensFunc = func(ctx context.Context, prompt string) (*gemini.TokenCount, error) </span><span class="cov0" title="0">{
+                return &amp;gemini.TokenCount{Total: int32(tokenCount)}, nil
+        }</span>
+
+        // Configure the model info with a lower limit
+        <span class="cov0" title="0">env.MockClient.GetModelInfoFunc = func(ctx context.Context) (*gemini.ModelInfo, error) </span><span class="cov0" title="0">{
+                return &amp;gemini.ModelInfo{
+                        Name:             "test-model",
+                        InputTokenLimit:  int32(modelLimit),
+                        OutputTokenLimit: int32(8192),
+                }, nil
+        }</span>
+}
+
+// ExecuteArchitectWithConfig runs architect.Execute with the given config and verifies output
+// Returns the error from Execute so tests can further examine it
+func (env *TestEnv) ExecuteArchitectWithConfig(t *testing.T, ctx context.Context, cfg *config.CliConfig) error <span class="cov0" title="0">{
+        t.Helper()
+
+        // Create a mock API service
+        mockApiService := &amp;mockIntAPIService{
+                logger:     env.Logger,
+                mockClient: env.MockClient,
+        }
+
+        // Run architect.Execute with the configured parameters
+        return architect.Execute(
+                ctx,
+                cfg,
+                env.Logger,
+                env.AuditLogger,
+                mockApiService,
+        )
+}</span>
+
+// VerifyOutputFile checks if an output file exists and contains expected content
+func (env *TestEnv) VerifyOutputFile(t *testing.T, relativePath, expectedContent string) bool <span class="cov0" title="0">{
+        t.Helper()
+
+        // Full path to the file
+        fullPath := filepath.Join(env.TestDir, relativePath)
+
+        // Check if file exists
+        if _, err := os.Stat(fullPath); os.IsNotExist(err) </span><span class="cov0" title="0">{
+                t.Errorf("Output file was not created at %s", fullPath)
+                return false
+        }</span>
+
+        // Read the content
+        <span class="cov0" title="0">content, err := os.ReadFile(fullPath)
+        if err != nil </span><span class="cov0" title="0">{
+                t.Fatalf("Failed to read output file: %v", err)
+                return false
+        }</span>
+
+        // Check content
+        <span class="cov0" title="0">if !strings.Contains(string(content), expectedContent) </span><span class="cov0" title="0">{
+                t.Errorf("Output file does not contain expected content %q", expectedContent)
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// VerifyOutputFileNotExists checks that an output file does not exist
+func (env *TestEnv) VerifyOutputFileNotExists(t *testing.T, relativePath string) bool <span class="cov0" title="0">{
+        t.Helper()
+
+        // Full path to the file
+        fullPath := filepath.Join(env.TestDir, relativePath)
+
+        // Check if file exists
+        if _, err := os.Stat(fullPath); !os.IsNotExist(err) </span><span class="cov0" title="0">{
+                t.Errorf("Output file was created when it should not have been: %s", fullPath)
+                return false
+        }</span>
+
+        <span class="cov0" title="0">return true</span>
+}
+
+// SetupStandardTestFiles creates a standard set of test files in the /src directory
+// Returns the path to the created directory
+func (env *TestEnv) SetupStandardTestFiles(t *testing.T) string <span class="cov0" title="0">{
+        t.Helper()
+
+        // Create source directory
+        srcDir := env.CreateTestDirectory(t, "src")
+
+        // Create main.go
+        env.CreateGoSourceFile(t, "src/main.go", "")
+
+        // Create utils.go
+        env.CreateTestFile(t, "src/utils.go", `package main
+
+func add(a, b int) int {
+        return a + b
+}`)
+
+        return srcDir
+}</span>
+
+// RunStandardTest runs a standard test with configurable options
+// This encapsulates the common pattern of setting up a test environment,
+// configuring it, and running architect.Execute
+func (env *TestEnv) RunStandardTest(t *testing.T, opts ...ConfigOption) (error, string) <span class="cov0" title="0">{
+        t.Helper()
+
+        // Set up the mock client with standard responses
+        env.SetupMockGeminiClient()
+
+        // Create standard files
+        env.SetupStandardTestFiles(t)
+
+        // Create config with the provided options
+        cfg := env.CreateStandardConfig(t, opts...)
+
+        // Run architect.Execute
+        ctx := context.Background()
+        err := env.ExecuteArchitectWithConfig(t, ctx, cfg)
+
+        // Calculate the expected output file path
+        var outputPath string
+        if len(cfg.ModelNames) &gt; 0 </span><span class="cov0" title="0">{
+                modelName := cfg.ModelNames[0]
+                outputPath = filepath.Join("output", modelName+".md")
+        }</span>
+
+        <span class="cov0" title="0">return err, outputPath</span>
+}
+</pre>
+		
+		<pre class="file" id="file24" style="display: none">// internal/integration/test_runner.go
+package integration
+
+import (
+        "context"
+        "fmt"
+
+        "github.com/phrazzld/architect/internal/architect"
+        "github.com/phrazzld/architect/internal/config"
+        "github.com/phrazzld/architect/internal/gemini"
+        "github.com/phrazzld/architect/internal/logutil"
+)
+
+// mockIntAPIService implements the architect.APIService interface for testing
+// This type is actually used by running tests but wasn't detected by linting
+type mockIntAPIService struct {
+        logger     logutil.LoggerInterface
+        mockClient gemini.Client
+}
+
+// InitClient returns the mock client instead of creating a real one
+func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) <span class="cov8" title="1">{
+        // Always return the mock client, ignoring the API key, model name, and API endpoint
+        return s.mockClient, nil
+}</span>
+
+// ProcessResponse processes the API response and extracts content
+func (s *mockIntAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) <span class="cov8" title="1">{
+        // Check for nil result
+        if result == nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("result is nil")
+        }</span>
+
+        // Check for empty content
+        <span class="cov8" title="1">if result.Content == "" </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("empty content")
+        }</span>
+
+        // Get the original content - with the new architecture, we just return the content
+        // directly without any template processing
+        <span class="cov8" title="1">return result.Content, nil</span>
+}
+
+// IsEmptyResponseError checks if an error is related to empty API responses
+func (s *mockIntAPIService) IsEmptyResponseError(err error) bool <span class="cov0" title="0">{
+        if err == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">return err.Error() == "empty content" || err.Error() == "result is nil"</span>
+}
+
+// IsSafetyBlockedError checks if an error is related to safety filters
+func (s *mockIntAPIService) IsSafetyBlockedError(err error) bool <span class="cov0" title="0">{
+        if err == nil </span><span class="cov0" title="0">{
+                return false
+        }</span>
+        <span class="cov0" title="0">return err.Error() == "content blocked by safety filters"</span>
+}
+
+// GetErrorDetails extracts detailed information from an error
+func (s *mockIntAPIService) GetErrorDetails(err error) string <span class="cov0" title="0">{
+        if err == nil </span><span class="cov0" title="0">{
+                return ""
+        }</span>
+        <span class="cov0" title="0">return err.Error()</span>
+}
+
+// RunTestWithConfig runs the architect application with the provided test config and environment
+func RunTestWithConfig(
+        ctx context.Context,
+        testConfig *config.CliConfig,
+        env *TestEnv,
+) error <span class="cov8" title="1">{
+        // Create a mock API service directly without modifying any global variables
+        mockApiService := &amp;mockIntAPIService{
+                logger:     env.Logger,
+                mockClient: env.MockClient,
+        }
+
+        // Run the architect application using Execute with the mock API service
+        return architect.Execute(
+                ctx,
+                testConfig,
+                env.Logger,
+                env.AuditLogger,
+                mockApiService,
+        )
+}</span>
+</pre>
+		
+		<pre class="file" id="file25" style="display: none">// internal/logutil/logutil.go
 package logutil
 
 import (
@@ -3143,6 +5586,13 @@ func (l *Logger) SetPrefix(prefix string) <span class="cov8" title="1">{
         l.prefix = prefix
 }</span>
 
+// GetLevel returns the current log level
+func (l *Logger) GetLevel() LogLevel <span class="cov0" title="0">{
+        l.mu.Lock()
+        defer l.mu.Unlock()
+        return l.level
+}</span>
+
 // Println implements LoggerInterface by logging at info level
 func (l *Logger) Println(v ...interface{}) <span class="cov0" title="0">{
         l.Info(fmt.Sprintln(v...))
@@ -3170,7 +5620,7 @@ func ParseLogLevel(level string) (LogLevel, error) <span class="cov8" title="1">
 }
 </pre>
 		
-		<pre class="file" id="file17" style="display: none">// Package ratelimit provides concurrency control and rate limiting functionality
+		<pre class="file" id="file26" style="display: none">// Package ratelimit provides concurrency control and rate limiting functionality
 package ratelimit
 
 import (
@@ -3375,7 +5825,7 @@ func max(a, b int) int <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file18" style="display: none">// Package runutil provides utilities for generating and managing run names
+		<pre class="file" id="file27" style="display: none">// Package runutil provides utilities for generating and managing run names
 package runutil
 
 import (
@@ -3431,6 +5881,17 @@ func GenerateRunName() string <span class="cov8" title="1">{
         noun := nouns[randomSource.Intn(len(nouns))]
 
         return adjective + "-" + noun
+}</span>
+</pre>
+		
+		<pre class="file" id="file28" style="display: none">// main.go - Simple entry point for architect
+package main
+
+import "github.com/phrazzld/architect/cmd/architect"
+
+func main() <span class="cov0" title="0">{
+        // Delegate directly to the new main function in the cmd package
+        architect.Main()
 }</span>
 </pre>
 		

@@ -3,6 +3,8 @@ package logutil
 
 import (
 	"bytes"
+	"log"
+	"os"
 	"strings"
 	"testing"
 )
@@ -72,6 +74,118 @@ func TestLoggerPrefix(t *testing.T) {
 	logger.Info("Another message")
 	if !strings.Contains(buf.String(), newPrefix) {
 		t.Errorf("Log message does not contain new prefix %q", newPrefix)
+	}
+}
+
+func TestLoggerAllLevels(t *testing.T) {
+	buf := new(bytes.Buffer)
+	logger := NewLogger(DebugLevel, buf, "")
+
+	// Test all log levels
+	testCases := []struct {
+		logFunc func(string, ...interface{})
+		level   string
+		message string
+	}{
+		{logger.Debug, "DEBUG", "debug message"},
+		{logger.Info, "INFO", "info message"},
+		{logger.Warn, "WARN", "warn message"},
+		{logger.Error, "ERROR", "error message"},
+	}
+
+	for _, tc := range testCases {
+		buf.Reset()
+		tc.logFunc(tc.message)
+		output := buf.String()
+		if !strings.Contains(output, tc.level) {
+			t.Errorf("Expected log output to contain level %q, got: %s", tc.level, output)
+		}
+		if !strings.Contains(output, tc.message) {
+			t.Errorf("Expected log output to contain message %q, got: %s", tc.message, output)
+		}
+	}
+}
+
+func TestLoggerPrintFunctions(t *testing.T) {
+	buf := new(bytes.Buffer)
+	logger := NewLogger(DebugLevel, buf, "")
+
+	// Test Printf
+	buf.Reset()
+	logger.Printf("Format %s %d", "test", 123)
+	output := buf.String()
+	if !strings.Contains(output, "INFO") {
+		t.Errorf("Printf should log at INFO level, got: %s", output)
+	}
+	if !strings.Contains(output, "Format test 123") {
+		t.Errorf("Printf output incorrect, got: %s", output)
+	}
+
+	// Test Println
+	buf.Reset()
+	logger.Println("Line", "test")
+	output = buf.String()
+	if !strings.Contains(output, "INFO") {
+		t.Errorf("Println should log at INFO level, got: %s", output)
+	}
+	if !strings.Contains(output, "Line test") {
+		t.Errorf("Println output incorrect, got: %s", output)
+	}
+}
+
+func TestLoggerGetLevel(t *testing.T) {
+	logger := NewLogger(InfoLevel, os.Stderr, "")
+	if level := logger.GetLevel(); level != InfoLevel {
+		t.Errorf("GetLevel() = %v, want %v", level, InfoLevel)
+	}
+
+	logger.SetLevel(DebugLevel)
+	if level := logger.GetLevel(); level != DebugLevel {
+		t.Errorf("GetLevel() = %v, want %v", level, DebugLevel)
+	}
+}
+
+func TestNewLoggerDefaults(t *testing.T) {
+	// Test with nil writer
+	logger := NewLogger(InfoLevel, nil, "")
+	if logger.writer == nil {
+		t.Error("Logger writer should default to os.Stderr when nil is passed")
+	}
+}
+
+func TestStdLoggerAdapter(t *testing.T) {
+	buf := new(bytes.Buffer)
+	stdLogger := log.New(buf, "", log.LstdFlags)
+	adapter := NewStdLoggerAdapter(stdLogger)
+
+	testCases := []struct {
+		logFunc func(string, ...interface{})
+		level   string
+		message string
+	}{
+		{adapter.Debug, "[DEBUG]", "debug message"},
+		{adapter.Info, "[INFO]", "info message"},
+		{adapter.Warn, "[WARN]", "warn message"},
+		{adapter.Error, "[ERROR]", "error message"},
+	}
+
+	for _, tc := range testCases {
+		buf.Reset()
+		tc.logFunc(tc.message)
+		output := buf.String()
+		if !strings.Contains(output, tc.level) {
+			t.Errorf("Expected log output to contain level %q, got: %s", tc.level, output)
+		}
+		if !strings.Contains(output, tc.message) {
+			t.Errorf("Expected log output to contain message %q, got: %s", tc.message, output)
+		}
+	}
+
+	// Test Printf and Println
+	buf.Reset()
+	adapter.Printf("Format %s", "test")
+	if !strings.Contains(buf.String(), "Format test") {
+		t.Errorf("Printf output incorrect, got: %s", buf.String())
 	}
 }
 

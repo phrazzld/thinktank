@@ -3,6 +3,7 @@ package architect
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/gemini"
@@ -26,6 +27,35 @@ func (m *mockLogger) Info(format string, args ...interface{}) {
 
 func (m *mockLogger) Error(format string, args ...interface{}) {
 	// No-op for testing
+}
+
+// mockInfoLogger extends mockLogger to track Info and Error calls
+type mockInfoLogger struct {
+	mockLogger
+	infoCalled  bool
+	infoMsg     string
+	errorCalled bool
+	errorMsg    string
+}
+
+func (m *mockInfoLogger) Info(format string, args ...interface{}) {
+	m.infoCalled = true
+	m.infoMsg = format
+}
+
+func (m *mockInfoLogger) Error(format string, args ...interface{}) {
+	m.errorCalled = true
+	m.errorMsg = format
+}
+
+// Reset clears the state of the logger for a new test
+func (m *mockInfoLogger) Reset() {
+	m.debugCalled = false
+	m.debugArgs = nil
+	m.infoCalled = false
+	m.infoMsg = ""
+	m.errorCalled = false
+	m.errorMsg = ""
 }
 
 func TestGetTokenInfo(t *testing.T) {
@@ -294,7 +324,8 @@ func TestCheckTokenLimit(t *testing.T) {
 }
 
 func TestPromptForConfirmation(t *testing.T) {
-	logger := &mockLogger{}
+	// Create an enhanced mock logger that captures info messages
+	logger := &mockInfoLogger{}
 	mockClient := &gemini.MockClient{}
 
 	tokenManager, err := NewTokenManager(logger, mockClient)
@@ -304,21 +335,157 @@ func TestPromptForConfirmation(t *testing.T) {
 
 	// Test threshold = 0 (disabled)
 	t.Run("ThresholdDisabled", func(t *testing.T) {
+		logger.Reset()
 		result := tokenManager.PromptForConfirmation(5000, 0)
 		if !result {
 			t.Error("Expected true when threshold is disabled (0), got false")
+		}
+		// Verify no info logs were made since no prompt was needed
+		if logger.infoCalled {
+			t.Error("Expected no info logs for disabled threshold")
 		}
 	})
 
 	// Test threshold > tokenCount (no confirmation needed)
 	t.Run("ThresholdNotExceeded", func(t *testing.T) {
+		logger.Reset()
 		result := tokenManager.PromptForConfirmation(5000, 6000)
 		if !result {
 			t.Error("Expected true when token count is below threshold, got false")
 		}
+		// Verify no info logs were made since no prompt was needed
+		if logger.infoCalled {
+			t.Error("Expected no info logs when below threshold")
+		}
 	})
 
-	// Note: We can't easily test the interactive prompt behavior in a unit test
-	// since it depends on terminal input. In a real-world scenario, this would be
-	// better tested with a mock reader that can be injected for testing.
+	// Test confirmation prompt with "yes" response
+	t.Run("ConfirmationPromptWithYes", func(t *testing.T) {
+		// Save and restore stdin
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a pipe to simulate user input
+		r, w, _ := os.Pipe()
+		os.Stdin = r
+
+		// Write "yes" to the input
+		go func() {
+			w.Write([]byte("yes\n"))
+			w.Close()
+		}()
+
+		logger.Reset()
+		result := tokenManager.PromptForConfirmation(5000, 4000)
+
+		// Should return true for "yes"
+		if !result {
+			t.Error("Expected true for 'yes' response, got false")
+		}
+
+		// Verify the info logs were called for the prompt
+		if !logger.infoCalled {
+			t.Error("Expected info logs for confirmation prompt")
+		}
+	})
+
+	// Test confirmation prompt with "y" response
+	t.Run("ConfirmationPromptWithY", func(t *testing.T) {
+		// Save and restore stdin
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a pipe to simulate user input
+		r, w, _ := os.Pipe()
+		os.Stdin = r
+
+		// Write "y" to the input
+		go func() {
+			w.Write([]byte("y\n"))
+			w.Close()
+		}()
+
+		logger.Reset()
+		result := tokenManager.PromptForConfirmation(5000, 4000)
+
+		// Should return true for "y"
+		if !result {
+			t.Error("Expected true for 'y' response, got false")
+		}
+	})
+
+	// Test confirmation prompt with "no" response
+	t.Run("ConfirmationPromptWithNo", func(t *testing.T) {
+		// Save and restore stdin
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a pipe to simulate user input
+		r, w, _ := os.Pipe()
+		os.Stdin = r
+
+		// Write "no" to the input
+		go func() {
+			w.Write([]byte("no\n"))
+			w.Close()
+		}()
+
+		logger.Reset()
+		result := tokenManager.PromptForConfirmation(5000, 4000)
+
+		// Should return false for "no"
+		if result {
+			t.Error("Expected false for 'no' response, got true")
+		}
+	})
+
+	// Test confirmation prompt with empty response (default is "no")
+	t.Run("ConfirmationPromptWithEmptyResponse", func(t *testing.T) {
+		// Save and restore stdin
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a pipe to simulate user input
+		r, w, _ := os.Pipe()
+		os.Stdin = r
+
+		// Write just a newline (empty response)
+		go func() {
+			w.Write([]byte("\n"))
+			w.Close()
+		}()
+
+		logger.Reset()
+		result := tokenManager.PromptForConfirmation(5000, 4000)
+
+		// Should return false for empty response (default no)
+		if result {
+			t.Error("Expected false for empty response, got true")
+		}
+	})
+
+	// Test error reading from stdin
+	t.Run("ErrorReadingFromStdin", func(t *testing.T) {
+		// Save and restore stdin
+		oldStdin := os.Stdin
+		defer func() { os.Stdin = oldStdin }()
+
+		// Create a closed pipe to simulate read error
+		r, w, _ := os.Pipe()
+		w.Close() // Close the write end immediately to cause read error
+		os.Stdin = r
+
+		logger.Reset()
+		result := tokenManager.PromptForConfirmation(5000, 4000)
+
+		// Should return false on read error
+		if result {
+			t.Error("Expected false on stdin read error, got true")
+		}
+
+		// Verify the error was logged
+		if !logger.errorCalled {
+			t.Error("Expected error to be logged on stdin read error")
+		}
+	})
 }

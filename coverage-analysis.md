@@ -1,75 +1,88 @@
-# Coverage Analysis
+# Code Coverage Analysis
 
-## Overall Coverage
+## Summary
 
-The current test coverage is approximately 48.9% across the codebase. This is slightly lower than the estimated 50.7% in the plan, which may be due to not running tests for all packages because of the orchestrator test failure.
+After running the full test suite with coverage analysis, the overall code coverage is currently at **68.1%**. This is below the target of 80% set in the test plan.
 
-## Package Coverage Summary
+## Package Coverage Breakdown
 
-### High Coverage Packages (>80%)
-- `internal/architect/prompt`: 100.0%
-- `internal/runutil`: 100.0%
-- `internal/ratelimit`: 82.4%
-- `internal/auditlog`: 80.6%
+| Package | Coverage | Status |
+|---------|----------|--------|
+| github.com/phrazzld/architect/internal/integration | 36.3% | ❌ Well below target |
+| github.com/phrazzld/architect/internal/architect | 60.4% | ❌ Below target |
+| github.com/phrazzld/architect/internal/architect/modelproc | 64.2% | ❌ Below target |
+| github.com/phrazzld/architect/internal/logutil | 66.7% | ❌ Below target |
+| github.com/phrazzld/architect/internal/fileutil | 69.1% | ❌ Below target |
+| github.com/phrazzld/architect/cmd/architect | 75.6% | ❌ Below target |
+| github.com/phrazzld/architect/internal/auditlog | 80.6% | ✅ Meets target |
+| github.com/phrazzld/architect/internal/gemini | 80.3% | ✅ Meets target |
+| github.com/phrazzld/architect/internal/ratelimit | 82.4% | ✅ Meets target |
+| github.com/phrazzld/architect/internal/architect/orchestrator | 93.5% | ✅ Exceeds target |
+| github.com/phrazzld/architect/internal/architect/prompt | 100.0% | ✅ Fully covered |
+| github.com/phrazzld/architect/internal/config | 100.0% | ✅ Fully covered |
+| github.com/phrazzld/architect/internal/runutil | 100.0% | ✅ Fully covered |
 
-### Medium Coverage Packages (50-80%)
-- `cmd/architect`: 54.0%
-- `internal/fileutil`: 59.2%
-- `internal/architect/modelproc`: 64.2%
-- `internal/logutil`: 71.1%
+## Key Areas Needing Improvement
 
-### Low Coverage Packages (<50%)
-- `internal/gemini`: 2.3%
-- `internal/config`: 33.3%
-- `internal/architect/interfaces`: 0% (no tests)
-- `internal/architect/adapters.go`: 0% (no tests)
+### 1. Integration Package (36.3%)
+- Most test helper functions in `test_helpers.go` are not covered
+- Configuration helpers and verification methods are completely uncovered
+- Test runner methods for error cases need coverage
 
-## Critical Areas Requiring Tests
+### 2. Architect Package (60.4%)
+- API service methods (`api.go`) have 0% coverage
+- Error handling in API service lacks tests
+- File writing in `filewriter.go` has only 50% coverage
 
-### 1. Gemini Package (2.3% coverage)
-- **`errors.go`**: All functions (0% coverage)
-  - `Error()`, `Unwrap()`, `UserFacingError()`, `DebugInfo()`
-  - `IsAPIError()`, `GetErrorType()`, `FormatAPIError()`
-- **`gemini_client.go`**: All functions (0% coverage)
-  - `newGeminiClient()`, `GenerateContent()`, `CountTokens()`, `GetModelInfo()`
-  - `fetchModelInfo()`, `Close()`, `GetModelName()`, `GetTemperature()`
-  - `GetMaxOutputTokens()`, `GetTopP()`, `mapSafetyRatings()`
-- **`client.go`**: 
-  - `NewClient()` (0% coverage)
+### 3. ModelProc Package (64.2%)
+- `CheckTokenLimit` function has 0% coverage
+- `PromptForConfirmation` at 50% coverage
+- `GetTokenInfo` at 51.4% coverage
+- `Process` method at 70.7% coverage
 
-### 2. Config Package (33.3% coverage)
-- `DefaultConfig()` (0% coverage)
-- `ValidateConfig()` (0% coverage)
+### 4. LogUtil Package (66.7%)
+- Standard logger adapter methods have 0% coverage
+- Several logger methods (Warn, Error, Fatal, etc.) are not covered
 
-### 3. Command Package (54.0% coverage)
-- **`main.go`**: `Main()` (0% coverage)
-- **`cli.go`**: 
-  - `ParseFlags()` (0% coverage)
-  - `SetupLogging()` (0% coverage)
-- **`output.go`**:
-  - `NewFileWriter()` (0% coverage)
-  - `SaveToFile()` (0% coverage)
-- **`token.go`**:
-  - `PromptForConfirmation()` (18.2% coverage)
+### 5. FileUtil Package (69.1%)
+- Mock logger functions have 0% coverage (though these may not need test coverage as they are test helpers)
 
-### 4. FileUtil Package (59.2% coverage)
-- **`fileutil.go`**:
-  - `isGitIgnored()` (57.9% coverage)
+### 6. Cmd/Architect Package (75.6%)
+- `ParseFlags` function has 0% coverage
+- `Main` function has 0% coverage (though this is common as it's difficult to test)
+- Test helper methods have 0% coverage
 
-### 5. Mock Implementations
-- Many mock implementations have 0% coverage, particularly in `internal/gemini/mock_client.go` and `internal/fileutil/mock_logger.go`
+## Specific Low-Coverage Functions
 
-## Notable Issues During Testing
+The following functions have particularly low coverage and should be prioritized for additional tests:
 
-1. Found a nil pointer dereference in `internal/architect/orchestrator.TestIntegration_RateLimiting` that needs to be fixed.
+1. `gemini_client.go:GenerateContent` (8.7%)
+2. `architect/app.go:setupOutputDirectory` (46.2%)
+3. `architect/filewriter.go:SaveToFile` (50.0%)
+4. `architect/modelproc/processor.go:PromptForConfirmation` (50.0%)
+5. `architect/modelproc/processor.go:GetTokenInfo` (51.4%)
+6. `architect/token.go:GetTokenInfo` (51.4%)
+
+## Test Failures
+
+During testing, a failure was observed in the orchestrator package tests:
+
+```
+panic: runtime error: invalid memory address or nil pointer dereference
+[signal SIGSEGV: segmentation violation code=0x2 addr=0x40 pc=0x104aaba7c]
+
+goroutine 15 [running]:
+github.com/phrazzld/architect/internal/architect/modelproc.(*tokenManager).GetTokenInfo
+```
+
+This suggests there may be a bug in the modelproc tokenManager where it's trying to access a nil pointer.
 
 ## Recommendations
 
-1. Focus initial test implementation efforts on the `internal/gemini` package, which has the lowest coverage and is critical to the application.
-2. Create tests for adapter code and interfaces, which have no coverage.
-3. Complete the config package coverage.
-4. Improve file utility testing for edge cases.
-5. Add tests for the command package output and logging functions.
-6. Fix the nil pointer issue in the orchestrator tests.
+1. Start with adding tests for the integration package, which has the lowest coverage
+2. Fix the nil pointer dereference in the orchestrator/modelproc tests
+3. Add tests for key API service methods in the architect package
+4. Improve coverage of core functionality like GenerateContent
+5. Address the low-coverage functions identified above
 
-These findings align with the priorities in the PLAN.md, and the detailed function-level analysis will help target specific areas for test implementation.
+Achieving 80% coverage will require significant additions to the test suite across multiple packages.

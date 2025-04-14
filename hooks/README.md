@@ -10,6 +10,7 @@ The pre-commit hook runs automatically before each commit and performs the follo
 2. **Linting**: Runs `golangci-lint` to catch common issues
 3. **Build verification**: Ensures the code builds without errors
 4. **Quick tests**: Runs the fast unit tests
+5. **Large file detection**: Warns about Go files exceeding 1000 lines, encouraging refactoring
 
 ## Installation
 
