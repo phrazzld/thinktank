@@ -11,13 +11,13 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: Test code is removed from production file)
 
-- [ ] **Refactor large test file cli_test.go:**
+- [x] **Refactor large test file cli_test.go:**
   - **Action:** Break down the `cmd/architect/cli_test.go` file into multiple smaller, focused test files (e.g., `cli_args_test.go`, `cli_logging_test.go`, `cli_validation_test.go`). Each new file should test a specific aspect of the CLI functionality.
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: `cli_test.go` is refactored into smaller, focused files)
 
 ## Architectural Patterns (ARCHITECTURE_GUIDELINES.md)
-- [ ] **Add pre-commit check step to CI workflow:**
+- [x] **Add pre-commit check step to CI workflow:**
   - **Action:** Modify the `.github/workflows/ci.yml` file to include a new step that executes `pre-commit run --all-files`. This ensures that pre-commit checks are enforced in the CI pipeline.
   - **Depends On:** None
   - **AC Ref:** N/A (Implied: CI workflow runs pre-commit checks)

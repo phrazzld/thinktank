@@ -71,6 +71,14 @@ jobs:
           version: latest
           args: --timeout=5m
 
+      # Install and run pre-commit checks
+      - name: Install pre-commit
+        run: |
+          pip install pre-commit
+
+      - name: Run pre-commit checks
+        run: pre-commit run --all-files
+
   # Test job for running Go tests
   test:
     name: Test
