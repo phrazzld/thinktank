@@ -35,6 +35,7 @@ const (
 	defaultModel        = config.DefaultModel
 	apiKeyEnvVar        = config.APIKeyEnvVar
 	apiEndpointEnvVar   = config.APIEndpointEnvVar
+	openaiAPIKeyEnvVar  = config.OpenAIAPIKeyEnvVar
 	defaultFormat       = config.DefaultFormat
 	defaultExcludes     = config.DefaultExcludes
 	defaultExcludeNames = config.DefaultExcludeNames
@@ -42,6 +43,12 @@ const (
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
 func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) error {
+	return ValidateInputsWithEnv(config, logger, os.Getenv)
+}
+
+// ValidateInputsWithEnv checks if the configuration is valid and returns an error if not
+// This version takes a getenv function for easier testing
+func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterface, getenv func(string) string) error {
 	// Check for instructions file
 	if config.InstructionsFile == "" && !config.DryRun {
 		logger.Error("The required --instructions flag is missing.")
@@ -54,10 +61,35 @@ func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) er
 		return fmt.Errorf("no paths specified")
 	}
 
-	// Check for API key
-	if config.APIKey == "" {
+	// Check for API key based on model configuration
+	modelNeedsOpenAIKey := false
+	modelNeedsGeminiKey := false
+
+	// Check if any model is OpenAI or Gemini
+	for _, model := range config.ModelNames {
+		if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
+			strings.HasPrefix(strings.ToLower(model), "text-") ||
+			strings.Contains(strings.ToLower(model), "openai") {
+			modelNeedsOpenAIKey = true
+		} else {
+			// Default to Gemini for any other model
+			modelNeedsGeminiKey = true
+		}
+	}
+
+	// API key validation based on model requirements
+	if config.APIKey == "" && modelNeedsGeminiKey {
 		logger.Error("%s environment variable not set.", apiKeyEnvVar)
-		return fmt.Errorf("API key not set")
+		return fmt.Errorf("gemini API key not set")
+	}
+
+	// If any OpenAI model is used, check for OpenAI API key
+	if modelNeedsOpenAIKey {
+		openAIKey := getenv(openaiAPIKeyEnvVar)
+		if openAIKey == "" {
+			logger.Error("%s environment variable not set.", openaiAPIKeyEnvVar)
+			return fmt.Errorf("openAI API key not set")
+		}
 	}
 
 	// Check for model names
@@ -100,7 +132,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
-	flagSet.Var(modelFlag, "model", fmt.Sprintf("Gemini model to use for generation (repeatable). Default: %s", defaultModel))
+	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", defaultModel, defaultModel))
 
 	// Set custom usage message
 	flagSet.Usage = func() {
@@ -119,7 +151,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		flagSet.PrintDefaults()
 
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
-		fmt.Fprintf(os.Stderr, "  %s: Required. Your Google AI Gemini API key.\n", apiKeyEnvVar)
+		fmt.Fprintf(os.Stderr, "  %s: Required for Gemini models. Your Google AI Gemini API key.\n", apiKeyEnvVar)
+		fmt.Fprintf(os.Stderr, "  %s: Required for OpenAI models. Your OpenAI API key.\n", openaiAPIKeyEnvVar)
 	}
 
 	// Parse the flags

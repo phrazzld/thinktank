@@ -8,17 +8,19 @@ package config
 import (
 	"fmt"
 	"github.com/phrazzld/architect/internal/logutil"
+	"os"
 	"strings"
 )
 
 // Configuration constants
 const (
 	// Default values
-	DefaultOutputFile = "PLAN.md"
-	DefaultModel      = "gemini-2.5-pro-exp-03-25"
-	APIKeyEnvVar      = "GEMINI_API_KEY"
-	APIEndpointEnvVar = "GEMINI_API_URL"
-	DefaultFormat     = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
+	DefaultOutputFile  = "PLAN.md"
+	DefaultModel       = "gemini-2.5-pro-exp-03-25"
+	APIKeyEnvVar       = "GEMINI_API_KEY"
+	APIEndpointEnvVar  = "GEMINI_API_URL"
+	OpenAIAPIKeyEnvVar = "OPENAI_API_KEY"
+	DefaultFormat      = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 
 	// Default rate limiting values
 	DefaultMaxConcurrentRequests      = 5  // Default maximum concurrent API requests
@@ -174,10 +176,35 @@ func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
 		return fmt.Errorf("missing required --instructions flag")
 	}
 
-	// Check for API key (always required)
-	if config.APIKey == "" {
+	// Check for API key based on model configuration
+	modelNeedsOpenAIKey := false
+	modelNeedsGeminiKey := false
+
+	// Check if any model is OpenAI or Gemini
+	for _, model := range config.ModelNames {
+		if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
+			strings.HasPrefix(strings.ToLower(model), "text-") ||
+			strings.Contains(strings.ToLower(model), "openai") {
+			modelNeedsOpenAIKey = true
+		} else {
+			// Default to Gemini for any other model
+			modelNeedsGeminiKey = true
+		}
+	}
+
+	// API key validation based on model requirements
+	if config.APIKey == "" && modelNeedsGeminiKey {
 		logError("%s environment variable not set.", APIKeyEnvVar)
-		return fmt.Errorf("API key not set")
+		return fmt.Errorf("gemini API key not set")
+	}
+
+	// If any OpenAI model is used, check for OpenAI API key
+	if modelNeedsOpenAIKey {
+		openAIKey := os.Getenv(OpenAIAPIKeyEnvVar)
+		if openAIKey == "" {
+			logError("%s environment variable not set.", OpenAIAPIKeyEnvVar)
+			return fmt.Errorf("openAI API key not set")
+		}
 	}
 
 	// Check for model names (required unless in dry run mode)

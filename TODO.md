@@ -130,7 +130,7 @@ Modify `internal/architect/api.go` to detect the provider based on the model nam
 
 **Priority**: Must-Have
 
-### Task ID: TASK-007
+### Task ID: TASK-007 [x]
 
 **Title**: Update Configuration for OpenAI API Key
 
