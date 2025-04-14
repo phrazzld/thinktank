@@ -2,7 +2,6 @@
 
 ## sooner
 
-* support an arbitrary number of models. i want to be able to run architect for two or more models at a time. this will obviously require some changes to how we manage our flags -- and we want to keep things as simple as possible here -- but i want to be able to run 1 model, 2 models, 3 models or more and have one output file per model. i think we probably want to generate a "run name" in the style of github repos or heroku instances (ie "jazzy falcon" or "adjective noun" style) and then throw all the outputs in that output directory named something reasonable like modelname.md
 * increase github action testing threshold from 30 to 80, and meet it
 * support arbitrary providers
 * enforce convention over configuration
