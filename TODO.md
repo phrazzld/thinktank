@@ -134,7 +134,7 @@
   - **Depends On:** Enhance `fileutil` Tests for `shouldProcess`
   - **AC Ref:** Plan Section 4.2
 
-- [ ] **Task Title:** Add Error Handling Tests for File Operations
+- [x] **Task Title:** Add Error Handling Tests for File Operations
   - **Action:** Review `internal/fileutil` functions for file system interactions. Add tests that simulate errors like missing files, permission denied errors, or invalid paths, ensuring these errors are handled or propagated correctly.
   - **Depends On:** Enhance `fileutil` Tests for `isGitIgnored`
   - **AC Ref:** Plan Section 4.2

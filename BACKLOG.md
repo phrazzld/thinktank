@@ -2,6 +2,7 @@
 
 ## sooner
 
+* switch to pre-commit framework rather than hardcoded manual precommit hook
 * increase github action testing threshold from 30 to 80, and meet it
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 * support arbitrary providers
