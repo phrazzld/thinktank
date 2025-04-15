@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/openai/openai-go"
@@ -200,4 +201,167 @@ func TestUnknownModelFallback(t *testing.T) {
 		assert.True(t, modelInfo.InputTokenLimit > 0)
 		assert.True(t, modelInfo.OutputTokenLimit > 0)
 	})
+}
+
+// TestTruncatedResponse tests how the client handles truncated responses
+func TestTruncatedResponse(t *testing.T) {
+	// Create mock API that returns a response with "length" finish reason
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{
+					{
+						Message: openai.ChatCompletionMessage{
+							Content: "Truncated content",
+							Role:    "assistant",
+						},
+						FinishReason: "length",
+					},
+				},
+				Usage: openai.CompletionUsage{
+					PromptTokens:     10,
+					CompletionTokens: 100,
+					TotalTokens:      110,
+				},
+			}, nil
+		},
+	}
+
+	// Create the client with mocks
+	client := &openaiClient{
+		api:       mockAPI,
+		tokenizer: &mockTokenizer{},
+		modelName: "gpt-4",
+		modelLimits: map[string]*modelInfo{
+			"gpt-4": {
+				inputTokenLimit:  8192,
+				outputTokenLimit: 2048,
+			},
+		},
+	}
+
+	ctx := context.Background()
+
+	// Test truncated response
+	result, err := client.GenerateContent(ctx, "test prompt")
+	require.NoError(t, err)
+	assert.Equal(t, "Truncated content", result.Content)
+	assert.Equal(t, "length", result.FinishReason)
+	assert.Equal(t, int32(100), result.TokenCount)
+	assert.True(t, result.Truncated)
+}
+
+// TestEmptyResponseHandling tests how the client handles empty responses
+func TestEmptyResponseHandling(t *testing.T) {
+	// Create mock API that returns an empty response
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{},
+				Usage: openai.CompletionUsage{
+					PromptTokens:     10,
+					CompletionTokens: 0,
+					TotalTokens:      10,
+				},
+			}, nil
+		},
+	}
+
+	// Create the client with mocks
+	client := &openaiClient{
+		api:       mockAPI,
+		tokenizer: &mockTokenizer{},
+		modelName: "gpt-4",
+	}
+
+	ctx := context.Background()
+
+	// Test empty response handling
+	_, err := client.GenerateContent(ctx, "test prompt")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no completion choices returned")
+}
+
+// TestContentFilterHandling tests handling of content filter errors
+func TestContentFilterHandling(t *testing.T) {
+	// Create mock API that returns a content filter error
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+			return nil, &APIError{
+				Type:    ErrorTypeContentFiltered,
+				Message: "Content was filtered",
+			}
+		},
+	}
+
+	// Create the client with mocks
+	client := &openaiClient{
+		api:       mockAPI,
+		tokenizer: &mockTokenizer{},
+		modelName: "gpt-4",
+	}
+
+	ctx := context.Background()
+
+	// Test content filter handling
+	_, err := client.GenerateContent(ctx, "test prompt")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Content was filtered")
+}
+
+// TestModelEncodingSelection tests the getEncodingForModel function
+func TestModelEncodingSelection(t *testing.T) {
+	tests := []struct {
+		modelName        string
+		expectedEncoding string
+	}{
+		{"gpt-4", "cl100k_base"},
+		{"gpt-4-32k", "cl100k_base"},
+		{"gpt-4-turbo", "cl100k_base"},
+		{"gpt-4o", "cl100k_base"},
+		{"gpt-3.5-turbo", "cl100k_base"},
+		{"gpt-3.5-turbo-16k", "cl100k_base"},
+		{"text-embedding-ada-002", "cl100k_base"},
+		{"text-davinci-003", "p50k_base"}, // Older model should use p50k_base
+		{"unknown-model", "p50k_base"},    // Unknown models should use p50k_base
+	}
+
+	for _, test := range tests {
+		t.Run(test.modelName, func(t *testing.T) {
+			encoding := getEncodingForModel(test.modelName)
+			assert.Equal(t, test.expectedEncoding, encoding)
+		})
+	}
+}
+
+// TestNewClientErrorHandling tests error handling in NewClient
+func TestNewClientErrorHandling(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test with empty API key
+	err := os.Unsetenv("OPENAI_API_KEY")
+	if err != nil {
+		t.Fatalf("Failed to unset OPENAI_API_KEY: %v", err)
+	}
+	client, err := NewClient("gpt-4")
+	assert.Error(t, err)
+	assert.Nil(t, client)
+	assert.Contains(t, err.Error(), "OPENAI_API_KEY environment variable not set")
+
+	// Set an invalid API key (too short)
+	err = os.Setenv("OPENAI_API_KEY", "invalid-key")
+	if err != nil {
+		t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+	}
+	client, err = NewClient("gpt-4")
+	// This should succeed since we're just creating the client (error would occur on API calls)
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
 }

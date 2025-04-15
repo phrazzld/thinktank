@@ -88,7 +88,7 @@ Create `internal/openai/openai_client.go` implementing the `llm.LLMClient` inter
 
 **Priority**: Must-Have
 
-### Task ID: TASK-005 [~]
+### Task ID: TASK-005 [x]
 
 **Title**: Create OpenAI Client Tests
 
