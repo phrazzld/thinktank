@@ -345,7 +345,7 @@ Update tests in the orchestrator package to use the LLMClient interface instead 
 
 **Priority**: Must-Have
 
-### Task ID: TASK-011
+### Task ID: TASK-011 [x]
 
 **Title**: Add Integration Tests for Multi-Provider Support
 
