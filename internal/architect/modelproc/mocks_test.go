@@ -163,57 +163,6 @@ func (m *mockLLMClient) Close() error {
 	return nil
 }
 
-type mockLogger struct {
-	infoFunc    func(format string, args ...interface{})
-	debugFunc   func(format string, args ...interface{})
-	warnFunc    func(format string, args ...interface{})
-	errorFunc   func(format string, args ...interface{})
-	printlnFunc func(args ...interface{})
-	printfFunc  func(format string, args ...interface{})
-}
-
-func (m *mockLogger) Debug(format string, args ...interface{}) {
-	if m.debugFunc != nil {
-		m.debugFunc(format, args...)
-	}
-}
-
-func (m *mockLogger) Info(format string, args ...interface{}) {
-	if m.infoFunc != nil {
-		m.infoFunc(format, args...)
-	}
-}
-
-func (m *mockLogger) Warn(format string, args ...interface{}) {
-	if m.warnFunc != nil {
-		m.warnFunc(format, args...)
-	}
-}
-
-func (m *mockLogger) Error(format string, args ...interface{}) {
-	if m.errorFunc != nil {
-		m.errorFunc(format, args...)
-	}
-}
-
-func (m *mockLogger) Fatal(format string, args ...interface{}) {
-	// In tests, we don't want to exit, so just log
-	if m.errorFunc != nil {
-		m.errorFunc("FATAL: "+format, args...)
-	}
-}
-
-func (m *mockLogger) Println(args ...interface{}) {
-	if m.printlnFunc != nil {
-		m.printlnFunc(args...)
-	}
-}
-
-func (m *mockLogger) Printf(format string, args ...interface{}) {
-	if m.printfFunc != nil {
-		m.printfFunc(format, args...)
-	}
-}
 
 type mockAuditLogger struct {
 	logFunc   func(entry auditlog.AuditEntry) error
