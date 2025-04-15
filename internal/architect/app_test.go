@@ -578,7 +578,7 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
 	mockAPIService := NewMockAPIService()
-	mockAPIService.initClientErr = errors.New("API client initialization error")
+	mockAPIService.initLLMClientErr = errors.New("API client initialization error")
 	mockOrchestrator := NewMockOrchestrator()
 
 	// Save original constructor for orchestrator

@@ -12,7 +12,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
-- [ ] **Task Title:** Update tests to use provider-agnostic methods
+- [x] **Task Title:** Update tests to use provider-agnostic methods
   - **Action:** Modify test files that currently use the deprecated `InitClient` and `ProcessResponse` methods to use the provider-agnostic `InitLLMClient` and `ProcessLLMResponse` methods instead. This forms Phase 1 of the deprecation plan.
   - **Depends On:** Evaluate necessity of deprecated API methods
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)

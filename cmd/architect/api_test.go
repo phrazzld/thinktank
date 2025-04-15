@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -50,7 +50,7 @@ func TestNewAPIService(t *testing.T) {
 
 // Since we can no longer access internal fields, we'll depend on the
 // public interface behavior to verify correctness
-func TestInitClient(t *testing.T) {
+func TestInitLLMClient(t *testing.T) {
 	// Define test cases that don't require modifying internals
 	testCases := []struct {
 		name      string
@@ -97,7 +97,7 @@ func TestInitClient(t *testing.T) {
 			defer cancel()
 
 			// Call the method being tested
-			client, err := api.InitClient(ctx, tc.apiKey, tc.modelName, "")
+			client, err := api.InitLLMClient(ctx, tc.apiKey, tc.modelName, "")
 
 			// Check error expectations
 			if tc.wantErr && err == nil {
@@ -114,18 +114,18 @@ func TestInitClient(t *testing.T) {
 	}
 }
 
-// TestProcessResponse tests the ProcessResponse method of APIService
-func TestProcessResponse(t *testing.T) {
+// TestProcessLLMResponse tests the ProcessLLMResponse method of APIService
+func TestProcessLLMResponse(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		name        string
-		result      *gemini.GenerationResult
+		result      *llm.ProviderResult
 		wantContent string
 		wantErr     bool
 	}{
 		{
 			name: "Successful Response",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "This is valid content",
 				FinishReason: "STOP",
 			},
@@ -140,7 +140,7 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Empty Content with Finish Reason",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "",
 				FinishReason: "SAFETY",
 			},
@@ -149,7 +149,7 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Whitespace-only Content",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "   \n\t   ",
 				FinishReason: "STOP",
 			},
@@ -158,9 +158,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Safety Blocked",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "HARM_CATEGORY_DANGEROUS",
 						Blocked:  true,
@@ -172,9 +172,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Multiple Safety Categories",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "CATEGORY_1",
 						Blocked:  true,
@@ -190,9 +190,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Safety Ratings but Not Blocked",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "CATEGORY_1",
 						Blocked:  false,
@@ -211,7 +211,7 @@ func TestProcessResponse(t *testing.T) {
 			api := NewAPIService(logger)
 
 			// Call method being tested
-			content, err := api.ProcessResponse(tc.result)
+			content, err := api.ProcessLLMResponse(tc.result)
 
 			// Check error expectation
 			if tc.wantErr && err == nil {
@@ -226,9 +226,9 @@ func TestProcessResponse(t *testing.T) {
 			}
 
 			// For safety blocked cases, verify error type
-			if tc.result != nil && len(tc.result.SafetyRatings) > 0 {
-				for _, rating := range tc.result.SafetyRatings {
-					if rating.Blocked && !api.IsSafetyBlockedError(err) {
+			if tc.result != nil && len(tc.result.SafetyInfo) > 0 {
+				for _, safety := range tc.result.SafetyInfo {
+					if safety.Blocked && !api.IsSafetyBlockedError(err) {
 						t.Errorf("Expected safety blocked error for blocked content")
 					}
 				}
