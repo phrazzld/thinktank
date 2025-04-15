@@ -52,7 +52,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Duplicated test function)
 
-- [ ] **Task Title:** Reinstate minimal test coverage for deprecated InitClient method
+- [x] **Task Title:** Reinstate minimal test coverage for deprecated InitClient method
   - **Action:** Add a minimal test case back to the appropriate test file to cover the basic functionality of the deprecated `InitClient` method, ensuring it doesn't break unexpectedly while it still exists. This test can be removed if/when the deprecated method is removed.
   - **Depends On:** Evaluate necessity of deprecated API methods
   - **AC Ref:** N/A (Refers to Issue: Removed test for deprecated method)
