@@ -401,6 +401,7 @@ func TestIsEmptyResponseError(t *testing.T) {
 		err      error
 		expected bool
 	}{
+		// Standard cases
 		{
 			name:     "Empty Response Error",
 			err:      errors.New("API returned empty response"),
@@ -426,13 +427,73 @@ func TestIsEmptyResponseError(t *testing.T) {
 			err:      nil,
 			expected: false,
 		},
+
+		// Provider-specific variations - Gemini
+		{
+			name:     "Gemini Empty Candidates",
+			err:      errors.New("Gemini API returned response with empty candidates array"),
+			expected: true,
+		},
+		{
+			name:     "Gemini Zero Candidates",
+			err:      errors.New("Gemini model returned zero candidates in response"),
+			expected: true,
+		},
+
+		// Provider-specific variations - OpenAI
+		{
+			name:     "OpenAI Empty Response",
+			err:      errors.New("The OpenAI API returned an empty response"),
+			expected: true,
+		},
+		{
+			name:     "OpenAI Completion Empty",
+			err:      errors.New("OpenAI API completion returned empty content"),
+			expected: true,
+		},
+
+		// Capitalization variations
+		{
+			name:     "Mixed Case Empty Response",
+			err:      errors.New("API returned Empty Response from model"),
+			expected: true,
+		},
+		{
+			name:     "Upper Case Empty Content",
+			err:      errors.New("EMPTY CONTENT received from API"),
+			expected: true,
+		},
+
+		// Sentence structure variations
+		{
+			name:     "Response Contains Empty Content",
+			err:      errors.New("Response from API contains empty content"),
+			expected: true,
+		},
+		{
+			name:     "No Output Generated",
+			err:      errors.New("No output was generated, received empty result"),
+			expected: true,
+		},
+
+		// Edge cases - should not match
+		{
+			name:     "Not Empty But Similar",
+			err:      errors.New("Response is incomplete"),
+			expected: false,
+		},
+		{
+			name:     "Empty Word In Different Context",
+			err:      errors.New("The empty folder was not found"),
+			expected: false,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result := apiService.IsEmptyResponseError(tc.err)
 			if result != tc.expected {
-				t.Errorf("Expected IsEmptyResponseError to return %v, got %v", tc.expected, result)
+				t.Errorf("Expected IsEmptyResponseError to return %v, got %v for error: %v", tc.expected, result, tc.err)
 			}
 		})
 	}
@@ -450,6 +511,7 @@ func TestIsSafetyBlockedError(t *testing.T) {
 		err      error
 		expected bool
 	}{
+		// Standard cases
 		{
 			name:     "Safety Filter Error",
 			err:      errors.New("content blocked by safety filters"),
@@ -475,13 +537,88 @@ func TestIsSafetyBlockedError(t *testing.T) {
 			err:      nil,
 			expected: false,
 		},
+
+		// Provider-specific variations - Gemini
+		{
+			name:     "Gemini Safety Block",
+			err:      errors.New("Gemini model blocked response due to safety considerations"),
+			expected: true,
+		},
+		{
+			name:     "Gemini Blocked Candidate",
+			err:      errors.New("Candidate was blocked by safety settings in Gemini API"),
+			expected: true,
+		},
+		{
+			name:     "Gemini HARM Category",
+			err:      errors.New("Response blocked - HARM_CATEGORY_DANGEROUS rating above threshold"),
+			expected: true,
+		},
+
+		// Provider-specific variations - OpenAI
+		{
+			name:     "OpenAI Content Filter",
+			err:      errors.New("OpenAI content filter flagged the request as inappropriate"),
+			expected: true,
+		},
+		{
+			name:     "OpenAI Moderation Error",
+			err:      errors.New("content_filter:The response was flagged by content moderation"),
+			expected: true,
+		},
+		{
+			name:     "OpenAI Content Policy",
+			err:      errors.New("The content violates OpenAI's content policy"),
+			expected: true,
+		},
+
+		// Variations in terminology across providers
+		{
+			name:     "Generic Moderation Block",
+			err:      errors.New("Content was blocked by moderation system"),
+			expected: true,
+		},
+		{
+			name:     "Harmful Content Error",
+			err:      errors.New("Request rejected due to potentially harmful content"),
+			expected: false, // doesn't contain our specific keywords
+		},
+		{
+			name:     "Toxicity Filter",
+			err:      errors.New("Response filtered due to toxicity score"),
+			expected: true, // contains 'filter'
+		},
+
+		// Case variations
+		{
+			name:     "Mixed Case Safety",
+			err:      errors.New("Content blocked by SAFETY settings"),
+			expected: true,
+		},
+		{
+			name:     "Upper Case Content Policy",
+			err:      errors.New("CONTENT POLICY VIOLATION DETECTED"),
+			expected: true,
+		},
+
+		// Edge cases
+		{
+			name:     "Safety Word In Different Context",
+			err:      errors.New("Please review safety instructions before proceeding"),
+			expected: true, // This would currently match, showing a potential false positive
+		},
+		{
+			name:     "Similar But Not Safety Error",
+			err:      errors.New("Request failed due to server policy enforcement"),
+			expected: false,
+		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result := apiService.IsSafetyBlockedError(tc.err)
 			if result != tc.expected {
-				t.Errorf("Expected IsSafetyBlockedError to return %v, got %v", tc.expected, result)
+				t.Errorf("Expected IsSafetyBlockedError to return %v, got %v for error: %v", tc.expected, result, tc.err)
 			}
 		})
 	}

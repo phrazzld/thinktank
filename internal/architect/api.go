@@ -344,11 +344,25 @@ func (s *apiService) IsEmptyResponseError(err error) bool {
 		return true
 	}
 
-	// Also check the error message content for tests
-	errMsg := err.Error()
-	return strings.Contains(errMsg, "empty response") ||
+	// Convert the error message to lowercase for case-insensitive matching
+	errMsg := strings.ToLower(err.Error())
+
+	// Check for common empty response phrases
+	if strings.Contains(errMsg, "empty response") ||
 		strings.Contains(errMsg, "empty content") ||
-		strings.Contains(errMsg, "empty output")
+		strings.Contains(errMsg, "empty output") ||
+		strings.Contains(errMsg, "empty result") {
+		return true
+	}
+
+	// Check for provider-specific empty response patterns
+	if strings.Contains(errMsg, "zero candidates") ||
+		strings.Contains(errMsg, "empty candidates") ||
+		strings.Contains(errMsg, "no output") {
+		return true
+	}
+
+	return false
 }
 
 // IsSafetyBlockedError checks if an error is related to safety filters.
@@ -382,11 +396,26 @@ func (s *apiService) IsSafetyBlockedError(err error) bool {
 		return true
 	}
 
-	// Also check the error message content for tests
-	errMsg := err.Error()
-	return strings.Contains(errMsg, "safety") ||
+	// Convert to lowercase for case-insensitive matching
+	errMsg := strings.ToLower(err.Error())
+
+	// Check for common safety-related phrases
+	if strings.Contains(errMsg, "safety") ||
 		strings.Contains(errMsg, "content policy") ||
-		strings.Contains(errMsg, "content filter")
+		strings.Contains(errMsg, "content filter") ||
+		strings.Contains(errMsg, "content_filter") {
+		return true
+	}
+
+	// Check for provider-specific moderation terminology
+	if strings.Contains(errMsg, "moderation") ||
+		strings.Contains(errMsg, "blocked") ||
+		strings.Contains(errMsg, "filtered") ||
+		strings.Contains(errMsg, "harm_category") {
+		return true
+	}
+
+	return false
 }
 
 // GetErrorDetails extracts detailed information from an error.

@@ -32,7 +32,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)
 
-- [ ] **Task Title:** Enhance tests for error helper string matching variations
+- [x] **Task Title:** Enhance tests for error helper string matching variations
   - **Action:** Update the tests for `IsEmptyResponseError` and `IsSafetyBlockedError` in `internal/architect/api_test.go` to cover potential variations in error message strings from different providers to improve robustness against future changes.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)
