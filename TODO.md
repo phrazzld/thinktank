@@ -7,7 +7,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Direct `os.Getenv` use in config validation)
 
-- [ ] **Task Title:** Evaluate necessity of deprecated API methods
+- [x] **Task Title:** Evaluate necessity of deprecated API methods
   - **Action:** Analyze the codebase (`internal/architect/api.go`) to determine if the deprecated `InitClient` and `ProcessResponse` methods, along with the `llmToGeminiClientAdapter`, are still required internally or by external consumers. Document findings on whether they can be safely removed.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
