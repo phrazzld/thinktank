@@ -44,51 +44,6 @@ func formatLog(format string, args ...interface{}) string {
 	return format // Simplified for tests
 }
 
-// mockLLMClient mocks an LLM client for testing
-type mockLLMClient struct {
-	modelName     string
-	tokenCount    int32
-	responseText  string
-	responseError error
-}
-
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	if m.responseError != nil {
-		return nil, m.responseError
-	}
-	return &llm.ProviderResult{
-		Content:    m.responseText,
-		TokenCount: 100,
-	}, nil
-}
-
-func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	if m.responseError != nil {
-		return nil, m.responseError
-	}
-	return &llm.ProviderTokenCount{
-		Total: m.tokenCount,
-	}, nil
-}
-
-func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	if m.responseError != nil {
-		return nil, m.responseError
-	}
-	return &llm.ProviderModelInfo{
-		Name:             m.modelName,
-		InputTokenLimit:  32000,
-		OutputTokenLimit: 8000,
-	}, nil
-}
-
-func (m *mockLLMClient) GetModelName() string {
-	return m.modelName
-}
-
-func (m *mockLLMClient) Close() error {
-	return nil
-}
 
 // These functions (newGeminiClientWrapperForTest and newOpenAIClientWrapperForTest)
 // are defined in api_test_helper.go
