@@ -1,58 +1,63 @@
 # TODO
 
-## Code Review Implementation Tasks
+## Provider-Agnostic Architecture Migration Tasks
 
-- [x] **Task Title:** Refactor config validation to use injectable getenv
-  - **Action:** Modify `internal/config/config.go:ValidateConfig` to accept a `getenv func(string) string` parameter instead of calling `os.Getenv` directly. Update call sites and tests accordingly. This improves testability by allowing environment variables to be mocked during tests.
+- [x] **Task Title:** Remove deprecated methods from APIService interface
+  - **Action:** Update `internal/architect/interfaces/interfaces.go` to remove the deprecated `InitClient` and `ProcessResponse` methods from the APIService interface definition.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: Direct `os.Getenv` use in config validation)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Evaluate necessity of deprecated API methods
-  - **Action:** Analyze the codebase (`internal/architect/api.go`) to determine if the deprecated `InitClient` and `ProcessResponse` methods, along with the `llmToGeminiClientAdapter`, are still required internally or by external consumers. Document findings on whether they can be safely removed.
+- [ ] **Task Title:** Remove deprecated method implementations from API service
+  - **Action:** Update `internal/architect/api.go` to remove the deprecated `InitClient` and `ProcessResponse` method implementations and all references to the compatibility package.
+  - **Depends On:** Remove deprecated methods from APIService interface
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Delete the compatibility package
+  - **Action:** Remove the entire `internal/architect/compat` directory containing `compat.go` and `compat_test.go`.
+  - **Depends On:** Remove deprecated method implementations from API service
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Update modelproc package to use provider-agnostic methods
+  - **Action:** Refactor `internal/architect/modelproc/processor.go` and `internal/architect/modelproc/processor_llm_test.go` to use only provider-agnostic methods like `InitLLMClient` and `ProcessLLMResponse`.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Update tests to use provider-agnostic methods
-  - **Action:** Modify test files that currently use the deprecated `InitClient` and `ProcessResponse` methods to use the provider-agnostic `InitLLMClient` and `ProcessLLMResponse` methods instead. This forms Phase 1 of the deprecation plan.
-  - **Depends On:** Evaluate necessity of deprecated API methods
-  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
-
-- [x] **Task Title:** Move deprecated API methods to compatibility package
-  - **Action:** Move the deprecated methods (`InitClient`, `ProcessResponse`) and the adapter (`llmToGeminiClientAdapter`) in `internal/architect/api.go` to a separate compatibility package with clear documentation about the timeline for removal. This forms Phase 2 of the deprecation plan.
-  - **Depends On:** Update tests to use provider-agnostic methods, Update app.Execute to use InitLLMClient directly
-  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
-
-- [x] **Task Title:** Plan for complete removal of deprecated methods
-  - **Action:** Document the process and timeline for completely removing the deprecated methods after the compatibility period. Create release notes for this breaking change and communicate it to any potential external consumers. This forms Phase 3 of the deprecation plan.
-  - **Depends On:** Move deprecated API methods to compatibility package
-  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
-
-- [x] **Task Title:** Add comments explaining error helper string matching
-  - **Action:** Add explicit comments to the error helper methods (`IsEmptyResponseError`, `IsSafetyBlockedError`) in `internal/architect/api.go` explaining why string matching is used for provider-agnostic checks and the potential risks if error messages change.
+- [ ] **Task Title:** Update adapter tests to use provider-agnostic methods
+  - **Action:** Refactor `internal/architect/api_adapter_test.go` and `internal/architect/adapters_test.go` to use only provider-agnostic methods and remove references to deprecated methods.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Enhance tests for error helper string matching variations
-  - **Action:** Update the tests for `IsEmptyResponseError` and `IsSafetyBlockedError` in `internal/architect/api_test.go` to cover potential variations in error message strings from different providers to improve robustness against future changes.
+- [ ] **Task Title:** Update mocks in test files to remove deprecated methods
+  - **Action:** Update all mock implementations in test files (like `internal/architect/modelproc/mocks_test.go`) to remove deprecated methods and use only provider-agnostic interfaces.
+  - **Depends On:** Remove deprecated methods from APIService interface
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Update orchestrator tests to use provider-agnostic methods
+  - **Action:** Refactor all orchestrator test files in `internal/architect/orchestrator/` that use deprecated methods to use the provider-agnostic alternatives.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Consider adding error categorization to LLMClient interface
-  - **Action:** Evaluate the feasibility and benefit of adding methods to the `llm.LLMClient` interface to expose categorized errors (e.g., rate limit, auth, server error) if underlying provider clients support it. This could improve error logging specificity in `internal/architect/modelproc/processor.go`.
+- [ ] **Task Title:** Update integration tests to use provider-agnostic methods
+  - **Action:** Refactor integration tests in `internal/integration/` directory that use deprecated methods, especially `multi_model_test.go` and `test_runner.go`.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: Less specific error logging in modelproc)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Update app.Execute to use InitLLMClient directly
-  - **Action:** Modify `internal/architect/app.go:Execute` to initialize the reference client using `apiService.InitLLMClient` directly, removing the use of the deprecated `apiService.InitClient` and the subsequent `gemini.AsLLMClient` adaptation.
+- [ ] **Task Title:** Simplify gemini package to focus on LLM interface
+  - **Action:** Update `internal/gemini/gemini_client.go` to focus on the LLM interface implementation and remove redundant methods that were only needed for the compatibility layer.
+  - **Depends On:** Remove deprecated methods from APIService interface
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Remove all remaining references to deprecated methods
+  - **Action:** Run a project-wide search for any remaining references to `InitClient` and `ProcessResponse` and update them to use provider-agnostic alternatives.
+  - **Depends On:** Update all other tasks above
+  - **AC Ref:** N/A
+
+- [ ] **Task Title:** Update app.Execute to use provider-agnostic error handling
+  - **Action:** Refactor error handling in `internal/architect/app.go` to ensure it leverages the provider-agnostic error utilities and doesn't rely on any Gemini-specific error handling.
   - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: Deprecated client initialization)
+  - **AC Ref:** N/A
 
-- [x] **Task Title:** Remove duplicate TestProviderDetection implementation
-  - **Action:** Identify the duplicate `TestProviderDetection` function definitions in `internal/architect/api_test.go` and `internal/architect/api_provider_test.go`. Consolidate the test logic into one file (preferably `api_provider_test.go`) and remove the duplicate implementation.
-  - **Depends On:** None
-  - **AC Ref:** N/A (Refers to Issue: Duplicated test function)
-
-- [x] **Task Title:** Reinstate minimal test coverage for deprecated InitClient method
-  - **Action:** Add a minimal test case back to the appropriate test file to cover the basic functionality of the deprecated `InitClient` method, ensuring it doesn't break unexpectedly while it still exists. This test can be removed if/when the deprecated method is removed.
-  - **Depends On:** Evaluate necessity of deprecated API methods
-  - **AC Ref:** N/A (Refers to Issue: Removed test for deprecated method)
+- [ ] **Task Title:** Clean up imports across the codebase
+  - **Action:** Remove unnecessary imports of the gemini package in files that only need the provider-agnostic interfaces, replacing them with imports of the llm package where appropriate.
+  - **Depends On:** All other tasks
+  - **AC Ref:** N/A
