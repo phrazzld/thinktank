@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/phrazzld/architect/internal/llm"
 )
 
 // ErrorType represents different categories of errors that can occur when using the Gemini API
@@ -118,6 +120,36 @@ func (e *APIError) DebugInfo() string {
 
 	return sb.String()
 }
+
+// Category implements the llm.CategorizedError interface, mapping Gemini error types
+// to standardized error categories for provider-agnostic error handling.
+func (e *APIError) Category() llm.ErrorCategory {
+	switch e.Type {
+	case ErrorTypeAuth:
+		return llm.CategoryAuth
+	case ErrorTypeRateLimit:
+		return llm.CategoryRateLimit
+	case ErrorTypeInvalidRequest:
+		return llm.CategoryInvalidRequest
+	case ErrorTypeNotFound:
+		return llm.CategoryNotFound
+	case ErrorTypeServer:
+		return llm.CategoryServer
+	case ErrorTypeNetwork:
+		return llm.CategoryNetwork
+	case ErrorTypeCancelled:
+		return llm.CategoryCancelled
+	case ErrorTypeInputLimit:
+		return llm.CategoryInputLimit
+	case ErrorTypeContentFiltered:
+		return llm.CategoryContentFiltered
+	default:
+		return llm.CategoryUnknown
+	}
+}
+
+// Ensure APIError implements the llm.CategorizedError interface (compile-time check)
+var _ llm.CategorizedError = (*APIError)(nil)
 
 // IsAPIError checks if an error is an APIError and returns it
 func IsAPIError(err error) (*APIError, bool) {

@@ -323,7 +323,26 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	tokenInfo, err := NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient).GetTokenInfo(ctx, stitchedPrompt)
 	if err != nil {
 		p.logger.Error("Token count check failed for model %s: %v", modelName, err)
-		p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+
+		// Check for categorized errors
+		if catErr, isCat := llm.IsCategorizedError(err); isCat {
+			switch catErr.Category() {
+			case llm.CategoryRateLimit:
+				p.logger.Error("Rate limit exceeded during token counting. Consider adjusting --max-concurrent and --rate-limit flags.")
+			case llm.CategoryAuth:
+				p.logger.Error("Authentication failed during token counting. Check that your API key is valid and has not expired.")
+			case llm.CategoryInputLimit:
+				p.logger.Error("Input is too large to count tokens. Try reducing context size significantly.")
+			case llm.CategoryNetwork:
+				p.logger.Error("Network error during token counting. Check your internet connection and try again.")
+			case llm.CategoryServer:
+				p.logger.Error("Server error during token counting. This is typically temporary, wait and try again.")
+			default:
+				p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+			}
+		} else {
+			p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
+		}
 
 		return fmt.Errorf("token count check failed for model %s: %w", modelName, err)
 	}
@@ -384,6 +403,34 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		// Check if it's a safety-blocked error
 		if p.apiService.IsSafetyBlockedError(err) {
 			errorType = "SafetyBlockedError"
+		} else {
+			// Use the new error categorization if available
+			if catErr, isCat := llm.IsCategorizedError(err); isCat {
+				// Get more specific error category information
+				switch catErr.Category() {
+				case llm.CategoryRateLimit:
+					errorType = "RateLimitError"
+					p.logger.Error("Rate limit or quota exceeded. Consider adjusting --max-concurrent and --rate-limit flags.")
+				case llm.CategoryAuth:
+					errorType = "AuthenticationError"
+					p.logger.Error("Authentication failed. Check that your API key is valid and has not expired.")
+				case llm.CategoryInputLimit:
+					errorType = "InputLimitError"
+					p.logger.Error("Input token limit exceeded. Try reducing context with --include/--exclude flags.")
+				case llm.CategoryContentFiltered:
+					errorType = "ContentFilteredError"
+					p.logger.Error("Content was filtered by safety settings. Review and modify your input.")
+				case llm.CategoryNetwork:
+					errorType = "NetworkError"
+					p.logger.Error("Network error occurred. Check your internet connection and try again.")
+				case llm.CategoryServer:
+					errorType = "ServerError"
+					p.logger.Error("Server error occurred. This is typically a temporary issue. Wait and try again.")
+				case llm.CategoryCancelled:
+					errorType = "CancelledError"
+					p.logger.Error("Request was cancelled. Try again with a longer timeout if needed.")
+				}
+			}
 		}
 
 		// Log the content generation failure
@@ -447,6 +494,27 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 			p.logger.Error("Content was blocked by safety filters for model %s", modelName)
 			p.logger.Error("Error details: %s", errorDetails)
 			return fmt.Errorf("failed to process API response for model %s due to safety restrictions: %w", modelName, err)
+		} else if catErr, isCat := llm.IsCategorizedError(err); isCat {
+			// Use the new error categorization for more specific messages
+			switch catErr.Category() {
+			case llm.CategoryContentFiltered:
+				p.logger.Error("Content was filtered by safety settings for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to content filtering: %w", modelName, err)
+			case llm.CategoryRateLimit:
+				p.logger.Error("Rate limit exceeded while processing response for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to rate limiting: %w", modelName, err)
+			case llm.CategoryInputLimit:
+				p.logger.Error("Input limit exceeded during response processing for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to input limits: %w", modelName, err)
+			default:
+				// Other categorized errors
+				p.logger.Error("Error processing response for model %s (%s category)", modelName, catErr.Category())
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s (%s error): %w", modelName, catErr.Category(), err)
+			}
 		} else {
 			// Generic API error handling
 			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)

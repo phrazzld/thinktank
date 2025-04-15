@@ -37,12 +37,12 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)
 
-- [ ] **Task Title:** Consider adding error categorization to LLMClient interface
+- [x] **Task Title:** Consider adding error categorization to LLMClient interface
   - **Action:** Evaluate the feasibility and benefit of adding methods to the `llm.LLMClient` interface to expose categorized errors (e.g., rate limit, auth, server error) if underlying provider clients support it. This could improve error logging specificity in `internal/architect/modelproc/processor.go`.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Less specific error logging in modelproc)
 
-- [ ] **Task Title:** Update app.Execute to use InitLLMClient directly
+- [x] **Task Title:** Update app.Execute to use InitLLMClient directly
   - **Action:** Modify `internal/architect/app.go:Execute` to initialize the reference client using `apiService.InitLLMClient` directly, removing the use of the deprecated `apiService.InitClient` and the subsequent `gemini.AsLLMClient` adaptation.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Deprecated client initialization)
@@ -56,8 +56,3 @@
   - **Action:** Add a minimal test case back to the appropriate test file to cover the basic functionality of the deprecated `InitClient` method, ensuring it doesn't break unexpectedly while it still exists. This test can be removed if/when the deprecated method is removed.
   - **Depends On:** Evaluate necessity of deprecated API methods
   - **AC Ref:** N/A (Refers to Issue: Removed test for deprecated method)
-
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
-
-- [ ] **Issue/Assumption:** The tasks above are based on the code review and don't have formal Acceptance Criteria references since they are remediation tasks identified from a PR review.
-  - **Context:** The tasks address specific issues identified in the code review of the OpenAI provider support PR, focusing on improving code quality and following project standards.

@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/architect/internal/llm"
 )
 
 // testError is a simple error for testing purposes
@@ -390,6 +392,147 @@ func TestGetErrorType(t *testing.T) {
 			got := GetErrorType(tt.err, tt.statusCode)
 			if got != tt.want {
 				t.Errorf("GetErrorType() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// TestAPIError_Category tests the Category method of APIError
+func TestAPIError_Category(t *testing.T) {
+	tests := []struct {
+		name         string
+		errorType    ErrorType
+		wantCategory llm.ErrorCategory
+	}{
+		{
+			name:         "unknown error",
+			errorType:    ErrorTypeUnknown,
+			wantCategory: llm.CategoryUnknown,
+		},
+		{
+			name:         "auth error",
+			errorType:    ErrorTypeAuth,
+			wantCategory: llm.CategoryAuth,
+		},
+		{
+			name:         "rate limit error",
+			errorType:    ErrorTypeRateLimit,
+			wantCategory: llm.CategoryRateLimit,
+		},
+		{
+			name:         "invalid request error",
+			errorType:    ErrorTypeInvalidRequest,
+			wantCategory: llm.CategoryInvalidRequest,
+		},
+		{
+			name:         "not found error",
+			errorType:    ErrorTypeNotFound,
+			wantCategory: llm.CategoryNotFound,
+		},
+		{
+			name:         "server error",
+			errorType:    ErrorTypeServer,
+			wantCategory: llm.CategoryServer,
+		},
+		{
+			name:         "network error",
+			errorType:    ErrorTypeNetwork,
+			wantCategory: llm.CategoryNetwork,
+		},
+		{
+			name:         "cancelled error",
+			errorType:    ErrorTypeCancelled,
+			wantCategory: llm.CategoryCancelled,
+		},
+		{
+			name:         "input limit error",
+			errorType:    ErrorTypeInputLimit,
+			wantCategory: llm.CategoryInputLimit,
+		},
+		{
+			name:         "content filtered error",
+			errorType:    ErrorTypeContentFiltered,
+			wantCategory: llm.CategoryContentFiltered,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			apiErr := &APIError{
+				Type: tt.errorType,
+			}
+			got := apiErr.Category()
+			if got != tt.wantCategory {
+				t.Errorf("APIError.Category() = %v, want %v", got, tt.wantCategory)
+			}
+		})
+	}
+}
+
+// TestAPIError_IsCategorizedError tests that APIError can be detected as a CategorizedError
+func TestAPIError_IsCategorizedError(t *testing.T) {
+	tests := []struct {
+		name      string
+		err       error
+		wantCat   llm.ErrorCategory
+		wantIsCat bool
+	}{
+		{
+			name:      "nil error",
+			err:       nil,
+			wantCat:   llm.CategoryUnknown,
+			wantIsCat: false,
+		},
+		{
+			name:      "regular error",
+			err:       newTestError("regular error"),
+			wantCat:   llm.CategoryUnknown,
+			wantIsCat: false,
+		},
+		{
+			name: "auth error",
+			err: &APIError{
+				Type: ErrorTypeAuth,
+			},
+			wantCat:   llm.CategoryAuth,
+			wantIsCat: true,
+		},
+		{
+			name: "rate limit error",
+			err: &APIError{
+				Type: ErrorTypeRateLimit,
+			},
+			wantCat:   llm.CategoryRateLimit,
+			wantIsCat: true,
+		},
+		{
+			name: "wrapped APIError",
+			err: fmt.Errorf("wrapped: %w", &APIError{
+				Type: ErrorTypeAuth,
+			}),
+			wantCat:   llm.CategoryAuth,
+			wantIsCat: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			catErr, isCat := llm.IsCategorizedError(tt.err)
+
+			if isCat != tt.wantIsCat {
+				t.Errorf("llm.IsCategorizedError() = %v, want %v", isCat, tt.wantIsCat)
+			}
+
+			if !isCat {
+				if catErr != nil {
+					t.Errorf("llm.IsCategorizedError() returned non-nil when isCat is false")
+				}
+				return
+			}
+
+			got := catErr.Category()
+			if got != tt.wantCat {
+				t.Errorf("catErr.Category() = %v, want %v", got, tt.wantCat)
 			}
 		})
 	}

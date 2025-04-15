@@ -342,6 +342,224 @@ func (m *mockLLMAPIService) GetErrorDetails(err error) string {
 // We're using the mockLLMClient from mocks_test.go
 // All necessary methods are already defined there
 
+// TestModelProcessor_Process_ErrorCategorization tests that the ModelProcessor
+// correctly handles and categorizes errors from LLM clients
+func TestModelProcessor_Process_ErrorCategorization(t *testing.T) {
+	testCases := []struct {
+		name           string
+		errorCategory  llm.ErrorCategory
+		errorMessage   string
+		expectContains string
+	}{
+		{
+			name:           "rate limit error",
+			errorCategory:  llm.CategoryRateLimit,
+			errorMessage:   "rate limit exceeded",
+			expectContains: "RateLimitError",
+		},
+		{
+			name:           "auth error",
+			errorCategory:  llm.CategoryAuth,
+			errorMessage:   "invalid API key",
+			expectContains: "AuthenticationError",
+		},
+		{
+			name:           "input limit error",
+			errorCategory:  llm.CategoryInputLimit,
+			errorMessage:   "token limit exceeded",
+			expectContains: "InputLimitError",
+		},
+		{
+			name:           "content filtered error",
+			errorCategory:  llm.CategoryContentFiltered,
+			errorMessage:   "content blocked by safety filters",
+			expectContains: "ContentFilteredError",
+		},
+		{
+			name:           "network error",
+			errorCategory:  llm.CategoryNetwork,
+			errorMessage:   "network connection failed",
+			expectContains: "NetworkError",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a test error that implements the CategorizedError interface
+			testError := &categorizedTestError{
+				msg:      tc.errorMessage,
+				category: tc.errorCategory,
+			}
+
+			// Track error message
+			var loggedError string
+
+			mockLLM := &mockLLMClient{
+				getModelNameFunc: func() string { return "test-model" },
+				getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+					return &llm.ProviderModelInfo{
+						Name:             "test-model",
+						InputTokenLimit:  1000,
+						OutputTokenLimit: 500,
+					}, nil
+				},
+				countTokensFunc: func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+					return &llm.ProviderTokenCount{
+						Total: 100,
+					}, nil
+				},
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+					// Return our categorized error
+					return nil, testError
+				},
+			}
+
+			mockAPI := &mockLLMAPIService{
+				initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+					return mockLLM, nil
+				},
+				processLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
+					return result.Content, nil
+				},
+				getErrorDetailsFunc: func(err error) string {
+					return err.Error()
+				},
+				isEmptyResponseErrorFunc: func(err error) bool {
+					return false
+				},
+				isSafetyBlockedErrorFunc: func(err error) bool {
+					return false
+				},
+			}
+
+			// Configure other mocks
+			mockWriter := &mockFileWriter{
+				saveToFileFunc: func(content, outputFile string) error {
+					return nil
+				},
+			}
+			mockAudit := &mockAuditLogger{
+				logFunc: func(entry auditlog.AuditEntry) error {
+					// Capture error type in the audit log
+					if entry.Error != nil && entry.Error.Type != "" {
+						loggedError = entry.Error.Type
+					}
+					return nil
+				},
+			}
+
+			// Use a logger that captures errors
+			mockLogger := &mockLogger{
+				errorFunc: func(format string, args ...interface{}) {
+					// This helps us verify specific error messages are logged
+					msg := fmt.Sprintf(format, args...)
+					t.Logf("Error logged: %s", msg)
+				},
+			}
+
+			// Setup config
+			cfg := config.NewDefaultCliConfig()
+			cfg.APIKey = "test-api-key"
+			cfg.OutputDir = "/tmp/test-output"
+
+			// Create processor
+			processor := modelproc.NewProcessor(
+				mockAPI,
+				mockWriter,
+				mockAudit,
+				mockLogger,
+				cfg,
+			)
+
+			// Run test
+			err := processor.Process(
+				context.Background(),
+				"test-model",
+				"Test prompt",
+			)
+
+			// Verify results
+			if err == nil {
+				t.Errorf("Expected error, got nil")
+			}
+
+			// Verify that the error was categorized correctly in the audit log
+			if loggedError == "" {
+				t.Errorf("Expected error to be logged, but none was")
+			} else if loggedError != tc.expectContains {
+				t.Errorf("Expected error type to contain '%s', got '%s'", tc.expectContains, loggedError)
+			}
+		})
+	}
+}
+
+// categorizedTestError is a test error that implements the CategorizedError interface
+type categorizedTestError struct {
+	msg      string
+	category llm.ErrorCategory
+}
+
+func (e *categorizedTestError) Error() string {
+	return e.msg
+}
+
+func (e *categorizedTestError) Category() llm.ErrorCategory {
+	return e.category
+}
+
+// mockLogger implements a logger that captures errors for testing
+type mockLogger struct {
+	infoFunc    func(format string, args ...interface{})
+	errorFunc   func(format string, args ...interface{})
+	debugFunc   func(format string, args ...interface{})
+	fatalFunc   func(format string, args ...interface{})
+	warnFunc    func(format string, args ...interface{})
+	printlnFunc func(args ...interface{})
+	printfFunc  func(format string, args ...interface{})
+}
+
+func (l *mockLogger) Info(format string, args ...interface{}) {
+	if l.infoFunc != nil {
+		l.infoFunc(format, args...)
+	}
+}
+
+func (l *mockLogger) Error(format string, args ...interface{}) {
+	if l.errorFunc != nil {
+		l.errorFunc(format, args...)
+	}
+}
+
+func (l *mockLogger) Debug(format string, args ...interface{}) {
+	if l.debugFunc != nil {
+		l.debugFunc(format, args...)
+	}
+}
+
+func (l *mockLogger) Fatal(format string, args ...interface{}) {
+	if l.fatalFunc != nil {
+		l.fatalFunc(format, args...)
+	}
+}
+
+func (l *mockLogger) Warn(format string, args ...interface{}) {
+	if l.warnFunc != nil {
+		l.warnFunc(format, args...)
+	}
+}
+
+func (l *mockLogger) Println(args ...interface{}) {
+	if l.printlnFunc != nil {
+		l.printlnFunc(args...)
+	}
+}
+
+func (l *mockLogger) Printf(format string, args ...interface{}) {
+	if l.printfFunc != nil {
+		l.printfFunc(format, args...)
+	}
+}
+
 // These are needed for backward compatibility with the old interface
 func (m *mockLLMAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (interface{}, error) {
 	// For tests, we just wrap the LLM client

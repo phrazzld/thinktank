@@ -134,8 +134,11 @@ func Execute(
 	}
 	defer func() { _ = referenceClient.Close() }()
 
-	// Create TokenManager with the reference client, adapting it to the LLMClient interface
-	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, gemini.AsLLMClient(referenceClient))
+	// Get llm.LLMClient for token manager by using the adapter that's already part of gemini package
+	referenceClientLLM := gemini.AsLLMClient(referenceClient)
+
+	// Create TokenManager with the LLM client reference
+	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClientLLM)
 	if tokenManagerErr != nil {
 		logger.Error("Failed to create token manager: %v", tokenManagerErr)
 		return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
