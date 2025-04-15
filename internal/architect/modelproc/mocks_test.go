@@ -163,7 +163,6 @@ func (m *mockLLMClient) Close() error {
 	return nil
 }
 
-
 type mockAuditLogger struct {
 	logFunc   func(entry auditlog.AuditEntry) error
 	closeFunc func() error

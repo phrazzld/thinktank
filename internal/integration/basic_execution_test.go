@@ -90,8 +90,13 @@ func main() {}`,
 			env := NewTestEnv(t)
 			defer env.Cleanup()
 
-			// Set up the mock client with default responses
+			// Set up the mock client with default responses - this sets up a client that returns "Test Generated Plan"
 			env.SetupMockGeminiClient()
+
+			// Verify the mock is properly configured
+			if env.MockClient.GenerateContentFunc == nil {
+				t.Fatal("MockClient's GenerateContentFunc is nil")
+			}
 
 			// Create source files from the map
 			for filename, content := range tc.srcFiles {
@@ -101,8 +106,8 @@ func main() {}`,
 			// Create instructions file
 			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-			// Set up the output directory and model-specific output file path
-			outputDir := filepath.Join(env.TestDir, "output")
+			// Set up the output directory using t.TempDir() for test isolation
+			outputDir := t.TempDir()
 			outputFile := filepath.Join(outputDir, tc.modelName+".md")
 
 			// Create a test configuration
@@ -143,6 +148,11 @@ func main() {}`,
 			if err != nil {
 				t.Fatalf("Failed to read model-specific output file: %v", err)
 			}
+
+			// Debug output to see what's actually in the file
+			t.Logf("Output file content: %s", string(content))
+			t.Logf("Expected to contain: %s", tc.expectedContent)
+			t.Logf("Mock client setup: %v", env.MockClient != nil)
 
 			// Check that content includes expected text
 			if !strings.Contains(string(content), tc.expectedContent) {
@@ -195,8 +205,13 @@ func main() {
 			env := NewTestEnv(t)
 			defer env.Cleanup()
 
-			// Set up the mock client with default responses
+			// Set up the mock client with default responses - this sets up a client that returns "Test Generated Plan"
 			env.SetupMockGeminiClient()
+
+			// Verify the mock is properly configured
+			if env.MockClient.GenerateContentFunc == nil {
+				t.Fatal("MockClient's GenerateContentFunc is nil")
+			}
 
 			// Create source files from the map
 			for filename, content := range tc.srcFiles {
@@ -206,8 +221,8 @@ func main() {
 			// Create instructions file
 			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-			// Set up the output directory and model-specific output file path
-			outputDir := filepath.Join(env.TestDir, "output")
+			// Set up the output directory using t.TempDir() for test isolation
+			outputDir := t.TempDir()
 			outputFile := filepath.Join(outputDir, tc.modelName+".md")
 
 			// Create a test configuration

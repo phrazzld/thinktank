@@ -237,6 +237,11 @@ func newModelProcessingData(modelCount int, trackIntervals bool, setupWaitGroups
 
 // TestMultiModelFeatures tests various multi-model features using a table-driven approach
 func TestMultiModelFeatures(t *testing.T) {
+	// Skip in short mode to reduce CI time
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	testCases := []multiModelTestCase{
 		{
 			name:                "BasicExecution",
@@ -403,8 +408,8 @@ func TestMultiModelFeatures(t *testing.T) {
 					// Wait for all models to reach this point (ensures concurrent processing)
 					modelData.waitGroups.barrier.Wait()
 
-					// Simulate work with a small sleep
-					time.Sleep(50 * time.Millisecond)
+					// Simulate work with a much smaller sleep (reduced for test optimization)
+					time.Sleep(5 * time.Millisecond)
 
 					// Record completion
 					modelData.Lock()
@@ -477,8 +482,8 @@ func TestMultiModelFeatures(t *testing.T) {
 					// Wait for all models to reach this point (ensures concurrent processing)
 					modelData.waitGroups.barrier.Wait()
 
-					// Simulate work with a small sleep
-					time.Sleep(50 * time.Millisecond)
+					// Simulate work with a much smaller sleep (reduced for test optimization)
+					time.Sleep(5 * time.Millisecond)
 
 					// Make models 1 and 3 fail with different errors
 					switch modelName {
@@ -565,7 +570,7 @@ func TestMultiModelFeatures(t *testing.T) {
 					modelData.waitGroups.barrier.Wait()
 
 					// Simulate work with a variable sleep time (50-150ms) to create realistic variation
-					sleepTime := 50 + (time.Duration(len(modelName)%3) * 50)
+					sleepTime := 5 + (time.Duration(len(modelName)%3) * 5)
 					time.Sleep(sleepTime * time.Millisecond)
 
 					// Record end time

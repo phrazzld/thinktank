@@ -85,9 +85,9 @@ func main() {}`
 			// Create instructions file
 			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-			// Set up the output directory and model-specific output file path
+			// Set up a unique output directory for test isolation using t.TempDir()
 			modelName := "test-model"
-			outputDir := filepath.Join(env.TestDir, "output")
+			outputDir := t.TempDir()
 			outputFile := filepath.Join(outputDir, modelName+".md")
 
 			// Create a test configuration

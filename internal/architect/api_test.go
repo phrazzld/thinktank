@@ -44,7 +44,6 @@ func formatLog(format string, args ...interface{}) string {
 	return format // Simplified for tests
 }
 
-
 // These functions (newGeminiClientWrapperForTest and newOpenAIClientWrapperForTest)
 // are defined in api_test_helper.go
 

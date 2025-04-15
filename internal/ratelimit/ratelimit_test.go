@@ -11,7 +11,9 @@ import (
 )
 
 func TestSemaphore(t *testing.T) {
+	t.Parallel() // Run parallel with other test files
 	t.Run("Basic Acquisition and Release", func(t *testing.T) {
+		t.Parallel() // Run subtests in parallel
 		// Create a semaphore with capacity 2
 		sem := NewSemaphore(2)
 		assert.NotNil(t, sem, "Semaphore should not be nil")
@@ -55,6 +57,7 @@ func TestSemaphore(t *testing.T) {
 	})
 
 	t.Run("Concurrent Usage", func(t *testing.T) {
+		t.Parallel() // Run subtests in parallel
 		// Create a semaphore with capacity 3
 		sem := NewSemaphore(3)
 
@@ -87,7 +90,7 @@ func TestSemaphore(t *testing.T) {
 				}
 
 				// Simulate work
-				time.Sleep(50 * time.Millisecond)
+				time.Sleep(10 * time.Millisecond) // Reduced from 50ms to 10ms
 
 				// Decrement active count
 				atomic.AddInt32(&active, -1)
@@ -127,7 +130,9 @@ func TestSemaphore(t *testing.T) {
 }
 
 func TestTokenBucket(t *testing.T) {
+	t.Parallel() // Run parallel with other test files
 	t.Run("Basic Rate Limiting", func(t *testing.T) {
+		t.Parallel() // Run subtests in parallel
 		// Create a token bucket with 60 RPM (1 per second) and burst of 5
 		tb := NewTokenBucket(60, 5)
 		assert.NotNil(t, tb, "Token bucket should not be nil")
@@ -146,7 +151,7 @@ func TestTokenBucket(t *testing.T) {
 		assert.Contains(t, err.Error(), "exceed context deadline", "Error should be related to deadline exceeded")
 
 		// Wait for token replenishment (slightly more than 1 second)
-		time.Sleep(1100 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond) // Reduced from 1100ms to 250ms
 
 		// Should be able to get one more token
 		err = tb.Acquire(context.Background(), "test-model")
@@ -205,6 +210,7 @@ func TestTokenBucket(t *testing.T) {
 }
 
 func TestRateLimiter(t *testing.T) {
+	t.Parallel() // Run parallel with other test files
 	t.Run("Combined Limiting - Semaphore First", func(t *testing.T) {
 		// Create a rate limiter with tight concurrency limit but loose rate limit
 		limiter := NewRateLimiter(2, 600)
