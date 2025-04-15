@@ -1,10 +1,10 @@
 # architect
 
-A powerful code-base context analysis and planning tool that leverages Google's Gemini AI to generate detailed, actionable technical plans for software projects.
+A powerful code-base context analysis and planning tool that leverages Google's Gemini and OpenAI models to generate detailed, actionable technical plans for software projects.
 
 ## Overview
 
-architect analyzes your codebase and uses Gemini AI to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
+architect analyzes your codebase and uses Gemini or OpenAI models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
 
 ## Important Update: Instruction Input Method
 
@@ -20,7 +20,7 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 
 - **Contextual Analysis**: Analyzes your codebase to understand its structure, patterns, and dependencies
 - **Smart Filtering**: Include/exclude specific file types or directories from analysis
-- **Gemini AI Integration**: Leverages Google's powerful Gemini models for intelligent planning
+- **Multiple AI Providers**: Support for both Gemini and OpenAI models
 - **Customizable Output**: Configure the format of the generated plan
 - **Git-Aware**: Respects .gitignore patterns when scanning your codebase
 - **Token Management**: Smart token counting with limit checking to prevent API errors
@@ -71,6 +71,12 @@ architect --instructions instructions.txt --include .go,.md ./
 # Use a different Gemini model
 architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 ./
 
+# Use an OpenAI model
+architect --instructions instructions.txt --model gpt-4-turbo ./
+
+# Use both Gemini and OpenAI models
+architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
+
 # Enable structured audit logging (JSON Lines format)
 architect --instructions instructions.txt --audit-log-file audit.jsonl ./
 
@@ -84,15 +90,20 @@ architect --dry-run --instructions instructions.txt ./
 architect --instructions instructions.txt --confirm-tokens 25000 ./
 
 # Control concurrency and rate limiting for multiple models
-architect --instructions task.txt --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 --max-concurrent 3 --rate-limit 30 ./
+architect --instructions task.txt --model gemini-1.5-pro --model gpt-4-turbo --max-concurrent 3 --rate-limit 30 ./
 ```
 
-### Required Environment Variable
+### Required Environment Variables
 
 ```bash
-# Set your Gemini API key
-export GEMINI_API_KEY="your-api-key-here"
+# Set your Gemini API key (required for Gemini models)
+export GEMINI_API_KEY="your-gemini-api-key-here"
+
+# Set your OpenAI API key (required for OpenAI models)
+export OPENAI_API_KEY="your-openai-api-key-here"
 ```
+
+> **Note**: You only need to set the API key for the provider(s) you're using. If you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. Similarly, if you're only using OpenAI models, only `OPENAI_API_KEY` is required. If you're using both providers, both environment variables need to be set.
 
 ## Configuration Options
 
@@ -100,7 +111,7 @@ export GEMINI_API_KEY="your-api-key-here"
 |------|-------------|---------|
 | `--instructions` | Path to a file containing the instructions (Required unless --dry-run is used) | `(Required)` |
 | `--output-dir` | Directory path to store generated plans (one per model) | `(Auto-generated run name)` |
-| `--model` | Gemini model to use for generation (repeatable for multiple models) | `gemini-2.5-pro-exp-03-25` |
+| `--model` | Model to use for generation (repeatable for multiple models, e.g., `gemini-2.5-pro-exp-03-25`, `gpt-4-turbo`) | `gemini-2.5-pro-exp-03-25` |
 | `--verbose` | Enable verbose logging output (shorthand for --log-level=debug) | `false` |
 | `--log-level` | Set logging level (debug, info, warn, error) | `info` |
 | `--include` | Comma-separated list of file extensions to include | (All files) |
@@ -115,7 +126,7 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ## Configuration
 
-architect is configured entirely through command-line flags and the `GEMINI_API_KEY` environment variable. There are no configuration files to manage, which simplifies usage and deployment.
+architect is configured entirely through command-line flags and environment variables (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`). There are no configuration files to manage, which simplifies usage and deployment.
 
 ### Default Values
 
@@ -124,6 +135,9 @@ architect comes with sensible defaults for most options:
 - Output directory: Auto-generated run name directory (e.g., `eloquent-rabbit`)
 - Output files: One file per model with name format `modelname.md`
 - Model: `gemini-2.5-pro-exp-03-25` (can specify multiple models with repeatable `--model` flag)
+- Supported models:
+  - Gemini models: `gemini-1.5-pro`, `gemini-2.5-pro-exp-03-25`, etc.
+  - OpenAI models: `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`, etc.
 - Log level: `info`
 - File formatting: XML-style format for context building
 - Default exclusions for common binary, media files, and directories
@@ -135,7 +149,7 @@ You can override any of these defaults using the appropriate command-line flags.
 
 architect implements intelligent token management to prevent API errors and optimize context:
 
-- **Accurate Token Counting**: Uses Gemini's API to get precise token counts for your content
+- **Accurate Token Counting**: Uses provider-specific APIs to get precise token counts for your content
 - **Pre-API Validation**: Checks token count against model limits before making API calls
 - **Fail-Fast Strategy**: Provides clear error messages when token limits would be exceeded
 - **Token Statistics**: Shows token usage as a percentage of the model's limit
@@ -146,11 +160,13 @@ When token limits are exceeded, try:
 2. Using a model with a higher token limit
 3. Splitting your task into smaller, more focused requests
 
-## Multi-Model Support
+## Multi-Provider and Multi-Model Support
 
-architect now supports generating plans with multiple AI models simultaneously:
+architect supports generating plans with multiple AI models from multiple providers simultaneously:
 
 - **Multiple Models**: Specify multiple models with the repeatable `--model` flag
+- **Multiple Providers**: Seamlessly use both Gemini and OpenAI models in the same run
+- **Provider Detection**: Automatically detects the appropriate provider based on model name
 - **Organized Output**: Each model's plan is saved as a separate file in the output directory
 - **Run Name Directories**: Automatically creates a uniquely named directory for each run
 - **Concurrent Processing**: Processes multiple models in parallel using Go's concurrency primitives
@@ -160,15 +176,15 @@ architect now supports generating plans with multiple AI models simultaneously:
 
 Example:
 ```bash
-# Generate plans with both Gemini 1.5 Pro and Gemini 2.5 Pro
-architect --instructions task.md --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 ./src
+# Generate plans with both Gemini and OpenAI models
+architect --instructions task.md --model gemini-1.5-pro --model gpt-4-turbo ./src
 ```
 
 This will generate:
 ```
 /current-dir/random-runname/
   ├─ gemini-1.5-pro.md
-  └─ gemini-2.5-pro-exp-03-25.md
+  └─ gpt-4-turbo.md
 ```
 
 ### Concurrency Control
@@ -177,6 +193,7 @@ architect processes multiple models concurrently for improved performance, with 
 
 - **Concurrent Execution**: Multiple model requests run in parallel using goroutines
 - **Per-Model Rate Limiting**: Each model has its own rate limit bucket to prevent API throttling
+- **Provider-Aware Processing**: Handles different API requirements for Gemini and OpenAI automatically
 - **Configurable Limits**: Adjust concurrency and rate limits to match your API quota
 
 ## Generated Plan Structure
@@ -222,8 +239,9 @@ Each log entry contains structured information that can be processed by tools, w
 ## Troubleshooting
 
 ### API Key Issues
-- Ensure `GEMINI_API_KEY` is set correctly in your environment
-- Check that your API key has appropriate permissions for the model you're using
+- For Gemini models, ensure `GEMINI_API_KEY` is set correctly in your environment
+- For OpenAI models, ensure `OPENAI_API_KEY` is set correctly in your environment
+- Check that your API keys have appropriate permissions for the models you're using
 
 ### Token Limit Errors
 - Use `--dry-run` to see token statistics without making API calls
@@ -245,10 +263,10 @@ Each log entry contains structured information that can be processed by tools, w
 
 ### Common Issues
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
-- **Missing API key**: Ensure the `GEMINI_API_KEY` environment variable is set correctly
+- **Missing API key**: Ensure the appropriate API key environment variable (`GEMINI_API_KEY` or `OPENAI_API_KEY`) is set correctly for the models you're using
 - **Path issues**: When running commands, use absolute or correct relative paths to your project files
 - **Flag precedence**: Remember that CLI flags always take precedence over default values
-- **Model name errors**: Ensure you're using valid model names with the `--model` flag
+- **Model name errors**: Ensure you're using valid model names with the `--model` flag (prefix with `gemini-` for Gemini models or `gpt-` for OpenAI models)
 - **Output directory permissions**: Check you have write access to the output directory when using `--output-dir`
 
 ## Contributing
