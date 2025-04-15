@@ -73,19 +73,10 @@ func (d *orchestratorTestDeps) setupBasicContext() {
 	}
 }
 
-// setupGeminiClient sets up mock clients for both Gemini and provider-agnostic interfaces
-func (d *orchestratorTestDeps) setupGeminiClient() *mockGeminiClient {
+// setupLLMClient sets up mock clients using the provider-agnostic interface
+func (d *orchestratorTestDeps) setupGeminiClient() *mockLLMClient {
 	// Create a shared mock client with default implementation
-	client := &mockGeminiClient{}
-
-	// Configure the API service to return a model-specific client (Gemini)
-	d.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-		// Create a new client for each model to avoid race conditions
-		modelClient := &mockGeminiClient{
-			modelName: modelName,
-		}
-		return modelClient, nil
-	}
+	client := &mockLLMClient{}
 
 	// Configure the API service to return a model-specific provider-agnostic client
 	d.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
@@ -151,68 +142,17 @@ func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
 
 // Mock implementations for dependencies
 
-// mockGeminiClient is a mock implementation of gemini.Client
-type mockGeminiClient struct {
-	modelName           string
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-}
-
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
-	}
-	return &gemini.GenerationResult{
-		Content: "Generated content for: " + prompt,
-	}, nil
-}
-
-func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	return &gemini.TokenCount{
-		Total: int32(len(prompt) / 4), // Rough approximation for test
-	}, nil
-}
-
-func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return &gemini.ModelInfo{
-		Name:             m.modelName,
-		InputTokenLimit:  1000,
-		OutputTokenLimit: 1000,
-	}, nil
-}
-
-func (m *mockGeminiClient) GetModelName() string {
-	return m.modelName
-}
-
-func (m *mockGeminiClient) GetTemperature() float32 {
-	return 0.7
-}
-
-func (m *mockGeminiClient) GetMaxOutputTokens() int32 {
-	return 1000
-}
-
-func (m *mockGeminiClient) GetTopP() float32 {
-	return 0.95
-}
-
-func (m *mockGeminiClient) Close() error {
-	return nil
-}
-
 // mockAPIService mocks the interfaces.APIService
 type mockAPIService struct {
-	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc func(err error) bool
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
 
-	InitClientCalls           []struct{ ApiKey, ModelName, ApiEndpoint string }
+	InitClientCalls           []struct{ ApiKey, ModelName, ApiEndpoint string } // kept for compatibility during migration
 	InitLLMClientCalls        []struct{ ApiKey, ModelName, ApiEndpoint string }
-	ProcessResponseCalls      []struct{ Result *gemini.GenerationResult }
+	ProcessResponseCalls      []struct{ Result *gemini.GenerationResult } // kept for compatibility during migration
 	ProcessLLMResponseCalls   []struct{ Result *llm.ProviderResult }
 	IsEmptyResponseErrorCalls []struct{ Err error }
 	IsSafetyBlockedErrorCalls []struct{ Err error }
@@ -221,7 +161,8 @@ type mockAPIService struct {
 	mu sync.Mutex
 }
 
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+// InitClient is kept temporarily for compatibility during migration
+func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (interface{}, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -232,10 +173,9 @@ func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiE
 	}
 	m.InitClientCalls = append(m.InitClientCalls, call)
 
-	if m.InitClientFunc != nil {
-		return m.InitClientFunc(ctx, apiKey, modelName, apiEndpoint)
-	}
-	return &mockGeminiClient{}, nil
+	// Forward to the provider-agnostic method
+	client, err := m.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
+	return client, err
 }
 
 func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
@@ -255,26 +195,21 @@ func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, a
 	return &mockLLMClient{modelName: modelName}, nil
 }
 
-func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
+// ProcessResponse is kept temporarily for compatibility during migration
+func (m *mockAPIService) ProcessResponse(result interface{}) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	call := struct{ Result *gemini.GenerationResult }{Result: result}
-	m.ProcessResponseCalls = append(m.ProcessResponseCalls, call)
-
-	if m.ProcessResponseFunc != nil {
-		return m.ProcessResponseFunc(result)
-	}
-
+	// Forward to the provider-agnostic method
 	if result == nil {
 		return "", errors.New("nil result error")
 	}
 
-	if result.Content == "" {
-		return "", errors.New("empty content error")
+	if llmResult, ok := result.(*llm.ProviderResult); ok {
+		return m.ProcessLLMResponse(llmResult)
 	}
 
-	return result.Content, nil
+	return "", errors.New("unsupported result type")
 }
 
 func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {

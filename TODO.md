@@ -27,7 +27,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update mocks in test files to remove deprecated methods
+- [x] **Task Title:** Update mocks in test files to remove deprecated methods
   - **Action:** Update all mock implementations in test files (like `internal/architect/modelproc/mocks_test.go`) to remove deprecated methods and use only provider-agnostic interfaces.
   - **Depends On:** Remove deprecated methods from APIService interface
   - **AC Ref:** N/A
