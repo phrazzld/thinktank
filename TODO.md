@@ -22,7 +22,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update adapter tests to use provider-agnostic methods
+- [x] **Task Title:** Update adapter tests to use provider-agnostic methods
   - **Action:** Refactor `internal/architect/api_adapter_test.go` and `internal/architect/adapters_test.go` to use only provider-agnostic methods and remove references to deprecated methods. This is required for the build to pass, as the tests currently refer to methods that have been removed.
   - **Depends On:** None
   - **AC Ref:** N/A

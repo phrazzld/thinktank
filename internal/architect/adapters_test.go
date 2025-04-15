@@ -6,34 +6,17 @@ import (
 	"context"
 	"errors"
 
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests
 type MockAPIServiceForAdapter struct {
-	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc func(err error) bool
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
-}
-
-func (m *MockAPIServiceForAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	if m.InitClientFunc != nil {
-		return m.InitClientFunc(ctx, apiKey, modelName, apiEndpoint)
-	}
-	return nil, errors.New("InitClient not implemented")
-}
-
-func (m *MockAPIServiceForAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	if m.ProcessResponseFunc != nil {
-		return m.ProcessResponseFunc(result)
-	}
-	return "", errors.New("ProcessResponse not implemented")
 }
 
 func (m *MockAPIServiceForAdapter) IsEmptyResponseError(err error) bool {
