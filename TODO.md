@@ -27,7 +27,7 @@
   - **Depends On:** Move deprecated API methods to compatibility package
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
-- [ ] **Task Title:** Add comments explaining error helper string matching
+- [x] **Task Title:** Add comments explaining error helper string matching
   - **Action:** Add explicit comments to the error helper methods (`IsEmptyResponseError`, `IsSafetyBlockedError`) in `internal/architect/api.go` explaining why string matching is used for provider-agnostic checks and the potential risks if error messages change.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: String matching in error helper methods)

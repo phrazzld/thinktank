@@ -317,7 +317,23 @@ func (s *apiService) ProcessResponse(result *gemini.GenerationResult) (string, e
 	return s.ProcessLLMResponse(providerResult)
 }
 
-// IsEmptyResponseError checks if an error is related to empty API responses
+// IsEmptyResponseError checks if an error is related to empty API responses.
+//
+// This method uses two strategies for identifying empty response errors:
+// 1. Type checking: Using errors.Is() with known error types (preferred method)
+// 2. String matching: Checking for key phrases in the error message
+//
+// The string matching approach is necessary to handle errors from different providers
+// that may not use the same error types but still indicate empty responses.
+// This provides a provider-agnostic way to identify common error conditions.
+//
+// IMPORTANT: String matching introduces fragility - if a provider changes their
+// error message format, this method may fail to correctly identify errors.
+// When adding a new provider, consider:
+// - First using errors.Is() with proper error types when possible
+// - Adding provider-specific error detection before falling back to string matching
+// - Documenting common error message patterns in provider-specific error docs
+// - Adding test cases for new provider error messages
 func (s *apiService) IsEmptyResponseError(err error) bool {
 	if err == nil {
 		return false
@@ -335,7 +351,27 @@ func (s *apiService) IsEmptyResponseError(err error) bool {
 		strings.Contains(errMsg, "empty output")
 }
 
-// IsSafetyBlockedError checks if an error is related to safety filters
+// IsSafetyBlockedError checks if an error is related to safety filters.
+//
+// This method uses a dual approach for identifying safety-related errors:
+// 1. Type checking: Using errors.Is() with ErrSafetyBlocked (preferred method)
+// 2. String matching: Examining error messages for safety-related keywords
+//
+// The string matching approach serves several purposes:
+// - Provides a provider-agnostic way to detect content policy violations
+// - Handles cases where different LLM providers use different error structures
+// - Offers a safety net for errors that don't wrap the standard error types
+//
+// RISKS:
+// - Provider error message changes could cause safety errors to go undetected
+// - Overly generic string matching might cause false positives
+// - Different providers may use different terminology for safety violations
+//
+// MAINTENANCE NOTES:
+// - When integrating new LLM providers, update this method with their safety error patterns
+// - Attempt to standardize wrapped error types first before falling back to string matching
+// - Consider adding provider-specific prefix checks to reduce false positives
+// - Keep the test suite updated with examples of safety errors from all supported providers
 func (s *apiService) IsSafetyBlockedError(err error) bool {
 	if err == nil {
 		return false
@@ -353,7 +389,23 @@ func (s *apiService) IsSafetyBlockedError(err error) bool {
 		strings.Contains(errMsg, "content filter")
 }
 
-// GetErrorDetails extracts detailed information from an error
+// GetErrorDetails extracts detailed information from an error.
+//
+// This method provides a provider-agnostic way to extract user-friendly error details
+// from provider-specific error types. It handles:
+// - Gemini API errors: Using gemini.IsAPIError and its UserFacingError method
+// - OpenAI API errors: Using openai.IsAPIError and its UserFacingError method
+// - Generic errors: Falling back to standard Error() method
+//
+// The approach balances provider-specific error handling with a consistent interface,
+// allowing the application to present detailed error information without exposing
+// provider implementation details to higher layers.
+//
+// When adding a new provider:
+// - Implement an IsAPIError function for the provider
+// - Ensure provider errors expose a UserFacingError() method
+// - Add a provider-specific check in this method
+// - Update tests to verify correct error detail extraction
 func (s *apiService) GetErrorDetails(err error) string {
 	// Handle nil error case
 	if err == nil {
