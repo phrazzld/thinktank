@@ -477,3 +477,25 @@ The test suite timed out after 2 minutes. Investigate tests that might be taking
 4. **Testing Strategy**: Determine the best approach for mocking the official OpenAI Go client in tests, particularly for integration tests that verify multi-provider functionality.
 
 5. **API Compatibility**: Verify that the official OpenAI Go package provides all the functionality we need, particularly for token counting and model information retrieval.
+
+### Task ID: CLEANUP-004 [ ]
+
+**Title**: Complete Integration Test Optimization
+
+**Type**: Testing
+
+**Description**:
+Continue the test optimization work started in CLEANUP-003 by updating all integration tests to use proper isolation techniques. Fix the failing integration tests by ensuring test data isolation and proper mock client setup.
+
+**Acceptance Criteria**:
+- Update all integration tests to use \ for output directory isolation
+- Fix mock client setup in tests to maintain consistency between LLMClient and regular client
+- Ensure all integration tests pass consistently 
+- Add \ to integration tests that can safely run in parallel
+- Document patterns for writing properly isolated integration tests
+
+**Estimated Effort**: Medium
+
+**Depends On**: CLEANUP-003 
+
+**Priority**: Should-Have
