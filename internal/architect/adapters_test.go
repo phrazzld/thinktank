@@ -7,13 +7,16 @@ import (
 	"errors"
 
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests
 type MockAPIServiceForAdapter struct {
 	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
+	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
+	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc func(err error) bool
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
@@ -52,6 +55,20 @@ func (m *MockAPIServiceForAdapter) GetErrorDetails(err error) string {
 		return m.GetErrorDetailsFunc(err)
 	}
 	return "Error details not implemented"
+}
+
+func (m *MockAPIServiceForAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	if m.InitLLMClientFunc != nil {
+		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	}
+	return nil, errors.New("InitLLMClient not implemented")
+}
+
+func (m *MockAPIServiceForAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if m.ProcessLLMResponseFunc != nil {
+		return m.ProcessLLMResponseFunc(result)
+	}
+	return "", errors.New("ProcessLLMResponse not implemented")
 }
 
 // MockTokenManagerForAdapter is a testing mock for the TokenManager interface, specifically for adapter tests

@@ -109,7 +109,7 @@ Create unit tests for the OpenAI client in `internal/openai/openai_client_test.g
 
 **Priority**: Must-Have
 
-### Task ID: TASK-006
+### Task ID: TASK-006 [x]
 
 **Title**: Update API Service for Provider Detection
 
@@ -150,7 +150,7 @@ Add `OpenAIAPIKeyEnvVar` constant to `internal/config/config.go`. Update CLI val
 
 **Priority**: Must-Have
 
-### Task ID: TASK-008
+### Task ID: TASK-008 [x]
 
 **Title**: Update Orchestrator and ModelProcessor
 
@@ -190,7 +190,7 @@ Add OpenAI support details to `README.md`. Update model flag description to incl
 
 **Priority**: Should-Have
 
-### Task ID: TASK-010
+### Task ID: TASK-010 [x]
 
 **Title**: Update Existing Tests for Interface Changes
 
@@ -203,6 +203,141 @@ Update existing tests to accommodate interface changes. Modify test mocks and fi
 - Existing tests pass after interface changes
 - Tests cover the updated functionality
 - Test mocks are updated to implement the new interface
+
+**Estimated Effort**: Medium
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-A [x]
+
+**Title**: Update MockAPIServiceForAdapter in API Adapter Tests
+
+**Type**: Testing
+
+**Description**:
+Update the `MockAPIServiceForAdapter` in `api_adapter_test.go` to implement the `InitLLMClient` method of the APIService interface.
+
+**Acceptance Criteria**:
+- The `MockAPIServiceForAdapter` implements the `InitLLMClient` method
+- All tests in `api_adapter_test.go` pass
+
+**Estimated Effort**: Low
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-B [x]
+
+**Title**: Fix API Test Type Mismatches
+
+**Type**: Testing
+
+**Description**:
+Update `api_test.go` to resolve type mismatch errors between `*llm.ProviderResult` and `*gemini.GenerationResult`. Update the test comparing `gemini.Client` with `*mockLLMClient`.
+
+**Acceptance Criteria**:
+- The tests in `api_test.go` pass with the new LLMClient interface
+- Type mismatches are resolved
+
+**Estimated Effort**: Low
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-C [x]
+
+**Title**: Resolve TestProviderDetection Redeclaration
+
+**Type**: Testing
+
+**Description**:
+Fix the redeclaration of `TestProviderDetection` in both `api_test.go` and `api_provider_test.go`.
+
+**Acceptance Criteria**:
+- One implementation of TestProviderDetection is used
+- No compilation errors due to redeclaration
+
+**Estimated Effort**: Low
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-D [x]
+
+**Title**: Update Integration Test Mocks
+
+**Type**: Testing
+
+**Description**:
+Update the `mockIntAPIService` and `mockModelTrackingAPIService` in integration tests to implement the `InitLLMClient` method of the APIService interface.
+
+**Acceptance Criteria**:
+- Both mock services implement the `InitLLMClient` method
+- Integration tests pass
+
+**Estimated Effort**: Medium
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010 [x]
+
+**Title**: Update Tests for LLMClient Interface
+
+**Type**: Testing
+
+**Description**:
+Update all tests to use the provider-agnostic LLMClient interface consistently and fix any compilation errors.
+
+**Acceptance Criteria**:
+- Update mock definitions to implement the LLMClient interface
+- Update test assertions to work with the new interface
+- Fix any compilation errors resulting from the interface changes
+- Run all tests to ensure they pass
+
+**Estimated Effort**: Medium
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-E [x]
+
+**Title**: Update ModelProcessor Tests for LLMClient
+
+**Type**: Testing
+
+**Description**:
+Update tests in the modelproc package to use the LLMClient interface instead of the Gemini-specific interfaces.
+
+**Acceptance Criteria**:
+- All modelproc tests compile and pass with the LLMClient interface
+- Test mocks implement the correct interfaces
+
+**Estimated Effort**: Medium
+
+**Depends On**: TASK-008
+
+**Priority**: Must-Have
+
+#### Task ID: TASK-010-F [x]
+
+**Title**: Update Orchestrator Tests for LLMClient
+
+**Type**: Testing
+
+**Description**:
+Update tests in the orchestrator package to use the LLMClient interface instead of the Gemini-specific interfaces.
+
+**Acceptance Criteria**:
+- All orchestrator tests compile and pass with the LLMClient interface
+- Test mocks implement the correct interfaces
 
 **Estimated Effort**: Medium
 

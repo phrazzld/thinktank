@@ -8,20 +8,35 @@ import (
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // mockIntAPIService implements the architect.APIService interface for testing
 // This type is actually used by running tests but wasn't detected by linting
 type mockIntAPIService struct {
-	logger     logutil.LoggerInterface
-	mockClient gemini.Client
+	logger        logutil.LoggerInterface
+	mockClient    gemini.Client
+	mockLLMClient llm.LLMClient
 }
 
 // InitClient returns the mock client instead of creating a real one
 func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 	// Always return the mock client, ignoring the API key, model name, and API endpoint
 	return s.mockClient, nil
+}
+
+// InitLLMClient returns the mock LLM client instead of creating a real one
+func (s *mockIntAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	// If mockLLMClient is not nil, return it (for tests that explicitly set it)
+	if s.mockLLMClient != nil {
+		return s.mockLLMClient, nil
+	}
+	// Otherwise, we can convert the mockClient to an LLMClient using a wrapper if needed
+	// For testing, we'll create a simple mock implementation
+	return &mockLLMClientForTesting{
+		modelName: modelName,
+	}, nil
 }
 
 // ProcessResponse processes the API response and extracts content
@@ -63,6 +78,66 @@ func (s *mockIntAPIService) GetErrorDetails(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// ProcessLLMResponse processes the provider-agnostic API response and extracts content
+func (s *mockIntAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	// Check for nil result
+	if result == nil {
+		return "", fmt.Errorf("result is nil")
+	}
+
+	// Check for empty content
+	if result.Content == "" {
+		return "", fmt.Errorf("empty content")
+	}
+
+	// Return the content directly
+	return result.Content, nil
+}
+
+// mockLLMClientForTesting is a simple implementation of the llm.LLMClient interface for testing
+type mockLLMClientForTesting struct {
+	modelName string
+	content   string
+}
+
+// GenerateContent implements the LLMClient interface
+func (m *mockLLMClientForTesting) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	content := m.content
+	if content == "" {
+		content = "Mock response for: " + prompt
+	}
+	return &llm.ProviderResult{
+		Content:    content,
+		TokenCount: int32(len(content) / 4), // Simple approximation
+	}, nil
+}
+
+// CountTokens implements the LLMClient interface
+func (m *mockLLMClientForTesting) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	return &llm.ProviderTokenCount{
+		Total: int32(len(prompt) / 4), // Simple approximation
+	}, nil
+}
+
+// GetModelInfo implements the LLMClient interface
+func (m *mockLLMClientForTesting) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	return &llm.ProviderModelInfo{
+		Name:             m.modelName,
+		InputTokenLimit:  32000,
+		OutputTokenLimit: 8000,
+	}, nil
+}
+
+// GetModelName implements the LLMClient interface
+func (m *mockLLMClientForTesting) GetModelName() string {
+	return m.modelName
+}
+
+// Close implements the LLMClient interface
+func (m *mockLLMClientForTesting) Close() error {
+	return nil
 }
 
 // RunTestWithConfig runs the architect application with the provided test config and environment

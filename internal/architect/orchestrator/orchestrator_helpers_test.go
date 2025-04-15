@@ -13,6 +13,7 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/ratelimit"
 )
 
@@ -72,18 +73,26 @@ func (d *orchestratorTestDeps) setupBasicContext() {
 	}
 }
 
-// setupGeminiClient sets up a mock Gemini client
+// setupGeminiClient sets up mock clients for both Gemini and provider-agnostic interfaces
 func (d *orchestratorTestDeps) setupGeminiClient() *mockGeminiClient {
 	// Create a shared mock client with default implementation
 	client := &mockGeminiClient{}
 
-	// Configure the API service to return a model-specific client
+	// Configure the API service to return a model-specific client (Gemini)
 	d.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
 		// Create a new client for each model to avoid race conditions
 		modelClient := &mockGeminiClient{
 			modelName: modelName,
 		}
 		return modelClient, nil
+	}
+
+	// Configure the API service to return a model-specific provider-agnostic client
+	d.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+		// Create a new client for each model
+		return &mockLLMClient{
+			modelName: modelName,
+		}, nil
 	}
 
 	return client
@@ -108,9 +117,14 @@ func (d *orchestratorTestDeps) runOrchestrator(ctx context.Context, instructions
 
 // verifyBasicWorkflow checks that a basic workflow executed correctly
 func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNames []string) {
-	// Verify that InitClient was called for each model
-	if len(d.apiService.InitClientCalls) != len(expectedModelNames) {
-		t.Errorf("Expected %d calls to InitClient, got %d", len(expectedModelNames), len(d.apiService.InitClientCalls))
+	// Verify API client initialization - we check both old and new interfaces for compatibility
+	totalInitCalls := len(d.apiService.InitClientCalls) + len(d.apiService.InitLLMClientCalls)
+	if totalInitCalls != len(expectedModelNames) {
+		t.Errorf("Expected %d total client initialization calls, got %d (InitClient: %d, InitLLMClient: %d)",
+			len(expectedModelNames),
+			totalInitCalls,
+			len(d.apiService.InitClientCalls),
+			len(d.apiService.InitLLMClientCalls))
 	}
 
 	// Verify that the file writer was called with all model outputs
@@ -121,10 +135,15 @@ func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNa
 
 // verifyDryRunWorkflow checks that a dry run workflow executed correctly
 func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
-	// In dry run mode, should not call InitClient or SaveToFile
-	if len(d.apiService.InitClientCalls) > 0 {
-		t.Errorf("Should not call InitClient in dry run mode, got %d calls", len(d.apiService.InitClientCalls))
+	// In dry run mode, should not call InitClient/InitLLMClient or SaveToFile
+	totalInitCalls := len(d.apiService.InitClientCalls) + len(d.apiService.InitLLMClientCalls)
+	if totalInitCalls > 0 {
+		t.Errorf("Should not call any client initialization methods in dry run mode, got %d calls (InitClient: %d, InitLLMClient: %d)",
+			totalInitCalls,
+			len(d.apiService.InitClientCalls),
+			len(d.apiService.InitLLMClientCalls))
 	}
+
 	if len(d.fileWriter.SaveToFileCalls) > 0 {
 		t.Errorf("Should not call SaveToFile in dry run mode, got %d calls", len(d.fileWriter.SaveToFileCalls))
 	}
@@ -184,13 +203,17 @@ func (m *mockGeminiClient) Close() error {
 // mockAPIService mocks the interfaces.APIService
 type mockAPIService struct {
 	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
+	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
+	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc func(err error) bool
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
 
 	InitClientCalls           []struct{ ApiKey, ModelName, ApiEndpoint string }
+	InitLLMClientCalls        []struct{ ApiKey, ModelName, ApiEndpoint string }
 	ProcessResponseCalls      []struct{ Result *gemini.GenerationResult }
+	ProcessLLMResponseCalls   []struct{ Result *llm.ProviderResult }
 	IsEmptyResponseErrorCalls []struct{ Err error }
 	IsSafetyBlockedErrorCalls []struct{ Err error }
 	GetErrorDetailsCalls      []struct{ Err error }
@@ -215,6 +238,23 @@ func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiE
 	return &mockGeminiClient{}, nil
 }
 
+func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ApiKey, ModelName, ApiEndpoint string }{
+		ApiKey:      apiKey,
+		ModelName:   modelName,
+		ApiEndpoint: apiEndpoint,
+	}
+	m.InitLLMClientCalls = append(m.InitLLMClientCalls, call)
+
+	if m.InitLLMClientFunc != nil {
+		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	}
+	return &mockLLMClient{modelName: modelName}, nil
+}
+
 func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -224,6 +264,28 @@ func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (strin
 
 	if m.ProcessResponseFunc != nil {
 		return m.ProcessResponseFunc(result)
+	}
+
+	if result == nil {
+		return "", errors.New("nil result error")
+	}
+
+	if result.Content == "" {
+		return "", errors.New("empty content error")
+	}
+
+	return result.Content, nil
+}
+
+func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ Result *llm.ProviderResult }{Result: result}
+	m.ProcessLLMResponseCalls = append(m.ProcessLLMResponseCalls, call)
+
+	if m.ProcessLLMResponseFunc != nil {
+		return m.ProcessLLMResponseFunc(result)
 	}
 
 	if result == nil {

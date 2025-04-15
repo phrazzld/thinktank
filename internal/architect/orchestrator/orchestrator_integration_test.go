@@ -10,7 +10,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/ratelimit"
 )
 
@@ -102,8 +102,8 @@ func TestIntegration_ErrorPropagation(t *testing.T) {
 	// Instead of trying to mock GenerateContent directly,
 	// we'll use our API service mock to control the behavior
 
-	// Instead, configure the APIService mock
-	deps.apiService.ProcessResponseFunc = func(result *gemini.GenerationResult) (string, error) {
+	// Configure the provider-agnostic APIService mock
+	deps.apiService.ProcessLLMResponseFunc = func(result *llm.ProviderResult) (string, error) {
 		return "", expectedErr
 	}
 
@@ -132,7 +132,7 @@ func TestIntegration_ContextCancellation(t *testing.T) {
 	deps.setupBasicContext()
 
 	// Setup API client with delay to ensure we can cancel during processing
-	deps.apiService.ProcessResponseFunc = func(result *gemini.GenerationResult) (string, error) {
+	deps.apiService.ProcessLLMResponseFunc = func(result *llm.ProviderResult) (string, error) {
 		// Wait for a while to simulate processing
 		select {
 		case <-time.After(100 * time.Millisecond):
@@ -234,23 +234,31 @@ func TestIntegration_ModelProcessingError(t *testing.T) {
 	deps.setupMultiModelConfig(modelNames)
 	deps.setupBasicContext()
 
-	// Create a model-specific error for model2 by setting up InitClient
-	deps.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+	// Create a model-specific error for model2 by setting up InitLLMClient
+	deps.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 		if modelName == "model2" {
 			// For model2, return a client that will generate an error
-			client := &mockGeminiClient{
+			client := &mockLLMClient{
 				modelName: modelName,
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					return nil, errors.New("model2 processing error")
 				},
 			}
 			return client, nil
 		}
 
-		// For other models, return a regular mock client
-		return &mockGeminiClient{
+		// For other models, return a regular mock client with expected output
+		client := &mockLLMClient{
 			modelName: modelName,
-		}, nil
+			generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				return &llm.ProviderResult{
+					Content:      "Generated content for: " + prompt,
+					TokenCount:   100,
+					FinishReason: "STOP",
+				}, nil
+			},
+		}
+		return client, nil
 	}
 
 	// Run the orchestrator

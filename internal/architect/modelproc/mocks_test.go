@@ -6,7 +6,7 @@ import (
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/llm"
 )
 
 // Mock implementations
@@ -16,6 +16,10 @@ type mockAPIService struct {
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
+
+	// New methods for provider-agnostic interface
+	initLLMClientFunc      func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	processLLMResponseFunc func(result *llm.ProviderResult) (string, error)
 }
 
 func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
@@ -47,6 +51,23 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
+// Implement new interface methods for provider-agnostic API
+func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	if m.initLLMClientFunc != nil {
+		return m.initLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	}
+	// Default implementation uses a mock LLM client
+	return &mockLLMClient{}, nil
+}
+
+func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if m.processLLMResponseFunc != nil {
+		return m.processLLMResponseFunc(result)
+	}
+	// Default implementation returns the content
+	return result.Content, nil
+}
+
 type mockTokenManager struct {
 	checkTokenLimitFunc       func(ctx context.Context, prompt string) error
 	getTokenInfoFunc          func(ctx context.Context, prompt string) (*modelproc.TokenResult, error)
@@ -66,12 +87,7 @@ func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*mo
 	if m.getTokenInfoFunc != nil {
 		return m.getTokenInfoFunc(ctx, prompt)
 	}
-	return &modelproc.TokenResult{
-		TokenCount:   100,
-		InputLimit:   1000,
-		ExceedsLimit: false,
-		Percentage:   10.0,
-	}, nil
+	return &modelproc.TokenResult{TokenCount: 100, InputLimit: 1000, ExceedsLimit: false}, nil
 }
 
 func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
@@ -82,11 +98,121 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 }
 
 type mockFileWriter struct {
+	writeFileFunc  func(path string, content string) error
 	saveToFileFunc func(content, outputFile string) error
 }
 
+func (m *mockFileWriter) WriteFile(path string, content string) error {
+	if m.writeFileFunc != nil {
+		return m.writeFileFunc(path, content)
+	}
+	return nil
+}
+
 func (m *mockFileWriter) SaveToFile(content, outputFile string) error {
-	return m.saveToFileFunc(content, outputFile)
+	if m.saveToFileFunc != nil {
+		return m.saveToFileFunc(content, outputFile)
+	}
+	return nil
+}
+
+type mockLLMClient struct {
+	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
+	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
+	getModelNameFunc    func() string
+	closeFunc           func() error
+}
+
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	if m.generateContentFunc != nil {
+		return m.generateContentFunc(ctx, prompt)
+	}
+	return &llm.ProviderResult{Content: "mock content"}, nil
+}
+
+func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	if m.countTokensFunc != nil {
+		return m.countTokensFunc(ctx, prompt)
+	}
+	return &llm.ProviderTokenCount{Total: 100}, nil
+}
+
+func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	if m.getModelInfoFunc != nil {
+		return m.getModelInfoFunc(ctx)
+	}
+	return &llm.ProviderModelInfo{
+		Name:             "mock-model",
+		InputTokenLimit:  32000,
+		OutputTokenLimit: 8000,
+	}, nil
+}
+
+func (m *mockLLMClient) GetModelName() string {
+	if m.getModelNameFunc != nil {
+		return m.getModelNameFunc()
+	}
+	return "mock-model"
+}
+
+func (m *mockLLMClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+type mockLogger struct {
+	infoFunc    func(format string, args ...interface{})
+	debugFunc   func(format string, args ...interface{})
+	warnFunc    func(format string, args ...interface{})
+	errorFunc   func(format string, args ...interface{})
+	printlnFunc func(args ...interface{})
+	printfFunc  func(format string, args ...interface{})
+}
+
+func (m *mockLogger) Debug(format string, args ...interface{}) {
+	if m.debugFunc != nil {
+		m.debugFunc(format, args...)
+	}
+}
+
+func (m *mockLogger) Info(format string, args ...interface{}) {
+	if m.infoFunc != nil {
+		m.infoFunc(format, args...)
+	}
+}
+
+func (m *mockLogger) Warn(format string, args ...interface{}) {
+	if m.warnFunc != nil {
+		m.warnFunc(format, args...)
+	}
+}
+
+func (m *mockLogger) Error(format string, args ...interface{}) {
+	if m.errorFunc != nil {
+		m.errorFunc(format, args...)
+	}
+}
+
+func (m *mockLogger) Fatal(format string, args ...interface{}) {
+	// In tests, we don't want to exit, so just log
+	if m.errorFunc != nil {
+		m.errorFunc("FATAL: "+format, args...)
+	}
+}
+
+func (m *mockLogger) Println(args ...interface{}) {
+	if m.printlnFunc != nil {
+		m.printlnFunc(args...)
+	}
+}
+
+func (m *mockLogger) Printf(format string, args ...interface{}) {
+	if m.printfFunc != nil {
+		m.printfFunc(format, args...)
+	}
 }
 
 type mockAuditLogger struct {
@@ -106,151 +232,4 @@ func (m *mockAuditLogger) Close() error {
 		return m.closeFunc()
 	}
 	return nil
-}
-
-// mockGeminiClient is a mock implementation of gemini.Client for testing
-type mockGeminiClient struct {
-	generateContentFunc    func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	countTokensFunc        func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
-	getModelInfoFunc       func(ctx context.Context) (*gemini.ModelInfo, error)
-	getModelNameFunc       func() string
-	getTemperatureFunc     func() float32
-	getMaxOutputTokensFunc func() int32
-	getTopPFunc            func() float32
-	closeFunc              func() error
-}
-
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
-	}
-	return &gemini.GenerationResult{Content: "mock content"}, nil
-}
-
-func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	if m.countTokensFunc != nil {
-		return m.countTokensFunc(ctx, prompt)
-	}
-	return &gemini.TokenCount{Total: 100}, nil
-}
-
-func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	if m.getModelInfoFunc != nil {
-		return m.getModelInfoFunc(ctx)
-	}
-	return &gemini.ModelInfo{InputTokenLimit: 1000}, nil
-}
-
-func (m *mockGeminiClient) GetModelName() string {
-	if m.getModelNameFunc != nil {
-		return m.getModelNameFunc()
-	}
-	return "test-model"
-}
-
-func (m *mockGeminiClient) GetTemperature() float32 {
-	if m.getTemperatureFunc != nil {
-		return m.getTemperatureFunc()
-	}
-	return 0.7
-}
-
-func (m *mockGeminiClient) GetMaxOutputTokens() int32 {
-	if m.getMaxOutputTokensFunc != nil {
-		return m.getMaxOutputTokensFunc()
-	}
-	return 1000
-}
-
-func (m *mockGeminiClient) GetTopP() float32 {
-	if m.getTopPFunc != nil {
-		return m.getTopPFunc()
-	}
-	return 0.9
-}
-
-func (m *mockGeminiClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
-	return nil
-}
-
-type mockClient struct {
-	generateContentFunc    func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	countTokensFunc        func(ctx context.Context, text string) (*gemini.TokenCount, error)
-	getModelInfoFunc       func(ctx context.Context) (*gemini.ModelInfo, error)
-	getModelNameFunc       func() string
-	getTemperatureFunc     func() float32
-	getMaxOutputTokensFunc func() int32
-	getTopPFunc            func() float32
-	closeFunc              func() error
-}
-
-func (m *mockClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	return m.generateContentFunc(ctx, prompt)
-}
-
-func (m *mockClient) CountTokens(ctx context.Context, text string) (*gemini.TokenCount, error) {
-	if m.countTokensFunc != nil {
-		return m.countTokensFunc(ctx, text)
-	}
-	return &gemini.TokenCount{Total: 100}, nil
-}
-
-func (m *mockClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	if m.getModelInfoFunc != nil {
-		return m.getModelInfoFunc(ctx)
-	}
-	return &gemini.ModelInfo{InputTokenLimit: 1000}, nil
-}
-
-func (m *mockClient) GetModelName() string {
-	if m.getModelNameFunc != nil {
-		return m.getModelNameFunc()
-	}
-	return "test-model"
-}
-
-func (m *mockClient) GetTemperature() float32 {
-	if m.getTemperatureFunc != nil {
-		return m.getTemperatureFunc()
-	}
-	return 0.7
-}
-
-func (m *mockClient) GetMaxOutputTokens() int32 {
-	if m.getMaxOutputTokensFunc != nil {
-		return m.getMaxOutputTokensFunc()
-	}
-	return 2048
-}
-
-func (m *mockClient) GetTopP() float32 {
-	if m.getTopPFunc != nil {
-		return m.getTopPFunc()
-	}
-	return 0.9
-}
-
-func (m *mockClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
-	return nil
-}
-
-// Create a no-op logger for testing
-type noOpLogger struct{}
-
-func (l *noOpLogger) Println(v ...interface{})               {}
-func (l *noOpLogger) Printf(format string, v ...interface{}) {}
-func (l *noOpLogger) Debug(format string, v ...interface{})  {}
-func (l *noOpLogger) Info(format string, v ...interface{})   {}
-func (l *noOpLogger) Warn(format string, v ...interface{})   {}
-func (l *noOpLogger) Error(format string, v ...interface{})  {}
-func (l *noOpLogger) Fatal(format string, v ...interface{})  {}
-
-func newNoOpLogger() logutil.LoggerInterface {
-	return &noOpLogger{}
 }

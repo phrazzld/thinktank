@@ -6,8 +6,10 @@ import (
 	"testing"
 
 	"github.com/phrazzld/architect/internal/architect/modelproc"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
 func TestSanitizeFilename(t *testing.T) {
@@ -23,23 +25,31 @@ func TestSanitizeFilename(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.input, func(t *testing.T) {
+			// Save original factory function and restore after test
+			originalNewTokenManagerWithClient := modelproc.NewTokenManagerWithClient
+			defer func() {
+				modelproc.NewTokenManagerWithClient = originalNewTokenManagerWithClient
+			}()
+
 			// We're calling the unexported sanitizeFilename indirectly through Process
 			// by creating a mock setup that lets us check the file path
 			mockAPI := &mockAPIService{
-				initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-					return &mockClient{
-						generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-							return &gemini.GenerationResult{
-								Content: "Generated content",
+				initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+					return &mockLLMClient{
+						generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+							return &llm.ProviderResult{
+								Content:    "Generated content",
+								TokenCount: 50,
 							}, nil
 						},
 					}, nil
 				},
-				processResponseFunc: func(result *gemini.GenerationResult) (string, error) {
+				processLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
 					return result.Content, nil
 				},
 			}
 
+			// Create mock token manager
 			mockToken := &mockTokenManager{
 				getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 					return &modelproc.TokenResult{
@@ -49,6 +59,11 @@ func TestSanitizeFilename(t *testing.T) {
 						Percentage:   10.0,
 					}, nil
 				},
+			}
+
+			// Mock the factory function
+			modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+				return mockToken
 			}
 
 			// Check if the sanitized filename is used in the output path
@@ -71,10 +86,9 @@ func TestSanitizeFilename(t *testing.T) {
 			cfg.APIKey = "test-api-key"
 			cfg.OutputDir = "/tmp/test-output"
 
-			// Create processor
+			// Create processor with updated constructor signature
 			processor := modelproc.NewProcessor(
 				mockAPI,
-				mockToken,
 				mockWriter,
 				mockAudit,
 				mockLogger,

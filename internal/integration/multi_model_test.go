@@ -14,6 +14,7 @@ import (
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,8 +28,9 @@ const modelNameKey contextKey = "current_model"
 
 // mockModelTrackingAPIService extends mockIntAPIService to track model names
 type mockModelTrackingAPIService struct {
-	logger     logutil.LoggerInterface
-	mockClient gemini.Client
+	logger        logutil.LoggerInterface
+	mockClient    gemini.Client
+	mockLLMClient llm.LLMClient
 }
 
 // InitClient returns the mock client and stores model name in context
@@ -43,6 +45,29 @@ func (s *mockModelTrackingAPIService) InitClient(ctx context.Context, apiKey, mo
 	}
 
 	return mockClient, nil
+}
+
+// InitLLMClient returns a mock LLM client and stores model name in context
+func (s *mockModelTrackingAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	// Create a new context with the model name
+	ctx = context.WithValue(ctx, modelNameKey, modelName)
+
+	// If a specific mock LLM client was provided, use it
+	if s.mockLLMClient != nil {
+		// We need to wrap it in a model-aware client to carry the context
+		return &modelAwareLLMClient{
+			delegateClient: s.mockLLMClient,
+			ctx:            ctx,
+		}, nil
+	}
+
+	// Otherwise create a generic mock LLM client
+	return &modelAwareLLMClient{
+		delegateClient: &mockLLMClientForTesting{
+			modelName: modelName,
+		},
+		ctx: ctx,
+	}, nil
 }
 
 // Process responses the same as mockIntAPIService
@@ -75,6 +100,49 @@ func (s *mockModelTrackingAPIService) GetErrorDetails(err error) string {
 		return ""
 	}
 	return err.Error()
+}
+
+// ProcessLLMResponse processes provider-agnostic responses
+func (s *mockModelTrackingAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if result == nil {
+		return "", fmt.Errorf("empty response from API")
+	}
+	if result.Content == "" {
+		return "", fmt.Errorf("empty content from API")
+	}
+	return result.Content, nil
+}
+
+// modelAwareLLMClient wraps an LLMClient to carry context with model information
+type modelAwareLLMClient struct {
+	delegateClient llm.LLMClient
+	ctx            context.Context
+}
+
+// GenerateContent passes the model-aware context to the delegate
+func (m *modelAwareLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	// Use the context with model information instead of the one provided
+	return m.delegateClient.GenerateContent(m.ctx, prompt)
+}
+
+// CountTokens implements the LLMClient interface
+func (m *modelAwareLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	return m.delegateClient.CountTokens(m.ctx, prompt)
+}
+
+// GetModelInfo implements the LLMClient interface
+func (m *modelAwareLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	return m.delegateClient.GetModelInfo(m.ctx)
+}
+
+// GetModelName implements the LLMClient interface
+func (m *modelAwareLLMClient) GetModelName() string {
+	return m.delegateClient.GetModelName()
+}
+
+// Close implements the LLMClient interface
+func (m *modelAwareLLMClient) Close() error {
+	return m.delegateClient.Close()
 }
 
 // modelAwareClient wraps a Client to preserve the context with model name

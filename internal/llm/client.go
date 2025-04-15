@@ -50,3 +50,56 @@ type LLMClient interface {
 	// Close releases resources used by the client
 	Close() error
 }
+
+// MockLLMClient is a testing mock for the LLMClient interface
+type MockLLMClient struct {
+	GenerateContentFunc func(ctx context.Context, prompt string) (*ProviderResult, error)
+	CountTokensFunc     func(ctx context.Context, prompt string) (*ProviderTokenCount, error)
+	GetModelInfoFunc    func(ctx context.Context) (*ProviderModelInfo, error)
+	GetModelNameFunc    func() string
+	CloseFunc           func() error
+}
+
+// GenerateContent implementation for MockLLMClient
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string) (*ProviderResult, error) {
+	if m.GenerateContentFunc != nil {
+		return m.GenerateContentFunc(ctx, prompt)
+	}
+	return &ProviderResult{Content: "Mock response"}, nil
+}
+
+// CountTokens implementation for MockLLMClient
+func (m *MockLLMClient) CountTokens(ctx context.Context, prompt string) (*ProviderTokenCount, error) {
+	if m.CountTokensFunc != nil {
+		return m.CountTokensFunc(ctx, prompt)
+	}
+	return &ProviderTokenCount{Total: int32(len(prompt) / 4)}, nil // Simple approximation
+}
+
+// GetModelInfo implementation for MockLLMClient
+func (m *MockLLMClient) GetModelInfo(ctx context.Context) (*ProviderModelInfo, error) {
+	if m.GetModelInfoFunc != nil {
+		return m.GetModelInfoFunc(ctx)
+	}
+	return &ProviderModelInfo{
+		Name:             "mock-model",
+		InputTokenLimit:  8192,
+		OutputTokenLimit: 4096,
+	}, nil
+}
+
+// GetModelName implementation for MockLLMClient
+func (m *MockLLMClient) GetModelName() string {
+	if m.GetModelNameFunc != nil {
+		return m.GetModelNameFunc()
+	}
+	return "mock-model"
+}
+
+// Close implementation for MockLLMClient
+func (m *MockLLMClient) Close() error {
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+	return nil
+}

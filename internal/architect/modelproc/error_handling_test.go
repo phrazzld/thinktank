@@ -7,20 +7,56 @@ import (
 	"testing"
 
 	"github.com/phrazzld/architect/internal/architect/modelproc"
+	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/architect/internal/logutil"
 )
 
+// Store the original factory function
+var originalNewTokenManagerWithClient = modelproc.NewTokenManagerWithClient
+
+// Helper function to restore the original factory
+func restoreNewTokenManagerWithClient() {
+	modelproc.NewTokenManagerWithClient = originalNewTokenManagerWithClient
+}
+
+// No-op logger for tests
+type noOpLogger struct{}
+
+func (l *noOpLogger) Debug(format string, args ...interface{})  {}
+func (l *noOpLogger) Info(format string, args ...interface{})   {}
+func (l *noOpLogger) Warn(format string, args ...interface{})   {}
+func (l *noOpLogger) Error(format string, args ...interface{})  {}
+func (l *noOpLogger) Fatal(format string, args ...interface{})  {}
+func (l *noOpLogger) Println(args ...interface{})               {}
+func (l *noOpLogger) Printf(format string, args ...interface{}) {}
+
+func newNoOpLogger() logutil.LoggerInterface {
+	return &noOpLogger{}
+}
+
 func TestModelProcessor_Process_ClientInitError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Setup mocks
 	expectedErr := errors.New("client init error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+		// Now we use the initLLMClient function for the provider-agnostic interface
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return nil, expectedErr
 		},
 	}
 
+	// Create a mock token manager for factory function mocking
 	mockToken := &mockTokenManager{}
+
+	// Mock the factory function instead of injecting the token manager
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -30,10 +66,9 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature (no token manager)
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -56,18 +91,22 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 }
 
 func TestModelProcessor_Process_GenerationError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Setup mocks
 	expectedErr := errors.New("generation error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					return nil, expectedErr
 				},
 			}, nil
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -79,6 +118,11 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 		},
 	}
 
+	// Mock the factory function instead of injecting the token manager
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -88,10 +132,9 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -114,24 +157,28 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 }
 
 func TestModelProcessor_Process_SaveError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Setup mocks
 	expectedErr := errors.New("save error")
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-					return &gemini.GenerationResult{
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+					return &llm.ProviderResult{
 						Content:    "Generated content",
 						TokenCount: 50,
 					}, nil
 				},
 			}, nil
 		},
-		processResponseFunc: func(result *gemini.GenerationResult) (string, error) {
+		processLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
 			return result.Content, nil
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -141,6 +188,11 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 				Percentage:   10.0,
 			}, nil
 		},
+	}
+
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
 	}
 
 	mockWriter := &mockFileWriter{
@@ -157,10 +209,9 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -183,30 +234,35 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 }
 
 func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Setup mocks
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-					return &gemini.ModelInfo{
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+					return &llm.ProviderModelInfo{
 						Name:             "test-model",
 						InputTokenLimit:  4000,
 						OutputTokenLimit: 1000,
 					}, nil
 				},
-				countTokensFunc: func(ctx context.Context, text string) (*gemini.TokenCount, error) {
-					return &gemini.TokenCount{Total: 5000}, nil
+				countTokensFunc: func(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
+					return &llm.ProviderTokenCount{Total: 5000}, nil
 				},
 				getModelNameFunc: func() string {
 					return "test-model"
 				},
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					// This should not be called in the token exceeded case
 					return nil, errors.New("should not be called")
 				},
 			}, nil
 		},
 	}
+
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -219,6 +275,11 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 		},
 	}
 
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -228,10 +289,9 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -255,26 +315,30 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 
 // TestProcess_ProcessResponseError tests error handling in response processing
 func TestProcess_ProcessResponseError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Create expected error
 	expectedError := errors.New("response processing error")
 
-	// Create mock API service that returns an error from ProcessResponse
+	// Create mock API service that returns an error from ProcessLLMResponse
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-					return &gemini.GenerationResult{
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+					return &llm.ProviderResult{
 						Content:    "Generated content",
 						TokenCount: 50,
 					}, nil
 				},
 			}, nil
 		},
-		processResponseFunc: func(result *gemini.GenerationResult) (string, error) {
+		processLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
 			return "", expectedError
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -286,6 +350,11 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 		},
 	}
 
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -295,10 +364,9 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -322,14 +390,17 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 
 // TestProcess_EmptyResponseError tests handling of empty response errors
 func TestProcess_EmptyResponseError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Create expected error
 	generationErr := errors.New("empty response")
 
 	// Create mock API service that identifies empty response errors
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					return nil, generationErr
 				},
 			}, nil
@@ -342,6 +413,7 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -353,6 +425,11 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 		},
 	}
 
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -362,10 +439,9 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -389,14 +465,17 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 
 // TestProcess_SafetyBlockedError tests handling of safety blocked errors
 func TestProcess_SafetyBlockedError(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Create expected error
 	generationErr := errors.New("safety blocked")
 
 	// Create mock API service that identifies safety blocked errors
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					return nil, generationErr
 				},
 			}, nil
@@ -412,6 +491,7 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{
 		getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 			return &modelproc.TokenResult{
@@ -423,6 +503,11 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 		},
 	}
 
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -432,10 +517,9 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,
@@ -460,9 +544,12 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 // TestProcess_NilClientDeference tests the behavior when a nil client is returned
 // This test specifically targets the bugfix for the nil pointer dereference issue
 func TestProcess_NilClientDeference(t *testing.T) {
+	// Save original factory function and restore after test
+	defer restoreNewTokenManagerWithClient()
+
 	// Setup mocks with a failing client initialization
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return nil, errors.New("client initialization failure")
 		},
 		getErrorDetailsFunc: func(err error) string {
@@ -470,7 +557,14 @@ func TestProcess_NilClientDeference(t *testing.T) {
 		},
 	}
 
+	// Create mock token manager
 	mockToken := &mockTokenManager{}
+
+	// Mock the factory function
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+		return mockToken
+	}
+
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
 	mockLogger := newNoOpLogger()
@@ -480,10 +574,9 @@ func TestProcess_NilClientDeference(t *testing.T) {
 	cfg.APIKey = "test-api-key"
 	cfg.OutputDir = "/tmp/test-output"
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,

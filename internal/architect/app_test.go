@@ -15,6 +15,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
 )
@@ -114,18 +115,24 @@ func (m *MockLogger) Printf(format string, args ...interface{}) {}
 
 // MockAPIService mocks the APIService interface
 type MockAPIService struct {
-	initClientErr      error
-	mockClient         gemini.Client
-	processResponseErr error
-	processedContent   string
+	initClientErr         error
+	mockClient            gemini.Client
+	processResponseErr    error
+	processedContent      string
+	initLLMClientErr      error
+	mockLLMClient         llm.LLMClient
+	processLLMResponseErr error
 }
 
 func NewMockAPIService() *MockAPIService {
 	return &MockAPIService{
-		initClientErr:      nil,
-		mockClient:         nil,
-		processResponseErr: nil,
-		processedContent:   "Test Generated Plan",
+		initClientErr:         nil,
+		mockClient:            nil,
+		processResponseErr:    nil,
+		processedContent:      "Test Generated Plan",
+		initLLMClientErr:      nil,
+		mockLLMClient:         nil,
+		processLLMResponseErr: nil,
 	}
 }
 
@@ -153,6 +160,26 @@ func (m *MockAPIService) IsSafetyBlockedError(err error) bool {
 
 func (m *MockAPIService) GetErrorDetails(err error) string {
 	return err.Error()
+}
+
+func (m *MockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	if m.initLLMClientErr != nil {
+		return nil, m.initLLMClientErr
+	}
+	if m.mockLLMClient != nil {
+		return m.mockLLMClient, nil
+	}
+	return &llm.MockLLMClient{}, nil
+}
+
+func (m *MockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if m.processLLMResponseErr != nil {
+		return "", m.processLLMResponseErr
+	}
+	if result == nil {
+		return "", errors.New("nil result")
+	}
+	return m.processedContent, nil
 }
 
 // MockOrchestrator mocks the orchestrator for testing

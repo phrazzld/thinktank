@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/architect/internal/auditlog"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -39,11 +39,11 @@ type TokenManager interface {
 type tokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
-	client      gemini.Client
+	client      llm.LLMClient
 }
 
 // NewTokenManager creates a new TokenManager instance
-func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) (TokenManager, error) {
+func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) (TokenManager, error) {
 	if client == nil {
 		return nil, fmt.Errorf("client cannot be nil for TokenManager")
 	}
@@ -52,7 +52,7 @@ func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditL
 
 // NewTokenManagerWithClient creates a TokenManager with a specific client.
 // This is defined as a variable to allow it to be mocked in tests.
-var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) TokenManager {
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) TokenManager {
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
@@ -88,30 +88,25 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 	// Get model information (limits)
 	modelInfo, err := tm.client.GetModelInfo(ctx)
 	if err != nil {
-		// Pass through API errors directly for better error messages
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			// Log the token check failure
-			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-				Timestamp: time.Now().UTC(),
-				Operation: "CheckTokens",
-				Status:    "Failure",
-				Inputs: map[string]interface{}{
-					"prompt_length": len(prompt),
-					"model_name":    modelName,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: apiErr.Message,
-					Type:    "APIError",
-				},
-				Message: "Token count check failed for model " + modelName,
-			}); logErr != nil {
-				tm.logger.Error("Failed to write audit log: %v", logErr)
-			}
+		// Handle provider-agnostic error logging
+		errorType := "TokenCheckError"
+		// Using a separate variable declaration to avoid ineffectual assignment
+		var errorMessage string
 
-			return nil, apiErr
+		// Get specific error details if we can recognize provider-specific errors
+		// Note: This approach allows us to handle Gemini or other provider-specific errors
+		// without direct dependency on provider-specific error types
+		if apiService, ok := tm.client.(APIService); ok && apiService != nil {
+			if apiService.IsSafetyBlockedError(err) {
+				errorType = "SafetyBlockedError"
+			}
+			errorMessage = apiService.GetErrorDetails(err)
+		} else {
+			// Just use the error message directly
+			errorMessage = err.Error()
 		}
 
-		// Log the token check failure for other errors
+		// Log the token check failure
 		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 			Timestamp: time.Now().UTC(),
 			Operation: "CheckTokens",
@@ -121,15 +116,15 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 				"model_name":    modelName,
 			},
 			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to get model info: %v", err),
-				Type:    "TokenCheckError",
+				Message: errorMessage,
+				Type:    errorType,
 			},
 			Message: "Token count check failed for model " + modelName,
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		// Wrap other errors
+		// Return the original error
 		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
 	}
 
@@ -139,30 +134,23 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 	// Count tokens in the prompt
 	tokenResult, err := tm.client.CountTokens(ctx, prompt)
 	if err != nil {
-		// Pass through API errors directly for better error messages
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			// Log the token check failure
-			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-				Timestamp: time.Now().UTC(),
-				Operation: "CheckTokens",
-				Status:    "Failure",
-				Inputs: map[string]interface{}{
-					"prompt_length": len(prompt),
-					"model_name":    modelName,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: apiErr.Message,
-					Type:    "APIError",
-				},
-				Message: "Token count check failed for model " + modelName,
-			}); logErr != nil {
-				tm.logger.Error("Failed to write audit log: %v", logErr)
-			}
+		// Handle provider-agnostic error logging
+		errorType := "TokenCheckError"
+		// Using a separate variable declaration to avoid ineffectual assignment
+		var errorMessage string
 
-			return nil, apiErr
+		// Get specific error details if we can recognize provider-specific errors
+		if apiService, ok := tm.client.(APIService); ok && apiService != nil {
+			if apiService.IsSafetyBlockedError(err) {
+				errorType = "SafetyBlockedError"
+			}
+			errorMessage = apiService.GetErrorDetails(err)
+		} else {
+			// Just use the error message directly
+			errorMessage = err.Error()
 		}
 
-		// Log the token check failure for other errors
+		// Log the token check failure
 		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 			Timestamp: time.Now().UTC(),
 			Operation: "CheckTokens",
@@ -172,15 +160,15 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 				"model_name":    modelName,
 			},
 			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to count tokens: %v", err),
-				Type:    "TokenCheckError",
+				Message: errorMessage,
+				Type:    errorType,
 			},
 			Message: "Token count check failed for model " + modelName,
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		// Wrap other errors
+		// Return the original error
 		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
 	}
 

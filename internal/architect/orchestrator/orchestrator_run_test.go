@@ -61,17 +61,26 @@ func TestRun_ModelProcessing(t *testing.T) {
 	// Verify the basic workflow executed correctly
 	deps.verifyBasicWorkflow(t, modelNames)
 
-	// Verify that the API client was initialized for each model
-	if len(deps.apiService.InitClientCalls) != len(modelNames) {
-		t.Errorf("Expected %d InitClient calls, got %d", len(modelNames), len(deps.apiService.InitClientCalls))
+	// Verify that the API client was initialized for each model (either old or new interface)
+	totalInitCalls := len(deps.apiService.InitClientCalls) + len(deps.apiService.InitLLMClientCalls)
+	if totalInitCalls != len(modelNames) {
+		t.Errorf("Expected %d total client initialization calls, got %d (InitClient: %d, InitLLMClient: %d)",
+			len(modelNames),
+			totalInitCalls,
+			len(deps.apiService.InitClientCalls),
+			len(deps.apiService.InitLLMClientCalls))
 	}
 
 	// Create maps to track which models were processed
 	initClientModels := make(map[string]bool)
 	outputFileModels := make(map[string]bool)
 
-	// Collect all model names from InitClient calls
+	// Collect all model names from both old and new interface calls
 	for _, call := range deps.apiService.InitClientCalls {
+		initClientModels[call.ModelName] = true
+	}
+
+	for _, call := range deps.apiService.InitLLMClientCalls {
 		initClientModels[call.ModelName] = true
 	}
 

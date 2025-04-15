@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -27,6 +28,14 @@ type integrationMockAPIService struct {
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
+
+	// New methods for provider-agnostic interface
+	initLLMClientFunc      func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	processLLMResponseFunc func(result *llm.ProviderResult) (string, error)
+
+	// Tracking for provider-agnostic calls
+	initLLMClientCalls      []initLLMClientCall
+	processLLMResponseCalls []processLLMResponseCall
 }
 
 type initClientCall struct {
@@ -40,13 +49,32 @@ type processResponseCall struct {
 	result *gemini.GenerationResult
 }
 
+type initLLMClientCall struct {
+	apiKey      string
+	modelName   string
+	apiEndpoint string
+	ctx         context.Context
+}
+
+type processLLMResponseCall struct {
+	result *llm.ProviderResult
+}
+
 func newIntegrationMockAPIService() *integrationMockAPIService {
 	return &integrationMockAPIService{
 		initClientCalls:          make([]initClientCall, 0),
 		processResponseCalls:     make([]processResponseCall, 0),
+		initLLMClientCalls:       make([]initLLMClientCall, 0),
+		processLLMResponseCalls:  make([]processLLMResponseCall, 0),
 		isEmptyResponseErrorFunc: func(err error) bool { return false },
 		isSafetyBlockedErrorFunc: func(err error) bool { return false },
 		getErrorDetailsFunc:      func(err error) string { return "error details" },
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return newIntegrationMockLLMClient(), nil
+		},
+		processLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
+			return result.Content, nil
+		},
 	}
 }
 
@@ -91,6 +119,34 @@ func (m *integrationMockAPIService) GetErrorDetails(err error) string {
 	return m.getErrorDetailsFunc(err)
 }
 
+// Implement new provider-agnostic methods
+func (m *integrationMockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	// Track the call
+	m.initLLMClientCalls = append(m.initLLMClientCalls, initLLMClientCall{
+		apiKey:      apiKey,
+		modelName:   modelName,
+		apiEndpoint: apiEndpoint,
+		ctx:         ctx,
+	})
+
+	if m.initLLMClientFunc != nil {
+		return m.initLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	}
+	return newIntegrationMockLLMClient(), nil
+}
+
+func (m *integrationMockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	// Track the call
+	m.processLLMResponseCalls = append(m.processLLMResponseCalls, processLLMResponseCall{
+		result: result,
+	})
+
+	if m.processLLMResponseFunc != nil {
+		return m.processLLMResponseFunc(result)
+	}
+	return result.Content, nil
+}
+
 // Verify methods for test assertions
 func (m *integrationMockAPIService) VerifyInitClientCalled(t *testing.T, expectedModelNames []string) {
 	t.Helper()
@@ -119,6 +175,73 @@ type integrationMockGeminiClient struct {
 	temperature         float32
 	maxOutputTokens     int32
 	topP                float32
+}
+
+// integrationMockLLMClient implements llm.LLMClient for testing
+type integrationMockLLMClient struct {
+	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	countTokensFunc     func(ctx context.Context, text string) (*llm.ProviderTokenCount, error)
+	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
+	closeFunc           func() error
+	modelName           string
+	temperature         float32
+	maxOutputTokens     int32
+}
+
+func newIntegrationMockLLMClient() *integrationMockLLMClient {
+	return &integrationMockLLMClient{
+		modelName:       "test-model",
+		temperature:     0.7,
+		maxOutputTokens: 1000,
+	}
+}
+
+func (m *integrationMockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	if m.generateContentFunc != nil {
+		return m.generateContentFunc(ctx, prompt)
+	}
+	return &llm.ProviderResult{
+		Content:      "generated content",
+		TokenCount:   100,
+		FinishReason: "STOP",
+	}, nil
+}
+
+func (m *integrationMockLLMClient) CountTokens(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
+	if m.countTokensFunc != nil {
+		return m.countTokensFunc(ctx, text)
+	}
+	return &llm.ProviderTokenCount{Total: 100}, nil
+}
+
+func (m *integrationMockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	if m.getModelInfoFunc != nil {
+		return m.getModelInfoFunc(ctx)
+	}
+	return &llm.ProviderModelInfo{
+		Name:             "test-model",
+		InputTokenLimit:  1000,
+		OutputTokenLimit: 1000,
+	}, nil
+}
+
+func (m *integrationMockLLMClient) GetModelName() string {
+	return m.modelName
+}
+
+func (m *integrationMockLLMClient) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
+	return nil
+}
+
+func (m *integrationMockLLMClient) GetTemperature() float32 {
+	return m.temperature
+}
+
+func (m *integrationMockLLMClient) GetMaxOutputTokens() int32 {
+	return m.maxOutputTokens
 }
 
 func newIntegrationMockGeminiClient() *integrationMockGeminiClient {
@@ -382,7 +505,7 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 
 	// Set up test dependencies
 	mockAPI := newIntegrationMockAPIService()
-	mockAPI.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {
+	mockAPI.processLLMResponseFunc = func(result *llm.ProviderResult) (string, error) {
 		// Just return the content
 		return result.Content, nil
 	}
@@ -393,17 +516,17 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 	mockLogger := newIntegrationMockLogger()
 
 	// Configure the client function to create our mock client with specific behavior
-	mockClient := newIntegrationMockGeminiClient()
-	mockClient.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		return &gemini.GenerationResult{
+	mockLLMClient := newIntegrationMockLLMClient()
+	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+		return &llm.ProviderResult{
 			Content:      "Generated model output for test",
 			TokenCount:   150,
 			FinishReason: "STOP",
 		}, nil
 	}
 
-	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-		return mockClient, nil
+	mockAPI.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+		return mockLLMClient, nil
 	}
 
 	// Create configuration
@@ -415,10 +538,9 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 		MaxConcurrentRequests: 1,
 	}
 
-	// Create model processor
+	// Create model processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		nil, // Token managers are created per-model in Process
 		mockFileWriter,
 		mockAudit,
 		mockLogger,
@@ -434,12 +556,12 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 	// Verify results
 	assert.NoError(t, err, "Process should not return an error")
 
-	// Verify API service interactions
-	assert.GreaterOrEqual(t, len(mockAPI.initClientCalls), 1, "InitClient should be called at least once")
-	assert.Equal(t, "test-api-key", mockAPI.initClientCalls[0].apiKey, "InitClient should be called with the correct API key")
-	assert.Equal(t, "test-model", mockAPI.initClientCalls[0].modelName, "InitClient should be called with the correct model name")
+	// Verify API service interactions with provider-agnostic interfaces
+	assert.GreaterOrEqual(t, len(mockAPI.initLLMClientCalls), 1, "InitLLMClient should be called at least once")
+	assert.Equal(t, "test-api-key", mockAPI.initLLMClientCalls[0].apiKey, "InitLLMClient should be called with the correct API key")
+	assert.Equal(t, "test-model", mockAPI.initLLMClientCalls[0].modelName, "InitLLMClient should be called with the correct model name")
 
-	assert.GreaterOrEqual(t, len(mockAPI.processResponseCalls), 1, "ProcessResponse should be called at least once")
+	assert.GreaterOrEqual(t, len(mockAPI.processLLMResponseCalls), 1, "ProcessLLMResponse should be called at least once")
 
 	// Verify file writing
 	expectedOutputPath := filepath.Join(tempDir, "test-model.md")
@@ -489,14 +611,13 @@ func TestIntegration_ModelProcessor_TokenManager(t *testing.T) {
 	originalNewTokenManager := modelproc.NewTokenManagerWithClient
 	defer func() { modelproc.NewTokenManagerWithClient = originalNewTokenManager }()
 
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
 		return mockTokenMgr
 	}
 
-	// Create model processor
+	// Create model processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		nil, // Token managers are created per-model in Process
 		mockFileWriter,
 		mockAudit,
 		mockLogger,
@@ -536,17 +657,17 @@ func TestIntegration_ModelProcessor_FileWriter(t *testing.T) {
 
 	// Configure API service to return specific content
 	expectedContent := "This is the specific generated content that should be saved to file"
-	mockClient := newIntegrationMockGeminiClient()
-	mockClient.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-		return &gemini.GenerationResult{
+	mockLLMClient := newIntegrationMockLLMClient()
+	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+		return &llm.ProviderResult{
 			Content:      expectedContent,
 			TokenCount:   100,
 			FinishReason: "STOP",
 		}, nil
 	}
 
-	mockAPI.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-		return mockClient, nil
+	mockAPI.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+		return mockLLMClient, nil
 	}
 
 	// Simulate a file writing error
@@ -561,10 +682,9 @@ func TestIntegration_ModelProcessor_FileWriter(t *testing.T) {
 		MaxConcurrentRequests: 1,
 	}
 
-	// Create model processor
+	// Create model processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		nil, // Token managers are created per-model in Process
 		mockFileWriter,
 		mockAudit,
 		mockLogger,
@@ -613,7 +733,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 		{
 			name: "API client initialization error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+				api.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 					return nil, errors.New("API client initialization failed")
 				}
 			},
@@ -630,11 +750,11 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 		{
 			name: "Content generation error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
-				client := newIntegrationMockGeminiClient()
-				client.generateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				client := newIntegrationMockLLMClient()
+				client.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 					return nil, errors.New("content generation failed")
 				}
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+				api.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 					return client, nil
 				}
 			},
@@ -643,11 +763,11 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 		{
 			name: "Response processing error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
-				client := newIntegrationMockGeminiClient()
-				api.initClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+				client := newIntegrationMockLLMClient()
+				api.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 					return client, nil
 				}
-				api.processResponseFunc = func(result *gemini.GenerationResult) (string, error) {
+				api.processLLMResponseFunc = func(result *llm.ProviderResult) (string, error) {
 					return "", errors.New("response processing failed")
 				}
 			},
@@ -689,15 +809,14 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 				originalNewTokenManager := modelproc.NewTokenManagerWithClient
 				defer func() { modelproc.NewTokenManagerWithClient = originalNewTokenManager }()
 
-				modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) modelproc.TokenManager {
+				modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
 					return mockTokenMgr
 				}
 			}
 
-			// Create model processor
+			// Create model processor with updated constructor signature
 			processor := modelproc.NewProcessor(
 				mockAPI,
-				nil, // Token managers are created per-model in Process
 				mockFileWriter,
 				mockAudit,
 				mockLogger,

@@ -8,6 +8,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -23,10 +24,18 @@ type TokenResult struct {
 // APIService defines the interface for API-related operations
 type APIService interface {
 	// InitClient initializes and returns a Gemini client
+	// Deprecated: Use InitLLMClient for new code that needs provider-agnostic functionality
 	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
 
-	// ProcessResponse processes the API response and extracts content
+	// InitLLMClient initializes and returns a provider-agnostic LLM client
+	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+
+	// ProcessResponse processes the Gemini API response and extracts content
+	// Deprecated: Use ProcessLLMResponse for new code that needs provider-agnostic functionality
 	ProcessResponse(result *gemini.GenerationResult) (string, error)
+
+	// ProcessLLMResponse processes a provider-agnostic response and extracts content
+	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
 
 	// IsEmptyResponseError checks if an error is related to empty API responses
 	IsEmptyResponseError(err error) bool

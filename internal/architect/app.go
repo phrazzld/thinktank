@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/architect/orchestrator"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
+	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
 	"github.com/phrazzld/architect/internal/runutil"
@@ -133,8 +134,8 @@ func Execute(
 	}
 	defer func() { _ = referenceClient.Close() }()
 
-	// Create TokenManager with the reference client
-	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClient)
+	// Create TokenManager with the reference client, adapting it to the LLMClient interface
+	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, gemini.AsLLMClient(referenceClient))
 	if tokenManagerErr != nil {
 		logger.Error("Failed to create token manager: %v", tokenManagerErr)
 		return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
