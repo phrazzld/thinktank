@@ -17,7 +17,7 @@
   - **Depends On:** Remove deprecated method implementations from API service
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update modelproc package to use provider-agnostic methods
+- [x] **Task Title:** Update modelproc package to use provider-agnostic methods
   - **Action:** Refactor `internal/architect/modelproc/processor.go` and `internal/architect/modelproc/processor_llm_test.go` to use only provider-agnostic methods like `InitLLMClient` and `ProcessLLMResponse`.
   - **Depends On:** None
   - **AC Ref:** N/A

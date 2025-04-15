@@ -559,22 +559,3 @@ func (l *mockLogger) Printf(format string, args ...interface{}) {
 		l.printfFunc(format, args...)
 	}
 }
-
-// These are needed for backward compatibility with the old interface
-func (m *mockLLMAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (interface{}, error) {
-	// For tests, we just wrap the LLM client
-	llmClient, err := m.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
-	if err != nil {
-		return nil, err
-	}
-	return llmClient, nil
-}
-
-func (m *mockLLMAPIService) ProcessResponse(result interface{}) (string, error) {
-	// For tests, we just convert to LLM result type
-	llmResult, ok := result.(*llm.ProviderResult)
-	if !ok {
-		return "", fmt.Errorf("unexpected result type: %T", result)
-	}
-	return m.ProcessLLMResponse(llmResult)
-}

@@ -11,7 +11,6 @@ import (
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
@@ -21,32 +20,15 @@ import (
 
 // integrationMockAPIService implements the APIService interface with enhanced tracking
 type integrationMockAPIService struct {
-	initClientCalls          []initClientCall
-	processResponseCalls     []processResponseCall
-	initClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
-	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
-
-	// New methods for provider-agnostic interface
-	initLLMClientFunc      func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	processLLMResponseFunc func(result *llm.ProviderResult) (string, error)
+	initLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	processLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 
 	// Tracking for provider-agnostic calls
 	initLLMClientCalls      []initLLMClientCall
 	processLLMResponseCalls []processLLMResponseCall
-}
-
-type initClientCall struct {
-	apiKey      string
-	modelName   string
-	apiEndpoint string
-	ctx         context.Context
-}
-
-type processResponseCall struct {
-	result *gemini.GenerationResult
 }
 
 type initLLMClientCall struct {
@@ -62,8 +44,6 @@ type processLLMResponseCall struct {
 
 func newIntegrationMockAPIService() *integrationMockAPIService {
 	return &integrationMockAPIService{
-		initClientCalls:          make([]initClientCall, 0),
-		processResponseCalls:     make([]processResponseCall, 0),
 		initLLMClientCalls:       make([]initLLMClientCall, 0),
 		processLLMResponseCalls:  make([]processLLMResponseCall, 0),
 		isEmptyResponseErrorFunc: func(err error) bool { return false },
@@ -76,35 +56,6 @@ func newIntegrationMockAPIService() *integrationMockAPIService {
 			return result.Content, nil
 		},
 	}
-}
-
-func (m *integrationMockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	m.initClientCalls = append(m.initClientCalls, initClientCall{
-		apiKey:      apiKey,
-		modelName:   modelName,
-		apiEndpoint: apiEndpoint,
-		ctx:         ctx,
-	})
-
-	if m.initClientFunc != nil {
-		return m.initClientFunc(ctx, apiKey, modelName, apiEndpoint)
-	}
-
-	// Default mock client
-	return newIntegrationMockGeminiClient(), nil
-}
-
-func (m *integrationMockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	m.processResponseCalls = append(m.processResponseCalls, processResponseCall{
-		result: result,
-	})
-
-	if m.processResponseFunc != nil {
-		return m.processResponseFunc(result)
-	}
-
-	// Default implementation
-	return result.Content, nil
 }
 
 func (m *integrationMockAPIService) IsEmptyResponseError(err error) bool {
@@ -145,36 +96,6 @@ func (m *integrationMockAPIService) ProcessLLMResponse(result *llm.ProviderResul
 		return m.processLLMResponseFunc(result)
 	}
 	return result.Content, nil
-}
-
-// Verify methods for test assertions
-func (m *integrationMockAPIService) VerifyInitClientCalled(t *testing.T, expectedModelNames []string) {
-	t.Helper()
-
-	// Create a map for O(1) lookup
-	modelMap := make(map[string]bool)
-	for _, call := range m.initClientCalls {
-		modelMap[call.modelName] = true
-	}
-
-	// Verify all expected models were called
-	for _, expectedModel := range expectedModelNames {
-		if !modelMap[expectedModel] {
-			t.Errorf("Expected InitClient to be called for model %s, but it wasn't", expectedModel)
-		}
-	}
-}
-
-// integrationMockGeminiClient implements gemini.Client for testing
-type integrationMockGeminiClient struct {
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	countTokensFunc     func(ctx context.Context, text string) (*gemini.TokenCount, error)
-	getModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
-	closeFunc           func() error
-	modelName           string
-	temperature         float32
-	maxOutputTokens     int32
-	topP                float32
 }
 
 // integrationMockLLMClient implements llm.LLMClient for testing
@@ -242,66 +163,6 @@ func (m *integrationMockLLMClient) GetTemperature() float32 {
 
 func (m *integrationMockLLMClient) GetMaxOutputTokens() int32 {
 	return m.maxOutputTokens
-}
-
-func newIntegrationMockGeminiClient() *integrationMockGeminiClient {
-	return &integrationMockGeminiClient{
-		modelName:       "test-model",
-		temperature:     0.7,
-		maxOutputTokens: 1000,
-		topP:            0.95,
-	}
-}
-
-func (m *integrationMockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
-	}
-	return &gemini.GenerationResult{
-		Content:      "generated content",
-		TokenCount:   100,
-		FinishReason: "STOP",
-	}, nil
-}
-
-func (m *integrationMockGeminiClient) CountTokens(ctx context.Context, text string) (*gemini.TokenCount, error) {
-	if m.countTokensFunc != nil {
-		return m.countTokensFunc(ctx, text)
-	}
-	return &gemini.TokenCount{Total: 100}, nil
-}
-
-func (m *integrationMockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	if m.getModelInfoFunc != nil {
-		return m.getModelInfoFunc(ctx)
-	}
-	return &gemini.ModelInfo{
-		InputTokenLimit:  1000,
-		OutputTokenLimit: 1000,
-	}, nil
-}
-
-func (m *integrationMockGeminiClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
-	return nil
-}
-
-func (m *integrationMockGeminiClient) GetModelName() string {
-	return m.modelName
-}
-
-func (m *integrationMockGeminiClient) GetTemperature() float32 {
-	return m.temperature
-}
-
-func (m *integrationMockGeminiClient) GetMaxOutputTokens() int32 {
-	return m.maxOutputTokens
-}
-
-func (m *integrationMockGeminiClient) GetTopP() float32 {
-	return m.topP
 }
 
 // integrationMockTokenManager implements modelproc.TokenManager for testing

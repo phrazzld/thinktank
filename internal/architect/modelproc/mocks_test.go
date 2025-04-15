@@ -5,29 +5,16 @@ import (
 
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/auditlog"
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 )
 
 // Mock implementations
 type mockAPIService struct {
-	initClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
-	processResponseFunc      func(result *gemini.GenerationResult) (string, error)
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
-
-	// New methods for provider-agnostic interface
-	initLLMClientFunc      func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	processLLMResponseFunc func(result *llm.ProviderResult) (string, error)
-}
-
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	return m.initClientFunc(ctx, apiKey, modelName, apiEndpoint)
-}
-
-func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return m.processResponseFunc(result)
+	initLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	processLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 }
 
 func (m *mockAPIService) IsEmptyResponseError(err error) bool {
@@ -51,7 +38,6 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
-// Implement new interface methods for provider-agnostic API
 func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	if m.initLLMClientFunc != nil {
 		return m.initLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
