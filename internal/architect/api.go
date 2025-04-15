@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/architect/compat"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -37,16 +36,8 @@ var (
 
 // APIService defines the interface for API-related operations
 type APIService interface {
-	// InitClient initializes and returns a Gemini client
-	// Deprecated: Use InitLLMClient for new code that needs provider-agnostic functionality
-	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
-
 	// InitLLMClient initializes and returns a provider-agnostic LLM client
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-
-	// ProcessResponse processes the Gemini API response and extracts content
-	// Deprecated: Use ProcessLLMResponse for new code that needs provider-agnostic functionality
-	ProcessResponse(result *gemini.GenerationResult) (string, error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content
 	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
@@ -211,15 +202,6 @@ func (s *apiService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEn
 	return s.createLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
-// InitClient initializes and returns a Gemini client (for backward compatibility)
-//
-// Deprecated: Use InitLLMClient for new code that needs provider-agnostic functionality.
-// This method will be removed in v0.8.0 (Q4 2024).
-func (s *apiService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	// Delegate to the compatibility package
-	return compat.InitClient(ctx, apiKey, modelName, apiEndpoint, s.createLLMClient, s.logger)
-}
-
 // ProcessLLMResponse processes a provider-agnostic API response and extracts content
 func (s *apiService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	// Check for nil result
@@ -269,15 +251,6 @@ func (s *apiService) ProcessLLMResponse(result *llm.ProviderResult) (string, err
 	}
 
 	return result.Content, nil
-}
-
-// ProcessResponse processes the Gemini API response and extracts content (for backward compatibility)
-//
-// Deprecated: Use ProcessLLMResponse for new code that needs provider-agnostic functionality.
-// This method will be removed in v0.8.0 (Q4 2024).
-func (s *apiService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	// Delegate to the compatibility package
-	return compat.ProcessResponse(result, s.ProcessLLMResponse)
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses.
@@ -417,6 +390,3 @@ func (s *apiService) GetErrorDetails(err error) string {
 	// Return the error string for other error types
 	return err.Error()
 }
-
-// The llmToGeminiClientAdapter has been moved to the compat package.
-// See github.com/phrazzld/architect/internal/architect/compat package for details.

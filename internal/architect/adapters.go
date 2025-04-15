@@ -6,7 +6,6 @@ import (
 	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 )
 
@@ -15,25 +14,13 @@ type APIServiceAdapter struct {
 	APIService APIService
 }
 
-// InitClient implements the interfaces.APIService method with backward compatibility
-func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	// Delegate to the wrapped service's backward-compatible method
-	return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
-}
-
-// InitLLMClient implements the new interfaces.APIService method
+// InitLLMClient implements the interfaces.APIService method
 func (a *APIServiceAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-	// Delegate to the wrapped service's new method
+	// Delegate to the wrapped service
 	return a.APIService.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
-// ProcessResponse implements the interfaces.APIService method with backward compatibility
-func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	// Delegate to the wrapped service
-	return a.APIService.ProcessResponse(result)
-}
-
-// ProcessLLMResponse implements the new interfaces.APIService method
+// ProcessLLMResponse implements the interfaces.APIService method
 func (a *APIServiceAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	// Delegate to the wrapped service
 	return a.APIService.ProcessLLMResponse(result)
