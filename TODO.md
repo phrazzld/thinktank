@@ -12,9 +12,19 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
-- [ ] **Task Title:** Remove deprecated API methods if unnecessary
-  - **Action:** Based on the evaluation, if the deprecated methods (`InitClient`, `ProcessResponse`) and the adapter (`llmToGeminiClientAdapter`) in `internal/architect/api.go` are no longer needed, remove them from the codebase. Update all call sites to use the new provider-agnostic methods.
+- [ ] **Task Title:** Update tests to use provider-agnostic methods
+  - **Action:** Modify test files that currently use the deprecated `InitClient` and `ProcessResponse` methods to use the provider-agnostic `InitLLMClient` and `ProcessLLMResponse` methods instead. This forms Phase 1 of the deprecation plan.
   - **Depends On:** Evaluate necessity of deprecated API methods
+  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
+
+- [ ] **Task Title:** Move deprecated API methods to compatibility package
+  - **Action:** Move the deprecated methods (`InitClient`, `ProcessResponse`) and the adapter (`llmToGeminiClientAdapter`) in `internal/architect/api.go` to a separate compatibility package with clear documentation about the timeline for removal. This forms Phase 2 of the deprecation plan.
+  - **Depends On:** Update tests to use provider-agnostic methods, Update app.Execute to use InitLLMClient directly
+  - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
+
+- [ ] **Task Title:** Plan for complete removal of deprecated methods
+  - **Action:** Document the process and timeline for completely removing the deprecated methods after the compatibility period. Create release notes for this breaking change and communicate it to any potential external consumers. This forms Phase 3 of the deprecation plan.
+  - **Depends On:** Move deprecated API methods to compatibility package
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
 - [ ] **Task Title:** Add comments explaining error helper string matching
