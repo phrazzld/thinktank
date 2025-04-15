@@ -17,7 +17,7 @@
   - **Depends On:** Evaluate necessity of deprecated API methods
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
-- [ ] **Task Title:** Move deprecated API methods to compatibility package
+- [x] **Task Title:** Move deprecated API methods to compatibility package
   - **Action:** Move the deprecated methods (`InitClient`, `ProcessResponse`) and the adapter (`llmToGeminiClientAdapter`) in `internal/architect/api.go` to a separate compatibility package with clear documentation about the timeline for removal. This forms Phase 2 of the deprecation plan.
   - **Depends On:** Update tests to use provider-agnostic methods, Update app.Execute to use InitLLMClient directly
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)

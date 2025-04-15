@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/phrazzld/architect/internal/architect/compat"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -211,25 +212,12 @@ func (s *apiService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEn
 }
 
 // InitClient initializes and returns a Gemini client (for backward compatibility)
-// Deprecated: Use InitLLMClient for new code that needs provider-agnostic functionality
+//
+// Deprecated: Use InitLLMClient for new code that needs provider-agnostic functionality.
+// This method will be removed in v0.8.0 (Q4 2024).
 func (s *apiService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	// For backward compatibility, only support Gemini models in this method
-	if DetectProviderFromModel(modelName) != ProviderGemini {
-		return nil, fmt.Errorf("%w: InitClient only supports Gemini models, use InitLLMClient instead", ErrUnsupportedModel)
-	}
-
-	// Create the LLM client using the shared implementation
-	llmClient, err := s.createLLMClient(ctx, apiKey, modelName, apiEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	// We can't directly convert between interfaces since they have different methods
-	// Instead, create a wrapper that delegates to the LLMClient
-	return &llmToGeminiClientAdapter{
-		llmClient: llmClient,
-		logger:    s.logger,
-	}, nil
+	// Delegate to the compatibility package
+	return compat.InitClient(ctx, apiKey, modelName, apiEndpoint, s.createLLMClient, s.logger)
 }
 
 // ProcessLLMResponse processes a provider-agnostic API response and extracts content
@@ -284,37 +272,12 @@ func (s *apiService) ProcessLLMResponse(result *llm.ProviderResult) (string, err
 }
 
 // ProcessResponse processes the Gemini API response and extracts content (for backward compatibility)
-// Deprecated: Use ProcessLLMResponse for new code that needs provider-agnostic functionality
+//
+// Deprecated: Use ProcessLLMResponse for new code that needs provider-agnostic functionality.
+// This method will be removed in v0.8.0 (Q4 2024).
 func (s *apiService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	// Convert Gemini result to LLM provider result
-	if result == nil {
-		return "", fmt.Errorf("%w: result is nil", ErrEmptyResponse)
-	}
-
-	// Convert safety ratings
-	var safetyInfo []llm.Safety
-	if result.SafetyRatings != nil {
-		safetyInfo = make([]llm.Safety, len(result.SafetyRatings))
-		for i, rating := range result.SafetyRatings {
-			safetyInfo[i] = llm.Safety{
-				Category: rating.Category,
-				Blocked:  rating.Blocked,
-				Score:    rating.Score,
-			}
-		}
-	}
-
-	// Create provider-agnostic result
-	providerResult := &llm.ProviderResult{
-		Content:      result.Content,
-		FinishReason: result.FinishReason,
-		TokenCount:   result.TokenCount,
-		Truncated:    result.Truncated,
-		SafetyInfo:   safetyInfo,
-	}
-
-	// Use the new implementation
-	return s.ProcessLLMResponse(providerResult)
+	// Delegate to the compatibility package
+	return compat.ProcessResponse(result, s.ProcessLLMResponse)
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses.
@@ -455,76 +418,5 @@ func (s *apiService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
-// llmToGeminiClientAdapter adapts an LLMClient to a gemini.Client for backward compatibility
-type llmToGeminiClientAdapter struct {
-	llmClient llm.LLMClient
-	logger    logutil.LoggerInterface
-}
-
-// GenerateContent calls the underlying LLMClient and converts the result
-func (a *llmToGeminiClientAdapter) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	// Call the LLMClient implementation
-	result, err := a.llmClient.GenerateContent(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert to Gemini format
-	return &gemini.GenerationResult{
-		Content:      result.Content,
-		FinishReason: result.FinishReason,
-		TokenCount:   result.TokenCount,
-		// We don't convert safety info back since it's not used in tests
-	}, nil
-}
-
-// CountTokens delegates to the LLMClient
-func (a *llmToGeminiClientAdapter) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	result, err := a.llmClient.CountTokens(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-	return &gemini.TokenCount{
-		Total: result.Total,
-	}, nil
-}
-
-// GetModelInfo delegates to the LLMClient
-func (a *llmToGeminiClientAdapter) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	result, err := a.llmClient.GetModelInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &gemini.ModelInfo{
-		Name:             result.Name,
-		InputTokenLimit:  result.InputTokenLimit,
-		OutputTokenLimit: result.OutputTokenLimit,
-	}, nil
-}
-
-// GetModelName returns the name of the model
-func (a *llmToGeminiClientAdapter) GetModelName() string {
-	return a.llmClient.GetModelName()
-}
-
-// Additional methods required by gemini.Client interface
-
-// GetTemperature returns a default temperature (not used in tests)
-func (a *llmToGeminiClientAdapter) GetTemperature() float32 {
-	return 0.7 // Default value
-}
-
-// GetMaxOutputTokens returns a default max output tokens (not used in tests)
-func (a *llmToGeminiClientAdapter) GetMaxOutputTokens() int32 {
-	return 1024 // Default value
-}
-
-// GetTopP returns a default topP (not used in tests)
-func (a *llmToGeminiClientAdapter) GetTopP() float32 {
-	return 0.95 // Default value
-}
-
-// Close delegates to the LLMClient
-func (a *llmToGeminiClientAdapter) Close() error {
-	return a.llmClient.Close()
-}
+// The llmToGeminiClientAdapter has been moved to the compat package.
+// See github.com/phrazzld/architect/internal/architect/compat package for details.
