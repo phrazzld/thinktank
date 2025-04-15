@@ -139,6 +139,13 @@ func NewDefaultCliConfig() *CliConfig {
 // required fields are present, paths exist, and values are within acceptable ranges.
 // This helps catch configuration errors early before they cause runtime failures.
 func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
+	return ValidateConfigWithEnv(config, logger, os.Getenv)
+}
+
+// ValidateConfigWithEnv checks if the configuration is valid and returns an error if not.
+// This version takes a getenv function for easier testing by allowing environment variables
+// to be mocked.
+func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, getenv func(string) string) error {
 	// Handle nil config
 	if config == nil {
 		if logger != nil {
@@ -200,7 +207,7 @@ func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
 
 	// If any OpenAI model is used, check for OpenAI API key
 	if modelNeedsOpenAIKey {
-		openAIKey := os.Getenv(OpenAIAPIKeyEnvVar)
+		openAIKey := getenv(OpenAIAPIKeyEnvVar)
 		if openAIKey == "" {
 			logError("%s environment variable not set.", OpenAIAPIKeyEnvVar)
 			return fmt.Errorf("openAI API key not set")
