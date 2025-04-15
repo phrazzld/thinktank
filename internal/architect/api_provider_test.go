@@ -1,6 +1,7 @@
 package architect
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -170,6 +171,93 @@ func TestProcessLLMResponseMultiProvider(t *testing.T) {
 
 			if content != tc.expectedText {
 				t.Errorf("Expected content '%s', got '%s'", tc.expectedText, content)
+			}
+		})
+	}
+}
+
+// TestInitLLMClientProviderDetection tests that the InitLLMClient method correctly detects providers from model names
+func TestInitLLMClientProviderDetection(t *testing.T) {
+	// Create API service with custom client wrappers
+	logger := logutil.NewLogger(logutil.InfoLevel, nil, "test")
+	apiService := &apiService{
+		logger:              logger,
+		newGeminiClientFunc: newGeminiClientWrapperForTest,
+		newOpenAIClientFunc: newOpenAIClientWrapperForTest,
+	}
+
+	tests := []struct {
+		name        string
+		modelName   string
+		expectError bool
+		provider    string
+	}{
+		{
+			name:        "Gemini Model",
+			modelName:   "gemini-pro",
+			expectError: false,
+			provider:    "Gemini",
+		},
+		{
+			name:        "Gemini 1.5 Model",
+			modelName:   "gemini-1.5-pro",
+			expectError: false,
+			provider:    "Gemini",
+		},
+		{
+			name:        "OpenAI Model",
+			modelName:   "gpt-4",
+			expectError: false,
+			provider:    "OpenAI",
+		},
+		{
+			name:        "OpenAI GPT-3.5 Model",
+			modelName:   "gpt-3.5-turbo",
+			expectError: false,
+			provider:    "OpenAI",
+		},
+		{
+			name:        "Unknown Provider",
+			modelName:   "unknown-model",
+			expectError: true,
+			provider:    "",
+		},
+		{
+			name:        "OpenAI Text Davinci Model",
+			modelName:   "text-davinci-003",
+			expectError: false,
+			provider:    "OpenAI",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			client, err := apiService.InitLLMClient(context.Background(), "test-key", tc.modelName, "")
+
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error, got: %v", err)
+					return
+				}
+
+				// Verify model name
+				if client.GetModelName() != tc.modelName {
+					t.Errorf("Expected model name %s, got %s", tc.modelName, client.GetModelName())
+				}
+
+				// Verify provider-specific debug logs
+				// This isn't a direct test of the functionality but rather a check that
+				// the provider detection is logging the right information
+				detectResult := DetectProviderFromModel(tc.modelName)
+				if tc.provider == "Gemini" && detectResult != ProviderGemini {
+					t.Errorf("Expected Gemini provider type for %s, got %v", tc.modelName, detectResult)
+				} else if tc.provider == "OpenAI" && detectResult != ProviderOpenAI {
+					t.Errorf("Expected OpenAI provider type for %s, got %v", tc.modelName, detectResult)
+				}
 			}
 		})
 	}

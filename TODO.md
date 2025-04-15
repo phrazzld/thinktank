@@ -47,7 +47,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Deprecated client initialization)
 
-- [ ] **Task Title:** Remove duplicate TestProviderDetection implementation
+- [x] **Task Title:** Remove duplicate TestProviderDetection implementation
   - **Action:** Identify the duplicate `TestProviderDetection` function definitions in `internal/architect/api_test.go` and `internal/architect/api_provider_test.go`. Consolidate the test logic into one file (preferably `api_provider_test.go`) and remove the duplicate implementation.
   - **Depends On:** None
   - **AC Ref:** N/A (Refers to Issue: Duplicated test function)
