@@ -61,12 +61,13 @@ func (s *mockModelTrackingAPIService) InitLLMClient(ctx context.Context, apiKey,
 		}, nil
 	}
 
-	// Otherwise create a generic mock LLM client
+	// Create adapter that wraps the mock gemini client to implement llm.LLMClient
+	llmAdapter := NewLLMClientAdapter(s.mockClient, modelName)
+
+	// Then wrap it in a model-aware client to carry the context
 	return &modelAwareLLMClient{
-		delegateClient: &mockLLMClientForTesting{
-			modelName: modelName,
-		},
-		ctx: ctx,
+		delegateClient: llmAdapter,
+		ctx:            ctx,
 	}, nil
 }
 

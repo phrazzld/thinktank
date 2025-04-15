@@ -16,6 +16,7 @@ import (
 
 // TestErrorScenarios tests error handling using a table-driven approach
 func TestErrorScenarios(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define the test case struct for error handling scenarios
 	type errorTestCase struct {
 		name                 string
@@ -71,7 +72,9 @@ func main() {}`
 
 	// Execute each test case
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()

@@ -24,6 +24,7 @@ func createMockAPIService(env *TestEnv) *mockIntAPIService {
 // TestBasicExecutionFlows tests various basic execution flows of the application
 // using a table-driven approach to reduce repetitive test code.
 func TestBasicExecutionFlows(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define the test case struct for basic execution test scenarios
 	type basicExecutionTestCase struct {
 		name                string
@@ -85,7 +86,9 @@ func main() {}`,
 
 	// Execute each test case
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()
@@ -165,6 +168,7 @@ func main() {}`,
 // TestModeVariations tests different execution modes of the application
 // using a table-driven approach to reduce repetitive test code.
 func TestModeVariations(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define the test case struct for mode variation test scenarios
 	type modeTestCase struct {
 		name                string
@@ -200,7 +204,9 @@ func main() {
 
 	// Execute each test case
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()
