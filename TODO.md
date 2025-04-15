@@ -367,7 +367,87 @@ Create integration tests that verify the multi-provider functionality. Test spec
 
 **Priority**: Must-Have
 
-## Task Summary
+## Code Cleanup Tasks
+
+### Task ID: CLEANUP-001 [ ]
+
+**Title**: Remove Unused mockLLMClient in api_test.go
+
+**Type**: Code Cleanup
+
+**Description**:
+Remove the unused `mockLLMClient` struct and its method implementations from `internal/architect/api_test.go`. This mock was likely created for testing but is no longer used after interface refactoring.
+
+**Acceptance Criteria**:
+- Remove the `mockLLMClient` struct definition from `internal/architect/api_test.go`
+- Remove all unused method implementations for this struct:
+  - `GenerateContent`
+  - `CountTokens`
+  - `GetModelInfo`
+  - `GetModelName`
+  - `Close`
+- Ensure all tests still pass after removal
+- Code passes linting without "unused" warnings for these items
+
+**Estimated Effort**: Low
+
+**Depends On**: None
+
+**Priority**: Should-Have
+
+### Task ID: CLEANUP-002 [ ]
+
+**Title**: Remove Unused mockLogger in modelproc/mocks_test.go
+
+**Type**: Code Cleanup
+
+**Description**:
+Remove the unused `mockLogger` struct and its method implementations from `internal/architect/modelproc/mocks_test.go`. This mock logger was likely created for testing but is no longer used after logger interface refactoring.
+
+**Acceptance Criteria**:
+- Remove the `mockLogger` struct definition from `internal/architect/modelproc/mocks_test.go`
+- Remove all unused method implementations for this struct:
+  - `Debug`
+  - `Info`
+  - `Warn`
+  - `Error`
+  - `Fatal`
+  - `Println`
+  - `Printf`
+- Ensure all tests still pass after removal
+- Code passes linting without "unused" warnings for these items
+
+**Estimated Effort**: Low
+
+**Depends On**: None
+
+**Priority**: Should-Have
+
+### Task ID: CLEANUP-003 [ ]
+
+**Title**: Optimize Test Runtime for Timeout Prevention
+
+**Type**: Performance
+
+**Description**:
+The test suite timed out after 2 minutes. Investigate tests that might be taking too long to execute and optimize them to prevent timeouts. Focus on tests that might be making actual API calls instead of using mocks, or tests with excessive sleep durations.
+
+**Acceptance Criteria**:
+- Identify tests that are taking excessive time to run
+- Optimize slow tests by:
+  - Replacing actual API calls with mocks where appropriate
+  - Reducing sleep durations in tests
+  - Parallelizing tests where possible using `t.Parallel()`
+- Ensure full test suite runs within reasonable time (under 2 minutes)
+- All tests continue to pass after optimizations
+
+**Estimated Effort**: Medium
+
+**Depends On**: None
+
+**Priority**: Must-Have
+
+## OpenAI Provider Implementation Task Summary
 
 | Task Type      | Count |
 |----------------|-------|
