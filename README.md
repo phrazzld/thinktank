@@ -6,7 +6,9 @@ A powerful code-base context analysis and planning tool that leverages Google's 
 
 architect analyzes your codebase and uses Gemini or OpenAI models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
 
-## Important Update: Instruction Input Method
+## Important Updates
+
+### Instruction Input Method
 
 **Please note:** The way you provide instructions to architect has changed:
 
@@ -15,6 +17,17 @@ architect analyzes your codebase and uses Gemini or OpenAI models to create comp
 * For `--dry-run` operations, the `--instructions` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
 
 Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
+
+### Upcoming API Changes (v0.8.0)
+
+**Important:** The following internal APIs are deprecated and will be removed in v0.8.0 (Q4 2024):
+
+* `InitClient` method - Use `InitLLMClient` instead
+* `ProcessResponse` method - Use `ProcessLLMResponse` instead
+* `llmToGeminiClientAdapter` - Use the provider-agnostic `llm.LLMClient` interface directly
+* The entire `internal/architect/compat` package
+
+If you're developing with or extending Architect, please migrate to the provider-agnostic methods. See the [Migration Guide](MIGRATION-GUIDE.md) and [Deprecation Plan](DEPRECATED-API-REMOVAL-PLAN.md) for details.
 
 ## Features
 

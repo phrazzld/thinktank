@@ -22,7 +22,7 @@
   - **Depends On:** Update tests to use provider-agnostic methods, Update app.Execute to use InitLLMClient directly
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
 
-- [ ] **Task Title:** Plan for complete removal of deprecated methods
+- [x] **Task Title:** Plan for complete removal of deprecated methods
   - **Action:** Document the process and timeline for completely removing the deprecated methods after the compatibility period. Create release notes for this breaking change and communicate it to any potential external consumers. This forms Phase 3 of the deprecation plan.
   - **Depends On:** Move deprecated API methods to compatibility package
   - **AC Ref:** N/A (Refers to Issue: Complexity of adapter for deprecated methods)
