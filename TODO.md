@@ -22,7 +22,7 @@
     - **Depends On:** None
     - **AC Ref:** AC3
 
-- [ ] **T005:** Refactor Gemini Implementation for Registry
+- [x] **T005:** Refactor Gemini Implementation for Registry
     - **Action:** Create `internal/providers/gemini/provider.go`. Implement the `providers.Provider` interface. Ensure the existing `gemini.NewLLMClient` (or a new factory function) returns the `llm.LLMClient` interface. Modify `geminiClient.GenerateContent` to accept and utilize a `map[string]interface{}` for parameters based on `ModelDefinition`. Update `geminiClient.GetModelInfo` to use configuration data from models.yaml. Remove any Gemini-specific provider detection logic from `internal/architect/api.go` or other central places.
     - **Depends On:** T004
     - **AC Ref:** AC3, AC4, AC6, AC9
