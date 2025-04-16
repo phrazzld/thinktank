@@ -33,20 +33,6 @@ type mockModelTrackingAPIService struct {
 	mockLLMClient llm.LLMClient
 }
 
-// InitClient returns the mock client and stores model name in context
-func (s *mockModelTrackingAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	// Create a new context with the model name
-	ctx = context.WithValue(ctx, modelNameKey, modelName)
-
-	// Set the context in the mock client
-	mockClient := &modelAwareClient{
-		delegateClient: s.mockClient,
-		ctx:            ctx,
-	}
-
-	return mockClient, nil
-}
-
 // InitLLMClient returns a mock LLM client and stores model name in context
 func (s *mockModelTrackingAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	// Create a new context with the model name
@@ -69,17 +55,6 @@ func (s *mockModelTrackingAPIService) InitLLMClient(ctx context.Context, apiKey,
 		delegateClient: llmAdapter,
 		ctx:            ctx,
 	}, nil
-}
-
-// Process responses the same as mockIntAPIService
-func (s *mockModelTrackingAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	if result == nil {
-		return "", fmt.Errorf("empty response from API")
-	}
-	if result.Content == "" {
-		return "", fmt.Errorf("empty content from API")
-	}
-	return result.Content, nil
 }
 
 func (s *mockModelTrackingAPIService) IsEmptyResponseError(err error) bool {
@@ -146,44 +121,8 @@ func (m *modelAwareLLMClient) Close() error {
 	return m.delegateClient.Close()
 }
 
-// modelAwareClient wraps a Client to preserve the context with model name
-type modelAwareClient struct {
-	delegateClient gemini.Client
-	ctx            context.Context
-}
-
-func (c *modelAwareClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	// Use the stored context that has the model name instead of the provided one
-	return c.delegateClient.GenerateContent(c.ctx, prompt)
-}
-
-func (c *modelAwareClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	return c.delegateClient.CountTokens(ctx, prompt)
-}
-
-func (c *modelAwareClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return c.delegateClient.GetModelInfo(ctx)
-}
-
-func (c *modelAwareClient) Close() error {
-	return c.delegateClient.Close()
-}
-
-func (c *modelAwareClient) GetModelName() string {
-	return c.delegateClient.GetModelName()
-}
-
-func (c *modelAwareClient) GetTemperature() float32 {
-	return c.delegateClient.GetTemperature()
-}
-
-func (c *modelAwareClient) GetMaxOutputTokens() int32 {
-	return c.delegateClient.GetMaxOutputTokens()
-}
-
-func (c *modelAwareClient) GetTopP() float32 {
-	return c.delegateClient.GetTopP()
-}
+// Note: The modelAwareClient has been removed as it's no longer needed.
+// All tests now use the provider-agnostic modelAwareLLMClient instead.
 
 // multiModelTestCase defines a table-driven test case for multi-model testing
 type multiModelTestCase struct {

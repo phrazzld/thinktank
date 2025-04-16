@@ -37,7 +37,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update integration tests to use provider-agnostic methods
+- [x] **Task Title:** Update integration tests to use provider-agnostic methods
   - **Action:** Refactor integration tests in `internal/integration/` directory that use deprecated methods, especially `multi_model_test.go` and `test_runner.go`.
   - **Depends On:** None
   - **AC Ref:** N/A

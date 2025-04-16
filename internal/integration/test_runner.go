@@ -20,12 +20,6 @@ type mockIntAPIService struct {
 	mockLLMClient llm.LLMClient
 }
 
-// InitClient returns the mock client instead of creating a real one
-func (s *mockIntAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	// Always return the mock client, ignoring the API key, model name, and API endpoint
-	return s.mockClient, nil
-}
-
 // InitLLMClient returns the mock LLM client instead of creating a real one
 func (s *mockIntAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	// If mockLLMClient is not nil, return it (for tests that explicitly set it)
@@ -45,23 +39,6 @@ func (s *mockIntAPIService) InitLLMClient(ctx context.Context, apiKey, modelName
 
 	// Create adapter that wraps the mock gemini client to implement llm.LLMClient
 	return NewLLMClientAdapter(s.mockClient, modelName), nil
-}
-
-// ProcessResponse processes the API response and extracts content
-func (s *mockIntAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	// Check for nil result
-	if result == nil {
-		return "", fmt.Errorf("result is nil")
-	}
-
-	// Check for empty content
-	if result.Content == "" {
-		return "", fmt.Errorf("empty content")
-	}
-
-	// Get the original content - with the new architecture, we just return the content
-	// directly without any template processing
-	return result.Content, nil
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses
