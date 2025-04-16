@@ -1,5 +1,57 @@
 # TODO
 
+## Phase 0: Code Refactoring (P0 - Immediate)
+
+- [x] **R001:** Create openai_test_utils.go Utility File
+    - **Action:** Create new file `internal/openai/openai_test_utils.go` and move all shared mock implementations, helper functions, and test utilities from the large test file.
+    - **Depends On:** None
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R002:** Create and Populate openai_interface_test.go
+    - **Action:** Create new file `internal/openai/openai_interface_test.go` and move the TestOpenAIClientImplementsLLMClient test from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R003:** Create and Populate openai_client_creation_test.go
+    - **Action:** Create new file `internal/openai/openai_client_creation_test.go` and move all client creation tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R004:** Create and Populate openai_parameters_test.go
+    - **Action:** Create new file `internal/openai/openai_parameters_test.go` and move all parameter handling tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R005:** Create and Populate openai_content_test.go
+    - **Action:** Create new file `internal/openai/openai_content_test.go` and move all content generation tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R006:** Create and Populate openai_errors_test.go
+    - **Action:** Create new file `internal/openai/openai_errors_test.go` and move all error handling tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R007:** Create and Populate openai_tokens_test.go
+    - **Action:** Create new file `internal/openai/openai_tokens_test.go` and move all token counting tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R008:** Create and Populate openai_model_info_test.go
+    - **Action:** Create new file `internal/openai/openai_model_info_test.go` and move all model info tests from the original test file.
+    - **Depends On:** [R001]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R009:** Verify All Tests Pass After Refactoring
+    - **Action:** Run `go test ./internal/openai/...` to verify all tests still pass after the refactoring.
+    - **Depends On:** [R001, R002, R003, R004, R005, R006, R007, R008]
+    - **AC Ref:** Code Cleanup
+
+- [ ] **R010:** Remove Original Large Test File
+    - **Action:** Once all tests have been successfully moved and are passing, delete the original `internal/openai/openai_client_test.go` file.
+    - **Depends On:** [R009]
+    - **AC Ref:** Code Cleanup
+
 ## Phase 1: Core Functionality and API Key Handling (P0 - Immediate)
 
 - [x] **T001:** Implement Test for Empty API Key Handling (openai_client_test.go)
