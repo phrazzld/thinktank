@@ -52,7 +52,7 @@
   - **Depends On:** Update all other tasks above
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update app.Execute to use provider-agnostic error handling
+- [x] **Task Title:** Update app.Execute to use provider-agnostic error handling
   - **Action:** Refactor error handling in `internal/architect/app.go` to ensure it leverages the provider-agnostic error utilities and doesn't rely on any Gemini-specific error handling.
   - **Depends On:** None
   - **AC Ref:** N/A
