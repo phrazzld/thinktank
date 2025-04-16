@@ -24,7 +24,7 @@ type HTTPClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// geminiClient implements the Client interface using Google's genai SDK
+// geminiClient implements the llm.LLMClient interface using Google's genai SDK
 type geminiClient struct {
 	client      *genai.Client
 	model       *genai.GenerativeModel
@@ -43,7 +43,7 @@ type geminiClient struct {
 type geminiClientOption func(*geminiClient)
 
 // newGeminiClient creates a new Gemini client with Google's genai SDK
-func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...geminiClientOption) (Client, error) {
+func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...geminiClientOption) (llm.LLMClient, error) {
 	if apiKey == "" {
 		return nil, errors.New("API key cannot be empty")
 	}
@@ -103,14 +103,14 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string,
 	return gc, nil
 }
 
-// GenerateContent sends a text prompt to Gemini and returns the generated content
-func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
+// GenerateContent implements the llm.LLMClient interface
+func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 	if prompt == "" {
 		return nil, &APIError{
 			Original:   errors.New("prompt cannot be empty"),
 			Type:       ErrorTypeInvalidRequest,
 			Message:    "Cannot generate content with an empty prompt",
-			Suggestion: "Provide a task description using the --task flag or --task-file option",
+			Suggestion: "Provide a task description using the --instructions flag",
 		}
 	}
 
@@ -147,11 +147,11 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*Gen
 
 	// Check for empty content
 	if candidate.Content == nil || len(candidate.Content.Parts) == 0 {
-		return &GenerationResult{
-			Content:       "",
-			FinishReason:  string(candidate.FinishReason),
-			SafetyRatings: mapSafetyRatings(candidate.SafetyRatings),
-			Truncated:     candidate.FinishReason == genai.FinishReasonMaxTokens,
+		return &llm.ProviderResult{
+			Content:      "",
+			FinishReason: string(candidate.FinishReason),
+			SafetyInfo:   toProviderSafety(mapSafetyRatings(candidate.SafetyRatings)),
+			Truncated:    candidate.FinishReason == genai.FinishReasonMaxTokens,
 		}, nil
 	}
 
@@ -169,22 +169,22 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*Gen
 		tokenCount = resp.UsageMetadata.TotalTokenCount
 	}
 
-	// Build result
-	result := &GenerationResult{
-		Content:       contentBuilder.String(),
-		FinishReason:  string(candidate.FinishReason),
-		SafetyRatings: mapSafetyRatings(candidate.SafetyRatings),
-		TokenCount:    tokenCount,
-		Truncated:     candidate.FinishReason == genai.FinishReasonMaxTokens,
+	// Build provider-agnostic result
+	result := &llm.ProviderResult{
+		Content:      contentBuilder.String(),
+		FinishReason: string(candidate.FinishReason),
+		TokenCount:   tokenCount,
+		Truncated:    candidate.FinishReason == genai.FinishReasonMaxTokens,
+		SafetyInfo:   toProviderSafety(mapSafetyRatings(candidate.SafetyRatings)),
 	}
 
 	return result, nil
 }
 
-// CountTokens counts the tokens in a given prompt
-func (c *geminiClient) CountTokens(ctx context.Context, prompt string) (*TokenCount, error) {
+// CountTokens implements the llm.LLMClient interface
+func (c *geminiClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
 	if prompt == "" {
-		return &TokenCount{Total: 0}, nil
+		return &llm.ProviderTokenCount{Total: 0}, nil
 	}
 
 	resp, err := c.model.CountTokens(ctx, genai.Text(prompt))
@@ -199,7 +199,7 @@ func (c *geminiClient) CountTokens(ctx context.Context, prompt string) (*TokenCo
 		return nil, apiErr
 	}
 
-	return &TokenCount{
+	return &llm.ProviderTokenCount{
 		Total: resp.TotalTokens,
 	}, nil
 }
@@ -219,13 +219,17 @@ type ModelDetailsResponse struct {
 	TopK                       int32    `json:"topK"`
 }
 
-// GetModelInfo retrieves information about the current model
-func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) {
+// GetModelInfo implements the llm.LLMClient interface
+func (c *geminiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
 	// Check cache first
 	c.modelInfoMutex.RLock()
 	if info, ok := c.modelInfoCache[c.modelName]; ok {
 		c.modelInfoMutex.RUnlock()
-		return info, nil
+		return &llm.ProviderModelInfo{
+			Name:             info.Name,
+			InputTokenLimit:  info.InputTokenLimit,
+			OutputTokenLimit: info.OutputTokenLimit,
+		}, nil
 	}
 	c.modelInfoMutex.RUnlock()
 
@@ -247,7 +251,11 @@ func (c *geminiClient) GetModelInfo(ctx context.Context) (*ModelInfo, error) {
 	c.modelInfoCache[c.modelName] = info
 	c.modelInfoMutex.Unlock()
 
-	return info, nil
+	return &llm.ProviderModelInfo{
+		Name:             info.Name,
+		InputTokenLimit:  info.InputTokenLimit,
+		OutputTokenLimit: info.OutputTokenLimit,
+	}, nil
 }
 
 // fetchModelInfo calls the Generative Language API to get model details
@@ -342,7 +350,7 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 	return info, nil
 }
 
-// Close releases resources used by the client
+// Close implements the llm.LLMClient interface by releasing resources
 func (c *geminiClient) Close() error {
 	if c.client != nil {
 		return c.client.Close()
@@ -350,12 +358,12 @@ func (c *geminiClient) Close() error {
 	return nil
 }
 
-// GetModelName returns the name of the model being used
+// GetModelName implements the llm.LLMClient interface by returning the model name
 func (c *geminiClient) GetModelName() string {
 	return c.modelName
 }
 
-// GetTemperature returns the temperature setting for the model
+// GetTemperature returns the temperature setting (for backward compatibility)
 func (c *geminiClient) GetTemperature() float32 {
 	if c.model != nil && c.model.Temperature != nil {
 		return *c.model.Temperature
@@ -363,7 +371,7 @@ func (c *geminiClient) GetTemperature() float32 {
 	return DefaultModelConfig().Temperature
 }
 
-// GetMaxOutputTokens returns the max output tokens setting for the model
+// GetMaxOutputTokens returns the max output tokens setting (for backward compatibility)
 func (c *geminiClient) GetMaxOutputTokens() int32 {
 	if c.model != nil && c.model.MaxOutputTokens != nil {
 		return int32(*c.model.MaxOutputTokens)
@@ -371,7 +379,7 @@ func (c *geminiClient) GetMaxOutputTokens() int32 {
 	return DefaultModelConfig().MaxOutputTokens
 }
 
-// GetTopP returns the topP setting for the model
+// GetTopP returns the topP setting (for backward compatibility)
 func (c *geminiClient) GetTopP() float32 {
 	if c.model != nil && c.model.TopP != nil {
 		return *c.model.TopP
@@ -397,8 +405,6 @@ func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating {
 	return result
 }
 
-// Implement llm.LLMClient interface alongside the original Client interface
-
 // toProviderSafety converts Gemini safety ratings to provider-agnostic safety info
 func toProviderSafety(ratings []SafetyRating) []llm.Safety {
 	if ratings == nil {
@@ -416,92 +422,159 @@ func toProviderSafety(ratings []SafetyRating) []llm.Safety {
 	return safetyInfo
 }
 
-// Adapter methods for implementing llm.LLMClient interface
+// The following methods are for implementing the Client interface
+// while the geminiClient primarily implements llm.LLMClient interface
 
-// llmGenerateContent implements the llm.LLMClient interface for geminiClient
-// This is an adapter method that calls the original GenerateContent method
-// and converts the result to the provider-agnostic format
-func (c *geminiClient) llmGenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	// Call the original method
-	result, err := c.GenerateContent(ctx, prompt)
+// For backward compatibility, create a ClientAdapter type that implements the Client interface
+// by wrapping a geminiClient (which now implements llm.LLMClient)
+
+// ClientAdapter wraps a geminiClient to implement the legacy Client interface
+type ClientAdapter struct {
+	llmClient  llm.LLMClient
+	geminiImpl *geminiClient // Optional direct access for Gemini-specific methods
+}
+
+// NewClientAdapter creates a ClientAdapter from an llm.LLMClient
+func NewClientAdapter(llmClient llm.LLMClient) *ClientAdapter {
+	adapter := &ClientAdapter{
+		llmClient: llmClient,
+	}
+
+	// If it's a geminiClient, store direct reference for Gemini-specific methods
+	if gc, ok := llmClient.(*geminiClient); ok {
+		adapter.geminiImpl = gc
+	}
+
+	return adapter
+}
+
+// GenerateContent implements the Client interface
+func (a *ClientAdapter) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
+	// Call the provider-agnostic method
+	result, err := a.llmClient.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to provider-agnostic format
-	return &llm.ProviderResult{
-		Content:      result.Content,
-		FinishReason: result.FinishReason,
-		TokenCount:   result.TokenCount,
-		Truncated:    result.Truncated,
-		SafetyInfo:   toProviderSafety(result.SafetyRatings),
+	// Convert to Gemini-specific format
+	return &GenerationResult{
+		Content:       result.Content,
+		FinishReason:  result.FinishReason,
+		TokenCount:    result.TokenCount,
+		Truncated:     result.Truncated,
+		SafetyRatings: fromProviderSafety(result.SafetyInfo),
 	}, nil
 }
 
-// llmCountTokens implements the llm.LLMClient interface for geminiClient
-// This is an adapter method that calls the original CountTokens method
-// and converts the result to the provider-agnostic format
-func (c *geminiClient) llmCountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// Call the original method
-	result, err := c.CountTokens(ctx, prompt)
+// CountTokens implements the Client interface
+func (a *ClientAdapter) CountTokens(ctx context.Context, prompt string) (*TokenCount, error) {
+	// Call the provider-agnostic method
+	result, err := a.llmClient.CountTokens(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to provider-agnostic format
-	return &llm.ProviderTokenCount{
+	// Convert to Gemini-specific format
+	return &TokenCount{
 		Total: result.Total,
 	}, nil
 }
 
-// llmGetModelInfo implements the llm.LLMClient interface for geminiClient
-// This is an adapter method that calls the original GetModelInfo method
-// and converts the result to the provider-agnostic format
-func (c *geminiClient) llmGetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// Call the original method
-	info, err := c.GetModelInfo(ctx)
+// GetModelInfo implements the Client interface
+func (a *ClientAdapter) GetModelInfo(ctx context.Context) (*ModelInfo, error) {
+	// Call the provider-agnostic method
+	result, err := a.llmClient.GetModelInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert to provider-agnostic format
-	return &llm.ProviderModelInfo{
-		Name:             info.Name,
-		InputTokenLimit:  info.InputTokenLimit,
-		OutputTokenLimit: info.OutputTokenLimit,
+	// Convert to Gemini-specific format
+	return &ModelInfo{
+		Name:             result.Name,
+		InputTokenLimit:  result.InputTokenLimit,
+		OutputTokenLimit: result.OutputTokenLimit,
 	}, nil
 }
 
-// AsLLMClient returns a gemini.Client as an llm.LLMClient
-// This is a constructor function that adapts the gemini.Client to the llm.LLMClient interface
-func AsLLMClient(client Client) llm.LLMClient {
-	// If it's already a geminiClient, return it directly
-	if gc, ok := client.(*geminiClient); ok {
-		return &geminiLLMAdapter{gc}
-	}
-
-	// Otherwise, wrap it in an adapter
-	return &geminiLLMAdapter{client}
+// GetModelName implements the Client interface
+func (a *ClientAdapter) GetModelName() string {
+	return a.llmClient.GetModelName()
 }
 
-// geminiLLMAdapter adapts the gemini.Client to the llm.LLMClient interface
+// For Gemini-specific methods, try to use direct geminiClient reference if available,
+// otherwise return reasonable defaults
+
+// GetTemperature implements the Client interface
+func (a *ClientAdapter) GetTemperature() float32 {
+	if a.geminiImpl != nil {
+		return a.geminiImpl.GetTemperature()
+	}
+	return DefaultModelConfig().Temperature
+}
+
+// GetMaxOutputTokens implements the Client interface
+func (a *ClientAdapter) GetMaxOutputTokens() int32 {
+	if a.geminiImpl != nil {
+		return a.geminiImpl.GetMaxOutputTokens()
+	}
+	return DefaultModelConfig().MaxOutputTokens
+}
+
+// GetTopP implements the Client interface
+func (a *ClientAdapter) GetTopP() float32 {
+	if a.geminiImpl != nil {
+		return a.geminiImpl.GetTopP()
+	}
+	return DefaultModelConfig().TopP
+}
+
+// Close implements the Client interface
+func (a *ClientAdapter) Close() error {
+	return a.llmClient.Close()
+}
+
+// No legacy version needed, we use direct implementation instead
+
+// fromProviderSafety converts llm.Safety to SafetyRating
+func fromProviderSafety(ratings []llm.Safety) []SafetyRating {
+	if ratings == nil {
+		return nil
+	}
+
+	safetyRatings := make([]SafetyRating, len(ratings))
+	for i, rating := range ratings {
+		safetyRatings[i] = SafetyRating{
+			Category: rating.Category,
+			Blocked:  rating.Blocked,
+			Score:    rating.Score,
+		}
+	}
+	return safetyRatings
+}
+
+// AsLLMClient is maintained for backward compatibility
+// This function adapts the Gemini Client interface to the provider-agnostic LLMClient interface
+func AsLLMClient(client Client) llm.LLMClient {
+	// If it's a ClientAdapter, extract the wrapped LLMClient
+	if adapter, ok := client.(*ClientAdapter); ok {
+		return adapter.llmClient
+	}
+
+	// Otherwise create a new adapter from scratch
+	return &geminiLLMAdapter{client: client}
+}
+
+// geminiLLMAdapter adapts a legacy Client to implement the provider-agnostic llm.LLMClient interface
 type geminiLLMAdapter struct {
 	client Client
 }
 
-// GenerateContent implements the llm.LLMClient interface for the adapter
+// GenerateContent implements llm.LLMClient.GenerateContent
 func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	// If the client is a geminiClient, use its method directly
-	if gc, ok := a.client.(*geminiClient); ok {
-		return gc.llmGenerateContent(ctx, prompt)
-	}
-
-	// Otherwise, call the client method and convert the result
 	result, err := a.client.GenerateContent(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
-
 	return &llm.ProviderResult{
 		Content:      result.Content,
 		FinishReason: result.FinishReason,
@@ -511,37 +584,21 @@ func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string) (
 	}, nil
 }
 
-// CountTokens implements the llm.LLMClient interface for the adapter
+// CountTokens implements llm.LLMClient.CountTokens
 func (a *geminiLLMAdapter) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// If the client is a geminiClient, use its method directly
-	if gc, ok := a.client.(*geminiClient); ok {
-		return gc.llmCountTokens(ctx, prompt)
-	}
-
-	// Otherwise, call the client method and convert the result
 	result, err := a.client.CountTokens(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
-
-	return &llm.ProviderTokenCount{
-		Total: result.Total,
-	}, nil
+	return &llm.ProviderTokenCount{Total: result.Total}, nil
 }
 
-// GetModelInfo implements the llm.LLMClient interface for the adapter
+// GetModelInfo implements llm.LLMClient.GetModelInfo
 func (a *geminiLLMAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// If the client is a geminiClient, use its method directly
-	if gc, ok := a.client.(*geminiClient); ok {
-		return gc.llmGetModelInfo(ctx)
-	}
-
-	// Otherwise, call the client method and convert the result
 	info, err := a.client.GetModelInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
-
 	return &llm.ProviderModelInfo{
 		Name:             info.Name,
 		InputTokenLimit:  info.InputTokenLimit,
@@ -549,12 +606,12 @@ func (a *geminiLLMAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModel
 	}, nil
 }
 
-// GetModelName implements the llm.LLMClient interface for the adapter
+// GetModelName implements llm.LLMClient.GetModelName
 func (a *geminiLLMAdapter) GetModelName() string {
 	return a.client.GetModelName()
 }
 
-// Close implements the llm.LLMClient interface for the adapter
+// Close implements llm.LLMClient.Close
 func (a *geminiLLMAdapter) Close() error {
 	return a.client.Close()
 }

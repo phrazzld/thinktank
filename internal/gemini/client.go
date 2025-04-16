@@ -4,6 +4,7 @@ package gemini
 import (
 	"context"
 
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -43,6 +44,8 @@ type TokenCount struct {
 }
 
 // Client defines the interface for interacting with Gemini API
+// This interface is maintained for backward compatibility
+// New code should use the provider-agnostic llm.LLMClient interface instead
 type Client interface {
 	// GenerateContent sends a text prompt to Gemini and returns the generated content
 	GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error)
@@ -50,7 +53,7 @@ type Client interface {
 	// CountTokens counts the tokens in a given prompt
 	CountTokens(ctx context.Context, prompt string) (*TokenCount, error)
 
-	// GetModelInfo retrieves information about a model (for future implementation)
+	// GetModelInfo retrieves information about a model
 	GetModelInfo(ctx context.Context) (*ModelInfo, error)
 
 	// GetModelName returns the name of the model being used
@@ -70,29 +73,58 @@ type Client interface {
 }
 
 // ClientOption defines a function that modifies a client
-type ClientOption func(*geminiClient)
+type ClientOption func(interface{})
 
 // WithHTTPClient allows injecting a custom HTTP client
 func WithHTTPClient(client HTTPClient) ClientOption {
-	return func(gc *geminiClient) {
-		gc.httpClient = client
+	return func(c interface{}) {
+		if gc, ok := c.(*geminiClient); ok {
+			gc.httpClient = client
+		}
 	}
 }
 
 // WithLogger allows injecting a custom logger
 func WithLogger(logger logutil.LoggerInterface) ClientOption {
-	return func(gc *geminiClient) {
-		gc.logger = logger
+	return func(c interface{}) {
+		if gc, ok := c.(*geminiClient); ok {
+			gc.logger = logger
+		}
 	}
 }
 
-// NewClient creates a new Gemini client with the given API key, model name, and optional API endpoint
+// NewClient creates a new Gemini client implementing the legacy Client interface
+// For new code, consider using NewLLMClient which returns the provider-agnostic llm.LLMClient directly
 func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (Client, error) {
-	// Convert public options to internal options
+	// Create internalOpts that wrap the public options
 	var internalOpts []geminiClientOption
 	for _, opt := range opts {
-		// Conversion is safe as both function types have the same signature
-		internalOpts = append(internalOpts, geminiClientOption(opt))
+		// Create a wrapper that calls the public option with the geminiClient
+		internalOpts = append(internalOpts, func(gc *geminiClient) {
+			opt(gc)
+		})
+	}
+
+	// Create the provider-agnostic LLM client
+	llmClient, err := newGeminiClient(ctx, apiKey, modelName, apiEndpoint, internalOpts...)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wrap it in a ClientAdapter for backward compatibility
+	return NewClientAdapter(llmClient), nil
+}
+
+// NewLLMClient creates a new Gemini client implementing the provider-agnostic llm.LLMClient interface
+// This is the preferred method for new code
+func NewLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (llm.LLMClient, error) {
+	// Create internalOpts that wrap the public options
+	var internalOpts []geminiClientOption
+	for _, opt := range opts {
+		// Create a wrapper that calls the public option with the geminiClient
+		internalOpts = append(internalOpts, func(gc *geminiClient) {
+			opt(gc)
+		})
 	}
 
 	return newGeminiClient(ctx, apiKey, modelName, apiEndpoint, internalOpts...)

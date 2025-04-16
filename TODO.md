@@ -42,7 +42,7 @@
   - **Depends On:** None
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Simplify gemini package to focus on LLM interface
+- [x] **Task Title:** Simplify gemini package to focus on LLM interface
   - **Action:** Update `internal/gemini/gemini_client.go` to focus on the LLM interface implementation and remove redundant methods that were only needed for the compatibility layer.
   - **Depends On:** Remove deprecated methods from APIService interface
   - **AC Ref:** N/A
