@@ -2072,6 +2072,69 @@ func TestClientErrorHandlingForGetModelInfo(t *testing.T) {
 	assert.True(t, modelInfo.OutputTokenLimit > 0, "OutputTokenLimit should be positive")
 }
 
+// MockTokenCounter creates a mock token counter with predictable token counts
+func MockTokenCounter(fixedTokenCount int, errorToReturn error) *mockTokenizer {
+	return &mockTokenizer{
+		countTokensFunc: func(text string, model string) (int, error) {
+			if errorToReturn != nil {
+				return 0, errorToReturn
+			}
+			return fixedTokenCount, nil
+		},
+	}
+}
+
+// MockDynamicTokenCounter creates a mock token counter that returns token counts based on text length
+func MockDynamicTokenCounter(tokensPerChar float64, errorToReturn error) *mockTokenizer {
+	return &mockTokenizer{
+		countTokensFunc: func(text string, model string) (int, error) {
+			if errorToReturn != nil {
+				return 0, errorToReturn
+			}
+			// Calculate tokens based on text length - simple approximation
+			return int(float64(len(text)) * tokensPerChar), nil
+		},
+	}
+}
+
+// MockModelAwareTokenCounter creates a mock token counter that returns different counts based on the model
+func MockModelAwareTokenCounter(modelTokenCounts map[string]int, defaultCount int, errorToReturn error) *mockTokenizer {
+	return &mockTokenizer{
+		countTokensFunc: func(text string, model string) (int, error) {
+			if errorToReturn != nil {
+				return 0, errorToReturn
+			}
+
+			// If we have a specific count for this model, return it
+			if count, ok := modelTokenCounts[model]; ok {
+				return count, nil
+			}
+
+			// Otherwise, return the default count
+			return defaultCount, nil
+		},
+	}
+}
+
+// MockPredictableTokenCounter creates a token counter that returns predictable results for specific inputs
+func MockPredictableTokenCounter(textToTokenMap map[string]int, defaultCount int, errorToReturn error) *mockTokenizer {
+	return &mockTokenizer{
+		countTokensFunc: func(text string, model string) (int, error) {
+			if errorToReturn != nil {
+				return 0, errorToReturn
+			}
+
+			// If we have a specific count for this text, return it
+			if count, ok := textToTokenMap[text]; ok {
+				return count, nil
+			}
+
+			// Otherwise, return the default count
+			return defaultCount, nil
+		},
+	}
+}
+
 // TestErrorFormatting tests the FormatAPIError function
 func TestErrorFormatting(t *testing.T) {
 	// Test cases for error formatting
@@ -2168,6 +2231,174 @@ func TestErrorFormatting(t *testing.T) {
 	}
 	formattedErr := FormatAPIError(originalAPIErr, 500) // Different status code to verify it's ignored
 	assert.Equal(t, originalAPIErr, formattedErr, "FormatAPIError should preserve APIError instances")
+}
+
+// TestMockTokenCounters tests the token counting mock implementations
+func TestMockTokenCounters(t *testing.T) {
+	// Test fixed token counter
+	t.Run("Fixed token counter", func(t *testing.T) {
+		fixedCounter := MockTokenCounter(42, nil)
+		count, err := fixedCounter.countTokens("any text", "any-model")
+		assert.NoError(t, err)
+		assert.Equal(t, 42, count)
+
+		// Different text should still return the same count
+		count, err = fixedCounter.countTokens("completely different text", "any-model")
+		assert.NoError(t, err)
+		assert.Equal(t, 42, count)
+	})
+
+	// Test dynamic token counter
+	t.Run("Dynamic token counter", func(t *testing.T) {
+		dynamicCounter := MockDynamicTokenCounter(0.25, nil)
+
+		// Test with different length texts
+		texts := []string{
+			"short text",         // 10 chars = 2.5 tokens
+			"medium length text", // 18 chars = 4.5 tokens
+			"this is a longer piece of text for testing", // 40 chars = 10 tokens
+		}
+
+		expectedCounts := []int{2, 4, 10}
+
+		for i, text := range texts {
+			count, err := dynamicCounter.countTokens(text, "any-model")
+			assert.NoError(t, err)
+			assert.Equal(t, expectedCounts[i], count)
+		}
+	})
+
+	// Test model-aware token counter
+	t.Run("Model-aware token counter", func(t *testing.T) {
+		modelCounts := map[string]int{
+			"gpt-4":         10,
+			"gpt-3.5-turbo": 15,
+			"custom-model":  20,
+		}
+
+		modelCounter := MockModelAwareTokenCounter(modelCounts, 5, nil)
+
+		// Check model-specific counts
+		for model, expectedCount := range modelCounts {
+			count, err := modelCounter.countTokens("same text", model)
+			assert.NoError(t, err)
+			assert.Equal(t, expectedCount, count)
+		}
+
+		// Check default count for unknown model
+		count, err := modelCounter.countTokens("same text", "unknown-model")
+		assert.NoError(t, err)
+		assert.Equal(t, 5, count)
+	})
+
+	// Test predictable token counter
+	t.Run("Predictable token counter", func(t *testing.T) {
+		textCounts := map[string]int{
+			"hello world":         3,
+			"this is a test":      5,
+			"more complex prompt": 8,
+		}
+
+		predictableCounter := MockPredictableTokenCounter(textCounts, 10, nil)
+
+		// Check text-specific counts
+		for text, expectedCount := range textCounts {
+			count, err := predictableCounter.countTokens(text, "any-model")
+			assert.NoError(t, err)
+			assert.Equal(t, expectedCount, count)
+		}
+
+		// Check default count for unknown text
+		count, err := predictableCounter.countTokens("unknown text", "any-model")
+		assert.NoError(t, err)
+		assert.Equal(t, 10, count)
+	})
+
+	// Test error handling
+	t.Run("Error handling", func(t *testing.T) {
+		mockError := &APIError{
+			Type:    ErrorTypeInvalidRequest,
+			Message: "Invalid encoding for model",
+		}
+
+		errorCounter := MockTokenCounter(0, mockError)
+
+		count, err := errorCounter.countTokens("any text", "any-model")
+		assert.Error(t, err)
+		assert.Equal(t, mockError, err)
+		assert.Equal(t, 0, count)
+	})
+}
+
+// TestTokenCounterIntegration tests using the mock token counters with the OpenAI client
+func TestTokenCounterIntegration(t *testing.T) {
+	// Test fixed counter with the client
+	t.Run("Client with fixed counter", func(t *testing.T) {
+		// Create client with mock fixed counter
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: MockTokenCounter(50, nil),
+			modelName: "gpt-4",
+		}
+
+		// Test CountTokens
+		ctx := context.Background()
+		tokenCount, err := client.CountTokens(ctx, "test prompt")
+		require.NoError(t, err)
+		assert.Equal(t, int32(50), tokenCount.Total)
+
+		// Different prompt should still return the same count
+		tokenCount, err = client.CountTokens(ctx, "completely different prompt")
+		require.NoError(t, err)
+		assert.Equal(t, int32(50), tokenCount.Total)
+	})
+
+	// Test dynamic counter with the client
+	t.Run("Client with dynamic counter", func(t *testing.T) {
+		// Create client with mock dynamic counter
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: MockDynamicTokenCounter(0.25, nil),
+			modelName: "gpt-4",
+		}
+
+		// Test CountTokens with short text
+		ctx := context.Background()
+		shortTokenCount, err := client.CountTokens(ctx, "short text")
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), shortTokenCount.Total)
+
+		// Test with longer text
+		longTokenCount, err := client.CountTokens(ctx, "this is a much longer text that should have more tokens")
+		require.NoError(t, err)
+		assert.Greater(t, longTokenCount.Total, shortTokenCount.Total)
+	})
+
+	// Test error handling in the client
+	t.Run("Client error handling", func(t *testing.T) {
+		// Create error to return
+		mockError := &APIError{
+			Type:    ErrorTypeInvalidRequest,
+			Message: "Invalid encoding for model",
+		}
+
+		// Create client with mock counter that returns an error
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: MockTokenCounter(0, mockError),
+			modelName: "gpt-4",
+		}
+
+		// Test CountTokens
+		ctx := context.Background()
+		_, err := client.CountTokens(ctx, "test prompt")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "token counting error")
+
+		// Unwrap error and check the original is there
+		unwrapped := errors.Unwrap(err)
+		assert.Equal(t, mockError, unwrapped)
+	})
 }
 
 // TestNewClientErrorHandling tests error handling in NewClient

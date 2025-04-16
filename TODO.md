@@ -57,7 +57,7 @@
     - **Depends On:** [T006, T007, T010]
     - **AC Ref:** Plan Item 2
 
-- [ ] **T012:** Implement Mock for Token Counting Mechanism/API (openai_client_test.go)
+- [x] **T012:** Implement Mock for Token Counting Mechanism/API (openai_client_test.go)
     - **Action:** Create a mock implementation for the token counting mechanism (e.g., `tiktoken`) used by the OpenAI client, allowing tests to control the returned token count for specific inputs.
     - **Depends On:** None
     - **AC Ref:** Plan Item 2
