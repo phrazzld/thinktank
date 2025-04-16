@@ -17,6 +17,7 @@ import (
 // openaiAPI defines the operations we need from the OpenAI client
 type openaiAPI interface {
 	createChatCompletion(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error)
+	createChatCompletionWithParams(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error)
 }
 
 // tokenizerAPI defines the operations we need for token counting
@@ -31,11 +32,11 @@ type openaiClient struct {
 	modelName   string
 	modelLimits map[string]*modelInfo // Cache of model token limits
 	// Parameters for the OpenAI API
-	temperature      *float32
-	topP             *float32
-	presencePenalty  *float32
-	frequencyPenalty *float32
-	maxTokens        *int32
+	temperature      *float64
+	topP             *float64
+	presencePenalty  *float64
+	frequencyPenalty *float64
+	maxTokens        *int
 }
 
 // Internal model info struct
@@ -55,6 +56,16 @@ func (api *realOpenAIAPI) createChatCompletion(ctx context.Context, messages []o
 		Messages: messages,
 		Model:    model,
 	})
+	if err != nil {
+		// Format the error using our error handling
+		return nil, FormatAPIError(err, 0)
+	}
+	return completion, nil
+}
+
+// createChatCompletionWithParams makes an API call with specific parameters
+func (api *realOpenAIAPI) createChatCompletionWithParams(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+	completion, err := api.client.Chat.Completions.New(ctx, params)
 	if err != nil {
 		// Format the error using our error handling
 		return nil, FormatAPIError(err, 0)
@@ -174,13 +185,13 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		if temp, ok := params["temperature"]; ok {
 			switch v := temp.(type) {
 			case float64:
-				tempFloat := float32(v)
-				c.temperature = &tempFloat
-			case float32:
 				c.temperature = &v
+			case float32:
+				tempFloat64 := float64(v)
+				c.temperature = &tempFloat64
 			case int:
-				tempFloat := float32(v)
-				c.temperature = &tempFloat
+				tempFloat64 := float64(v)
+				c.temperature = &tempFloat64
 			}
 		}
 
@@ -188,13 +199,13 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		if topP, ok := params["top_p"]; ok {
 			switch v := topP.(type) {
 			case float64:
-				topPFloat := float32(v)
-				c.topP = &topPFloat
-			case float32:
 				c.topP = &v
+			case float32:
+				topPFloat64 := float64(v)
+				c.topP = &topPFloat64
 			case int:
-				topPFloat := float32(v)
-				c.topP = &topPFloat
+				topPFloat64 := float64(v)
+				c.topP = &topPFloat64
 			}
 		}
 
@@ -202,13 +213,13 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		if penalty, ok := params["presence_penalty"]; ok {
 			switch v := penalty.(type) {
 			case float64:
-				penaltyFloat := float32(v)
-				c.presencePenalty = &penaltyFloat
-			case float32:
 				c.presencePenalty = &v
+			case float32:
+				penaltyFloat64 := float64(v)
+				c.presencePenalty = &penaltyFloat64
 			case int:
-				penaltyFloat := float32(v)
-				c.presencePenalty = &penaltyFloat
+				penaltyFloat64 := float64(v)
+				c.presencePenalty = &penaltyFloat64
 			}
 		}
 
@@ -216,13 +227,13 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		if penalty, ok := params["frequency_penalty"]; ok {
 			switch v := penalty.(type) {
 			case float64:
-				penaltyFloat := float32(v)
-				c.frequencyPenalty = &penaltyFloat
-			case float32:
 				c.frequencyPenalty = &v
+			case float32:
+				penaltyFloat64 := float64(v)
+				c.frequencyPenalty = &penaltyFloat64
 			case int:
-				penaltyFloat := float32(v)
-				c.frequencyPenalty = &penaltyFloat
+				penaltyFloat64 := float64(v)
+				c.frequencyPenalty = &penaltyFloat64
 			}
 		}
 
@@ -230,30 +241,30 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		if maxTokens, ok := params["max_tokens"]; ok {
 			switch v := maxTokens.(type) {
 			case int:
-				maxInt := int32(v)
-				c.maxTokens = &maxInt
-			case int32:
 				c.maxTokens = &v
+			case int32:
+				maxInt := int(v)
+				c.maxTokens = &maxInt
 			case int64:
-				maxInt := int32(v)
+				maxInt := int(v)
 				c.maxTokens = &maxInt
 			case float64:
-				maxInt := int32(v)
+				maxInt := int(v)
 				c.maxTokens = &maxInt
 			}
 		} else if maxTokens, ok := params["max_output_tokens"]; ok {
 			// Try the Gemini-style parameter name as a fallback
 			switch v := maxTokens.(type) {
 			case int:
-				maxInt := int32(v)
-				c.maxTokens = &maxInt
-			case int32:
 				c.maxTokens = &v
+			case int32:
+				maxInt := int(v)
+				c.maxTokens = &maxInt
 			case int64:
-				maxInt := int32(v)
+				maxInt := int(v)
 				c.maxTokens = &maxInt
 			case float64:
-				maxInt := int32(v)
+				maxInt := int(v)
 				c.maxTokens = &maxInt
 			}
 		}
@@ -264,12 +275,9 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		openai.UserMessage(prompt),
 	}
 
-	// For now, just use the simple createChatCompletion without parameters
-	// We store the parameters in the client struct but don't use them yet
-	// This will be implemented in a later PR with proper imports
-
-	// Call OpenAI API through our standard interface
-	completion, err := c.api.createChatCompletion(ctx, messages, c.modelName)
+	// Create a custom implementation that passes the parameters to the OpenAI API
+	// Call OpenAI API with the parameters through our customized realOpenAIAPI.createChatCompletion method
+	completion, err := c.createChatCompletionWithParams(ctx, messages)
 
 	if err != nil {
 		return nil, fmt.Errorf("OpenAI API error: %w", err)
@@ -346,27 +354,65 @@ func (c *openaiClient) Close() error {
 	return nil
 }
 
+// createChatCompletionWithParams builds a parameter-aware OpenAI API request
+func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion) (*openai.ChatCompletion, error) {
+	// Create the base params
+	params := openai.ChatCompletionNewParams{
+		Messages: messages,
+		Model:    c.modelName,
+	}
+
+	// Apply all optional parameters if they have been set
+	if c.temperature != nil {
+		params.Temperature = openai.Float(*c.temperature)
+	}
+
+	if c.topP != nil {
+		params.TopP = openai.Float(*c.topP)
+	}
+
+	if c.maxTokens != nil {
+		params.MaxTokens = openai.Int(int64(*c.maxTokens))
+	}
+
+	if c.frequencyPenalty != nil {
+		params.FrequencyPenalty = openai.Float(*c.frequencyPenalty)
+	}
+
+	if c.presencePenalty != nil {
+		params.PresencePenalty = openai.Float(*c.presencePenalty)
+	}
+
+	// Call the API with all parameters
+	return c.api.createChatCompletionWithParams(ctx, params)
+}
+
 // SetTemperature sets the temperature parameter for generations
 func (c *openaiClient) SetTemperature(temp float32) {
-	c.temperature = &temp
+	tempFloat64 := float64(temp)
+	c.temperature = &tempFloat64
 }
 
 // SetTopP sets the top_p parameter for generations
 func (c *openaiClient) SetTopP(topP float32) {
-	c.topP = &topP
+	topPFloat64 := float64(topP)
+	c.topP = &topPFloat64
 }
 
 // SetPresencePenalty sets the presence_penalty parameter for generations
 func (c *openaiClient) SetPresencePenalty(penalty float32) {
-	c.presencePenalty = &penalty
+	penaltyFloat64 := float64(penalty)
+	c.presencePenalty = &penaltyFloat64
 }
 
 // SetFrequencyPenalty sets the frequency_penalty parameter for generations
 func (c *openaiClient) SetFrequencyPenalty(penalty float32) {
-	c.frequencyPenalty = &penalty
+	penaltyFloat64 := float64(penalty)
+	c.frequencyPenalty = &penaltyFloat64
 }
 
 // SetMaxTokens sets the max_tokens parameter for generations
 func (c *openaiClient) SetMaxTokens(tokens int32) {
-	c.maxTokens = &tokens
+	maxInt := int(tokens)
+	c.maxTokens = &maxInt
 }

@@ -73,7 +73,11 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	if err != nil {
 		t.Fatalf("Failed to create pipe for stdin simulation: %v", err)
 	}
+
+	// Use mutex to access os.Stdin
+	stdinMutex.Lock()
 	origStdin := os.Stdin
+	stdinMutex.Unlock()
 
 	// Create a mock client
 	mockClient := gemini.NewMockClient()
