@@ -62,7 +62,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 2
 
-- [ ] **T013:** Implement Test for Token Counting Accuracy in Client (openai_client_test.go)
+- [x] **T013:** Implement Test for Token Counting Accuracy in Client (openai_client_test.go)
     - **Action:** Write unit tests in `internal/openai/openai_client_test.go` using the token counting mock (T012) to verify that the client's `CountTokens` method (or equivalent) returns the expected token count for various inputs.
     - **Depends On:** [T006, T007, T012]
     - **AC Ref:** Plan Item 2

@@ -2401,6 +2401,290 @@ func TestTokenCounterIntegration(t *testing.T) {
 	})
 }
 
+// TestTokenCountingAccuracy tests token counting accuracy for various inputs
+func TestTokenCountingAccuracy(t *testing.T) {
+	// Create test cases for different types of input text
+	testCases := []struct {
+		name             string
+		modelName        string
+		inputText        string
+		expectedTokens   int32
+		tokensPerChar    float64
+		useFixedCount    bool
+		fixedCount       int
+		useModelSpecific bool
+		modelCounts      map[string]int
+	}{
+		{
+			name:           "Short English text",
+			modelName:      "gpt-4",
+			inputText:      "Hello, world!",
+			expectedTokens: 3,
+			tokensPerChar:  0.25,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Multi-line English text",
+			modelName:      "gpt-4",
+			inputText:      "This is a test.\nIt has multiple lines.\nHow many tokens will it use?",
+			expectedTokens: 16, // Length: 64 chars * 0.25 = 16
+			tokensPerChar:  0.25,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Text with special characters",
+			modelName:      "gpt-4",
+			inputText:      "Special chars: !@#$%^&*()_+-=[]{}|;':\",./<>?",
+			expectedTokens: 11, // Length: 44 chars * 0.25 = 11
+			tokensPerChar:  0.25,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Code snippet",
+			modelName:      "gpt-4",
+			inputText:      "func main() {\n\tfmt.Println(\"Hello, world!\")\n}",
+			expectedTokens: 11, // Length: 44 chars * 0.25 = 11
+			tokensPerChar:  0.25,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Long technical text",
+			modelName:      "gpt-4",
+			inputText:      "The OpenAI GPT-4 model has a context window of up to 8,192 tokens and can generate responses up to 8,000 tokens. It demonstrates stronger performance than previous models across a wide variety of tasks including coding, logical reasoning, and creative writing.",
+			expectedTokens: 65, // Length: 260 chars * 0.25 = 65
+			tokensPerChar:  0.25,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Text with Unicode characters",
+			modelName:      "gpt-4",
+			inputText:      "Unicode text: こんにちは世界, Привет мир, नमस्ते दुनिया",
+			expectedTokens: 33,   // Length: 95 chars * 0.35 = 33.25
+			tokensPerChar:  0.35, // Higher ratio for non-ASCII text
+			useFixedCount:  false,
+		},
+		{
+			name:           "Text with emojis",
+			modelName:      "gpt-4",
+			inputText:      "Emoji test: 😀 🚀 🌍 🎉 🤖 📊 💯",
+			expectedTokens: 13, // Length: 44 chars * 0.3 = 13.2
+			tokensPerChar:  0.3,
+			useFixedCount:  false,
+		},
+		{
+			name:           "Whitespace-heavy text",
+			modelName:      "gpt-4",
+			inputText:      "    This    text    has    lots    of    spaces    between    words    ",
+			expectedTokens: 14,  // Length: 73 chars * 0.2 = 14.6
+			tokensPerChar:  0.2, // Lower ratio for whitespace-heavy text
+			useFixedCount:  false,
+		},
+		{
+			name:           "Fixed token count test",
+			modelName:      "gpt-4",
+			inputText:      "This text will always return the same token count",
+			expectedTokens: 42,
+			useFixedCount:  true,
+			fixedCount:     42,
+		},
+		{
+			name:             "Model-specific token count",
+			modelName:        "gpt-3.5-turbo", // This will use the model-specific count for this model
+			inputText:        "Same text, different models, different counts",
+			expectedTokens:   15,
+			useModelSpecific: true,
+			modelCounts: map[string]int{
+				"gpt-4":         10,
+				"gpt-3.5-turbo": 15,
+				"gpt-4-turbo":   20,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var tokenizer tokenizerAPI
+
+			// Create the appropriate mock tokenizer based on test case configuration
+			if tc.useFixedCount {
+				tokenizer = MockTokenCounter(tc.fixedCount, nil)
+			} else if tc.useModelSpecific {
+				tokenizer = MockModelAwareTokenCounter(tc.modelCounts, 5, nil)
+			} else {
+				tokenizer = MockDynamicTokenCounter(tc.tokensPerChar, nil)
+			}
+
+			// Create client with the configured mock tokenizer
+			client := &openaiClient{
+				api:       &mockOpenAIAPI{},
+				tokenizer: tokenizer,
+				modelName: tc.modelName,
+			}
+
+			// Test CountTokens
+			ctx := context.Background()
+			tokenCount, err := client.CountTokens(ctx, tc.inputText)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedTokens, tokenCount.Total)
+		})
+	}
+}
+
+// TestTokenCountingEdgeCases tests token counting for edge cases
+func TestTokenCountingEdgeCases(t *testing.T) {
+	// Test edge cases
+	edgeCases := []struct {
+		name          string
+		modelName     string
+		inputText     string
+		mockGenerator func() tokenizerAPI
+		expectedError bool
+		expectedCount int32
+	}{
+		{
+			name:      "Empty text",
+			modelName: "gpt-4",
+			inputText: "",
+			mockGenerator: func() tokenizerAPI {
+				return MockDynamicTokenCounter(0.25, nil)
+			},
+			expectedError: false,
+			expectedCount: 0,
+		},
+		{
+			name:      "Very long text",
+			modelName: "gpt-4",
+			inputText: strings.Repeat("long text test ", 500), // Approximately 7000 characters
+			mockGenerator: func() tokenizerAPI {
+				return MockDynamicTokenCounter(0.25, nil)
+			},
+			expectedError: false,
+			expectedCount: int32(0.25 * float64(len(strings.Repeat("long text test ", 500)))), // 0.25 tokens per char * actual length
+		},
+		{
+			name:      "Invalid model name",
+			modelName: "invalid-model",
+			inputText: "Test text",
+			mockGenerator: func() tokenizerAPI {
+				return MockTokenCounter(0, &APIError{
+					Type:       ErrorTypeInvalidRequest,
+					Message:    "Invalid model",
+					StatusCode: 400,
+					Suggestion: "Use a valid model name",
+				})
+			},
+			expectedError: true,
+			expectedCount: 0,
+		},
+		{
+			name:      "Token count API failure",
+			modelName: "gpt-4",
+			inputText: "Test text",
+			mockGenerator: func() tokenizerAPI {
+				return MockTokenCounter(0, &APIError{
+					Type:       ErrorTypeServer,
+					Message:    "Token counting service unavailable",
+					StatusCode: 503,
+					Suggestion: "Try again later",
+				})
+			},
+			expectedError: true,
+			expectedCount: 0,
+		},
+		{
+			name:      "Text exceeds model token limit",
+			modelName: "gpt-4",
+			inputText: "Very long text that would exceed the token limit",
+			mockGenerator: func() tokenizerAPI {
+				return MockTokenCounter(0, &APIError{
+					Type:       ErrorTypeInputLimit,
+					Message:    "Input exceeds maximum token limit",
+					StatusCode: 400,
+					Suggestion: "Reduce the input length or use a model with a larger context window",
+				})
+			},
+			expectedError: true,
+			expectedCount: 0,
+		},
+	}
+
+	for _, tc := range edgeCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create client with the configured mock tokenizer
+			client := &openaiClient{
+				api:       &mockOpenAIAPI{},
+				tokenizer: tc.mockGenerator(),
+				modelName: tc.modelName,
+			}
+
+			// Test CountTokens
+			ctx := context.Background()
+			tokenCount, err := client.CountTokens(ctx, tc.inputText)
+
+			if tc.expectedError {
+				require.Error(t, err)
+				assert.Nil(t, tokenCount)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expectedCount, tokenCount.Total)
+			}
+		})
+	}
+}
+
+// TestTokenCountingAcrossModels tests token counting across different model types
+func TestTokenCountingAcrossModels(t *testing.T) {
+	// Set of models to test with
+	models := []string{
+		"gpt-4",
+		"gpt-4-turbo",
+		"gpt-3.5-turbo",
+		"gpt-3.5-turbo-16k",
+		"custom-model",
+	}
+
+	// Sample text to test
+	sampleText := "This is a test sentence for token counting across different models."
+
+	// Create model-specific counts
+	modelCounts := map[string]int{
+		"gpt-4":             12,
+		"gpt-4-turbo":       12,
+		"gpt-3.5-turbo":     12,
+		"gpt-3.5-turbo-16k": 12,
+		// No entry for custom-model to test fallback
+	}
+
+	// Default count for models not in the map
+	defaultCount := 10
+
+	// Create mock tokenizer
+	tokenizer := MockModelAwareTokenCounter(modelCounts, defaultCount, nil)
+
+	for _, model := range models {
+		t.Run(model, func(t *testing.T) {
+			// Create client with the mock tokenizer and current model
+			client := &openaiClient{
+				api:       &mockOpenAIAPI{},
+				tokenizer: tokenizer,
+				modelName: model,
+			}
+
+			// Test CountTokens
+			ctx := context.Background()
+			tokenCount, err := client.CountTokens(ctx, sampleText)
+			require.NoError(t, err)
+
+			// Check if the model has a specific count, otherwise expect the default
+			expectedCount := defaultCount
+			if count, ok := modelCounts[model]; ok {
+				expectedCount = count
+			}
+			assert.Equal(t, int32(expectedCount), tokenCount.Total)
+		})
+	}
+}
+
 // TestNewClientErrorHandling tests error handling in NewClient
 func TestNewClientErrorHandling(t *testing.T) {
 	// Save current env var if it exists
