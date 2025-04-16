@@ -17,7 +17,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
 
-- [ ] **T004:** Implement Test for API Key Environment Variable Fallback (openai_client_test.go)
+- [x] **T004:** Implement Test for API Key Environment Variable Fallback (openai_client_test.go)
     - **Action:** Write a unit test in `internal/openai/openai_client_test.go` to verify that the client correctly falls back to using the `OPENAI_API_KEY` environment variable when no key is explicitly provided. Use environment variable mocking techniques.
     - **Depends On:** None
     - **AC Ref:** Plan Item 1

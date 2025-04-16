@@ -687,6 +687,70 @@ func TestInvalidAPIKeyFormatHandling(t *testing.T) {
 	}
 }
 
+// TestAPIKeyEnvironmentVariableFallback tests that the client correctly falls back to the OPENAI_API_KEY environment variable
+func TestAPIKeyEnvironmentVariableFallback(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for environment variable fallback scenarios
+	testCases := []struct {
+		name          string
+		envValue      string
+		expectSuccess bool
+		description   string
+	}{
+		{
+			name:          "Valid environment variable",
+			envValue:      "sk-validKeyFromEnvVar123456789012345678901234",
+			expectSuccess: true,
+			description:   "Client should successfully use the API key from environment variable",
+		},
+		{
+			name:          "No environment variable",
+			envValue:      "",
+			expectSuccess: false,
+			description:   "Client creation should fail when no API key is available from any source",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set or unset the environment variable
+			if tc.envValue == "" {
+				err := os.Unsetenv("OPENAI_API_KEY")
+				if err != nil {
+					t.Fatalf("Failed to unset OPENAI_API_KEY: %v", err)
+				}
+			} else {
+				err := os.Setenv("OPENAI_API_KEY", tc.envValue)
+				if err != nil {
+					t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+				}
+			}
+
+			// Attempt to create a client
+			client, err := NewClient("gpt-4")
+
+			// Verify expectations
+			if tc.expectSuccess {
+				assert.NoError(t, err, "Expected client creation to succeed with %s", tc.description)
+				assert.NotNil(t, client, "Expected non-nil client with %s", tc.description)
+			} else {
+				assert.Error(t, err, "Expected client creation to fail with %s", tc.description)
+				assert.Nil(t, client, "Expected nil client with %s", tc.description)
+				assert.Contains(t, err.Error(), "OPENAI_API_KEY environment variable not set",
+					"Error should indicate the environment variable is not set")
+			}
+		})
+	}
+}
+
 // TestNewClientErrorHandling tests error handling in NewClient
 func TestNewClientErrorHandling(t *testing.T) {
 	// Save current env var if it exists
