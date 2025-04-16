@@ -10,7 +10,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -48,12 +48,12 @@ type contextGatherer struct {
 	logger       logutil.LoggerInterface
 	dryRun       bool
 	tokenManager TokenManager
-	client       gemini.Client
+	client       llm.LLMClient
 	auditLogger  auditlog.AuditLogger
 }
 
 // NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client gemini.Client, auditLogger auditlog.AuditLogger) ContextGatherer {
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client llm.LLMClient, auditLogger auditlog.AuditLogger) ContextGatherer {
 	return &contextGatherer{
 		logger:       logger,
 		dryRun:       dryRun,
@@ -278,11 +278,14 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *Context
 	// Get model info for token limit comparison
 	modelInfo, modelInfoErr := cg.client.GetModelInfo(ctx)
 	if modelInfoErr != nil {
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(modelInfoErr); ok {
-			cg.logger.Warn("Could not get model information: %s", apiErr.Message)
-			// Only show detailed info in debug logs
-			cg.logger.Debug("Model info error details: %s", apiErr.DebugInfo())
+		// Check if it's a categorized error with enhanced details
+		if catErr, ok := llm.IsCategorizedError(modelInfoErr); ok {
+			category := catErr.Category()
+			cg.logger.Warn("Could not get model information: %v (category: %s)",
+				modelInfoErr, category.String())
+
+			// Only show detailed error category in debug logs
+			cg.logger.Debug("Model info error category: %s", category.String())
 		} else {
 			cg.logger.Warn("Could not get model information: %v", modelInfoErr)
 		}

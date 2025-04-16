@@ -12,7 +12,6 @@ import (
 	"github.com/phrazzld/architect/internal/architect/orchestrator"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
@@ -199,13 +198,8 @@ func Execute(
 		return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
 	}
 
-	// Create an adapter to convert LLMClient to gemini.Client
-	// This is temporary until ContextGatherer is updated to use LLMClient directly
-	adapter := &llmToGeminiAdapter{
-		referenceClientLLM: referenceClientLLM,
-	}
-
-	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, adapter, auditLogger)
+	// Now ContextGatherer directly uses LLMClient
+	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClientLLM, auditLogger)
 	fileWriter := NewFileWriter(logger, auditLogger)
 
 	// Create rate limiter from configuration
@@ -249,70 +243,7 @@ type Orchestrator interface {
 	Run(ctx context.Context, instructions string) error
 }
 
-// llmToGeminiAdapter is a temporary adapter between LLMClient and gemini.Client interfaces
-// This is needed until ContextGatherer is refactored to use LLMClient directly
-type llmToGeminiAdapter struct {
-	referenceClientLLM llm.LLMClient
-}
-
-func (m *llmToGeminiAdapter) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	result, err := m.referenceClientLLM.GenerateContent(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert from llm.ProviderResult to gemini.GenerationResult
-	return &gemini.GenerationResult{
-		Content:      result.Content,
-		FinishReason: result.FinishReason,
-		TokenCount:   result.TokenCount,
-		Truncated:    result.Truncated,
-	}, nil
-}
-
-func (m *llmToGeminiAdapter) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	result, err := m.referenceClientLLM.CountTokens(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	return &gemini.TokenCount{
-		Total: result.Total,
-	}, nil
-}
-
-func (m *llmToGeminiAdapter) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	result, err := m.referenceClientLLM.GetModelInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &gemini.ModelInfo{
-		Name:             result.Name,
-		InputTokenLimit:  result.InputTokenLimit,
-		OutputTokenLimit: result.OutputTokenLimit,
-	}, nil
-}
-
-func (m *llmToGeminiAdapter) GetModelName() string {
-	return m.referenceClientLLM.GetModelName()
-}
-
-func (m *llmToGeminiAdapter) GetTemperature() float32 {
-	return 0.7 // Default value
-}
-
-func (m *llmToGeminiAdapter) GetMaxOutputTokens() int32 {
-	return 1024 // Default value
-}
-
-func (m *llmToGeminiAdapter) GetTopP() float32 {
-	return 0.95 // Default value
-}
-
-func (m *llmToGeminiAdapter) Close() error {
-	return nil // Don't close the underlying client since that's handled elsewhere
-}
+// Note: The llmToGeminiAdapter has been removed as ContextGatherer now uses llm.LLMClient directly
 
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.

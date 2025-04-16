@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/architect/internal/auditlog"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
@@ -78,76 +78,52 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 	return true
 }
 
-// mockGeminiClient for testing
-type mockGeminiClient struct {
-	countTokensFunc        func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
-	generateContentFunc    func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-	getModelInfoFunc       func(ctx context.Context) (*gemini.ModelInfo, error)
-	getModelNameFunc       func() string
-	getTemperatureFunc     func() float32
-	getMaxOutputTokensFunc func() int32
-	getTopPFunc            func() float32
-	closeFunc              func() error
+// mockLLMClient for testing
+type mockLLMClient struct {
+	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
+	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
+	getModelNameFunc    func() string
+	closeFunc           func() error
 }
 
-func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
+func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
 	if m.countTokensFunc != nil {
 		return m.countTokensFunc(ctx, prompt)
 	}
-	return &gemini.TokenCount{Total: 100}, nil
+	return &llm.ProviderTokenCount{Total: 100}, nil
 }
 
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
 	if m.generateContentFunc != nil {
 		return m.generateContentFunc(ctx, prompt)
 	}
-	return &gemini.GenerationResult{Content: "test content"}, nil
+	return &llm.ProviderResult{Content: "test content"}, nil
 }
 
-func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
+func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
 	if m.getModelInfoFunc != nil {
 		return m.getModelInfoFunc(ctx)
 	}
-	return &gemini.ModelInfo{
+	return &llm.ProviderModelInfo{
 		Name:             "test-model",
 		InputTokenLimit:  1000,
 		OutputTokenLimit: 500,
 	}, nil
 }
 
-func (m *mockGeminiClient) Close() error {
+func (m *mockLLMClient) Close() error {
 	if m.closeFunc != nil {
 		return m.closeFunc()
 	}
 	return nil
 }
 
-func (m *mockGeminiClient) GetModelName() string {
+func (m *mockLLMClient) GetModelName() string {
 	if m.getModelNameFunc != nil {
 		return m.getModelNameFunc()
 	}
 	return "mock-model"
-}
-
-func (m *mockGeminiClient) GetTemperature() float32 {
-	if m.getTemperatureFunc != nil {
-		return m.getTemperatureFunc()
-	}
-	return 0.3
-}
-
-func (m *mockGeminiClient) GetMaxOutputTokens() int32 {
-	if m.getMaxOutputTokensFunc != nil {
-		return m.getMaxOutputTokensFunc()
-	}
-	return 8192
-}
-
-func (m *mockGeminiClient) GetTopP() float32 {
-	if m.getTopPFunc != nil {
-		return m.getTopPFunc()
-	}
-	return 0.9
 }
 
 // Helper function to create a temporary directory with test files
@@ -208,7 +184,7 @@ func TestNewContextGatherer(t *testing.T) {
 	tokenManager := &mockTokenManager{}
 	auditLogger := &mockAuditLogger{}
 	// Pass nil client since we're just testing object creation
-	client := gemini.Client(nil)
+	var client llm.LLMClient = nil
 
 	gatherer := NewContextGatherer(logger, true, tokenManager, client, auditLogger)
 	if gatherer == nil {
@@ -227,9 +203,9 @@ func TestGatherContext(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
 		auditLogger := &mockAuditLogger{}
-		client := &mockGeminiClient{
-			countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-				return &gemini.TokenCount{Total: 100}, nil
+		client := &mockLLMClient{
+			countTokensFunc: func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+				return &llm.ProviderTokenCount{Total: 100}, nil
 			},
 		}
 
@@ -298,7 +274,7 @@ func TestGatherContext(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
 		auditLogger := &mockAuditLogger{}
-		client := &mockGeminiClient{}
+		client := &mockLLMClient{}
 
 		gatherer := NewContextGatherer(logger, false, tokenManager, client, auditLogger)
 		ctx := context.Background()
@@ -341,7 +317,7 @@ func TestGatherContext(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
 		auditLogger := &mockAuditLogger{}
-		client := &mockGeminiClient{}
+		client := &mockLLMClient{}
 
 		gatherer := NewContextGatherer(logger, false, tokenManager, client, auditLogger)
 		ctx := context.Background()
@@ -397,7 +373,7 @@ func TestGatherContext(t *testing.T) {
 		logger := &mockContextLogger{}
 		tokenManager := &mockTokenManager{}
 		auditLogger := &mockAuditLogger{}
-		client := &mockGeminiClient{}
+		client := &mockLLMClient{}
 
 		gatherer := NewContextGatherer(logger, true, tokenManager, client, auditLogger)
 		ctx := context.Background()
@@ -458,14 +434,14 @@ func TestGatherContext(t *testing.T) {
 func TestDisplayDryRunInfo(t *testing.T) {
 	logger := &mockContextLogger{}
 	tokenManager := &mockTokenManager{}
-	client := &mockGeminiClient{}
+	client := &mockLLMClient{}
 	ctx := context.Background()
 
 	// Normal case with model info available
 	t.Run("NormalCase", func(t *testing.T) {
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-				return &gemini.ModelInfo{
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+				return &llm.ProviderModelInfo{
 					Name:             "test-model",
 					InputTokenLimit:  1000,
 					OutputTokenLimit: 500,
@@ -509,8 +485,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 
 	// Error getting model info
 	t.Run("ModelInfoError", func(t *testing.T) {
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
 				return nil, errors.New("model info error")
 			},
 		}
@@ -546,9 +522,9 @@ func TestDisplayDryRunInfo(t *testing.T) {
 
 	// Token limit exceeded
 	t.Run("TokenLimitExceeded", func(t *testing.T) {
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-				return &gemini.ModelInfo{
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+				return &llm.ProviderModelInfo{
 					Name:             "test-model",
 					InputTokenLimit:  400, // Less than token count
 					OutputTokenLimit: 200,
