@@ -188,7 +188,7 @@ func TestMockClient(t *testing.T) {
 
 	t.Run("GenerateContent", func(t *testing.T) {
 		// Test default implementation
-		result, err := client.GenerateContent(ctx, "test prompt")
+		result, err := client.GenerateContent(ctx, "test prompt", nil)
 		if err != nil {
 			t.Fatalf("GenerateContent returned unexpected error: %v", err)
 		}
@@ -198,7 +198,7 @@ func TestMockClient(t *testing.T) {
 
 		// Test custom implementation
 		expectedErr := errors.New("custom error")
-		client.GenerateContentFunc = func(ctx context.Context, prompt string) (*GenerationResult, error) {
+		client.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 			if prompt == "error test" {
 				return nil, expectedErr
 			}
@@ -206,13 +206,13 @@ func TestMockClient(t *testing.T) {
 		}
 
 		// Test error case
-		_, err = client.GenerateContent(ctx, "error test")
+		_, err = client.GenerateContent(ctx, "error test", nil)
 		if err != expectedErr {
 			t.Errorf("Expected error %v, got %v", expectedErr, err)
 		}
 
 		// Test success case
-		result, err = client.GenerateContent(ctx, "success")
+		result, err = client.GenerateContent(ctx, "success", nil)
 		if err != nil {
 			t.Fatalf("GenerateContent returned unexpected error: %v", err)
 		}

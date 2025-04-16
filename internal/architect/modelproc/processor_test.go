@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Import necessary dependencies
@@ -25,7 +26,7 @@ func TestModelProcessor_Process_Success(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
 						Content:    "Generated content",
 						TokenCount: 50,
@@ -51,7 +52,7 @@ func TestModelProcessor_Process_Success(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 

@@ -14,12 +14,22 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // APIService defines the interface for API-related operations
 type APIService interface {
 	// InitLLMClient initializes and returns a provider-agnostic LLM client
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+
+	// GetModelParameters retrieves parameter values from the registry for a given model
+	GetModelParameters(modelName string) (map[string]interface{}, error)
+
+	// GetModelDefinition retrieves the full model definition from the registry
+	GetModelDefinition(modelName string) (*registry.ModelDefinition, error)
+
+	// GetModelTokenLimits retrieves token limits from the registry for a given model
+	GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content
 	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
@@ -60,15 +70,17 @@ type tokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
 	client      llm.LLMClient
+	registry    *registry.Registry
 }
 
 // NewTokenManagerWithClient creates a new tokenManager instance with a specific client.
 // This is defined as a variable to allow it to be mocked in tests.
-var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) TokenManager {
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) TokenManager {
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
 		client:      client,
+		registry:    reg,
 	}
 }
 
@@ -97,33 +109,54 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 		ExceedsLimit: false,
 	}
 
-	// Get model information (limits)
-	modelInfo, err := tm.client.GetModelInfo(ctx)
-	if err != nil {
-		// Log the token check failure
-		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "CheckTokens",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"prompt_length": len(prompt),
-				"model_name":    modelName,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to get model info: %v", err),
-				Type:    "TokenCheckError",
-			},
-			Message: "Token count check failed for model " + modelName,
-		}); logErr != nil {
-			tm.logger.Error("Failed to write audit log: %v", logErr)
-		}
+	// First, try to get model info from the registry if available
+	var useRegistryLimits bool
+	if tm.registry != nil {
+		// Try to get model definition from registry
+		modelDef, err := tm.registry.GetModel(modelName)
+		if err == nil && modelDef != nil {
+			// We found the model in the registry, use its context window
+			tm.logger.Debug("Using token limits from registry for model %s: %d tokens",
+				modelName, modelDef.ContextWindow)
 
-		// Wrap other errors
-		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
+			// Store input limit from registry
+			result.InputLimit = modelDef.ContextWindow
+			useRegistryLimits = true
+		} else {
+			tm.logger.Debug("Model %s not found in registry, falling back to client-provided token limits", modelName)
+		}
 	}
 
-	// Store input limit
-	result.InputLimit = modelInfo.InputTokenLimit
+	// If registry lookup failed or registry is not available, fall back to client GetModelInfo
+	if !useRegistryLimits {
+		// Get model information (limits) from LLM client
+		modelInfo, err := tm.client.GetModelInfo(ctx)
+		if err != nil {
+			// Log the token check failure
+			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+				Timestamp: time.Now().UTC(),
+				Operation: "CheckTokens",
+				Status:    "Failure",
+				Inputs: map[string]interface{}{
+					"prompt_length": len(prompt),
+					"model_name":    modelName,
+				},
+				Error: &auditlog.ErrorInfo{
+					Message: fmt.Sprintf("Failed to get model info: %v", err),
+					Type:    "TokenCheckError",
+				},
+				Message: "Token count check failed for model " + modelName,
+			}); logErr != nil {
+				tm.logger.Error("Failed to write audit log: %v", logErr)
+			}
+
+			// Wrap other errors
+			return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
+		}
+
+		// Store input limit from model info
+		result.InputLimit = modelInfo.InputTokenLimit
+	}
 
 	// Count tokens in the prompt
 	tokenResult, err := tm.client.CountTokens(ctx, prompt)
@@ -319,8 +352,19 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	// The audit logs for CheckTokensStart, CheckTokens Success/Failure are managed by the TokenManager
 	// implementation and should not be duplicated here.
 
-	// Create a TokenManager with the LLM client
-	tokenInfo, err := NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient).GetTokenInfo(ctx, stitchedPrompt)
+	// Create a TokenManager with the LLM client and registry if available
+	// If apiService implements GetModelDefinition, it supports the registry
+	var reg *registry.Registry
+	if _, ok := p.apiService.(interface {
+		GetModelDefinition(string) (*registry.ModelDefinition, error)
+	}); ok {
+		// We're using a registry-aware API service
+		p.logger.Debug("Using registry-aware token manager for model %s", modelName)
+		// The registry will be null here, but the token manager should still be able to
+		// use the LLM client to get the model name and check with the registry
+	}
+
+	tokenInfo, err := NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient, reg).GetTokenInfo(ctx, stitchedPrompt)
 	if err != nil {
 		p.logger.Error("Token count check failed for model %s: %v", modelName, err)
 
@@ -358,7 +402,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 
 	// Prompt for confirmation if token count exceeds threshold
 	// Reuse the token manager creation pattern for consistency
-	if !NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient).PromptForConfirmation(tokenInfo.TokenCount, p.config.ConfirmTokens) {
+	if !NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient, reg).PromptForConfirmation(tokenInfo.TokenCount, p.config.ConfirmTokens) {
 		p.logger.Info("Operation cancelled by user due to token count.")
 		return nil
 	}
@@ -384,7 +428,24 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	result, err := llmClient.GenerateContent(ctx, stitchedPrompt)
+	// Get model parameters from the APIService
+	params, err := p.apiService.GetModelParameters(modelName)
+	if err != nil {
+		p.logger.Debug("Failed to get model parameters for %s: %v. Using defaults.", modelName, err)
+		// Continue with empty parameters if there's an error
+		params = make(map[string]interface{})
+	}
+
+	// Log parameters being used (at debug level)
+	if len(params) > 0 {
+		p.logger.Debug("Using model parameters for %s:", modelName)
+		for k, v := range params {
+			p.logger.Debug("  %s: %v", k, v)
+		}
+	}
+
+	// Generate content with parameters
+	result, err := llmClient.GenerateContent(ctx, stitchedPrompt, params)
 
 	// Calculate duration in milliseconds
 	generateDurationMs := time.Since(generateStartTime).Milliseconds()

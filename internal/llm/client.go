@@ -36,7 +36,8 @@ type ProviderModelInfo struct {
 // LLMClient defines the interface for interacting with any LLM provider
 type LLMClient interface {
 	// GenerateContent sends a text prompt to the LLM and returns the generated content
-	GenerateContent(ctx context.Context, prompt string) (*ProviderResult, error)
+	// If params is provided, these parameters will override the default model parameters
+	GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*ProviderResult, error)
 
 	// CountTokens counts the tokens in a given prompt
 	CountTokens(ctx context.Context, prompt string) (*ProviderTokenCount, error)
@@ -53,7 +54,7 @@ type LLMClient interface {
 
 // MockLLMClient is a testing mock for the LLMClient interface
 type MockLLMClient struct {
-	GenerateContentFunc func(ctx context.Context, prompt string) (*ProviderResult, error)
+	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*ProviderResult, error)
 	CountTokensFunc     func(ctx context.Context, prompt string) (*ProviderTokenCount, error)
 	GetModelInfoFunc    func(ctx context.Context) (*ProviderModelInfo, error)
 	GetModelNameFunc    func() string
@@ -61,9 +62,9 @@ type MockLLMClient struct {
 }
 
 // GenerateContent implementation for MockLLMClient
-func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string) (*ProviderResult, error) {
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*ProviderResult, error) {
 	if m.GenerateContentFunc != nil {
-		return m.GenerateContentFunc(ctx, prompt)
+		return m.GenerateContentFunc(ctx, prompt, params)
 	}
 	return &ProviderResult{Content: "Mock response"}, nil
 }

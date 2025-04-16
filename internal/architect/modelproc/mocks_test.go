@@ -6,6 +6,7 @@ import (
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Mock implementations
@@ -15,6 +16,9 @@ type mockAPIService struct {
 	getErrorDetailsFunc      func(err error) string
 	initLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	processLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
+	getModelParametersFunc   func(modelName string) (map[string]interface{}, error)
+	getModelDefinitionFunc   func(modelName string) (*registry.ModelDefinition, error)
+	getModelTokenLimitsFunc  func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 }
 
 func (m *mockAPIService) IsEmptyResponseError(err error) bool {
@@ -52,6 +56,31 @@ func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string,
 	}
 	// Default implementation returns the content
 	return result.Content, nil
+}
+
+// Implement the new registry methods
+func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	if m.getModelParametersFunc != nil {
+		return m.getModelParametersFunc(modelName)
+	}
+	// Default implementation returns empty map
+	return make(map[string]interface{}), nil
+}
+
+func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	if m.getModelDefinitionFunc != nil {
+		return m.getModelDefinitionFunc(modelName)
+	}
+	// Default implementation returns nil and error
+	return nil, nil
+}
+
+func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	if m.getModelTokenLimitsFunc != nil {
+		return m.getModelTokenLimitsFunc(modelName)
+	}
+	// Default implementation returns zeros with no error
+	return 0, 0, nil
 }
 
 type mockTokenManager struct {
@@ -103,16 +132,16 @@ func (m *mockFileWriter) SaveToFile(content, outputFile string) error {
 }
 
 type mockLLMClient struct {
-	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
 	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
 	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
 	getModelNameFunc    func() string
 	closeFunc           func() error
 }
 
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
+		return m.generateContentFunc(ctx, prompt, params)
 	}
 	return &llm.ProviderResult{Content: "mock content"}, nil
 }

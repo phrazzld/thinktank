@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // TokenResult holds information about token counts and limits
@@ -40,23 +41,25 @@ type tokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
 	client      llm.LLMClient
+	registry    *registry.Registry // Registry for model configurations
 }
 
 // NewTokenManager creates a new TokenManager instance
-func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) (TokenManager, error) {
+func NewTokenManager(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) (TokenManager, error) {
 	if client == nil {
 		return nil, fmt.Errorf("client cannot be nil for TokenManager")
 	}
-	return NewTokenManagerWithClient(logger, auditLogger, client), nil
+	return NewTokenManagerWithClient(logger, auditLogger, client, reg), nil
 }
 
 // NewTokenManagerWithClient creates a TokenManager with a specific client.
 // This is defined as a variable to allow it to be mocked in tests.
-var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) TokenManager {
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) TokenManager {
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
 		client:      client,
+		registry:    reg,
 	}
 }
 
@@ -85,51 +88,75 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 		ExceedsLimit: false,
 	}
 
-	// Get model information (limits)
-	modelInfo, err := tm.client.GetModelInfo(ctx)
-	if err != nil {
-		// Handle provider-agnostic error logging
-		errorType := "TokenCheckError"
-		// Using a separate variable declaration to avoid ineffectual assignment
-		var errorMessage string
+	// First, try to get model info from the registry if available
+	var useRegistryLimits bool
+	if tm.registry != nil {
+		// Try to get model definition from registry
+		modelDef, err := tm.registry.GetModel(modelName)
+		if err == nil && modelDef != nil {
+			// We found the model in the registry, use its context window
+			tm.logger.Debug("Using token limits from registry for model %s: %d tokens",
+				modelName, modelDef.ContextWindow)
 
-		// Get specific error details if we can recognize provider-specific errors
-		// Note: This approach allows us to handle Gemini or other provider-specific errors
-		// without direct dependency on provider-specific error types
-		if apiService, ok := tm.client.(APIService); ok && apiService != nil {
-			if apiService.IsSafetyBlockedError(err) {
-				errorType = "SafetyBlockedError"
-			}
-			errorMessage = apiService.GetErrorDetails(err)
+			// Store input limit from registry
+			result.InputLimit = modelDef.ContextWindow
+			useRegistryLimits = true
 		} else {
-			// Just use the error message directly
-			errorMessage = err.Error()
+			tm.logger.Debug("Model %s not found in registry, falling back to client-provided token limits", modelName)
 		}
-
-		// Log the token check failure
-		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "CheckTokens",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"prompt_length": len(prompt),
-				"model_name":    modelName,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: errorMessage,
-				Type:    errorType,
-			},
-			Message: "Token count check failed for model " + modelName,
-		}); logErr != nil {
-			tm.logger.Error("Failed to write audit log: %v", logErr)
-		}
-
-		// Return the original error
-		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
 	}
 
-	// Store input limit
-	result.InputLimit = modelInfo.InputTokenLimit
+	// If registry lookup failed or registry is not available, fall back to client GetModelInfo
+	if !useRegistryLimits {
+		// Get model information (limits) from LLM client
+		modelInfo, err := tm.client.GetModelInfo(ctx)
+		if err != nil {
+			// Handle provider-agnostic error logging
+			errorType := "TokenCheckError"
+			// Using a separate variable declaration to avoid ineffectual assignment
+			var errorMessage string
+
+			// Get specific error details if we can recognize provider-specific errors
+			// Note: This approach allows us to handle Gemini or other provider-specific errors
+			// without direct dependency on provider-specific error types
+			if apiService, ok := tm.client.(interface {
+				IsSafetyBlockedError(err error) bool
+				GetErrorDetails(err error) string
+			}); ok && apiService != nil {
+				if apiService.IsSafetyBlockedError(err) {
+					errorType = "SafetyBlockedError"
+				}
+				errorMessage = apiService.GetErrorDetails(err)
+			} else {
+				// Just use the error message directly
+				errorMessage = err.Error()
+			}
+
+			// Log the token check failure
+			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
+				Timestamp: time.Now().UTC(),
+				Operation: "CheckTokens",
+				Status:    "Failure",
+				Inputs: map[string]interface{}{
+					"prompt_length": len(prompt),
+					"model_name":    modelName,
+				},
+				Error: &auditlog.ErrorInfo{
+					Message: errorMessage,
+					Type:    errorType,
+				},
+				Message: "Token count check failed for model " + modelName,
+			}); logErr != nil {
+				tm.logger.Error("Failed to write audit log: %v", logErr)
+			}
+
+			// Return the original error
+			return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
+		}
+
+		// Store input limit from model info
+		result.InputLimit = modelInfo.InputTokenLimit
+	}
 
 	// Count tokens in the prompt
 	tokenResult, err := tm.client.CountTokens(ctx, prompt)
@@ -140,7 +167,10 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 		var errorMessage string
 
 		// Get specific error details if we can recognize provider-specific errors
-		if apiService, ok := tm.client.(APIService); ok && apiService != nil {
+		if apiService, ok := tm.client.(interface {
+			IsSafetyBlockedError(err error) bool
+			GetErrorDetails(err error) string
+		}); ok && apiService != nil {
 			if apiService.IsSafetyBlockedError(err) {
 				errorType = "SafetyBlockedError"
 			}
@@ -248,7 +278,7 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) erro
 	}
 
 	if tokenInfo.ExceedsLimit {
-		return fmt.Errorf(tokenInfo.LimitError)
+		return fmt.Errorf("%s", tokenInfo.LimitError)
 	}
 
 	return nil

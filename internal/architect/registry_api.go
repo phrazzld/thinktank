@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
@@ -22,7 +23,9 @@ type registryAPIService struct {
 }
 
 // NewRegistryAPIService creates a new Registry-based API service
-func NewRegistryAPIService(registryManager *registry.Manager, logger logutil.LoggerInterface) APIService {
+// This implementation uses the registry to look up model and provider information,
+// providing a more flexible and configurable approach than the legacy APIService.
+func NewRegistryAPIService(registryManager *registry.Manager, logger logutil.LoggerInterface) interfaces.APIService {
 	return &registryAPIService{
 		registry: registryManager.GetRegistry(),
 		logger:   logger,
@@ -174,6 +177,156 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 
 // The remaining methods are carried over from the existing APIService implementation
 // since they don't depend on the provider initialization logic
+
+// GetModelParameters retrieves parameter values from the registry for a given model
+// It returns a map of parameter name to parameter value, applying defaults from the model definition
+func (s *registryAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Look up the model in the registry
+	modelDef, err := s.registry.GetModel(modelName)
+	if err != nil {
+		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		// Return an empty map if model not found
+		return make(map[string]interface{}), nil
+	}
+
+	// Prepare the parameters map
+	params := make(map[string]interface{})
+
+	// Add all parameters from the model definition with their default values
+	for paramName, paramDef := range modelDef.Parameters {
+		// Apply the default value from the definition
+		if paramDef.Default != nil {
+			params[paramName] = paramDef.Default
+		}
+	}
+
+	return params, nil
+}
+
+// ValidateModelParameter validates a parameter value against its constraints
+// It returns true if the parameter is valid, false otherwise
+func (s *registryAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	// Look up the model in the registry
+	modelDef, err := s.registry.GetModel(modelName)
+	if err != nil {
+		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		// Can't validate if model is not found
+		return false, fmt.Errorf("model '%s' not found: %v", modelName, err)
+	}
+
+	// Look up the parameter definition
+	paramDef, ok := modelDef.Parameters[paramName]
+	if !ok {
+		s.logger.Debug("Parameter '%s' not found for model '%s'", paramName, modelName)
+		return false, fmt.Errorf("parameter '%s' not defined for model '%s'", paramName, modelName)
+	}
+
+	// Type check and constraints validation
+	switch paramDef.Type {
+	case "float":
+		// Check if value is a float
+		floatVal, ok := value.(float64)
+		if !ok {
+			return false, fmt.Errorf("parameter '%s' must be a float", paramName)
+		}
+
+		// Check minimum value if defined
+		if paramDef.Min != nil {
+			minVal, ok := paramDef.Min.(float64)
+			if ok && floatVal < minVal {
+				return false, fmt.Errorf("parameter '%s' value %.2f is below minimum %.2f",
+					paramName, floatVal, minVal)
+			}
+		}
+
+		// Check maximum value if defined
+		if paramDef.Max != nil {
+			maxVal, ok := paramDef.Max.(float64)
+			if ok && floatVal > maxVal {
+				return false, fmt.Errorf("parameter '%s' value %.2f exceeds maximum %.2f",
+					paramName, floatVal, maxVal)
+			}
+		}
+
+	case "int":
+		// Check if value is an int
+		intVal, ok := value.(int)
+		if !ok {
+			return false, fmt.Errorf("parameter '%s' must be an integer", paramName)
+		}
+
+		// Check minimum value if defined
+		if paramDef.Min != nil {
+			minVal, ok := paramDef.Min.(int)
+			if ok && intVal < minVal {
+				return false, fmt.Errorf("parameter '%s' value %d is below minimum %d",
+					paramName, intVal, minVal)
+			}
+		}
+
+		// Check maximum value if defined
+		if paramDef.Max != nil {
+			maxVal, ok := paramDef.Max.(int)
+			if ok && intVal > maxVal {
+				return false, fmt.Errorf("parameter '%s' value %d exceeds maximum %d",
+					paramName, intVal, maxVal)
+			}
+		}
+
+	case "string":
+		// Check if value is a string
+		strVal, ok := value.(string)
+		if !ok {
+			return false, fmt.Errorf("parameter '%s' must be a string", paramName)
+		}
+
+		// Check enum values if defined
+		if len(paramDef.EnumValues) > 0 {
+			valid := false
+			for _, enumVal := range paramDef.EnumValues {
+				if strVal == enumVal {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return false, fmt.Errorf("parameter '%s' value '%s' is not in allowed values: %v",
+					paramName, strVal, paramDef.EnumValues)
+			}
+		}
+
+	default:
+		// Unknown parameter type
+		s.logger.Warn("Unknown parameter type '%s' for parameter '%s'", paramDef.Type, paramName)
+	}
+
+	// If we reached here, the parameter is valid
+	return true, nil
+}
+
+// GetModelDefinition retrieves the full model definition from the registry
+func (s *registryAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// Look up the model in the registry
+	modelDef, err := s.registry.GetModel(modelName)
+	if err != nil {
+		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		return nil, fmt.Errorf("%w: %s", ErrModelNotFound, modelName)
+	}
+
+	return modelDef, nil
+}
+
+// GetModelTokenLimits retrieves token limits from the registry for a given model
+func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// Look up the model in the registry
+	modelDef, err := s.registry.GetModel(modelName)
+	if err != nil {
+		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		return 0, 0, fmt.Errorf("%w: %s", ErrModelNotFound, modelName)
+	}
+
+	return modelDef.ContextWindow, modelDef.MaxOutputTokens, nil
+}
 
 // ProcessLLMResponse processes a provider-agnostic API response and extracts content
 func (s *registryAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {

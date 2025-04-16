@@ -275,32 +275,60 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *Context
 	cg.logger.Info("  Characters: %d", stats.CharCount)
 	cg.logger.Info("  Tokens: %d", stats.TokenCount)
 
-	// Get model info for token limit comparison
-	modelInfo, modelInfoErr := cg.client.GetModelInfo(ctx)
-	if modelInfoErr != nil {
-		// Check if it's a categorized error with enhanced details
-		if catErr, ok := llm.IsCategorizedError(modelInfoErr); ok {
-			category := catErr.Category()
-			cg.logger.Warn("Could not get model information: %v (category: %s)",
-				modelInfoErr, category.String())
+	// Try to get token limits from registry first
+	modelName := cg.client.GetModelName()
 
-			// Only show detailed error category in debug logs
-			cg.logger.Debug("Model info error category: %s", category.String())
-		} else {
-			cg.logger.Warn("Could not get model information: %v", modelInfoErr)
+	// Get input token limit from the registry if available
+	var inputTokenLimit int32
+	var limitSource string
+
+	// Check if we have an APIService that supports registry lookup
+	if apiService, ok := cg.client.(APIService); ok && apiService != nil {
+		contextWindow, _, err := apiService.GetModelTokenLimits(modelName)
+		if err == nil && contextWindow > 0 {
+			// Use the context window from the registry
+			inputTokenLimit = contextWindow
+			limitSource = "registry"
+			cg.logger.Debug("Using token limits from registry for model %s", modelName)
 		}
-		// Continue - this is not a fatal error for dry run mode
-	} else {
+	}
+
+	// Fall back to client.GetModelInfo if registry lookup failed
+	if inputTokenLimit == 0 {
+		// Get model info for token limit comparison
+		modelInfo, modelInfoErr := cg.client.GetModelInfo(ctx)
+		if modelInfoErr != nil {
+			// Check if it's a categorized error with enhanced details
+			if catErr, ok := llm.IsCategorizedError(modelInfoErr); ok {
+				category := catErr.Category()
+				cg.logger.Warn("Could not get model information: %v (category: %s)",
+					modelInfoErr, category.String())
+
+				// Only show detailed error category in debug logs
+				cg.logger.Debug("Model info error category: %s", category.String())
+			} else {
+				cg.logger.Warn("Could not get model information: %v", modelInfoErr)
+			}
+			// Continue - this is not a fatal error for dry run mode
+		} else {
+			// Use the input token limit from the client
+			inputTokenLimit = modelInfo.InputTokenLimit
+			limitSource = "client"
+		}
+	}
+
+	// If we have a valid token limit, show usage information
+	if inputTokenLimit > 0 {
 		// Convert to int32 for comparison with model limits
 		tokenCountInt32 := stats.TokenCount
-		percentOfLimit := float64(tokenCountInt32) / float64(modelInfo.InputTokenLimit) * 100
-		cg.logger.Info("Token usage: %d / %d (%.1f%% of model's limit)",
-			tokenCountInt32, modelInfo.InputTokenLimit, percentOfLimit)
+		percentOfLimit := float64(tokenCountInt32) / float64(inputTokenLimit) * 100
+		cg.logger.Info("Token usage: %d / %d (%.1f%% of model's limit) [source: %s]",
+			tokenCountInt32, inputTokenLimit, percentOfLimit, limitSource)
 
 		// Check if token count exceeds limit
-		if tokenCountInt32 > modelInfo.InputTokenLimit {
+		if tokenCountInt32 > inputTokenLimit {
 			cg.logger.Error("WARNING: Token count exceeds model's limit by %d tokens",
-				tokenCountInt32-modelInfo.InputTokenLimit)
+				tokenCountInt32-inputTokenLimit)
 			cg.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		} else {
 			cg.logger.Info("Context size is within the model's token limit")

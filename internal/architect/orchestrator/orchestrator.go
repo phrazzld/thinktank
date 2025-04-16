@@ -21,6 +21,7 @@ import (
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Orchestrator coordinates the main application logic.
@@ -307,6 +308,54 @@ func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
 // It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
+}
+
+// GetModelParameters retrieves parameter values from the registry for a given model.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelParameters(string) (map[string]interface{}, error)
+	}); ok {
+		return apiService.GetModelParameters(modelName)
+	}
+	// Return empty parameters if the underlying implementation doesn't support this method
+	return make(map[string]interface{}), nil
+}
+
+// GetModelDefinition retrieves the full model definition from the registry.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelDefinition(string) (*registry.ModelDefinition, error)
+	}); ok {
+		return apiService.GetModelDefinition(modelName)
+	}
+	// Return nil with error if the underlying implementation doesn't support this method
+	return nil, fmt.Errorf("GetModelDefinition not supported by the underlying APIService implementation")
+}
+
+// GetModelTokenLimits retrieves token limits from the registry for a given model.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelTokenLimits(string) (int32, int32, error)
+	}); ok {
+		return apiService.GetModelTokenLimits(modelName)
+	}
+	// Return zero values with error if the underlying implementation doesn't support this method
+	return 0, 0, fmt.Errorf("GetModelTokenLimits not supported by the underlying APIService implementation")
+}
+
+// ValidateModelParameter validates a parameter value against its constraints.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	if apiService, ok := a.APIService.(interface {
+		ValidateModelParameter(string, string, interface{}) (bool, error)
+	}); ok {
+		return apiService.ValidateModelParameter(modelName, paramName, value)
+	}
+	// Return true if the underlying implementation doesn't support this method
+	return true, nil
 }
 
 // NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager

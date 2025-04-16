@@ -7,7 +7,7 @@ import (
 
 // MockClient implements Client interface for testing
 type MockClient struct {
-	GenerateContentFunc    func(ctx context.Context, prompt string) (*GenerationResult, error)
+	GenerateContentFunc    func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error)
 	CountTokensFunc        func(ctx context.Context, prompt string) (*TokenCount, error)
 	GetModelInfoFunc       func(ctx context.Context) (*ModelInfo, error)
 	GetModelNameFunc       func() string
@@ -18,9 +18,9 @@ type MockClient struct {
 }
 
 // GenerateContent calls the mocked implementation
-func (m *MockClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
+func (m *MockClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 	if m.GenerateContentFunc != nil {
-		return m.GenerateContentFunc(ctx, prompt)
+		return m.GenerateContentFunc(ctx, prompt, params)
 	}
 	return &GenerationResult{Content: "Mock response"}, nil
 }

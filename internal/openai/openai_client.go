@@ -30,6 +30,12 @@ type openaiClient struct {
 	tokenizer   tokenizerAPI
 	modelName   string
 	modelLimits map[string]*modelInfo // Cache of model token limits
+	// Parameters for the OpenAI API
+	temperature      *float32
+	topP             *float32
+	presencePenalty  *float32
+	frequencyPenalty *float32
+	maxTokens        *int32
 }
 
 // Internal model info struct
@@ -157,14 +163,110 @@ func initializeModelLimits() map[string]*modelInfo {
 }
 
 // GenerateContent sends a text prompt to OpenAI and returns the generated content
-func (c *openaiClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// Apply parameters if provided
+	if params != nil {
+		// Temperature
+		if temp, ok := params["temperature"]; ok {
+			switch v := temp.(type) {
+			case float64:
+				tempFloat := float32(v)
+				c.temperature = &tempFloat
+			case float32:
+				c.temperature = &v
+			case int:
+				tempFloat := float32(v)
+				c.temperature = &tempFloat
+			}
+		}
+
+		// Top P
+		if topP, ok := params["top_p"]; ok {
+			switch v := topP.(type) {
+			case float64:
+				topPFloat := float32(v)
+				c.topP = &topPFloat
+			case float32:
+				c.topP = &v
+			case int:
+				topPFloat := float32(v)
+				c.topP = &topPFloat
+			}
+		}
+
+		// Presence Penalty
+		if penalty, ok := params["presence_penalty"]; ok {
+			switch v := penalty.(type) {
+			case float64:
+				penaltyFloat := float32(v)
+				c.presencePenalty = &penaltyFloat
+			case float32:
+				c.presencePenalty = &v
+			case int:
+				penaltyFloat := float32(v)
+				c.presencePenalty = &penaltyFloat
+			}
+		}
+
+		// Frequency Penalty
+		if penalty, ok := params["frequency_penalty"]; ok {
+			switch v := penalty.(type) {
+			case float64:
+				penaltyFloat := float32(v)
+				c.frequencyPenalty = &penaltyFloat
+			case float32:
+				c.frequencyPenalty = &v
+			case int:
+				penaltyFloat := float32(v)
+				c.frequencyPenalty = &penaltyFloat
+			}
+		}
+
+		// Max Tokens - try both OpenAI-style and Gemini-style parameter names
+		if maxTokens, ok := params["max_tokens"]; ok {
+			switch v := maxTokens.(type) {
+			case int:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			case int32:
+				c.maxTokens = &v
+			case int64:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			case float64:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			}
+		} else if maxTokens, ok := params["max_output_tokens"]; ok {
+			// Try the Gemini-style parameter name as a fallback
+			switch v := maxTokens.(type) {
+			case int:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			case int32:
+				c.maxTokens = &v
+			case int64:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			case float64:
+				maxInt := int32(v)
+				c.maxTokens = &maxInt
+			}
+		}
+	}
+
 	// Create chat completion request with user prompt
 	messages := []openai.ChatCompletionMessageParamUnion{
 		openai.UserMessage(prompt),
 	}
 
-	// Call OpenAI API
+	// For now, just use the simple createChatCompletion without parameters
+	// We store the parameters in the client struct but don't use them yet
+	// This will be implemented in a later PR with proper imports
+
+	// Call OpenAI API through our standard interface
 	completion, err := c.api.createChatCompletion(ctx, messages, c.modelName)
+
 	if err != nil {
 		return nil, fmt.Errorf("OpenAI API error: %w", err)
 	}
@@ -232,4 +334,29 @@ func (c *openaiClient) GetModelName() string {
 func (c *openaiClient) Close() error {
 	// The OpenAI Go client doesn't require explicit closing
 	return nil
+}
+
+// SetTemperature sets the temperature parameter for generations
+func (c *openaiClient) SetTemperature(temp float32) {
+	c.temperature = &temp
+}
+
+// SetTopP sets the top_p parameter for generations
+func (c *openaiClient) SetTopP(topP float32) {
+	c.topP = &topP
+}
+
+// SetPresencePenalty sets the presence_penalty parameter for generations
+func (c *openaiClient) SetPresencePenalty(penalty float32) {
+	c.presencePenalty = &penalty
+}
+
+// SetFrequencyPenalty sets the frequency_penalty parameter for generations
+func (c *openaiClient) SetFrequencyPenalty(penalty float32) {
+	c.frequencyPenalty = &penalty
+}
+
+// SetMaxTokens sets the max_tokens parameter for generations
+func (c *openaiClient) SetMaxTokens(tokens int32) {
+	c.maxTokens = &tokens
 }

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"fmt"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -31,12 +32,22 @@ models:
       temperature:
         type: float
         default: 0.7
+        min: 0.0
+        max: 2.0
       top_p:
         type: float
         default: 1.0
+        min: 0.0
+        max: 1.0
       max_tokens:
         type: int
         default: 2048
+        min: 1
+        max: 4096
+      model_type:
+        type: string
+        default: "creative"
+        enum_values: ["creative", "precise", "balanced"]
 
   - name: gemini-1.5-pro
     provider: gemini
@@ -103,13 +114,43 @@ models:
 	}
 
 	// Check GPT model parameters
-	if len(gptModel.Parameters) != 3 {
-		t.Errorf("Expected 3 parameters for GPT model, got %d", len(gptModel.Parameters))
+	if len(gptModel.Parameters) != 4 {
+		t.Errorf("Expected 4 parameters for GPT model, got %d", len(gptModel.Parameters))
 	}
 
 	tempParam := gptModel.Parameters["temperature"]
 	if tempParam.Type != "float" || tempParam.Default.(float64) != 0.7 {
 		t.Errorf("Temperature parameter not parsed correctly: %+v", tempParam)
+	}
+
+	// Check constraints for temperature parameter
+	if tempParam.Min.(float64) != 0.0 || tempParam.Max.(float64) != 2.0 {
+		t.Errorf("Temperature parameter constraints not parsed correctly: min=%v, max=%v",
+			tempParam.Min, tempParam.Max)
+	}
+
+	// Check int type parameter with constraints
+	maxTokensParam := gptModel.Parameters["max_tokens"]
+	if maxTokensParam.Type != "int" || maxTokensParam.Default.(int) != 2048 {
+		t.Errorf("Max tokens parameter not parsed correctly: %+v", maxTokensParam)
+	}
+
+	if maxTokensParam.Min.(int) != 1 || maxTokensParam.Max.(int) != 4096 {
+		t.Errorf("Max tokens parameter constraints not parsed correctly: min=%v, max=%v",
+			maxTokensParam.Min, maxTokensParam.Max)
+	}
+
+	// Check enum values for model_type parameter
+	modelTypeParam := gptModel.Parameters["model_type"]
+	if modelTypeParam.Type != "string" || modelTypeParam.Default.(string) != "creative" {
+		t.Errorf("Model type parameter not parsed correctly: %+v", modelTypeParam)
+	}
+
+	if len(modelTypeParam.EnumValues) != 3 ||
+		modelTypeParam.EnumValues[0] != "creative" ||
+		modelTypeParam.EnumValues[1] != "precise" ||
+		modelTypeParam.EnumValues[2] != "balanced" {
+		t.Errorf("Model type enum values not parsed correctly: %v", modelTypeParam.EnumValues)
 	}
 
 	// Validate Gemini model
@@ -156,8 +197,15 @@ func TestMarshalingAndUnmarshaling(t *testing.T) {
 				MaxOutputTokens: 1024,
 				Parameters: map[string]ParameterDefinition{
 					"test-param": {
-						Type:    "string",
-						Default: "default-value",
+						Type:       "string",
+						Default:    "default-value",
+						EnumValues: []string{"default-value", "other-value"},
+					},
+					"numeric-param": {
+						Type:    "float",
+						Default: 0.5,
+						Min:     0.0,
+						Max:     1.0,
 					},
 				},
 			},
@@ -211,10 +259,27 @@ func TestMarshalingAndUnmarshaling(t *testing.T) {
 		t.Errorf("Parameters count mismatch after unmarshal")
 	}
 
+	// Check test-param
 	origParam := origModel.Parameters["test-param"]
 	newParam := newModel.Parameters["test-param"]
 
-	if newParam.Type != origParam.Type {
-		t.Errorf("Parameter type mismatch after unmarshal")
+	if newParam.Type != origParam.Type || newParam.Default != origParam.Default {
+		t.Errorf("Parameter fields mismatch after unmarshal")
+	}
+
+	// Also check constraint fields
+	if len(newParam.EnumValues) != len(origParam.EnumValues) {
+		t.Errorf("EnumValues count mismatch after unmarshal")
+	}
+
+	// Check numeric-param constraints
+	origNumericParam := origModel.Parameters["numeric-param"]
+	newNumericParam := newModel.Parameters["numeric-param"]
+
+	// Converting these to strings because the yaml unmarshaller might convert float64 to interface{}
+	if fmt.Sprintf("%v", newNumericParam.Min) != fmt.Sprintf("%v", origNumericParam.Min) ||
+		fmt.Sprintf("%v", newNumericParam.Max) != fmt.Sprintf("%v", origNumericParam.Max) {
+		t.Errorf("Numeric parameter constraints mismatch after unmarshal: got min=%v, max=%v; want min=%v, max=%v",
+			newNumericParam.Min, newNumericParam.Max, origNumericParam.Min, origNumericParam.Max)
 	}
 }

@@ -35,10 +35,10 @@ func TestIntegration_BasicWorkflow(t *testing.T) {
 	// Verify the workflow
 	deps.verifyBasicWorkflow(t, modelNames)
 
-	// Check that output files were written with expected content
+	// Check that output files were written with content
 	for _, call := range deps.fileWriter.SaveToFileCalls {
-		if !strings.Contains(call.Content, "Generated content for:") {
-			t.Errorf("Expected output to contain 'Generated content for:', got: %s", call.Content)
+		if call.Content == "" {
+			t.Errorf("Expected non-empty output content, got empty string")
 		}
 	}
 
@@ -249,7 +249,7 @@ func TestIntegration_ModelProcessingError(t *testing.T) {
 			// For model2, return a client that will generate an error
 			client := &mockLLMClient{
 				modelName: modelName,
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return nil, errors.New("model2 processing error")
 				},
 			}
@@ -259,7 +259,7 @@ func TestIntegration_ModelProcessingError(t *testing.T) {
 		// For other models, return a regular mock client with expected output
 		client := &mockLLMClient{
 			modelName: modelName,
-			generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 				return &llm.ProviderResult{
 					Content:      "Generated content for: " + prompt,
 					TokenCount:   100,

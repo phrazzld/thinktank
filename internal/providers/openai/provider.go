@@ -106,12 +106,110 @@ func (a *OpenAIClientAdapter) SetParameters(params map[string]interface{}) {
 }
 
 // GenerateContent implements the llm.LLMClient interface and applies parameters
-func (a *OpenAIClientAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	// TODO: When llm.LLMClient interface evolves to support parameters directly,
-	// this adapter will apply them to the underlying API calls.
-	// For now, we just pass through to the existing client.
+func (a *OpenAIClientAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
 
-	return a.client.GenerateContent(ctx, prompt)
+	// Apply parameters if provided
+	if params != nil && len(params) > 0 {
+		a.params = params
+	}
+
+	// We need to convert the generic parameters from the Registry to OpenAI-specific settings
+	// We'll try to apply common parameters to the underlying client if it supports them
+
+	// For OpenAI adapter, we use safer type assertions with specific interfaces
+	// Since we don't control the underlying OpenAI client implementation directly
+
+	// Apply temperature parameter if client supports it
+	if client, ok := a.client.(interface{ SetTemperature(temp float32) }); ok && a.params != nil {
+		if temp, ok := a.getFloatParam("temperature"); ok {
+			client.SetTemperature(temp)
+		}
+	}
+
+	// Apply top_p parameter if client supports it
+	if client, ok := a.client.(interface{ SetTopP(topP float32) }); ok && a.params != nil {
+		if topP, ok := a.getFloatParam("top_p"); ok {
+			client.SetTopP(topP)
+		}
+	}
+
+	// Apply max_tokens parameter if client supports it
+	if client, ok := a.client.(interface{ SetMaxTokens(tokens int32) }); ok && a.params != nil {
+		if maxTokens, ok := a.getIntParam("max_tokens"); ok {
+			client.SetMaxTokens(maxTokens)
+		} else if maxTokens, ok := a.getIntParam("max_output_tokens"); ok {
+			// Try the Gemini-style parameter name as a fallback
+			client.SetMaxTokens(maxTokens)
+		}
+	}
+
+	// Apply frequency_penalty parameter if client supports it
+	if client, ok := a.client.(interface{ SetFrequencyPenalty(penalty float32) }); ok && a.params != nil {
+		if penalty, ok := a.getFloatParam("frequency_penalty"); ok {
+			client.SetFrequencyPenalty(penalty)
+		}
+	}
+
+	// Apply presence_penalty parameter if client supports it
+	if client, ok := a.client.(interface{ SetPresencePenalty(penalty float32) }); ok && a.params != nil {
+		if penalty, ok := a.getFloatParam("presence_penalty"); ok {
+			client.SetPresencePenalty(penalty)
+		}
+	}
+
+	// Call the underlying client's implementation
+	// After updating the llm.LLMClient interface, all clients should implement
+	// the new interface with parameters. The adapter's main purpose is to convert
+	// between parameter formats and apply them to the wrapped client.
+	return a.client.GenerateContent(ctx, prompt, a.params)
+}
+
+// getFloatParam safely extracts a float parameter
+func (a *OpenAIClientAdapter) getFloatParam(name string) (float32, bool) {
+	if a.params == nil {
+		return 0, false
+	}
+
+	if val, ok := a.params[name]; ok {
+		switch v := val.(type) {
+		case float64:
+			return float32(v), true
+		case float32:
+			return v, true
+		case int:
+			return float32(v), true
+		case int32:
+			return float32(v), true
+		case int64:
+			return float32(v), true
+		}
+	}
+	return 0, false
+}
+
+// getIntParam safely extracts an integer parameter
+func (a *OpenAIClientAdapter) getIntParam(name string) (int32, bool) {
+	if a.params == nil {
+		return 0, false
+	}
+
+	if val, ok := a.params[name]; ok {
+		switch v := val.(type) {
+		case int:
+			return int32(v), true
+		case int32:
+			return v, true
+		case int64:
+			return int32(v), true
+		case float64:
+			return int32(v), true
+		case float32:
+			return int32(v), true
+		}
+	}
+	return 0, false
 }
 
 // CountTokens implements the llm.LLMClient interface

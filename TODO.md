@@ -1,73 +1,70 @@
-# TODO
+# TODO-FIX: Tasks to Fix Build After Parameter Constraints Implementation
 
-## LLM Provider Configuration Refactor
+## Interface and Method Signature Issues
 
-- [x] **T001:** Define Core Configuration Structs
-    - **Action:** Define `ProviderDefinition`, `ModelDefinition`, and `ParameterDefinition` Go structs in a suitable package (e.g., `internal/config` or `internal/registry`). Ensure correct YAML tags (`yaml:"..."`) are added for parsing the `models.yaml` file. Define types clearly (e.g., for parameters).
-    - **Depends On:** None
-    - **AC Ref:** AC1, AC5, AC6
+- [x] Update `GenerateContent` method in all provider client implementations (openai, gemini) to use the new signature: `GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*ProviderResult, error)`
 
-- [x] **T002:** Implement YAML Configuration Loading
-    - **Action:** Add `gopkg.in/yaml.v3` dependency. Implement logic to read the models.yaml file from a single, consistent location (`~/.config/architect/models.yaml`). Implement robust error handling for file not found, invalid YAML syntax, and missing required fields. Store the parsed configuration data.
-    - **Depends On:** T001
-    - **AC Ref:** AC1
+- [x] Fix `APIServiceAdapter` implementation in `adapters.go` to match interfaces (no actual duplicate methods found):
+  - Update method signatures to match `interfaces.APIService`
+  - Add missing required methods from the interface
+  - Fix type assertions for delegation
 
-- [x] **T003:** Create Registry Package and Core Logic
-    - **Action:** Create the `internal/registry` package. Implement the `Registry` struct to hold loaded `ProviderDefinition` and `ModelDefinition` maps. Implement methods: `LoadConfig()`, `GetModel(name string) (*ModelDefinition, error)`, `GetProvider(name string) (*ProviderDefinition, error)`, and `RegisterProviderImplementation(name string, impl providers.Provider)`. Implement `GetProviderImplementation(name string) (providers.Provider, error)`.
-    - **Depends On:** T001, T002
-    - **AC Ref:** AC1, AC2, AC3, AC4, AC5, AC9
+- [ ] Update all mock and test implementations of `GenerateContent` to use the new method signature with parameters
 
-- [x] **T004:** Define Provider Interface
-    - **Action:** Create `internal/providers/provider.go` (or a similar path). Define the `Provider` interface with the method `CreateClient(ctx context.Context, apiKey string, modelID string, apiEndpoint string) (llm.LLMClient, error)`. Ensure the `llm.LLMClient` interface from `internal/llm/client.go` is used as the return type.
-    - **Depends On:** None
-    - **AC Ref:** AC3
+## Adapter Pattern Issues
 
-- [x] **T005:** Refactor Gemini Implementation for Registry
-    - **Action:** Create `internal/providers/gemini/provider.go`. Implement the `providers.Provider` interface. Ensure the existing `gemini.NewLLMClient` (or a new factory function) returns the `llm.LLMClient` interface. Modify `geminiClient.GenerateContent` to accept and utilize a `map[string]interface{}` for parameters based on `ModelDefinition`. Update `geminiClient.GetModelInfo` to use configuration data from models.yaml. Remove any Gemini-specific provider detection logic from `internal/architect/api.go` or other central places.
-    - **Depends On:** T004
-    - **AC Ref:** AC3, AC4, AC6, AC9
+- [ ] Fix `TokenManagerAdapter` implementation in `adapters.go`:
+  - Update method signatures to match `interfaces.TokenManager`
+  - Fix type assertions and method delegation
 
-- [x] **T006:** Refactor OpenAI Implementation for Registry
-    - **Action:** Create `internal/providers/openai/provider.go`. Implement the `providers.Provider` interface. Ensure the existing `openai.NewClient` (or equivalent) returns the `llm.LLMClient` interface. Modify `openaiClient.GenerateContent` to accept and utilize a `map[string]interface{}` for parameters based on `ModelDefinition`. Update `openaiClient.GetModelInfo` to use configuration data (token limits) from models.yaml. Remove any OpenAI-specific provider detection logic from `internal/architect/api.go` or other central places.
-    - **Depends On:** T004
-    - **AC Ref:** AC3, AC4, AC6, AC9
+- [ ] Fix `ContextGathererAdapter` implementation:
+  - Update parameter types to match internal vs interface types
+  - Fix `ContextStats` type compatibility issue
 
-- [x] **T007:** Integrate Registry into Core Application Logic
-    - **Action:** In the application startup sequence (`internal/architect/app.go` or `main.go`), initialize and load the registry using `registry.LoadConfig`. Register the Gemini (T005) and OpenAI (T006) provider implementations using `registry.RegisterProviderImplementation`. Refactor the client creation logic (likely within the orchestrator or main execution flow): remove calls to `DetectProviderFromModel`, use `registry.GetModel` to get `ModelDefinition`, use `registry.GetProvider` to get `ProviderDefinition`, retrieve the API key using the `api_key_sources` map from the config and the `ProviderDefinition`, get the provider implementation using `registry.GetProviderImplementation`, and call `provider.CreateClient` to get the `llm.LLMClient`. Assess and refactor/remove the existing `APIService` interface/implementation if it becomes redundant.
-    - **Depends On:** T003, T005, T006
-    - **AC Ref:** AC2, AC3, AC4, AC5, AC9
+- [ ] Fix `FileWriterAdapter` implementation to match interface
 
-- [ ] **T008:** Implement Model Parameter Handling
-    - **Action:** In the client interaction logic (likely orchestrator or model processor), retrieve parameters from the `ModelDefinition.Parameters`. Use these parameters directly without CLI overrides. Update the `llm.LLMClient.GenerateContent` interface (if necessary) and implementations (T005, T006) to accept a `map[string]interface{}` parameter map and pass relevant parameters to the underlying API calls.
-    - **Depends On:** T001, T007
-    - **AC Ref:** AC6
+## Architecture Alignment
 
-- [ ] **T009:** Update Token Limit Logic
-    - **Action:** Identify all code locations that check or use token limits (e.g., `ContextGatherer`, `ModelProcessor`/`Orchestrator`). Modify this logic to retrieve `ContextWindow` and `MaxOutputTokens` from the `ModelDefinition` obtained via the Registry (T003, T007). Remove any hardcoded token limits related to specific models.
-    - **Depends On:** T001, T007
-    - **AC Ref:** AC5
+- [ ] Align internal package types with interface package types:
+  - Make `TokenResult` in internal package compatible with `interfaces.TokenResult`
+  - Make `ContextStats` in internal package compatible with `interfaces.ContextStats`
+  - Make `GatherConfig` in internal package compatible with `interfaces.GatherConfig`
 
-- [x] **T010:** Create Default `models.yaml` File
-    - **Action:** Create a well-structured default `models.yaml` file for the `~/.config/architect/` directory. Include common Gemini models (e.g., `gemini-1.5-pro`) and OpenAI models (e.g., `gpt-4-turbo`, `gpt-3.5-turbo`, `o3-mini`). Populate fields like `provider`, `api_model_id`, `context_window`, `max_output_tokens`, and define common `parameters` (like `temperature`) with types and defaults. Add comments explaining the structure and how to customize it. Include this file in the repository with installation instructions to copy it to the user's config directory.
-    - **Depends On:** T001
-    - **AC Ref:** AC1
+- [ ] Update constructor arguments to match new signatures:
+  - Update all `NewTokenManager` calls to include registry parameter
+  - Fix adapter struct initialization in `app.go`
 
-- [ ] **T011:** Update Documentation
-    - **Action:** Update `README.md` to explain the new `models.yaml` configuration system: its purpose, its location (`~/.config/architect/models.yaml`), structure (referencing T010), and how to add/modify providers and models. Include installation instructions to create the config directory and install the default models.yaml file. Remove documentation related to the old provider detection logic and any deprecated flags.
-    - **Depends On:** T002, T010
-    - **AC Ref:** AC12
+## Test Fixes
 
-- [ ] **T012:** Add/Update Tests
-    - **Action:** Write comprehensive unit tests for the `internal/registry` package, covering config loading, definition lookups, and implementation registration/retrieval. Write unit tests for the YAML parsing logic (T002), including error handling for invalid formats or missing files. Update existing unit/integration tests for components like `ContextGatherer` and `ModelProcessor`/`Orchestrator` to use the new registry/config-based approach for client creation and limit checking. Ensure integration tests cover scenarios using both Gemini and OpenAI models defined in a test `models.yaml`. Verify all existing tests pass after the refactoring.
-    - **Depends On:** T003, T005, T006, T007, T008, T009
-    - **AC Ref:** AC9, AC10, AC11
+- [ ] Fix test helpers in `cmd/architect/api_test_helper.go` and `internal/architect/api_test_helper.go`
 
-## [!] CLARIFICATIONS NEEDED / ASSUMPTIONS
+- [ ] Update mock implementations in test files to support the new interface methods
 
-- [ ] **Issue/Assumption:** `APIService` Refactoring Scope
-    - **Context:** Task T7 mentions potentially refactoring or removing the existing `APIService` interface/implementation (`internal/architect/api.go`). The extent of this refactoring needs clarification.
-    - **Assumption:** The primary goal is to replace the client creation and provider detection logic within `APIService` with the new registry/provider pattern. The interface might be kept for response processing helpers, or those helpers might be moved elsewhere.
+- [ ] Fix type assertions in tests to accommodate new interface methods
 
-- [ ] **Issue/Assumption:** Parameter Constraints
-    - **Context:** The `ParameterDefinition` struct (T001) should handle parameter types. Should it also support defining and validating constraints (e.g., min/max values for numbers, allowed enum values for strings)?
-    - **Assumption:** Initially, only type validation (float, int, string) will be implemented. Constraint validation can be added later if required.
+## Integration Fixes
+
+- [ ] Fix error: `too many arguments in call to NewTokenManager` in app.go
+
+- [ ] Fix error: `undefined: APIServiceAdapter` in app.go
+
+- [ ] Fix error: `undefined: TokenManagerAdapter` in app.go
+
+## Verification Steps
+
+- [ ] Run `go fmt ./...` to format all code
+
+- [ ] Run `go vet ./...` to check for any subtle issues
+
+- [ ] Run package-specific tests to verify each component:
+  - [ ] `go test ./internal/registry` (already passing)
+  - [ ] `go test ./internal/architect`
+  - [ ] `go test ./internal/gemini`
+  - [ ] `go test ./internal/openai`
+
+- [ ] Run all tests: `go test ./...`
+
+- [ ] Build the application: `go build`
+
+- [ ] Verify runtime functionality with a simple test command:
+  `go run main.go --verbose --instructions test.txt --model gpt-4.1-mini --model gemini-2.0-flash ./`

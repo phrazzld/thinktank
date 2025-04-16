@@ -75,14 +75,87 @@ func (a *GeminiClientAdapter) SetParameters(params map[string]interface{}) {
 }
 
 // GenerateContent implements the llm.LLMClient interface and applies parameters
-func (a *GeminiClientAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	// Apply parameters to underlying gemini client (when we evolve the interface)
-	// For now, we just pass through to the existing client
+func (a *GeminiClientAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// Apply parameters to underlying gemini client
+	if params != nil && len(params) > 0 {
+		// Store the parameters for use by the adapter
+		a.params = params
+	}
 
-	// TODO: When llm.LLMClient interface evolves to support parameters directly,
-	// we'll add parameter handling here.
+	// We need to convert the generic parameters from the Registry to Gemini-specific settings
+	// We'll apply the parameters if the underlying client is a gemini.Client
+	if client, ok := a.client.(interface{ SetTemperature(temp float32) }); ok && a.params != nil {
+		// Handle temperature parameter
+		if temp, ok := a.getFloatParam("temperature"); ok {
+			client.SetTemperature(temp)
+		}
+	}
 
-	return a.client.GenerateContent(ctx, prompt)
+	if client, ok := a.client.(interface{ SetTopP(topP float32) }); ok && a.params != nil {
+		// Handle top_p parameter
+		if topP, ok := a.getFloatParam("top_p"); ok {
+			client.SetTopP(topP)
+		}
+	}
+
+	if client, ok := a.client.(interface{ SetMaxOutputTokens(tokens int32) }); ok && a.params != nil {
+		// Handle max_output_tokens parameter
+		if maxTokens, ok := a.getIntParam("max_output_tokens"); ok {
+			client.SetMaxOutputTokens(maxTokens)
+		}
+	}
+
+	// Call the underlying client's implementation
+	// After updating the llm.LLMClient interface, all clients should implement
+	// the new interface with parameters. The adapter's main purpose is to convert
+	// between parameter formats and apply them to the wrapped client.
+	return a.client.GenerateContent(ctx, prompt, a.params)
+}
+
+// getFloatParam safely extracts a float parameter
+func (a *GeminiClientAdapter) getFloatParam(name string) (float32, bool) {
+	if a.params == nil {
+		return 0, false
+	}
+
+	if val, ok := a.params[name]; ok {
+		switch v := val.(type) {
+		case float64:
+			return float32(v), true
+		case float32:
+			return v, true
+		case int:
+			return float32(v), true
+		case int32:
+			return float32(v), true
+		case int64:
+			return float32(v), true
+		}
+	}
+	return 0, false
+}
+
+// getIntParam safely extracts an integer parameter
+func (a *GeminiClientAdapter) getIntParam(name string) (int32, bool) {
+	if a.params == nil {
+		return 0, false
+	}
+
+	if val, ok := a.params[name]; ok {
+		switch v := val.(type) {
+		case int:
+			return int32(v), true
+		case int32:
+			return v, true
+		case int64:
+			return int32(v), true
+		case float64:
+			return int32(v), true
+		case float32:
+			return int32(v), true
+		}
+	}
+	return 0, false
 }
 
 // CountTokens implements the llm.LLMClient interface

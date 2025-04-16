@@ -118,6 +118,8 @@ export OPENAI_API_KEY="your-openai-api-key-here"
 
 > **Note**: You only need to set the API key for the provider(s) you're using. If you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. Similarly, if you're only using OpenAI models, only `OPENAI_API_KEY` is required. If you're using both providers, both environment variables need to be set.
 
+The required API key environment variables are defined in the `api_key_sources` section of your `~/.config/architect/models.yaml` file. If you add new providers, you can specify custom environment variable names for their API keys in this section.
+
 ## Configuration Options
 
 | Flag | Description | Default |
@@ -139,7 +141,37 @@ export OPENAI_API_KEY="your-openai-api-key-here"
 
 ## Configuration
 
-architect is configured entirely through command-line flags and environment variables (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`). There are no configuration files to manage, which simplifies usage and deployment.
+architect is configured through command-line flags, environment variables (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`), and a models.yaml configuration file for provider and model settings.
+
+### Models Configuration File
+
+architect uses a `models.yaml` configuration file to define LLM providers and models:
+
+- **Location**: `~/.config/architect/models.yaml`
+- **Purpose**: Centralizes all model configuration including:
+  - Available providers (OpenAI, Gemini)
+  - Model definitions with context windows and token limits
+  - Default parameter values (temperature, etc.)
+  - API key sources (environment variables)
+  - Custom API endpoints (optional)
+
+#### Installing the Configuration File
+
+```bash
+# Create the configuration directory
+mkdir -p ~/.config/architect
+
+# Copy the default configuration file
+cp config/models.yaml ~/.config/architect/models.yaml
+```
+
+#### Customizing the Configuration
+
+You can customize `~/.config/architect/models.yaml` to:
+- Add new models as they become available
+- Adjust token limits to match model updates
+- Configure default parameters for each model
+- Add custom API endpoints (for self-hosted models or proxies)
 
 ### Default Values
 
@@ -148,9 +180,7 @@ architect comes with sensible defaults for most options:
 - Output directory: Auto-generated run name directory (e.g., `eloquent-rabbit`)
 - Output files: One file per model with name format `modelname.md`
 - Model: `gemini-2.5-pro-exp-03-25` (can specify multiple models with repeatable `--model` flag)
-- Supported models:
-  - Gemini models: `gemini-1.5-pro`, `gemini-2.5-pro-exp-03-25`, etc.
-  - OpenAI models: `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`, etc.
+- Supported models: All models defined in your models.yaml file
 - Log level: `info`
 - File formatting: XML-style format for context building
 - Default exclusions for common binary, media files, and directories
@@ -179,7 +209,7 @@ architect supports generating plans with multiple AI models from multiple provid
 
 - **Multiple Models**: Specify multiple models with the repeatable `--model` flag
 - **Multiple Providers**: Seamlessly use both Gemini and OpenAI models in the same run
-- **Provider Detection**: Automatically detects the appropriate provider based on model name
+- **Registry-Based Configuration**: Uses models.yaml to define providers, models, and their capabilities
 - **Organized Output**: Each model's plan is saved as a separate file in the output directory
 - **Run Name Directories**: Automatically creates a uniquely named directory for each run
 - **Concurrent Processing**: Processes multiple models in parallel using Go's concurrency primitives
@@ -251,15 +281,22 @@ Each log entry contains structured information that can be processed by tools, w
 
 ## Troubleshooting
 
+### Configuration Issues
+- Ensure the `~/.config/architect/models.yaml` file exists and is properly formatted
+- Check that the models you're using are defined in your models.yaml file
+- Make sure the provider definitions in models.yaml match your needs
+
 ### API Key Issues
 - For Gemini models, ensure `GEMINI_API_KEY` is set correctly in your environment
 - For OpenAI models, ensure `OPENAI_API_KEY` is set correctly in your environment
 - Check that your API keys have appropriate permissions for the models you're using
+- Verify the environment variable names match those in the `api_key_sources` section of models.yaml
 
 ### Token Limit Errors
 - Use `--dry-run` to see token statistics without making API calls
 - Reduce the number of files analyzed with `--include` or other filtering flags
 - Try a model with a higher token limit
+- Check the `context_window` and `max_output_tokens` values in your models.yaml file
 
 ### Performance Tips
 - Start with small, focused parts of your codebase and gradually include more
@@ -276,10 +313,11 @@ Each log entry contains structured information that can be processed by tools, w
 
 ### Common Issues
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
-- **Missing API key**: Ensure the appropriate API key environment variable (`GEMINI_API_KEY` or `OPENAI_API_KEY`) is set correctly for the models you're using
+- **Missing API key**: Ensure the appropriate API key environment variable is set correctly for the models you're using
+- **Missing or invalid models.yaml**: Make sure the configuration file exists at `~/.config/architect/models.yaml`
 - **Path issues**: When running commands, use absolute or correct relative paths to your project files
 - **Flag precedence**: Remember that CLI flags always take precedence over default values
-- **Model name errors**: Ensure you're using valid model names with the `--model` flag (prefix with `gemini-` for Gemini models or `gpt-` for OpenAI models)
+- **Model name errors**: Ensure you're using valid model names that are defined in your models.yaml file
 - **Output directory permissions**: Check you have write access to the output directory when using `--output-dir`
 
 ## Contributing

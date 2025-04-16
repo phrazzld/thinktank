@@ -8,7 +8,7 @@ import (
 // MockClient is a mock implementation of gemini.Client for testing
 type MockClient struct {
 	CountTokensFunc     func(ctx context.Context, prompt string) (*gemini.TokenCount, error)
-	GenerateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
+	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error)
 	GetModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
 	CloseFunc           func() error
 }
@@ -20,9 +20,9 @@ func (m *MockClient) CountTokens(ctx context.Context, prompt string) (*gemini.To
 	return nil, nil
 }
 
-func (m *MockClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+func (m *MockClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 	if m.GenerateContentFunc != nil {
-		return m.GenerateContentFunc(ctx, prompt)
+		return m.GenerateContentFunc(ctx, prompt, params)
 	}
 	return nil, nil
 }

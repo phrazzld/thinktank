@@ -13,7 +13,7 @@ import (
 
 // MockLLMClient implements the llm.LLMClient interface for testing
 type MockLLMClient struct {
-	GenerateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
 	CountTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
 	GetModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
 	GetModelNameFunc    func() string
@@ -21,9 +21,9 @@ type MockLLMClient struct {
 }
 
 // GenerateContent implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.GenerateContentFunc != nil {
-		return m.GenerateContentFunc(ctx, prompt)
+		return m.GenerateContentFunc(ctx, prompt, params)
 	}
 	return &llm.ProviderResult{Content: "Test response"}, nil
 }
@@ -109,10 +109,10 @@ func TestGeminiClientAdapter(t *testing.T) {
 	adapter.SetParameters(params)
 
 	// Test GenerateContent pass-through
-	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 		return &llm.ProviderResult{Content: "Mock response"}, nil
 	}
-	result, err := adapter.GenerateContent(context.Background(), "test prompt")
+	result, err := adapter.GenerateContent(context.Background(), "test prompt", nil)
 	if err != nil {
 		t.Fatalf("Expected no error from GenerateContent, got: %v", err)
 	}
@@ -121,10 +121,10 @@ func TestGeminiClientAdapter(t *testing.T) {
 	}
 
 	// Test error case
-	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 		return nil, errors.New("mock error")
 	}
-	_, err = adapter.GenerateContent(context.Background(), "test prompt")
+	_, err = adapter.GenerateContent(context.Background(), "test prompt", nil)
 	if err == nil {
 		t.Fatal("Expected error from GenerateContent, got nil")
 	}

@@ -48,7 +48,8 @@ type TokenCount struct {
 // New code should use the provider-agnostic llm.LLMClient interface instead
 type Client interface {
 	// GenerateContent sends a text prompt to Gemini and returns the generated content
-	GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error)
+	// If params is provided, these parameters will override the default model parameters
+	GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error)
 
 	// CountTokens counts the tokens in a given prompt
 	CountTokens(ctx context.Context, prompt string) (*TokenCount, error)

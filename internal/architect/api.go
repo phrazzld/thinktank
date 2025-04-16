@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/openai"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Define package-level error types for better error handling
@@ -32,25 +34,13 @@ var (
 
 	// ErrUnsupportedModel indicates an unsupported model was requested
 	ErrUnsupportedModel = errors.New("unsupported model type")
+
+	// ErrModelNotFound indicates a model definition was not found in the registry
+	ErrModelNotFound = errors.New("model definition not found in registry")
 )
 
-// APIService defines the interface for API-related operations
-type APIService interface {
-	// InitLLMClient initializes and returns a provider-agnostic LLM client
-	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-
-	// ProcessLLMResponse processes a provider-agnostic response and extracts content
-	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
-
-	// IsEmptyResponseError checks if an error is related to empty API responses
-	IsEmptyResponseError(err error) bool
-
-	// IsSafetyBlockedError checks if an error is related to safety filters
-	IsSafetyBlockedError(err error) bool
-
-	// GetErrorDetails extracts detailed information from an error
-	GetErrorDetails(err error) string
-}
+// APIService is defined in the interfaces package
+// See github.com/phrazzld/architect/internal/architect/interfaces
 
 // ProviderType represents the type of LLM provider
 type ProviderType string
@@ -74,9 +64,14 @@ type apiService struct {
 // DetectProviderFromModel detects the provider type from the model name
 //
 // Deprecated: This function uses hardcoded model name prefixes to detect providers.
-// Use the Registry instead, which provides a more flexible, configuration-driven approach.
+// It is maintained only for backward compatibility with the legacy APIService.
+//
+// New code should use the Registry instead, which provides a more flexible, configuration-driven
+// approach where models and providers are defined in a configuration file.
+//
 // The Registry is initialized in cmd/architect/main.go and is accessible via the
-// registry.GetGlobalManager() function.
+// registry.GetGlobalManager() function. Use NewRegistryAPIService instead of NewAPIService
+// to take advantage of the registry pattern.
 func DetectProviderFromModel(modelName string) ProviderType {
 	if modelName == "" {
 		return ProviderUnknown
@@ -132,7 +127,10 @@ func newOpenAIClientWrapper(modelName string) (llm.LLMClient, error) {
 }
 
 // NewAPIService creates a new instance of APIService
-func NewAPIService(logger logutil.LoggerInterface) APIService {
+//
+// Deprecated: Use NewRegistryAPIService instead, which provides more flexible
+// and configurable model handling through the registry system.
+func NewAPIService(logger logutil.LoggerInterface) interfaces.APIService {
 	return &apiService{
 		logger:              logger,
 		newGeminiClientFunc: newGeminiClientWrapper,
@@ -256,6 +254,28 @@ func (s *apiService) ProcessLLMResponse(result *llm.ProviderResult) (string, err
 	}
 
 	return result.Content, nil
+}
+
+// GetModelParameters retrieves parameter values from the registry for a given model
+// For the legacy API service, this returns an empty map since it doesn't use the registry
+func (s *apiService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// The legacy API service doesn't use the registry, so we return an empty map
+	// This will be overridden by the registry-based implementation
+	return make(map[string]interface{}), nil
+}
+
+// GetModelDefinition retrieves the full model definition from the registry
+// For the legacy API service, this returns an error since it doesn't use the registry
+func (s *apiService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// The legacy API service doesn't use the registry
+	return nil, fmt.Errorf("model definitions not available in legacy API service")
+}
+
+// GetModelTokenLimits retrieves token limits from the registry for a given model
+// For the legacy API service, this returns zero values with an error
+func (s *apiService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// The legacy API service doesn't use the registry
+	return 0, 0, fmt.Errorf("token limits not available in legacy API service")
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses.
@@ -394,4 +414,16 @@ func (s *apiService) GetErrorDetails(err error) string {
 
 	// Return the error string for other error types
 	return err.Error()
+}
+
+// Legacy APIService method for parameter validation
+
+// ValidateModelParameter is a stub implementation for the legacy apiService
+// It always returns true since the legacy implementation doesn't support parameter validation
+func (s *apiService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	// Log that this is a stub implementation
+	s.logger.Debug("ValidateModelParameter called on legacy apiService, always returns true")
+
+	// Always return true for legacy implementation
+	return true, nil
 }

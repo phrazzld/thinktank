@@ -13,6 +13,7 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -98,9 +99,29 @@ func (m *integrationMockAPIService) ProcessLLMResponse(result *llm.ProviderResul
 	return result.Content, nil
 }
 
+// Implement registry-related methods required by the APIService interface
+func (m *integrationMockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Default implementation returns empty parameters
+	return make(map[string]interface{}), nil
+}
+
+func (m *integrationMockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// Default implementation returns a minimal model definition
+	return &registry.ModelDefinition{
+		Name:            modelName,
+		ContextWindow:   8192,
+		MaxOutputTokens: 2048,
+	}, nil
+}
+
+func (m *integrationMockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// Default implementation returns standard values
+	return 8192, 2048, nil
+}
+
 // integrationMockLLMClient implements llm.LLMClient for testing
 type integrationMockLLMClient struct {
-	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
 	countTokensFunc     func(ctx context.Context, text string) (*llm.ProviderTokenCount, error)
 	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
 	closeFunc           func() error
@@ -117,9 +138,9 @@ func newIntegrationMockLLMClient() *integrationMockLLMClient {
 	}
 }
 
-func (m *integrationMockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *integrationMockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
+		return m.generateContentFunc(ctx, prompt, params)
 	}
 	return &llm.ProviderResult{
 		Content:      "generated content",
@@ -378,7 +399,7 @@ func TestIntegration_ModelProcessor_APIService(t *testing.T) {
 
 	// Configure the client function to create our mock client with specific behavior
 	mockLLMClient := newIntegrationMockLLMClient()
-	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 		return &llm.ProviderResult{
 			Content:      "Generated model output for test",
 			TokenCount:   150,
@@ -472,7 +493,7 @@ func TestIntegration_ModelProcessor_TokenManager(t *testing.T) {
 	originalNewTokenManager := modelproc.NewTokenManagerWithClient
 	defer func() { modelproc.NewTokenManagerWithClient = originalNewTokenManager }()
 
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockTokenMgr
 	}
 
@@ -519,7 +540,7 @@ func TestIntegration_ModelProcessor_FileWriter(t *testing.T) {
 	// Configure API service to return specific content
 	expectedContent := "This is the specific generated content that should be saved to file"
 	mockLLMClient := newIntegrationMockLLMClient()
-	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+	mockLLMClient.generateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 		return &llm.ProviderResult{
 			Content:      expectedContent,
 			TokenCount:   100,
@@ -612,7 +633,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 			name: "Content generation error",
 			setupMocks: func(api *integrationMockAPIService, token *integrationMockTokenManager, fileWriter *integrationMockFileWriter) {
 				client := newIntegrationMockLLMClient()
-				client.generateContentFunc = func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				client.generateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return nil, errors.New("content generation failed")
 				}
 				api.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
@@ -670,7 +691,7 @@ func TestIntegration_ModelProcessor_ErrorHandling(t *testing.T) {
 				originalNewTokenManager := modelproc.NewTokenManagerWithClient
 				defer func() { modelproc.NewTokenManagerWithClient = originalNewTokenManager }()
 
-				modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+				modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 					return mockTokenMgr
 				}
 			}

@@ -104,13 +104,68 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string,
 }
 
 // GenerateContent implements the llm.LLMClient interface
-func (c *geminiClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if prompt == "" {
 		return nil, &APIError{
 			Original:   errors.New("prompt cannot be empty"),
 			Type:       ErrorTypeInvalidRequest,
 			Message:    "Cannot generate content with an empty prompt",
 			Suggestion: "Provide a task description using the --instructions flag",
+		}
+	}
+
+	// Apply parameters if provided
+	if params != nil {
+		// Temperature
+		if temp, ok := params["temperature"]; ok {
+			switch v := temp.(type) {
+			case float64:
+				c.model.SetTemperature(float32(v))
+			case float32:
+				c.model.SetTemperature(v)
+			case int:
+				c.model.SetTemperature(float32(v))
+			}
+		}
+
+		// TopP
+		if topP, ok := params["top_p"]; ok {
+			switch v := topP.(type) {
+			case float64:
+				c.model.SetTopP(float32(v))
+			case float32:
+				c.model.SetTopP(v)
+			case int:
+				c.model.SetTopP(float32(v))
+			}
+		}
+
+		// TopK
+		if topK, ok := params["top_k"]; ok {
+			switch v := topK.(type) {
+			case int:
+				c.model.SetTopK(int32(v))
+			case int32:
+				c.model.SetTopK(v)
+			case int64:
+				c.model.SetTopK(int32(v))
+			case float64:
+				c.model.SetTopK(int32(v))
+			}
+		}
+
+		// MaxOutputTokens
+		if maxTokens, ok := params["max_output_tokens"]; ok {
+			switch v := maxTokens.(type) {
+			case int:
+				c.model.SetMaxOutputTokens(int32(v))
+			case int32:
+				c.model.SetMaxOutputTokens(v)
+			case int64:
+				c.model.SetMaxOutputTokens(int32(v))
+			case float64:
+				c.model.SetMaxOutputTokens(int32(v))
+			}
 		}
 	}
 
@@ -449,9 +504,9 @@ func NewClientAdapter(llmClient llm.LLMClient) *ClientAdapter {
 }
 
 // GenerateContent implements the Client interface
-func (a *ClientAdapter) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
+func (a *ClientAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 	// Call the provider-agnostic method
-	result, err := a.llmClient.GenerateContent(ctx, prompt)
+	result, err := a.llmClient.GenerateContent(ctx, prompt, params)
 	if err != nil {
 		return nil, err
 	}
@@ -570,8 +625,44 @@ type geminiLLMAdapter struct {
 }
 
 // GenerateContent implements llm.LLMClient.GenerateContent
-func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
-	result, err := a.client.GenerateContent(ctx, prompt)
+func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// The legacy Client interface doesn't accept parameters
+	// So we first have to try applying them through known setter methods
+
+	// This is backward compatibility code to handle params with legacy client interface
+	if params != nil {
+		// Try to apply parameters using reflection or known interfaces
+		// Temperature
+		if setter, ok := a.client.(interface{ SetTemperature(float32) }); ok {
+			if temp, ok := getFloatParam(params, "temperature"); ok {
+				setter.SetTemperature(temp)
+			}
+		}
+
+		// TopP
+		if setter, ok := a.client.(interface{ SetTopP(float32) }); ok {
+			if topP, ok := getFloatParam(params, "top_p"); ok {
+				setter.SetTopP(topP)
+			}
+		}
+
+		// TopK
+		if setter, ok := a.client.(interface{ SetTopK(int32) }); ok {
+			if topK, ok := getIntParam(params, "top_k"); ok {
+				setter.SetTopK(topK)
+			}
+		}
+
+		// MaxOutputTokens
+		if setter, ok := a.client.(interface{ SetMaxOutputTokens(int32) }); ok {
+			if maxTokens, ok := getIntParam(params, "max_output_tokens"); ok {
+				setter.SetMaxOutputTokens(maxTokens)
+			}
+		}
+	}
+
+	// Call method with params
+	result, err := a.client.GenerateContent(ctx, prompt, params)
 	if err != nil {
 		return nil, err
 	}
@@ -582,6 +673,52 @@ func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string) (
 		Truncated:    result.Truncated,
 		SafetyInfo:   toProviderSafety(result.SafetyRatings),
 	}, nil
+}
+
+// Helper to extract float parameter
+func getFloatParam(params map[string]interface{}, name string) (float32, bool) {
+	if params == nil {
+		return 0, false
+	}
+
+	if val, ok := params[name]; ok {
+		switch v := val.(type) {
+		case float64:
+			return float32(v), true
+		case float32:
+			return v, true
+		case int:
+			return float32(v), true
+		case int32:
+			return float32(v), true
+		case int64:
+			return float32(v), true
+		}
+	}
+	return 0, false
+}
+
+// Helper to extract int parameter
+func getIntParam(params map[string]interface{}, name string) (int32, bool) {
+	if params == nil {
+		return 0, false
+	}
+
+	if val, ok := params[name]; ok {
+		switch v := val.(type) {
+		case int:
+			return int32(v), true
+		case int32:
+			return v, true
+		case int64:
+			return int32(v), true
+		case float64:
+			return int32(v), true
+		case float32:
+			return int32(v), true
+		}
+	}
+	return 0, false
 }
 
 // CountTokens implements llm.LLMClient.CountTokens

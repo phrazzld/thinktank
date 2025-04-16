@@ -39,13 +39,22 @@ type ModelDefinition struct {
 }
 
 // ParameterDefinition represents a parameter definition from the configuration.
-// It defines the type and default value for a model parameter.
+// It defines the type, default value, and constraints for a model parameter.
 type ParameterDefinition struct {
 	// Type specifies the parameter type (float, int, string)
 	Type string `yaml:"type" json:"type"`
 
 	// Default specifies the default value for the parameter
 	Default interface{} `yaml:"default" json:"default"`
+
+	// Min specifies the minimum allowed value for numeric types (float, int)
+	Min interface{} `yaml:"min,omitempty" json:"min,omitempty"`
+
+	// Max specifies the maximum allowed value for numeric types (float, int)
+	Max interface{} `yaml:"max,omitempty" json:"max,omitempty"`
+
+	// EnumValues specifies the allowed values for string type parameters
+	EnumValues []string `yaml:"enum_values,omitempty" json:"enum_values,omitempty"`
 }
 
 // ModelsConfig represents the full models configuration loaded from YAML.

@@ -10,6 +10,7 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -94,7 +95,7 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
@@ -122,7 +123,7 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
@@ -145,7 +146,7 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
@@ -178,7 +179,7 @@ func TestPromptForConfirmation(t *testing.T) {
 	}
 
 	// Create token manager
-	tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+	tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 	tests := []struct {
 		name         string
@@ -240,7 +241,7 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 	}()
 
 	// Replace with our mock that will return user cancellation
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return &mockTokenManager{
 			getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 				return &modelproc.TokenResult{
@@ -274,7 +275,7 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 				getModelNameFunc: func() string {
 					return "test-model"
 				},
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					// Should not be called in this test
 					t.Error("GenerateContent should not be called when user cancels")
 					return nil, fmt.Errorf("should not be called")

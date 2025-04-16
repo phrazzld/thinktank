@@ -81,7 +81,7 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 // mockLLMClient for testing
 type mockLLMClient struct {
 	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
-	generateContentFunc func(ctx context.Context, prompt string) (*llm.ProviderResult, error)
+	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
 	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
 	getModelNameFunc    func() string
 	closeFunc           func() error
@@ -94,9 +94,9 @@ func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.Pr
 	return &llm.ProviderTokenCount{Total: 100}, nil
 }
 
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
+		return m.generateContentFunc(ctx, prompt, params)
 	}
 	return &llm.ProviderResult{Content: "test content"}, nil
 }

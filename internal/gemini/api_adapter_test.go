@@ -37,7 +37,7 @@ func TestGeminiClientImplementsLLMAdapter(t *testing.T) {
 	ctx := context.Background()
 
 	// Test GenerateContent
-	result, err := adapter.GenerateContent(ctx, "test prompt")
+	result, err := adapter.GenerateContent(ctx, "test prompt", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "Test content", result.Content)
 	assert.Equal(t, "stop", result.FinishReason)
@@ -93,7 +93,7 @@ type mockGeminiClient struct {
 }
 
 // Implement gemini.Client interface
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*GenerationResult, error) {
+func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 	return m.generateResult, m.generateErr
 }
 

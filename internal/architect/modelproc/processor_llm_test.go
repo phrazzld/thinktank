@@ -10,6 +10,7 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // TestModelProcessor_Process_WithLLMClient tests the ModelProcessor.Process method
@@ -20,7 +21,7 @@ func TestModelProcessor_Process_WithLLMClient(t *testing.T) {
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
 				getModelNameFunc: func() string { return modelName },
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
 						Content:    "Generated LLM content",
 						TokenCount: 50,
@@ -133,7 +134,7 @@ func TestModelProcessor_Process_UseTokenManagerWithLLMClient(t *testing.T) {
 				Total: 100,
 			}, nil
 		},
-		generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+		generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 			return &llm.ProviderResult{
 				Content:    "Test content",
 				TokenCount: 50,
@@ -272,7 +273,7 @@ type mockLLMClientWithProviderCheck struct {
 	convertedFromProvider bool
 }
 
-func (m *mockLLMClientWithProviderCheck) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *mockLLMClientWithProviderCheck) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	return &llm.ProviderResult{
 		Content:    "Test content",
 		TokenCount: 50,
@@ -308,6 +309,9 @@ type mockLLMAPIService struct {
 	isEmptyResponseErrorFunc func(err error) bool
 	isSafetyBlockedErrorFunc func(err error) bool
 	getErrorDetailsFunc      func(err error) string
+	getModelParametersFunc   func(modelName string) (map[string]interface{}, error)
+	getModelDefinitionFunc   func(modelName string) (*registry.ModelDefinition, error)
+	getModelTokenLimitsFunc  func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 }
 
 func (m *mockLLMAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
@@ -337,6 +341,34 @@ func (m *mockLLMAPIService) GetErrorDetails(err error) string {
 		return m.getErrorDetailsFunc(err)
 	}
 	return fmt.Sprintf("error: %v", err)
+}
+
+func (m *mockLLMAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	if m.getModelParametersFunc != nil {
+		return m.getModelParametersFunc(modelName)
+	}
+	// Default implementation returns empty parameters
+	return make(map[string]interface{}), nil
+}
+
+func (m *mockLLMAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	if m.getModelDefinitionFunc != nil {
+		return m.getModelDefinitionFunc(modelName)
+	}
+	// Default implementation returns a minimal model definition
+	return &registry.ModelDefinition{
+		Name:            modelName,
+		ContextWindow:   8192,
+		MaxOutputTokens: 2048,
+	}, nil
+}
+
+func (m *mockLLMAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	if m.getModelTokenLimitsFunc != nil {
+		return m.getModelTokenLimitsFunc(modelName)
+	}
+	// Default implementation returns standard values
+	return 8192, 2048, nil
 }
 
 // We're using the mockLLMClient from mocks_test.go
@@ -408,7 +440,7 @@ func TestModelProcessor_Process_ErrorCategorization(t *testing.T) {
 						Total: 100,
 					}, nil
 				},
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					// Return our categorized error
 					return nil, testError
 				},

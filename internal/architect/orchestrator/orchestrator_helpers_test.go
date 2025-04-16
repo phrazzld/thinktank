@@ -14,6 +14,7 @@ import (
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // orchestratorTestDeps holds all the test dependencies for orchestrator tests
@@ -142,12 +143,18 @@ type mockAPIService struct {
 	IsEmptyResponseErrorFunc func(err error) bool
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
+	GetModelParametersFunc   func(modelName string) (map[string]interface{}, error)
+	GetModelDefinitionFunc   func(modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc  func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	InitLLMClientCalls        []struct{ ApiKey, ModelName, ApiEndpoint string }
 	ProcessLLMResponseCalls   []struct{ Result *llm.ProviderResult }
 	IsEmptyResponseErrorCalls []struct{ Err error }
 	IsSafetyBlockedErrorCalls []struct{ Err error }
 	GetErrorDetailsCalls      []struct{ Err error }
+	GetModelParametersCalls   []struct{ ModelName string }
+	GetModelDefinitionCalls   []struct{ ModelName string }
+	GetModelTokenLimitsCalls  []struct{ ModelName string }
 
 	mu sync.Mutex
 }
@@ -543,4 +550,138 @@ func (m *mockLogger) Println(v ...interface{}) {
 // Printf implements LoggerInterface
 func (m *mockLogger) Printf(format string, v ...interface{}) {
 	m.Info(format, v...)
+}
+
+// mockLLMClient implements llm.LLMClient for tests
+type mockLLMClient struct {
+	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
+	CountTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
+	GetModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
+	GetModelNameFunc    func() string
+	CloseFunc           func() error
+
+	modelName string
+	mu        sync.Mutex
+}
+
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GenerateContentFunc != nil {
+		return m.GenerateContentFunc(ctx, prompt, params)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderResult{
+		Content:    "Mock response for " + prompt,
+		TokenCount: int32(len(prompt) / 4),
+	}, nil
+}
+
+func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.CountTokensFunc != nil {
+		return m.CountTokensFunc(ctx, prompt)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderTokenCount{
+		Total: int32(len(prompt) / 4),
+	}, nil
+}
+
+func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GetModelInfoFunc != nil {
+		return m.GetModelInfoFunc(ctx)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderModelInfo{
+		Name:             m.modelName,
+		InputTokenLimit:  8192,
+		OutputTokenLimit: 2048,
+	}, nil
+}
+
+func (m *mockLLMClient) GetModelName() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GetModelNameFunc != nil {
+		return m.GetModelNameFunc()
+	}
+
+	if m.modelName != "" {
+		return m.modelName
+	}
+
+	return "mock-model"
+}
+
+func (m *mockLLMClient) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+
+	return nil
+}
+
+// Implement the registry-related methods for mockAPIService
+
+func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelParametersCalls = append(m.GetModelParametersCalls, call)
+
+	if m.GetModelParametersFunc != nil {
+		return m.GetModelParametersFunc(modelName)
+	}
+
+	// Default implementation returns empty parameters
+	return make(map[string]interface{}), nil
+}
+
+func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelDefinitionCalls = append(m.GetModelDefinitionCalls, call)
+
+	if m.GetModelDefinitionFunc != nil {
+		return m.GetModelDefinitionFunc(modelName)
+	}
+
+	// Default implementation returns a minimal model definition
+	return &registry.ModelDefinition{
+		Name:            modelName,
+		ContextWindow:   8192,
+		MaxOutputTokens: 2048,
+	}, nil
+}
+
+func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelTokenLimitsCalls = append(m.GetModelTokenLimitsCalls, call)
+
+	if m.GetModelTokenLimitsFunc != nil {
+		return m.GetModelTokenLimitsFunc(modelName)
+	}
+
+	// Default implementation returns standard values
+	return 8192, 2048, nil
 }

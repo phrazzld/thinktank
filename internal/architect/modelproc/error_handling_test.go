@@ -11,6 +11,7 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Store the original factory function
@@ -53,7 +54,7 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 	mockToken := &mockTokenManager{}
 
 	// Mock the factory function instead of injecting the token manager
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -99,7 +100,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return nil, expectedErr
 				},
 			}, nil
@@ -119,7 +120,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	}
 
 	// Mock the factory function instead of injecting the token manager
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -165,7 +166,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
 						Content:    "Generated content",
 						TokenCount: 50,
@@ -191,7 +192,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -254,7 +255,7 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 				getModelNameFunc: func() string {
 					return "test-model"
 				},
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					// This should not be called in the token exceeded case
 					return nil, errors.New("should not be called")
 				},
@@ -276,7 +277,7 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -325,7 +326,7 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
 						Content:    "Generated content",
 						TokenCount: 50,
@@ -351,7 +352,7 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -400,7 +401,7 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return nil, generationErr
 				},
 			}, nil
@@ -426,7 +427,7 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -475,7 +476,7 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				generateContentFunc: func(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return nil, generationErr
 				},
 			}, nil
@@ -504,7 +505,7 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 	}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 
@@ -561,7 +562,7 @@ func TestProcess_NilClientDeference(t *testing.T) {
 	mockToken := &mockTokenManager{}
 
 	// Mock the factory function
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return mockToken
 	}
 

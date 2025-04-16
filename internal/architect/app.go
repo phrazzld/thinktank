@@ -26,7 +26,7 @@ func Execute(
 	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
-	apiService APIService,
+	apiService interfaces.APIService,
 ) (err error) {
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
@@ -209,12 +209,12 @@ func Execute(
 		} else {
 			// Fall back to standard token manager if type assertion fails
 			logger.Debug("Registry manager type assertion failed, using standard token manager")
-			tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM)
+			tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM, nil)
 		}
 	} else {
 		// Registry manager not available, fall back to standard token manager
 		logger.Debug("Creating standard token manager (registry not available)")
-		tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM)
+		tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM, nil)
 	}
 
 	if tokenManagerErr != nil {
@@ -301,7 +301,7 @@ func SetRegistryManagerGetter(getter func() interface{}) {
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.
 var orchestratorConstructor = func(
-	apiService APIService,
+	apiService interfaces.APIService,
 	contextGatherer interfaces.ContextGatherer,
 	tokenManager interfaces.TokenManager,
 	fileWriter interfaces.FileWriter,

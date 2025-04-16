@@ -76,7 +76,7 @@ func TestOpenAIClientImplementsLLMClient(t *testing.T) {
 
 	// Test GenerateContent
 	t.Run("GenerateContent", func(t *testing.T) {
-		result, err := client.GenerateContent(ctx, "test prompt")
+		result, err := client.GenerateContent(ctx, "test prompt", nil)
 		require.NoError(t, err)
 		assert.Equal(t, "Test content", result.Content)
 		assert.Equal(t, "stop", result.FinishReason)
@@ -243,7 +243,7 @@ func TestTruncatedResponse(t *testing.T) {
 	ctx := context.Background()
 
 	// Test truncated response
-	result, err := client.GenerateContent(ctx, "test prompt")
+	result, err := client.GenerateContent(ctx, "test prompt", nil)
 	require.NoError(t, err)
 	assert.Equal(t, "Truncated content", result.Content)
 	assert.Equal(t, "length", result.FinishReason)

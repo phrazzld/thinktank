@@ -54,7 +54,7 @@ type testLLMClient struct {
 	modelName string
 }
 
-func (c *testLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (c *testLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	return &llm.ProviderResult{
 		Content:    "test content",
 		TokenCount: 10,
