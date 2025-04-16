@@ -32,7 +32,7 @@
     - **Depends On:** [T001, T002, T003, T004, T005]
     - **AC Ref:** Plan Item 2
 
-- [ ] **T007:** Implement Test for Client Creation with Custom Configuration (openai_client_test.go)
+- [x] **T007:** Implement Test for Client Creation with Custom Configuration (openai_client_test.go)
     - **Action:** Write unit tests in `internal/openai/openai_client_test.go` to verify successful creation of an OpenAI client with various custom configurations (e.g., different model specified, custom base URL if applicable).
     - **Depends On:** [T001, T002, T003, T004, T005]
     - **AC Ref:** Plan Item 2

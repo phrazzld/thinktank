@@ -334,6 +334,213 @@ func TestClientCreationWithDefaultConfiguration(t *testing.T) {
 	}
 }
 
+// TestClientCreationWithCustomConfiguration tests the creation and configuration of a client with custom parameters
+func TestClientCreationWithCustomConfiguration(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Set a valid API key for testing
+	validAPIKey := "sk-validApiKeyForTestingPurposes123456789012345"
+	err := os.Setenv("OPENAI_API_KEY", validAPIKey)
+	if err != nil {
+		t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+	}
+
+	// Test cases for different parameters and their expected values
+	testCases := []struct {
+		name                  string
+		modelName             string
+		temperature           float32
+		topP                  float32
+		presencePenalty       float32
+		frequencyPenalty      float32
+		maxTokens             int32
+		customParamsMap       map[string]interface{}
+		checkTemperature      bool
+		checkTopP             bool
+		checkPresencePenalty  bool
+		checkFrequencyPenalty bool
+		checkMaxTokens        bool
+	}{
+		{
+			name:                  "Standard parameters",
+			modelName:             "gpt-4",
+			temperature:           0.7,
+			topP:                  0.9,
+			presencePenalty:       0.1,
+			frequencyPenalty:      0.1,
+			maxTokens:             100,
+			checkTemperature:      true,
+			checkTopP:             true,
+			checkPresencePenalty:  true,
+			checkFrequencyPenalty: true,
+			checkMaxTokens:        true,
+		},
+		{
+			name:                  "Temperature variations",
+			modelName:             "gpt-4",
+			temperature:           0.0, // Minimum temperature
+			topP:                  0.5,
+			presencePenalty:       0.0,
+			frequencyPenalty:      0.0,
+			maxTokens:             50,
+			checkTemperature:      true,
+			checkTopP:             true,
+			checkPresencePenalty:  false, // 0.0 won't be sent as it's default
+			checkFrequencyPenalty: false, // 0.0 won't be sent as it's default
+			checkMaxTokens:        true,
+		},
+		{
+			name:      "Custom parameters via map",
+			modelName: "gpt-3.5-turbo",
+			customParamsMap: map[string]interface{}{
+				"temperature":       0.9,
+				"top_p":             0.8,
+				"presence_penalty":  0.5,
+				"frequency_penalty": 0.5,
+				"max_tokens":        200,
+			},
+			checkTemperature:      true,
+			checkTopP:             true,
+			checkPresencePenalty:  true,
+			checkFrequencyPenalty: true,
+			checkMaxTokens:        true,
+		},
+		{
+			name:      "Mixed parameter types",
+			modelName: "gpt-4-turbo",
+			customParamsMap: map[string]interface{}{
+				"temperature":       float64(0.4),
+				"top_p":             float32(0.6),
+				"presence_penalty":  0.2,
+				"frequency_penalty": int(1),       // Should be converted to float64
+				"max_tokens":        float64(150), // Should be converted to int
+			},
+			checkTemperature:      true,
+			checkTopP:             true,
+			checkPresencePenalty:  true,
+			checkFrequencyPenalty: true,
+			checkMaxTokens:        true,
+		},
+		{
+			name:      "Gemini-style max tokens",
+			modelName: "gpt-4",
+			customParamsMap: map[string]interface{}{
+				"temperature":       0.5,
+				"max_output_tokens": 300, // Using Gemini-style parameter name
+			},
+			checkTemperature: true,
+			checkMaxTokens:   true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a client directly for custom initialization
+			// We're explicitly creating the openaiClient rather than using the interface
+			var client *openaiClient
+
+			if tc.customParamsMap == nil {
+				// Create the client with our custom initialization
+				client = &openaiClient{
+					api:       &mockOpenAIAPI{},
+					tokenizer: &mockTokenizer{},
+					modelName: tc.modelName,
+				}
+
+				// Option 1: Set parameters via direct setter methods
+				client.SetTemperature(tc.temperature)
+				client.SetTopP(tc.topP)
+				client.SetPresencePenalty(tc.presencePenalty)
+				client.SetFrequencyPenalty(tc.frequencyPenalty)
+				client.SetMaxTokens(tc.maxTokens)
+			} else {
+				// Create the client with default settings first
+				llmClient, err := NewClient(tc.modelName)
+				require.NoError(t, err, "Creating client should succeed")
+				require.NotNil(t, llmClient, "Client should not be nil")
+
+				// Convert to openaiClient to access internal fields
+				var ok bool
+				client, ok = llmClient.(*openaiClient)
+				require.True(t, ok, "Client should be an *openaiClient")
+			}
+
+			// Mock the API to capture parameter values
+			var capturedParams openai.ChatCompletionNewParams
+
+			mockAPI := &mockOpenAIAPI{
+				createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+					capturedParams = params
+					return &openai.ChatCompletion{
+						Choices: []openai.ChatCompletionChoice{
+							{
+								Message: openai.ChatCompletionMessage{
+									Content: "Custom configuration test response",
+									Role:    "assistant",
+								},
+								FinishReason: "stop",
+							},
+						},
+						Usage: openai.CompletionUsage{
+							CompletionTokens: 5,
+						},
+					}, nil
+				},
+			}
+
+			// Replace the real API with our mock
+			client.api = mockAPI
+
+			// For customParamsMap case, apply parameters via GenerateContent
+			if tc.customParamsMap != nil {
+				_, err := client.GenerateContent(context.Background(), "Test prompt", tc.customParamsMap)
+				require.NoError(t, err, "GenerateContent should succeed")
+			} else {
+				// Call GenerateContent to trigger the parameter capture
+				_, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+				require.NoError(t, err, "GenerateContent should succeed")
+			}
+
+			// Verify parameters were correctly passed to the API
+
+			// Verify temperature
+			if tc.checkTemperature {
+				assert.True(t, capturedParams.Temperature.IsPresent(), "Temperature should be set")
+			}
+
+			// Verify top_p
+			if tc.checkTopP {
+				assert.True(t, capturedParams.TopP.IsPresent(), "TopP should be set")
+			}
+
+			// Verify presence_penalty
+			if tc.checkPresencePenalty {
+				assert.True(t, capturedParams.PresencePenalty.IsPresent(), "PresencePenalty should be set")
+			}
+
+			// Verify frequency_penalty
+			if tc.checkFrequencyPenalty {
+				assert.True(t, capturedParams.FrequencyPenalty.IsPresent(), "FrequencyPenalty should be set")
+			}
+
+			// Verify max_tokens
+			if tc.checkMaxTokens {
+				assert.True(t, capturedParams.MaxTokens.IsPresent(), "MaxTokens should be set")
+			}
+
+			// Verify model name was passed correctly
+			assert.Equal(t, tc.modelName, capturedParams.Model, "Model name should be passed correctly")
+		})
+	}
+}
+
 // TestNewClient tests the NewClient constructor function
 func TestNewClient(t *testing.T) {
 	t.Skip("This test is now covered by TestClientCreationWithDefaultConfiguration")
