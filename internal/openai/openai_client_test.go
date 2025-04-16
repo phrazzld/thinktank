@@ -1179,17 +1179,164 @@ func TestEmptyResponseHandling(t *testing.T) {
 	assert.Contains(t, err.Error(), "no completion choices returned")
 }
 
+// MockAPIErrorResponse creates a mock error response with specifics about the error
+func MockAPIErrorResponse(errorType ErrorType, statusCode int, message string, details string) *APIError {
+	suggestion := ""
+
+	// Set appropriate suggestion based on error type
+	switch errorType {
+	case ErrorTypeAuth:
+		suggestion = "Check that your API key is valid and has not expired. Ensure environment variables are set correctly."
+	case ErrorTypeRateLimit:
+		suggestion = "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate."
+	case ErrorTypeInvalidRequest:
+		suggestion = "Check the prompt format and parameters. Ensure they comply with the API requirements."
+	case ErrorTypeNotFound:
+		suggestion = "Verify that the model name is correct and that the model is available in your region."
+	case ErrorTypeServer:
+		suggestion = "This is typically a temporary issue. Wait a few moments and try again."
+	case ErrorTypeNetwork:
+		suggestion = "Check your internet connection and try again."
+	case ErrorTypeInputLimit:
+		suggestion = "Reduce the input size or use a model with higher context limits."
+	case ErrorTypeContentFiltered:
+		suggestion = "Your prompt or content may have triggered safety filters. Review and modify your input to comply with content policies."
+	}
+
+	return &APIError{
+		Type:       errorType,
+		Message:    message,
+		StatusCode: statusCode,
+		Suggestion: suggestion,
+		Details:    details,
+	}
+}
+
+// Predefined mock error responses for common error scenarios
+var (
+	// Authentication errors
+	MockErrorInvalidAPIKey = MockAPIErrorResponse(
+		ErrorTypeAuth,
+		401,
+		"Authentication failed with the OpenAI API",
+		"Invalid API key provided",
+	)
+	MockErrorExpiredAPIKey = MockAPIErrorResponse(
+		ErrorTypeAuth,
+		401,
+		"Authentication failed with the OpenAI API",
+		"API key has expired",
+	)
+	MockErrorInsufficientPermissions = MockAPIErrorResponse(
+		ErrorTypeAuth,
+		403,
+		"Authentication failed with the OpenAI API",
+		"API key does not have permission to access this resource",
+	)
+
+	// Rate limit errors
+	MockErrorRateLimit = MockAPIErrorResponse(
+		ErrorTypeRateLimit,
+		429,
+		"Request rate limit or quota exceeded on the OpenAI API",
+		"You have exceeded your current quota",
+	)
+	MockErrorTokenQuotaExceeded = MockAPIErrorResponse(
+		ErrorTypeRateLimit,
+		429,
+		"Request rate limit or quota exceeded on the OpenAI API",
+		"You have reached your token quota for this billing cycle",
+	)
+
+	// Invalid request errors
+	MockErrorInvalidRequest = MockAPIErrorResponse(
+		ErrorTypeInvalidRequest,
+		400,
+		"Invalid request sent to the OpenAI API",
+		"Request parameters are invalid",
+	)
+	MockErrorInvalidModel = MockAPIErrorResponse(
+		ErrorTypeInvalidRequest,
+		400,
+		"Invalid request sent to the OpenAI API",
+		"Model parameter is invalid",
+	)
+	MockErrorInvalidPrompt = MockAPIErrorResponse(
+		ErrorTypeInvalidRequest,
+		400,
+		"Invalid request sent to the OpenAI API",
+		"Prompt parameter is invalid",
+	)
+
+	// Not found errors
+	MockErrorModelNotFound = MockAPIErrorResponse(
+		ErrorTypeNotFound,
+		404,
+		"The requested model or resource was not found",
+		"The model requested does not exist or is not available",
+	)
+
+	// Server errors
+	MockErrorServerError = MockAPIErrorResponse(
+		ErrorTypeServer,
+		500,
+		"OpenAI API server error occurred",
+		"Internal server error",
+	)
+	MockErrorServiceUnavailable = MockAPIErrorResponse(
+		ErrorTypeServer,
+		503,
+		"OpenAI API server error occurred",
+		"Service temporarily unavailable",
+	)
+
+	// Network errors
+	MockErrorNetwork = MockAPIErrorResponse(
+		ErrorTypeNetwork,
+		0,
+		"Network error while connecting to the OpenAI API",
+		"Failed to establish connection to the API server",
+	)
+	MockErrorTimeout = MockAPIErrorResponse(
+		ErrorTypeNetwork,
+		0,
+		"Network error while connecting to the OpenAI API",
+		"Request timed out",
+	)
+
+	// Input limit errors
+	MockErrorInputLimit = MockAPIErrorResponse(
+		ErrorTypeInputLimit,
+		400,
+		"Input token limit exceeded for the OpenAI model",
+		"The input size exceeds the maximum token limit for this model",
+	)
+
+	// Content filtered errors
+	MockErrorContentFiltered = MockAPIErrorResponse(
+		ErrorTypeContentFiltered,
+		400,
+		"Content was filtered by OpenAI API safety settings",
+		"The content was flagged for violating usage policies",
+	)
+)
+
+// mockAPIWithError creates a mockOpenAIAPI that returns the specified error for all API calls
+func mockAPIWithError(err error) *mockOpenAIAPI {
+	return &mockOpenAIAPI{
+		createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+			return nil, err
+		},
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			return nil, err
+		},
+	}
+}
+
 // TestContentFilterHandling tests handling of content filter errors
 func TestContentFilterHandling(t *testing.T) {
 	// Create mock API that returns a content filter error
-	mockAPI := &mockOpenAIAPI{
-		createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
-			return nil, &APIError{
-				Type:    ErrorTypeContentFiltered,
-				Message: "Content was filtered",
-			}
-		},
-	}
+	mockAPI := mockAPIWithError(MockErrorContentFiltered)
 
 	// Create the client with mocks
 	client := &openaiClient{
@@ -1204,6 +1351,85 @@ func TestContentFilterHandling(t *testing.T) {
 	_, err := client.GenerateContent(ctx, "test prompt", map[string]interface{}{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Content was filtered")
+
+	// Unwrap the error to check its properties
+	unwrapped := errors.Unwrap(err)
+	apiErr, ok := unwrapped.(*APIError)
+	require.True(t, ok, "Error should be an APIError")
+	assert.Equal(t, ErrorTypeContentFiltered, apiErr.Type, "Error type should be ContentFiltered")
+	assert.Equal(t, 400, apiErr.StatusCode, "Status code should be 400")
+	assert.Contains(t, apiErr.Suggestion, "safety filters", "Suggestion should mention safety filters")
+}
+
+// TestMockAPIErrorResponses demonstrates and tests the mock error response system
+func TestMockAPIErrorResponses(t *testing.T) {
+	// Test cases for different error scenarios
+	testCases := []struct {
+		name              string
+		mockError         *APIError
+		expectedCategory  ErrorType
+		expectedErrPrefix string
+	}{
+		{
+			name:              "Authentication error",
+			mockError:         MockErrorInvalidAPIKey,
+			expectedCategory:  ErrorTypeAuth,
+			expectedErrPrefix: "OpenAI API error: Authentication failed",
+		},
+		{
+			name:              "Rate limit error",
+			mockError:         MockErrorRateLimit,
+			expectedCategory:  ErrorTypeRateLimit,
+			expectedErrPrefix: "OpenAI API error: Request rate limit",
+		},
+		{
+			name:              "Invalid request error",
+			mockError:         MockErrorInvalidRequest,
+			expectedCategory:  ErrorTypeInvalidRequest,
+			expectedErrPrefix: "OpenAI API error: Invalid request",
+		},
+		{
+			name:              "Model not found error",
+			mockError:         MockErrorModelNotFound,
+			expectedCategory:  ErrorTypeNotFound,
+			expectedErrPrefix: "OpenAI API error: The requested model",
+		},
+		{
+			name:              "Server error",
+			mockError:         MockErrorServerError,
+			expectedCategory:  ErrorTypeServer,
+			expectedErrPrefix: "OpenAI API error: OpenAI API server error",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mock API that returns the specific error
+			mockAPI := mockAPIWithError(tc.mockError)
+
+			// Create client with the mock API
+			client := &openaiClient{
+				api:       mockAPI,
+				tokenizer: &mockTokenizer{},
+				modelName: "gpt-4",
+			}
+
+			// Call GenerateContent which should return the error
+			_, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+			// Verify error handling
+			require.Error(t, err, "Expected an error for %s scenario", tc.name)
+			assert.Contains(t, err.Error(), tc.expectedErrPrefix, "Error should contain expected prefix")
+
+			// Unwrap the error and verify it's of the correct type
+			unwrapped := errors.Unwrap(err)
+			apiErr, ok := unwrapped.(*APIError)
+			require.True(t, ok, "Unwrapped error should be an *APIError")
+			assert.Equal(t, tc.expectedCategory, apiErr.Type, "Error category should match expected")
+			assert.NotEmpty(t, apiErr.Suggestion, "Error should include a suggestion")
+			assert.NotEmpty(t, apiErr.Details, "Error should include details")
+		})
+	}
 }
 
 // TestModelEncodingSelection tests the getEncodingForModel function

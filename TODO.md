@@ -47,7 +47,7 @@
     - **Depends On:** [T006, T007]
     - **AC Ref:** Plan Item 2
 
-- [ ] **T010:** Implement Mock for OpenAI API Error Responses (openai_client_test.go)
+- [x] **T010:** Implement Mock for OpenAI API Error Responses (openai_client_test.go)
     - **Action:** Create mock implementations or use a mocking library to simulate various OpenAI API error responses (e.g., 401 Unauthorized, 429 Rate Limit Exceeded, 500 Server Error) for use in error handling tests.
     - **Depends On:** None
     - **AC Ref:** Plan Item 2
