@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** Code Cleanup
 
-- [ ] **R002:** Create and Populate openai_interface_test.go
+- [x] **R002:** Create and Populate openai_interface_test.go
     - **Action:** Create new file `internal/openai/openai_interface_test.go` and move the TestOpenAIClientImplementsLLMClient test from the original test file.
     - **Depends On:** [R001]
     - **AC Ref:** Code Cleanup
