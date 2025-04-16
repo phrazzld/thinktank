@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** AC1, AC5, AC6
 
-- [ ] **T002:** Implement YAML Configuration Loading
+- [x] **T002:** Implement YAML Configuration Loading
     - **Action:** Add `gopkg.in/yaml.v3` dependency. Implement logic to read the models.yaml file from a single, consistent location (`~/.config/architect/models.yaml`). Implement robust error handling for file not found, invalid YAML syntax, and missing required fields. Store the parsed configuration data.
     - **Depends On:** T001
     - **AC Ref:** AC1
