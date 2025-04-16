@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
@@ -78,53 +78,7 @@ func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int
 	return true
 }
 
-// mockLLMClient for testing
-type mockLLMClient struct {
-	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
-	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
-	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
-	getModelNameFunc    func() string
-	closeFunc           func() error
-}
-
-func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	if m.countTokensFunc != nil {
-		return m.countTokensFunc(ctx, prompt)
-	}
-	return &llm.ProviderTokenCount{Total: 100}, nil
-}
-
-func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt, params)
-	}
-	return &llm.ProviderResult{Content: "test content"}, nil
-}
-
-func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	if m.getModelInfoFunc != nil {
-		return m.getModelInfoFunc(ctx)
-	}
-	return &llm.ProviderModelInfo{
-		Name:             "test-model",
-		InputTokenLimit:  1000,
-		OutputTokenLimit: 500,
-	}, nil
-}
-
-func (m *mockLLMClient) Close() error {
-	if m.closeFunc != nil {
-		return m.closeFunc()
-	}
-	return nil
-}
-
-func (m *mockLLMClient) GetModelName() string {
-	if m.getModelNameFunc != nil {
-		return m.getModelNameFunc()
-	}
-	return "mock-model"
-}
+// We now use the mockLLMClient from test_helpers.go
 
 // Helper function to create a temporary directory with test files
 func createTestDirectory(t *testing.T) (string, func()) {
@@ -163,20 +117,7 @@ func createTestDirectory(t *testing.T) (string, func()) {
 	}
 }
 
-// mockAuditLogger for testing
-type mockAuditLogger struct {
-	auditlog.AuditLogger
-	entries []auditlog.AuditEntry
-}
-
-func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
-	m.entries = append(m.entries, entry)
-	return nil
-}
-
-func (m *mockAuditLogger) Close() error {
-	return nil
-}
+// We now use the mockAuditLogger from test_helpers.go
 
 // TestNewContextGatherer tests the constructor
 func TestNewContextGatherer(t *testing.T) {
@@ -473,7 +414,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		// Should show token limit comparison
 		tokenLimitMsgFound := false
 		for _, msg := range logger.infoMessages {
-			if msg == "Token usage: %d / %d (%.1f%% of model's limit)" {
+			if strings.HasPrefix(msg, "Token usage:") && strings.Contains(msg, "% of model's limit") {
 				tokenLimitMsgFound = true
 				break
 			}
@@ -510,7 +451,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		// Verify warning message
 		modelErrorWarningFound := false
 		for _, msg := range logger.warnMessages {
-			if msg == "Could not get model information: %v" {
+			if strings.HasPrefix(msg, "Could not get model information:") {
 				modelErrorWarningFound = true
 				break
 			}
@@ -551,7 +492,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		// Verify warning message about token limit
 		tokenLimitWarningFound := false
 		for _, msg := range logger.errorMessages {
-			if msg == "WARNING: Token count exceeds model's limit by %d tokens" {
+			if strings.HasPrefix(msg, "WARNING: Token count exceeds model's limit by") {
 				tokenLimitWarningFound = true
 				break
 			}
@@ -585,7 +526,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		// Verify "no files matched" message
 		noFilesMessageFound := false
 		for _, msg := range logger.infoMessages {
-			if msg == "  No files matched the current filters." {
+			if strings.Contains(msg, "No files matched the current filters") {
 				noFilesMessageFound = true
 				break
 			}

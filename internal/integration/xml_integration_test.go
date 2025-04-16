@@ -102,7 +102,7 @@ The component should handle the following edge cases:
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				var capturedPrompt string
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					capturedPrompt = prompt
 					return &gemini.GenerationResult{
 						Content:    "# Generated Plan\n\nImplemented as requested.",
@@ -126,7 +126,7 @@ func main() {}`,
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				var capturedPrompt string
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					capturedPrompt = prompt
 					return &gemini.GenerationResult{
 						Content:    "# Generated Plan\n\nPlan with empty instructions.",

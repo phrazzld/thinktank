@@ -133,13 +133,56 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	s.logger.Warn("Using legacy provider detection for model '%s'. Please add it to your models.yaml configuration.", modelName)
 
-	// Check for empty required parameters
-	if apiKey == "" {
-		return nil, fmt.Errorf("%w: API key is required", ErrClientInitialization)
-	}
-
 	// Detect provider type from model name using the legacy method
 	providerType := DetectProviderFromModel(modelName)
+
+	// Prepare provider-specific API key if not explicitly provided
+	effectiveApiKey := apiKey
+	if effectiveApiKey == "" {
+		// Create a new config loader to get the API key sources from config
+		configLoader := registry.NewConfigLoader()
+		modelConfig, err := configLoader.Load()
+
+		// If we have a config, use its API key mappings
+		if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
+			var envVar string
+			var ok bool
+
+			// Map the provider type to the provider name used in the config
+			var providerName string
+			switch providerType {
+			case ProviderGemini:
+				providerName = "gemini"
+			case ProviderOpenAI:
+				providerName = "openai"
+			}
+
+			// Look up the environment variable name for this provider
+			if providerName != "" {
+				if envVar, ok = modelConfig.APIKeySources[providerName]; ok && envVar != "" {
+					effectiveApiKey = os.Getenv(envVar)
+					s.logger.Debug("Using API key from environment variable %s for provider %s",
+						envVar, providerName)
+				}
+			}
+		} else {
+			// Fallback if no config is available
+			switch providerType {
+			case ProviderGemini:
+				effectiveApiKey = os.Getenv("GEMINI_API_KEY")
+				s.logger.Debug("No config found. Using API key from GEMINI_API_KEY environment variable")
+			case ProviderOpenAI:
+				effectiveApiKey = os.Getenv("OPENAI_API_KEY")
+				s.logger.Debug("No config found. Using API key from OPENAI_API_KEY environment variable")
+			}
+		}
+	}
+
+	// Check that we have an API key now
+	if effectiveApiKey == "" {
+		return nil, fmt.Errorf("%w: API key is required for provider %s",
+			ErrClientInitialization, providerType)
+	}
 
 	// Initialize the appropriate client based on provider type
 	var client llm.LLMClient
@@ -148,9 +191,29 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 	switch providerType {
 	case ProviderGemini:
 		s.logger.Debug("Using Gemini provider for model %s (legacy detection)", modelName)
-		client, err = gemini.NewLLMClient(ctx, apiKey, modelName, apiEndpoint)
+		client, err = gemini.NewLLMClient(ctx, effectiveApiKey, modelName, apiEndpoint)
 	case ProviderOpenAI:
 		s.logger.Debug("Using OpenAI provider for model %s (legacy detection)", modelName)
+
+		// Set OPENAI_API_KEY environment variable temporarily for OpenAI client
+		oldAPIKey := os.Getenv("OPENAI_API_KEY")
+		if err := os.Setenv("OPENAI_API_KEY", effectiveApiKey); err != nil {
+			return nil, fmt.Errorf("failed to set OpenAI API key in environment: %w", err)
+		}
+
+		// Restore the original value when done
+		defer func() {
+			var err error
+			if oldAPIKey != "" {
+				err = os.Setenv("OPENAI_API_KEY", oldAPIKey)
+			} else {
+				err = os.Unsetenv("OPENAI_API_KEY")
+			}
+			if err != nil {
+				s.logger.Warn("Failed to restore original OpenAI API key environment variable: %v", err)
+			}
+		}()
+
 		client, err = openai.NewClient(modelName)
 	case ProviderUnknown:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedModel, modelName)

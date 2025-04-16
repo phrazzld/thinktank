@@ -25,7 +25,7 @@ func NewRegistryTokenManager(
 	reg *registry.Registry,
 ) (TokenManager, error) {
 	// Create the base token manager
-	baseTM, err := NewTokenManager(logger, auditLogger, client)
+	baseTM, err := NewTokenManager(logger, auditLogger, client, reg)
 	if err != nil {
 		return nil, err
 	}

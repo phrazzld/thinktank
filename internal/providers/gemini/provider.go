@@ -4,6 +4,7 @@ package gemini
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/phrazzld/architect/internal/gemini"
@@ -38,6 +39,37 @@ func (p *GeminiProvider) CreateClient(
 ) (llm.LLMClient, error) {
 	p.logger.Debug("Creating Gemini client for model: %s", modelID)
 
+	// For Gemini, we should prioritize GEMINI_API_KEY environment variable
+	// for consistency across the application
+
+	// Initialize the effective API key variable
+	var effectiveAPIKey string
+
+	// Check if the provided API key looks like a valid Gemini/Google key
+	if apiKey != "" && strings.HasPrefix(apiKey, "AIza") {
+		// Use the provided key since it looks like a valid Gemini key
+		effectiveAPIKey = apiKey
+		p.logger.Debug("Using provided API key which matches Gemini key format")
+	} else {
+		// Try GEMINI_API_KEY first, then GOOGLE_API_KEY as fallback
+		effectiveAPIKey = os.Getenv("GEMINI_API_KEY")
+		if effectiveAPIKey == "" {
+			// Try GOOGLE_API_KEY as a fallback
+			effectiveAPIKey = os.Getenv("GOOGLE_API_KEY")
+			if effectiveAPIKey == "" {
+				return nil, fmt.Errorf("no valid Gemini API key provided and neither GEMINI_API_KEY nor GOOGLE_API_KEY environment variables are set")
+			}
+			p.logger.Debug("Using API key from GOOGLE_API_KEY environment variable")
+		} else {
+			p.logger.Debug("Using API key from GEMINI_API_KEY environment variable")
+		}
+
+		// Verify this looks like a Gemini key
+		if !strings.HasPrefix(effectiveAPIKey, "AIza") {
+			p.logger.Warn("Gemini API key does not have expected format (should start with 'AIza'). This will likely fail.")
+		}
+	}
+
 	// Create a list of client options
 	var clientOpts []gemini.ClientOption
 
@@ -45,7 +77,7 @@ func (p *GeminiProvider) CreateClient(
 	clientOpts = append(clientOpts, gemini.WithLogger(p.logger))
 
 	// Create the LLM client using the existing Gemini implementation
-	client, err := gemini.NewLLMClient(ctx, apiKey, modelID, apiEndpoint, clientOpts...)
+	client, err := gemini.NewLLMClient(ctx, effectiveAPIKey, modelID, apiEndpoint, clientOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Gemini client: %w", err)
 	}
@@ -77,7 +109,7 @@ func (a *GeminiClientAdapter) SetParameters(params map[string]interface{}) {
 // GenerateContent implements the llm.LLMClient interface and applies parameters
 func (a *GeminiClientAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	// Apply parameters to underlying gemini client
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		// Store the parameters for use by the adapter
 		a.params = params
 	}

@@ -119,56 +119,119 @@ func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, 
 }
 
 // TokenManagerAdapter provides an adapter for different TokenManager implementations
+// It adapts the internal TokenManager interface to the interfaces.TokenManager interface
 type TokenManagerAdapter struct {
 	// The underlying TokenManager implementation
-	TokenManager interfaces.TokenManager
+	TokenManager TokenManager
 }
 
-// CountTokens delegates to the underlying TokenManager implementation
-func (t *TokenManagerAdapter) CountTokens(content string) (int, error) {
-	return t.TokenManager.CountTokens(content)
+// GetTokenInfo delegates to the underlying TokenManager implementation
+// and converts the internal TokenResult to the interfaces.TokenResult
+func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) {
+	// Call the underlying implementation
+	internalResult, err := t.TokenManager.GetTokenInfo(ctx, prompt)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the internal TokenResult to interfaces.TokenResult
+	return &interfaces.TokenResult{
+		TokenCount:   internalResult.TokenCount,
+		InputLimit:   internalResult.InputLimit,
+		ExceedsLimit: internalResult.ExceedsLimit,
+		LimitError:   internalResult.LimitError,
+		Percentage:   internalResult.Percentage,
+	}, nil
 }
 
-// GetInputTokenLimit delegates to the underlying TokenManager implementation
-func (t *TokenManagerAdapter) GetInputTokenLimit() int {
-	return t.TokenManager.GetInputTokenLimit()
+// CheckTokenLimit delegates to the underlying TokenManager implementation
+func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
+	return t.TokenManager.CheckTokenLimit(ctx, prompt)
 }
 
-// GetOutputTokenLimit delegates to the underlying TokenManager implementation
-func (t *TokenManagerAdapter) GetOutputTokenLimit() int {
-	return t.TokenManager.GetOutputTokenLimit()
-}
-
-// GetModelName delegates to the underlying TokenManager implementation
-func (t *TokenManagerAdapter) GetModelName() string {
-	return t.TokenManager.GetModelName()
-}
-
-// IsContentWithinLimits delegates to the underlying TokenManager implementation
-func (t *TokenManagerAdapter) IsContentWithinLimits(content string) (bool, int, error) {
-	return t.TokenManager.IsContentWithinLimits(content)
+// PromptForConfirmation delegates to the underlying TokenManager implementation
+func (t *TokenManagerAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool {
+	return t.TokenManager.PromptForConfirmation(tokenCount, threshold)
 }
 
 // ContextGathererAdapter provides an adapter for different ContextGatherer implementations
+// It adapts the internal ContextGatherer interface to the interfaces.ContextGatherer interface
 type ContextGathererAdapter struct {
-	// The underlying ContextGatherer implementation
-	ContextGatherer interfaces.ContextGatherer
+	// The underlying ContextGatherer implementation from the internal package
+	ContextGatherer ContextGatherer
 }
 
-// GatherContext delegates to the underlying ContextGatherer implementation
+// Convert internal GatherConfig to interfaces.GatherConfig
+func internalToInterfacesGatherConfig(config interfaces.GatherConfig) GatherConfig {
+	return GatherConfig{
+		Paths:        config.Paths,
+		Include:      config.Include,
+		Exclude:      config.Exclude,
+		ExcludeNames: config.ExcludeNames,
+		Format:       config.Format,
+		Verbose:      config.Verbose,
+		LogLevel:     config.LogLevel,
+	}
+}
+
+// Convert internal ContextStats to interfaces.ContextStats
+func internalToInterfacesContextStats(stats *ContextStats) *interfaces.ContextStats {
+	if stats == nil {
+		return nil
+	}
+	return &interfaces.ContextStats{
+		ProcessedFilesCount: stats.ProcessedFilesCount,
+		CharCount:           stats.CharCount,
+		LineCount:           stats.LineCount,
+		TokenCount:          stats.TokenCount,
+		ProcessedFiles:      stats.ProcessedFiles,
+	}
+}
+
+// Convert interfaces.ContextStats to internal ContextStats
+func interfacesToInternalContextStats(stats *interfaces.ContextStats) *ContextStats {
+	if stats == nil {
+		return nil
+	}
+	return &ContextStats{
+		ProcessedFilesCount: stats.ProcessedFilesCount,
+		CharCount:           stats.CharCount,
+		LineCount:           stats.LineCount,
+		TokenCount:          stats.TokenCount,
+		ProcessedFiles:      stats.ProcessedFiles,
+	}
+}
+
+// GatherContext adapts between interfaces.GatherConfig and internal GatherConfig
 func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
-	return c.ContextGatherer.GatherContext(ctx, config)
+	// Convert interfaces.GatherConfig to internal GatherConfig
+	internalConfig := internalToInterfacesGatherConfig(config)
+
+	// Call the underlying internal implementation
+	files, stats, err := c.ContextGatherer.GatherContext(ctx, internalConfig)
+
+	// Convert internal ContextStats to interfaces.ContextStats if no error
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return files, internalToInterfacesContextStats(stats), nil
 }
 
-// DisplayDryRunInfo delegates to the underlying ContextGatherer implementation
+// DisplayDryRunInfo adapts between interfaces.ContextStats and internal ContextStats
 func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
-	return c.ContextGatherer.DisplayDryRunInfo(ctx, stats)
+	// Convert interfaces.ContextStats to internal ContextStats
+	internalStats := interfacesToInternalContextStats(stats)
+
+	// Call the underlying internal implementation
+	return c.ContextGatherer.DisplayDryRunInfo(ctx, internalStats)
 }
 
 // FileWriterAdapter provides an adapter for different FileWriter implementations
+// It adapts the internal FileWriter interface to the interfaces.FileWriter interface
 type FileWriterAdapter struct {
-	// The underlying FileWriter implementation
-	FileWriter interfaces.FileWriter
+	// The underlying FileWriter implementation from the internal package
+	FileWriter FileWriter
 }
 
 // SaveToFile delegates to the underlying FileWriter implementation

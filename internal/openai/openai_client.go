@@ -149,6 +149,10 @@ func initializeModelLimits() map[string]*modelInfo {
 			inputTokenLimit:  128000,
 			outputTokenLimit: 4096,
 		},
+		"gpt-4.1-mini": {
+			inputTokenLimit:  1000000, // 1M tokens
+			outputTokenLimit: 32768,
+		},
 
 		// GPT-3.5 series
 		"gpt-3.5-turbo": {
@@ -308,10 +312,16 @@ func (c *openaiClient) CountTokens(ctx context.Context, prompt string) (*llm.Pro
 
 // GetModelInfo retrieves information about the current model
 func (c *openaiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	// The registry should always override these values when available
+	// We're only providing reasonable defaults here for when the registry
+	// is not available, which should be uncommon.
+
 	// Get model info from cache or use defaults
 	info, ok := c.modelLimits[c.modelName]
 	if !ok {
 		// Use conservative defaults for unknown models
+		// This should be considered a fallback only
+		// The registry should provide the actual limits in most cases
 		info = &modelInfo{
 			inputTokenLimit:  4096, // Conservative default
 			outputTokenLimit: 2048, // Conservative default

@@ -32,7 +32,7 @@ func TestErrorScenarios(t *testing.T) {
 			name:                "API Error Handling",
 			instructionsContent: "Test task",
 			setupMock: func(mc *gemini.MockClient) {
-				mc.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				mc.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Create a simple API error
 					apiError := &gemini.APIError{
 						Message:    "API quota exceeded",

@@ -17,6 +17,7 @@ import (
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // ----- Mock Implementations -----
@@ -176,6 +177,22 @@ func (m *MockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string,
 	return m.processedContent, nil
 }
 
+func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+
+func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	return true, nil
+}
+
+func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	return 8192, 8192, nil
+}
+
 // MockOrchestrator mocks the orchestrator for testing
 type MockOrchestrator struct {
 	runErr error
@@ -241,7 +258,7 @@ func NewMockLLMClient(modelName string) *MockLLMClient {
 	}
 }
 
-func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.generationErr != nil {
 		return nil, m.generationErr
 	}
@@ -311,7 +328,7 @@ func TestExecuteHappyPath(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -395,7 +412,7 @@ func TestExecuteDryRun(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -488,7 +505,7 @@ func TestExecuteInstructionsFileError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -568,7 +585,7 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -650,7 +667,7 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 

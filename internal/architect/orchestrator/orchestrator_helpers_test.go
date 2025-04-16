@@ -138,23 +138,28 @@ func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
 
 // mockAPIService mocks the interfaces.APIService
 type mockAPIService struct {
-	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
-	IsEmptyResponseErrorFunc func(err error) bool
-	IsSafetyBlockedErrorFunc func(err error) bool
-	GetErrorDetailsFunc      func(err error) string
-	GetModelParametersFunc   func(modelName string) (map[string]interface{}, error)
-	GetModelDefinitionFunc   func(modelName string) (*registry.ModelDefinition, error)
-	GetModelTokenLimitsFunc  func(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	ProcessLLMResponseFunc     func(result *llm.ProviderResult) (string, error)
+	IsEmptyResponseErrorFunc   func(err error) bool
+	IsSafetyBlockedErrorFunc   func(err error) bool
+	GetErrorDetailsFunc        func(err error) string
+	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 
-	InitLLMClientCalls        []struct{ ApiKey, ModelName, ApiEndpoint string }
-	ProcessLLMResponseCalls   []struct{ Result *llm.ProviderResult }
-	IsEmptyResponseErrorCalls []struct{ Err error }
-	IsSafetyBlockedErrorCalls []struct{ Err error }
-	GetErrorDetailsCalls      []struct{ Err error }
-	GetModelParametersCalls   []struct{ ModelName string }
-	GetModelDefinitionCalls   []struct{ ModelName string }
-	GetModelTokenLimitsCalls  []struct{ ModelName string }
+	InitLLMClientCalls          []struct{ ApiKey, ModelName, ApiEndpoint string }
+	ProcessLLMResponseCalls     []struct{ Result *llm.ProviderResult }
+	IsEmptyResponseErrorCalls   []struct{ Err error }
+	IsSafetyBlockedErrorCalls   []struct{ Err error }
+	GetErrorDetailsCalls        []struct{ Err error }
+	GetModelParametersCalls     []struct{ ModelName string }
+	ValidateModelParameterCalls []struct {
+		ModelName, ParamName string
+		Value                interface{}
+	}
+	GetModelDefinitionCalls  []struct{ ModelName string }
+	GetModelTokenLimitsCalls []struct{ ModelName string }
 
 	mu sync.Mutex
 }
@@ -684,4 +689,45 @@ func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, m
 
 	// Default implementation returns standard values
 	return 8192, 2048, nil
+}
+
+func (m *mockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct {
+		ModelName, ParamName string
+		Value                interface{}
+	}{
+		ModelName: modelName,
+		ParamName: paramName,
+		Value:     value,
+	}
+	m.ValidateModelParameterCalls = append(m.ValidateModelParameterCalls, call)
+
+	if m.ValidateModelParameterFunc != nil {
+		return m.ValidateModelParameterFunc(modelName, paramName, value)
+	}
+
+	// Default implementation - accept common parameters with basic validation
+	switch paramName {
+	case "temperature":
+		if temp, ok := value.(float64); ok {
+			return temp >= 0 && temp <= 1, nil
+		}
+		return false, fmt.Errorf("temperature must be a float between 0 and 1")
+	case "top_p":
+		if topP, ok := value.(float64); ok {
+			return topP >= 0 && topP <= 1, nil
+		}
+		return false, fmt.Errorf("top_p must be a float between 0 and 1")
+	case "max_tokens":
+		if _, ok := value.(int); ok {
+			return true, nil
+		}
+		return false, fmt.Errorf("max_tokens must be an integer")
+	default:
+		// By default, accept unknown parameters
+		return true, nil
+	}
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/fileutil"
 	"github.com/phrazzld/architect/internal/llm"
@@ -283,7 +284,7 @@ func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *Context
 	var limitSource string
 
 	// Check if we have an APIService that supports registry lookup
-	if apiService, ok := cg.client.(APIService); ok && apiService != nil {
+	if apiService, ok := cg.client.(interfaces.APIService); ok && apiService != nil {
 		contextWindow, _, err := apiService.GetModelTokenLimits(modelName)
 		if err == nil && contextWindow > 0 {
 			// Use the context window from the registry

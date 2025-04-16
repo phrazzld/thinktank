@@ -151,7 +151,7 @@ func TestOpenAIClientErrorHandling(t *testing.T) {
 
 	// Test GenerateContent error handling
 	t.Run("GenerateContent error", func(t *testing.T) {
-		_, err := client.GenerateContent(ctx, "test prompt")
+		_, err := client.GenerateContent(ctx, "test prompt", map[string]interface{}{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "Rate limit exceeded")
 	})
@@ -277,7 +277,7 @@ func TestEmptyResponseHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// Test empty response handling
-	_, err := client.GenerateContent(ctx, "test prompt")
+	_, err := client.GenerateContent(ctx, "test prompt", map[string]interface{}{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no completion choices returned")
 }
@@ -304,7 +304,7 @@ func TestContentFilterHandling(t *testing.T) {
 	ctx := context.Background()
 
 	// Test content filter handling
-	_, err := client.GenerateContent(ctx, "test prompt")
+	_, err := client.GenerateContent(ctx, "test prompt", map[string]interface{}{})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "Content was filtered")
 }

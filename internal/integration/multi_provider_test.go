@@ -451,7 +451,7 @@ type providerAwareLLMClient struct {
 }
 
 // Implement LLMClient interface methods
-func (c *providerAwareLLMClient) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (c *providerAwareLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	// Create a provider-specific response based on the model
 	providerName := "Unknown"
 	switch c.providerType {
@@ -555,7 +555,7 @@ func TestLLMClientProviderAwareness(t *testing.T) {
 			ctx := context.Background()
 
 			// Test GenerateContent
-			result, err := client.GenerateContent(ctx, "Test prompt")
+			result, err := client.GenerateContent(ctx, "Test prompt", nil)
 			if tc.expectError {
 				assert.Error(t, err)
 			} else {

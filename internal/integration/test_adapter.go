@@ -25,9 +25,9 @@ func NewLLMClientAdapter(client gemini.Client, modelName string) *LLMClientAdapt
 }
 
 // GenerateContent adapts gemini.Client.GenerateContent to llm.LLMClient.GenerateContent
-func (a *LLMClientAdapter) GenerateContent(ctx context.Context, prompt string) (*llm.ProviderResult, error) {
+func (a *LLMClientAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	// Call the wrapped gemini client's GenerateContent method
-	result, err := a.geminiClient.GenerateContent(ctx, prompt)
+	result, err := a.geminiClient.GenerateContent(ctx, prompt, params)
 	if err != nil {
 		return nil, err // Pass the error through directly
 	}

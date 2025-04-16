@@ -14,11 +14,14 @@ import (
 
 // mockLogger for testing
 type mockAPILogger struct {
-	logutil.LoggerInterface
 	debugMessages []string
 	infoMessages  []string
+	warnMessages  []string
 	errorMessages []string
 }
+
+// Ensure mockAPILogger implements logutil.LoggerInterface
+var _ logutil.LoggerInterface = (*mockAPILogger)(nil)
 
 func (m *mockAPILogger) Debug(format string, args ...interface{}) {
 	m.debugMessages = append(m.debugMessages, format)
@@ -28,8 +31,24 @@ func (m *mockAPILogger) Info(format string, args ...interface{}) {
 	m.infoMessages = append(m.infoMessages, format)
 }
 
+func (m *mockAPILogger) Warn(format string, args ...interface{}) {
+	m.warnMessages = append(m.warnMessages, format)
+}
+
 func (m *mockAPILogger) Error(format string, args ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
+}
+
+func (m *mockAPILogger) Fatal(format string, args ...interface{}) {
+	// Don't actually exit in tests
+}
+
+func (m *mockAPILogger) Println(v ...interface{}) {
+	// No-op for tests
+}
+
+func (m *mockAPILogger) Printf(format string, v ...interface{}) {
+	// No-op for tests
 }
 
 // TestNewAPIService tests the creation of a new APIService

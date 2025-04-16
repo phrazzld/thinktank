@@ -41,12 +41,29 @@ func (p *OpenAIProvider) CreateClient(
 ) (llm.LLMClient, error) {
 	p.logger.Debug("Creating OpenAI client for model: %s", modelID)
 
-	// Use provided API key or fall back to environment variable
-	effectiveAPIKey := apiKey
-	if effectiveAPIKey == "" {
+	// For OpenAI, we should ALWAYS use the OPENAI_API_KEY environment variable
+	// or a valid OpenAI API key provided as an argument
+
+	// Initialize the effective API key variable
+	var effectiveAPIKey string
+
+	// Check if the provided API key is a valid OpenAI key
+	if apiKey != "" && strings.HasPrefix(apiKey, "sk-") {
+		// Use the provided key since it looks like a valid OpenAI key
+		effectiveAPIKey = apiKey
+		p.logger.Debug("Using provided API key which matches OpenAI key format")
+	} else {
+		// Always fall back to the OPENAI_API_KEY environment variable
 		effectiveAPIKey = os.Getenv("OPENAI_API_KEY")
 		if effectiveAPIKey == "" {
-			return nil, fmt.Errorf("no OpenAI API key provided and OPENAI_API_KEY environment variable not set")
+			return nil, fmt.Errorf("no valid OpenAI API key provided and OPENAI_API_KEY environment variable not set")
+		}
+
+		// Verify this looks like an OpenAI key
+		if !strings.HasPrefix(effectiveAPIKey, "sk-") {
+			p.logger.Warn("OpenAI API key does not have expected format (should start with 'sk-'). This will likely fail.")
+		} else {
+			p.logger.Debug("Using API key from OPENAI_API_KEY environment variable")
 		}
 	}
 
@@ -111,7 +128,7 @@ func (a *OpenAIClientAdapter) GenerateContent(ctx context.Context, prompt string
 	defer a.mu.Unlock()
 
 	// Apply parameters if provided
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		a.params = params
 	}
 
@@ -225,28 +242,40 @@ func (a *OpenAIClientAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderMo
 		return nil, err
 	}
 
-	// Get the model information from registry if needed
-	// Registry integration is now complete, but we'll keep the underlying
-	// client call as a fallback for when registry data is unavailable
-	if modelInfo.InputTokenLimit == 0 {
-		// This indicates we should try using registry data, as zero is an invalid limit
-		// The TokenManager should automatically use registry data via registry_token.go
-		// when available, so we're covered for client usage inside TokenManager.
-		modelName := a.client.GetModelName()
+	// The registry is the source of truth for token limits
+	// The main token counting functions will use registry data via registry_token.go
+	// This provides reasonable defaults for non-registry usage scenarios
 
-		// For now we use placeholder values that should be overridden by
-		// the registry-aware token manager if that's being used
-		if strings.Contains(modelName, "gpt-4o") {
+	// These values may be overridden by the registry-aware TokenManager
+	// but we provide sensible defaults for direct client usage
+	modelName := a.client.GetModelName()
+
+	// Don't override any limits if they're already set and valid
+	if modelInfo.InputTokenLimit <= 0 || modelInfo.OutputTokenLimit <= 0 {
+		// Set reasonable defaults based on the model name
+		// This is only used if registry is not available
+		if strings.Contains(modelName, "gpt-4.1-mini") {
+			modelInfo.InputTokenLimit = 1000000 // 1M tokens
+			modelInfo.OutputTokenLimit = 32768
+		} else if strings.Contains(modelName, "gpt-4o") {
 			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4o
+			modelInfo.OutputTokenLimit = 4096
 		} else if strings.Contains(modelName, "gpt-4-turbo") {
 			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4 Turbo
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(modelName, "gpt-4-32k") {
+			modelInfo.InputTokenLimit = 32768 // 32K for GPT-4-32k
+			modelInfo.OutputTokenLimit = 4096
 		} else if strings.Contains(modelName, "gpt-4") {
 			modelInfo.InputTokenLimit = 8192 // 8K for regular GPT-4
+			modelInfo.OutputTokenLimit = 2048
 		} else if strings.Contains(modelName, "gpt-3.5-turbo") {
 			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo
+			modelInfo.OutputTokenLimit = 4096
 		} else {
-			// Default fallback for unknown models
+			// Conservative default fallback for unknown models
 			modelInfo.InputTokenLimit = 4096
+			modelInfo.OutputTokenLimit = 2048
 		}
 	}
 
