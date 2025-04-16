@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -17,6 +18,9 @@ import (
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/logutil"
 )
+
+// stdinMutex protects access to os.Stdin across parallel tests
+var stdinMutex sync.Mutex
 
 // TestEnv holds the testing environment
 type TestEnv struct {
@@ -84,7 +88,9 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	// Create cleanup function - we don't need to remove testDir manually as t.TempDir() handles this
 	cleanup := func() {
 		// Restore original stdin (stdout/stderr are no longer redirected globally)
+		stdinMutex.Lock()
 		os.Stdin = origStdin
+		stdinMutex.Unlock()
 
 		// Close pipe file descriptors
 		_ = r.Close()
@@ -111,8 +117,10 @@ func NewTestEnv(t *testing.T) *TestEnv {
 // After refactoring, this function redirects stdin to our pipe reader
 // StdoutBuffer and StderrBuffer should be passed explicitly where needed
 func (env *TestEnv) Setup() {
-	// Set stdin to our pipe reader
+	// Set stdin to our pipe reader with mutex protection
+	stdinMutex.Lock()
 	os.Stdin = env.stdinReader
+	stdinMutex.Unlock()
 }
 
 // GetBufferedLogger returns a logger that writes to the test environment's stderr buffer
