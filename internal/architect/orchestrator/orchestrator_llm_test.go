@@ -82,9 +82,7 @@ func TestOrchestrator_Run_UsesLLMClientExclusively(t *testing.T) {
 		t.Errorf("Expected %d calls to InitLLMClient, got %d", len(cfg.ModelNames), len(apiService.InitLLMClientCalls))
 	}
 
-	if len(apiService.InitClientCalls) > 0 {
-		t.Error("Unexpected calls to deprecated InitClient method")
-	}
+	// The deprecated method check is no longer needed as we've removed it
 }
 
 // TestOrchestrator_APIServiceAdapter_UsesLLMClientExclusively tests that the APIServiceAdapter

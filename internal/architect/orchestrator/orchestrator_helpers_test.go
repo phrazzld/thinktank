@@ -12,7 +12,6 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/ratelimit"
 )
@@ -108,13 +107,10 @@ func (d *orchestratorTestDeps) runOrchestrator(ctx context.Context, instructions
 
 // verifyBasicWorkflow checks that a basic workflow executed correctly
 func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNames []string) {
-	// Verify API client initialization - we check both old and new interfaces for compatibility
-	totalInitCalls := len(d.apiService.InitClientCalls) + len(d.apiService.InitLLMClientCalls)
-	if totalInitCalls != len(expectedModelNames) {
-		t.Errorf("Expected %d total client initialization calls, got %d (InitClient: %d, InitLLMClient: %d)",
+	// Verify API client initialization
+	if len(d.apiService.InitLLMClientCalls) != len(expectedModelNames) {
+		t.Errorf("Expected %d calls to InitLLMClient, got %d",
 			len(expectedModelNames),
-			totalInitCalls,
-			len(d.apiService.InitClientCalls),
 			len(d.apiService.InitLLMClientCalls))
 	}
 
@@ -126,12 +122,9 @@ func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNa
 
 // verifyDryRunWorkflow checks that a dry run workflow executed correctly
 func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
-	// In dry run mode, should not call InitClient/InitLLMClient or SaveToFile
-	totalInitCalls := len(d.apiService.InitClientCalls) + len(d.apiService.InitLLMClientCalls)
-	if totalInitCalls > 0 {
-		t.Errorf("Should not call any client initialization methods in dry run mode, got %d calls (InitClient: %d, InitLLMClient: %d)",
-			totalInitCalls,
-			len(d.apiService.InitClientCalls),
+	// In dry run mode, should not call InitLLMClient or SaveToFile
+	if len(d.apiService.InitLLMClientCalls) > 0 {
+		t.Errorf("Should not call InitLLMClient in dry run mode, got %d calls",
 			len(d.apiService.InitLLMClientCalls))
 	}
 
@@ -150,32 +143,13 @@ type mockAPIService struct {
 	IsSafetyBlockedErrorFunc func(err error) bool
 	GetErrorDetailsFunc      func(err error) string
 
-	InitClientCalls           []struct{ ApiKey, ModelName, ApiEndpoint string } // kept for compatibility during migration
 	InitLLMClientCalls        []struct{ ApiKey, ModelName, ApiEndpoint string }
-	ProcessResponseCalls      []struct{ Result *gemini.GenerationResult } // kept for compatibility during migration
 	ProcessLLMResponseCalls   []struct{ Result *llm.ProviderResult }
 	IsEmptyResponseErrorCalls []struct{ Err error }
 	IsSafetyBlockedErrorCalls []struct{ Err error }
 	GetErrorDetailsCalls      []struct{ Err error }
 
 	mu sync.Mutex
-}
-
-// InitClient is kept temporarily for compatibility during migration
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (interface{}, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	call := struct{ ApiKey, ModelName, ApiEndpoint string }{
-		ApiKey:      apiKey,
-		ModelName:   modelName,
-		ApiEndpoint: apiEndpoint,
-	}
-	m.InitClientCalls = append(m.InitClientCalls, call)
-
-	// Forward to the provider-agnostic method
-	client, err := m.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
-	return client, err
 }
 
 func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
@@ -193,23 +167,6 @@ func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, a
 		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
 	}
 	return &mockLLMClient{modelName: modelName}, nil
-}
-
-// ProcessResponse is kept temporarily for compatibility during migration
-func (m *mockAPIService) ProcessResponse(result interface{}) (string, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Forward to the provider-agnostic method
-	if result == nil {
-		return "", errors.New("nil result error")
-	}
-
-	if llmResult, ok := result.(*llm.ProviderResult); ok {
-		return m.ProcessLLMResponse(llmResult)
-	}
-
-	return "", errors.New("unsupported result type")
 }
 
 func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {

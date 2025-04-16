@@ -32,7 +32,7 @@
   - **Depends On:** Remove deprecated methods from APIService interface
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Update orchestrator tests to use provider-agnostic methods
+- [x] **Task Title:** Update orchestrator tests to use provider-agnostic methods
   - **Action:** Refactor all orchestrator test files in `internal/architect/orchestrator/` that use deprecated methods to use the provider-agnostic alternatives.
   - **Depends On:** None
   - **AC Ref:** N/A
