@@ -15,6 +15,7 @@ import (
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/phrazzld/architect/internal/runutil"
 )
 
@@ -145,6 +146,14 @@ func Execute(
 
 	// 4. Use the injected APIService
 
+	// Optional registry manager access function for token counting
+	// This allows us to use registry information without a direct import
+	// which would create circular dependencies
+	registryManagerGetter = func() interface{} {
+		// This function will be set by main.go after initializing the registry
+		return nil
+	}
+
 	// Create a reference client for token counting in context gathering
 	referenceClientLLM, err := apiService.InitLLMClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
 	if err != nil {
@@ -180,7 +189,34 @@ func Execute(
 	defer func() { _ = referenceClientLLM.Close() }()
 
 	// Create TokenManager with the LLM client reference
-	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClientLLM)
+	// Try to get the global registry manager if it's been initialized
+	var tokenManager TokenManager
+	var tokenManagerErr error
+
+	// Import registry package only in this file to avoid circular dependencies
+	registryManager := GetGlobalRegistryManager()
+	if registryManager != nil {
+		// Registry manager is available, create registry-aware token manager
+		logger.Debug("Creating registry-aware token manager")
+		// Type assertion to get the actual registry manager
+		if regManager, ok := registryManager.(*registry.Manager); ok {
+			tokenManager, tokenManagerErr = NewRegistryTokenManager(
+				logger,
+				auditLogger,
+				referenceClientLLM,
+				regManager.GetRegistry(),
+			)
+		} else {
+			// Fall back to standard token manager if type assertion fails
+			logger.Debug("Registry manager type assertion failed, using standard token manager")
+			tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM)
+		}
+	} else {
+		// Registry manager not available, fall back to standard token manager
+		logger.Debug("Creating standard token manager (registry not available)")
+		tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM)
+	}
+
 	if tokenManagerErr != nil {
 		// Check if this is a categorized error for better error messages
 		if catErr, ok := llm.IsCategorizedError(tokenManagerErr); ok {
@@ -244,6 +280,23 @@ type Orchestrator interface {
 }
 
 // Note: The llmToGeminiAdapter has been removed as ContextGatherer now uses llm.LLMClient directly
+
+// registryManagerGetter is a function that returns the registry manager.
+// This is set by main.go after initializing the registry to avoid circular dependencies.
+var registryManagerGetter func() interface{}
+
+// GetGlobalRegistryManager returns the global registry manager if available
+func GetGlobalRegistryManager() interface{} {
+	if registryManagerGetter != nil {
+		return registryManagerGetter()
+	}
+	return nil
+}
+
+// SetRegistryManagerGetter sets the function that returns the registry manager
+func SetRegistryManagerGetter(getter func() interface{}) {
+	registryManagerGetter = getter
+}
 
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.

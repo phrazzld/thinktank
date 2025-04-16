@@ -8,6 +8,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/auditlog"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Main is the entry point for the architect CLI
@@ -27,7 +28,6 @@ func Main() {
 	logger.Info("Starting Architect - AI-assisted content generation tool")
 
 	// Initialize the audit logger
-	// Note: The auditLogger will be passed to Execute() in a future task
 	var auditLogger auditlog.AuditLogger
 	if config.AuditLogFile != "" {
 		fileLogger, err := auditlog.NewFileAuditLogger(config.AuditLogFile, logger)
@@ -47,17 +47,26 @@ func Main() {
 	// Ensure the audit logger is properly closed when the application exits
 	defer func() { _ = auditLogger.Close() }()
 
-	// Configuration is now managed via CLI flags and environment variables only
+	// Initialize and load the Registry
+	registryManager := registry.GetGlobalManager(logger)
+	if err := registryManager.Initialize(); err != nil {
+		logger.Warn("Failed to initialize registry: %v. Falling back to legacy provider detection.", err)
+	} else {
+		logger.Info("Registry initialized successfully")
+
+		// Set the registry manager getter for token management
+		architect.SetRegistryManagerGetter(func() interface{} {
+			return registryManager
+		})
+	}
 
 	// Validate inputs before proceeding
 	if err := ValidateInputs(config, logger); err != nil {
 		os.Exit(1)
 	}
 
-	// CLI flags and environment variables are now the only source of configuration
-
-	// Initialize APIService
-	apiService := architect.NewAPIService(logger)
+	// Initialize APIService using Registry
+	apiService := architect.NewRegistryAPIService(registryManager, logger)
 
 	// Execute the core application logic
 	err = architect.Execute(ctx, config, logger, auditLogger, apiService)

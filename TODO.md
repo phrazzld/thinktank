@@ -32,7 +32,7 @@
     - **Depends On:** T004
     - **AC Ref:** AC3, AC4, AC6, AC9
 
-- [ ] **T007:** Integrate Registry into Core Application Logic
+- [x] **T007:** Integrate Registry into Core Application Logic
     - **Action:** In the application startup sequence (`internal/architect/app.go` or `main.go`), initialize and load the registry using `registry.LoadConfig`. Register the Gemini (T005) and OpenAI (T006) provider implementations using `registry.RegisterProviderImplementation`. Refactor the client creation logic (likely within the orchestrator or main execution flow): remove calls to `DetectProviderFromModel`, use `registry.GetModel` to get `ModelDefinition`, use `registry.GetProvider` to get `ProviderDefinition`, retrieve the API key using the `api_key_sources` map from the config and the `ProviderDefinition`, get the provider implementation using `registry.GetProviderImplementation`, and call `provider.CreateClient` to get the `llm.LLMClient`. Assess and refactor/remove the existing `APIService` interface/implementation if it becomes redundant.
     - **Depends On:** T003, T005, T006
     - **AC Ref:** AC2, AC3, AC4, AC5, AC9

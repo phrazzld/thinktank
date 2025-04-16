@@ -72,6 +72,11 @@ type apiService struct {
 }
 
 // DetectProviderFromModel detects the provider type from the model name
+//
+// Deprecated: This function uses hardcoded model name prefixes to detect providers.
+// Use the Registry instead, which provides a more flexible, configuration-driven approach.
+// The Registry is initialized in cmd/architect/main.go and is accessible via the
+// registry.GetGlobalManager() function.
 func DetectProviderFromModel(modelName string) ProviderType {
 	if modelName == "" {
 		return ProviderUnknown

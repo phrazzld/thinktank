@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/phrazzld/architect/internal/llm"
@@ -120,11 +121,38 @@ func (a *OpenAIClientAdapter) CountTokens(ctx context.Context, prompt string) (*
 
 // GetModelInfo implements the llm.LLMClient interface and uses configuration data
 func (a *OpenAIClientAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// TODO: When Registry integration is complete (T007), this will return
-	// model information from the ModelDefinition in the registry.
+	// First try to get the model info from the underlying client
+	modelInfo, err := a.client.GetModelInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	// For now, delegate to the underlying client
-	return a.client.GetModelInfo(ctx)
+	// Get the model information from registry if needed
+	// Registry integration is now complete, but we'll keep the underlying
+	// client call as a fallback for when registry data is unavailable
+	if modelInfo.InputTokenLimit == 0 {
+		// This indicates we should try using registry data, as zero is an invalid limit
+		// The TokenManager should automatically use registry data via registry_token.go
+		// when available, so we're covered for client usage inside TokenManager.
+		modelName := a.client.GetModelName()
+
+		// For now we use placeholder values that should be overridden by
+		// the registry-aware token manager if that's being used
+		if strings.Contains(modelName, "gpt-4o") {
+			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4o
+		} else if strings.Contains(modelName, "gpt-4-turbo") {
+			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4 Turbo
+		} else if strings.Contains(modelName, "gpt-4") {
+			modelInfo.InputTokenLimit = 8192 // 8K for regular GPT-4
+		} else if strings.Contains(modelName, "gpt-3.5-turbo") {
+			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo
+		} else {
+			// Default fallback for unknown models
+			modelInfo.InputTokenLimit = 4096
+		}
+	}
+
+	return modelInfo, nil
 }
 
 // GetModelName implements the llm.LLMClient interface

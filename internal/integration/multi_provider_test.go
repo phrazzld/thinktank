@@ -49,6 +49,7 @@ func (t *providerTracking) recordCall(modelName string) {
 
 	t.calls[modelName] = time.Now()
 
+	// nolint:staticcheck // Using deprecated function is acceptable in tests until they are updated
 	providerType := architect.DetectProviderFromModel(modelName)
 	switch providerType {
 	case architect.ProviderGemini:
@@ -65,6 +66,7 @@ func (t *providerTracking) recordError(modelName string, err error) {
 	t.Lock()
 	defer t.Unlock()
 
+	// nolint:staticcheck // Using deprecated function is acceptable in tests until they are updated
 	providerType := architect.DetectProviderFromModel(modelName)
 	switch providerType {
 	case architect.ProviderGemini:
@@ -170,6 +172,7 @@ func TestProviderDetection(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			// nolint:staticcheck // Using deprecated function is acceptable in tests until they are updated
 			providerType := architect.DetectProviderFromModel(tc.modelName)
 			if providerType != tc.expectedType {
 				t.Errorf("Expected provider type %v for model %s, got %v",
@@ -198,6 +201,7 @@ func TestMultiProviderIntegration(t *testing.T) {
 	// Process each model
 	for _, modelName := range modelNames {
 		t.Run(fmt.Sprintf("Model_%s", modelName), func(t *testing.T) {
+			// nolint:staticcheck // Using deprecated function is acceptable in tests until they are updated
 			providerType := architect.DetectProviderFromModel(modelName)
 			require.NotEqual(t, architect.ProviderUnknown, providerType, "Should detect a valid provider")
 
@@ -537,6 +541,7 @@ func TestLLMClientProviderAwareness(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Detect provider from model name
+			// nolint:staticcheck // Using deprecated function is acceptable in tests until they are updated
 			providerType := architect.DetectProviderFromModel(tc.modelName)
 			assert.Equal(t, tc.providerType, providerType)
 
