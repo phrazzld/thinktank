@@ -12,7 +12,7 @@
     - **Depends On:** [R001]
     - **AC Ref:** Code Cleanup
 
-- [ ] **R003:** Create and Populate openai_client_creation_test.go
+- [x] **R003:** Create and Populate openai_client_creation_test.go
     - **Action:** Create new file `internal/openai/openai_client_creation_test.go` and move all client creation tests from the original test file.
     - **Depends On:** [R001]
     - **AC Ref:** Code Cleanup
