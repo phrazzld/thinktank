@@ -12,7 +12,7 @@
     - **Depends On:** T001
     - **AC Ref:** AC1
 
-- [ ] **T003:** Create Registry Package and Core Logic
+- [x] **T003:** Create Registry Package and Core Logic
     - **Action:** Create the `internal/registry` package. Implement the `Registry` struct to hold loaded `ProviderDefinition` and `ModelDefinition` maps. Implement methods: `LoadConfig()`, `GetModel(name string) (*ModelDefinition, error)`, `GetProvider(name string) (*ProviderDefinition, error)`, and `RegisterProviderImplementation(name string, impl providers.Provider)`. Implement `GetProviderImplementation(name string) (providers.Provider, error)`.
     - **Depends On:** T001, T002
     - **AC Ref:** AC1, AC2, AC3, AC4, AC5, AC9

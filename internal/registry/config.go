@@ -25,6 +25,9 @@ type ConfigLoader struct {
 	GetConfigPath func() (string, error)
 }
 
+// Compile-time check to ensure ConfigLoader implements ConfigLoaderInterface
+var _ ConfigLoaderInterface = (*ConfigLoader)(nil)
+
 // NewConfigLoader creates a new ConfigLoader
 func NewConfigLoader() *ConfigLoader {
 	loader := &ConfigLoader{}
