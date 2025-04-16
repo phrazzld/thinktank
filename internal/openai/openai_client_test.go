@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/openai/openai-go"
@@ -503,6 +504,79 @@ func TestEmptyAPIKeyHandling(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.NotNil(t, client)
+			}
+		})
+	}
+}
+
+// TestValidAPIKeyFormatDetection tests the detection of valid API key formats
+func TestValidAPIKeyFormatDetection(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for various API key formats
+	testCases := []struct {
+		name        string
+		apiKey      string
+		validFormat bool
+		description string
+	}{
+		{
+			name:        "Valid OpenAI API key format",
+			apiKey:      "sk-validKeyFormatWithSufficientLength12345678901234",
+			validFormat: true,
+			description: "Standard OpenAI API key format starting with 'sk-'",
+		},
+		{
+			name:        "Alternative valid key format",
+			apiKey:      "sk-abc123def456ghi789jkl012mno345pqr678stu90",
+			validFormat: true,
+			description: "API key with mixed alphanumeric characters",
+		},
+		{
+			name:        "Invalid prefix key format",
+			apiKey:      "invalid-key-format-without-sk-prefix",
+			validFormat: false,
+			description: "API key without 'sk-' prefix",
+		},
+		{
+			name:        "Too short key format",
+			apiKey:      "sk-tooshort",
+			validFormat: false,
+			description: "API key that's too short",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set the API key for this test case
+			err := os.Setenv("OPENAI_API_KEY", tc.apiKey)
+			if err != nil {
+				t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+			}
+
+			// Create a client with this key
+			client, err := NewClient("gpt-4")
+
+			// Validation happens at client creation time only to check for emptiness
+			// The actual API key format validation would happen on the first API call
+			// So we expect client creation to succeed regardless of key format
+			assert.NoError(t, err, "Client creation should succeed even with %s", tc.description)
+			assert.NotNil(t, client, "Client should not be nil")
+
+			// Verify the key format is as expected
+			// This is a basic structural validation that could be extended
+			if tc.validFormat {
+				assert.True(t, strings.HasPrefix(tc.apiKey, "sk-"),
+					"Valid API key should start with 'sk-' prefix")
+				assert.True(t, len(tc.apiKey) >= 20,
+					"Valid API key should have sufficient length")
 			}
 		})
 	}

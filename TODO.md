@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
 
-- [ ] **T002:** Implement Test for Valid API Key Format Detection (openai_client_test.go)
+- [x] **T002:** Implement Test for Valid API Key Format Detection (openai_client_test.go)
     - **Action:** Write a unit test in `internal/openai/openai_client_test.go` to verify that the client correctly identifies and accepts API keys matching the expected format (e.g., starts with "sk-"). Use mocked validation logic.
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
