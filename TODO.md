@@ -17,7 +17,7 @@
     - **Depends On:** T001, T002
     - **AC Ref:** AC1, AC2, AC3, AC4, AC5, AC9
 
-- [ ] **T004:** Define Provider Interface
+- [x] **T004:** Define Provider Interface
     - **Action:** Create `internal/providers/provider.go` (or a similar path). Define the `Provider` interface with the method `CreateClient(ctx context.Context, apiKey string, modelID string, apiEndpoint string) (llm.LLMClient, error)`. Ensure the `llm.LLMClient` interface from `internal/llm/client.go` is used as the return type.
     - **Depends On:** None
     - **AC Ref:** AC3
