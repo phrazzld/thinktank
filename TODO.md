@@ -67,7 +67,7 @@
     - **Depends On:** [T006, T007, T012]
     - **AC Ref:** Plan Item 2
 
-- [ ] **T014:** Implement Mock for Model Information Retrieval API (openai_client_test.go)
+- [x] **T014:** Implement Mock for Model Information Retrieval API (openai_client_test.go)
     - **Action:** Create mock implementations or use a mocking library to simulate the OpenAI API endpoint for retrieving model information (e.g., token limits).
     - **Depends On:** None
     - **AC Ref:** Plan Item 2

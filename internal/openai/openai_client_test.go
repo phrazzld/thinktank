@@ -2048,6 +2048,65 @@ func TestClientErrorHandlingForCountTokens(t *testing.T) {
 	assert.Equal(t, ErrorTypeInvalidRequest, apiErr.Type, "Error type should match expected")
 }
 
+// mockModelInfoProvider implements model info retrieval for testing
+type mockModelInfoProvider struct {
+	getModelInfoFunc func(ctx context.Context, modelName string) (*modelInfo, error)
+}
+
+// getModelInfo retrieves model information using the provided mock function
+func (m *mockModelInfoProvider) getModelInfo(ctx context.Context, modelName string) (*modelInfo, error) {
+	return m.getModelInfoFunc(ctx, modelName)
+}
+
+// MockModelInfo creates a mock model info provider that returns a fixed model info for any model
+func MockModelInfo(inputTokenLimit, outputTokenLimit int32, errorToReturn error) *mockModelInfoProvider {
+	return &mockModelInfoProvider{
+		getModelInfoFunc: func(ctx context.Context, modelName string) (*modelInfo, error) {
+			if errorToReturn != nil {
+				return nil, errorToReturn
+			}
+			return &modelInfo{
+				inputTokenLimit:  inputTokenLimit,
+				outputTokenLimit: outputTokenLimit,
+			}, nil
+		},
+	}
+}
+
+// MockModelSpecificInfo creates a mock model info provider that returns different info for specific models
+func MockModelSpecificInfo(modelInfoMap map[string]*modelInfo, defaultInfo *modelInfo, errorToReturn error) *mockModelInfoProvider {
+	return &mockModelInfoProvider{
+		getModelInfoFunc: func(ctx context.Context, modelName string) (*modelInfo, error) {
+			if errorToReturn != nil {
+				return nil, errorToReturn
+			}
+
+			// Check if we have specific info for this model
+			if info, ok := modelInfoMap[modelName]; ok {
+				return info, nil
+			}
+
+			// Return default info if no specific info is found
+			return defaultInfo, nil
+		},
+	}
+}
+
+// MockModelInfoWithErrors creates a mock model info provider that returns errors for specific models
+func MockModelInfoWithErrors(errorModels map[string]error, defaultInfo *modelInfo) *mockModelInfoProvider {
+	return &mockModelInfoProvider{
+		getModelInfoFunc: func(ctx context.Context, modelName string) (*modelInfo, error) {
+			// Check if this model should return an error
+			if err, ok := errorModels[modelName]; ok {
+				return nil, err
+			}
+
+			// Return default info for non-error models
+			return defaultInfo, nil
+		},
+	}
+}
+
 // TestClientErrorHandlingForGetModelInfo tests that the client handles errors properly in GetModelInfo
 func TestClientErrorHandlingForGetModelInfo(t *testing.T) {
 	// GetModelInfo doesn't currently have error handling to test
@@ -2683,6 +2742,214 @@ func TestTokenCountingAcrossModels(t *testing.T) {
 			assert.Equal(t, int32(expectedCount), tokenCount.Total)
 		})
 	}
+}
+
+// TestModelInfoMocks tests the model info mocking functionality
+func TestModelInfoMocks(t *testing.T) {
+	// Define a context for testing
+	ctx := context.Background()
+
+	// Test fixed model info mock
+	t.Run("Fixed model info", func(t *testing.T) {
+		// Create a mock that returns the same model info for any model
+		fixedModelInfo := MockModelInfo(10000, 2000, nil)
+
+		// Test with different model names
+		modelNames := []string{"gpt-4", "gpt-3.5-turbo", "custom-model"}
+
+		for _, modelName := range modelNames {
+			info, err := fixedModelInfo.getModelInfo(ctx, modelName)
+			require.NoError(t, err)
+			assert.Equal(t, int32(10000), info.inputTokenLimit)
+			assert.Equal(t, int32(2000), info.outputTokenLimit)
+		}
+	})
+
+	// Test model-specific model info mock
+	t.Run("Model-specific info", func(t *testing.T) {
+		// Create a map of model-specific info
+		modelInfoMap := map[string]*modelInfo{
+			"gpt-4": {
+				inputTokenLimit:  8192,
+				outputTokenLimit: 2048,
+			},
+			"gpt-4-32k": {
+				inputTokenLimit:  32768,
+				outputTokenLimit: 4096,
+			},
+			"gpt-3.5-turbo": {
+				inputTokenLimit:  4096,
+				outputTokenLimit: 1024,
+			},
+		}
+
+		// Define default info for models not in the map
+		defaultInfo := &modelInfo{
+			inputTokenLimit:  4096, // Conservative default
+			outputTokenLimit: 1024, // Conservative default
+		}
+
+		// Create a mock that returns different info for specific models
+		modelSpecificInfo := MockModelSpecificInfo(modelInfoMap, defaultInfo, nil)
+
+		// Test with models that have specific info
+		for modelName, expectedInfo := range modelInfoMap {
+			info, err := modelSpecificInfo.getModelInfo(ctx, modelName)
+			require.NoError(t, err)
+			assert.Equal(t, expectedInfo.inputTokenLimit, info.inputTokenLimit)
+			assert.Equal(t, expectedInfo.outputTokenLimit, info.outputTokenLimit)
+		}
+
+		// Test with a model that doesn't have specific info (should return default)
+		info, err := modelSpecificInfo.getModelInfo(ctx, "unknown-model")
+		require.NoError(t, err)
+		assert.Equal(t, defaultInfo.inputTokenLimit, info.inputTokenLimit)
+		assert.Equal(t, defaultInfo.outputTokenLimit, info.outputTokenLimit)
+	})
+
+	// Test error handling in model info mock
+	t.Run("Error handling", func(t *testing.T) {
+		// Create a mock that always returns an error
+		errorMock := MockModelInfo(0, 0, &APIError{
+			Type:    ErrorTypeInvalidRequest,
+			Message: "Invalid model",
+		})
+
+		// Test that the error is returned
+		_, err := errorMock.getModelInfo(ctx, "any-model")
+		require.Error(t, err)
+		apiErr, ok := err.(*APIError)
+		require.True(t, ok)
+		assert.Equal(t, ErrorTypeInvalidRequest, apiErr.Type)
+		assert.Equal(t, "Invalid model", apiErr.Message)
+	})
+
+	// Test model-specific errors
+	t.Run("Model-specific errors", func(t *testing.T) {
+		// Create a map of models that should return errors
+		errorModels := map[string]error{
+			"invalid-model": &APIError{
+				Type:    ErrorTypeInvalidRequest,
+				Message: "Model not found",
+			},
+			"deprecated-model": &APIError{
+				Type:    ErrorTypeInvalidRequest,
+				Message: "Model is deprecated",
+			},
+		}
+
+		// Define default info for non-error models
+		defaultInfo := &modelInfo{
+			inputTokenLimit:  4096,
+			outputTokenLimit: 1024,
+		}
+
+		// Create a mock that returns errors for specific models
+		modelErrorMock := MockModelInfoWithErrors(errorModels, defaultInfo)
+
+		// Test models that should return errors
+		for modelName, expectedErr := range errorModels {
+			_, err := modelErrorMock.getModelInfo(ctx, modelName)
+			require.Error(t, err)
+			assert.Equal(t, expectedErr, err)
+		}
+
+		// Test a model that shouldn't return an error
+		info, err := modelErrorMock.getModelInfo(ctx, "gpt-4")
+		require.NoError(t, err)
+		assert.Equal(t, defaultInfo.inputTokenLimit, info.inputTokenLimit)
+		assert.Equal(t, defaultInfo.outputTokenLimit, info.outputTokenLimit)
+	})
+}
+
+// TestModelInfoIntegration tests using the model info mocks with the OpenAI client
+func TestModelInfoIntegration(t *testing.T) {
+	ctx := context.Background()
+
+	// Test client with fixed model info mock
+	t.Run("Client with fixed model info", func(t *testing.T) {
+		// Create a client with fixed model info
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: &mockTokenizer{},
+			modelName: "gpt-4",
+			modelLimits: map[string]*modelInfo{
+				"gpt-4": {
+					inputTokenLimit:  10000,
+					outputTokenLimit: 2000,
+				},
+			},
+		}
+
+		// Test GetModelInfo
+		modelInfo, err := client.GetModelInfo(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "gpt-4", modelInfo.Name)
+		assert.Equal(t, int32(10000), modelInfo.InputTokenLimit)
+		assert.Equal(t, int32(2000), modelInfo.OutputTokenLimit)
+	})
+
+	// Test client with model-specific info mock
+	t.Run("Client with model-specific info", func(t *testing.T) {
+		// Create a client with model-specific info
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: &mockTokenizer{},
+			modelName: "gpt-4",
+			modelLimits: map[string]*modelInfo{
+				"gpt-4": {
+					inputTokenLimit:  8192,
+					outputTokenLimit: 2048,
+				},
+				"gpt-4-32k": {
+					inputTokenLimit:  32768,
+					outputTokenLimit: 4096,
+				},
+				"gpt-3.5-turbo": {
+					inputTokenLimit:  4096,
+					outputTokenLimit: 1024,
+				},
+			},
+		}
+
+		// Test GetModelInfo with current model
+		modelInfo, err := client.GetModelInfo(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "gpt-4", modelInfo.Name)
+		assert.Equal(t, int32(8192), modelInfo.InputTokenLimit)
+		assert.Equal(t, int32(2048), modelInfo.OutputTokenLimit)
+
+		// Change model and test again
+		client.modelName = "gpt-4-32k"
+		modelInfo, err = client.GetModelInfo(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "gpt-4-32k", modelInfo.Name)
+		assert.Equal(t, int32(32768), modelInfo.InputTokenLimit)
+		assert.Equal(t, int32(4096), modelInfo.OutputTokenLimit)
+	})
+
+	// Test client with unknown model (should use default values)
+	t.Run("Client with unknown model", func(t *testing.T) {
+		// Create a client with an unknown model
+		client := &openaiClient{
+			api:       &mockOpenAIAPI{},
+			tokenizer: &mockTokenizer{},
+			modelName: "unknown-model",
+			modelLimits: map[string]*modelInfo{
+				"gpt-4": {
+					inputTokenLimit:  8192,
+					outputTokenLimit: 2048,
+				},
+			},
+		}
+
+		// Test GetModelInfo - should return conservative defaults
+		modelInfo, err := client.GetModelInfo(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, "unknown-model", modelInfo.Name)
+		assert.Equal(t, int32(4096), modelInfo.InputTokenLimit)  // Conservative default
+		assert.Equal(t, int32(2048), modelInfo.OutputTokenLimit) // Conservative default
+	})
 }
 
 // TestNewClientErrorHandling tests error handling in NewClient
