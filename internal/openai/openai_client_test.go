@@ -217,9 +217,126 @@ func TestOpenAIClientImplementsLLMClient(t *testing.T) {
 	})
 }
 
+// TestClientCreationWithDefaultConfiguration tests the creation of a client with default configuration
+func TestClientCreationWithDefaultConfiguration(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Set a valid API key for testing
+	validAPIKey := "sk-validApiKeyForTestingPurposes123456789012345"
+	err := os.Setenv("OPENAI_API_KEY", validAPIKey)
+	if err != nil {
+		t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+	}
+
+	// Test cases for different default models
+	testModels := []struct {
+		name          string
+		modelName     string
+		expectedModel string
+	}{
+		{
+			name:          "GPT-4 model",
+			modelName:     "gpt-4",
+			expectedModel: "gpt-4",
+		},
+		{
+			name:          "GPT-3.5 Turbo model",
+			modelName:     "gpt-3.5-turbo",
+			expectedModel: "gpt-3.5-turbo",
+		},
+		{
+			name:          "Custom model name",
+			modelName:     "custom-model",
+			expectedModel: "custom-model",
+		},
+	}
+
+	for _, tc := range testModels {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create client with default configuration (just model name)
+			client, err := NewClient(tc.modelName)
+
+			// Verify client was created successfully
+			require.NoError(t, err, "Creating client with default configuration should succeed")
+			require.NotNil(t, client, "Client should not be nil")
+
+			// Verify model name was set correctly
+			assert.Equal(t, tc.expectedModel, client.GetModelName(), "Client should have correct model name")
+
+			// Create a test context
+			ctx := context.Background()
+
+			// Replace the client's API with a mock to test functionality
+			realClient := client.(*openaiClient)
+
+			// Mock the API
+			mockAPI := &mockOpenAIAPI{
+				createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+					// Verify the model passed to the API is the same as expected
+					assert.Equal(t, tc.expectedModel, model, "Model should be passed correctly to API")
+
+					return &openai.ChatCompletion{
+						Choices: []openai.ChatCompletionChoice{
+							{
+								Message: openai.ChatCompletionMessage{
+									Content: "Default configuration test response",
+									Role:    "assistant",
+								},
+								FinishReason: "stop",
+							},
+						},
+						Usage: openai.CompletionUsage{
+							CompletionTokens: 5,
+						},
+					}, nil
+				},
+			}
+
+			// Replace the real API with our mock
+			realClient.api = mockAPI
+
+			// Mock the tokenizer too
+			mockTokenizer := &mockTokenizer{
+				countTokensFunc: func(text string, model string) (int, error) {
+					// Verify the model passed to the tokenizer is the same as expected
+					assert.Equal(t, tc.expectedModel, model, "Model should be passed correctly to tokenizer")
+					return 10, nil
+				},
+			}
+
+			// Replace the real tokenizer with our mock
+			realClient.tokenizer = mockTokenizer
+
+			// Test GenerateContent to verify API is working
+			result, err := client.GenerateContent(ctx, "Test prompt", nil)
+			require.NoError(t, err, "GenerateContent should succeed")
+			assert.Equal(t, "Default configuration test response", result.Content, "Content should match mock response")
+
+			// Test CountTokens to verify tokenizer is working
+			tokenCount, err := client.CountTokens(ctx, "Test prompt")
+			require.NoError(t, err, "CountTokens should succeed")
+			assert.Equal(t, int32(10), tokenCount.Total, "Token count should match mock response")
+
+			// Test GetModelInfo to verify model limits are set up
+			modelInfo, err := client.GetModelInfo(ctx)
+			require.NoError(t, err, "GetModelInfo should succeed")
+			assert.Equal(t, tc.expectedModel, modelInfo.Name, "Model name should be correct in model info")
+			assert.True(t, modelInfo.InputTokenLimit > 0, "Input token limit should be positive")
+			assert.True(t, modelInfo.OutputTokenLimit > 0, "Output token limit should be positive")
+		})
+	}
+}
+
 // TestNewClient tests the NewClient constructor function
 func TestNewClient(t *testing.T) {
-	t.Skip("Skipping test that relies on environment variables")
+	t.Skip("This test is now covered by TestClientCreationWithDefaultConfiguration")
 	// This test would check that NewClient correctly sets up the client
 	// It's skipped here since it would require setting up environment variables
 }

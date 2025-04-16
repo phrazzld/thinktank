@@ -27,7 +27,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
 
-- [ ] **T006:** Implement Test for Client Creation with Default Configuration (openai_client_test.go)
+- [x] **T006:** Implement Test for Client Creation with Default Configuration (openai_client_test.go)
     - **Action:** Write a unit test in `internal/openai/openai_client_test.go` to verify successful creation of an OpenAI client using default settings (e.g., default model, default parameters).
     - **Depends On:** [T001, T002, T003, T004, T005]
     - **AC Ref:** Plan Item 2
