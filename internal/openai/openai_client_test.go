@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/openai/openai-go"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1886,6 +1887,287 @@ func TestAPIKeyPermissionValidationLogic(t *testing.T) {
 			assert.Contains(t, apiErr.Suggestion, tc.suggestion, "Error should include helpful suggestion")
 		})
 	}
+}
+
+// TestClientErrorHandlingForGenerateContent tests error handling in GenerateContent
+func TestClientErrorHandlingForGenerateContent(t *testing.T) {
+	// Test cases for different error types with GenerateContent
+	testCases := []struct {
+		name              string
+		mockError         *APIError
+		expectedCategory  ErrorType
+		expectedErrPrefix string
+		expectedWrapping  bool // whether the error should be wrapped with "OpenAI API error:"
+	}{
+		{
+			name:              "Authentication error",
+			mockError:         MockErrorInvalidAPIKey,
+			expectedCategory:  ErrorTypeAuth,
+			expectedErrPrefix: "OpenAI API error: Authentication failed",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Rate limit error",
+			mockError:         MockErrorRateLimit,
+			expectedCategory:  ErrorTypeRateLimit,
+			expectedErrPrefix: "OpenAI API error: Request rate limit",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Invalid model error",
+			mockError:         MockErrorInvalidModel,
+			expectedCategory:  ErrorTypeInvalidRequest,
+			expectedErrPrefix: "OpenAI API error: Invalid request",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Invalid prompt error",
+			mockError:         MockErrorInvalidPrompt,
+			expectedCategory:  ErrorTypeInvalidRequest,
+			expectedErrPrefix: "OpenAI API error: Invalid request",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Model not found error",
+			mockError:         MockErrorModelNotFound,
+			expectedCategory:  ErrorTypeNotFound,
+			expectedErrPrefix: "OpenAI API error: The requested model",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Server error",
+			mockError:         MockErrorServerError,
+			expectedCategory:  ErrorTypeServer,
+			expectedErrPrefix: "OpenAI API error: OpenAI API server error",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Service unavailable error",
+			mockError:         MockErrorServiceUnavailable,
+			expectedCategory:  ErrorTypeServer,
+			expectedErrPrefix: "OpenAI API error: OpenAI API server error",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Network error",
+			mockError:         MockErrorNetwork,
+			expectedCategory:  ErrorTypeNetwork,
+			expectedErrPrefix: "OpenAI API error: Network error",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Timeout error",
+			mockError:         MockErrorTimeout,
+			expectedCategory:  ErrorTypeNetwork,
+			expectedErrPrefix: "OpenAI API error: Network error",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Input limit exceeded error",
+			mockError:         MockErrorInputLimit,
+			expectedCategory:  ErrorTypeInputLimit,
+			expectedErrPrefix: "OpenAI API error: Input token limit exceeded",
+			expectedWrapping:  true,
+		},
+		{
+			name:              "Content filtered error",
+			mockError:         MockErrorContentFiltered,
+			expectedCategory:  ErrorTypeContentFiltered,
+			expectedErrPrefix: "OpenAI API error: Content was filtered",
+			expectedWrapping:  true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mock API that returns the specific error
+			mockAPI := mockAPIWithError(tc.mockError)
+
+			// Create client with the mock API
+			client := &openaiClient{
+				api:       mockAPI,
+				tokenizer: &mockTokenizer{},
+				modelName: "gpt-4",
+			}
+
+			// Call GenerateContent which should return the error
+			_, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+			// Verify error handling
+			require.Error(t, err, "Expected an error for %s scenario", tc.name)
+
+			if tc.expectedWrapping {
+				assert.Contains(t, err.Error(), tc.expectedErrPrefix, "Error should contain expected prefix")
+			} else {
+				assert.Equal(t, tc.mockError.Error(), err.Error(), "Error should be passed through without wrapping")
+			}
+
+			// Unwrap the error and verify it's of the correct type
+			unwrapped := errors.Unwrap(err)
+			apiErr, ok := unwrapped.(*APIError)
+			require.True(t, ok, "Unwrapped error should be an *APIError")
+			assert.Equal(t, tc.expectedCategory, apiErr.Type, "Error category should match expected")
+			assert.NotEmpty(t, apiErr.Suggestion, "Error should include a suggestion")
+			assert.NotEmpty(t, apiErr.Details, "Error should include details")
+
+			// Verify that the error implements llm.CategorizedError
+			catErr, ok := llm.IsCategorizedError(apiErr)
+			require.True(t, ok, "APIError should implement llm.CategorizedError")
+			assert.Equal(t, apiErr.Category(), catErr.Category(), "CategorizedError category should match expected")
+		})
+	}
+}
+
+// TestClientErrorHandlingForCountTokens tests error handling in CountTokens
+func TestClientErrorHandlingForCountTokens(t *testing.T) {
+	// Create a mock tokenizer that returns an error
+	mockTokenizerWithError := &mockTokenizer{
+		countTokensFunc: func(text string, model string) (int, error) {
+			return 0, MockErrorInvalidRequest
+		},
+	}
+
+	// Create client with the mock tokenizer
+	client := &openaiClient{
+		tokenizer: mockTokenizerWithError,
+		modelName: "gpt-4",
+		api:       &mockOpenAIAPI{},
+	}
+
+	// Call CountTokens which should return the error
+	_, err := client.CountTokens(context.Background(), "Test prompt")
+
+	// Verify error handling
+	require.Error(t, err, "Expected an error from CountTokens")
+	assert.Contains(t, err.Error(), "token counting error", "Error should contain expected prefix")
+
+	// Unwrap the error and verify it's of the correct type
+	unwrapped := errors.Unwrap(err)
+	apiErr, ok := unwrapped.(*APIError)
+	require.True(t, ok, "Unwrapped error should be an *APIError")
+	assert.Equal(t, ErrorTypeInvalidRequest, apiErr.Type, "Error type should match expected")
+}
+
+// TestClientErrorHandlingForGetModelInfo tests that the client handles errors properly in GetModelInfo
+func TestClientErrorHandlingForGetModelInfo(t *testing.T) {
+	// GetModelInfo doesn't currently have error handling to test
+	// This test is a placeholder for future implementations
+	// If error handling is added to GetModelInfo in the future, this test should be expanded
+
+	// Currently GetModelInfo always succeeds, even with unknown models
+	// It falls back to conservative defaults
+	client := &openaiClient{
+		modelName: "non-existent-model",
+		api:       &mockOpenAIAPI{},
+		tokenizer: &mockTokenizer{},
+	}
+
+	// Call GetModelInfo which should not return an error
+	modelInfo, err := client.GetModelInfo(context.Background())
+
+	// Verify that it didn't error and provided fallback values
+	require.NoError(t, err, "GetModelInfo should not return an error")
+	assert.Equal(t, "non-existent-model", modelInfo.Name, "Model name should match input")
+	assert.True(t, modelInfo.InputTokenLimit > 0, "InputTokenLimit should be positive")
+	assert.True(t, modelInfo.OutputTokenLimit > 0, "OutputTokenLimit should be positive")
+}
+
+// TestErrorFormatting tests the FormatAPIError function
+func TestErrorFormatting(t *testing.T) {
+	// Test cases for error formatting
+	testCases := []struct {
+		name           string
+		inputError     error
+		statusCode     int
+		expectedType   ErrorType
+		expectedPrefix string
+	}{
+		{
+			name:           "Format authentication error",
+			inputError:     errors.New("invalid_api_key"),
+			statusCode:     401,
+			expectedType:   ErrorTypeAuth,
+			expectedPrefix: "Authentication failed",
+		},
+		{
+			name:           "Format rate limit error",
+			inputError:     errors.New("rate limit exceeded"),
+			statusCode:     429,
+			expectedType:   ErrorTypeRateLimit,
+			expectedPrefix: "Request rate limit",
+		},
+		{
+			name:           "Format invalid request error",
+			inputError:     errors.New("invalid request parameter"),
+			statusCode:     400,
+			expectedType:   ErrorTypeInvalidRequest,
+			expectedPrefix: "Invalid request",
+		},
+		{
+			name:           "Format not found error",
+			inputError:     errors.New("model not found"),
+			statusCode:     404,
+			expectedType:   ErrorTypeNotFound,
+			expectedPrefix: "The requested model",
+		},
+		{
+			name:           "Format server error",
+			inputError:     errors.New("internal server error"),
+			statusCode:     500,
+			expectedType:   ErrorTypeServer,
+			expectedPrefix: "OpenAI API server error",
+		},
+		{
+			name:           "Format network error based on message",
+			inputError:     errors.New("network connection failed"),
+			statusCode:     0,
+			expectedType:   ErrorTypeNetwork,
+			expectedPrefix: "Network error",
+		},
+		{
+			name:           "Format content filter error based on message",
+			inputError:     errors.New("content filtered due to safety settings"),
+			statusCode:     0,
+			expectedType:   ErrorTypeContentFiltered,
+			expectedPrefix: "Content was filtered",
+		},
+		{
+			name:           "Format input limit error based on message",
+			inputError:     errors.New("token limit exceeded"),
+			statusCode:     0,
+			expectedType:   ErrorTypeInputLimit,
+			expectedPrefix: "Input token limit exceeded",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Format the error using FormatAPIError
+			formattedErr := FormatAPIError(tc.inputError, tc.statusCode)
+
+			// Verify the formatted error
+			require.NotNil(t, formattedErr, "Formatted error should not be nil")
+			assert.Equal(t, tc.expectedType, formattedErr.Type, "Error type should match expected")
+			assert.Contains(t, formattedErr.Message, tc.expectedPrefix, "Error message should contain expected prefix")
+			assert.NotEmpty(t, formattedErr.Suggestion, "Error should include a suggestion")
+			assert.Equal(t, tc.statusCode, formattedErr.StatusCode, "Error status code should match expected")
+			assert.Equal(t, tc.inputError, formattedErr.Original, "Original error should be preserved")
+		})
+	}
+
+	// Test that FormatAPIError returns nil when given nil
+	assert.Nil(t, FormatAPIError(nil, 0), "FormatAPIError should return nil when given nil")
+
+	// Test that FormatAPIError preserves APIError instances
+	originalAPIErr := &APIError{
+		Type:       ErrorTypeAuth,
+		Message:    "Custom API error",
+		StatusCode: 401,
+		Suggestion: "Custom suggestion",
+		Details:    "Custom details",
+	}
+	formattedErr := FormatAPIError(originalAPIErr, 500) // Different status code to verify it's ignored
+	assert.Equal(t, originalAPIErr, formattedErr, "FormatAPIError should preserve APIError instances")
 }
 
 // TestNewClientErrorHandling tests error handling in NewClient

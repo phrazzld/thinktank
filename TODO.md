@@ -52,7 +52,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 2
 
-- [ ] **T011:** Implement Test for Client Error Handling (API Errors) (openai_client_test.go)
+- [x] **T011:** Implement Test for Client Error Handling (API Errors) (openai_client_test.go)
     - **Action:** Write unit tests in `internal/openai/openai_client_test.go` using the error mocks (T010) to verify that the client correctly handles different API error scenarios returned by `GenerateContent` and other methods, propagating or converting errors appropriately.
     - **Depends On:** [T006, T007, T010]
     - **AC Ref:** Plan Item 2
