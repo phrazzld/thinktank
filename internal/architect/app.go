@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/phrazzld/architect/internal/architect/interfaces"
@@ -149,10 +150,12 @@ func Execute(
 	// Optional registry manager access function for token counting
 	// This allows us to use registry information without a direct import
 	// which would create circular dependencies
+	registryMutex.Lock()
 	registryManagerGetter = func() interface{} {
 		// This function will be set by main.go after initializing the registry
 		return nil
 	}
+	registryMutex.Unlock()
 
 	// Create a reference client for token counting in context gathering
 	referenceClientLLM, err := apiService.InitLLMClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
@@ -283,10 +286,16 @@ type Orchestrator interface {
 
 // registryManagerGetter is a function that returns the registry manager.
 // This is set by main.go after initializing the registry to avoid circular dependencies.
-var registryManagerGetter func() interface{}
+var (
+	registryManagerGetter func() interface{}
+	registryMutex         sync.Mutex
+)
 
 // GetGlobalRegistryManager returns the global registry manager if available
 func GetGlobalRegistryManager() interface{} {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
 	if registryManagerGetter != nil {
 		return registryManagerGetter()
 	}
@@ -295,6 +304,9 @@ func GetGlobalRegistryManager() interface{} {
 
 // SetRegistryManagerGetter sets the function that returns the registry manager
 func SetRegistryManagerGetter(getter func() interface{}) {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
 	registryManagerGetter = getter
 }
 
