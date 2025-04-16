@@ -541,6 +541,190 @@ func TestClientCreationWithCustomConfiguration(t *testing.T) {
 	}
 }
 
+// TestGenerateContentWithValidParameters tests GenerateContent with various valid input parameters and verifies the response
+func TestGenerateContentWithValidParameters(t *testing.T) {
+	// Test cases for various valid input scenarios
+	testCases := []struct {
+		name             string
+		prompt           string
+		params           map[string]interface{}
+		modelName        string
+		mockResponse     string
+		mockFinishReason string
+		mockTokenCount   int
+		expectedContent  string
+	}{
+		{
+			name:             "Simple prompt, no parameters",
+			prompt:           "Tell me a joke",
+			params:           nil,
+			modelName:        "gpt-4",
+			mockResponse:     "Why did the chicken cross the road? To get to the other side!",
+			mockFinishReason: "stop",
+			mockTokenCount:   15,
+			expectedContent:  "Why did the chicken cross the road? To get to the other side!",
+		},
+		{
+			name:   "Prompt with temperature parameter",
+			prompt: "Write a creative story",
+			params: map[string]interface{}{
+				"temperature": 0.9, // Higher temperature for more creativity
+			},
+			modelName:        "gpt-4",
+			mockResponse:     "Once upon a time in a galaxy far, far away...",
+			mockFinishReason: "stop",
+			mockTokenCount:   12,
+			expectedContent:  "Once upon a time in a galaxy far, far away...",
+		},
+		{
+			name:   "Prompt with multiple parameters",
+			prompt: "Generate a product description",
+			params: map[string]interface{}{
+				"temperature":      0.7,
+				"top_p":            0.95,
+				"max_tokens":       100,
+				"presence_penalty": 0.1,
+			},
+			modelName:        "gpt-3.5-turbo",
+			mockResponse:     "Introducing our revolutionary new gadget that will transform your life...",
+			mockFinishReason: "stop",
+			mockTokenCount:   16,
+			expectedContent:  "Introducing our revolutionary new gadget that will transform your life...",
+		},
+		{
+			name:   "Truncated response",
+			prompt: "Write a very long essay",
+			params: map[string]interface{}{
+				"max_tokens": 10, // Deliberately small to trigger truncation
+			},
+			modelName:        "gpt-4",
+			mockResponse:     "This essay will explore the complex interplay between...",
+			mockFinishReason: "length",
+			mockTokenCount:   10,
+			expectedContent:  "This essay will explore the complex interplay between...",
+		},
+		{
+			name:             "Technical code generation",
+			prompt:           "Write a function to calculate Fibonacci numbers in Python",
+			params:           nil,
+			modelName:        "gpt-4",
+			mockResponse:     "```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```",
+			mockFinishReason: "stop",
+			mockTokenCount:   35,
+			expectedContent:  "```python\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n```",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create mocks for the API and tokenizer
+			mockAPI := &mockOpenAIAPI{
+				createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+					// Verify we received the correct model
+					assert.Equal(t, tc.modelName, params.Model, "Model should match expected value")
+
+					// Verify the prompt is correctly passed as a message
+					require.NotEmpty(t, params.Messages, "Messages should not be empty")
+
+					// Return a simulated API response
+					return &openai.ChatCompletion{
+						Choices: []openai.ChatCompletionChoice{
+							{
+								Message: openai.ChatCompletionMessage{
+									Content: tc.mockResponse,
+									Role:    "assistant",
+								},
+								FinishReason: tc.mockFinishReason,
+							},
+						},
+						Usage: openai.CompletionUsage{
+							CompletionTokens: int64(tc.mockTokenCount),
+						},
+					}, nil
+				},
+			}
+
+			mockTokenizer := &mockTokenizer{
+				countTokensFunc: func(text string, model string) (int, error) {
+					return len(text) / 4, nil // Simple approximation for testing
+				},
+			}
+
+			// Create a client with mocks
+			client := &openaiClient{
+				api:       mockAPI,
+				tokenizer: mockTokenizer,
+				modelName: tc.modelName,
+				modelLimits: map[string]*modelInfo{
+					tc.modelName: {
+						inputTokenLimit:  8192,
+						outputTokenLimit: 4096,
+					},
+				},
+			}
+
+			// Call GenerateContent with the test case parameters
+			ctx := context.Background()
+			result, err := client.GenerateContent(ctx, tc.prompt, tc.params)
+
+			// Verify the result
+			require.NoError(t, err, "GenerateContent should succeed")
+			assert.Equal(t, tc.expectedContent, result.Content, "Content should match expected value")
+			assert.Equal(t, tc.mockFinishReason, result.FinishReason, "FinishReason should match expected value")
+			assert.Equal(t, int32(tc.mockTokenCount), result.TokenCount, "TokenCount should match expected value")
+
+			// Check if response was truncated
+			assert.Equal(t, tc.mockFinishReason == "length", result.Truncated, "Truncated flag should be set correctly")
+		})
+	}
+
+	// Test with conversation history
+	t.Run("Conversation with history", func(t *testing.T) {
+		// History is currently not directly passed to GenerateContent,
+		// but we can test how the client handles multiple messages if needed
+		// by examining the captured messages in a future test
+
+		prompt := "What is the capital of France?"
+		expectedResponse := "The capital of France is Paris."
+
+		mockAPI := &mockOpenAIAPI{
+			createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+				// Verify the message content
+				require.NotEmpty(t, params.Messages, "Messages should not be empty")
+
+				return &openai.ChatCompletion{
+					Choices: []openai.ChatCompletionChoice{
+						{
+							Message: openai.ChatCompletionMessage{
+								Content: expectedResponse,
+								Role:    "assistant",
+							},
+							FinishReason: "stop",
+						},
+					},
+					Usage: openai.CompletionUsage{
+						CompletionTokens: int64(8),
+					},
+				}, nil
+			},
+		}
+
+		client := &openaiClient{
+			api:       mockAPI,
+			tokenizer: &mockTokenizer{},
+			modelName: "gpt-4",
+		}
+
+		// Call GenerateContent
+		ctx := context.Background()
+		result, err := client.GenerateContent(ctx, prompt, nil)
+
+		// Verify the result
+		require.NoError(t, err, "GenerateContent should succeed")
+		assert.Equal(t, expectedResponse, result.Content, "Content should match expected value")
+	})
+}
+
 // TestNewClient tests the NewClient constructor function
 func TestNewClient(t *testing.T) {
 	t.Skip("This test is now covered by TestClientCreationWithDefaultConfiguration")

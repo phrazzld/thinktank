@@ -37,7 +37,7 @@
     - **Depends On:** [T001, T002, T003, T004, T005]
     - **AC Ref:** Plan Item 2
 
-- [ ] **T008:** Implement Test for `GenerateContent` with Valid Parameters (openai_client_test.go)
+- [x] **T008:** Implement Test for `GenerateContent` with Valid Parameters (openai_client_test.go)
     - **Action:** Write a unit test in `internal/openai/openai_client_test.go` that calls `GenerateContent` with valid inputs and parameters, mocking the API response to return a successful completion. Verify the expected content is returned.
     - **Depends On:** [T006, T007]
     - **AC Ref:** Plan Item 2
