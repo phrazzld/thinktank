@@ -27,7 +27,7 @@
     - **Depends On:** T004
     - **AC Ref:** AC3, AC4, AC6, AC9
 
-- [ ] **T006:** Refactor OpenAI Implementation for Registry
+- [x] **T006:** Refactor OpenAI Implementation for Registry
     - **Action:** Create `internal/providers/openai/provider.go`. Implement the `providers.Provider` interface. Ensure the existing `openai.NewClient` (or equivalent) returns the `llm.LLMClient` interface. Modify `openaiClient.GenerateContent` to accept and utilize a `map[string]interface{}` for parameters based on `ModelDefinition`. Update `openaiClient.GetModelInfo` to use configuration data (token limits) from models.yaml. Remove any OpenAI-specific provider detection logic from `internal/architect/api.go` or other central places.
     - **Depends On:** T004
     - **AC Ref:** AC3, AC4, AC6, AC9
