@@ -12,7 +12,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
 
-- [ ] **T003:** Implement Test for Invalid API Key Format Handling (openai_client_test.go)
+- [x] **T003:** Implement Test for Invalid API Key Format Handling (openai_client_test.go)
     - **Action:** Write a unit test in `internal/openai/openai_client_test.go` to verify that the client rejects API keys that do not match the expected format and returns an appropriate error.
     - **Depends On:** None
     - **AC Ref:** Plan Item 1

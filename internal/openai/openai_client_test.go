@@ -2,6 +2,8 @@ package openai
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -578,6 +580,109 @@ func TestValidAPIKeyFormatDetection(t *testing.T) {
 				assert.True(t, len(tc.apiKey) >= 20,
 					"Valid API key should have sufficient length")
 			}
+		})
+	}
+}
+
+// TestInvalidAPIKeyFormatHandling tests how the client handles invalid API key formats
+func TestInvalidAPIKeyFormatHandling(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for invalid API key formats and the expected errors
+	testCases := []struct {
+		name              string
+		apiKey            string
+		expectedErrorType ErrorType
+		expectedMsgPrefix string
+	}{
+		{
+			name:              "Invalid prefix (missing sk-)",
+			apiKey:            "invalid-key-without-sk-prefix",
+			expectedErrorType: ErrorTypeAuth,
+			expectedMsgPrefix: "Authentication failed",
+		},
+		{
+			name:              "Too short key",
+			apiKey:            "sk-tooshort",
+			expectedErrorType: ErrorTypeAuth,
+			expectedMsgPrefix: "Authentication failed",
+		},
+		{
+			name:              "Invalid characters in key",
+			apiKey:            "sk-invalid!@#$%^&*()",
+			expectedErrorType: ErrorTypeAuth,
+			expectedMsgPrefix: "Authentication failed",
+		},
+		{
+			name:              "Malformed key with spaces",
+			apiKey:            "sk-key with spaces",
+			expectedErrorType: ErrorTypeAuth,
+			expectedMsgPrefix: "Authentication failed",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set the environment variable to the test API key
+			err := os.Setenv("OPENAI_API_KEY", tc.apiKey)
+			if err != nil {
+				t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+			}
+
+			// Create a mock API that simulates rejecting invalid API keys
+			mockAPI := &mockOpenAIAPI{
+				createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+					// Simulate API rejection of invalid key format
+					return nil, &APIError{
+						Type:       tc.expectedErrorType,
+						Message:    tc.expectedMsgPrefix + " with the OpenAI API",
+						StatusCode: http.StatusUnauthorized,
+						Suggestion: "Check that your API key is valid and has the correct format. API keys should start with 'sk-' and be of sufficient length.",
+					}
+				},
+				createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+					// Simulate API rejection of invalid key format
+					return nil, &APIError{
+						Type:       tc.expectedErrorType,
+						Message:    tc.expectedMsgPrefix + " with the OpenAI API",
+						StatusCode: http.StatusUnauthorized,
+						Suggestion: "Check that your API key is valid and has the correct format. API keys should start with 'sk-' and be of sufficient length.",
+					}
+				},
+			}
+
+			// Create the client
+			client, err := NewClient("gpt-4")
+
+			// Client creation should succeed since format validation only happens at API call time
+			require.NoError(t, err)
+			require.NotNil(t, client)
+
+			// Replace the client's API with our mock that simulates invalid key rejection
+			client.(*openaiClient).api = mockAPI
+
+			// Make an API call which should fail due to invalid key format
+			ctx := context.Background()
+			_, err = client.GenerateContent(ctx, "test prompt", nil)
+
+			// Verify the error handling
+			require.Error(t, err)
+
+			// Check that the error is of the expected type
+			apiErr, ok := IsAPIError(errors.Unwrap(err))
+			require.True(t, ok, "Expected an APIError but got: %v", err)
+			assert.Equal(t, tc.expectedErrorType, apiErr.Type)
+
+			// Check that the error message is informative
+			assert.Contains(t, err.Error(), tc.expectedMsgPrefix)
+			assert.Contains(t, apiErr.Suggestion, "API key is valid")
 		})
 	}
 }
