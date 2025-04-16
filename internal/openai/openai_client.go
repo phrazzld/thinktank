@@ -119,6 +119,10 @@ func getEncodingForModel(model string) string {
 func NewClient(modelName string) (llm.LLMClient, error) {
 	// Get API key from environment
 	apiKey := os.Getenv("OPENAI_API_KEY")
+
+	// Trim whitespace from API key
+	apiKey = strings.TrimSpace(apiKey)
+
 	if apiKey == "" {
 		return nil, errors.New("OPENAI_API_KEY environment variable not set")
 	}

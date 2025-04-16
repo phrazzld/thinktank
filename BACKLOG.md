@@ -1,6 +1,13 @@
 # backlog
 
-* support openai as a provider using the openai/openai-go package
+* increase test coverage for OpenAI provider integration to meet CI requirements (priority: P0)
+  * OpenAI client (internal/openai): Improve from 45.4% to >70% coverage
+  * OpenAI provider (internal/providers/openai): Improve from 21.2% to >70% coverage
+  * Parameter handling: Add tests for all parameter combinations and validation
+  * Integration tests: Add comprehensive tests for provider selection and client instantiation
+  * Fix API key validation handling: Test environment variables and error scenarios
+  * Registry tests: Improve coverage for registry initialization and model loading
+
 * add support for grounding with gemini models
 * support openrouter as a provider
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.

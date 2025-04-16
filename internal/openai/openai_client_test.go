@@ -437,6 +437,77 @@ func TestModelEncodingSelection(t *testing.T) {
 	}
 }
 
+// TestEmptyAPIKeyHandling specifically tests how the client handles empty API keys
+func TestEmptyAPIKeyHandling(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for empty API key scenarios
+	testCases := []struct {
+		name            string
+		envValue        string
+		expectError     bool
+		expectedErrText string
+	}{
+		{
+			name:            "Unset API key",
+			envValue:        "",
+			expectError:     true,
+			expectedErrText: "OPENAI_API_KEY environment variable not set",
+		},
+		{
+			name:            "Empty string API key",
+			envValue:        "",
+			expectError:     true,
+			expectedErrText: "OPENAI_API_KEY environment variable not set",
+		},
+		{
+			name:            "Whitespace-only API key",
+			envValue:        "   ",
+			expectError:     true,
+			expectedErrText: "OPENAI_API_KEY environment variable not set",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clear environment variable for "Unset API key" case
+			if tc.name == "Unset API key" {
+				err := os.Unsetenv("OPENAI_API_KEY")
+				if err != nil {
+					t.Fatalf("Failed to unset OPENAI_API_KEY: %v", err)
+				}
+			} else {
+				// Set API key to test value
+				err := os.Setenv("OPENAI_API_KEY", tc.envValue)
+				if err != nil {
+					t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+				}
+			}
+
+			// Attempt to create client with empty/invalid API key
+			client, err := NewClient("gpt-4")
+
+			// Verify expectations
+			if tc.expectError {
+				assert.Error(t, err, "Expected an error when API key is %s", tc.name)
+				assert.Nil(t, client, "Expected nil client when API key is %s", tc.name)
+				assert.Contains(t, err.Error(), tc.expectedErrText,
+					"Error message should be specific and informative about the API key issue")
+			} else {
+				assert.NoError(t, err)
+				assert.NotNil(t, client)
+			}
+		})
+	}
+}
+
 // TestNewClientErrorHandling tests error handling in NewClient
 func TestNewClientErrorHandling(t *testing.T) {
 	// Save current env var if it exists
