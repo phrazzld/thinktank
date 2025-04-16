@@ -22,7 +22,7 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 1
 
-- [ ] **T005:** Implement Test for Mocked API Key Permission/Validation Logic (openai_client_test.go)
+- [x] **T005:** Implement Test for Mocked API Key Permission/Validation Logic (openai_client_test.go)
     - **Action:** Write unit tests in `internal/openai/openai_client_test.go` simulating scenarios where an API key is syntactically valid but lacks permissions or fails validation with the (mocked) API. Ensure appropriate errors are handled.
     - **Depends On:** None
     - **AC Ref:** Plan Item 1

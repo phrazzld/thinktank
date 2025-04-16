@@ -751,6 +751,126 @@ func TestAPIKeyEnvironmentVariableFallback(t *testing.T) {
 	}
 }
 
+// TestAPIKeyPermissionValidationLogic tests how the client handles API keys that are syntactically
+// valid but fail for permission or validation reasons when used with the API
+func TestAPIKeyPermissionValidationLogic(t *testing.T) {
+	// Save current env var if it exists
+	originalAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		err := os.Setenv("OPENAI_API_KEY", originalAPIKey)
+		if err != nil {
+			t.Logf("Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for different API key permission/validation failures
+	testCases := []struct {
+		name              string
+		apiKey            string
+		expectedErrorType ErrorType
+		statusCode        int
+		errorMessage      string
+		suggestion        string
+		scenario          string
+	}{
+		{
+			name:              "Insufficient permissions",
+			apiKey:            "sk-validformat123456789012345678901234",
+			expectedErrorType: ErrorTypeAuth,
+			statusCode:        http.StatusForbidden,
+			errorMessage:      "Authentication failed with the OpenAI API",
+			suggestion:        "Check that your API key is valid and has not expired",
+			scenario:          "API key is syntactically valid but lacks required permissions",
+		},
+		{
+			name:              "Revoked API key",
+			apiKey:            "sk-validformat123456789012345678901234",
+			expectedErrorType: ErrorTypeAuth,
+			statusCode:        http.StatusUnauthorized,
+			errorMessage:      "Authentication failed with the OpenAI API",
+			suggestion:        "Check that your API key is valid and has not expired",
+			scenario:          "API key has been revoked or disabled",
+		},
+		{
+			name:              "Rate limit exceeded",
+			apiKey:            "sk-validformat123456789012345678901234",
+			expectedErrorType: ErrorTypeRateLimit,
+			statusCode:        http.StatusTooManyRequests,
+			errorMessage:      "Request rate limit or quota exceeded on the OpenAI API",
+			suggestion:        "Wait and try again later",
+			scenario:          "API key has reached its rate limit",
+		},
+		{
+			name:              "Insufficient quota",
+			apiKey:            "sk-validformat123456789012345678901234",
+			expectedErrorType: ErrorTypeRateLimit,
+			statusCode:        http.StatusTooManyRequests,
+			errorMessage:      "Request rate limit or quota exceeded on the OpenAI API",
+			suggestion:        "upgrade your API usage tier",
+			scenario:          "Account has insufficient credits",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set the API key for this test case
+			err := os.Setenv("OPENAI_API_KEY", tc.apiKey)
+			if err != nil {
+				t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
+			}
+
+			// Create a mock API that simulates the specified permission/validation failure
+			mockAPI := &mockOpenAIAPI{
+				createChatCompletionFunc: func(ctx context.Context, messages []openai.ChatCompletionMessageParamUnion, model string) (*openai.ChatCompletion, error) {
+					// Return an error simulating the specific validation failure
+					return nil, &APIError{
+						Type:       tc.expectedErrorType,
+						Message:    tc.errorMessage,
+						StatusCode: tc.statusCode,
+						Suggestion: tc.suggestion,
+						Details:    "Mock API validation failure: " + tc.scenario,
+					}
+				},
+				createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+					// Return an error simulating the specific validation failure
+					return nil, &APIError{
+						Type:       tc.expectedErrorType,
+						Message:    tc.errorMessage,
+						StatusCode: tc.statusCode,
+						Suggestion: tc.suggestion,
+						Details:    "Mock API validation failure: " + tc.scenario,
+					}
+				},
+			}
+
+			// Create the client - this should succeed since the key is syntactically valid
+			client, err := NewClient("gpt-4")
+			require.NoError(t, err, "Client creation should succeed with syntactically valid key")
+			require.NotNil(t, client, "Client should not be nil")
+
+			// Replace the client's API with our mock
+			client.(*openaiClient).api = mockAPI
+
+			// Make an API call that should fail due to the mocked permission/validation issue
+			ctx := context.Background()
+			_, err = client.GenerateContent(ctx, "test prompt", nil)
+
+			// Verify the error handling
+			require.Error(t, err, "API call should return an error for %s", tc.scenario)
+
+			// Check that the error contains the expected information
+			assert.Contains(t, err.Error(), tc.errorMessage, "Error message should include the API error message")
+
+			// Check that the error is of the expected type
+			apiErr, ok := IsAPIError(errors.Unwrap(err))
+			require.True(t, ok, "Expected an APIError but got: %v", err)
+			assert.Equal(t, tc.expectedErrorType, apiErr.Type, "Error should be of type %v", tc.expectedErrorType)
+			assert.Equal(t, tc.statusCode, apiErr.StatusCode, "Error should have status code %d", tc.statusCode)
+			assert.Contains(t, apiErr.Suggestion, tc.suggestion, "Error should include helpful suggestion")
+		})
+	}
+}
+
 // TestNewClientErrorHandling tests error handling in NewClient
 func TestNewClientErrorHandling(t *testing.T) {
 	// Save current env var if it exists
