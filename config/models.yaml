@@ -1,0 +1,177 @@
+# Architect Models Configuration
+#
+# This file defines the LLM providers and models available to the architect tool.
+# It should be placed at ~/.config/architect/models.yaml
+#
+# You can customize this file to:
+# - Add new models as they become available
+# - Adjust token limits to match model updates
+# - Configure default parameters for each model
+# - Add custom API endpoints (for self-hosted models or proxies)
+
+# API Key Sources
+# --------------
+# Maps provider names to environment variable names containing API keys
+api_key_sources:
+  openai: "OPENAI_API_KEY"
+  gemini: "GEMINI_API_KEY"
+
+# Providers
+# ---------
+# Defines available LLM service providers
+providers:
+  - name: openai
+    # Uncomment to use a custom API endpoint:
+    # base_url: "https://your-openai-proxy.example.com/v1"
+
+  - name: gemini
+    # Uncomment to use a custom API endpoint:
+    # base_url: "https://your-gemini-proxy.example.com/v1"
+
+# Models
+# ------
+# Defines available LLM models with their capabilities and parameters
+models:
+  # OpenAI Models
+  # -------------
+  - name: gpt-4-turbo
+    provider: openai
+    api_model_id: gpt-4-turbo-2024-04-09
+    context_window: 128000
+    max_output_tokens: 4096
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 1.0
+      frequency_penalty:
+        type: float
+        default: 0.0
+      presence_penalty:
+        type: float
+        default: 0.0
+
+  - name: gpt-4o
+    provider: openai
+    api_model_id: gpt-4o
+    context_window: 128000
+    max_output_tokens: 4096
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 1.0
+      frequency_penalty:
+        type: float
+        default: 0.0
+      presence_penalty:
+        type: float
+        default: 0.0
+
+  - name: gpt-4
+    provider: openai
+    api_model_id: gpt-4
+    context_window: 8192
+    max_output_tokens: 2048
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 1.0
+      frequency_penalty:
+        type: float
+        default: 0.0
+      presence_penalty:
+        type: float
+        default: 0.0
+
+  - name: gpt-3.5-turbo
+    provider: openai
+    api_model_id: gpt-3.5-turbo
+    context_window: 16385
+    max_output_tokens: 4096
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 1.0
+      frequency_penalty:
+        type: float
+        default: 0.0
+      presence_penalty:
+        type: float
+        default: 0.0
+
+  # Gemini Models
+  # -------------
+  - name: gemini-1.5-pro
+    provider: gemini
+    api_model_id: gemini-1.5-pro
+    context_window: 1000000  # 1M tokens
+    max_output_tokens: 8192
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+      top_k:
+        type: int
+        default: 40
+
+  - name: gemini-1.5-flash
+    provider: gemini
+    api_model_id: gemini-1.5-flash
+    context_window: 1000000  # 1M tokens
+    max_output_tokens: 8192
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+      top_k:
+        type: int
+        default: 40
+
+  - name: gemini-1.0-pro
+    provider: gemini
+    api_model_id: gemini-1.0-pro
+    context_window: 32768
+    max_output_tokens: 8192
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+      top_k:
+        type: int
+        default: 40
+
+# Installation Instructions
+# ------------------------
+# To install this configuration file:
+#
+# 1. Create the configuration directory:
+#    mkdir -p ~/.config/architect
+#
+# 2. Copy this file to the configuration directory:
+#    cp config/models.yaml ~/.config/architect/models.yaml
+#
+# 3. Set your API keys as environment variables:
+#    export OPENAI_API_KEY="your-openai-api-key"
+#    export GEMINI_API_KEY="your-gemini-api-key"
+#
+# 4. (Optional) Add the exports to your shell profile for persistence

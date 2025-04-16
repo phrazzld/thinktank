@@ -47,7 +47,7 @@
     - **Depends On:** T001, T007
     - **AC Ref:** AC5
 
-- [ ] **T010:** Create Default `models.yaml` File
+- [x] **T010:** Create Default `models.yaml` File
     - **Action:** Create a well-structured default `models.yaml` file for the `~/.config/architect/` directory. Include common Gemini models (e.g., `gemini-1.5-pro`) and OpenAI models (e.g., `gpt-4-turbo`, `gpt-3.5-turbo`, `o3-mini`). Populate fields like `provider`, `api_model_id`, `context_window`, `max_output_tokens`, and define common `parameters` (like `temperature`) with types and defaults. Add comments explaining the structure and how to customize it. Include this file in the repository with installation instructions to copy it to the user's config directory.
     - **Depends On:** T001
     - **AC Ref:** AC1
