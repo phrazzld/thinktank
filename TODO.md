@@ -47,7 +47,7 @@
   - **Depends On:** Remove deprecated methods from APIService interface
   - **AC Ref:** N/A
 
-- [ ] **Task Title:** Remove all remaining references to deprecated methods
+- [x] **Task Title:** Remove all remaining references to deprecated methods
   - **Action:** Run a project-wide search for any remaining references to `InitClient` and `ProcessResponse` and update them to use provider-agnostic alternatives.
   - **Depends On:** Update all other tasks above
   - **AC Ref:** N/A
