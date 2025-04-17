@@ -197,10 +197,11 @@
     - **AC Ref:** Plan Item 4
     - **Note:** Implemented table-driven tests for parameter validation that verify appropriate errors are returned when invalid parameter values are provided. Added tests for all parameter types including temperature, top_p, presence_penalty, frequency_penalty, and max_tokens. The tests verify that the validation happens before any API call is made.
 
-- [ ] **T025:** Implement Test for `createChatCompletionWithParams` Method (openai_client_test.go)
+- [x] **T025:** Implement Test for `createChatCompletionWithParams` Method (openai_client_test.go)
     - **Action:** Write specific unit tests in `internal/openai/openai_client_test.go` targeting the `createChatCompletionWithParams` method (or equivalent parameter-handling logic) to ensure it correctly builds the API request payload based on provided parameters.
     - **Depends On:** [T006, T007]
     - **AC Ref:** Plan Item 4
+    - **Implementation:** Created comprehensive test file `chat_completion_params_test.go` with tests for all parameter validation cases, including special handling for O-series models with the reasoning parameter. Tests verify that parameters are correctly validated and that API requests are properly built with the validated parameters.
 
 - [ ] **T026:** Implement Test Cases for Parameter Inheritance/Overriding (if applicable) (openai_client_test.go)
     - **Action:** If the client/provider supports parameter inheritance (e.g., default parameters overridden by call-specific parameters), add test cases to the table-driven structure (T021) to verify this behavior.
