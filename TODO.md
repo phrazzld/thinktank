@@ -147,12 +147,12 @@
     - **Depends On:** None
     - **AC Ref:** Plan Item 3
 
-- [ ] **T018:** Implement Test for Provider's `CreateClient` Method (API Key Error Cases) (provider_test.go)
+- [x] **T018:** Implement Test for Provider's `CreateClient` Method (API Key Error Cases) (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` for the `CreateClient` method, verifying that it returns appropriate errors when provided with invalid or missing API keys, leveraging scenarios tested in T001, T003.
     - **Depends On:** [T001, T003]
     - **AC Ref:** Plan Item 3
 
-- [ ] **T019:** Implement Test for Provider's Environment Variable Handling for API Keys (provider_test.go)
+- [x] **T019:** Implement Test for Provider's Environment Variable Handling for API Keys (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` for the `CreateClient` method, verifying that it correctly reads the API key from the `OPENAI_API_KEY` environment variable when no key is explicitly passed. Use environment variable mocking.
     - **Depends On:** [T004]
     - **AC Ref:** Plan Item 3
