@@ -280,7 +280,7 @@
     - **Depends On:** None
     - **AC Ref:** None
 
-- [ ] **T043:** Enhance Registry Integration for Token Management
+- [x] **T043:** Enhance Registry Integration for Token Management
     - **Action:** Modify `internal/architect/token.go` to ensure the `GetTokenInfo()` method truly prioritizes registry values over any hardcoded fallbacks. Add explicit logging to show which source of token information is being used. Make sure the registry token limits are properly preserved throughout the token checking flow.
     - **Depends On:** None
     - **AC Ref:** None

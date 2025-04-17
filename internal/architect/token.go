@@ -89,25 +89,37 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 	}
 
 	// First, try to get model info from the registry if available
-	var useRegistryLimits bool
+	var tokenSource = "client"
+	var registryAttempted bool
+
 	if tm.registry != nil {
+		registryAttempted = true
 		// Try to get model definition from registry
 		modelDef, err := tm.registry.GetModel(modelName)
-		if err == nil && modelDef != nil {
-			// We found the model in the registry, use its context window
-			tm.logger.Debug("Using token limits from registry for model %s: %d tokens",
+		if err == nil && modelDef != nil && modelDef.ContextWindow > 0 {
+			// We found the model in the registry with a valid context window
+			tm.logger.Info("Using token limits from registry for model %s: %d tokens (registry values take precedence)",
 				modelName, modelDef.ContextWindow)
 
 			// Store input limit from registry
 			result.InputLimit = modelDef.ContextWindow
-			useRegistryLimits = true
+			tokenSource = "registry"
 		} else {
-			tm.logger.Debug("Model %s not found in registry, falling back to client-provided token limits", modelName)
+			if err != nil {
+				tm.logger.Debug("Model %s lookup in registry failed: %v", modelName, err)
+			} else if modelDef == nil {
+				tm.logger.Debug("Model %s found in registry but model definition is nil", modelName)
+			} else if modelDef.ContextWindow <= 0 {
+				tm.logger.Debug("Model %s found in registry but has invalid context window: %d",
+					modelName, modelDef.ContextWindow)
+			}
+			tm.logger.Info("Model %s not properly configured in registry, falling back to client-provided token limits",
+				modelName)
 		}
 	}
 
 	// If registry lookup failed or registry is not available, fall back to client GetModelInfo
-	if !useRegistryLimits {
+	if tokenSource != "registry" {
 		// Get model information (limits) from LLM client
 		modelInfo, err := tm.client.GetModelInfo(ctx)
 		if err != nil {
@@ -132,20 +144,26 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 				errorMessage = err.Error()
 			}
 
-			// Log the token check failure
+			// Log the token check failure with additional context about registry attempt
+			var registryAttemptInfo string
+			if registryAttempted {
+				registryAttemptInfo = " after registry lookup failed"
+			}
+
 			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 				Timestamp: time.Now().UTC(),
 				Operation: "CheckTokens",
 				Status:    "Failure",
 				Inputs: map[string]interface{}{
-					"prompt_length": len(prompt),
-					"model_name":    modelName,
+					"prompt_length":      len(prompt),
+					"model_name":         modelName,
+					"registry_attempted": registryAttempted,
 				},
 				Error: &auditlog.ErrorInfo{
 					Message: errorMessage,
 					Type:    errorType,
 				},
-				Message: "Token count check failed for model " + modelName,
+				Message: "Token count check failed for model " + modelName + registryAttemptInfo,
 			}); logErr != nil {
 				tm.logger.Error("Failed to write audit log: %v", logErr)
 			}
@@ -156,6 +174,8 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 
 		// Store input limit from model info
 		result.InputLimit = modelInfo.InputTokenLimit
+		tm.logger.Info("Using token limits from client for model %s: %d tokens",
+			modelName, modelInfo.InputTokenLimit)
 	}
 
 	// Count tokens in the prompt
@@ -220,14 +240,18 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 		result.LimitError = fmt.Sprintf("prompt exceeds token limit (%d tokens > %d token limit)",
 			result.TokenCount, result.InputLimit)
 
-		// Log the token limit exceeded case
+		// Log the token limit exceeded case with token source info
 		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 			Timestamp: time.Now().UTC(),
 			Operation: "CheckTokens",
 			Status:    "Failure",
 			Inputs: map[string]interface{}{
-				"prompt_length": len(prompt),
-				"model_name":    modelName,
+				"prompt_length":      len(prompt),
+				"model_name":         modelName,
+				"registry_attempted": registryAttempted,
+			},
+			Outputs: map[string]interface{}{
+				"token_source": tokenSource,
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: result.TokenCount,
@@ -238,30 +262,33 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 				Message: result.LimitError,
 				Type:    "TokenLimitExceededError",
 			},
-			Message: "Token limit exceeded for model " + modelName,
+			Message: fmt.Sprintf("Token limit exceeded for model %s (using %s token limits)",
+				modelName, tokenSource),
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 	} else {
-		// Log the successful token check
+		// Log the successful token check with token source info
 		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 			Timestamp: time.Now().UTC(),
 			Operation: "CheckTokens",
 			Status:    "Success",
 			Inputs: map[string]interface{}{
-				"prompt_length": len(prompt),
-				"model_name":    modelName,
+				"prompt_length":      len(prompt),
+				"model_name":         modelName,
+				"registry_attempted": registryAttempted,
 			},
 			Outputs: map[string]interface{}{
-				"percentage": result.Percentage,
+				"percentage":   result.Percentage,
+				"token_source": tokenSource,
 			},
 			TokenCounts: &auditlog.TokenCountInfo{
 				PromptTokens: result.TokenCount,
 				TotalTokens:  result.TokenCount,
 				Limit:        result.InputLimit,
 			},
-			Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit)",
-				modelName, result.TokenCount, result.InputLimit, result.Percentage),
+			Message: fmt.Sprintf("Token check passed for model %s: %d / %d tokens (%.1f%% of limit, using %s token limits)",
+				modelName, result.TokenCount, result.InputLimit, result.Percentage, tokenSource),
 		}); logErr != nil {
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
