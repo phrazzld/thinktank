@@ -8,6 +8,8 @@
   * Fix API key validation handling: Test environment variables and error scenarios
   * Registry tests: Improve coverage for registry initialization and model loading
 
+* implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
+* improve arbitrary model handling
 * support openrouter as a provider
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 * add support for grounding with gemini models

@@ -99,15 +99,27 @@ func getEncodingForModel(model string) string {
 	// Default to cl100k_base for newer models (including gpt-4 and gpt-3.5-turbo series)
 	model = strings.ToLower(model)
 
-	if strings.HasPrefix(model, "gpt-4") {
+	// All GPT-4 family models (including variants and custom names)
+	if strings.HasPrefix(model, "gpt-4") ||
+		strings.HasPrefix(model, "o4") ||
+		strings.HasPrefix(model, "gpt-4.1") {
 		return "cl100k_base"
 	}
 
-	if strings.HasPrefix(model, "gpt-3.5-turbo") {
+	// All GPT-3.5 family models
+	if strings.HasPrefix(model, "gpt-3.5") {
 		return "cl100k_base"
 	}
 
-	if strings.HasPrefix(model, "text-embedding-ada-002") {
+	// Text embedding models
+	if strings.HasPrefix(model, "text-embedding") {
+		return "cl100k_base"
+	}
+
+	// For newer models, assume cl100k_base as it's more modern
+	if strings.Contains(model, "turbo") ||
+		strings.Contains(model, "claude") ||
+		strings.Contains(model, "mini") {
 		return "cl100k_base"
 	}
 
@@ -160,11 +172,31 @@ func initializeModelLimits() map[string]*modelInfo {
 			inputTokenLimit:  128000,
 			outputTokenLimit: 4096,
 		},
+		"gpt-4-turbo-2024-04-09": {
+			inputTokenLimit:  128000,
+			outputTokenLimit: 4096,
+		},
 		"gpt-4o": {
 			inputTokenLimit:  128000,
 			outputTokenLimit: 4096,
 		},
 		"gpt-4.1-mini": {
+			inputTokenLimit:  1000000, // 1M tokens
+			outputTokenLimit: 32768,
+		},
+		"gpt-4.1": {
+			inputTokenLimit:  1000000, // 1M tokens
+			outputTokenLimit: 32768,
+		},
+		"gpt-4.1-preview": {
+			inputTokenLimit:  1000000, // 1M tokens
+			outputTokenLimit: 32768,
+		},
+		"o4-mini": {
+			inputTokenLimit:  1000000, // 1M tokens
+			outputTokenLimit: 32768,
+		},
+		"o4": {
 			inputTokenLimit:  1000000, // 1M tokens
 			outputTokenLimit: 32768,
 		},
@@ -175,6 +207,14 @@ func initializeModelLimits() map[string]*modelInfo {
 			outputTokenLimit: 4096,
 		},
 		"gpt-3.5-turbo-16k": {
+			inputTokenLimit:  16385,
+			outputTokenLimit: 4096,
+		},
+		"gpt-3.5-turbo-0125": {
+			inputTokenLimit:  16385,
+			outputTokenLimit: 4096,
+		},
+		"gpt-3.5-turbo-instruct": {
 			inputTokenLimit:  16385,
 			outputTokenLimit: 4096,
 		},
@@ -328,15 +368,58 @@ func (c *openaiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo
 	// We're only providing reasonable defaults here for when the registry
 	// is not available, which should be uncommon.
 
-	// Get model info from cache or use defaults
+	// Get model info from cache using exact match
 	info, ok := c.modelLimits[c.modelName]
+
+	// If exact match fails, try prefix matching for known model families
 	if !ok {
-		// Use conservative defaults for unknown models
-		// This should be considered a fallback only
-		// The registry should provide the actual limits in most cases
-		info = &modelInfo{
-			inputTokenLimit:  4096, // Conservative default
-			outputTokenLimit: 2048, // Conservative default
+		modelName := strings.ToLower(c.modelName)
+
+		// Try to find a matching model family using prefixes
+		if strings.HasPrefix(modelName, "gpt-4.1") || strings.HasPrefix(modelName, "o4") {
+			// GPT-4.1 or o4 family - use the 1M token limit
+			info = &modelInfo{
+				inputTokenLimit:  1000000, // 1M tokens
+				outputTokenLimit: 32768,
+			}
+		} else if strings.HasPrefix(modelName, "gpt-4-turbo") || strings.HasPrefix(modelName, "gpt-4o") {
+			// GPT-4 Turbo or GPT-4o family - use 128k tokens
+			info = &modelInfo{
+				inputTokenLimit:  128000,
+				outputTokenLimit: 4096,
+			}
+		} else if strings.HasPrefix(modelName, "gpt-4-32k") {
+			// GPT-4 32k family
+			info = &modelInfo{
+				inputTokenLimit:  32768,
+				outputTokenLimit: 4096,
+			}
+		} else if strings.HasPrefix(modelName, "gpt-4") {
+			// Other GPT-4 variants
+			info = &modelInfo{
+				inputTokenLimit:  8192,
+				outputTokenLimit: 2048,
+			}
+		} else if strings.HasPrefix(modelName, "gpt-3.5-turbo-16k") {
+			// GPT-3.5 Turbo 16k family
+			info = &modelInfo{
+				inputTokenLimit:  16385,
+				outputTokenLimit: 4096,
+			}
+		} else if strings.HasPrefix(modelName, "gpt-3.5-turbo") {
+			// GPT-3.5 Turbo family
+			info = &modelInfo{
+				inputTokenLimit:  16385,
+				outputTokenLimit: 4096,
+			}
+		} else {
+			// Use more generous defaults for unknown models
+			// This should be considered a fallback only
+			// The registry should provide the actual limits in most cases
+			info = &modelInfo{
+				inputTokenLimit:  32768, // More generous default
+				outputTokenLimit: 4096,  // More generous default
+			}
 		}
 	}
 

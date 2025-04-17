@@ -267,3 +267,45 @@
     - **Action:** After all test implementation tasks (T001-T036) are complete, trigger a final CI run. Verify that the coverage checks for `internal/openai` and `internal/providers/openai` pass the >70% threshold and that all other CI checks succeed.
     - **Depends On:** [T036, T037, T038, T039]
     - **AC Ref:** Metrics and Verification
+
+## Custom Model Token Limit Handling Improvements
+
+- [x] **T041:** Update OpenAI Client's Hardcoded Model Limits
+    - **Action:** Modify `internal/openai/openai_client.go` to update the `initializeModelLimits()` function to include mappings for new models like "o4-mini" and "gpt-4.1". Also increase the conservative default in `GetModelInfo()` from 4096 to a more generous value (e.g., 32768) for unknown models and add better prefix matching logic to handle custom model variants.
+    - **Depends On:** None
+    - **AC Ref:** None
+
+- [ ] **T042:** Improve Model Token Limit Detection in Adapters
+    - **Action:** Update the hardcoded switch statement in `internal/architect/adapters.go`'s `GetModelTokenLimits()` method to use more generous token limit values, add cases for newer models like "o4-mini" and "gpt-4.1", and implement smarter prefix matching. Add clear logging to indicate which source of token information is being used.
+    - **Depends On:** None
+    - **AC Ref:** None
+
+- [ ] **T043:** Enhance Registry Integration for Token Management
+    - **Action:** Modify `internal/architect/token.go` to ensure the `GetTokenInfo()` method truly prioritizes registry values over any hardcoded fallbacks. Add explicit logging to show which source of token information is being used. Make sure the registry token limits are properly preserved throughout the token checking flow.
+    - **Depends On:** None
+    - **AC Ref:** None
+
+- [ ] **T044:** Add Validation and Logging for Config Loading
+    - **Action:** Update `internal/registry/config.go` and `internal/registry/registry.go` to add additional validation and detailed logging when loading model configurations from `~/.config/architect/models.yaml`. Add checks to confirm registry values are properly loaded from the config file and that token limits are correctly read.
+    - **Depends On:** None
+    - **AC Ref:** None
+
+- [ ] **T045:** Update Default Configuration Template with Custom Model Examples
+    - **Action:** Update `config/models.yaml` to include clear examples of customizing model limits, especially for newer models. Add documentation comments explaining how to properly configure custom model token limits and relationships between similar models.
+    - **Depends On:** None
+    - **AC Ref:** None
+
+- [ ] **T046:** Create Unit Tests for Registry-Based Token Limit Precedence
+    - **Action:** Develop comprehensive unit tests that verify registry values correctly take precedence over hardcoded fallbacks. Create mocks to simulate different registry configurations and verify the system uses the correct token limits in each case.
+    - **Depends On:** [T041, T042, T043, T044]
+    - **AC Ref:** None
+
+- [ ] **T047:** Implement End-to-End Test for Custom Model Configuration
+    - **Action:** Create an integration test that verifies custom model configurations in `~/.config/architect/models.yaml` are correctly loaded and respected by the system. The test should create a temporary config with custom model definitions and verify token limits are honored.
+    - **Depends On:** [T041, T042, T043, T044, T045]
+    - **AC Ref:** None
+
+- [ ] **T048:** Complete Hardcoded Model Token Limits Fix
+    - **Action:** Verify all previous tasks are complete by manually testing with custom model configurations in `~/.config/architect/models.yaml`. Mark the original task "Fix hardcoded model token limits that ignore custom limits from ~/.config/architect/models.yaml" as [x] completed.
+    - **Depends On:** [T041, T042, T043, T044, T045, T046, T047]
+    - **AC Ref:** None
