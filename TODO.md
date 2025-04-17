@@ -290,7 +290,7 @@
     - **Depends On:** None
     - **AC Ref:** None
 
-- [ ] **T045:** Update Default Configuration Template with Custom Model Examples
+- [x] **T045:** Update Default Configuration Template with Custom Model Examples
     - **Action:** Update `config/models.yaml` to include clear examples of customizing model limits, especially for newer models. Add documentation comments explaining how to properly configure custom model token limits and relationships between similar models.
     - **Depends On:** None
     - **AC Ref:** None
