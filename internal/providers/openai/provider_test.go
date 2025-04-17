@@ -4,6 +4,8 @@ package openai
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -65,6 +67,56 @@ func (m *MockLLMClient) Close() error {
 		return m.CloseFunc()
 	}
 	return nil
+}
+
+// MockLogger implements the logutil.LoggerInterface for testing logger usage
+type MockLogger struct {
+	DebugCalls []string
+	InfoCalls  []string
+	WarnCalls  []string
+	ErrorCalls []string
+	FatalCalls []string
+}
+
+// Ensure MockLogger implements LoggerInterface
+var _ logutil.LoggerInterface = (*MockLogger)(nil)
+
+func NewMockLogger() *MockLogger {
+	return &MockLogger{
+		DebugCalls: make([]string, 0),
+		InfoCalls:  make([]string, 0),
+		WarnCalls:  make([]string, 0),
+		ErrorCalls: make([]string, 0),
+		FatalCalls: make([]string, 0),
+	}
+}
+
+func (m *MockLogger) Println(v ...interface{}) {
+	m.InfoCalls = append(m.InfoCalls, strings.TrimSpace(fmt.Sprintln(v...)))
+}
+
+func (m *MockLogger) Printf(format string, v ...interface{}) {
+	m.InfoCalls = append(m.InfoCalls, fmt.Sprintf(format, v...))
+}
+
+func (m *MockLogger) Debug(format string, v ...interface{}) {
+	m.DebugCalls = append(m.DebugCalls, fmt.Sprintf(format, v...))
+}
+
+func (m *MockLogger) Info(format string, v ...interface{}) {
+	m.InfoCalls = append(m.InfoCalls, fmt.Sprintf(format, v...))
+}
+
+func (m *MockLogger) Warn(format string, v ...interface{}) {
+	m.WarnCalls = append(m.WarnCalls, fmt.Sprintf(format, v...))
+}
+
+func (m *MockLogger) Error(format string, v ...interface{}) {
+	m.ErrorCalls = append(m.ErrorCalls, fmt.Sprintf(format, v...))
+}
+
+func (m *MockLogger) Fatal(format string, v ...interface{}) {
+	m.FatalCalls = append(m.FatalCalls, fmt.Sprintf(format, v...))
 }
 
 // TestOpenAIProviderImplementsProviderInterface ensures OpenAIProvider implements the Provider interface
@@ -206,6 +258,134 @@ func TestAdapterParameterHelperMethods(t *testing.T) {
 					t.Errorf("Expected value=%v, got %v", tc.expected, val)
 				}
 			})
+		}
+	})
+}
+
+// TestNewProviderWithDifferentLoggers tests that NewProvider correctly handles different logger configurations
+func TestNewProviderWithDifferentLoggers(t *testing.T) {
+	// Save original env var and restore after test
+	origAPIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		if err := os.Setenv("OPENAI_API_KEY", origAPIKey); err != nil {
+			t.Logf("Warning: Failed to restore original OPENAI_API_KEY: %v", err)
+		}
+	}()
+
+	// Test cases for different logger configurations
+	t.Run("With nil logger (default)", func(t *testing.T) {
+		// Create a provider with nil logger - should use default
+		provider := NewProvider(nil)
+
+		// Verify it's not nil and has the correct type
+		if provider == nil {
+			t.Fatal("Expected non-nil provider, got nil")
+		}
+
+		// Type assertion to get the concrete type
+		providerImpl, ok := provider.(*OpenAIProvider)
+		if !ok {
+			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
+		}
+
+		// Verify the logger was created (not nil)
+		if providerImpl.logger == nil {
+			t.Error("Provider should have created a default logger when nil was provided")
+		}
+
+		// While we can't easily check the default logger's configuration,
+		// we can at least verify it has the expected prefix
+		// This is a bit of an implementation detail, but it's useful to verify
+		if logger, ok := providerImpl.logger.(*logutil.Logger); ok {
+			// Call a method that would use the logger to verify it works
+			logger.Debug("Test debug message that should not appear")
+		}
+	})
+
+	t.Run("With custom structured logger", func(t *testing.T) {
+		// Create a custom logger
+		customLogger := logutil.NewLogger(logutil.DebugLevel, nil, "[custom-test] ")
+		provider := NewProvider(customLogger)
+
+		// Verify it's not nil and has the correct type
+		if provider == nil {
+			t.Fatal("Expected non-nil provider, got nil")
+		}
+
+		// Type assertion to get the concrete type
+		providerImpl, ok := provider.(*OpenAIProvider)
+		if !ok {
+			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
+		}
+
+		// Verify the custom logger was properly stored
+		if providerImpl.logger != customLogger {
+			t.Error("Provider did not store the custom logger that was provided")
+		}
+	})
+
+	t.Run("With standard library logger adapter", func(t *testing.T) {
+		// Create a standard library logger and wrap it
+		stdLogger := logutil.NewStdLoggerAdapter(log.New(os.Stderr, "[std-test] ", log.LstdFlags))
+		provider := NewProvider(stdLogger)
+
+		// Verify it's not nil and has the correct type
+		if provider == nil {
+			t.Fatal("Expected non-nil provider, got nil")
+		}
+
+		// Type assertion to get the concrete type
+		providerImpl, ok := provider.(*OpenAIProvider)
+		if !ok {
+			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
+		}
+
+		// Verify the standard logger adapter was properly stored
+		if providerImpl.logger != stdLogger {
+			t.Error("Provider did not store the standard logger adapter that was provided")
+		}
+	})
+
+	t.Run("With mock logger for verification", func(t *testing.T) {
+		// First unset any API key that might be in the environment
+		if err := os.Unsetenv("OPENAI_API_KEY"); err != nil {
+			t.Fatalf("Failed to unset environment variable: %v", err)
+		}
+
+		// Create a mock logger to verify log calls
+		mockLogger := NewMockLogger()
+		provider := NewProvider(mockLogger)
+
+		// Verify it's not nil and has the correct type
+		if provider == nil {
+			t.Fatal("Expected non-nil provider, got nil")
+		}
+
+		// Type assertion to get the concrete type
+		providerImpl, ok := provider.(*OpenAIProvider)
+		if !ok {
+			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
+		}
+
+		// Verify the mock logger was properly stored
+		if providerImpl.logger != mockLogger {
+			t.Error("Provider did not store the mock logger that was provided")
+		}
+
+		// Trigger a log call by creating a client (which will fail)
+		_, err := provider.CreateClient(context.Background(), "", "gpt-4", "")
+
+		// Verify the appropriate logging method was called
+		// We expect at least one debug message
+		if len(mockLogger.DebugCalls) == 0 {
+			t.Error("Expected at least one Debug log call, but none were recorded")
+		}
+
+		// We should have received an error about the API key
+		if err == nil {
+			t.Error("Expected an error from CreateClient with empty API key, got nil")
+		} else if !strings.Contains(err.Error(), "no valid OpenAI API key provided") {
+			t.Errorf("Expected error message about missing API key, got: %v", err)
 		}
 	})
 }

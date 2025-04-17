@@ -157,7 +157,7 @@
     - **Depends On:** [T004]
     - **AC Ref:** Plan Item 3
 
-- [ ] **T020:** Implement Test for Provider Initialization with Different Loggers (provider_test.go)
+- [x] **T020:** Implement Test for Provider Initialization with Different Loggers (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` to verify that the `NewProvider` function correctly accepts and uses different `logutil.LoggerInterface` implementations (including nil, which should default).
     - **Depends On:** None
     - **AC Ref:** Plan Item 3
