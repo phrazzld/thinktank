@@ -203,10 +203,11 @@
     - **AC Ref:** Plan Item 4
     - **Implementation:** Created comprehensive test file `chat_completion_params_test.go` with tests for all parameter validation cases, including special handling for O-series models with the reasoning parameter. Tests verify that parameters are correctly validated and that API requests are properly built with the validated parameters.
 
-- [ ] **T026:** Implement Test Cases for Parameter Inheritance/Overriding (if applicable) (openai_client_test.go)
+- [x] **T026:** Implement Test Cases for Parameter Inheritance/Overriding (if applicable) (openai_client_test.go)
     - **Action:** If the client/provider supports parameter inheritance (e.g., default parameters overridden by call-specific parameters), add test cases to the table-driven structure (T021) to verify this behavior.
     - **Depends On:** [T021]
     - **AC Ref:** Plan Item 4
+    - **Implementation:** Created parameter_inheritance_test.go with comprehensive tests for parameter inheritance between client defaults and request-specific parameters. Tests verify that parameters set at the client level are used as defaults when not provided in requests, but are properly overridden by request-level parameters when provided. The tests also confirm that setter methods correctly update client parameters and that proper parameter type conversion happens during inheritance.
 
 - [ ] **T027:** Implement Test for `OpenAIClientAdapter` Construction and Basic Methods (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` to verify the `NewOpenAIClientAdapter` function and ensure basic methods of the adapter correctly delegate to the wrapped client.
