@@ -128,10 +128,9 @@ func TestCheckTokenLimit(t *testing.T) {
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
 
-		// Verify error is returned and contains expected message
-		require.Error(t, err, "CheckTokenLimit should return an error when token count exceeds limit")
-		assert.Contains(t, err.Error(), "prompt exceeds token limit", "Error should indicate token limit exceeded")
-		assert.Contains(t, err.Error(), "1000 tokens > 500 token limit", "Error should include specific token counts")
+		// With our new behavior, we don't return an error even when token limit is exceeded
+		// We just log a warning instead
+		assert.NoError(t, err, "CheckTokenLimit should no longer return an error when token count exceeds limit")
 	})
 
 	t.Run("GetTokenInfo Error", func(t *testing.T) {

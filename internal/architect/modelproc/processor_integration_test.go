@@ -480,6 +480,16 @@ func TestIntegration_ModelProcessor_TokenManager(t *testing.T) {
 		Percentage:   120.0,
 	}
 
+	// Configure API mock to return an error for GenerateContent
+	// simulating a provider token limit error
+	mockAPI.initLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+		mockClient := newIntegrationMockLLMClient()
+		mockClient.generateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+			return nil, errors.New("token limit exceeded from provider")
+		}
+		return mockClient, nil
+	}
+
 	// Create configuration
 	cfg := &config.CliConfig{
 		APIKey:                "test-api-key",
@@ -512,9 +522,9 @@ func TestIntegration_ModelProcessor_TokenManager(t *testing.T) {
 	// Process the model - should fail due to token limit
 	err := processor.Process(context.Background(), "test-model", prompt)
 
-	// Verify error related to token limit
-	assert.Error(t, err, "Process should return an error when token limit is exceeded")
-	assert.Contains(t, err.Error(), "token limit exceeded", "Error should mention token limit")
+	// Verify error is from the provider, not our pre-check
+	assert.Error(t, err, "Process should return an error from the provider")
+	assert.Contains(t, err.Error(), "token limit exceeded from provider", "Error should be from the provider")
 
 	// Verify token manager interactions
 	assert.GreaterOrEqual(t, len(mockTokenMgr.getTokenInfoCalls), 1, "GetTokenInfo should be called at least once")

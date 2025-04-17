@@ -8,6 +8,7 @@
   * Fix API key validation handling: Test environment variables and error scenarios
   * Registry tests: Improve coverage for registry initialization and model loading
 
+- run `glance` on precommit hook
 * implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
 * improve arbitrary model handling
 * support openrouter as a provider

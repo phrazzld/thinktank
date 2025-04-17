@@ -256,8 +256,8 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 					return "test-model"
 				},
 				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-					// This should not be called in the token exceeded case
-					return nil, errors.New("should not be called")
+					// Now this will be called, but should return a provider error about token limits
+					return nil, errors.New("token limit exceeded: provider error")
 				},
 			}, nil
 		},
@@ -309,7 +309,7 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	// Verify results
 	if err == nil {
 		t.Errorf("Expected error for token limit exceeded, got nil")
-	} else if err.Error() != "token limit exceeded for model test-model: prompt exceeds token limit (5000 tokens > 4000 token limit)" {
+	} else if !strings.Contains(err.Error(), "token limit exceeded") {
 		t.Errorf("Unexpected error message: %v", err)
 	}
 }

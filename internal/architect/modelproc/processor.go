@@ -258,8 +258,9 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) erro
 		return err
 	}
 
+	// Don't return an error for exceeded limits, just log a warning
 	if tokenInfo.ExceedsLimit {
-		return fmt.Errorf("%s", tokenInfo.LimitError)
+		tm.logger.Warn("Token limit may be exceeded: %s (but continuing anyway)", tokenInfo.LimitError)
 	}
 
 	return nil
@@ -391,13 +392,11 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		return fmt.Errorf("token count check failed for model %s: %w", modelName, err)
 	}
 
-	// If token limit is exceeded, abort
+	// Log a warning if token limit is exceeded, but continue anyway and let the provider decide
 	if tokenInfo.ExceedsLimit {
-		p.logger.Error("Token limit exceeded for model %s", modelName)
-		p.logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
-		p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-
-		return fmt.Errorf("token limit exceeded for model %s: %s", modelName, tokenInfo.LimitError)
+		p.logger.Warn("Token limit may be exceeded for model %s", modelName)
+		p.logger.Warn("Potential token limit issue: %s", tokenInfo.LimitError)
+		p.logger.Warn("Proceeding with request anyway - will let provider enforce limits")
 	}
 
 	// Prompt for confirmation if token count exceeds threshold
