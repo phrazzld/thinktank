@@ -78,25 +78,41 @@ func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow
 		return apiService.GetModelTokenLimits(modelName)
 	}
 
+	// We'll skip logging during tests to avoid noise
+
+	// Convert model name to lowercase for case-insensitive matching
+	modelNameLower := strings.ToLower(modelName)
+
 	// Try to determine token limits based on model name
 	// Use hardcoded values for well-known models
 	switch {
 	// Gemini models
-	case strings.HasPrefix(modelName, "gemini-1.5-pro"):
+	case strings.HasPrefix(modelNameLower, "gemini-1.5-pro"):
 		return 1000000, 8192, nil
-	case strings.HasPrefix(modelName, "gemini-1.5-flash"):
+	case strings.HasPrefix(modelNameLower, "gemini-1.5-flash"):
 		return 1000000, 8192, nil
-	case strings.HasPrefix(modelName, "gemini-1.0-pro"):
+	case strings.HasPrefix(modelNameLower, "gemini-1.0-pro"):
 		return 32768, 8192, nil
-	case strings.HasPrefix(modelName, "gemini-1.0-ultra"):
+	case strings.HasPrefix(modelNameLower, "gemini-1.0-ultra"):
 		return 32768, 8192, nil
 
-	// OpenAI models
-	case strings.HasPrefix(modelName, "gpt-4-turbo"):
+	// OpenAI models - Claude 3 / GPT-4 1M Token models
+	case strings.HasPrefix(modelNameLower, "gpt-4.1"),
+		strings.HasPrefix(modelNameLower, "o4-mini"),
+		strings.HasPrefix(modelNameLower, "o4-"):
+		return 1000000, 32768, nil
+
+	// OpenAI models - GPT-4 Turbo and GPT-4o models (128k)
+	case strings.HasPrefix(modelNameLower, "gpt-4o"),
+		strings.HasPrefix(modelNameLower, "gpt-4-turbo"):
 		return 128000, 4096, nil
-	case strings.HasPrefix(modelName, "gpt-4"):
+
+	// OpenAI models - GPT-4 (8k)
+	case strings.HasPrefix(modelNameLower, "gpt-4"):
 		return 8192, 4096, nil
-	case strings.HasPrefix(modelName, "gpt-3.5-turbo"):
+
+	// OpenAI models - GPT-3.5 Turbo
+	case strings.HasPrefix(modelNameLower, "gpt-3.5-turbo"):
 		return 16385, 4096, nil
 
 	// Default fallback

@@ -275,7 +275,7 @@
     - **Depends On:** None
     - **AC Ref:** None
 
-- [ ] **T042:** Improve Model Token Limit Detection in Adapters
+- [x] **T042:** Improve Model Token Limit Detection in Adapters
     - **Action:** Update the hardcoded switch statement in `internal/architect/adapters.go`'s `GetModelTokenLimits()` method to use more generous token limit values, add cases for newer models like "o4-mini" and "gpt-4.1", and implement smarter prefix matching. Add clear logging to indicate which source of token information is being used.
     - **Depends On:** None
     - **AC Ref:** None
