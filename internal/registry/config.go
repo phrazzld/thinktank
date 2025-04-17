@@ -52,8 +52,11 @@ func NewConfigLoader() *ConfigLoader {
 func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 	configPath, err := c.GetConfigPath()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to determine configuration path: %w", err)
 	}
+
+	// Log the configuration file path being used
+	fmt.Printf("Loading model configuration from: %s\n", configPath)
 
 	// Read the configuration file
 	data, err := os.ReadFile(configPath)
@@ -67,6 +70,9 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 		return nil, fmt.Errorf("error reading configuration file at %s: %w", configPath, err)
 	}
 
+	// Log configuration file size
+	fmt.Printf("Read configuration file (%d bytes)\n", len(data))
+
 	// Parse the YAML
 	var config ModelsConfig
 	err = yaml.Unmarshal(data, &config)
@@ -74,58 +80,156 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 		return nil, fmt.Errorf("invalid YAML in configuration file at %s: %w", configPath, err)
 	}
 
+	// Log successful parsing
+	fmt.Printf("Successfully parsed YAML configuration\n")
+
 	// Validate the configuration
 	if err := c.validate(&config); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("configuration validation failed: %w", err)
 	}
+
+	// Log validation success
+	fmt.Printf("Configuration validated successfully: %d providers, %d models defined\n",
+		len(config.Providers), len(config.Models))
 
 	return &config, nil
 }
 
-// validate checks that the required fields in the configuration are present
+// validate performs comprehensive validation of the configuration
 func (c *ConfigLoader) validate(config *ModelsConfig) error {
 	// Check API key sources
 	if len(config.APIKeySources) == 0 {
 		return fmt.Errorf("configuration must include api_key_sources")
+	}
+	fmt.Printf("Validated API key sources: %d sources defined\n", len(config.APIKeySources))
+
+	// Display found API key sources for debugging
+	for provider, envVar := range config.APIKeySources {
+		// Check if the environment variable exists (without revealing its value)
+		_, exists := os.LookupEnv(envVar)
+		if exists {
+			fmt.Printf("✓ API key for provider '%s' found in environment variable %s\n", provider, envVar)
+		} else {
+			fmt.Printf("⚠ API key for provider '%s' not found in environment variable %s\n", provider, envVar)
+		}
 	}
 
 	// Check providers
 	if len(config.Providers) == 0 {
 		return fmt.Errorf("configuration must include at least one provider")
 	}
+	fmt.Printf("Validating %d providers...\n", len(config.Providers))
 
+	// Check for provider name uniqueness
 	providerNames := make(map[string]bool)
 	for i, provider := range config.Providers {
 		if provider.Name == "" {
 			return fmt.Errorf("provider at index %d is missing name", i)
 		}
+		if providerNames[provider.Name] {
+			return fmt.Errorf("duplicate provider name '%s' detected", provider.Name)
+		}
 		providerNames[provider.Name] = true
+
+		// Log provider details
+		if provider.BaseURL != "" {
+			fmt.Printf("Provider '%s' configured with custom base URL: %s\n", provider.Name, provider.BaseURL)
+		} else {
+			fmt.Printf("Provider '%s' configured with default base URL\n", provider.Name)
+		}
 	}
 
 	// Check models
 	if len(config.Models) == 0 {
 		return fmt.Errorf("configuration must include at least one model")
 	}
+	fmt.Printf("Validating %d models...\n", len(config.Models))
+
+	// Check for model name uniqueness
+	modelNames := make(map[string]bool)
 
 	for i, model := range config.Models {
+		// Validate model name
 		if model.Name == "" {
 			return fmt.Errorf("model at index %d is missing name", i)
 		}
+		if modelNames[model.Name] {
+			return fmt.Errorf("duplicate model name '%s' detected", model.Name)
+		}
+		modelNames[model.Name] = true
+
+		// Validate provider
 		if model.Provider == "" {
-			return fmt.Errorf("model %s is missing provider", model.Name)
+			return fmt.Errorf("model '%s' is missing provider", model.Name)
 		}
 		if !providerNames[model.Provider] {
-			return fmt.Errorf("model %s references unknown provider %s", model.Name, model.Provider)
+			return fmt.Errorf("model '%s' references unknown provider '%s'", model.Name, model.Provider)
 		}
+
+		// Validate API model ID
 		if model.APIModelID == "" {
-			return fmt.Errorf("model %s is missing api_model_id", model.Name)
+			return fmt.Errorf("model '%s' is missing api_model_id", model.Name)
 		}
+
+		// Validate token limits with detailed feedback
 		if model.ContextWindow <= 0 {
-			return fmt.Errorf("model %s has invalid context_window", model.Name)
+			return fmt.Errorf("model '%s' has invalid context_window (%d), must be positive",
+				model.Name, model.ContextWindow)
 		}
+
 		if model.MaxOutputTokens <= 0 {
-			return fmt.Errorf("model %s has invalid max_output_tokens", model.Name)
+			return fmt.Errorf("model '%s' has invalid max_output_tokens (%d), must be positive",
+				model.Name, model.MaxOutputTokens)
 		}
+
+		// Validate that max_output_tokens doesn't exceed context_window
+		if model.MaxOutputTokens > model.ContextWindow {
+			return fmt.Errorf("model '%s' has max_output_tokens (%d) larger than context_window (%d)",
+				model.Name, model.MaxOutputTokens, model.ContextWindow)
+		}
+
+		// Warn about suspicious token limit values (either too small or extremely large)
+		if model.ContextWindow < 1000 {
+			fmt.Printf("⚠ Warning: Model '%s' has a very small context window (%d tokens). Is this correct?\n",
+				model.Name, model.ContextWindow)
+		} else if model.ContextWindow > 2000000 {
+			fmt.Printf("⚠ Warning: Model '%s' has an extremely large context window (%d tokens). Is this correct?\n",
+				model.Name, model.ContextWindow)
+		}
+
+		// Parameter validation
+		if len(model.Parameters) == 0 {
+			fmt.Printf("⚠ Warning: Model '%s' has no parameters defined\n", model.Name)
+		} else {
+			// Log parameters with invalid/suspicious values
+			for paramName, paramDef := range model.Parameters {
+				// Validate parameter type
+				if paramDef.Type == "" {
+					fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' is missing type\n", paramName, model.Name)
+				}
+
+				// Check for default value presence
+				if paramDef.Default == nil {
+					fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' has no default value\n", paramName, model.Name)
+				}
+
+				// Check numeric constraints for consistency
+				if (paramDef.Type == "float" || paramDef.Type == "int") &&
+					paramDef.Min != nil && paramDef.Max != nil {
+					// Attempt type assertion - this is simplified and may need refinement
+					minFloat, minOk := paramDef.Min.(float64)
+					maxFloat, maxOk := paramDef.Max.(float64)
+					if minOk && maxOk && minFloat > maxFloat {
+						fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' has min (%v) > max (%v)\n",
+							paramName, model.Name, paramDef.Min, paramDef.Max)
+					}
+				}
+			}
+		}
+
+		// Log successful model validation
+		fmt.Printf("✓ Validated model '%s' (provider: '%s', context window: %d tokens, max output: %d tokens)\n",
+			model.Name, model.Provider, model.ContextWindow, model.MaxOutputTokens)
 	}
 
 	return nil

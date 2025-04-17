@@ -285,7 +285,7 @@
     - **Depends On:** None
     - **AC Ref:** None
 
-- [ ] **T044:** Add Validation and Logging for Config Loading
+- [x] **T044:** Add Validation and Logging for Config Loading
     - **Action:** Update `internal/registry/config.go` and `internal/registry/registry.go` to add additional validation and detailed logging when loading model configurations from `~/.config/architect/models.yaml`. Add checks to confirm registry values are properly loaded from the config file and that token limits are correctly read.
     - **Depends On:** None
     - **AC Ref:** None
