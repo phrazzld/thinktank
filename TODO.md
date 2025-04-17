@@ -215,10 +215,11 @@
     - **AC Ref:** Plan Item 5
     - **Implementation:** Created comprehensive test file `openai_client_adapter_test.go` with tests for the `OpenAIClientAdapter`. Tests verify proper initialization, parameter handling, method delegation, and token limit override behavior. The adapter correctly wraps an LLMClient and delegates calls to it while properly processing parameters.
 
-- [ ] **T028:** Implement Test for Parameter Passing through `OpenAIClientAdapter` (provider_test.go)
+- [x] **T028:** Implement Test for Parameter Passing through `OpenAIClientAdapter` (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` verifying that parameters set via `SetParameters` on the adapter are correctly passed through to the underlying client's `GenerateContent` method.
     - **Depends On:** [T027]
     - **AC Ref:** Plan Item 5
+    - **Implementation:** Expanded the `openai_client_adapter_test.go` file with comprehensive tests for parameter passing through the adapter. Added tests to verify that parameters set via `SetParameters` are correctly applied when calling `GenerateContent`, parameters passed directly to `GenerateContent` override adapter-level parameters, different parameter types are properly converted, and parameters persist across multiple calls. Also tested Gemini-compatibility with alternative parameter names.
 
 - [ ] **T029:** Implement Test for Provider-Specific Parameter Handling in Adapter (if any) (provider_test.go)
     - **Action:** If the `OpenAIClientAdapter` performs any provider-specific parameter mapping or validation beyond simple pass-through, write unit tests in `internal/providers/openai/provider_test.go` to cover this logic.
