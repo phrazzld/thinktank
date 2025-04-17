@@ -16,7 +16,6 @@ for file in $GO_FILES; do
   if [ -f "$file" ]; then
     LINES=$(wc -l < "$file" | tr -d ' ') # Ensure no extra spaces
     RELATIVE_PATH="${file#./}"
-    
     if [ "$LINES" -gt "$ERROR_THRESHOLD" ]; then
       ERROR_FILES+=("$RELATIVE_PATH: $LINES lines")
     elif [ "$LINES" -gt "$WARNING_THRESHOLD" ]; then
