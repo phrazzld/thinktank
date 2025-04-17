@@ -8,9 +8,9 @@
   * Fix API key validation handling: Test environment variables and error scenarios
   * Registry tests: Improve coverage for registry initialization and model loading
 
-* add support for grounding with gemini models
 * support openrouter as a provider
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
+* add support for grounding with gemini models
 * refactor output handling to use standard streams (stdout for primary results, stderr for logs/errors) and add a json output mode flag (`--output-format json`) for machine-readable results.
 * use distinct exit codes for different outcomes (success, user error, api error, file system error) to allow programmatic result checking.
 * make writing plan output to a file optional (`--output <path>`) and default to printing the plan to stdout if the flag is omitted
