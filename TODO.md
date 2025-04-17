@@ -209,10 +209,11 @@
     - **AC Ref:** Plan Item 4
     - **Implementation:** Created parameter_inheritance_test.go with comprehensive tests for parameter inheritance between client defaults and request-specific parameters. Tests verify that parameters set at the client level are used as defaults when not provided in requests, but are properly overridden by request-level parameters when provided. The tests also confirm that setter methods correctly update client parameters and that proper parameter type conversion happens during inheritance.
 
-- [ ] **T027:** Implement Test for `OpenAIClientAdapter` Construction and Basic Methods (provider_test.go)
+- [x] **T027:** Implement Test for `OpenAIClientAdapter` Construction and Basic Methods (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` to verify the `NewOpenAIClientAdapter` function and ensure basic methods of the adapter correctly delegate to the wrapped client.
     - **Depends On:** None
     - **AC Ref:** Plan Item 5
+    - **Implementation:** Created comprehensive test file `openai_client_adapter_test.go` with tests for the `OpenAIClientAdapter`. Tests verify proper initialization, parameter handling, method delegation, and token limit override behavior. The adapter correctly wraps an LLMClient and delegates calls to it while properly processing parameters.
 
 - [ ] **T028:** Implement Test for Parameter Passing through `OpenAIClientAdapter` (provider_test.go)
     - **Action:** Write unit tests in `internal/providers/openai/provider_test.go` verifying that parameters set via `SetParameters` on the adapter are correctly passed through to the underlying client's `GenerateContent` method.
