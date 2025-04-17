@@ -37,6 +37,7 @@ type openaiClient struct {
 	presencePenalty  *float64
 	frequencyPenalty *float64
 	maxTokens        *int
+	reasoningEffort  *string // For O-series model reasoning parameter
 }
 
 // Internal model info struct
@@ -312,6 +313,29 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 				c.maxTokens = &maxInt
 			}
 		}
+
+		// Handle reasoning parameter for O-series models
+		if reasoning, ok := params["reasoning"]; ok {
+			// Handle map with effort field
+			if reasoningMap, ok := reasoning.(map[string]interface{}); ok {
+				if effort, ok := reasoningMap["effort"].(string); ok {
+					c.reasoningEffort = &effort
+				}
+			} else if reasoningMap, ok := reasoning.(map[string]string); ok {
+				if effort, ok := reasoningMap["effort"]; ok {
+					c.reasoningEffort = &effort
+				}
+			} else if effortStr, ok := reasoning.(string); ok {
+				// Direct string value
+				c.reasoningEffort = &effortStr
+			}
+		}
+	}
+
+	// If this is an O-series model and reasoning is not set, use the default (high)
+	if strings.HasPrefix(strings.ToLower(c.modelName), "o") && c.reasoningEffort == nil {
+		defaultEffort := "high"
+		c.reasoningEffort = &defaultEffort
 	}
 
 	// Create chat completion request with user prompt
@@ -451,15 +475,30 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 
 	// Validate and apply all optional parameters if they have been set
 	if c.temperature != nil {
-		// Temperature should be between 0.0 and 2.0
-		if *c.temperature < 0.0 || *c.temperature > 2.0 {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
-				Suggestion: "Set temperature to a value between 0.0 and 2.0",
+		// Special case for o4-mini which only supports temperature=1.0
+		if strings.EqualFold(c.modelName, "o4-mini") {
+			// Don't set temperature for o4-mini unless it's exactly 1.0
+			if *c.temperature != 1.0 {
+				return nil, &APIError{
+					Type:       ErrorTypeInvalidRequest,
+					Message:    fmt.Sprintf("The o4-mini model only supports temperature=1.0, got %f", *c.temperature),
+					Suggestion: "Set temperature to 1.0 or remove it completely for o4-mini model",
+				}
 			}
+			// For o4-mini, we don't set the temperature parameter at all
+			// as only the default (1.0) is supported
+		} else {
+			// For all other models, apply normal validation
+			// Temperature should be between 0.0 and 2.0
+			if *c.temperature < 0.0 || *c.temperature > 2.0 {
+				return nil, &APIError{
+					Type:       ErrorTypeInvalidRequest,
+					Message:    fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
+					Suggestion: "Set temperature to a value between 0.0 and 2.0",
+				}
+			}
+			params.Temperature = openai.Float(*c.temperature)
 		}
-		params.Temperature = openai.Float(*c.temperature)
 	}
 
 	if c.topP != nil {
@@ -508,6 +547,22 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 			}
 		}
 		params.PresencePenalty = openai.Float(*c.presencePenalty)
+	}
+
+	// Apply reasoning parameter for O-series models
+	if c.reasoningEffort != nil {
+		// Validate reasoning effort value
+		effort := strings.ToLower(*c.reasoningEffort)
+		if effort != "low" && effort != "medium" && effort != "high" {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Reasoning effort must be 'low', 'medium', or 'high', got '%s'", *c.reasoningEffort),
+				Suggestion: "Set reasoning.effort to 'low', 'medium', or 'high'",
+			}
+		}
+
+		// Set the reasoning_effort parameter
+		params.ReasoningEffort = openai.ReasoningEffort(effort)
 	}
 
 	// Call the API with all parameters

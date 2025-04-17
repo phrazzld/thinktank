@@ -92,6 +92,10 @@ models:
       presence_penalty:
         type: float
         default: 0.0
+      reasoning:
+        type: object
+        default:
+          effort: "high"
 
   # GPT-4.1 - Next generation model with improved reasoning capabilities
   - name: gpt-4.1

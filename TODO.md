@@ -1,5 +1,14 @@
 # TODO
 
+## Priority Fixes (P0 - Immediate)
+
+- [x] **T051:** Fix OpenAI O-Series Model "reasoning" Parameter Handling
+    - **Action:** Update the OpenAI client and configuration handling to properly support the "reasoning" parameter required by O-series models. Add proper type definition and set the default value to `{ effort: "high" }` for these models. Fix configuration validation to properly handle and validate this parameter.
+    - **Depends On:** None
+    - **AC Ref:** None
+    - **Note:** The logs show warnings about the "reasoning" parameter missing a type and having no default value. This parameter is required for proper functioning of all OpenAI o-series models.
+    - **Implementation:** Updated the OpenAI client to support the reasoning parameter for O-series models. Added auto-detection to set "high" effort by default for O-models. Added validation for the parameter ensuring valid values (low, medium, high). Updated models.yaml to include proper type definition and default configuration for the reasoning parameter. All tests are passing.
+
 ## Phase 0: Code Refactoring (P0 - Immediate)
 
 - [x] **R001:** Create openai_test_utils.go Utility File
