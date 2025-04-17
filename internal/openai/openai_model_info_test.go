@@ -73,7 +73,7 @@ func TestGetModelInfoWithUnknownModel(t *testing.T) {
 	require.NotNil(t, modelInfo, "Model info should not be nil")
 	assert.Equal(t, unknownModelName, modelInfo.Name, "Model name should match")
 	// Should use more generous defaults for unknown models (updated values)
-	assert.Equal(t, int32(32768), modelInfo.InputTokenLimit, "Input token limit should use default")
+	assert.Equal(t, int32(200000), modelInfo.InputTokenLimit, "Input token limit should use default")
 	assert.Equal(t, int32(4096), modelInfo.OutputTokenLimit, "Output token limit should use default")
 }
 

@@ -417,8 +417,8 @@ func (c *openaiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo
 			// This should be considered a fallback only
 			// The registry should provide the actual limits in most cases
 			info = &modelInfo{
-				inputTokenLimit:  32768, // More generous default
-				outputTokenLimit: 4096,  // More generous default
+				inputTokenLimit:  200000, // Increased default to 200K tokens for better compatibility with newer models
+				outputTokenLimit: 4096,   // Default output limit
 			}
 		}
 	}
@@ -449,24 +449,64 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 		Model:    c.modelName,
 	}
 
-	// Apply all optional parameters if they have been set
+	// Validate and apply all optional parameters if they have been set
 	if c.temperature != nil {
+		// Temperature should be between 0.0 and 2.0
+		if *c.temperature < 0.0 || *c.temperature > 2.0 {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
+				Suggestion: "Set temperature to a value between 0.0 and 2.0",
+			}
+		}
 		params.Temperature = openai.Float(*c.temperature)
 	}
 
 	if c.topP != nil {
+		// Top_p should be between 0.0 and 1.0
+		if *c.topP < 0.0 || *c.topP > 1.0 {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Top_p must be between 0.0 and 1.0, got %f", *c.topP),
+				Suggestion: "Set top_p to a value between 0.0 and 1.0",
+			}
+		}
 		params.TopP = openai.Float(*c.topP)
 	}
 
 	if c.maxTokens != nil {
+		// Max tokens should be positive
+		if *c.maxTokens <= 0 {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Max tokens must be positive, got %d", *c.maxTokens),
+				Suggestion: "Set max_tokens to a positive value",
+			}
+		}
 		params.MaxTokens = openai.Int(int64(*c.maxTokens))
 	}
 
 	if c.frequencyPenalty != nil {
+		// Frequency penalty should be between -2.0 and 2.0
+		if *c.frequencyPenalty < -2.0 || *c.frequencyPenalty > 2.0 {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Frequency penalty must be between -2.0 and 2.0, got %f", *c.frequencyPenalty),
+				Suggestion: "Set frequency_penalty to a value between -2.0 and 2.0",
+			}
+		}
 		params.FrequencyPenalty = openai.Float(*c.frequencyPenalty)
 	}
 
 	if c.presencePenalty != nil {
+		// Presence penalty should be between -2.0 and 2.0
+		if *c.presencePenalty < -2.0 || *c.presencePenalty > 2.0 {
+			return nil, &APIError{
+				Type:       ErrorTypeInvalidRequest,
+				Message:    fmt.Sprintf("Presence penalty must be between -2.0 and 2.0, got %f", *c.presencePenalty),
+				Suggestion: "Set presence_penalty to a value between -2.0 and 2.0",
+			}
+		}
 		params.PresencePenalty = openai.Float(*c.presencePenalty)
 	}
 

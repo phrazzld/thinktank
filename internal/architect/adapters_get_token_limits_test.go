@@ -100,12 +100,13 @@ func TestGetModelTokenLimits(t *testing.T) {
 			expectedOutput:  4096,
 		},
 
-		// Unknown model
+		// Unknown model - now returns default values
 		{
-			name:           "unknown model",
-			modelName:      "unknown-model",
-			expectError:    true,
-			expectedErrMsg: "token limits not available for model: unknown-model",
+			name:            "unknown model",
+			modelName:       "unknown-model",
+			expectError:     false,
+			expectedContext: 200000,
+			expectedOutput:  4096,
 		},
 	}
 

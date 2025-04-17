@@ -117,8 +117,9 @@ func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow
 
 	// Default fallback
 	default:
-		// Return error for unknown models
-		return 0, 0, fmt.Errorf("token limits not available for model: %s", modelName)
+		// Use a more generous default for unknown models
+		// This matches the default in openai_client.go
+		return 200000, 4096, nil
 	}
 }
 
