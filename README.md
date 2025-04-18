@@ -1,10 +1,10 @@
 # architect
 
-A powerful code-base context analysis and planning tool that leverages Google's Gemini and OpenAI models to generate detailed, actionable technical plans for software projects.
+A powerful code-base context analysis and planning tool that leverages Google's Gemini, OpenAI, and OpenRouter models to generate detailed, actionable technical plans for software projects.
 
 ## Overview
 
-architect analyzes your codebase and uses Gemini or OpenAI models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
+architect analyzes your codebase and uses Gemini, OpenAI, or OpenRouter models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
 
 ## Important Updates
 
@@ -33,7 +33,7 @@ If you're developing with or extending Architect, please migrate to the provider
 
 - **Contextual Analysis**: Analyzes your codebase to understand its structure, patterns, and dependencies
 - **Smart Filtering**: Include/exclude specific file types or directories from analysis
-- **Multiple AI Providers**: Support for both Gemini and OpenAI models
+- **Multiple AI Providers**: Support for Gemini, OpenAI, and OpenRouter models
 - **Customizable Output**: Configure the format of the generated plan
 - **Git-Aware**: Respects .gitignore patterns when scanning your codebase
 - **Token Management**: Smart token counting with limit checking to prevent API errors
@@ -90,6 +90,12 @@ architect --instructions instructions.txt --model gpt-4-turbo ./
 # Use both Gemini and OpenAI models
 architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
 
+# Use an OpenRouter model
+architect --instructions instructions.txt --model openrouter/deepseek/deepseek-r1 ./
+
+# Use models from multiple providers
+architect --instructions instructions.txt --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/x-ai/grok-3-beta ./
+
 # Enable structured audit logging (JSON Lines format)
 architect --instructions instructions.txt --audit-log-file audit.jsonl ./
 
@@ -114,9 +120,12 @@ export GEMINI_API_KEY="your-gemini-api-key-here"
 
 # Set your OpenAI API key (required for OpenAI models)
 export OPENAI_API_KEY="your-openai-api-key-here"
+
+# Set your OpenRouter API key (required for OpenRouter models)
+export OPENROUTER_API_KEY="your-openrouter-api-key-here"
 ```
 
-> **Note**: You only need to set the API key for the provider(s) you're using. If you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. Similarly, if you're only using OpenAI models, only `OPENAI_API_KEY` is required. If you're using both providers, both environment variables need to be set.
+> **Note**: You only need to set the API key for the provider(s) you're using. If you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. Similarly, if you're only using OpenAI models, only `OPENAI_API_KEY` is required. If you're using OpenRouter models, `OPENROUTER_API_KEY` is required. Set all relevant environment variables for the providers you intend to use.
 
 The required API key environment variables are defined in the `api_key_sources` section of your `~/.config/architect/models.yaml` file. If you add new providers, you can specify custom environment variable names for their API keys in this section.
 
@@ -141,7 +150,7 @@ The required API key environment variables are defined in the `api_key_sources` 
 
 ## Configuration
 
-architect is configured through command-line flags, environment variables (`GEMINI_API_KEY` and/or `OPENAI_API_KEY`), and a models.yaml configuration file for provider and model settings.
+architect is configured through command-line flags, environment variables (`GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `OPENROUTER_API_KEY`), and a models.yaml configuration file for provider and model settings.
 
 ### Models Configuration File
 
@@ -149,7 +158,7 @@ architect uses a `models.yaml` configuration file to define LLM providers and mo
 
 - **Location**: `~/.config/architect/models.yaml`
 - **Purpose**: Centralizes all model configuration including:
-  - Available providers (OpenAI, Gemini)
+  - Available providers (OpenAI, Gemini, OpenRouter)
   - Model definitions with context windows and token limits
   - Default parameter values (temperature, etc.)
   - API key sources (environment variables)
@@ -208,7 +217,7 @@ When token limits are exceeded, try:
 architect supports generating plans with multiple AI models from multiple providers simultaneously:
 
 - **Multiple Models**: Specify multiple models with the repeatable `--model` flag
-- **Multiple Providers**: Seamlessly use both Gemini and OpenAI models in the same run
+- **Multiple Providers**: Seamlessly use Gemini, OpenAI, and OpenRouter models in the same run
 - **Registry-Based Configuration**: Uses models.yaml to define providers, models, and their capabilities
 - **Organized Output**: Each model's plan is saved as a separate file in the output directory
 - **Run Name Directories**: Automatically creates a uniquely named directory for each run
@@ -219,8 +228,8 @@ architect supports generating plans with multiple AI models from multiple provid
 
 Example:
 ```bash
-# Generate plans with both Gemini and OpenAI models
-architect --instructions task.md --model gemini-1.5-pro --model gpt-4-turbo ./src
+# Generate plans with models from all supported providers
+architect --instructions task.md --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/deepseek/deepseek-r1 ./src
 ```
 
 This will generate:
@@ -289,6 +298,7 @@ Each log entry contains structured information that can be processed by tools, w
 ### API Key Issues
 - For Gemini models, ensure `GEMINI_API_KEY` is set correctly in your environment
 - For OpenAI models, ensure `OPENAI_API_KEY` is set correctly in your environment
+- For OpenRouter models, ensure `OPENROUTER_API_KEY` is set correctly in your environment
 - Check that your API keys have appropriate permissions for the models you're using
 - Verify the environment variable names match those in the `api_key_sources` section of models.yaml
 
@@ -318,6 +328,7 @@ Each log entry contains structured information that can be processed by tools, w
 - **Path issues**: When running commands, use absolute or correct relative paths to your project files
 - **Flag precedence**: Remember that CLI flags always take precedence over default values
 - **Model name errors**: Ensure you're using valid model names that are defined in your models.yaml file
+- **Provider prefix**: For OpenRouter models, make sure to include the provider prefix (e.g., `openrouter/deepseek/deepseek-r1`)
 - **Output directory permissions**: Check you have write access to the output directory when using `--output-dir`
 
 ## Contributing

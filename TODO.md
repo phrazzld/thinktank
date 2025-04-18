@@ -82,7 +82,7 @@
     - **Depends On:** [T001, T013, T014, T015]
     - **AC Ref:** PLAN.md Step 6
 
-- [ ] **T017:** Update Main `README.md` Documentation
+- [~] **T017:** Update Main `README.md` Documentation
     - **Action:** Modify the main `README.md`. Add OpenRouter to the list of supported providers. Explain the requirement for the `OPENROUTER_API_KEY` environment variable. Provide examples of using OpenRouter models via the `--model` flag.
     - **Depends On:** [T016]
     - **AC Ref:** PLAN.md Step 7
