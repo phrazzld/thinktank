@@ -55,9 +55,9 @@ func (p *OpenRouterProvider) CreateClient(
 	effectiveAPIEndpoint := apiEndpoint
 	if effectiveAPIEndpoint == "" {
 		effectiveAPIEndpoint = "https://openrouter.ai/api/v1"
-		p.logger.Debug("Using default OpenRouter API endpoint: %s", effectiveAPIEndpoint)
+		p.logger.Debug("Using default OpenRouter API endpoint")
 	} else {
-		p.logger.Debug("Using custom API endpoint: %s", effectiveAPIEndpoint)
+		p.logger.Debug("Using %s", GetBaseURLLogInfo(effectiveAPIEndpoint))
 	}
 
 	// Validate modelID

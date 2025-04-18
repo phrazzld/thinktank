@@ -261,7 +261,7 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 
 	// Execute the request
 	if c.logger != nil {
-		c.logger.Debug("Sending request to OpenRouter API: %s", apiURL)
+		c.logger.Debug("Sending request to OpenRouter API: %s", SanitizeURL(apiURL))
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

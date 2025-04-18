@@ -68,7 +68,7 @@
         1. Audit complete and documented.
     - **depends-on:** none
 
-- [ ] **T008 · refactor · p0: refactor logging calls to avoid outputting secrets**
+- [x] **T008 · refactor · p0: refactor logging calls to avoid outputting secrets**
     - **context:** CR-02: Secrets: Audit & Seal Log Leaks
     - **action:**
         1. Modify logger calls identified in audits to log only presence/absence of secrets, never values.
