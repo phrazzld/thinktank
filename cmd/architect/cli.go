@@ -64,13 +64,16 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 	// Check for API key based on model configuration
 	modelNeedsOpenAIKey := false
 	modelNeedsGeminiKey := false
+	modelNeedsOpenRouterKey := false
 
-	// Check if any model is OpenAI or Gemini
+	// Check if any model is OpenAI, Gemini, or OpenRouter
 	for _, model := range config.ModelNames {
 		if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
 			strings.HasPrefix(strings.ToLower(model), "text-") ||
 			strings.Contains(strings.ToLower(model), "openai") {
 			modelNeedsOpenAIKey = true
+		} else if strings.Contains(strings.ToLower(model), "openrouter") {
+			modelNeedsOpenRouterKey = true
 		} else {
 			// Default to Gemini for any other model
 			modelNeedsGeminiKey = true
@@ -89,6 +92,15 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 		if openAIKey == "" {
 			logger.Error("%s environment variable not set.", openaiAPIKeyEnvVar)
 			return fmt.Errorf("openAI API key not set")
+		}
+	}
+
+	// If any OpenRouter model is used, check for OpenRouter API key
+	if modelNeedsOpenRouterKey {
+		openRouterKey := getenv("OPENROUTER_API_KEY")
+		if openRouterKey == "" {
+			logger.Error("OPENROUTER_API_KEY environment variable not set.")
+			return fmt.Errorf("openRouter API key not set")
 		}
 	}
 
@@ -153,6 +165,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
 		fmt.Fprintf(os.Stderr, "  %s: Required for Gemini models. Your Google AI Gemini API key.\n", apiKeyEnvVar)
 		fmt.Fprintf(os.Stderr, "  %s: Required for OpenAI models. Your OpenAI API key.\n", openaiAPIKeyEnvVar)
+		fmt.Fprintf(os.Stderr, "  OPENROUTER_API_KEY: Required for OpenRouter models. Your OpenRouter API key.\n")
 	}
 
 	// Parse the flags

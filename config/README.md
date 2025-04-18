@@ -7,7 +7,7 @@ This directory contains default configuration files for the Architect tool.
 The `models.yaml` file defines the LLM providers and models available to the Architect tool. It includes:
 
 - API key environment variable mappings
-- Provider definitions (OpenAI, Gemini)
+- Provider definitions (OpenAI, Gemini, OpenRouter)
 - Model configurations with context sizes and output limits
 - Default parameter settings for each model
 
@@ -39,6 +39,7 @@ If you prefer to install manually:
    ```bash
    export OPENAI_API_KEY="your-openai-api-key"
    export GEMINI_API_KEY="your-gemini-api-key"
+   export OPENROUTER_API_KEY="your-openrouter-api-key"
    ```
 
 ## Customization

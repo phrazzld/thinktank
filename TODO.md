@@ -7,7 +7,7 @@
     - **Depends On:** None
     - **AC Ref:** PLAN.md Step 1
 
-- [ ] **T002:** Update Configuration Documentation and Scripts
+- [x] **T002:** Update Configuration Documentation and Scripts
     - **Action:** Modify `config/README.md` to mention the new "openrouter" provider and the `OPENROUTER_API_KEY` source in `models.yaml`. Update `config/install.sh` to check for and mention the `OPENROUTER_API_KEY` environment variable during setup.
     - **Depends On:** [T001]
     - **AC Ref:** PLAN.md Step 1
