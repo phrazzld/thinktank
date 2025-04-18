@@ -109,7 +109,7 @@
         2. Tests for OpenRouter error handling pass.
     - **depends-on:** [T010]
 
-- [ ] **T012 · refactor · p2: refactor openai provider errors to use shared package**
+- [x] **T012 · refactor · p2: refactor openai provider errors to use shared package**
     - **context:** CR-03: Error Handling: Deduplicate & Centralize
     - **action:**
         1. Modify `providers/openai/errors.go` to use types and logic from `internal/llm/errors.go`.

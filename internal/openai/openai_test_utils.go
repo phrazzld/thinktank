@@ -103,36 +103,9 @@ func CreateMockOpenAIClientForTesting(modelName string, responseFunc func(ctx co
 }
 
 // MockAPIErrorResponse creates a mock error response with specifics about the error
-func MockAPIErrorResponse(errorType ErrorType, statusCode int, message string, details string) *APIError {
-	suggestion := ""
-
-	// Set appropriate suggestion based on error type
-	switch errorType {
-	case ErrorTypeAuth:
-		suggestion = "Check that your API key is valid and has not expired. Ensure environment variables are set correctly."
-	case ErrorTypeRateLimit:
-		suggestion = "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate."
-	case ErrorTypeInvalidRequest:
-		suggestion = "Check the prompt format and parameters. Ensure they comply with the API requirements."
-	case ErrorTypeNotFound:
-		suggestion = "Verify that the model name is correct and that the model is available in your region."
-	case ErrorTypeServer:
-		suggestion = "This is typically a temporary issue. Wait a few moments and try again."
-	case ErrorTypeNetwork:
-		suggestion = "Check your internet connection and try again."
-	case ErrorTypeInputLimit:
-		suggestion = "Reduce the input size or use a model with higher context limits."
-	case ErrorTypeContentFiltered:
-		suggestion = "Your prompt or content may have triggered safety filters. Review and modify your input to comply with content policies."
-	}
-
-	return &APIError{
-		Type:       errorType,
-		Message:    message,
-		StatusCode: statusCode,
-		Suggestion: suggestion,
-		Details:    details,
-	}
+// This is now just a convenience function that forwards to the version in errors.go
+func MockAPIErrorResponseOld(errorType int, statusCode int, message string, details string) *llm.LLMError {
+	return MockAPIErrorResponse(errorType, statusCode, message, details)
 }
 
 // MockModelInfo creates a mock model info provider that returns a fixed model info for any model

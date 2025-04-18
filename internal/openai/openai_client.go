@@ -83,11 +83,12 @@ func (t *realTokenizer) countTokens(text string, model string) (int, error) {
 
 	tokenizer, err := tiktoken.GetEncoding(encoding)
 	if err != nil {
-		return 0, &APIError{
-			Original: err,
-			Type:     ErrorTypeInvalidRequest,
-			Message:  fmt.Sprintf("Failed to get encoding for model %s: %v", model, err),
-		}
+		return 0, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			fmt.Sprintf("Failed to get encoding for model %s: %v", model, err),
+			err,
+			"",
+		)
 	}
 
 	tokens := tokenizer.Encode(text, nil, nil)
@@ -479,11 +480,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 		if strings.EqualFold(c.modelName, "o4-mini") {
 			// Don't set temperature for o4-mini unless it's exactly 1.0
 			if *c.temperature != 1.0 {
-				return nil, &APIError{
-					Type:       ErrorTypeInvalidRequest,
-					Message:    fmt.Sprintf("The o4-mini model only supports temperature=1.0, got %f", *c.temperature),
-					Suggestion: "Set temperature to 1.0 or remove it completely for o4-mini model",
-				}
+				return nil, CreateAPIError(
+					llm.CategoryInvalidRequest,
+					fmt.Sprintf("The o4-mini model only supports temperature=1.0, got %f", *c.temperature),
+					nil,
+					"Set temperature to 1.0 or remove it completely for o4-mini model",
+				)
 			}
 			// For o4-mini, we don't set the temperature parameter at all
 			// as only the default (1.0) is supported
@@ -491,11 +493,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 			// For all other models, apply normal validation
 			// Temperature should be between 0.0 and 2.0
 			if *c.temperature < 0.0 || *c.temperature > 2.0 {
-				return nil, &APIError{
-					Type:       ErrorTypeInvalidRequest,
-					Message:    fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
-					Suggestion: "Set temperature to a value between 0.0 and 2.0",
-				}
+				return nil, CreateAPIError(
+					llm.CategoryInvalidRequest,
+					fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
+					nil,
+					"Set temperature to a value between 0.0 and 2.0",
+				)
 			}
 			params.Temperature = openai.Float(*c.temperature)
 		}
@@ -504,11 +507,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 	if c.topP != nil {
 		// Top_p should be between 0.0 and 1.0
 		if *c.topP < 0.0 || *c.topP > 1.0 {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Top_p must be between 0.0 and 1.0, got %f", *c.topP),
-				Suggestion: "Set top_p to a value between 0.0 and 1.0",
-			}
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Top_p must be between 0.0 and 1.0, got %f", *c.topP),
+				nil,
+				"Set top_p to a value between 0.0 and 1.0",
+			)
 		}
 		params.TopP = openai.Float(*c.topP)
 	}
@@ -516,11 +520,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 	if c.maxTokens != nil {
 		// Max tokens should be positive
 		if *c.maxTokens <= 0 {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Max tokens must be positive, got %d", *c.maxTokens),
-				Suggestion: "Set max_tokens to a positive value",
-			}
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Max tokens must be positive, got %d", *c.maxTokens),
+				nil,
+				"Set max_tokens to a positive value",
+			)
 		}
 		params.MaxTokens = openai.Int(int64(*c.maxTokens))
 	}
@@ -528,11 +533,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 	if c.frequencyPenalty != nil {
 		// Frequency penalty should be between -2.0 and 2.0
 		if *c.frequencyPenalty < -2.0 || *c.frequencyPenalty > 2.0 {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Frequency penalty must be between -2.0 and 2.0, got %f", *c.frequencyPenalty),
-				Suggestion: "Set frequency_penalty to a value between -2.0 and 2.0",
-			}
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Frequency penalty must be between -2.0 and 2.0, got %f", *c.frequencyPenalty),
+				nil,
+				"Set frequency_penalty to a value between -2.0 and 2.0",
+			)
 		}
 		params.FrequencyPenalty = openai.Float(*c.frequencyPenalty)
 	}
@@ -540,11 +546,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 	if c.presencePenalty != nil {
 		// Presence penalty should be between -2.0 and 2.0
 		if *c.presencePenalty < -2.0 || *c.presencePenalty > 2.0 {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Presence penalty must be between -2.0 and 2.0, got %f", *c.presencePenalty),
-				Suggestion: "Set presence_penalty to a value between -2.0 and 2.0",
-			}
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Presence penalty must be between -2.0 and 2.0, got %f", *c.presencePenalty),
+				nil,
+				"Set presence_penalty to a value between -2.0 and 2.0",
+			)
 		}
 		params.PresencePenalty = openai.Float(*c.presencePenalty)
 	}
@@ -554,11 +561,12 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 		// Validate reasoning effort value
 		effort := strings.ToLower(*c.reasoningEffort)
 		if effort != "low" && effort != "medium" && effort != "high" {
-			return nil, &APIError{
-				Type:       ErrorTypeInvalidRequest,
-				Message:    fmt.Sprintf("Reasoning effort must be 'low', 'medium', or 'high', got '%s'", *c.reasoningEffort),
-				Suggestion: "Set reasoning.effort to 'low', 'medium', or 'high'",
-			}
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Reasoning effort must be 'low', 'medium', or 'high', got '%s'", *c.reasoningEffort),
+				nil,
+				"Set reasoning.effort to 'low', 'medium', or 'high'",
+			)
 		}
 
 		// Set the reasoning_effort parameter

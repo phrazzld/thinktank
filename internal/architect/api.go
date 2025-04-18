@@ -243,7 +243,7 @@ func (s *apiService) createLLMClient(ctx context.Context, apiKey, modelName, api
 		}
 
 		// Check if it's an OpenAI API error
-		if apiErr, ok := openai.IsAPIError(err); ok {
+		if apiErr, ok := openai.IsOpenAIError(err); ok {
 			return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
 		}
 
@@ -438,7 +438,7 @@ func (s *apiService) IsSafetyBlockedError(err error) bool {
 // This method provides a provider-agnostic way to extract user-friendly error details
 // from provider-specific error types. It handles:
 // - Gemini API errors: Using gemini.IsAPIError and its UserFacingError method
-// - OpenAI API errors: Using openai.IsAPIError and its UserFacingError method
+// - OpenAI API errors: Using openai.IsOpenAIError and its UserFacingError method
 // - Generic errors: Falling back to standard Error() method
 //
 // The approach balances provider-specific error handling with a consistent interface,
@@ -462,7 +462,7 @@ func (s *apiService) GetErrorDetails(err error) string {
 	}
 
 	// Check if it's an OpenAI API error with enhanced details
-	if apiErr, ok := openai.IsAPIError(err); ok {
+	if apiErr, ok := openai.IsOpenAIError(err); ok {
 		return apiErr.UserFacingError()
 	}
 
