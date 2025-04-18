@@ -27,7 +27,7 @@
     - **Depends On:** [T003]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T006:** Implement `GenerateContent` Success Path in `openrouter.Client`
+- [x] **T006:** Implement `GenerateContent` Success Path in `openrouter.Client`
     - **Action:** Implement the `GenerateContent` method on `openrouterClient`. Use `net/http` to make a POST request to the `/chat/completions` endpoint. Set required headers (`Authorization: Bearer <API_KEY>`, `Content-Type: application/json`). Marshal the request body based on the OpenAI-compatible format using the client's `modelID` and the method's `prompt` and `params`. Unmarshal the JSON response and map the primary content to `llm.ProviderResult.Content`. Handle the basic success case (HTTP 200 OK).
     - **Depends On:** [T005]
     - **AC Ref:** PLAN.md Step 4
