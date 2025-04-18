@@ -12,7 +12,7 @@
     - **Depends On:** [T001]
     - **AC Ref:** PLAN.md Step 1
 
-- [ ] **T003:** Create OpenRouter Provider Package Structure
+- [x] **T003:** Create OpenRouter Provider Package Structure
     - **Action:** Create the directory `internal/providers/openrouter`. Create the file `internal/providers/openrouter/provider.go`. Create the file `internal/providers/openrouter/client.go`.
     - **Depends On:** None
     - **AC Ref:** PLAN.md Step 2
