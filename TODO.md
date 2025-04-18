@@ -60,7 +60,7 @@
         1. Audit complete and documented.
     - **depends-on:** none
 
-- [ ] **T007 · test · p0: audit logger calls for secret leaks in openrouter provider**
+- [x] **T007 · test · p0: audit logger calls for secret leaks in openrouter provider**
     - **context:** CR-02: Secrets: Audit & Seal Log Leaks
     - **action:**
         1. Review all logger calls in `providers/openrouter/*` for potential leaks of API keys or other sensitive info.
