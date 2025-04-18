@@ -106,12 +106,12 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string,
 // GenerateContent implements the llm.LLMClient interface
 func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if prompt == "" {
-		return nil, &APIError{
-			Original:   errors.New("prompt cannot be empty"),
-			Type:       ErrorTypeInvalidRequest,
-			Message:    "Cannot generate content with an empty prompt",
-			Suggestion: "Provide a task description using the --instructions flag",
-		}
+		return nil, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Cannot generate content with an empty prompt",
+			errors.New("prompt cannot be empty"),
+			"Provide a task description using the --instructions flag",
+		)
 	}
 
 	// Apply parameters if provided
@@ -180,22 +180,22 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, param
 
 	// Check for empty response
 	if resp == nil {
-		return nil, &APIError{
-			Original:   errors.New("received nil response from Gemini API"),
-			Type:       ErrorTypeUnknown,
-			Message:    "Received an empty response from the Gemini API",
-			Suggestion: "This is likely a temporary issue. Please try again in a few moments.",
-		}
+		return nil, CreateAPIError(
+			llm.CategoryUnknown,
+			"Received an empty response from the Gemini API",
+			errors.New("received nil response from Gemini API"),
+			"This is likely a temporary issue. Please try again in a few moments.",
+		)
 	}
 
 	// Check for empty candidates
 	if len(resp.Candidates) == 0 {
-		return nil, &APIError{
-			Original:   errors.New("received empty candidates from Gemini API"),
-			Type:       ErrorTypeUnknown,
-			Message:    "The Gemini API returned no generation candidates",
-			Suggestion: "This could be due to content filtering. Try modifying your prompt or task description.",
-		}
+		return nil, CreateAPIError(
+			llm.CategoryUnknown,
+			"The Gemini API returned no generation candidates",
+			errors.New("received empty candidates from Gemini API"),
+			"This could be due to content filtering. Try modifying your prompt or task description.",
+		)
 	}
 
 	candidate := resp.Candidates[0]
@@ -330,25 +330,25 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 	// Create request
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		apiErr := &APIError{
-			Original:   err,
-			Type:       ErrorTypeNetwork,
-			Message:    "Failed to create HTTP request for model information",
-			Suggestion: "This is likely a temporary issue with network connectivity. Check your internet connection and try again.",
-		}
+		apiErr := CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to create HTTP request for model information",
+			err,
+			"This is likely a temporary issue with network connectivity. Check your internet connection and try again.",
+		)
 		return nil, apiErr
 	}
 
 	// Make the request
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		apiErr := &APIError{
-			Original:   err,
-			Type:       ErrorTypeNetwork,
-			Message:    "Failed to connect to Gemini API to fetch model information",
-			Suggestion: "Check your internet connection and try again. If the issue persists, the API might be experiencing downtime.",
-			Details:    err.Error(),
-		}
+		apiErr := CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to connect to Gemini API to fetch model information",
+			err,
+			"Check your internet connection and try again. If the issue persists, the API might be experiencing downtime.",
+		)
+		apiErr.Details = err.Error()
 		return nil, apiErr
 	}
 	defer func() { _ = resp.Body.Close() }()
@@ -382,13 +382,13 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 	// Parse response
 	var modelDetails ModelDetailsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&modelDetails); err != nil {
-		apiErr := &APIError{
-			Original:   err,
-			Type:       ErrorTypeInvalidRequest,
-			Message:    "Failed to parse model information response from Gemini API",
-			Suggestion: "This is likely a temporary API issue or a change in the API response format. Try again later.",
-			Details:    err.Error(),
-		}
+		apiErr := CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Failed to parse model information response from Gemini API",
+			err,
+			"This is likely a temporary API issue or a change in the API response format. Try again later.",
+		)
+		apiErr.Details = err.Error()
 		return nil, apiErr
 	}
 

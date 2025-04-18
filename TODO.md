@@ -119,7 +119,7 @@
         2. Tests for OpenAI error handling pass.
     - **depends-on:** [T010]
 
-- [ ] **T013 · refactor · p2: refactor gemini provider errors to use shared package**
+- [x] **T013 · refactor · p2: refactor gemini provider errors to use shared package**
     - **context:** CR-03: Error Handling: Deduplicate & Centralize
     - **action:**
         1. Modify `providers/gemini/errors.go` to use types and logic from `internal/llm/errors.go`.

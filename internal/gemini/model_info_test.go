@@ -204,15 +204,15 @@ func TestFetchModelInfo(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		// Should be an APIError
-		apiErr, ok := err.(*APIError)
+		// Should be an LLMError from Gemini
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
-			t.Fatalf("Expected APIError, got %T: %v", err, err)
+			t.Fatalf("Expected LLMError from Gemini, got %T: %v", err, err)
 		}
 
 		// Should have network error type
-		if apiErr.Type != ErrorTypeNetwork {
-			t.Errorf("Expected error type %q, got %q", ErrorTypeNetwork, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeNetwork {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeNetwork, GetErrorType(apiErr))
 		}
 
 		// Should contain original error
@@ -245,15 +245,15 @@ func TestFetchModelInfo(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		// Should be an APIError
-		apiErr, ok := err.(*APIError)
+		// Should be an LLMError from Gemini
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
-			t.Fatalf("Expected APIError, got %T: %v", err, err)
+			t.Fatalf("Expected LLMError from Gemini, got %T: %v", err, err)
 		}
 
 		// Should have not found error type
-		if apiErr.Type != ErrorTypeNotFound {
-			t.Errorf("Expected error type %q, got %q", ErrorTypeNotFound, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeNotFound {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeNotFound, GetErrorType(apiErr))
 		}
 
 		// Should have specific message about the model
@@ -286,15 +286,15 @@ func TestFetchModelInfo(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		// Should be an APIError
-		apiErr, ok := err.(*APIError)
+		// Should be an LLMError from Gemini
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
-			t.Fatalf("Expected APIError, got %T: %v", err, err)
+			t.Fatalf("Expected LLMError from Gemini, got %T: %v", err, err)
 		}
 
 		// Should have auth error type
-		if apiErr.Type != ErrorTypeAuth {
-			t.Errorf("Expected error type %q, got %q", ErrorTypeAuth, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeAuth {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeAuth, GetErrorType(apiErr))
 		}
 
 		// Result should be nil
@@ -322,15 +322,15 @@ func TestFetchModelInfo(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		// Should be an APIError
-		apiErr, ok := err.(*APIError)
+		// Should be an LLMError from Gemini
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
-			t.Fatalf("Expected APIError, got %T: %v", err, err)
+			t.Fatalf("Expected LLMError from Gemini, got %T: %v", err, err)
 		}
 
 		// Should have rate limit error type
-		if apiErr.Type != ErrorTypeRateLimit {
-			t.Errorf("Expected error type %q, got %q", ErrorTypeRateLimit, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeRateLimit {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeRateLimit, GetErrorType(apiErr))
 		}
 
 		// Result should be nil
@@ -363,15 +363,15 @@ func TestFetchModelInfo(t *testing.T) {
 			t.Fatal("Expected error, got nil")
 		}
 
-		// Should be an APIError
-		apiErr, ok := err.(*APIError)
+		// Should be an LLMError from Gemini
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
-			t.Fatalf("Expected APIError, got %T: %v", err, err)
+			t.Fatalf("Expected LLMError from Gemini, got %T: %v", err, err)
 		}
 
 		// Should have invalid request error type (since JSON parsing failed)
-		if apiErr.Type != ErrorTypeInvalidRequest {
-			t.Errorf("Expected error type %q, got %q", ErrorTypeInvalidRequest, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeInvalidRequest {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeInvalidRequest, GetErrorType(apiErr))
 		}
 
 		// Result should be nil

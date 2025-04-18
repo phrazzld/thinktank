@@ -8,6 +8,8 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/architect/internal/llm"
 )
 
 func TestCountTokens(t *testing.T) {
@@ -54,12 +56,12 @@ func TestCountTokens(t *testing.T) {
 		// Setup mock client that returns a specific error
 		client := &MockClient{
 			CountTokensFunc: func(ctx context.Context, prompt string) (*TokenCount, error) {
-				return nil, &APIError{
-					Original:   errors.New("API error: invalid request"),
-					Type:       ErrorTypeInvalidRequest,
-					Message:    "Failed to count tokens in prompt",
-					Suggestion: "Check your API key and internet connection.",
-				}
+				// Using the llm package for error categories
+				return nil, CreateAPIError(
+					llm.CategoryInvalidRequest,
+					"Failed to count tokens in prompt",
+					errors.New("API error: invalid request"),
+					"Check your API key and internet connection.")
 			},
 		}
 
@@ -72,13 +74,13 @@ func TestCountTokens(t *testing.T) {
 		}
 
 		// Verify it's an APIError with the expected type
-		apiErr, ok := err.(*APIError)
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
 			t.Fatalf("Expected *APIError, got %T", err)
 		}
 
-		if apiErr.Type != ErrorTypeInvalidRequest {
-			t.Errorf("Expected error type %v, got %v", ErrorTypeInvalidRequest, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeInvalidRequest {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeInvalidRequest, GetErrorType(apiErr))
 		}
 
 		// Verify message is as expected
@@ -96,12 +98,11 @@ func TestCountTokens(t *testing.T) {
 		// Setup mock client that returns a rate limit error
 		client := &MockClient{
 			CountTokensFunc: func(ctx context.Context, prompt string) (*TokenCount, error) {
-				return nil, &APIError{
-					Original:   errors.New("API error: rate limit exceeded"),
-					Type:       ErrorTypeRateLimit,
-					Message:    "Request rate limit or quota exceeded on the Gemini API",
-					Suggestion: "Wait and try again later.",
-				}
+				return nil, CreateAPIError(
+					llm.CategoryRateLimit,
+					"Request rate limit or quota exceeded on the Gemini API",
+					errors.New("API error: rate limit exceeded"),
+					"Wait and try again later.")
 			},
 		}
 
@@ -114,13 +115,13 @@ func TestCountTokens(t *testing.T) {
 		}
 
 		// Verify it's an APIError with the expected type
-		apiErr, ok := err.(*APIError)
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
 			t.Fatalf("Expected *APIError, got %T", err)
 		}
 
-		if apiErr.Type != ErrorTypeRateLimit {
-			t.Errorf("Expected error type %v, got %v", ErrorTypeRateLimit, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeRateLimit {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeRateLimit, GetErrorType(apiErr))
 		}
 
 		// Result should be nil
@@ -133,12 +134,11 @@ func TestCountTokens(t *testing.T) {
 		// Setup mock client that returns a network error
 		client := &MockClient{
 			CountTokensFunc: func(ctx context.Context, prompt string) (*TokenCount, error) {
-				return nil, &APIError{
-					Original:   errors.New("network error: connection refused"),
-					Type:       ErrorTypeNetwork,
-					Message:    "Network error while connecting to the Gemini API",
-					Suggestion: "Check your internet connection and try again.",
-				}
+				return nil, CreateAPIError(
+					llm.CategoryNetwork,
+					"Network error while connecting to the Gemini API",
+					errors.New("network error: connection refused"),
+					"Check your internet connection and try again.")
 			},
 		}
 
@@ -151,13 +151,13 @@ func TestCountTokens(t *testing.T) {
 		}
 
 		// Verify it's an APIError with the expected type
-		apiErr, ok := err.(*APIError)
+		apiErr, ok := IsGeminiError(err)
 		if !ok {
 			t.Fatalf("Expected *APIError, got %T", err)
 		}
 
-		if apiErr.Type != ErrorTypeNetwork {
-			t.Errorf("Expected error type %v, got %v", ErrorTypeNetwork, apiErr.Type)
+		if GetErrorType(apiErr) != ErrorTypeNetwork {
+			t.Errorf("Expected error type %d, got %d", ErrorTypeNetwork, GetErrorType(apiErr))
 		}
 
 		// Result should be nil
