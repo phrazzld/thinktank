@@ -17,7 +17,7 @@
     - **Depends On:** None
     - **AC Ref:** PLAN.md Step 2
 
-- [ ] **T004:** Implement `openrouter.Provider` Struct and `CreateClient` Method
+- [x] **T004:** Implement `openrouter.Provider` Struct and `CreateClient` Method
     - **Action:** In `provider.go`, define the `OpenRouterProvider` struct. Implement the `providers.Provider` interface for this struct, specifically the `CreateClient(ctx context.Context, apiKey string, modelID string, apiEndpoint string) (llm.LLMClient, error)` method. This method should instantiate and return an `openrouterClient` instance, handling the API key and using the default OpenRouter API endpoint (`https://openrouter.ai/api/v1`) if `apiEndpoint` is empty.
     - **Depends On:** [T003]
     - **AC Ref:** PLAN.md Step 3
