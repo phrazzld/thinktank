@@ -230,13 +230,12 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
 		// Create a categorized error for request marshaling failures
-		return nil, &APIError{
-			Original:   err,
-			Type:       ErrorTypeInvalidRequest,
-			Message:    "Failed to prepare request to OpenRouter API",
-			Suggestion: "This is likely an internal error. Please check your input parameters for any invalid values.",
-			Details:    fmt.Sprintf("JSON marshal error: %v", err),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Failed to prepare request to OpenRouter API",
+			err,
+			fmt.Sprintf("JSON marshal error: %v", err),
+		)
 	}
 
 	// Construct the API URL
@@ -246,13 +245,12 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
 		// Create a categorized error for HTTP request creation failures
-		return nil, &APIError{
-			Original:   err,
-			Type:       ErrorTypeNetwork,
-			Message:    "Failed to create HTTP request to OpenRouter API",
-			Suggestion: "This could be due to an invalid API endpoint or network configuration issue.",
-			Details:    fmt.Sprintf("Request creation error: %v", err),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to create HTTP request to OpenRouter API",
+			err,
+			fmt.Sprintf("Request creation error: %v", err),
+		)
 	}
 
 	// Set headers
@@ -265,22 +263,19 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		// Determine error type based on the actual error
-		errType := ErrorTypeNetwork
-
 		// Check for context cancellation
+		category := llm.CategoryNetwork
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			errType = ErrorTypeCancelled
+			category = llm.CategoryCancelled
 		}
 
 		// Create a categorized error for HTTP execution failures
-		return nil, &APIError{
-			Original:   err,
-			Type:       errType,
-			Message:    "Failed to connect to OpenRouter API",
-			Suggestion: "Check your internet connection. If the issue persists, the OpenRouter service may be experiencing issues.",
-			Details:    fmt.Sprintf("HTTP error: %v", err),
-		}
+		return nil, CreateAPIError(
+			category,
+			"Failed to connect to OpenRouter API",
+			err,
+			fmt.Sprintf("HTTP error: %v", err),
+		)
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil && c.logger != nil {
@@ -291,13 +286,12 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, &APIError{
-			Original:   err,
-			Type:       ErrorTypeNetwork,
-			Message:    "Failed to read response from OpenRouter API",
-			Suggestion: "This is likely a temporary network issue. Try again later.",
-			Details:    fmt.Sprintf("Response read error: %v", err),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to read response from OpenRouter API",
+			err,
+			fmt.Sprintf("Response read error: %v", err),
+		)
 	}
 
 	// Handle non-200 status codes
@@ -351,24 +345,22 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Parse the response
 	var completionResponse ChatCompletionResponse
 	if err := json.Unmarshal(body, &completionResponse); err != nil {
-		return nil, &APIError{
-			Original:   err,
-			Type:       ErrorTypeServer,
-			Message:    "Failed to parse response from OpenRouter API",
-			Suggestion: "The API returned an unexpected response format. This might be due to an API change or temporary issue with OpenRouter.",
-			Details:    fmt.Sprintf("JSON unmarshal error: %v, Body: %s", err, truncateString(string(body), 200)),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryServer,
+			"Failed to parse response from OpenRouter API",
+			err,
+			fmt.Sprintf("JSON unmarshal error: %v, Body: %s", err, truncateString(string(body), 200)),
+		)
 	}
 
 	// Validate response structure
 	if len(completionResponse.Choices) == 0 {
-		return nil, &APIError{
-			Original:   fmt.Errorf("no completion choices in response"),
-			Type:       ErrorTypeServer,
-			Message:    "OpenRouter API returned an empty response",
-			Suggestion: "This could be a temporary issue with the OpenRouter service or the underlying model provider. Try again later.",
-			Details:    fmt.Sprintf("Response contained zero choices: %s", truncateString(string(body), 200)),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryServer,
+			"OpenRouter API returned an empty response",
+			fmt.Errorf("no completion choices in response"),
+			fmt.Sprintf("Response contained zero choices: %s", truncateString(string(body), 200)),
+		)
 	}
 
 	// Extract the content and other fields
@@ -395,13 +387,12 @@ func (c *openrouterClient) CountTokens(ctx context.Context, prompt string) (*llm
 	// Get the tokenizer for the appropriate encoding
 	tokenizer, err := tiktoken.GetEncoding(encoding)
 	if err != nil {
-		return nil, &APIError{
-			Original:   err,
-			Type:       ErrorTypeInvalidRequest,
-			Message:    fmt.Sprintf("Failed to get encoding for model %s: %v", c.modelID, err),
-			Suggestion: "This could be due to an unsupported model. Try using a different model.",
-			Details:    fmt.Sprintf("Tiktoken error: %v", err),
-		}
+		return nil, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			fmt.Sprintf("Failed to get encoding for model %s: %v", c.modelID, err),
+			err,
+			fmt.Sprintf("Tiktoken error: %v", err),
+		)
 	}
 
 	// Encode the text to get the token count

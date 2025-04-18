@@ -99,7 +99,7 @@
         2. Basic structure for categorization logic is in place.
     - **depends-on:** none
 
-- [ ] **T011 · refactor · p2: refactor openrouter provider errors to use shared package**
+- [x] **T011 · refactor · p2: refactor openrouter provider errors to use shared package**
     - **context:** CR-03: Error Handling: Deduplicate & Centralize
     - **action:**
         1. Modify `providers/openrouter/errors.go` to use types and logic from `internal/llm/errors.go`.
