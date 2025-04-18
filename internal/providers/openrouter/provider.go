@@ -70,7 +70,11 @@ func (p *OpenRouterProvider) CreateClient(
 		p.logger.Warn("OpenRouter model ID '%s' does not have expected format 'provider/model' or 'provider/organization/model'", modelID)
 	}
 
-	// TODO: This will be replaced with actual client creation in T005
-	// For now, return an error to indicate this is not fully implemented
-	return nil, fmt.Errorf("OpenRouter client implementation not yet complete - this will be implemented in T005")
+	// Create the client using our OpenRouter implementation
+	client, err := NewClient(effectiveAPIKey, modelID, effectiveAPIEndpoint, p.logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create OpenRouter client: %w", err)
+	}
+
+	return client, nil
 }

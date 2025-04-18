@@ -22,7 +22,7 @@
     - **Depends On:** [T003]
     - **AC Ref:** PLAN.md Step 3
 
-- [ ] **T005:** Define `openrouter.Client` Struct and Constructor
+- [x] **T005:** Define `openrouter.Client` Struct and Constructor
     - **Action:** In `client.go`, define the `openrouterClient` struct that will implement the `llm.LLMClient` interface. Create a `NewClient(apiKey string, modelID string, apiEndpoint string) *openrouterClient` constructor function within the `openrouter` package. The constructor should initialize the client with necessary fields like the API key, model ID, API endpoint, and an HTTP client.
     - **Depends On:** [T003]
     - **AC Ref:** PLAN.md Step 4
