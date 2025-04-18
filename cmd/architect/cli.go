@@ -10,6 +10,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // stringSliceFlag is a slice of strings that implements flag.Value interface
@@ -66,17 +67,56 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 	modelNeedsGeminiKey := false
 	modelNeedsOpenRouterKey := false
 
-	// Check if any model is OpenAI, Gemini, or OpenRouter
-	for _, model := range config.ModelNames {
-		if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
-			strings.HasPrefix(strings.ToLower(model), "text-") ||
-			strings.Contains(strings.ToLower(model), "openai") {
-			modelNeedsOpenAIKey = true
-		} else if strings.Contains(strings.ToLower(model), "openrouter") {
-			modelNeedsOpenRouterKey = true
-		} else {
-			// Default to Gemini for any other model
-			modelNeedsGeminiKey = true
+	// Check models using registry if available
+	regManager := registry.GetGlobalManager(nil)
+
+	// Use registry for provider detection if available
+	if regManager != nil {
+		for _, model := range config.ModelNames {
+			// Use the registry to determine the provider
+			provider, err := regManager.GetProviderForModel(model)
+			if err != nil {
+				// If model not found in registry, fallback to string matching
+				logger.Debug("Model %s not found in registry, using string matching fallback", model)
+				if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
+					strings.HasPrefix(strings.ToLower(model), "text-") ||
+					strings.Contains(strings.ToLower(model), "openai") {
+					modelNeedsOpenAIKey = true
+				} else if strings.Contains(strings.ToLower(model), "openrouter") {
+					modelNeedsOpenRouterKey = true
+				} else {
+					// Default to Gemini for any other model
+					modelNeedsGeminiKey = true
+				}
+				continue
+			}
+
+			// Set flag based on provider
+			switch provider {
+			case "openai":
+				modelNeedsOpenAIKey = true
+			case "openrouter":
+				modelNeedsOpenRouterKey = true
+			case "gemini":
+				modelNeedsGeminiKey = true
+			default:
+				logger.Warn("Unknown provider %s for model %s", provider, model)
+			}
+		}
+	} else {
+		// Registry not available, use string matching fallback
+		logger.Debug("Registry not available, using string matching fallback for model detection")
+		for _, model := range config.ModelNames {
+			if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
+				strings.HasPrefix(strings.ToLower(model), "text-") ||
+				strings.Contains(strings.ToLower(model), "openai") {
+				modelNeedsOpenAIKey = true
+			} else if strings.Contains(strings.ToLower(model), "openrouter") {
+				modelNeedsOpenRouterKey = true
+			} else {
+				// Default to Gemini for any other model
+				modelNeedsGeminiKey = true
+			}
 		}
 	}
 

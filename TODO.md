@@ -41,7 +41,7 @@
         1. Tests pass covering various detection scenarios.
     - **depends-on:** [T003]
 
-- [ ] **T005 · refactor · p2: refactor CLI code to use registry for model detection**
+- [x] **T005 · refactor · p2: refactor CLI code to use registry for model detection**
     - **context:** CR-06: Model Detection: Config-driven Not String Matching
     - **action:**
         1. Update `cmd/architect/cli.go` validation logic to use `registry.GetProviderForModel`.
