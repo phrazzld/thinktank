@@ -32,7 +32,7 @@
         2. Logic relies solely on loaded registry configuration.
     - **depends-on:** none
 
-- [ ] **T004 · test · p2: add tests for registry model detection**
+- [x] **T004 · test · p2: add tests for registry model detection**
     - **context:** CR-06: Model Detection: Config-driven Not String Matching
     - **action:**
         1. Add unit tests in `internal/registry/manager_test.go` to verify the model/provider detection logic.
