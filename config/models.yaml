@@ -33,6 +33,7 @@
 api_key_sources:
   openai: "OPENAI_API_KEY"
   gemini: "GEMINI_API_KEY"
+  openrouter: "OPENROUTER_API_KEY"
 
 # Providers
 # ---------
@@ -45,6 +46,11 @@ providers:
   - name: gemini
     # Uncomment to use a custom API endpoint:
     # base_url: "https://your-gemini-proxy.example.com/v1"
+
+  - name: openrouter
+    # Default API endpoint is https://openrouter.ai/api/v1
+    # Uncomment to use a custom API endpoint:
+    # base_url: "https://your-openrouter-proxy.example.com/api/v1"
 
 # Models
 # ------
@@ -281,6 +287,50 @@ models:
   #       type: float
   #       default: 0.9
 
+  # OpenRouter Models
+  # ----------------
+  # OpenRouter provides a unified gateway to access models from various providers
+  # Model IDs use the format: provider/model-name
+
+  - name: openrouter/deepseek/deepseek-chat-v3-0324
+    provider: openrouter
+    api_model_id: deepseek/deepseek-chat-v3-0324
+    context_window: 65536  # 64k tokens
+    max_output_tokens: 8192
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+
+  - name: openrouter/deepseek/deepseek-r1
+    provider: openrouter
+    api_model_id: deepseek/deepseek-r1
+    context_window: 131072  # 128k tokens
+    max_output_tokens: 33792
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+
+  - name: openrouter/x-ai/grok-3-beta
+    provider: openrouter
+    api_model_id: x-ai/grok-3-beta
+    context_window: 131072  # 131k tokens
+    max_output_tokens: 131072
+    parameters:
+      temperature:
+        type: float
+        default: 0.7
+      top_p:
+        type: float
+        default: 0.95
+
 # Installation and Configuration Instructions
 # --------------------------------------
 # To install this configuration file:
@@ -294,6 +344,7 @@ models:
 # 3. Set your API keys as environment variables:
 #    export OPENAI_API_KEY="your-openai-api-key"
 #    export GEMINI_API_KEY="your-gemini-api-key"
+#    export OPENROUTER_API_KEY="your-openrouter-api-key"
 #
 # 4. (Optional) Add the exports to your shell profile for persistence
 #

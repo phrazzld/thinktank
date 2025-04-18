@@ -1,18 +1,11 @@
 # backlog
 
-* increase test coverage for OpenAI provider integration to meet CI requirements (priority: P0)
-  * OpenAI client (internal/openai): Improve from 45.4% to >70% coverage
-  * OpenAI provider (internal/providers/openai): Improve from 21.2% to >70% coverage
-  * Parameter handling: Add tests for all parameter combinations and validation
-  * Integration tests: Add comprehensive tests for provider selection and client instantiation
-  * Fix API key validation handling: Test environment variables and error scenarios
-  * Registry tests: Improve coverage for registry initialization and model loading
-
+* support openrouter as a provider
+* add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
+- rebrand to thinktank
 - run `glance` on precommit hook
 * implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
 * improve arbitrary model handling
-* support openrouter as a provider
-* add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 * add support for grounding with gemini models
 * refactor output handling to use standard streams (stdout for primary results, stderr for logs/errors) and add a json output mode flag (`--output-format json`) for machine-readable results.
 * use distinct exit codes for different outcomes (success, user error, api error, file system error) to allow programmatic result checking.
@@ -40,7 +33,3 @@
 * enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
 * support a "modify my instructions" flag that extracts intent from the passed instructions and sends it to a model to rewrite according to best prompt engineering practices before sending your actual request complete with context to your target models
-
-## completed
-
-* increase github action testing threshold from 30 to 80, and meet it
