@@ -52,7 +52,7 @@
     - **depends-on:** [T003]
 
 ## security & logging
-- [ ] **T006 · test · p0: audit logger calls for secret leaks in registry**
+- [x] **T006 · test · p0: audit logger calls for secret leaks in registry**
     - **context:** CR-02: Secrets: Audit & Seal Log Leaks
     - **action:**
         1. Review all logger calls in `internal/registry/*` for potential leaks of API keys or other sensitive info.
