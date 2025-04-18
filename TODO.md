@@ -89,7 +89,7 @@
     - **depends-on:** [T008]
 
 ## error handling
-- [ ] **T010 · refactor · p1: create shared errors package**
+- [x] **T010 · refactor · p1: create shared errors package**
     - **context:** CR-03: Error Handling: Deduplicate & Centralize
     - **action:**
         1. Create `internal/llm/errors.go` (or similar).
