@@ -87,7 +87,7 @@
     - **Depends On:** [T016]
     - **AC Ref:** PLAN.md Step 7
 
-- [~] **T018:** Update Configuration `README.md` Documentation
+- [x] **T018:** Update Configuration `README.md` Documentation
     - **Action:** Modify `config/README.md` to explain the new `openrouter` provider section and the `OPENROUTER_API_KEY` source added to `models.yaml`.
     - **Depends On:** [T001, T016]
     - **AC Ref:** PLAN.md Step 7
