@@ -78,7 +78,7 @@
         2. Manual code review confirms no secrets are logged.
     - **depends-on:** [T006, T007]
 
-- [ ] **T009 · test · p0: add unit test to detect secrets in logs**
+- [x] **T009 · test · p0: add unit test to detect secrets in logs**
     - **context:** CR-02: Secrets: Audit & Seal Log Leaks
     - **action:**
         1. Create a test helper or modify logger mock to fail tests if a pattern resembling a secret (e.g., API key format) is logged.
