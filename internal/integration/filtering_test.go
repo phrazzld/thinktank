@@ -26,7 +26,7 @@ func TestFilteringBehaviors(t *testing.T) {
 		excludeNames        string
 		outputShouldExist   bool
 		expectedContent     string
-		verifyFilteringFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
+		verifyFilteringFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error)
 	}
 
 	// Define default files for filter tests
@@ -48,7 +48,7 @@ func TestFilteringBehaviors(t *testing.T) {
 			excludeNames:        "",
 			outputShouldExist:   true,
 			expectedContent:     "Test Generated Plan",
-			verifyFilteringFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+			verifyFilteringFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 				// In a real implementation, we would check the actual context to ensure
 				// that only Go and Markdown files are included
 				// We're just returning a successful result here, but could add more verification

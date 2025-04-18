@@ -24,6 +24,7 @@ func createMockAPIService(env *TestEnv) *mockIntAPIService {
 // TestBasicExecutionFlows tests various basic execution flows of the application
 // using a table-driven approach to reduce repetitive test code.
 func TestBasicExecutionFlows(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define the test case struct for basic execution test scenarios
 	type basicExecutionTestCase struct {
 		name                string
@@ -85,13 +86,20 @@ func main() {}`,
 
 	// Execute each test case
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()
 
-			// Set up the mock client with default responses
+			// Set up the mock client with default responses - this sets up a client that returns "Test Generated Plan"
 			env.SetupMockGeminiClient()
+
+			// Verify the mock is properly configured
+			if env.MockClient.GenerateContentFunc == nil {
+				t.Fatal("MockClient's GenerateContentFunc is nil")
+			}
 
 			// Create source files from the map
 			for filename, content := range tc.srcFiles {
@@ -101,8 +109,8 @@ func main() {}`,
 			// Create instructions file
 			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-			// Set up the output directory and model-specific output file path
-			outputDir := filepath.Join(env.TestDir, "output")
+			// Set up the output directory using t.TempDir() for test isolation
+			outputDir := t.TempDir()
 			outputFile := filepath.Join(outputDir, tc.modelName+".md")
 
 			// Create a test configuration
@@ -144,6 +152,11 @@ func main() {}`,
 				t.Fatalf("Failed to read model-specific output file: %v", err)
 			}
 
+			// Debug output to see what's actually in the file
+			t.Logf("Output file content: %s", string(content))
+			t.Logf("Expected to contain: %s", tc.expectedContent)
+			t.Logf("Mock client setup: %v", env.MockClient != nil)
+
 			// Check that content includes expected text
 			if !strings.Contains(string(content), tc.expectedContent) {
 				t.Errorf("Model-specific output file does not contain expected content: %s", tc.expectedContent)
@@ -155,6 +168,7 @@ func main() {}`,
 // TestModeVariations tests different execution modes of the application
 // using a table-driven approach to reduce repetitive test code.
 func TestModeVariations(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define the test case struct for mode variation test scenarios
 	type modeTestCase struct {
 		name                string
@@ -190,13 +204,20 @@ func main() {
 
 	// Execute each test case
 	for _, tc := range tests {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()
 
-			// Set up the mock client with default responses
+			// Set up the mock client with default responses - this sets up a client that returns "Test Generated Plan"
 			env.SetupMockGeminiClient()
+
+			// Verify the mock is properly configured
+			if env.MockClient.GenerateContentFunc == nil {
+				t.Fatal("MockClient's GenerateContentFunc is nil")
+			}
 
 			// Create source files from the map
 			for filename, content := range tc.srcFiles {
@@ -206,8 +227,8 @@ func main() {
 			// Create instructions file
 			instructionsFile := env.CreateTestFile(t, "instructions.md", tc.instructionsContent)
 
-			// Set up the output directory and model-specific output file path
-			outputDir := filepath.Join(env.TestDir, "output")
+			// Set up the output directory using t.TempDir() for test isolation
+			outputDir := t.TempDir()
 			outputFile := filepath.Join(outputDir, tc.modelName+".md")
 
 			// Create a test configuration

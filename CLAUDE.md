@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 - **Build**: `go build`
 - **Run**: `go run main.go --instructions instructions.md PATH/TO/FILES/OR/DIRS`
+- **IMPORTANT**: Always use `go run main.go` instead of `architect` command
 - **Test**: `go test ./...`
 - **Test Single File**: `go test ./PACKAGE_PATH/FILE_test.go`
 - **Lint/Format**: `go fmt ./...`

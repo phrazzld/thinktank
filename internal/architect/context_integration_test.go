@@ -197,7 +197,7 @@ func (m *integrationMockLogger) Println(v ...interface{}) {
 
 // integrationMockGeminiClient implements gemini.Client for testing
 type integrationMockGeminiClient struct {
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
+	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error)
 	countTokensFunc     func(ctx context.Context, text string) (*gemini.TokenCount, error)
 	getModelInfoFunc    func(ctx context.Context) (*gemini.ModelInfo, error)
 	closeFunc           func() error
@@ -207,9 +207,9 @@ type integrationMockGeminiClient struct {
 	topPFunc            func() float32
 }
 
-func (m *integrationMockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+func (m *integrationMockGeminiClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
+		return m.generateContentFunc(ctx, prompt, params)
 	}
 	return &gemini.GenerationResult{
 		Content:      "test content",

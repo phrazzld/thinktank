@@ -27,6 +27,7 @@ type xmlTestCase struct {
 
 // TestXMLPromptFeatures tests various aspects of XML prompt structure
 func TestXMLPromptFeatures(t *testing.T) {
+	t.Parallel() // Add parallelization
 	// Define common helper function source code
 	helperGoSrc := `package main
 
@@ -101,7 +102,7 @@ The component should handle the following edge cases:
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				var capturedPrompt string
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					capturedPrompt = prompt
 					return &gemini.GenerationResult{
 						Content:    "# Generated Plan\n\nImplemented as requested.",
@@ -125,7 +126,7 @@ func main() {}`,
 			},
 			setupCustomMock: func(t *testing.T, env *TestEnv) (string, error) {
 				var capturedPrompt string
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					capturedPrompt = prompt
 					return &gemini.GenerationResult{
 						Content:    "# Generated Plan\n\nPlan with empty instructions.",
@@ -157,7 +158,9 @@ func main() {}`,
 
 	// Execute each test case
 	for _, tc := range testCases {
+		tc := tc // Capture range variable
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel() // Run subtests in parallel
 			// Set up test environment
 			env := NewTestEnv(t)
 			defer env.Cleanup()
@@ -172,7 +175,7 @@ func main() {}`,
 
 			// Set up the output directory and model-specific output file path
 			modelName := "test-model"
-			outputDir := filepath.Join(env.TestDir, "output")
+			outputDir := t.TempDir() // Use t.TempDir() for isolation
 			outputFile := filepath.Join(outputDir, modelName+".md")
 
 			// Set up mock client

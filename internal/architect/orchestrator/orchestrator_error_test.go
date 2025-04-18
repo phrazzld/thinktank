@@ -38,8 +38,8 @@ func TestRun_GatherContextError(t *testing.T) {
 	}
 
 	// Verify no calls were made to initialize clients or write files
-	if len(deps.apiService.InitClientCalls) > 0 {
-		t.Errorf("Expected no InitClient calls, got %d", len(deps.apiService.InitClientCalls))
+	if len(deps.apiService.InitLLMClientCalls) > 0 {
+		t.Errorf("Expected no InitLLMClient calls, got %d", len(deps.apiService.InitLLMClientCalls))
 	}
 	if len(deps.fileWriter.SaveToFileCalls) > 0 {
 		t.Errorf("Expected no SaveToFile calls, got %d", len(deps.fileWriter.SaveToFileCalls))

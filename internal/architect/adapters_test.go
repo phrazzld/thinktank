@@ -6,31 +6,22 @@ import (
 	"context"
 	"errors"
 
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests
 type MockAPIServiceForAdapter struct {
-	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
-	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
-	IsEmptyResponseErrorFunc func(err error) bool
-	IsSafetyBlockedErrorFunc func(err error) bool
-	GetErrorDetailsFunc      func(err error) string
-}
-
-func (m *MockAPIServiceForAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	if m.InitClientFunc != nil {
-		return m.InitClientFunc(ctx, apiKey, modelName, apiEndpoint)
-	}
-	return nil, errors.New("InitClient not implemented")
-}
-
-func (m *MockAPIServiceForAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	if m.ProcessResponseFunc != nil {
-		return m.ProcessResponseFunc(result)
-	}
-	return "", errors.New("ProcessResponse not implemented")
+	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	ProcessLLMResponseFunc     func(result *llm.ProviderResult) (string, error)
+	IsEmptyResponseErrorFunc   func(err error) bool
+	IsSafetyBlockedErrorFunc   func(err error) bool
+	GetErrorDetailsFunc        func(err error) string
+	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 }
 
 func (m *MockAPIServiceForAdapter) IsEmptyResponseError(err error) bool {
@@ -52,6 +43,48 @@ func (m *MockAPIServiceForAdapter) GetErrorDetails(err error) string {
 		return m.GetErrorDetailsFunc(err)
 	}
 	return "Error details not implemented"
+}
+
+func (m *MockAPIServiceForAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	if m.InitLLMClientFunc != nil {
+		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	}
+	return nil, errors.New("InitLLMClient not implemented")
+}
+
+func (m *MockAPIServiceForAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if m.ProcessLLMResponseFunc != nil {
+		return m.ProcessLLMResponseFunc(result)
+	}
+	return "", errors.New("ProcessLLMResponse not implemented")
+}
+
+func (m *MockAPIServiceForAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	if m.GetModelParametersFunc != nil {
+		return m.GetModelParametersFunc(modelName)
+	}
+	return make(map[string]interface{}), nil
+}
+
+func (m *MockAPIServiceForAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	if m.ValidateModelParameterFunc != nil {
+		return m.ValidateModelParameterFunc(modelName, paramName, value)
+	}
+	return true, nil
+}
+
+func (m *MockAPIServiceForAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	if m.GetModelDefinitionFunc != nil {
+		return m.GetModelDefinitionFunc(modelName)
+	}
+	return nil, errors.New("GetModelDefinition not implemented")
+}
+
+func (m *MockAPIServiceForAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	if m.GetModelTokenLimitsFunc != nil {
+		return m.GetModelTokenLimitsFunc(modelName)
+	}
+	return 0, 0, errors.New("GetModelTokenLimits not implemented")
 }
 
 // MockTokenManagerForAdapter is a testing mock for the TokenManager interface, specifically for adapter tests

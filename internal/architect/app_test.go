@@ -14,9 +14,10 @@ import (
 	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // ----- Mock Implementations -----
@@ -114,45 +115,82 @@ func (m *MockLogger) Printf(format string, args ...interface{}) {}
 
 // MockAPIService mocks the APIService interface
 type MockAPIService struct {
-	initClientErr      error
-	mockClient         gemini.Client
-	processResponseErr error
-	processedContent   string
+	isEmptyResponseErrorFunc func(err error) bool
+	isSafetyBlockedErrorFunc func(err error) bool
+	getErrorDetailsFunc      func(err error) string
+	initLLMClientErr         error
+	mockLLMClient            llm.LLMClient
+	processLLMResponseErr    error
+	processedContent         string
 }
 
 func NewMockAPIService() *MockAPIService {
 	return &MockAPIService{
-		initClientErr:      nil,
-		mockClient:         nil,
-		processResponseErr: nil,
-		processedContent:   "Test Generated Plan",
+		processedContent:         "Test Generated Plan",
+		initLLMClientErr:         nil,
+		mockLLMClient:            nil,
+		processLLMResponseErr:    nil,
+		isEmptyResponseErrorFunc: nil,
+		isSafetyBlockedErrorFunc: nil,
+		getErrorDetailsFunc:      nil,
 	}
-}
-
-func (m *MockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	if m.initClientErr != nil {
-		return nil, m.initClientErr
-	}
-	return m.mockClient, nil
-}
-
-func (m *MockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	if m.processResponseErr != nil {
-		return "", m.processResponseErr
-	}
-	return m.processedContent, nil
 }
 
 func (m *MockAPIService) IsEmptyResponseError(err error) bool {
+	if m.isEmptyResponseErrorFunc != nil {
+		return m.isEmptyResponseErrorFunc(err)
+	}
 	return strings.Contains(err.Error(), "empty content")
 }
 
 func (m *MockAPIService) IsSafetyBlockedError(err error) bool {
+	if m.isSafetyBlockedErrorFunc != nil {
+		return m.isSafetyBlockedErrorFunc(err)
+	}
 	return strings.Contains(err.Error(), "safety")
 }
 
 func (m *MockAPIService) GetErrorDetails(err error) string {
+	if m.getErrorDetailsFunc != nil {
+		return m.getErrorDetailsFunc(err)
+	}
 	return err.Error()
+}
+
+func (m *MockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	if m.initLLMClientErr != nil {
+		return nil, m.initLLMClientErr
+	}
+	if m.mockLLMClient != nil {
+		return m.mockLLMClient, nil
+	}
+	return &llm.MockLLMClient{}, nil
+}
+
+func (m *MockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if m.processLLMResponseErr != nil {
+		return "", m.processLLMResponseErr
+	}
+	if result == nil {
+		return "", errors.New("nil result")
+	}
+	return m.processedContent, nil
+}
+
+func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	return map[string]interface{}{}, nil
+}
+
+func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	return true, nil
+}
+
+func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *MockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	return 8192, 8192, nil
 }
 
 // MockOrchestrator mocks the orchestrator for testing
@@ -204,64 +242,53 @@ func createTestFile(t *testing.T, path, content string) string {
 	return path
 }
 
-// MockClient implements the gemini.Client interface for testing
-type MockClient struct {
+// MockLLMClient implements the LLMClient interface for testing
+type MockLLMClient struct {
 	modelName       string
 	tokenCount      int32
 	generationErr   error
 	generatedOutput string
 }
 
-func NewMockClient(modelName string) *MockClient {
-	return &MockClient{
+func NewMockLLMClient(modelName string) *MockLLMClient {
+	return &MockLLMClient{
 		modelName:       modelName,
 		tokenCount:      100,
 		generatedOutput: "Test Generated Plan",
 	}
 }
 
-func (m *MockClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	if m.generationErr != nil {
 		return nil, m.generationErr
 	}
-	return &gemini.GenerationResult{
+	return &llm.ProviderResult{
 		Content:      m.generatedOutput,
 		TokenCount:   100,
 		FinishReason: "STOP",
 	}, nil
 }
 
-func (m *MockClient) CountTokens(ctx context.Context, text string) (*gemini.TokenCount, error) {
-	return &gemini.TokenCount{
+func (m *MockLLMClient) CountTokens(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
+	return &llm.ProviderTokenCount{
 		Total: 100,
 	}, nil
 }
 
-func (m *MockClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return &gemini.ModelInfo{
+func (m *MockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	return &llm.ProviderModelInfo{
+		Name:             m.modelName,
 		InputTokenLimit:  8192,
 		OutputTokenLimit: 8192,
 	}, nil
 }
 
-func (m *MockClient) Close() error {
+func (m *MockLLMClient) Close() error {
 	return nil
 }
 
-func (m *MockClient) GetModelName() string {
+func (m *MockLLMClient) GetModelName() string {
 	return m.modelName
-}
-
-func (m *MockClient) GetTemperature() float32 {
-	return 0.7
-}
-
-func (m *MockClient) GetMaxOutputTokens() int32 {
-	return 8192
-}
-
-func (m *MockClient) GetTopP() float32 {
-	return 0.9
 }
 
 // ----- Test Cases -----
@@ -292,16 +319,16 @@ func TestExecuteHappyPath(t *testing.T) {
 	// Create mocks
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
-	mockClient := NewMockClient("test-model")
+	mockLLMClient := NewMockLLMClient("test-model")
 	mockAPIService := NewMockAPIService()
-	mockAPIService.mockClient = mockClient
+	mockAPIService.mockLLMClient = mockLLMClient
 	mockOrchestrator := NewMockOrchestrator()
 
 	// Save original constructor for orchestrator
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -376,16 +403,16 @@ func TestExecuteDryRun(t *testing.T) {
 	// Create mocks
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
-	mockClient := NewMockClient("test-model")
+	mockLLMClient := NewMockLLMClient("test-model")
 	mockAPIService := NewMockAPIService()
-	mockAPIService.mockClient = mockClient
+	mockAPIService.mockLLMClient = mockLLMClient
 	mockOrchestrator := NewMockOrchestrator()
 
 	// Save original constructor for orchestrator
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -469,16 +496,16 @@ func TestExecuteInstructionsFileError(t *testing.T) {
 	// Create mocks
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
-	mockClient := NewMockClient("test-model")
+	mockLLMClient := NewMockLLMClient("test-model")
 	mockAPIService := NewMockAPIService()
-	mockAPIService.mockClient = mockClient
+	mockAPIService.mockLLMClient = mockLLMClient
 	mockOrchestrator := NewMockOrchestrator()
 
 	// Save original constructor for orchestrator
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -551,14 +578,14 @@ func TestExecuteClientInitializationError(t *testing.T) {
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
 	mockAPIService := NewMockAPIService()
-	mockAPIService.initClientErr = errors.New("API client initialization error")
+	mockAPIService.initLLMClientErr = errors.New("API client initialization error")
 	mockOrchestrator := NewMockOrchestrator()
 
 	// Save original constructor for orchestrator
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -630,9 +657,9 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	// Create mocks
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
-	mockClient := NewMockClient("test-model")
+	mockLLMClient := NewMockLLMClient("test-model")
 	mockAPIService := NewMockAPIService()
-	mockAPIService.mockClient = mockClient
+	mockAPIService.mockLLMClient = mockLLMClient
 	mockOrchestrator := NewMockOrchestrator()
 	mockOrchestrator.runErr = errors.New("orchestrator run error")
 
@@ -640,7 +667,7 @@ func TestExecuteOrchestratorError(t *testing.T) {
 	originalNewOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, tokenManager interfaces.TokenManager, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -723,9 +750,9 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	// Create mocks
 	mockLogger := NewMockLogger()
 	mockAuditLogger := NewMockAuditLogger()
-	mockClient := NewMockClient("test-model")
+	mockLLMClient := NewMockLLMClient("test-model")
 	mockAPIService := NewMockAPIService()
-	mockAPIService.mockClient = mockClient
+	mockAPIService.mockLLMClient = mockLLMClient
 
 	// No need to override any constructors here, since we're passing mockAPIService directly
 

@@ -25,7 +25,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		// Call GenerateContent with empty prompt
-		result, err := client.GenerateContent(context.Background(), "")
+		result, err := client.GenerateContent(context.Background(), "", nil)
 
 		// Verify error is returned
 		if err == nil {
@@ -59,7 +59,7 @@ func TestGenerateContent(t *testing.T) {
 	t.Run("API error handling", func(t *testing.T) {
 		// Setup mock client that returns a specific error
 		client := &MockClient{
-			GenerateContentFunc: func(ctx context.Context, prompt string) (*GenerationResult, error) {
+			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 				return nil, &APIError{
 					Original:   errors.New("API error: rate limit exceeded"),
 					Type:       ErrorTypeRateLimit,
@@ -70,7 +70,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		// Call GenerateContent
-		result, err := client.GenerateContent(context.Background(), "Test prompt")
+		result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
 
 		// Verify error is returned
 		if err == nil {
@@ -110,7 +110,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		client := &MockClient{
-			GenerateContentFunc: func(ctx context.Context, prompt string) (*GenerationResult, error) {
+			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 				if prompt != "Test prompt" {
 					t.Errorf("Expected prompt 'Test prompt', got '%s'", prompt)
 				}
@@ -119,7 +119,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		// Call GenerateContent
-		result, err := client.GenerateContent(context.Background(), "Test prompt")
+		result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
 
 		// Should not return an error
 		if err != nil {
@@ -135,7 +135,7 @@ func TestGenerateContent(t *testing.T) {
 	t.Run("Content with safety blocks", func(t *testing.T) {
 		// Setup mock client that returns content with safety ratings
 		client := &MockClient{
-			GenerateContentFunc: func(ctx context.Context, prompt string) (*GenerationResult, error) {
+			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 				return &GenerationResult{
 					Content:      "Safe content",
 					FinishReason: "SAFETY",
@@ -151,7 +151,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		// Call GenerateContent
-		result, err := client.GenerateContent(context.Background(), "Test prompt")
+		result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
 
 		// Should not return an error (safety filtering is not an error)
 		if err != nil {
@@ -187,7 +187,7 @@ func TestGenerateContent(t *testing.T) {
 	t.Run("Truncated content", func(t *testing.T) {
 		// Setup mock client that returns truncated content
 		client := &MockClient{
-			GenerateContentFunc: func(ctx context.Context, prompt string) (*GenerationResult, error) {
+			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*GenerationResult, error) {
 				return &GenerationResult{
 					Content:      "Truncated content",
 					FinishReason: "MAX_TOKENS",
@@ -197,7 +197,7 @@ func TestGenerateContent(t *testing.T) {
 		}
 
 		// Call GenerateContent
-		result, err := client.GenerateContent(context.Background(), "Test prompt")
+		result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
 
 		// Should not return an error
 		if err != nil {

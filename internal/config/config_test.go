@@ -495,6 +495,117 @@ func TestValidateConfig(t *testing.T) {
 	}
 }
 
+// TestValidateConfigWithEnv tests the injectable getenv functionality
+func TestValidateConfigWithEnv(t *testing.T) {
+	tests := []struct {
+		name          string
+		config        *CliConfig
+		mockGetenv    func(string) string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "OpenAI model requires OpenAI API key",
+			config: &CliConfig{
+				InstructionsFile: "instructions.md",
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",        // Gemini key set
+				ModelNames:       []string{"gpt-4"}, // OpenAI model
+			},
+			mockGetenv: func(key string) string {
+				// Return empty string for OpenAI API key
+				if key == OpenAIAPIKeyEnvVar {
+					return ""
+				}
+				return "mock-value"
+			},
+			expectError:   true,
+			errorContains: "openAI API key not set",
+		},
+		{
+			name: "OpenAI model with valid OpenAI API key",
+			config: &CliConfig{
+				InstructionsFile: "instructions.md",
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",        // Gemini key set
+				ModelNames:       []string{"gpt-4"}, // OpenAI model
+			},
+			mockGetenv: func(key string) string {
+				// Return valid OpenAI API key
+				if key == OpenAIAPIKeyEnvVar {
+					return "valid-openai-key"
+				}
+				return "mock-value"
+			},
+			expectError: false,
+		},
+		{
+			name: "Multiple models requiring both API keys",
+			config: &CliConfig{
+				InstructionsFile: "instructions.md",
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",                          // Gemini key set
+				ModelNames:       []string{"gemini-1.5-pro", "gpt-4"}, // Both models
+			},
+			mockGetenv: func(key string) string {
+				// Return valid OpenAI API key
+				if key == OpenAIAPIKeyEnvVar {
+					return "valid-openai-key"
+				}
+				return "mock-value"
+			},
+			expectError: false,
+		},
+		{
+			name: "Multiple models with missing OpenAI key",
+			config: &CliConfig{
+				InstructionsFile: "instructions.md",
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",                          // Gemini key set
+				ModelNames:       []string{"gemini-1.5-pro", "gpt-4"}, // Both models
+			},
+			mockGetenv: func(key string) string {
+				// Return empty OpenAI API key
+				if key == OpenAIAPIKeyEnvVar {
+					return ""
+				}
+				return "mock-value"
+			},
+			expectError:   true,
+			errorContains: "openAI API key not set",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			logger := &MockLogger{}
+
+			err := ValidateConfigWithEnv(tt.config, logger, tt.mockGetenv)
+
+			// Check if error matches expectation
+			if (err != nil) != tt.expectError {
+				t.Errorf("ValidateConfigWithEnv() error = %v, expectError %v", err, tt.expectError)
+			}
+
+			// Verify error contains expected text
+			if tt.expectError && err != nil && tt.errorContains != "" {
+				if !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Error message %q doesn't contain expected text %q", err.Error(), tt.errorContains)
+				}
+			}
+
+			// Verify logger recorded errors for error cases
+			if tt.expectError && !logger.ErrorCalled {
+				t.Error("Expected error to be logged, but no error was logged")
+			}
+
+			if !tt.expectError && logger.ErrorCalled {
+				t.Error("No error expected, but error was logged")
+			}
+		})
+	}
+}
+
 // TestValidateConfigWithNilConfig tests the specific case of a nil config
 func TestValidateConfigWithNilConfig(t *testing.T) {
 	logger := &MockLogger{}

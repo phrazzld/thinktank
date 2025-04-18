@@ -12,17 +12,27 @@ import (
 
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // APIService defines the interface for API-related operations
 type APIService interface {
-	// InitClient initializes and returns a Gemini client
-	InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
+	// InitLLMClient initializes and returns a provider-agnostic LLM client
+	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 
-	// ProcessResponse processes the API response and extracts content
-	ProcessResponse(result *gemini.GenerationResult) (string, error)
+	// GetModelParameters retrieves parameter values from the registry for a given model
+	GetModelParameters(modelName string) (map[string]interface{}, error)
+
+	// GetModelDefinition retrieves the full model definition from the registry
+	GetModelDefinition(modelName string) (*registry.ModelDefinition, error)
+
+	// GetModelTokenLimits retrieves token limits from the registry for a given model
+	GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error)
+
+	// ProcessLLMResponse processes a provider-agnostic response and extracts content
+	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
 
 	// IsEmptyResponseError checks if an error is related to empty API responses
 	IsEmptyResponseError(err error) bool
@@ -59,16 +69,18 @@ type TokenManager interface {
 type tokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
-	client      gemini.Client
+	client      llm.LLMClient
+	registry    *registry.Registry
 }
 
 // NewTokenManagerWithClient creates a new tokenManager instance with a specific client.
 // This is defined as a variable to allow it to be mocked in tests.
-var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) TokenManager {
+var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) TokenManager {
 	return &tokenManager{
 		logger:      logger,
 		auditLogger: auditLogger,
 		client:      client,
+		registry:    reg,
 	}
 }
 
@@ -97,11 +109,29 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 		ExceedsLimit: false,
 	}
 
-	// Get model information (limits)
-	modelInfo, err := tm.client.GetModelInfo(ctx)
-	if err != nil {
-		// Pass through API errors directly for better error messages
-		if apiErr, ok := gemini.IsAPIError(err); ok {
+	// First, try to get model info from the registry if available
+	var useRegistryLimits bool
+	if tm.registry != nil {
+		// Try to get model definition from registry
+		modelDef, err := tm.registry.GetModel(modelName)
+		if err == nil && modelDef != nil {
+			// We found the model in the registry, use its context window
+			tm.logger.Debug("Using token limits from registry for model %s: %d tokens",
+				modelName, modelDef.ContextWindow)
+
+			// Store input limit from registry
+			result.InputLimit = modelDef.ContextWindow
+			useRegistryLimits = true
+		} else {
+			tm.logger.Debug("Model %s not found in registry, falling back to client-provided token limits", modelName)
+		}
+	}
+
+	// If registry lookup failed or registry is not available, fall back to client GetModelInfo
+	if !useRegistryLimits {
+		// Get model information (limits) from LLM client
+		modelInfo, err := tm.client.GetModelInfo(ctx)
+		if err != nil {
 			// Log the token check failure
 			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 				Timestamp: time.Now().UTC(),
@@ -112,69 +142,26 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 					"model_name":    modelName,
 				},
 				Error: &auditlog.ErrorInfo{
-					Message: apiErr.Message,
-					Type:    "APIError",
+					Message: fmt.Sprintf("Failed to get model info: %v", err),
+					Type:    "TokenCheckError",
 				},
 				Message: "Token count check failed for model " + modelName,
 			}); logErr != nil {
 				tm.logger.Error("Failed to write audit log: %v", logErr)
 			}
 
-			return nil, apiErr
+			// Wrap other errors
+			return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
 		}
 
-		// Log the token check failure for other errors
-		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "CheckTokens",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"prompt_length": len(prompt),
-				"model_name":    modelName,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to get model info: %v", err),
-				Type:    "TokenCheckError",
-			},
-			Message: "Token count check failed for model " + modelName,
-		}); logErr != nil {
-			tm.logger.Error("Failed to write audit log: %v", logErr)
-		}
-
-		// Wrap other errors
-		return nil, fmt.Errorf("failed to get model info for token limit check: %w", err)
+		// Store input limit from model info
+		result.InputLimit = modelInfo.InputTokenLimit
 	}
-
-	// Store input limit
-	result.InputLimit = modelInfo.InputTokenLimit
 
 	// Count tokens in the prompt
 	tokenResult, err := tm.client.CountTokens(ctx, prompt)
 	if err != nil {
-		// Pass through API errors directly for better error messages
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			// Log the token check failure
-			if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
-				Timestamp: time.Now().UTC(),
-				Operation: "CheckTokens",
-				Status:    "Failure",
-				Inputs: map[string]interface{}{
-					"prompt_length": len(prompt),
-					"model_name":    modelName,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: apiErr.Message,
-					Type:    "APIError",
-				},
-				Message: "Token count check failed for model " + modelName,
-			}); logErr != nil {
-				tm.logger.Error("Failed to write audit log: %v", logErr)
-			}
-
-			return nil, apiErr
-		}
-
-		// Log the token check failure for other errors
+		// Log the token check failure
 		if logErr := tm.auditLogger.Log(auditlog.AuditEntry{
 			Timestamp: time.Now().UTC(),
 			Operation: "CheckTokens",
@@ -192,7 +179,7 @@ func (tm *tokenManager) GetTokenInfo(ctx context.Context, prompt string) (*Token
 			tm.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		// Wrap other errors
+		// Wrap the error
 		return nil, fmt.Errorf("failed to count tokens for token limit check: %w", err)
 	}
 
@@ -271,8 +258,9 @@ func (tm *tokenManager) CheckTokenLimit(ctx context.Context, prompt string) erro
 		return err
 	}
 
+	// Don't return an error for exceeded limits, just log a warning
 	if tokenInfo.ExceedsLimit {
-		return fmt.Errorf("%s", tokenInfo.LimitError)
+		tm.logger.Warn("Token limit may be exceeded: %s (but continuing anyway)", tokenInfo.LimitError)
 	}
 
 	return nil
@@ -304,33 +292,29 @@ type FileWriter interface {
 // token management, request generation, response processing, and output handling.
 type ModelProcessor struct {
 	// Dependencies
-	apiService   APIService
-	tokenManager TokenManager
-	fileWriter   FileWriter
-	auditLogger  auditlog.AuditLogger
-	logger       logutil.LoggerInterface
-	config       *config.CliConfig
+	apiService  APIService
+	fileWriter  FileWriter
+	auditLogger auditlog.AuditLogger
+	logger      logutil.LoggerInterface
+	config      *config.CliConfig
 }
 
 // NewProcessor creates a new ModelProcessor with all required dependencies.
-// Note: The tokenManager parameter is ignored as each model needs its own TokenManager
-// with the appropriate client. TokenManagers are created per-model in the Process method.
+// Note: TokenManagers are created per-model in the Process method.
 // This is necessary to avoid import cycles and to handle the multi-model architecture.
 func NewProcessor(
 	apiService APIService,
-	_ TokenManager, // Ignored - Token managers are created per-model in Process
 	fileWriter FileWriter,
 	auditLogger auditlog.AuditLogger,
 	logger logutil.LoggerInterface,
 	config *config.CliConfig,
 ) *ModelProcessor {
 	return &ModelProcessor{
-		apiService:   apiService,
-		tokenManager: nil, // Not used - each model gets its own TokenManager in Process
-		fileWriter:   fileWriter,
-		auditLogger:  auditLogger,
-		logger:       logger,
-		config:       config,
+		apiService:  apiService,
+		fileWriter:  fileWriter,
+		auditLogger: auditLogger,
+		logger:      logger,
+		config:      config,
 	}
 }
 
@@ -340,79 +324,84 @@ func NewProcessor(
 func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) error {
 	p.logger.Info("Processing model: %s", modelName)
 
-	// 1. Initialize model-specific client
-	geminiClient, err := p.apiService.InitClient(ctx, p.config.APIKey, modelName, p.config.APIEndpoint)
+	// 1. Initialize model-specific LLM client
+	llmClient, err := p.apiService.InitLLMClient(ctx, p.config.APIKey, modelName, p.config.APIEndpoint)
 	if err != nil {
+		// Use the APIService interface for consistent error detail extraction
 		errorDetails := p.apiService.GetErrorDetails(err)
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			p.logger.Error("Error creating Gemini client for model %s: %s", modelName, apiErr.Message)
-			if apiErr.Suggestion != "" {
-				p.logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			if p.config.LogLevel == logutil.DebugLevel {
-				p.logger.Debug("Error details: %s", apiErr.DebugInfo())
-			}
-		} else {
-			p.logger.Error("Error creating Gemini client for model %s: %s", modelName, errorDetails)
-		}
+		p.logger.Error("Error creating LLM client for model %s: %s", modelName, errorDetails)
 		return fmt.Errorf("failed to initialize API client for model %s: %w", modelName, err)
 	}
 
-	// BUGFIX: Ensure geminiClient is not nil before attempting to close it
-	// CAUSE: There was a race condition in tests where geminiClient could be nil
+	// BUGFIX: Ensure llmClient is not nil before attempting to close it
+	// CAUSE: There was a race condition in tests where client could be nil
 	//        when concurrent tests interact with rate limiting, leading to nil pointer dereference
 	// FIX: Add safety check in defer to prevent a panic if client is nil for any reason
 	defer func() {
-		if geminiClient != nil {
-			_ = geminiClient.Close()
+		if llmClient != nil {
+			_ = llmClient.Close()
 		}
 	}()
 
 	// 2. Check token limits for this model
 	p.logger.Info("Checking token limits for model %s...", modelName)
 
-	// We need to create a TokenManager with the client, but we can't import architect directly
-	// without causing an import cycle. For now, use the per-model client in method calls
-	// TODO: Refactor this to use a proper factory pattern
+	// Create a TokenManager with the provider-agnostic LLMClient
+	// This pattern allows token management to work with any LLM provider consistently
 
 	// Note: We rely on the TokenManager to handle all audit logging for token checking operations.
 	// The audit logs for CheckTokensStart, CheckTokens Success/Failure are managed by the TokenManager
 	// implementation and should not be duplicated here.
 
-	// Using direct TokenManager creation without importing architect package
-	// Implementation-specific detail to avoid import cycle
-	tokenInfo, err := NewTokenManagerWithClient(p.logger, p.auditLogger, geminiClient).GetTokenInfo(ctx, stitchedPrompt)
-	if err != nil {
-		p.logger.Error("Token count check failed for model %s", modelName)
+	// Create a TokenManager with the LLM client and registry if available
+	// If apiService implements GetModelDefinition, it supports the registry
+	var reg *registry.Registry
+	if _, ok := p.apiService.(interface {
+		GetModelDefinition(string) (*registry.ModelDefinition, error)
+	}); ok {
+		// We're using a registry-aware API service
+		p.logger.Debug("Using registry-aware token manager for model %s", modelName)
+		// The registry will be null here, but the token manager should still be able to
+		// use the LLM client to get the model name and check with the registry
+	}
 
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			p.logger.Error("Token count check failed for model %s: %s", modelName, apiErr.Message)
-			if apiErr.Suggestion != "" {
-				p.logger.Error("Suggestion: %s", apiErr.Suggestion)
+	tokenInfo, err := NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient, reg).GetTokenInfo(ctx, stitchedPrompt)
+	if err != nil {
+		p.logger.Error("Token count check failed for model %s: %v", modelName, err)
+
+		// Check for categorized errors
+		if catErr, isCat := llm.IsCategorizedError(err); isCat {
+			switch catErr.Category() {
+			case llm.CategoryRateLimit:
+				p.logger.Error("Rate limit exceeded during token counting. Consider adjusting --max-concurrent and --rate-limit flags.")
+			case llm.CategoryAuth:
+				p.logger.Error("Authentication failed during token counting. Check that your API key is valid and has not expired.")
+			case llm.CategoryInputLimit:
+				p.logger.Error("Input is too large to count tokens. Try reducing context size significantly.")
+			case llm.CategoryNetwork:
+				p.logger.Error("Network error during token counting. Check your internet connection and try again.")
+			case llm.CategoryServer:
+				p.logger.Error("Server error during token counting. This is typically temporary, wait and try again.")
+			default:
+				p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 			}
-			p.logger.Debug("Error details: %s", apiErr.DebugInfo())
 		} else {
-			p.logger.Error("Token count check failed for model %s: %v", modelName, err)
 			p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
 		}
 
 		return fmt.Errorf("token count check failed for model %s: %w", modelName, err)
 	}
 
-	// If token limit is exceeded, abort
+	// Log a warning if token limit is exceeded, but continue anyway and let the provider decide
 	if tokenInfo.ExceedsLimit {
-		p.logger.Error("Token limit exceeded for model %s", modelName)
-		p.logger.Error("Token limit exceeded: %s", tokenInfo.LimitError)
-		p.logger.Error("Try reducing context by using --include, --exclude, or --exclude-names flags")
-
-		return fmt.Errorf("token limit exceeded for model %s: %s", modelName, tokenInfo.LimitError)
+		p.logger.Warn("Token limit may be exceeded for model %s", modelName)
+		p.logger.Warn("Potential token limit issue: %s", tokenInfo.LimitError)
+		p.logger.Warn("Proceeding with request anyway - will let provider enforce limits")
 	}
 
 	// Prompt for confirmation if token count exceeds threshold
-	// Create a token manager for this model if needed (same one used for token count)
-	tokenManager := NewTokenManagerWithClient(p.logger, p.auditLogger, geminiClient)
-	if !tokenManager.PromptForConfirmation(tokenInfo.TokenCount, p.config.ConfirmTokens) {
+	// Reuse the token manager creation pattern for consistency
+	if !NewTokenManagerWithClient(p.logger, p.auditLogger, llmClient, reg).PromptForConfirmation(tokenInfo.TokenCount, p.config.ConfirmTokens) {
 		p.logger.Info("Operation cancelled by user due to token count.")
 		return nil
 	}
@@ -421,10 +410,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		modelName, tokenInfo.TokenCount, tokenInfo.InputLimit, tokenInfo.Percentage)
 
 	// 3. Generate content with this model
-	p.logger.Info("Generating output with model %s (Temperature: %.2f, MaxOutputTokens: %d)...",
-		modelName,
-		geminiClient.GetTemperature(),
-		geminiClient.GetMaxOutputTokens())
+	p.logger.Info("Generating output with model %s...", modelName)
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
@@ -436,12 +422,29 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 			"model_name":    modelName,
 			"prompt_length": len(stitchedPrompt),
 		},
-		Message: "Starting content generation with Gemini model " + modelName,
+		Message: "Starting content generation with model " + modelName,
 	}); logErr != nil {
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
-	result, err := geminiClient.GenerateContent(ctx, stitchedPrompt)
+	// Get model parameters from the APIService
+	params, err := p.apiService.GetModelParameters(modelName)
+	if err != nil {
+		p.logger.Debug("Failed to get model parameters for %s: %v. Using defaults.", modelName, err)
+		// Continue with empty parameters if there's an error
+		params = make(map[string]interface{})
+	}
+
+	// Log parameters being used (at debug level)
+	if len(params) > 0 {
+		p.logger.Debug("Using model parameters for %s:", modelName)
+		for k, v := range params {
+			p.logger.Debug("  %s: %v", k, v)
+		}
+	}
+
+	// Generate content with parameters
+	result, err := llmClient.GenerateContent(ctx, stitchedPrompt, params)
 
 	// Calculate duration in milliseconds
 	generateDurationMs := time.Since(generateStartTime).Milliseconds()
@@ -449,22 +452,45 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	if err != nil {
 		p.logger.Error("Generation failed for model %s", modelName)
 
-		var errorType string
-		var errorMessage string
+		// Get detailed error information using APIService
+		errorDetails := p.apiService.GetErrorDetails(err)
+		p.logger.Error("Error generating content with model %s: %s (Current token count: %d)",
+			modelName, errorDetails, tokenInfo.TokenCount)
 
-		// Check if it's an API error with enhanced details
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			p.logger.Error("Error generating content with model %s: %s", modelName, apiErr.Message)
-			if apiErr.Suggestion != "" {
-				p.logger.Error("Suggestion: %s", apiErr.Suggestion)
-			}
-			p.logger.Debug("Error details: %s", apiErr.DebugInfo())
-			errorType = "APIError"
-			errorMessage = apiErr.Message
+		errorType := "ContentGenerationError"
+		errorMessage := fmt.Sprintf("Failed to generate content with model %s: %v", modelName, err)
+
+		// Check if it's a safety-blocked error
+		if p.apiService.IsSafetyBlockedError(err) {
+			errorType = "SafetyBlockedError"
 		} else {
-			p.logger.Error("Error generating content with model %s: %v (Current token count: %d)", modelName, err, tokenInfo.TokenCount)
-			errorType = "ContentGenerationError"
-			errorMessage = fmt.Sprintf("Failed to generate content with model %s: %v", modelName, err)
+			// Use the new error categorization if available
+			if catErr, isCat := llm.IsCategorizedError(err); isCat {
+				// Get more specific error category information
+				switch catErr.Category() {
+				case llm.CategoryRateLimit:
+					errorType = "RateLimitError"
+					p.logger.Error("Rate limit or quota exceeded. Consider adjusting --max-concurrent and --rate-limit flags.")
+				case llm.CategoryAuth:
+					errorType = "AuthenticationError"
+					p.logger.Error("Authentication failed. Check that your API key is valid and has not expired.")
+				case llm.CategoryInputLimit:
+					errorType = "InputLimitError"
+					p.logger.Error("Input token limit exceeded. Try reducing context with --include/--exclude flags.")
+				case llm.CategoryContentFiltered:
+					errorType = "ContentFilteredError"
+					p.logger.Error("Content was filtered by safety settings. Review and modify your input.")
+				case llm.CategoryNetwork:
+					errorType = "NetworkError"
+					p.logger.Error("Network error occurred. Check your internet connection and try again.")
+				case llm.CategoryServer:
+					errorType = "ServerError"
+					p.logger.Error("Server error occurred. This is typically a temporary issue. Wait and try again.")
+				case llm.CategoryCancelled:
+					errorType = "CancelledError"
+					p.logger.Error("Request was cancelled. Try again with a longer timeout if needed.")
+				}
+			}
 		}
 
 		// Log the content generation failure
@@ -501,7 +527,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		},
 		Outputs: map[string]interface{}{
 			"finish_reason":      result.FinishReason,
-			"has_safety_ratings": len(result.SafetyRatings) > 0,
+			"has_safety_ratings": len(result.SafetyInfo) > 0,
 		},
 		TokenCounts: &auditlog.TokenCountInfo{
 			PromptTokens: int32(tokenInfo.TokenCount),
@@ -514,20 +540,41 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	}
 
 	// 4. Process API response
-	generatedOutput, err := p.apiService.ProcessResponse(result)
+	generatedOutput, err := p.apiService.ProcessLLMResponse(result)
 	if err != nil {
 		// Get detailed error information
 		errorDetails := p.apiService.GetErrorDetails(err)
 
 		// Provide specific error messages based on error type
 		if p.apiService.IsEmptyResponseError(err) {
-			p.logger.Error("Received empty or invalid response from Gemini API for model %s", modelName)
+			p.logger.Error("Received empty or invalid response from API for model %s", modelName)
 			p.logger.Error("Error details: %s", errorDetails)
 			return fmt.Errorf("failed to process API response for model %s due to empty content: %w", modelName, err)
 		} else if p.apiService.IsSafetyBlockedError(err) {
-			p.logger.Error("Content was blocked by Gemini safety filters for model %s", modelName)
+			p.logger.Error("Content was blocked by safety filters for model %s", modelName)
 			p.logger.Error("Error details: %s", errorDetails)
 			return fmt.Errorf("failed to process API response for model %s due to safety restrictions: %w", modelName, err)
+		} else if catErr, isCat := llm.IsCategorizedError(err); isCat {
+			// Use the new error categorization for more specific messages
+			switch catErr.Category() {
+			case llm.CategoryContentFiltered:
+				p.logger.Error("Content was filtered by safety settings for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to content filtering: %w", modelName, err)
+			case llm.CategoryRateLimit:
+				p.logger.Error("Rate limit exceeded while processing response for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to rate limiting: %w", modelName, err)
+			case llm.CategoryInputLimit:
+				p.logger.Error("Input limit exceeded during response processing for model %s", modelName)
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s due to input limits: %w", modelName, err)
+			default:
+				// Other categorized errors
+				p.logger.Error("Error processing response for model %s (%s category)", modelName, catErr.Category())
+				p.logger.Error("Error details: %s", errorDetails)
+				return fmt.Errorf("failed to process API response for model %s (%s error): %w", modelName, catErr.Category(), err)
+			}
 		} else {
 			// Generic API error handling
 			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)

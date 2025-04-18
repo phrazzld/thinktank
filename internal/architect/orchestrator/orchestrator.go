@@ -18,9 +18,10 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // Orchestrator coordinates the main application logic.
@@ -222,7 +223,6 @@ func (o *Orchestrator) processModelWithRateLimit(
 	apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
 	processor := modelproc.NewProcessor(
 		apiServiceAdapter,
-		nil, // tokenManager is created inside the Process method
 		o.fileWriter,
 		o.auditLogger,
 		o.logger,
@@ -280,16 +280,16 @@ type APIServiceAdapter struct {
 	APIService interfaces.APIService
 }
 
-// InitClient initializes and returns a Gemini client for the specified model.
-// It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
+// InitLLMClient initializes and returns a provider-agnostic LLM client.
+// It delegates to the underlying APIService implementation's InitLLMClient method.
+func (a *APIServiceAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	return a.APIService.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
-// ProcessResponse extracts content from the API response.
-// It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return a.APIService.ProcessResponse(result)
+// ProcessLLMResponse extracts content from the provider-agnostic API response.
+// It delegates to the underlying APIService implementation's ProcessLLMResponse method.
+func (a *APIServiceAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	return a.APIService.ProcessLLMResponse(result)
 }
 
 // IsEmptyResponseError checks if an error is related to empty API responses.
@@ -310,9 +310,54 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
-// TokenManagerAdapter is a deprecated adapter that was used to adapt interfaces.TokenManager
-// to modelproc.TokenManager. It is no longer needed since TokenManagers are now created directly
-// in the ModelProcessor.Process method with model-specific clients.
-// This documentation is kept as a historical note, as the adapter code has been removed.
-// The current design eliminates the need for this adapter by having ModelProcessor create
-// its own TokenManager instances tailored to each specific model, improving encapsulation.
+// GetModelParameters retrieves parameter values from the registry for a given model.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelParameters(string) (map[string]interface{}, error)
+	}); ok {
+		return apiService.GetModelParameters(modelName)
+	}
+	// Return empty parameters if the underlying implementation doesn't support this method
+	return make(map[string]interface{}), nil
+}
+
+// GetModelDefinition retrieves the full model definition from the registry.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelDefinition(string) (*registry.ModelDefinition, error)
+	}); ok {
+		return apiService.GetModelDefinition(modelName)
+	}
+	// Return nil with error if the underlying implementation doesn't support this method
+	return nil, fmt.Errorf("GetModelDefinition not supported by the underlying APIService implementation")
+}
+
+// GetModelTokenLimits retrieves token limits from the registry for a given model.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	if apiService, ok := a.APIService.(interface {
+		GetModelTokenLimits(string) (int32, int32, error)
+	}); ok {
+		return apiService.GetModelTokenLimits(modelName)
+	}
+	// Return zero values with error if the underlying implementation doesn't support this method
+	return 0, 0, fmt.Errorf("GetModelTokenLimits not supported by the underlying APIService implementation")
+}
+
+// ValidateModelParameter validates a parameter value against its constraints.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	if apiService, ok := a.APIService.(interface {
+		ValidateModelParameter(string, string, interface{}) (bool, error)
+	}); ok {
+		return apiService.ValidateModelParameter(modelName, paramName, value)
+	}
+	// Return true if the underlying implementation doesn't support this method
+	return true, nil
+}
+
+// NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager
+// and modelproc.TokenManager. This has been replaced by direct creation of TokenManager
+// instances in ModelProcessor.Process with model-specific LLMClient instances.

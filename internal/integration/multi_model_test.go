@@ -14,7 +14,9 @@ import (
 	"github.com/phrazzld/architect/internal/architect"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -27,33 +29,33 @@ const modelNameKey contextKey = "current_model"
 
 // mockModelTrackingAPIService extends mockIntAPIService to track model names
 type mockModelTrackingAPIService struct {
-	logger     logutil.LoggerInterface
-	mockClient gemini.Client
+	logger        logutil.LoggerInterface
+	mockClient    gemini.Client
+	mockLLMClient llm.LLMClient
 }
 
-// InitClient returns the mock client and stores model name in context
-func (s *mockModelTrackingAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+// InitLLMClient returns a mock LLM client and stores model name in context
+func (s *mockModelTrackingAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	// Create a new context with the model name
 	ctx = context.WithValue(ctx, modelNameKey, modelName)
 
-	// Set the context in the mock client
-	mockClient := &modelAwareClient{
-		delegateClient: s.mockClient,
+	// If a specific mock LLM client was provided, use it
+	if s.mockLLMClient != nil {
+		// We need to wrap it in a model-aware client to carry the context
+		return &modelAwareLLMClient{
+			delegateClient: s.mockLLMClient,
+			ctx:            ctx,
+		}, nil
+	}
+
+	// Create adapter that wraps the mock gemini client to implement llm.LLMClient
+	llmAdapter := NewLLMClientAdapter(s.mockClient, modelName)
+
+	// Then wrap it in a model-aware client to carry the context
+	return &modelAwareLLMClient{
+		delegateClient: llmAdapter,
 		ctx:            ctx,
-	}
-
-	return mockClient, nil
-}
-
-// Process responses the same as mockIntAPIService
-func (s *mockModelTrackingAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	if result == nil {
-		return "", fmt.Errorf("empty response from API")
-	}
-	if result.Content == "" {
-		return "", fmt.Errorf("empty content from API")
-	}
-	return result.Content, nil
+	}, nil
 }
 
 func (s *mockModelTrackingAPIService) IsEmptyResponseError(err error) bool {
@@ -77,44 +79,112 @@ func (s *mockModelTrackingAPIService) GetErrorDetails(err error) string {
 	return err.Error()
 }
 
-// modelAwareClient wraps a Client to preserve the context with model name
-type modelAwareClient struct {
-	delegateClient gemini.Client
+// ProcessLLMResponse processes provider-agnostic responses
+func (s *mockModelTrackingAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	if result == nil {
+		return "", fmt.Errorf("empty response from API")
+	}
+	if result.Content == "" {
+		return "", fmt.Errorf("empty content from API")
+	}
+	return result.Content, nil
+}
+
+// GetModelDefinition retrieves the full model definition from the registry
+func (s *mockModelTrackingAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// Return a basic model definition for testing
+	return &registry.ModelDefinition{
+		Name:            modelName,
+		Provider:        "gemini",
+		APIModelID:      modelName,
+		ContextWindow:   8192,
+		MaxOutputTokens: 8192,
+		Parameters: map[string]registry.ParameterDefinition{
+			"temperature": {
+				Type:    "float",
+				Default: 0.7,
+				Min:     0.0,
+				Max:     1.0,
+			},
+			"max_tokens": {
+				Type:    "integer",
+				Default: 8192,
+				Min:     1,
+				Max:     8192,
+			},
+		},
+	}, nil
+}
+
+// GetModelParameters retrieves parameter values from the registry for a given model
+func (s *mockModelTrackingAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Return default parameters for testing
+	return map[string]interface{}{
+		"temperature": 0.7,
+		"max_tokens":  8192,
+	}, nil
+}
+
+// ValidateModelParameter validates a parameter value against its constraints
+func (s *mockModelTrackingAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	// Basic validation for common parameters
+	switch paramName {
+	case "temperature":
+		if temp, ok := value.(float64); ok {
+			return temp >= 0.0 && temp <= 1.0, nil
+		}
+		return false, fmt.Errorf("temperature must be a float between 0 and 1")
+	case "max_tokens":
+		if tokens, ok := value.(int); ok {
+			return tokens >= 1 && tokens <= 8192, nil
+		}
+		return false, fmt.Errorf("max_tokens must be an integer between 1 and 8192")
+	default:
+		// By default, accept unknown parameters
+		return true, nil
+	}
+}
+
+// GetModelTokenLimits retrieves token limits from the registry for a given model
+func (s *mockModelTrackingAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// Return standard limits for testing
+	return 8192, 8192, nil
+}
+
+// modelAwareLLMClient wraps an LLMClient to carry context with model information
+type modelAwareLLMClient struct {
+	delegateClient llm.LLMClient
 	ctx            context.Context
 }
 
-func (c *modelAwareClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	// Use the stored context that has the model name instead of the provided one
-	return c.delegateClient.GenerateContent(c.ctx, prompt)
+// GenerateContent passes the model-aware context to the delegate
+func (m *modelAwareLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// Use the context with model information instead of the one provided
+	return m.delegateClient.GenerateContent(m.ctx, prompt, params)
 }
 
-func (c *modelAwareClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	return c.delegateClient.CountTokens(ctx, prompt)
+// CountTokens implements the LLMClient interface
+func (m *modelAwareLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	return m.delegateClient.CountTokens(m.ctx, prompt)
 }
 
-func (c *modelAwareClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return c.delegateClient.GetModelInfo(ctx)
+// GetModelInfo implements the LLMClient interface
+func (m *modelAwareLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	return m.delegateClient.GetModelInfo(m.ctx)
 }
 
-func (c *modelAwareClient) Close() error {
-	return c.delegateClient.Close()
+// GetModelName implements the LLMClient interface
+func (m *modelAwareLLMClient) GetModelName() string {
+	return m.delegateClient.GetModelName()
 }
 
-func (c *modelAwareClient) GetModelName() string {
-	return c.delegateClient.GetModelName()
+// Close implements the LLMClient interface
+func (m *modelAwareLLMClient) Close() error {
+	return m.delegateClient.Close()
 }
 
-func (c *modelAwareClient) GetTemperature() float32 {
-	return c.delegateClient.GetTemperature()
-}
-
-func (c *modelAwareClient) GetMaxOutputTokens() int32 {
-	return c.delegateClient.GetMaxOutputTokens()
-}
-
-func (c *modelAwareClient) GetTopP() float32 {
-	return c.delegateClient.GetTopP()
-}
+// Note: The modelAwareClient has been removed as it's no longer needed.
+// All tests now use the provider-agnostic modelAwareLLMClient instead.
 
 // multiModelTestCase defines a table-driven test case for multi-model testing
 type multiModelTestCase struct {
@@ -169,13 +239,18 @@ func newModelProcessingData(modelCount int, trackIntervals bool, setupWaitGroups
 
 // TestMultiModelFeatures tests various multi-model features using a table-driven approach
 func TestMultiModelFeatures(t *testing.T) {
+	// Skip in short mode to reduce CI time
+	if testing.Short() {
+		t.Skip("Skipping test in short mode")
+	}
+
 	testCases := []multiModelTestCase{
 		{
 			name:                "BasicExecution",
 			instructionsContent: "Test multi-model generation",
 			modelNames:          []string{"model1", "model2", "model3"},
 			configureMock: func(t *testing.T, env *TestEnv, modelData *modelProcessingData) {
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract the model name from the context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -233,7 +308,7 @@ func TestMultiModelFeatures(t *testing.T) {
 			instructionsContent: "Test multi-model generation with error handling",
 			modelNames:          []string{"model1", "model2", "model3"},
 			configureMock: func(t *testing.T, env *TestEnv, modelData *modelProcessingData) {
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract the model name
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -320,7 +395,7 @@ func TestMultiModelFeatures(t *testing.T) {
 			instructionsContent: "Test concurrent model processing",
 			modelNames:          []string{"model1", "model2", "model3"},
 			configureMock: func(t *testing.T, env *TestEnv, modelData *modelProcessingData) {
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract the model name from the context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -335,8 +410,8 @@ func TestMultiModelFeatures(t *testing.T) {
 					// Wait for all models to reach this point (ensures concurrent processing)
 					modelData.waitGroups.barrier.Wait()
 
-					// Simulate work with a small sleep
-					time.Sleep(50 * time.Millisecond)
+					// Simulate work with a much smaller sleep (reduced for test optimization)
+					time.Sleep(5 * time.Millisecond)
 
 					// Record completion
 					modelData.Lock()
@@ -394,7 +469,7 @@ func TestMultiModelFeatures(t *testing.T) {
 			instructionsContent: "Test concurrent model failure handling",
 			modelNames:          []string{"model1", "model2", "model3"},
 			configureMock: func(t *testing.T, env *TestEnv, modelData *modelProcessingData) {
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract the model name from context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -409,8 +484,8 @@ func TestMultiModelFeatures(t *testing.T) {
 					// Wait for all models to reach this point (ensures concurrent processing)
 					modelData.waitGroups.barrier.Wait()
 
-					// Simulate work with a small sleep
-					time.Sleep(50 * time.Millisecond)
+					// Simulate work with a much smaller sleep (reduced for test optimization)
+					time.Sleep(5 * time.Millisecond)
 
 					// Make models 1 and 3 fail with different errors
 					switch modelName {
@@ -483,7 +558,7 @@ func TestMultiModelFeatures(t *testing.T) {
 			instructionsContent: "Test enhanced concurrent model processing",
 			modelNames:          []string{"model1", "model2", "model3", "model4", "model5"},
 			configureMock: func(t *testing.T, env *TestEnv, modelData *modelProcessingData) {
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract the model name from the context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -497,7 +572,7 @@ func TestMultiModelFeatures(t *testing.T) {
 					modelData.waitGroups.barrier.Wait()
 
 					// Simulate work with a variable sleep time (50-150ms) to create realistic variation
-					sleepTime := 50 + (time.Duration(len(modelName)%3) * 50)
+					sleepTime := 5 + (time.Duration(len(modelName)%3) * 5)
 					time.Sleep(sleepTime * time.Millisecond)
 
 					// Record end time

@@ -1,90 +1,186 @@
+// Package architect provides core functionality for the Architect application
 package architect
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/phrazzld/architect/internal/architect/interfaces"
-	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
-// APIServiceAdapter adapts internal APIService to interfaces.APIService
+// APIServiceAdapter provides an adapter for different APIService implementations
+// It allows using different implementations of APIService while maintaining
+// backward compatibility with older code.
 type APIServiceAdapter struct {
-	APIService APIService
+	// The underlying APIService implementation
+	APIService interfaces.APIService
 }
 
-func (a *APIServiceAdapter) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-	return a.APIService.InitClient(ctx, apiKey, modelName, apiEndpoint)
+// InitLLMClient delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	return a.APIService.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
-func (a *APIServiceAdapter) ProcessResponse(result *gemini.GenerationResult) (string, error) {
-	return a.APIService.ProcessResponse(result)
+// ProcessLLMResponse delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	return a.APIService.ProcessLLMResponse(result)
 }
 
-func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool {
-	return a.APIService.IsEmptyResponseError(err)
-}
-
-func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
-	return a.APIService.IsSafetyBlockedError(err)
-}
-
+// GetErrorDetails delegates to the underlying APIService implementation
 func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
-// TokenResultAdapter adapts TokenResult to modelproc.TokenResult
-func TokenResultAdapter(tr *TokenResult) *modelproc.TokenResult {
-	if tr == nil {
-		return nil
+// IsEmptyResponseError delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool {
+	return a.APIService.IsEmptyResponseError(err)
+}
+
+// IsSafetyBlockedError delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
+	return a.APIService.IsSafetyBlockedError(err)
+}
+
+// GetModelParameters delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Check if the underlying implementation supports this method
+	if apiService, ok := a.APIService.(interface {
+		GetModelParameters(string) (map[string]interface{}, error)
+	}); ok {
+		return apiService.GetModelParameters(modelName)
 	}
-	return &modelproc.TokenResult{
-		TokenCount:   tr.TokenCount,
-		InputLimit:   tr.InputLimit,
-		ExceedsLimit: tr.ExceedsLimit,
-		LimitError:   tr.LimitError,
-		Percentage:   tr.Percentage,
+	// Return empty map for implementations that don't support this method
+	return make(map[string]interface{}), nil
+}
+
+// GetModelDefinition delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// Check if the underlying implementation supports this method
+	if apiService, ok := a.APIService.(interface {
+		GetModelDefinition(string) (*registry.ModelDefinition, error)
+	}); ok {
+		return apiService.GetModelDefinition(modelName)
+	}
+	// Return error for implementations that don't support this method
+	return nil, fmt.Errorf("model definition not available")
+}
+
+// GetModelTokenLimits delegates to the underlying APIService implementation
+func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// Check if the underlying implementation supports this method
+	if apiService, ok := a.APIService.(interface {
+		GetModelTokenLimits(string) (int32, int32, error)
+	}); ok {
+		return apiService.GetModelTokenLimits(modelName)
+	}
+
+	// We'll skip logging during tests to avoid noise
+
+	// Convert model name to lowercase for case-insensitive matching
+	modelNameLower := strings.ToLower(modelName)
+
+	// Try to determine token limits based on model name
+	// Use hardcoded values for well-known models
+	switch {
+	// Gemini models
+	case strings.HasPrefix(modelNameLower, "gemini-1.5-pro"):
+		return 1000000, 8192, nil
+	case strings.HasPrefix(modelNameLower, "gemini-1.5-flash"):
+		return 1000000, 8192, nil
+	case strings.HasPrefix(modelNameLower, "gemini-1.0-pro"):
+		return 32768, 8192, nil
+	case strings.HasPrefix(modelNameLower, "gemini-1.0-ultra"):
+		return 32768, 8192, nil
+
+	// OpenAI models - Claude 3 / GPT-4 1M Token models
+	case strings.HasPrefix(modelNameLower, "gpt-4.1"),
+		strings.HasPrefix(modelNameLower, "o4-mini"),
+		strings.HasPrefix(modelNameLower, "o4-"):
+		return 1000000, 32768, nil
+
+	// OpenAI models - GPT-4 Turbo and GPT-4o models (128k)
+	case strings.HasPrefix(modelNameLower, "gpt-4o"),
+		strings.HasPrefix(modelNameLower, "gpt-4-turbo"):
+		return 128000, 4096, nil
+
+	// OpenAI models - GPT-4 (8k)
+	case strings.HasPrefix(modelNameLower, "gpt-4"):
+		return 8192, 4096, nil
+
+	// OpenAI models - GPT-3.5 Turbo
+	case strings.HasPrefix(modelNameLower, "gpt-3.5-turbo"):
+		return 16385, 4096, nil
+
+	// Default fallback
+	default:
+		// Use a more generous default for unknown models
+		// This matches the default in openai_client.go
+		return 200000, 4096, nil
 	}
 }
 
-// TokenManagerAdapter adapts internal TokenManager to interfaces.TokenManager
+// ValidateModelParameter validates a parameter value against its constraints.
+// It delegates to the underlying APIService implementation.
+func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	if apiService, ok := a.APIService.(interface {
+		ValidateModelParameter(string, string, interface{}) (bool, error)
+	}); ok {
+		return apiService.ValidateModelParameter(modelName, paramName, value)
+	}
+	// Return true if the underlying implementation doesn't support this method
+	return true, nil
+}
+
+// TokenManagerAdapter provides an adapter for different TokenManager implementations
+// It adapts the internal TokenManager interface to the interfaces.TokenManager interface
 type TokenManagerAdapter struct {
+	// The underlying TokenManager implementation
 	TokenManager TokenManager
 }
 
-func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
-	return t.TokenManager.CheckTokenLimit(ctx, prompt)
-}
-
+// GetTokenInfo delegates to the underlying TokenManager implementation
+// and converts the internal TokenResult to the interfaces.TokenResult
 func (t *TokenManagerAdapter) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) {
-	result, err := t.TokenManager.GetTokenInfo(ctx, prompt)
+	// Call the underlying implementation
+	internalResult, err := t.TokenManager.GetTokenInfo(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert the TokenResult to interfaces.TokenResult
+	// Convert the internal TokenResult to interfaces.TokenResult
 	return &interfaces.TokenResult{
-		TokenCount:   result.TokenCount,
-		InputLimit:   result.InputLimit,
-		ExceedsLimit: result.ExceedsLimit,
-		LimitError:   result.LimitError,
-		Percentage:   result.Percentage,
+		TokenCount:   internalResult.TokenCount,
+		InputLimit:   internalResult.InputLimit,
+		ExceedsLimit: internalResult.ExceedsLimit,
+		LimitError:   internalResult.LimitError,
+		Percentage:   internalResult.Percentage,
 	}, nil
 }
 
+// CheckTokenLimit delegates to the underlying TokenManager implementation
+func (t *TokenManagerAdapter) CheckTokenLimit(ctx context.Context, prompt string) error {
+	return t.TokenManager.CheckTokenLimit(ctx, prompt)
+}
+
+// PromptForConfirmation delegates to the underlying TokenManager implementation
 func (t *TokenManagerAdapter) PromptForConfirmation(tokenCount int32, threshold int) bool {
 	return t.TokenManager.PromptForConfirmation(tokenCount, threshold)
 }
 
-// ContextGathererAdapter adapts internal ContextGatherer to interfaces.ContextGatherer
+// ContextGathererAdapter provides an adapter for different ContextGatherer implementations
+// It adapts the internal ContextGatherer interface to the interfaces.ContextGatherer interface
 type ContextGathererAdapter struct {
+	// The underlying ContextGatherer implementation from the internal package
 	ContextGatherer ContextGatherer
 }
 
-func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
-	// Convert interfaces.GatherConfig to internal GatherConfig
-	internalConfig := GatherConfig{
+// Convert internal GatherConfig to interfaces.GatherConfig
+func internalToInterfacesGatherConfig(config interfaces.GatherConfig) GatherConfig {
+	return GatherConfig{
 		Paths:        config.Paths,
 		Include:      config.Include,
 		Exclude:      config.Exclude,
@@ -93,42 +189,69 @@ func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config inter
 		Verbose:      config.Verbose,
 		LogLevel:     config.LogLevel,
 	}
+}
 
+// Convert internal ContextStats to interfaces.ContextStats
+func internalToInterfacesContextStats(stats *ContextStats) *interfaces.ContextStats {
+	if stats == nil {
+		return nil
+	}
+	return &interfaces.ContextStats{
+		ProcessedFilesCount: stats.ProcessedFilesCount,
+		CharCount:           stats.CharCount,
+		LineCount:           stats.LineCount,
+		TokenCount:          stats.TokenCount,
+		ProcessedFiles:      stats.ProcessedFiles,
+	}
+}
+
+// Convert interfaces.ContextStats to internal ContextStats
+func interfacesToInternalContextStats(stats *interfaces.ContextStats) *ContextStats {
+	if stats == nil {
+		return nil
+	}
+	return &ContextStats{
+		ProcessedFilesCount: stats.ProcessedFilesCount,
+		CharCount:           stats.CharCount,
+		LineCount:           stats.LineCount,
+		TokenCount:          stats.TokenCount,
+		ProcessedFiles:      stats.ProcessedFiles,
+	}
+}
+
+// GatherContext adapts between interfaces.GatherConfig and internal GatherConfig
+func (c *ContextGathererAdapter) GatherContext(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
+	// Convert interfaces.GatherConfig to internal GatherConfig
+	internalConfig := internalToInterfacesGatherConfig(config)
+
+	// Call the underlying internal implementation
 	files, stats, err := c.ContextGatherer.GatherContext(ctx, internalConfig)
+
+	// Convert internal ContextStats to interfaces.ContextStats if no error
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// Convert internal ContextStats to interfaces.ContextStats
-	interfaceStats := &interfaces.ContextStats{
-		ProcessedFilesCount: stats.ProcessedFilesCount,
-		CharCount:           stats.CharCount,
-		LineCount:           stats.LineCount,
-		TokenCount:          stats.TokenCount,
-		ProcessedFiles:      stats.ProcessedFiles,
-	}
-
-	return files, interfaceStats, nil
+	return files, internalToInterfacesContextStats(stats), nil
 }
 
+// DisplayDryRunInfo adapts between interfaces.ContextStats and internal ContextStats
 func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *interfaces.ContextStats) error {
 	// Convert interfaces.ContextStats to internal ContextStats
-	internalStats := &ContextStats{
-		ProcessedFilesCount: stats.ProcessedFilesCount,
-		CharCount:           stats.CharCount,
-		LineCount:           stats.LineCount,
-		TokenCount:          stats.TokenCount,
-		ProcessedFiles:      stats.ProcessedFiles,
-	}
+	internalStats := interfacesToInternalContextStats(stats)
 
+	// Call the underlying internal implementation
 	return c.ContextGatherer.DisplayDryRunInfo(ctx, internalStats)
 }
 
-// FileWriterAdapter adapts internal FileWriter to interfaces.FileWriter
+// FileWriterAdapter provides an adapter for different FileWriter implementations
+// It adapts the internal FileWriter interface to the interfaces.FileWriter interface
 type FileWriterAdapter struct {
+	// The underlying FileWriter implementation from the internal package
 	FileWriter FileWriter
 }
 
+// SaveToFile delegates to the underlying FileWriter implementation
 func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error {
 	return f.FileWriter.SaveToFile(content, outputFile)
 }

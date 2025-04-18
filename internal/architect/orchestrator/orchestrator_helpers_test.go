@@ -12,8 +12,9 @@ import (
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
 	"github.com/phrazzld/architect/internal/fileutil"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 )
 
 // orchestratorTestDeps holds all the test dependencies for orchestrator tests
@@ -72,18 +73,17 @@ func (d *orchestratorTestDeps) setupBasicContext() {
 	}
 }
 
-// setupGeminiClient sets up a mock Gemini client
-func (d *orchestratorTestDeps) setupGeminiClient() *mockGeminiClient {
+// setupLLMClient sets up mock clients using the provider-agnostic interface
+func (d *orchestratorTestDeps) setupGeminiClient() *mockLLMClient {
 	// Create a shared mock client with default implementation
-	client := &mockGeminiClient{}
+	client := &mockLLMClient{}
 
-	// Configure the API service to return a model-specific client
-	d.apiService.InitClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-		// Create a new client for each model to avoid race conditions
-		modelClient := &mockGeminiClient{
+	// Configure the API service to return a model-specific provider-agnostic client
+	d.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+		// Create a new client for each model
+		return &mockLLMClient{
 			modelName: modelName,
-		}
-		return modelClient, nil
+		}, nil
 	}
 
 	return client
@@ -108,9 +108,11 @@ func (d *orchestratorTestDeps) runOrchestrator(ctx context.Context, instructions
 
 // verifyBasicWorkflow checks that a basic workflow executed correctly
 func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNames []string) {
-	// Verify that InitClient was called for each model
-	if len(d.apiService.InitClientCalls) != len(expectedModelNames) {
-		t.Errorf("Expected %d calls to InitClient, got %d", len(expectedModelNames), len(d.apiService.InitClientCalls))
+	// Verify API client initialization
+	if len(d.apiService.InitLLMClientCalls) != len(expectedModelNames) {
+		t.Errorf("Expected %d calls to InitLLMClient, got %d",
+			len(expectedModelNames),
+			len(d.apiService.InitLLMClientCalls))
 	}
 
 	// Verify that the file writer was called with all model outputs
@@ -121,10 +123,12 @@ func (d *orchestratorTestDeps) verifyBasicWorkflow(t *testing.T, expectedModelNa
 
 // verifyDryRunWorkflow checks that a dry run workflow executed correctly
 func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
-	// In dry run mode, should not call InitClient or SaveToFile
-	if len(d.apiService.InitClientCalls) > 0 {
-		t.Errorf("Should not call InitClient in dry run mode, got %d calls", len(d.apiService.InitClientCalls))
+	// In dry run mode, should not call InitLLMClient or SaveToFile
+	if len(d.apiService.InitLLMClientCalls) > 0 {
+		t.Errorf("Should not call InitLLMClient in dry run mode, got %d calls",
+			len(d.apiService.InitLLMClientCalls))
 	}
+
 	if len(d.fileWriter.SaveToFileCalls) > 0 {
 		t.Errorf("Should not call SaveToFile in dry run mode, got %d calls", len(d.fileWriter.SaveToFileCalls))
 	}
@@ -132,73 +136,35 @@ func (d *orchestratorTestDeps) verifyDryRunWorkflow(t *testing.T) {
 
 // Mock implementations for dependencies
 
-// mockGeminiClient is a mock implementation of gemini.Client
-type mockGeminiClient struct {
-	modelName           string
-	generateContentFunc func(ctx context.Context, prompt string) (*gemini.GenerationResult, error)
-}
-
-func (m *mockGeminiClient) GenerateContent(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
-	if m.generateContentFunc != nil {
-		return m.generateContentFunc(ctx, prompt)
-	}
-	return &gemini.GenerationResult{
-		Content: "Generated content for: " + prompt,
-	}, nil
-}
-
-func (m *mockGeminiClient) CountTokens(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-	return &gemini.TokenCount{
-		Total: int32(len(prompt) / 4), // Rough approximation for test
-	}, nil
-}
-
-func (m *mockGeminiClient) GetModelInfo(ctx context.Context) (*gemini.ModelInfo, error) {
-	return &gemini.ModelInfo{
-		Name:             m.modelName,
-		InputTokenLimit:  1000,
-		OutputTokenLimit: 1000,
-	}, nil
-}
-
-func (m *mockGeminiClient) GetModelName() string {
-	return m.modelName
-}
-
-func (m *mockGeminiClient) GetTemperature() float32 {
-	return 0.7
-}
-
-func (m *mockGeminiClient) GetMaxOutputTokens() int32 {
-	return 1000
-}
-
-func (m *mockGeminiClient) GetTopP() float32 {
-	return 0.95
-}
-
-func (m *mockGeminiClient) Close() error {
-	return nil
-}
-
 // mockAPIService mocks the interfaces.APIService
 type mockAPIService struct {
-	InitClientFunc           func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error)
-	ProcessResponseFunc      func(result *gemini.GenerationResult) (string, error)
-	IsEmptyResponseErrorFunc func(err error) bool
-	IsSafetyBlockedErrorFunc func(err error) bool
-	GetErrorDetailsFunc      func(err error) string
+	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	ProcessLLMResponseFunc     func(result *llm.ProviderResult) (string, error)
+	IsEmptyResponseErrorFunc   func(err error) bool
+	IsSafetyBlockedErrorFunc   func(err error) bool
+	GetErrorDetailsFunc        func(err error) string
+	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
 
-	InitClientCalls           []struct{ ApiKey, ModelName, ApiEndpoint string }
-	ProcessResponseCalls      []struct{ Result *gemini.GenerationResult }
-	IsEmptyResponseErrorCalls []struct{ Err error }
-	IsSafetyBlockedErrorCalls []struct{ Err error }
-	GetErrorDetailsCalls      []struct{ Err error }
+	InitLLMClientCalls          []struct{ ApiKey, ModelName, ApiEndpoint string }
+	ProcessLLMResponseCalls     []struct{ Result *llm.ProviderResult }
+	IsEmptyResponseErrorCalls   []struct{ Err error }
+	IsSafetyBlockedErrorCalls   []struct{ Err error }
+	GetErrorDetailsCalls        []struct{ Err error }
+	GetModelParametersCalls     []struct{ ModelName string }
+	ValidateModelParameterCalls []struct {
+		ModelName, ParamName string
+		Value                interface{}
+	}
+	GetModelDefinitionCalls  []struct{ ModelName string }
+	GetModelTokenLimitsCalls []struct{ ModelName string }
 
 	mu sync.Mutex
 }
 
-func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
+func (m *mockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -207,23 +173,23 @@ func (m *mockAPIService) InitClient(ctx context.Context, apiKey, modelName, apiE
 		ModelName:   modelName,
 		ApiEndpoint: apiEndpoint,
 	}
-	m.InitClientCalls = append(m.InitClientCalls, call)
+	m.InitLLMClientCalls = append(m.InitLLMClientCalls, call)
 
-	if m.InitClientFunc != nil {
-		return m.InitClientFunc(ctx, apiKey, modelName, apiEndpoint)
+	if m.InitLLMClientFunc != nil {
+		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
 	}
-	return &mockGeminiClient{}, nil
+	return &mockLLMClient{modelName: modelName}, nil
 }
 
-func (m *mockAPIService) ProcessResponse(result *gemini.GenerationResult) (string, error) {
+func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	call := struct{ Result *gemini.GenerationResult }{Result: result}
-	m.ProcessResponseCalls = append(m.ProcessResponseCalls, call)
+	call := struct{ Result *llm.ProviderResult }{Result: result}
+	m.ProcessLLMResponseCalls = append(m.ProcessLLMResponseCalls, call)
 
-	if m.ProcessResponseFunc != nil {
-		return m.ProcessResponseFunc(result)
+	if m.ProcessLLMResponseFunc != nil {
+		return m.ProcessLLMResponseFunc(result)
 	}
 
 	if result == nil {
@@ -589,4 +555,179 @@ func (m *mockLogger) Println(v ...interface{}) {
 // Printf implements LoggerInterface
 func (m *mockLogger) Printf(format string, v ...interface{}) {
 	m.Info(format, v...)
+}
+
+// mockLLMClient implements llm.LLMClient for tests
+type mockLLMClient struct {
+	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
+	CountTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
+	GetModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
+	GetModelNameFunc    func() string
+	CloseFunc           func() error
+
+	modelName string
+	mu        sync.Mutex
+}
+
+func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GenerateContentFunc != nil {
+		return m.GenerateContentFunc(ctx, prompt, params)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderResult{
+		Content:    "Mock response for " + prompt,
+		TokenCount: int32(len(prompt) / 4),
+	}, nil
+}
+
+func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.CountTokensFunc != nil {
+		return m.CountTokensFunc(ctx, prompt)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderTokenCount{
+		Total: int32(len(prompt) / 4),
+	}, nil
+}
+
+func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GetModelInfoFunc != nil {
+		return m.GetModelInfoFunc(ctx)
+	}
+
+	// Default mock implementation
+	return &llm.ProviderModelInfo{
+		Name:             m.modelName,
+		InputTokenLimit:  8192,
+		OutputTokenLimit: 2048,
+	}, nil
+}
+
+func (m *mockLLMClient) GetModelName() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.GetModelNameFunc != nil {
+		return m.GetModelNameFunc()
+	}
+
+	if m.modelName != "" {
+		return m.modelName
+	}
+
+	return "mock-model"
+}
+
+func (m *mockLLMClient) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.CloseFunc != nil {
+		return m.CloseFunc()
+	}
+
+	return nil
+}
+
+// Implement the registry-related methods for mockAPIService
+
+func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelParametersCalls = append(m.GetModelParametersCalls, call)
+
+	if m.GetModelParametersFunc != nil {
+		return m.GetModelParametersFunc(modelName)
+	}
+
+	// Default implementation returns empty parameters
+	return make(map[string]interface{}), nil
+}
+
+func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelDefinitionCalls = append(m.GetModelDefinitionCalls, call)
+
+	if m.GetModelDefinitionFunc != nil {
+		return m.GetModelDefinitionFunc(modelName)
+	}
+
+	// Default implementation returns a minimal model definition
+	return &registry.ModelDefinition{
+		Name:            modelName,
+		ContextWindow:   8192,
+		MaxOutputTokens: 2048,
+	}, nil
+}
+
+func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct{ ModelName string }{ModelName: modelName}
+	m.GetModelTokenLimitsCalls = append(m.GetModelTokenLimitsCalls, call)
+
+	if m.GetModelTokenLimitsFunc != nil {
+		return m.GetModelTokenLimitsFunc(modelName)
+	}
+
+	// Default implementation returns standard values
+	return 8192, 2048, nil
+}
+
+func (m *mockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	call := struct {
+		ModelName, ParamName string
+		Value                interface{}
+	}{
+		ModelName: modelName,
+		ParamName: paramName,
+		Value:     value,
+	}
+	m.ValidateModelParameterCalls = append(m.ValidateModelParameterCalls, call)
+
+	if m.ValidateModelParameterFunc != nil {
+		return m.ValidateModelParameterFunc(modelName, paramName, value)
+	}
+
+	// Default implementation - accept common parameters with basic validation
+	switch paramName {
+	case "temperature":
+		if temp, ok := value.(float64); ok {
+			return temp >= 0 && temp <= 1, nil
+		}
+		return false, fmt.Errorf("temperature must be a float between 0 and 1")
+	case "top_p":
+		if topP, ok := value.(float64); ok {
+			return topP >= 0 && topP <= 1, nil
+		}
+		return false, fmt.Errorf("top_p must be a float between 0 and 1")
+	case "max_tokens":
+		if _, ok := value.(int); ok {
+			return true, nil
+		}
+		return false, fmt.Errorf("max_tokens must be an integer")
+	default:
+		// By default, accept unknown parameters
+		return true, nil
+	}
 }

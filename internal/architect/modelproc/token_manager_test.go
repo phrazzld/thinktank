@@ -8,8 +8,9 @@ import (
 	"github.com/phrazzld/architect/internal/architect/modelproc"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -77,16 +78,16 @@ func TestCheckTokenLimit(t *testing.T) {
 
 	t.Run("Success Case", func(t *testing.T) {
 		// Mock a client that returns valid token counts
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-				return &gemini.ModelInfo{
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+				return &llm.ProviderModelInfo{
 					Name:             "test-model",
 					InputTokenLimit:  1000,
 					OutputTokenLimit: 1000,
 				}, nil
 			},
-			countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-				return &gemini.TokenCount{Total: 500}, nil // Well under the limit
+			countTokensFunc: func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+				return &llm.ProviderTokenCount{Total: 500}, nil // Well under the limit
 			},
 			getModelNameFunc: func() string {
 				return "test-model"
@@ -94,7 +95,7 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
@@ -105,16 +106,16 @@ func TestCheckTokenLimit(t *testing.T) {
 
 	t.Run("TokenLimitExceeded", func(t *testing.T) {
 		// Mock a client that returns token counts exceeding the limit
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-				return &gemini.ModelInfo{
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+				return &llm.ProviderModelInfo{
 					Name:             "test-model",
 					InputTokenLimit:  500,
 					OutputTokenLimit: 500,
 				}, nil
 			},
-			countTokensFunc: func(ctx context.Context, prompt string) (*gemini.TokenCount, error) {
-				return &gemini.TokenCount{Total: 1000}, nil // Exceeds the limit
+			countTokensFunc: func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+				return &llm.ProviderTokenCount{Total: 1000}, nil // Exceeds the limit
 			},
 			getModelNameFunc: func() string {
 				return "test-model"
@@ -122,21 +123,20 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
 
-		// Verify error is returned and contains expected message
-		require.Error(t, err, "CheckTokenLimit should return an error when token count exceeds limit")
-		assert.Contains(t, err.Error(), "prompt exceeds token limit", "Error should indicate token limit exceeded")
-		assert.Contains(t, err.Error(), "1000 tokens > 500 token limit", "Error should include specific token counts")
+		// With our new behavior, we don't return an error even when token limit is exceeded
+		// We just log a warning instead
+		assert.NoError(t, err, "CheckTokenLimit should no longer return an error when token count exceeds limit")
 	})
 
 	t.Run("GetTokenInfo Error", func(t *testing.T) {
 		// Mock a client that returns an error during token counting
-		mockClient := &mockGeminiClient{
-			getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
+		mockClient := &mockLLMClient{
+			getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
 				return nil, fmt.Errorf("model info error")
 			},
 			getModelNameFunc: func() string {
@@ -145,7 +145,7 @@ func TestCheckTokenLimit(t *testing.T) {
 		}
 
 		// Create token manager
-		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+		tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 		// Call CheckTokenLimit
 		err := tokenManager.CheckTokenLimit(ctx, testPrompt)
@@ -171,14 +171,14 @@ func TestPromptForConfirmation(t *testing.T) {
 			return nil
 		},
 	}
-	mockClient := &mockGeminiClient{
+	mockClient := &mockLLMClient{
 		getModelNameFunc: func() string {
 			return "test-model"
 		},
 	}
 
 	// Create token manager
-	tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient)
+	tokenManager := modelproc.NewTokenManagerWithClient(mockLogger, mockAuditLogger, mockClient, nil)
 
 	tests := []struct {
 		name         string
@@ -240,7 +240,7 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 	}()
 
 	// Replace with our mock that will return user cancellation
-	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client gemini.Client) modelproc.TokenManager {
+	modelproc.NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) modelproc.TokenManager {
 		return &mockTokenManager{
 			getTokenInfoFunc: func(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
 				return &modelproc.TokenResult{
@@ -259,22 +259,22 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 
 	// Setup mocks
 	mockAPI := &mockAPIService{
-		initClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (gemini.Client, error) {
-			return &mockClient{
-				getModelInfoFunc: func(ctx context.Context) (*gemini.ModelInfo, error) {
-					return &gemini.ModelInfo{
+		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return &mockLLMClient{
+				getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
+					return &llm.ProviderModelInfo{
 						Name:             "test-model",
 						InputTokenLimit:  1000,
 						OutputTokenLimit: 1000,
 					}, nil
 				},
-				countTokensFunc: func(ctx context.Context, text string) (*gemini.TokenCount, error) {
-					return &gemini.TokenCount{Total: 100}, nil
+				countTokensFunc: func(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
+					return &llm.ProviderTokenCount{Total: 100}, nil
 				},
 				getModelNameFunc: func() string {
 					return "test-model"
 				},
-				generateContentFunc: func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					// Should not be called in this test
 					t.Error("GenerateContent should not be called when user cancels")
 					return nil, fmt.Errorf("should not be called")
@@ -282,9 +282,6 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 			}, nil
 		},
 	}
-
-	// Create a token manager - this won't be used directly but needed for the NewProcessor call
-	mockToken := &mockTokenManager{}
 
 	mockWriter := &mockFileWriter{}
 	mockAudit := &mockAuditLogger{}
@@ -297,10 +294,9 @@ func TestModelProcessor_Process_UserCancellation(t *testing.T) {
 	cfg.OutputDir = "/tmp/test-output"
 	cfg.ConfirmTokens = 50 // Set a threshold that will trigger confirmation
 
-	// Create processor
+	// Create processor with updated constructor signature
 	processor := modelproc.NewProcessor(
 		mockAPI,
-		mockToken,
 		mockWriter,
 		mockAudit,
 		mockLogger,

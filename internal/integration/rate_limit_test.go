@@ -64,7 +64,7 @@ func main() {}`
 				var maxConcurrent int32
 
 				// Override GenerateContentFunc to track timing and concurrency
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract model name from context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -161,7 +161,7 @@ func main() {}`
 				var maxConcurrent int32
 
 				// Override GenerateContentFunc to track concurrency
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract model name from context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -228,7 +228,7 @@ func main() {}`
 				timestampMu := &sync.Mutex{}
 
 				// Override GenerateContentFunc to track timing
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract model name from context
 					modelName := ctx.Value(modelNameKey).(string)
 
@@ -297,7 +297,7 @@ func main() {}`
 				requestMu := &sync.Mutex{}
 
 				// Override GenerateContentFunc to simulate rate limit errors
-				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string) (*gemini.GenerationResult, error) {
+				env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 					// Extract model name from context
 					modelName := ctx.Value(modelNameKey).(string)
 

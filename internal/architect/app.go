@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/phrazzld/architect/internal/architect/interfaces"
 	"github.com/phrazzld/architect/internal/architect/orchestrator"
 	"github.com/phrazzld/architect/internal/auditlog"
 	"github.com/phrazzld/architect/internal/config"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/ratelimit"
+	"github.com/phrazzld/architect/internal/registry"
 	"github.com/phrazzld/architect/internal/runutil"
 )
 
@@ -24,7 +27,7 @@ func Execute(
 	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
-	apiService APIService,
+	apiService interfaces.APIService,
 ) (err error) {
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
@@ -35,6 +38,25 @@ func Execute(
 			errorInfo = &auditlog.ErrorInfo{
 				Message: err.Error(),
 				Type:    "ExecutionError",
+			}
+
+			// Check if it's a categorized error for more detailed information
+			if catErr, ok := llm.IsCategorizedError(err); ok {
+				category := catErr.Category()
+				// Update the error type to include the category
+				errorInfo.Type = fmt.Sprintf("ExecutionError:%s", category.String())
+
+				// For certain error categories, add more context to the message
+				switch category {
+				case llm.CategoryAuth:
+					errorInfo.Message = "Authentication failed. Check your API key."
+				case llm.CategoryRateLimit:
+					errorInfo.Message = "Rate limit exceeded. Try again later or adjust rate limiting parameters."
+				case llm.CategoryInputLimit:
+					errorInfo.Message = "Input token limit exceeded. Try reducing the context size."
+				case llm.CategoryContentFiltered:
+					errorInfo.Message = "Content was filtered by safety settings."
+				}
 			}
 		}
 
@@ -125,22 +147,98 @@ func Execute(
 
 	// 4. Use the injected APIService
 
-	// Create a reference client for token counting in context gathering
-	referenceClient, err := apiService.InitClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
-	if err != nil {
-		logger.Error("Failed to initialize reference client for context gathering: %v", err)
-		return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+	// Optional registry manager access function for token counting
+	// This allows us to use registry information without a direct import
+	// which would create circular dependencies
+	registryMutex.Lock()
+	registryManagerGetter = func() interface{} {
+		// This function will be set by main.go after initializing the registry
+		return nil
 	}
-	defer func() { _ = referenceClient.Close() }()
+	registryMutex.Unlock()
 
-	// Create TokenManager with the reference client
-	tokenManager, tokenManagerErr := NewTokenManager(logger, auditLogger, referenceClient)
+	// Create a reference client for token counting in context gathering
+	referenceClientLLM, err := apiService.InitLLMClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
+	if err != nil {
+		// Check if this is a categorized error to provide better error messages
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			category := catErr.Category()
+
+			// Log with category information
+			logger.Error("Failed to initialize reference client for context gathering: %v (category: %s)",
+				err, category.String())
+
+			// Use error category to give more specific error messages
+			switch category {
+			case llm.CategoryAuth:
+				return fmt.Errorf("API authentication failed for model %s: %w", cliConfig.ModelNames[0], err)
+			case llm.CategoryRateLimit:
+				return fmt.Errorf("API rate limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+			case llm.CategoryNotFound:
+				return fmt.Errorf("model %s not found or not available: %w", cliConfig.ModelNames[0], err)
+			case llm.CategoryInputLimit:
+				return fmt.Errorf("input token limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+			case llm.CategoryContentFiltered:
+				return fmt.Errorf("content was filtered by safety settings: %w", err)
+			default:
+				return fmt.Errorf("failed to initialize reference client for model %s: %w", cliConfig.ModelNames[0], err)
+			}
+		} else {
+			// If not a categorized error, use the standard error handling
+			logger.Error("Failed to initialize reference client for context gathering: %v", err)
+			return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+		}
+	}
+	defer func() { _ = referenceClientLLM.Close() }()
+
+	// Create TokenManager with the LLM client reference
+	// Try to get the global registry manager if it's been initialized
+	var tokenManager TokenManager
+	var tokenManagerErr error
+
+	// Import registry package only in this file to avoid circular dependencies
+	registryManager := GetGlobalRegistryManager()
+	if registryManager != nil {
+		// Registry manager is available, create registry-aware token manager
+		logger.Debug("Creating registry-aware token manager")
+		// Type assertion to get the actual registry manager
+		if regManager, ok := registryManager.(*registry.Manager); ok {
+			tokenManager, tokenManagerErr = NewRegistryTokenManager(
+				logger,
+				auditLogger,
+				referenceClientLLM,
+				regManager.GetRegistry(),
+			)
+		} else {
+			// Fall back to standard token manager if type assertion fails
+			logger.Debug("Registry manager type assertion failed, using standard token manager")
+			tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM, nil)
+		}
+	} else {
+		// Registry manager not available, fall back to standard token manager
+		logger.Debug("Creating standard token manager (registry not available)")
+		tokenManager, tokenManagerErr = NewTokenManager(logger, auditLogger, referenceClientLLM, nil)
+	}
+
 	if tokenManagerErr != nil {
-		logger.Error("Failed to create token manager: %v", tokenManagerErr)
+		// Check if this is a categorized error for better error messages
+		if catErr, ok := llm.IsCategorizedError(tokenManagerErr); ok {
+			category := catErr.Category()
+			logger.Error("Failed to create token manager: %v (category: %s)",
+				tokenManagerErr, category.String())
+
+			// For token manager, the most likely issues are related to model info
+			if category == llm.CategoryNotFound {
+				return fmt.Errorf("token counting unavailable for model %s: %w", cliConfig.ModelNames[0], tokenManagerErr)
+			}
+		} else {
+			logger.Error("Failed to create token manager: %v", tokenManagerErr)
+		}
 		return fmt.Errorf("failed to create token manager: %w", tokenManagerErr)
 	}
 
-	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClient, auditLogger)
+	// Now ContextGatherer directly uses LLMClient
+	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, tokenManager, referenceClientLLM, auditLogger)
 	fileWriter := NewFileWriter(logger, auditLogger)
 
 	// Create rate limiter from configuration
@@ -184,10 +282,38 @@ type Orchestrator interface {
 	Run(ctx context.Context, instructions string) error
 }
 
+// Note: The llmToGeminiAdapter has been removed as ContextGatherer now uses llm.LLMClient directly
+
+// registryManagerGetter is a function that returns the registry manager.
+// This is set by main.go after initializing the registry to avoid circular dependencies.
+var (
+	registryManagerGetter func() interface{}
+	registryMutex         sync.Mutex
+)
+
+// GetGlobalRegistryManager returns the global registry manager if available
+func GetGlobalRegistryManager() interface{} {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
+	if registryManagerGetter != nil {
+		return registryManagerGetter()
+	}
+	return nil
+}
+
+// SetRegistryManagerGetter sets the function that returns the registry manager
+func SetRegistryManagerGetter(getter func() interface{}) {
+	registryMutex.Lock()
+	defer registryMutex.Unlock()
+
+	registryManagerGetter = getter
+}
+
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.
 var orchestratorConstructor = func(
-	apiService APIService,
+	apiService interfaces.APIService,
 	contextGatherer interfaces.ContextGatherer,
 	tokenManager interfaces.TokenManager,
 	fileWriter interfaces.FileWriter,

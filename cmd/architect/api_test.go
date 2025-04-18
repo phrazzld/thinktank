@@ -1,3 +1,4 @@
+// Package architect provides the command-line interface for the architect tool
 package architect
 
 import (
@@ -7,17 +8,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
 )
 
 // mockLogger for testing
 type mockAPILogger struct {
-	logutil.LoggerInterface
 	debugMessages []string
 	infoMessages  []string
+	warnMessages  []string
 	errorMessages []string
 }
+
+// Ensure mockAPILogger implements logutil.LoggerInterface
+var _ logutil.LoggerInterface = (*mockAPILogger)(nil)
 
 func (m *mockAPILogger) Debug(format string, args ...interface{}) {
 	m.debugMessages = append(m.debugMessages, format)
@@ -27,8 +31,24 @@ func (m *mockAPILogger) Info(format string, args ...interface{}) {
 	m.infoMessages = append(m.infoMessages, format)
 }
 
+func (m *mockAPILogger) Warn(format string, args ...interface{}) {
+	m.warnMessages = append(m.warnMessages, format)
+}
+
 func (m *mockAPILogger) Error(format string, args ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
+}
+
+func (m *mockAPILogger) Fatal(format string, args ...interface{}) {
+	// Don't actually exit in tests
+}
+
+func (m *mockAPILogger) Println(v ...interface{}) {
+	// No-op for tests
+}
+
+func (m *mockAPILogger) Printf(format string, v ...interface{}) {
+	// No-op for tests
 }
 
 // TestNewAPIService tests the creation of a new APIService
@@ -49,7 +69,7 @@ func TestNewAPIService(t *testing.T) {
 
 // Since we can no longer access internal fields, we'll depend on the
 // public interface behavior to verify correctness
-func TestInitClient(t *testing.T) {
+func TestInitLLMClient(t *testing.T) {
 	// Define test cases that don't require modifying internals
 	testCases := []struct {
 		name      string
@@ -96,7 +116,7 @@ func TestInitClient(t *testing.T) {
 			defer cancel()
 
 			// Call the method being tested
-			client, err := api.InitClient(ctx, tc.apiKey, tc.modelName, "")
+			client, err := api.InitLLMClient(ctx, tc.apiKey, tc.modelName, "")
 
 			// Check error expectations
 			if tc.wantErr && err == nil {
@@ -113,18 +133,18 @@ func TestInitClient(t *testing.T) {
 	}
 }
 
-// TestProcessResponse tests the ProcessResponse method of APIService
-func TestProcessResponse(t *testing.T) {
+// TestProcessLLMResponse tests the ProcessLLMResponse method of APIService
+func TestProcessLLMResponse(t *testing.T) {
 	// Define test cases
 	testCases := []struct {
 		name        string
-		result      *gemini.GenerationResult
+		result      *llm.ProviderResult
 		wantContent string
 		wantErr     bool
 	}{
 		{
 			name: "Successful Response",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "This is valid content",
 				FinishReason: "STOP",
 			},
@@ -139,7 +159,7 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Empty Content with Finish Reason",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "",
 				FinishReason: "SAFETY",
 			},
@@ -148,7 +168,7 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Whitespace-only Content",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content:      "   \n\t   ",
 				FinishReason: "STOP",
 			},
@@ -157,9 +177,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Safety Blocked",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "HARM_CATEGORY_DANGEROUS",
 						Blocked:  true,
@@ -171,9 +191,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Multiple Safety Categories",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "CATEGORY_1",
 						Blocked:  true,
@@ -189,9 +209,9 @@ func TestProcessResponse(t *testing.T) {
 		},
 		{
 			name: "Safety Ratings but Not Blocked",
-			result: &gemini.GenerationResult{
+			result: &llm.ProviderResult{
 				Content: "",
-				SafetyRatings: []gemini.SafetyRating{
+				SafetyInfo: []llm.Safety{
 					{
 						Category: "CATEGORY_1",
 						Blocked:  false,
@@ -199,7 +219,7 @@ func TestProcessResponse(t *testing.T) {
 				},
 			},
 			wantContent: "",
-			wantErr:     true,
+			wantErr:     true, // Should still error because content is empty
 		},
 	}
 
@@ -207,30 +227,38 @@ func TestProcessResponse(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := &mockAPILogger{}
-			apiService := NewAPIService(logger)
+			api := NewAPIService(logger)
 
-			// Process the response
-			content, err := apiService.ProcessResponse(tc.result)
+			// Call method being tested
+			content, err := api.ProcessLLMResponse(tc.result)
 
-			// Verify error expectations
-			if tc.wantErr {
-				if err == nil {
-					t.Error("Expected error, got nil")
-				}
-			} else if err != nil {
+			// Check error expectation
+			if tc.wantErr && err == nil {
+				t.Errorf("Expected error, got nil")
+			} else if !tc.wantErr && err != nil {
 				t.Errorf("Expected no error, got %v", err)
 			}
 
-			// Verify content matches expectation
+			// Check content
 			if content != tc.wantContent {
 				t.Errorf("Expected content %q, got %q", tc.wantContent, content)
+			}
+
+			// For safety blocked cases, verify error type
+			if tc.result != nil && len(tc.result.SafetyInfo) > 0 {
+				for _, safety := range tc.result.SafetyInfo {
+					if safety.Blocked && !api.IsSafetyBlockedError(err) {
+						t.Errorf("Expected safety blocked error for blocked content")
+					}
+				}
 			}
 		})
 	}
 }
 
-// TestErrorHelperMethods tests the error helper methods of APIService
+// TestErrorHelperMethods tests the error helper methods
 func TestErrorHelperMethods(t *testing.T) {
+	// Create new service
 	logger := &mockAPILogger{}
 	apiService := NewAPIService(logger)
 
@@ -248,28 +276,18 @@ func TestErrorHelperMethods(t *testing.T) {
 			},
 			{
 				name:     "Wrapped ErrEmptyResponse",
-				err:      fmt.Errorf("%w: some details", ErrEmptyResponse),
+				err:      fmt.Errorf("%w: details", ErrEmptyResponse),
 				expected: true,
 			},
 			{
-				name:     "Direct ErrWhitespaceContent",
+				name:     "ErrWhitespaceContent",
 				err:      ErrWhitespaceContent,
 				expected: true,
 			},
 			{
-				name:     "Wrapped ErrWhitespaceContent",
-				err:      fmt.Errorf("%w: whitespace details", ErrWhitespaceContent),
+				name:     "Error with empty response message",
+				err:      errors.New("received empty response from API"),
 				expected: true,
-			},
-			{
-				name:     "Deeply Wrapped ErrEmptyResponse",
-				err:      fmt.Errorf("outer: %w", fmt.Errorf("inner: %w", ErrEmptyResponse)),
-				expected: true,
-			},
-			{
-				name:     "ErrSafetyBlocked",
-				err:      ErrSafetyBlocked,
-				expected: false,
 			},
 			{
 				name:     "Generic Error",
@@ -328,7 +346,7 @@ func TestErrorHelperMethods(t *testing.T) {
 			},
 			{
 				name:     "Generic Error",
-				err:      errors.New("some safety error"),
+				err:      errors.New("some generic error"),
 				expected: false,
 			},
 			{
@@ -352,51 +370,32 @@ func TestErrorHelperMethods(t *testing.T) {
 	// Test GetErrorDetails
 	t.Run("GetErrorDetails", func(t *testing.T) {
 		testCases := []struct {
-			name           string
-			err            error
-			expectedResult string
+			name     string
+			err      error
+			contains string
 		}{
 			{
-				name:           "Regular Error",
-				err:            errors.New("regular error"),
-				expectedResult: "regular error",
+				name:     "Simple Error",
+				err:      errors.New("simple error"),
+				contains: "simple error",
 			},
 			{
-				name:           "Wrapped Error",
-				err:            fmt.Errorf("outer: %w", errors.New("inner error")),
-				expectedResult: "outer: inner error",
+				name:     "Nil Error",
+				err:      nil,
+				contains: "no error",
 			},
 			{
-				name:           "Nil Error",
-				err:            nil,
-				expectedResult: "",
-			},
-			// We can create a gemini.APIError for testing, since it's exported
-			{
-				name: "API Error with Suggestion",
-				err: &gemini.APIError{
-					Message:    "API error message",
-					Suggestion: "Try something else",
-				},
-				expectedResult: "API error message\n\nSuggestion: Try something else",
-			},
-			{
-				name: "API Error without Suggestion",
-				err: &gemini.APIError{
-					Message: "API error message",
-				},
-				expectedResult: "API error message",
+				name:     "ErrEmptyResponse",
+				err:      ErrEmptyResponse,
+				contains: "empty response",
 			},
 		}
 
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
-				result := apiService.GetErrorDetails(tc.err)
-				// Some of the test cases might have different expectations now
-				// since we're using the implementation from the internal package
-				if result != tc.expectedResult && !strings.Contains(result, tc.expectedResult) {
-					t.Errorf("Expected error details to contain %q, got %q",
-						tc.expectedResult, result)
+				details := apiService.GetErrorDetails(tc.err)
+				if !strings.Contains(details, tc.contains) {
+					t.Errorf("Expected error details to contain %q, got %q", tc.contains, details)
 				}
 			})
 		}

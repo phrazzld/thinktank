@@ -42,28 +42,21 @@ func TestNewTestEnv(t *testing.T) {
 
 // TestCleanup tests the cleanup functionality
 func TestCleanup(t *testing.T) {
-	var testDirPath string
+	// Note: Since we now use t.TempDir() which is cleaned up by the testing framework,
+	// we're just testing that Cleanup doesn't panic and handles stdin properly
+	env := NewTestEnv(t)
 
-	// Create a new scope for the environment
-	{
-		env := NewTestEnv(t)
-		testDirPath = env.TestDir
+	// Save original stdin
+	originalStdin := os.Stdin
 
-		// Verify the directory exists
-		if _, err := os.Stat(testDirPath); os.IsNotExist(err) {
-			t.Fatalf("Test directory was not created at %s", testDirPath)
-		}
+	// Set stdin to the test pipe
+	os.Stdin = env.stdinReader
 
-		// Call cleanup
-		env.Cleanup()
-	}
+	// Call cleanup
+	env.Cleanup()
 
-	// Verify the directory was removed
-	if _, err := os.Stat(testDirPath); !os.IsNotExist(err) {
-		t.Errorf("Test directory was not removed at %s", testDirPath)
-		// Clean it up anyway for test idempotence
-		_ = os.RemoveAll(testDirPath)
-	}
+	// Verify stdin is restored
+	assert.Equal(t, originalStdin, os.Stdin, "Cleanup should restore original stdin")
 }
 
 // TestSetup verifies that the Setup function properly configures the environment
@@ -159,7 +152,7 @@ func TestSetupMockGeminiClient(t *testing.T) {
 	env.SetupMockGeminiClient()
 
 	// Verify the client is set up with default generation handling
-	result, err := env.MockClient.GenerateContent(context.Background(), "test prompt")
+	result, err := env.MockClient.GenerateContent(context.Background(), "test prompt", map[string]interface{}{})
 	require.NoError(t, err, "GenerateContent should not return an error")
 	assert.NotEmpty(t, result.Content, "Generated content should not be empty")
 	// The actual content doesn't need to be exact - just check it contains expected elements
@@ -381,7 +374,7 @@ func TestSetupErrorResponse(t *testing.T) {
 	env.SetupErrorResponse(expectedMessage, expectedStatusCode, expectedSuggestion)
 
 	// Test that the mock client returns the configured error
-	_, err := env.MockClient.GenerateContent(context.Background(), "test prompt")
+	_, err := env.MockClient.GenerateContent(context.Background(), "test prompt", map[string]interface{}{})
 
 	// Verify the error is returned
 	require.Error(t, err, "Expected an error from GenerateContent")

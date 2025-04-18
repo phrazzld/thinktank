@@ -9,6 +9,8 @@ import (
 	"github.com/phrazzld/architect/internal/config"
 )
 
+// Import constants directly from the tested file
+
 // TestValidateInputs ensures that the validation function correctly validates all required fields
 func TestValidateInputs(t *testing.T) {
 	// Create a test instructions file
@@ -65,10 +67,11 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				APIKey:           "", // Missing
+				APIKey:           "",                         // Missing
+				ModelNames:       []string{"gemini-1.0-pro"}, // Gemini model requires Gemini API key
 			},
 			expectError:   true,
-			errorContains: "API key not set",
+			errorContains: "gemini API key not set",
 		},
 		{
 			name: "Dry run allows missing instructions file",
@@ -96,11 +99,12 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
-				APIKey:           "", // Missing
+				APIKey:           "",                         // Missing
+				ModelNames:       []string{"gemini-1.0-pro"}, // Gemini model requires Gemini API key
 				DryRun:           true,
 			},
 			expectError:   true,
-			errorContains: "API key not set",
+			errorContains: "gemini API key not set",
 		},
 		{
 			name: "Missing models",
@@ -124,12 +128,30 @@ func TestValidateInputs(t *testing.T) {
 			},
 			expectError: false,
 		},
+		{
+			name: "OpenAI model requires OpenAI API key",
+			config: &config.CliConfig{
+				InstructionsFile: tempFile.Name(),
+				Paths:            []string{"testfile"},
+				APIKey:           "test-key",        // Gemini key set
+				ModelNames:       []string{"gpt-4"}, // OpenAI model
+			},
+			expectError:   true,
+			errorContains: "openAI API key not set",
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := &errorTrackingLogger{}
-			err := ValidateInputs(tt.config, logger)
+			// Create a mock getenv function
+			mockGetenv := func(key string) string {
+				if key == openaiAPIKeyEnvVar && tt.name == "OpenAI model requires OpenAI API key" {
+					return "" // Return empty string for OpenAI API key
+				}
+				return "mock-value" // Return a valid value for any other key
+			}
+			err := ValidateInputsWithEnv(tt.config, logger, mockGetenv)
 
 			// Check if error matches expectation
 			if (err != nil) != tt.expectError {
