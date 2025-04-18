@@ -305,3 +305,36 @@ func (r *Registry) CreateLLMClient(ctx context.Context, apiKey, modelName string
 	r.logger.Debug("Successfully created LLM client for model '%s'", modelName)
 	return client, nil
 }
+
+// GetAllModelNames returns a list of all model names in the registry.
+func (r *Registry) GetAllModelNames() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	r.logger.Debug("Getting all model names from registry")
+	modelNames := make([]string, 0, len(r.models))
+	for name := range r.models {
+		modelNames = append(modelNames, name)
+	}
+
+	r.logger.Debug("Found %d models in registry", len(modelNames))
+	return modelNames
+}
+
+// GetModelNamesByProvider returns a list of model names for a specific provider.
+func (r *Registry) GetModelNamesByProvider(providerName string) []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	r.logger.Debug("Getting model names for provider '%s'", providerName)
+
+	var modelNames []string
+	for name, model := range r.models {
+		if model.Provider == providerName {
+			modelNames = append(modelNames, name)
+		}
+	}
+
+	r.logger.Debug("Found %d models for provider '%s'", len(modelNames), providerName)
+	return modelNames
+}
