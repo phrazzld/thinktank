@@ -32,7 +32,7 @@
     - **Depends On:** [T005]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T007:** Implement `FormatAPIError` Function for OpenRouter
+- [x] **T007:** Implement `FormatAPIError` Function for OpenRouter
     - **Action:** Create a `FormatAPIError` function within the `openrouter` package, similar to existing error handling functions. This function should take an error and potentially an HTTP status code, analyze the error (e.g., type assertion, string matching for common OpenRouter/OpenAI error formats), and return an `llm.CategorizedError`.
     - **Depends On:** [T006]
     - **AC Ref:** PLAN.md Step 4
