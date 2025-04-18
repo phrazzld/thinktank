@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
+	tiktoken "github.com/pkoukk/tiktoken-go"
 )
 
 // openrouterClient implements the llm.LLMClient interface for OpenRouter
@@ -227,7 +229,14 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Convert request to JSON
 	jsonData, err := json.Marshal(requestBody)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		// Create a categorized error for request marshaling failures
+		return nil, &APIError{
+			Original:   err,
+			Type:       ErrorTypeInvalidRequest,
+			Message:    "Failed to prepare request to OpenRouter API",
+			Suggestion: "This is likely an internal error. Please check your input parameters for any invalid values.",
+			Details:    fmt.Sprintf("JSON marshal error: %v", err),
+		}
 	}
 
 	// Construct the API URL
@@ -236,7 +245,14 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Create the HTTP request
 	req, err := http.NewRequestWithContext(ctx, "POST", apiURL, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
+		// Create a categorized error for HTTP request creation failures
+		return nil, &APIError{
+			Original:   err,
+			Type:       ErrorTypeNetwork,
+			Message:    "Failed to create HTTP request to OpenRouter API",
+			Suggestion: "This could be due to an invalid API endpoint or network configuration issue.",
+			Details:    fmt.Sprintf("Request creation error: %v", err),
+		}
 	}
 
 	// Set headers
@@ -249,7 +265,22 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute HTTP request: %w", err)
+		// Determine error type based on the actual error
+		errType := ErrorTypeNetwork
+
+		// Check for context cancellation
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			errType = ErrorTypeCancelled
+		}
+
+		// Create a categorized error for HTTP execution failures
+		return nil, &APIError{
+			Original:   err,
+			Type:       errType,
+			Message:    "Failed to connect to OpenRouter API",
+			Suggestion: "Check your internet connection. If the issue persists, the OpenRouter service may be experiencing issues.",
+			Details:    fmt.Sprintf("HTTP error: %v", err),
+		}
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil && c.logger != nil {
@@ -260,25 +291,84 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, &APIError{
+			Original:   err,
+			Type:       ErrorTypeNetwork,
+			Message:    "Failed to read response from OpenRouter API",
+			Suggestion: "This is likely a temporary network issue. Try again later.",
+			Details:    fmt.Sprintf("Response read error: %v", err),
+		}
 	}
 
 	// Handle non-200 status codes
 	if resp.StatusCode != http.StatusOK {
-		// Error handling will be implemented in T008
-		// For now, just return a basic error with the status code
-		return nil, fmt.Errorf("OpenRouter API returned non-200 status code: %d, body: %s", resp.StatusCode, string(body))
+		// Create a categorized API error using the FormatAPIError function
+		apiErr := FormatAPIError(
+			fmt.Errorf("OpenRouter API returned non-200 status code: %d", resp.StatusCode),
+			resp.StatusCode,
+			body,
+		)
+
+		// Try to parse the response for any additional information
+		var usageInfo *ChatCompletionUsage
+
+		// Attempt to extract usage information and possibly finish reason if available
+		var errorResponse map[string]interface{}
+		if err := json.Unmarshal(body, &errorResponse); err == nil {
+			// Check if there's usage information
+			if usage, ok := errorResponse["usage"].(map[string]interface{}); ok {
+				usageInfo = &ChatCompletionUsage{}
+				if promptTokens, ok := usage["prompt_tokens"].(float64); ok {
+					usageInfo.PromptTokens = int(promptTokens)
+				}
+				if completionTokens, ok := usage["completion_tokens"].(float64); ok {
+					usageInfo.CompletionTokens = int(completionTokens)
+				}
+				if totalTokens, ok := usage["total_tokens"].(float64); ok {
+					usageInfo.TotalTokens = int(totalTokens)
+				}
+			}
+
+			// Check if there's a finish reason and add to error details if found
+			if choices, ok := errorResponse["choices"].([]interface{}); ok && len(choices) > 0 {
+				if choice, ok := choices[0].(map[string]interface{}); ok {
+					if reason, ok := choice["finish_reason"].(string); ok && apiErr != nil {
+						apiErr.Details += fmt.Sprintf(" (Finish reason: %s)", reason)
+					}
+				}
+			}
+		}
+
+		// If we have token usage information, include it in debug details
+		if usageInfo != nil && apiErr != nil {
+			apiErr.Details += fmt.Sprintf(" (Token usage: %d prompt, %d completion, %d total)",
+				usageInfo.PromptTokens, usageInfo.CompletionTokens, usageInfo.TotalTokens)
+		}
+
+		return nil, apiErr
 	}
 
 	// Parse the response
 	var completionResponse ChatCompletionResponse
 	if err := json.Unmarshal(body, &completionResponse); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+		return nil, &APIError{
+			Original:   err,
+			Type:       ErrorTypeServer,
+			Message:    "Failed to parse response from OpenRouter API",
+			Suggestion: "The API returned an unexpected response format. This might be due to an API change or temporary issue with OpenRouter.",
+			Details:    fmt.Sprintf("JSON unmarshal error: %v, Body: %s", err, truncateString(string(body), 200)),
+		}
 	}
 
 	// Validate response structure
 	if len(completionResponse.Choices) == 0 {
-		return nil, fmt.Errorf("no completion choices returned in the response")
+		return nil, &APIError{
+			Original:   fmt.Errorf("no completion choices in response"),
+			Type:       ErrorTypeServer,
+			Message:    "OpenRouter API returned an empty response",
+			Suggestion: "This could be a temporary issue with the OpenRouter service or the underlying model provider. Try again later.",
+			Details:    fmt.Sprintf("Response contained zero choices: %s", truncateString(string(body), 200)),
+		}
 	}
 
 	// Extract the content and other fields
@@ -297,28 +387,213 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	}, nil
 }
 
-// CountTokens counts the tokens in the given prompt
+// CountTokens counts the tokens in the given prompt using tiktoken
 func (c *openrouterClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// This will be implemented in T009
-	return nil, fmt.Errorf("CountTokens method not yet implemented")
+	// Use tiktoken to count tokens
+	encoding := getEncodingForModelID(c.modelID)
+
+	// Get the tokenizer for the appropriate encoding
+	tokenizer, err := tiktoken.GetEncoding(encoding)
+	if err != nil {
+		return nil, &APIError{
+			Original:   err,
+			Type:       ErrorTypeInvalidRequest,
+			Message:    fmt.Sprintf("Failed to get encoding for model %s: %v", c.modelID, err),
+			Suggestion: "This could be due to an unsupported model. Try using a different model.",
+			Details:    fmt.Sprintf("Tiktoken error: %v", err),
+		}
+	}
+
+	// Encode the text to get the token count
+	tokens := tokenizer.Encode(prompt, nil, nil)
+	count := len(tokens)
+
+	if c.logger != nil {
+		c.logger.Debug("Counted %d tokens for model %s", count, c.modelID)
+	}
+
+	// Return the token count as a ProviderTokenCount struct
+	return &llm.ProviderTokenCount{
+		Total: int32(count),
+	}, nil
 }
 
 // GetModelInfo retrieves information about the current model
 func (c *openrouterClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// This will be implemented in T010
-	return nil, fmt.Errorf("GetModelInfo method not yet implemented")
+	// Create base model info with the model name
+	modelInfo := &llm.ProviderModelInfo{
+		Name: c.modelID,
+	}
+
+	// The registry is the source of truth for token limits
+	// This function provides reasonable defaults for when registry data is unavailable
+	// or for direct client usage outside of the TokenManager
+
+	// Determine appropriate token limits based on the model ID
+	// Get provider and model name from the OpenRouter model ID format
+	// which is typically "provider/model" or "provider/org/model"
+	parts := strings.Split(strings.ToLower(c.modelID), "/")
+
+	if len(parts) < 2 {
+		// If model ID is not in the expected format, use conservative defaults
+		modelInfo.InputTokenLimit = 4096
+		modelInfo.OutputTokenLimit = 2048
+
+		if c.logger != nil {
+			c.logger.Warn("Model ID '%s' does not have expected format 'provider/model' or 'provider/organization/model'. Using conservative token limits.", c.modelID)
+		}
+
+		return modelInfo, nil
+	}
+
+	provider := parts[0]
+
+	// Set token limits based on known provider and model patterns
+	switch provider {
+	case "anthropic":
+		// Claude models
+		if strings.Contains(c.modelID, "claude-3-opus") || strings.Contains(c.modelID, "claude-3-sonnet") {
+			modelInfo.InputTokenLimit = 200000 // 200K for Claude 3 Opus/Sonnet
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "claude-3-haiku") {
+			modelInfo.InputTokenLimit = 200000 // 200K for Claude 3 Haiku
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "claude-2") {
+			modelInfo.InputTokenLimit = 100000 // 100K for Claude 2
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "claude-instant") {
+			modelInfo.InputTokenLimit = 100000 // 100K for Claude Instant
+			modelInfo.OutputTokenLimit = 4096
+		} else {
+			// Default for other Claude models
+			modelInfo.InputTokenLimit = 100000
+			modelInfo.OutputTokenLimit = 4096
+		}
+
+	case "openai":
+		// OpenAI models
+		if strings.Contains(c.modelID, "gpt-4o") || strings.Contains(c.modelID, "o4") {
+			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4o
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "gpt-4-turbo") {
+			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4 Turbo
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "gpt-4.1") {
+			modelInfo.InputTokenLimit = 1000000 // 1M tokens for GPT-4.1 series
+			modelInfo.OutputTokenLimit = 32768
+		} else if strings.Contains(c.modelID, "gpt-4-32k") {
+			modelInfo.InputTokenLimit = 32768 // 32K for GPT-4-32k
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "gpt-4") {
+			modelInfo.InputTokenLimit = 8192 // 8K for GPT-4
+			modelInfo.OutputTokenLimit = 2048
+		} else if strings.Contains(c.modelID, "gpt-3.5-turbo-16k") {
+			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo 16K
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "gpt-3.5-turbo") {
+			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo
+			modelInfo.OutputTokenLimit = 4096
+		} else {
+			// Default for other OpenAI models
+			modelInfo.InputTokenLimit = 8192
+			modelInfo.OutputTokenLimit = 2048
+		}
+
+	case "google":
+		// Google/Gemini models
+		if strings.Contains(c.modelID, "gemini-1.5") {
+			modelInfo.InputTokenLimit = 1000000 // 1M tokens for Gemini 1.5
+			modelInfo.OutputTokenLimit = 8192
+		} else if strings.Contains(c.modelID, "gemini-1.0") {
+			modelInfo.InputTokenLimit = 32768 // 32K for Gemini 1.0
+			modelInfo.OutputTokenLimit = 8192
+		} else if strings.Contains(c.modelID, "palm") {
+			modelInfo.InputTokenLimit = 8192
+			modelInfo.OutputTokenLimit = 1024
+		} else {
+			// Default for other Google models
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		}
+
+	case "meta":
+		// Meta models (Llama)
+		if strings.Contains(c.modelID, "llama-3-70b") {
+			modelInfo.InputTokenLimit = 8192
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "llama-3") {
+			modelInfo.InputTokenLimit = 8192
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "llama-2-70b") {
+			modelInfo.InputTokenLimit = 4096
+			modelInfo.OutputTokenLimit = 4096
+		} else {
+			// Default for other Meta models
+			modelInfo.InputTokenLimit = 4096
+			modelInfo.OutputTokenLimit = 4096
+		}
+
+	case "mistral":
+		// Mistral models
+		if strings.Contains(c.modelID, "mixtral") || strings.Contains(c.modelID, "mixtral-8x7b") {
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "mistral-medium") {
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "mistral-small") {
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		} else if strings.Contains(c.modelID, "mistral-tiny") {
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		} else {
+			// Default for other Mistral models
+			modelInfo.InputTokenLimit = 32768
+			modelInfo.OutputTokenLimit = 4096
+		}
+
+	case "cohere":
+		// Cohere models
+		modelInfo.InputTokenLimit = 32768
+		modelInfo.OutputTokenLimit = 4096
+
+	case "deepseek":
+		// DeepSeek models
+		modelInfo.InputTokenLimit = 32768
+		modelInfo.OutputTokenLimit = 4096
+
+	case "perplexity":
+		// Perplexity models
+		modelInfo.InputTokenLimit = 32768
+		modelInfo.OutputTokenLimit = 4096
+
+	default:
+		// For unknown providers, use more conservative defaults
+		modelInfo.InputTokenLimit = 8192  // 8K input as a safe default
+		modelInfo.OutputTokenLimit = 2048 // 2K output as a safe default
+
+		if c.logger != nil {
+			c.logger.Debug("Unknown provider '%s' in model ID. Using conservative token limits.", provider)
+		}
+	}
+
+	if c.logger != nil {
+		c.logger.Debug("GetModelInfo for '%s': input limit = %d, output limit = %d",
+			c.modelID, modelInfo.InputTokenLimit, modelInfo.OutputTokenLimit)
+	}
+
+	return modelInfo, nil
 }
 
 // GetModelName returns the name of the model being used
 func (c *openrouterClient) GetModelName() string {
-	// This will be implemented in T011
 	return c.modelID
 }
 
 // Close releases resources used by the client
 func (c *openrouterClient) Close() error {
-	// This will be implemented in T012
-	// For a simple HTTP client, this is typically a no-op
+	// For a standard HTTP client, no explicit cleanup is required
 	return nil
 }
 
@@ -347,4 +622,68 @@ func (c *openrouterClient) SetPresencePenalty(penalty float32) {
 // SetFrequencyPenalty sets the frequency_penalty parameter
 func (c *openrouterClient) SetFrequencyPenalty(penalty float32) {
 	c.frequencyPenalty = &penalty
+}
+
+// truncateString truncates a string to the specified length and adds an ellipsis
+func truncateString(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
+}
+
+// getEncodingForModelID determines the appropriate tiktoken encoding
+// for a given OpenRouter model ID (e.g., "anthropic/claude-3-sonnet-20240229")
+func getEncodingForModelID(modelID string) string {
+	// Convert to lowercase for consistent matching
+	modelID = strings.ToLower(modelID)
+
+	// Extract provider and model name from the OpenRouter model ID format
+	// which is typically "provider/model" or "provider/org/model"
+	parts := strings.Split(modelID, "/")
+	if len(parts) < 2 {
+		// If not in the expected format, use most modern encoding as fallback
+		return "cl100k_base"
+	}
+
+	provider := parts[0]
+
+	// Match by provider
+	switch provider {
+	case "openai", "openai-compatible", "perplexity", "mistral", "cohere":
+		// Most modern models use cl100k_base
+		return "cl100k_base"
+	case "anthropic":
+		// Claude models use cl100k_base
+		return "cl100k_base"
+	case "google":
+		// Gemini models use cl100k_base
+		return "cl100k_base"
+	case "meta":
+		// Llama models use cl100k_base
+		return "cl100k_base"
+	}
+
+	// For specific model patterns across providers
+	if strings.Contains(modelID, "claude") ||
+		strings.Contains(modelID, "gpt") ||
+		strings.Contains(modelID, "gpt-4") ||
+		strings.Contains(modelID, "gpt-3.5") ||
+		strings.Contains(modelID, "llama") ||
+		strings.Contains(modelID, "gemini") ||
+		strings.Contains(modelID, "mixtral") ||
+		strings.Contains(modelID, "text-embedding") {
+		return "cl100k_base"
+	}
+
+	// For older OpenAI models
+	if strings.Contains(modelID, "davinci") ||
+		strings.Contains(modelID, "curie") ||
+		strings.Contains(modelID, "babbage") ||
+		strings.Contains(modelID, "ada") {
+		return "p50k_base"
+	}
+
+	// Default to the most modern encoding for unknown models
+	return "cl100k_base"
 }

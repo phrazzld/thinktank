@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/phrazzld/architect/internal/providers/gemini"
 	"github.com/phrazzld/architect/internal/providers/openai"
+	"github.com/phrazzld/architect/internal/providers/openrouter"
 )
 
 // Manager provides a singleton-like access to the registry.
@@ -120,6 +121,13 @@ func (m *Manager) registerProviders() error {
 		return fmt.Errorf("failed to register OpenAI provider: %w", err)
 	}
 	m.logger.Debug("Registered OpenAI provider implementation")
+
+	// Register OpenRouter provider implementation
+	openrouterProvider := openrouter.NewProvider(m.logger)
+	if err := m.registry.RegisterProviderImplementation("openrouter", openrouterProvider); err != nil {
+		return fmt.Errorf("failed to register OpenRouter provider: %w", err)
+	}
+	m.logger.Debug("Registered OpenRouter provider implementation")
 
 	return nil
 }

@@ -37,47 +37,47 @@
     - **Depends On:** [T006]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T008:** Implement Error Handling in `GenerateContent`
+- [x] **T008:** Implement Error Handling in `GenerateContent`
     - **Action:** Enhance the `GenerateContent` method to handle API errors and non-200 HTTP status codes. Use the `FormatAPIError` function (T007) to categorize errors and return them appropriately wrapped. Map response fields (finish reason, token counts if available in error response) to `llm.ProviderResult`.
     - **Depends On:** [T006, T007]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T009:** Implement `CountTokens` in `openrouter.Client`
+- [x] **T009:** Implement `CountTokens` in `openrouter.Client`
     - **Action:** Implement the `CountTokens` method. Since OpenRouter lacks a dedicated token counting endpoint, use the `tiktoken-go` library. Add logic to parse the `modelID` (e.g., "anthropic/claude-3.5-sonnet") to determine the underlying model family and select the appropriate encoding (e.g., `cl100k_base`). Return the token count in the `llm.ProviderTokenCount` struct.
     - **Depends On:** [T005]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T010:** Implement `GetModelInfo` in `openrouter.Client`
+- [x] **T010:** Implement `GetModelInfo` in `openrouter.Client`
     - **Action:** Implement the `GetModelInfo` method. Fetch model limits (context window, max output tokens) from the `Registry` using the `modelID` stored in the client. If registry information is missing, fall back to reasonable default values (e.g., a large context window like 128k and output limit like 4k). Return the information in the `llm.ProviderModelInfo` struct.
     - **Depends On:** [T001, T005]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T011:** Implement `GetModelName` in `openrouter.Client`
+- [x] **T011:** Implement `GetModelName` in `openrouter.Client`
     - **Action:** Implement the `GetModelName` method. Return the `modelID` that was provided during the client's creation.
     - **Depends On:** [T005]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T012:** Implement `Close` Method in `openrouter.Client`
+- [x] **T012:** Implement `Close` Method in `openrouter.Client`
     - **Action:** Implement the `Close` method. If using the standard `net/http` client without custom configurations requiring cleanup, this can be a no-op.
     - **Depends On:** [T005]
     - **AC Ref:** PLAN.md Step 4
 
-- [ ] **T013:** Register OpenRouter Provider Implementation
+- [x] **T013:** Register OpenRouter Provider Implementation
     - **Action:** Modify the `registerProviders` function in `internal/registry/manager.go`. Import the `internal/providers/openrouter` package. Instantiate the `OpenRouterProvider` using its constructor (e.g., `openrouter.NewProvider(m.logger)`). Register the instance with the registry using `m.registry.RegisterProviderImplementation("openrouter", openRouterProvider)`. Add appropriate logging.
     - **Depends On:** [T004]
     - **AC Ref:** PLAN.md Step 5
 
-- [ ] **T014:** Write Unit Tests for `openrouter.Client`
+- [x] **T014:** Write Unit Tests for `openrouter.Client`
     - **Action:** Create `internal/providers/openrouter/client_test.go`. Use `net/http/httptest` to mock the OpenRouter API. Write tests to verify: correct request formation (URL, method, headers, body) for `GenerateContent`; correct response parsing for success cases; correct error handling for various API errors/status codes; correct token counting logic in `CountTokens`; correct model info retrieval in `GetModelInfo`.
     - **Depends On:** [T006, T008, T009, T010, T011, T012]
     - **AC Ref:** PLAN.md Step 6
 
-- [ ] **T015:** Write Unit Tests for `openrouter.Provider`
+- [x] **T015:** Write Unit Tests for `openrouter.Provider`
     - **Action:** Create `internal/providers/openrouter/provider_test.go`. Write tests to verify that `CreateClient` returns a non-nil client implementing `llm.LLMClient` and handles API keys and model IDs correctly.
     - **Depends On:** [T004]
     - **AC Ref:** PLAN.md Step 6
 
-- [ ] **T016:** Add Integration Tests for OpenRouter
+- [x] **T016:** Add Integration Tests for OpenRouter
     - **Action:** Add or modify tests in `internal/integration` to include scenarios using OpenRouter models specified via CLI flags (e.g., `--model openrouter/google/gemini-1.5-pro`). Ensure these tests use the existing mock server infrastructure but validate that requests are correctly routed through the new OpenRouter provider implementation.
     - **Depends On:** [T001, T013, T014, T015]
     - **AC Ref:** PLAN.md Step 6

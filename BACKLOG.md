@@ -1,6 +1,8 @@
 # backlog
 
 * support openrouter as a provider
+
+* remove all the token counting stuff
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 - rebrand to thinktank
 - run `glance` on precommit hook
