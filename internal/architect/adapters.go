@@ -167,8 +167,8 @@ func internalToInterfacesContextStats(stats *ContextStats) *interfaces.ContextSt
 		ProcessedFilesCount: stats.ProcessedFilesCount,
 		CharCount:           stats.CharCount,
 		LineCount:           stats.LineCount,
-		TokenCount:          stats.TokenCount,
-		ProcessedFiles:      stats.ProcessedFiles,
+		// TokenCount field removed as part of T032F - token handling refactoring
+		ProcessedFiles: stats.ProcessedFiles,
 	}
 }
 
@@ -181,8 +181,8 @@ func interfacesToInternalContextStats(stats *interfaces.ContextStats) *ContextSt
 		ProcessedFilesCount: stats.ProcessedFilesCount,
 		CharCount:           stats.CharCount,
 		LineCount:           stats.LineCount,
-		TokenCount:          stats.TokenCount,
-		ProcessedFiles:      stats.ProcessedFiles,
+		// TokenCount field removed as part of T032F - token handling refactoring
+		ProcessedFiles: stats.ProcessedFiles,
 	}
 }
 

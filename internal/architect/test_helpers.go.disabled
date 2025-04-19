@@ -10,7 +10,10 @@ import (
 )
 
 // These test helpers are used in various test files in the architect package.
-// nolint:unused // These are used in tests, but the linter doesn't detect it.
+// Note: Many tests are currently disabled as part of token handling refactoring (T032A-F)
+// which is why linters might report these as unused. They will be used once tests are re-enabled.
+//
+//nolint:unused // These are used in tests, but the linter doesn't detect it.
 
 // mockAuditLogger implements auditlog.AuditLogger for testing
 type mockAuditLogger struct {

@@ -99,8 +99,8 @@ type ContextStats struct {
 	ProcessedFilesCount int
 	CharCount           int
 	LineCount           int
-	TokenCount          int32
-	ProcessedFiles      []string
+	// TokenCount field removed as part of T032F - token handling refactoring
+	ProcessedFiles []string
 }
 
 // GatherConfig holds parameters needed for gathering context

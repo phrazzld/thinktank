@@ -55,7 +55,7 @@
         2. CLI tests are updated/fixed
     - **depends-on:** [T032B]
 
-- [ ] **T032F · refactor · p0: update token references in context gathering**
+- [x] **T032F · refactor · p0: update token references in context gathering**
     - **context:** Remove token counting/display from context gathering
     - **action:**
         1. Remove token counting from context gathering code
