@@ -97,36 +97,9 @@ func (t *realTokenizer) countTokens(text string, model string) (int, error) {
 
 // getEncodingForModel returns the appropriate encoding name for a given OpenAI model
 func getEncodingForModel(model string) string {
-	// Map model names to tiktoken encoding names
-	// Default to cl100k_base for newer models (including gpt-4 and gpt-3.5-turbo series)
-	model = strings.ToLower(model)
-
-	// All GPT-4 family models (including variants and custom names)
-	if strings.HasPrefix(model, "gpt-4") ||
-		strings.HasPrefix(model, "o4") ||
-		strings.HasPrefix(model, "gpt-4.1") {
-		return "cl100k_base"
-	}
-
-	// All GPT-3.5 family models
-	if strings.HasPrefix(model, "gpt-3.5") {
-		return "cl100k_base"
-	}
-
-	// Text embedding models
-	if strings.HasPrefix(model, "text-embedding") {
-		return "cl100k_base"
-	}
-
-	// For newer models, assume cl100k_base as it's more modern
-	if strings.Contains(model, "turbo") ||
-		strings.Contains(model, "claude") ||
-		strings.Contains(model, "mini") {
-		return "cl100k_base"
-	}
-
-	// Fallback to p50k_base encoding for other/older models
-	return "p50k_base"
+	// For all modern models, use cl100k_base
+	// This will be replaced by registry-based encoding determination in future
+	return "cl100k_base"
 }
 
 // NewClient creates a new OpenAI client that implements the llm.LLMClient interface
@@ -333,8 +306,9 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 		}
 	}
 
-	// If this is an O-series model and reasoning is not set, use the default (high)
-	if strings.HasPrefix(strings.ToLower(c.modelName), "o") && c.reasoningEffort == nil {
+	// Set default reasoning effort if needed
+	// Note: Model-specific defaults will be provided by the registry in the future
+	if c.reasoningEffort == nil {
 		defaultEffort := "high"
 		c.reasoningEffort = &defaultEffort
 	}
@@ -396,55 +370,13 @@ func (c *openaiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo
 	// Get model info from cache using exact match
 	info, ok := c.modelLimits[c.modelName]
 
-	// If exact match fails, try prefix matching for known model families
+	// If exact match fails, use default values
+	// This will be replaced by registry-based model info in future
 	if !ok {
-		modelName := strings.ToLower(c.modelName)
-
-		// Try to find a matching model family using prefixes
-		if strings.HasPrefix(modelName, "gpt-4.1") || strings.HasPrefix(modelName, "o4") {
-			// GPT-4.1 or o4 family - use the 1M token limit
-			info = &modelInfo{
-				inputTokenLimit:  1000000, // 1M tokens
-				outputTokenLimit: 32768,
-			}
-		} else if strings.HasPrefix(modelName, "gpt-4-turbo") || strings.HasPrefix(modelName, "gpt-4o") {
-			// GPT-4 Turbo or GPT-4o family - use 128k tokens
-			info = &modelInfo{
-				inputTokenLimit:  128000,
-				outputTokenLimit: 4096,
-			}
-		} else if strings.HasPrefix(modelName, "gpt-4-32k") {
-			// GPT-4 32k family
-			info = &modelInfo{
-				inputTokenLimit:  32768,
-				outputTokenLimit: 4096,
-			}
-		} else if strings.HasPrefix(modelName, "gpt-4") {
-			// Other GPT-4 variants
-			info = &modelInfo{
-				inputTokenLimit:  8192,
-				outputTokenLimit: 2048,
-			}
-		} else if strings.HasPrefix(modelName, "gpt-3.5-turbo-16k") {
-			// GPT-3.5 Turbo 16k family
-			info = &modelInfo{
-				inputTokenLimit:  16385,
-				outputTokenLimit: 4096,
-			}
-		} else if strings.HasPrefix(modelName, "gpt-3.5-turbo") {
-			// GPT-3.5 Turbo family
-			info = &modelInfo{
-				inputTokenLimit:  16385,
-				outputTokenLimit: 4096,
-			}
-		} else {
-			// Use more generous defaults for unknown models
-			// This should be considered a fallback only
-			// The registry should provide the actual limits in most cases
-			info = &modelInfo{
-				inputTokenLimit:  200000, // Increased default to 200K tokens for better compatibility with newer models
-				outputTokenLimit: 4096,   // Default output limit
-			}
+		// Use generous defaults for unknown models
+		info = &modelInfo{
+			inputTokenLimit:  200000, // Default to 200K tokens
+			outputTokenLimit: 4096,   // Default output limit
 		}
 	}
 
@@ -476,32 +408,17 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 
 	// Validate and apply all optional parameters if they have been set
 	if c.temperature != nil {
-		// Special case for o4-mini which only supports temperature=1.0
-		if strings.EqualFold(c.modelName, "o4-mini") {
-			// Don't set temperature for o4-mini unless it's exactly 1.0
-			if *c.temperature != 1.0 {
-				return nil, CreateAPIError(
-					llm.CategoryInvalidRequest,
-					fmt.Sprintf("The o4-mini model only supports temperature=1.0, got %f", *c.temperature),
-					nil,
-					"Set temperature to 1.0 or remove it completely for o4-mini model",
-				)
-			}
-			// For o4-mini, we don't set the temperature parameter at all
-			// as only the default (1.0) is supported
-		} else {
-			// For all other models, apply normal validation
-			// Temperature should be between 0.0 and 2.0
-			if *c.temperature < 0.0 || *c.temperature > 2.0 {
-				return nil, CreateAPIError(
-					llm.CategoryInvalidRequest,
-					fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
-					nil,
-					"Set temperature to a value between 0.0 and 2.0",
-				)
-			}
-			params.Temperature = openai.Float(*c.temperature)
+		// Temperature should be between 0.0 and 2.0 for all models
+		// Note: Model-specific restrictions will be handled by the registry in the future
+		if *c.temperature < 0.0 || *c.temperature > 2.0 {
+			return nil, CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Temperature must be between 0.0 and 2.0, got %f", *c.temperature),
+				nil,
+				"Set temperature to a value between 0.0 and 2.0",
+			)
 		}
+		params.Temperature = openai.Float(*c.temperature)
 	}
 
 	if c.topP != nil {
@@ -556,7 +473,8 @@ func (c *openaiClient) createChatCompletionWithParams(ctx context.Context, messa
 		params.PresencePenalty = openai.Float(*c.presencePenalty)
 	}
 
-	// Apply reasoning parameter for O-series models
+	// Apply reasoning parameter if provided
+	// Note: Model-specific requirements will be handled by the registry in the future
 	if c.reasoningEffort != nil {
 		// Validate reasoning effort value
 		effort := strings.ToLower(*c.reasoningEffort)

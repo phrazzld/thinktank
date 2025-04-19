@@ -190,7 +190,7 @@
     - **depends-on:** [T017]
 
 ## other providers
-- [ ] **T019 · refactor · p1: remove string matching for token logic in openai client**
+- [x] **T019 · refactor · p1: remove string matching for token logic in openai client**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
     - **action:**
         1. Remove any code in `providers/openai/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.

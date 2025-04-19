@@ -81,7 +81,7 @@ func TestModelEncodingSelection(t *testing.T) {
 		{"GPT-4 Turbo", "gpt-4-turbo", "cl100k_base"},
 		{"GPT-3.5 Turbo", "gpt-3.5-turbo", "cl100k_base"},
 		{"Text Embedding", "text-embedding-ada-002", "cl100k_base"},
-		{"Unknown Model", "unknown-model", "p50k_base"},
+		{"Unknown Model", "unknown-model", "cl100k_base"}, // Now all models use cl100k_base
 	}
 
 	for _, tc := range testCases {
