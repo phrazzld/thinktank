@@ -45,7 +45,7 @@
         2. App tests are updated/fixed
     - **depends-on:** [T032A, T032C]
 
-- [ ] **T032E · refactor · p0: remove token flags from CLI**
+- [x] **T032E · refactor · p0: remove token flags from CLI**
     - **context:** Remove token-related CLI flags and configuration
     - **action:**
         1. Remove `--confirm-tokens` flag from CLI

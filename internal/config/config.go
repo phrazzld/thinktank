@@ -55,8 +55,8 @@ type AppConfig struct {
 	Format     string
 
 	// File handling settings
-	Include       string
-	ConfirmTokens int
+	Include string
+	// ConfirmTokens field removed as part of T032E
 
 	// Logging and display settings
 	Verbose  bool
@@ -69,11 +69,11 @@ type AppConfig struct {
 // DefaultConfig returns a new AppConfig instance with default values
 func DefaultConfig() *AppConfig {
 	return &AppConfig{
-		OutputFile:    DefaultOutputFile,
-		ModelName:     DefaultModel,
-		Format:        DefaultFormat,
-		LogLevel:      logutil.InfoLevel,
-		ConfirmTokens: 0, // Disabled by default
+		OutputFile: DefaultOutputFile,
+		ModelName:  DefaultModel,
+		Format:     DefaultFormat,
+		LogLevel:   logutil.InfoLevel,
+		// ConfirmTokens removed as part of T032E - token management refactoring
 		Excludes: ExcludeConfig{
 			Extensions: DefaultExcludes,
 			Names:      DefaultExcludeNames,
@@ -108,8 +108,7 @@ type CliConfig struct {
 	APIEndpoint string
 	ModelNames  []string
 
-	// Token management
-	ConfirmTokens int
+	// Token management field removed as part of T032E
 
 	// Logging
 	LogLevel logutil.LogLevel

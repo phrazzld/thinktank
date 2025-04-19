@@ -173,7 +173,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	excludeNamesFlag := flagSet.String("exclude-names", defaultExcludeNames, "Comma-separated list of file/dir names to exclude.")
 	formatFlag := flagSet.String("format", defaultFormat, "Format string for each file. Use {path} and {content}.")
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
-	confirmTokensFlag := flagSet.Int("confirm-tokens", 0, "Prompt for confirmation if token count exceeds this value (0 = never prompt)")
+	// confirm-tokens flag removed as part of T032E - token management refactoring
 	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
 
 	// Rate limiting flags
@@ -226,7 +226,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	cfg.ExcludeNames = *excludeNamesFlag
 	cfg.Format = *formatFlag
 	cfg.DryRun = *dryRunFlag
-	cfg.ConfirmTokens = *confirmTokensFlag
+	// ConfirmTokens field assignment removed as part of T032E - token management refactoring
 	cfg.Paths = flagSet.Args()
 
 	// Store rate limiting configuration

@@ -88,8 +88,8 @@ func Execute(
 		"dry_run":           cliConfig.DryRun,
 		"verbose":           cliConfig.Verbose,
 		"model_names":       cliConfig.ModelNames,
-		"confirm_tokens":    cliConfig.ConfirmTokens,
-		"log_level":         cliConfig.LogLevel,
+		// "confirm_tokens" field removed as part of T032E - token management refactoring
+		"log_level": cliConfig.LogLevel,
 	}
 
 	if err := auditLogger.Log(auditlog.AuditEntry{

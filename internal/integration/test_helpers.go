@@ -719,12 +719,7 @@ func WithExcludeFilter(exclude string) ConfigOption {
 	}
 }
 
-// WithConfirmTokens sets the confirm tokens threshold
-func WithConfirmTokens(threshold int) ConfigOption {
-	return func(c *config.CliConfig) {
-		c.ConfirmTokens = threshold
-	}
-}
+// WithConfirmTokens removed as part of T032E - token management refactoring
 
 // WithLogLevel sets the log level
 func WithLogLevel(level logutil.LogLevel) ConfigOption {
