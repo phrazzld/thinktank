@@ -21,6 +21,9 @@ import (
 // TestCustomModelConfiguration tests that custom model configurations in models.yaml
 // are correctly loaded and their token limits are respected by the system.
 func TestCustomModelConfiguration(t *testing.T) {
+	// Skip test as it relies on TokenManager which has been removed in T032D
+	t.Skip("Skipping test as it relies on TokenManager which has been removed as part of the token handling refactoring (T032A-F)")
+
 	// Skip in short mode to reduce CI time
 	if testing.Short() {
 		t.Skip("Skipping test in short mode")

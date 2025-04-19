@@ -190,10 +190,8 @@ func Execute(
 	}
 	defer func() { _ = referenceClientLLM.Close() }()
 
-	// Note: TokenManager creation was removed as part of T032A
-	// to remove token handling from the application.
-
-	// Now ContextGatherer directly uses LLMClient
+	// Create context gatherer with LLMClient
+	// Note: TokenManager was completely removed as part of tasks T032A through T032D
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, referenceClientLLM, auditLogger)
 	fileWriter := NewFileWriter(logger, auditLogger)
 

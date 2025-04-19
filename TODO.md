@@ -35,7 +35,7 @@
         2. Orchestrator tests are updated/fixed
     - **depends-on:** [T032A]
 
-- [ ] **T032D · refactor · p0: update application flow in App**
+- [x] **T032D · refactor · p0: update application flow in App**
     - **context:** Remove token management from application initialization flow
     - **action:**
         1. Remove `TokenManager` creation and injection in `App.Run`

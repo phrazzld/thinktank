@@ -298,13 +298,7 @@ func (m *mockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 	return nil
 }
 
-// Note: As part of T032C, the TokenManager has been removed from the orchestrator.
-// However, we keep a stub implementation of mockTokenManager for backwards compatibility
-// with existing tests that might import or reference it.
-
-// mockTokenManager is a stub of the previous TokenManager mock.
-// This is kept for backward compatibility but is no longer used in the orchestrator.
-type mockTokenManager struct{}
+// Note: As part of T032C and T032D, the TokenManager has been completely removed from the application.
 
 // mockFileWriter mocks the interfaces.FileWriter
 type mockFileWriter struct {
