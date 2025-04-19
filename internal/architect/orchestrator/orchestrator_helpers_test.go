@@ -298,76 +298,13 @@ func (m *mockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 	return nil
 }
 
-// mockTokenManager mocks the interfaces.TokenManager
-type mockTokenManager struct {
-	CheckTokenLimitFunc       func(ctx context.Context, prompt string) error
-	GetTokenInfoFunc          func(ctx context.Context, prompt string) (*interfaces.TokenResult, error)
-	PromptForConfirmationFunc func(tokenCount int32, threshold int) bool
+// Note: As part of T032C, the TokenManager has been removed from the orchestrator.
+// However, we keep a stub implementation of mockTokenManager for backwards compatibility
+// with existing tests that might import or reference it.
 
-	CheckTokenLimitCalls       []struct{ Prompt string }
-	GetTokenInfoCalls          []struct{ Prompt string }
-	PromptForConfirmationCalls []struct {
-		TokenCount int32
-		Threshold  int
-	}
-
-	mu sync.Mutex
-}
-
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	call := struct{ Prompt string }{Prompt: prompt}
-	m.CheckTokenLimitCalls = append(m.CheckTokenLimitCalls, call)
-
-	if m.CheckTokenLimitFunc != nil {
-		return m.CheckTokenLimitFunc(ctx, prompt)
-	}
-
-	// Default implementation - no token limit issues
-	return nil
-}
-
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*interfaces.TokenResult, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	call := struct{ Prompt string }{Prompt: prompt}
-	m.GetTokenInfoCalls = append(m.GetTokenInfoCalls, call)
-
-	if m.GetTokenInfoFunc != nil {
-		return m.GetTokenInfoFunc(ctx, prompt)
-	}
-
-	// Default implementation - token count is 1/4 of the prompt length (rough approximation)
-	tokenCount := int32(len(prompt) / 4)
-	return &interfaces.TokenResult{
-		TokenCount:   tokenCount,
-		InputLimit:   4000,
-		ExceedsLimit: tokenCount > 4000,
-		LimitError:   "",
-		Percentage:   float64(tokenCount) / 4000 * 100,
-	}, nil
-}
-
-func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	call := struct {
-		TokenCount int32
-		Threshold  int
-	}{TokenCount: tokenCount, Threshold: threshold}
-	m.PromptForConfirmationCalls = append(m.PromptForConfirmationCalls, call)
-
-	if m.PromptForConfirmationFunc != nil {
-		return m.PromptForConfirmationFunc(tokenCount, threshold)
-	}
-
-	// Default implementation - always confirm
-	return true
-}
+// mockTokenManager is a stub of the previous TokenManager mock.
+// This is kept for backward compatibility but is no longer used in the orchestrator.
+type mockTokenManager struct{}
 
 // mockFileWriter mocks the interfaces.FileWriter
 type mockFileWriter struct {

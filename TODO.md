@@ -24,7 +24,7 @@
         2. ModelProcessor tests are updated/fixed
     - **depends-on:** [T032A]
 
-- [ ] **T032C · refactor · p0: remove TokenManager from Orchestrator**
+- [~] **T032C · refactor · p0: remove TokenManager from Orchestrator**
     - **context:** Update Orchestrator to not use TokenManager
     - **action:**
         1. Remove `tokenManager` field from `Orchestrator` struct
