@@ -553,31 +553,46 @@ func (c *openrouterClient) Close() error {
 	return nil
 }
 
-// Helper methods for setting parameters
+// Helper methods for parameter configuration
 
-// SetTemperature sets the temperature parameter
+// SetTemperature sets the default temperature parameter
+// Note: This setting only applies as a default. Request-specific parameters
+// passed to GenerateContent will override this value without modifying it.
 func (c *openrouterClient) SetTemperature(temp float32) {
-	c.temperature = &temp
+	localTemp := temp
+	c.temperature = &localTemp
 }
 
-// SetTopP sets the top_p parameter
+// SetTopP sets the default top_p parameter
+// Note: This setting only applies as a default. Request-specific parameters
+// passed to GenerateContent will override this value without modifying it.
 func (c *openrouterClient) SetTopP(topP float32) {
-	c.topP = &topP
+	localTopP := topP
+	c.topP = &localTopP
 }
 
-// SetMaxTokens sets the max_tokens parameter
+// SetMaxTokens sets the default max_tokens parameter
+// Note: This setting only applies as a default. Request-specific parameters
+// passed to GenerateContent will override this value without modifying it.
 func (c *openrouterClient) SetMaxTokens(tokens int32) {
-	c.maxTokens = &tokens
+	localTokens := tokens
+	c.maxTokens = &localTokens
 }
 
-// SetPresencePenalty sets the presence_penalty parameter
+// SetPresencePenalty sets the default presence_penalty parameter
+// Note: This setting only applies as a default. Request-specific parameters
+// passed to GenerateContent will override this value without modifying it.
 func (c *openrouterClient) SetPresencePenalty(penalty float32) {
-	c.presencePenalty = &penalty
+	localPenalty := penalty
+	c.presencePenalty = &localPenalty
 }
 
-// SetFrequencyPenalty sets the frequency_penalty parameter
+// SetFrequencyPenalty sets the default frequency_penalty parameter
+// Note: This setting only applies as a default. Request-specific parameters
+// passed to GenerateContent will override this value without modifying it.
 func (c *openrouterClient) SetFrequencyPenalty(penalty float32) {
-	c.frequencyPenalty = &penalty
+	localPenalty := penalty
+	c.frequencyPenalty = &localPenalty
 }
 
 // truncateString truncates a string to the specified length and adds an ellipsis

@@ -171,7 +171,7 @@
         1. `GenerateContent` uses only method-local variables for request parameters.
     - **depends-on:** none
 
-- [ ] **T017 · refactor · p1: remove receiver field mutations for request params in openrouter client**
+- [x] **T017 · refactor · p1: remove receiver field mutations for request params in openrouter client**
     - **context:** CR-05: Parameter Mapping: Remove Shared State
     - **action:**
         1. Identify and remove any code in `providers/openrouter/client.go` that modifies receiver fields (e.g., `c.temperature = ...`) based on request parameters.
