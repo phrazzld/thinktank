@@ -14,7 +14,6 @@ import (
 
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
-	tiktoken "github.com/pkoukk/tiktoken-go"
 )
 
 // openrouterClient implements the llm.LLMClient interface for OpenRouter
@@ -286,7 +285,7 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 
 	// Execute the request
 	if c.logger != nil {
-		c.logger.Debug("Sending request to OpenRouter API: %s", SanitizeURL(apiURL))
+		c.logger.Debug("Sending request to OpenRouter API: %s", sanitizeURLBasic(apiURL))
 	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
@@ -398,148 +397,11 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	return &llm.ProviderResult{
 		Content:      content,
 		FinishReason: finishReason,
-		TokenCount:   int32(completionResponse.Usage.CompletionTokens),
 		Truncated:    finishReason == "length",
 		// OpenRouter doesn't provide safety info in the same format as Gemini,
 		// so we leave SafetyInfo empty for now
 		SafetyInfo: []llm.Safety{},
 	}, nil
-}
-
-// CountTokens counts the tokens in the given prompt using tiktoken
-func (c *openrouterClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// Always use cl100k_base for modern models
-	encoding := "cl100k_base"
-
-	// Get the tokenizer for the appropriate encoding
-	tokenizer, err := tiktoken.GetEncoding(encoding)
-	if err != nil {
-		return nil, CreateAPIError(
-			llm.CategoryInvalidRequest,
-			fmt.Sprintf("Failed to get encoding for model %s: %v", c.modelID, err),
-			err,
-			fmt.Sprintf("Tiktoken error: %v", err),
-		)
-	}
-
-	// Encode the text to get the token count
-	tokens := tokenizer.Encode(prompt, nil, nil)
-	count := len(tokens)
-
-	if c.logger != nil {
-		c.logger.Debug("Counted %d tokens for model %s using encoding %s", count, c.modelID, encoding)
-	}
-
-	// Return the token count as a ProviderTokenCount struct
-	return &llm.ProviderTokenCount{
-		Total: int32(count),
-	}, nil
-}
-
-// GetModelInfo retrieves information about the current model
-func (c *openrouterClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// Create base model info with the model name
-	modelInfo := &llm.ProviderModelInfo{
-		Name: c.modelID,
-	}
-
-	// Get provider and model name from the OpenRouter model ID format
-	// which is typically "provider/model" or "provider/org/model"
-	parts := strings.Split(strings.ToLower(c.modelID), "/")
-
-	if len(parts) < 2 {
-		// If model ID is not in the expected format, use conservative defaults
-		modelInfo.InputTokenLimit = 4096
-		modelInfo.OutputTokenLimit = 2048
-
-		if c.logger != nil {
-			c.logger.Warn("Model ID '%s' does not have expected format 'provider/model' or 'provider/organization/model'. Using conservative token limits.", c.modelID)
-		}
-
-		return modelInfo, nil
-	}
-
-	provider := parts[0]
-
-	// Default values for most models
-	modelInfo.InputTokenLimit = 8192  // 8K input as a default
-	modelInfo.OutputTokenLimit = 2048 // 2K output as a default
-
-	// Set token limits based on known provider and model patterns
-	switch provider {
-	case "anthropic":
-		// Claude models
-		if strings.Contains(c.modelID, "claude-3-opus") || strings.Contains(c.modelID, "claude-3-sonnet") {
-			modelInfo.InputTokenLimit = 200000 // 200K for Claude 3 Opus/Sonnet
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "claude-3-haiku") {
-			modelInfo.InputTokenLimit = 200000 // 200K for Claude 3 Haiku
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "claude-2") {
-			modelInfo.InputTokenLimit = 100000 // 100K for Claude 2
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "claude-instant") {
-			modelInfo.InputTokenLimit = 100000 // 100K for Claude Instant
-			modelInfo.OutputTokenLimit = 4096
-		} else {
-			// Default for other Claude models
-			modelInfo.InputTokenLimit = 100000
-			modelInfo.OutputTokenLimit = 4096
-		}
-
-	case "openai":
-		// OpenAI models
-		if strings.Contains(c.modelID, "gpt-4o") || strings.Contains(c.modelID, "o4") {
-			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4o
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "gpt-4-turbo") {
-			modelInfo.InputTokenLimit = 128000 // 128K for GPT-4 Turbo
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "gpt-4.1") {
-			modelInfo.InputTokenLimit = 1000000 // 1M tokens for GPT-4.1 series
-			modelInfo.OutputTokenLimit = 32768
-		} else if strings.Contains(c.modelID, "gpt-4-32k") {
-			modelInfo.InputTokenLimit = 32768 // 32K for GPT-4-32k
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "gpt-4") {
-			modelInfo.InputTokenLimit = 8192 // 8K for GPT-4
-			modelInfo.OutputTokenLimit = 2048
-		} else if strings.Contains(c.modelID, "gpt-3.5-turbo-16k") {
-			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo 16K
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "gpt-3.5-turbo") {
-			modelInfo.InputTokenLimit = 16385 // 16K for GPT-3.5 Turbo
-			modelInfo.OutputTokenLimit = 4096
-		} else {
-			// Default for other OpenAI models
-			modelInfo.InputTokenLimit = 8192
-			modelInfo.OutputTokenLimit = 2048
-		}
-
-	case "google":
-		// Google/Gemini models
-		if strings.Contains(c.modelID, "gemini-1.5") {
-			modelInfo.InputTokenLimit = 1000000 // 1M tokens for Gemini 1.5
-			modelInfo.OutputTokenLimit = 8192
-		} else if strings.Contains(c.modelID, "gemini-1.0") {
-			modelInfo.InputTokenLimit = 32768 // 32K for Gemini 1.0
-			modelInfo.OutputTokenLimit = 8192
-		} else if strings.Contains(c.modelID, "palm") {
-			modelInfo.InputTokenLimit = 8192
-			modelInfo.OutputTokenLimit = 1024
-		} else {
-			// Default for other Google models
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		}
-	}
-
-	if c.logger != nil {
-		c.logger.Debug("GetModelInfo for '%s': using provider '%s', input limit = %d, output limit = %d",
-			c.modelID, provider, modelInfo.InputTokenLimit, modelInfo.OutputTokenLimit)
-	}
-
-	return modelInfo, nil
 }
 
 // GetModelName returns the name of the model being used
@@ -601,4 +463,13 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
+}
+
+// sanitizeURLBasic is a simple function to return the URL as is
+// since OpenRouter uses Auth headers rather than URL parameters
+// This function is kept separate from the more robust SanitizeURL in log_helpers.go
+func sanitizeURLBasic(url string) string {
+	// For now, we're just returning the URL since we don't have sensitive parts in the URL itself
+	// The auth token is passed via headers, not URL
+	return url
 }

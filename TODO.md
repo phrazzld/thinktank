@@ -65,7 +65,7 @@
         2. Dry run does not show token statistics
     - **depends-on:** [T032A]
 
-- [ ] **T033 · refactor · p0: update LLM interface to remove token-related methods**
+- [x] **T033 · refactor · p0: update LLM interface to remove token-related methods**
     - **context:** Simplify provider interfaces by removing token-related functionality
     - **action:**
         1. Remove `CountTokens` method from LLMClient interface

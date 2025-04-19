@@ -41,30 +41,27 @@ func (a *LLMClientAdapter) GenerateContent(ctx context.Context, prompt string, p
 }
 
 // CountTokens adapts gemini.Client.CountTokens to llm.LLMClient.CountTokens
-func (a *LLMClientAdapter) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
+func (a *LLMClientAdapter) CountTokens(ctx context.Context, prompt string) (int32, error) {
 	// Call the wrapped gemini client's CountTokens method
 	result, err := a.geminiClient.CountTokens(ctx, prompt)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	// Convert gemini.TokenCount to llm.ProviderTokenCount
-	return &llm.ProviderTokenCount{
-		Total: result.Total,
-	}, nil
+	// Convert gemini.TokenCount to int32
+	return result.Total, nil
 }
 
-// GetModelInfo adapts gemini.Client.GetModelInfo to llm.LLMClient.GetModelInfo
-func (a *LLMClientAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
+// GetModelLimits adapts gemini.Client.GetModelInfo to llm.LLMClient.GetModelLimits
+func (a *LLMClientAdapter) GetModelLimits(ctx context.Context) (*llm.ModelLimits, error) {
 	// Call the wrapped gemini client's GetModelInfo method
 	result, err := a.geminiClient.GetModelInfo(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	// Convert gemini.ModelInfo to llm.ProviderModelInfo
-	return &llm.ProviderModelInfo{
-		Name:             result.Name,
+	// Convert gemini.ModelInfo to llm.ModelLimits
+	return &llm.ModelLimits{
 		InputTokenLimit:  result.InputTokenLimit,
 		OutputTokenLimit: result.OutputTokenLimit,
 	}, nil

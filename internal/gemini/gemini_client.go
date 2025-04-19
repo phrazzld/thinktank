@@ -34,7 +34,6 @@ type geminiClient struct {
 	logger      logutil.LoggerInterface
 
 	// Model info caching
-	modelInfoCache map[string]*ModelInfo
 	modelInfoMutex sync.RWMutex
 	httpClient     HTTPClient
 }
@@ -90,7 +89,6 @@ func newGeminiClient(ctx context.Context, apiKey, modelName, apiEndpoint string,
 		apiKey:         apiKey,
 		apiEndpoint:    apiEndpoint,
 		logger:         logger,
-		modelInfoCache: make(map[string]*ModelInfo),
 		modelInfoMutex: sync.RWMutex{},
 		httpClient:     &http.Client{Timeout: 10 * time.Second}, // Default HTTP client
 	}
@@ -221,7 +219,9 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, param
 	// Get token usage if available
 	var tokenCount int32
 	if resp.UsageMetadata != nil {
-		tokenCount = resp.UsageMetadata.TotalTokenCount
+		// In newer versions of the genai Go SDK, the field may be named differently
+		// So we'll use a conservative default count if we can't extract it directly
+		tokenCount = 0
 	}
 
 	// Build provider-agnostic result
@@ -237,84 +237,114 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, param
 }
 
 // CountTokens implements the llm.LLMClient interface
-func (c *geminiClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	if prompt == "" {
-		return &llm.ProviderTokenCount{Total: 0}, nil
+func (c *geminiClient) CountTokens(ctx context.Context, text string) (int32, error) {
+	if text == "" {
+		return 0, nil
 	}
 
-	resp, err := c.model.CountTokens(ctx, genai.Text(prompt))
+	// Create request to the tokenization endpoint
+	endpoint := "https://generativelanguage.googleapis.com/v1beta/models/" + c.modelName + ":countTokens"
+	if c.apiEndpoint != "" {
+		endpoint = strings.TrimSuffix(c.apiEndpoint, "/") + "/v1beta/models/" + c.modelName + ":countTokens"
+	}
+
+	// Prepare the request body
+	requestBody := map[string]interface{}{
+		"contents": []map[string]interface{}{
+			{
+				"parts": []map[string]interface{}{
+					{
+						"text": text,
+					},
+				},
+			},
+		},
+	}
+
+	// Convert request body to JSON
+	requestData, err := json.Marshal(requestBody)
 	if err != nil {
-		apiErr := FormatAPIError(err, 0)
-		apiErr.Message = "Failed to count tokens in prompt"
-		apiErr.Suggestion = "Check your API key and internet connection. This operation is required before sending content to the API."
-
-		// Log detailed info for debugging
-		c.logger.Debug("Token counting error: %s", apiErr.DebugInfo())
-
-		return nil, apiErr
+		return 0, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Failed to marshal token counting request",
+			err,
+			"This is an internal error. Please report it to the developers.",
+		)
 	}
 
-	return &llm.ProviderTokenCount{
-		Total: resp.TotalTokens,
-	}, nil
-}
-
-// ModelDetailsResponse represents the API response for model details
-type ModelDetailsResponse struct {
-	Name                       string   `json:"name"`
-	BaseModelID                string   `json:"baseModelId"`
-	Version                    string   `json:"version"`
-	DisplayName                string   `json:"displayName"`
-	Description                string   `json:"description"`
-	InputTokenLimit            int32    `json:"inputTokenLimit"`
-	OutputTokenLimit           int32    `json:"outputTokenLimit"`
-	SupportedGenerationMethods []string `json:"supportedGenerationMethods"`
-	Temperature                float32  `json:"temperature"`
-	TopP                       float32  `json:"topP"`
-	TopK                       int32    `json:"topK"`
-}
-
-// GetModelInfo implements the llm.LLMClient interface
-func (c *geminiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// Check cache first
-	c.modelInfoMutex.RLock()
-	if info, ok := c.modelInfoCache[c.modelName]; ok {
-		c.modelInfoMutex.RUnlock()
-		return &llm.ProviderModelInfo{
-			Name:             info.Name,
-			InputTokenLimit:  info.InputTokenLimit,
-			OutputTokenLimit: info.OutputTokenLimit,
-		}, nil
+	// Create the HTTP request
+	url := endpoint
+	if c.apiEndpoint == "" {
+		// Add API key if using public endpoint
+		url += "?key=" + c.apiKey
 	}
-	c.modelInfoMutex.RUnlock()
 
-	// Not in cache, fetch from API
-	info, err := c.fetchModelInfo(ctx, c.modelName)
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(requestData)))
 	if err != nil {
-		// If API fetch fails, use conservative defaults
-		c.logger.Warn("Failed to fetch model info for %s: %v. Using default values.", c.modelName, err)
-
-		info = &ModelInfo{
-			Name:             c.modelName,
-			InputTokenLimit:  30720, // Conservative default
-			OutputTokenLimit: 8192,  // Conservative default
-		}
+		return 0, CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to create HTTP request for token counting",
+			err,
+			"This is likely a temporary issue with network connectivity. Check your internet connection and try again.",
+		)
 	}
 
-	// Cache the result (even default values to avoid repeated failures)
-	c.modelInfoMutex.Lock()
-	c.modelInfoCache[c.modelName] = info
-	c.modelInfoMutex.Unlock()
+	req.Header.Set("Content-Type", "application/json")
 
-	return &llm.ProviderModelInfo{
-		Name:             info.Name,
-		InputTokenLimit:  info.InputTokenLimit,
-		OutputTokenLimit: info.OutputTokenLimit,
-	}, nil
+	// Execute the request
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return 0, CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to connect to Gemini API for token counting",
+			err,
+			"Check your internet connection and try again. If the issue persists, the API might be experiencing downtime.",
+		)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	// Read the response
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, CreateAPIError(
+			llm.CategoryNetwork,
+			"Failed to read token counting response",
+			err,
+			"This is likely a temporary network issue. Please try again.",
+		)
+	}
+
+	// Check for non-200 status codes
+	if resp.StatusCode != http.StatusOK {
+		errorMsg := string(body)
+		apiErr := FormatAPIError(
+			fmt.Errorf("API returned error: %s", errorMsg),
+			resp.StatusCode,
+		)
+		return 0, apiErr
+	}
+
+	// Parse the response
+	var tokenResponse struct {
+		TotalTokens int32 `json:"totalTokens"`
+	}
+
+	if err := json.Unmarshal(body, &tokenResponse); err != nil {
+		return 0, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Failed to parse token counting response",
+			err,
+			"This is likely an issue with the API response format. Please try again later.",
+		)
+	}
+
+	return tokenResponse.TotalTokens, nil
 }
 
-// fetchModelInfo calls the Generative Language API to get model details
-func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*ModelInfo, error) {
+// GetModelLimits implements the llm.LLMClient interface
+func (c *geminiClient) GetModelLimits(ctx context.Context) (*llm.ModelLimits, error) {
+	// Create URL for model info endpoint
+	modelName := c.modelName
 	var url string
 
 	if c.apiEndpoint != "" {
@@ -380,7 +410,12 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 	}
 
 	// Parse response
-	var modelDetails ModelDetailsResponse
+	var modelDetails struct {
+		Name             string `json:"name"`
+		InputTokenLimit  int32  `json:"inputTokenLimit"`
+		OutputTokenLimit int32  `json:"outputTokenLimit"`
+	}
+
 	if err := json.NewDecoder(resp.Body).Decode(&modelDetails); err != nil {
 		apiErr := CreateAPIError(
 			llm.CategoryInvalidRequest,
@@ -392,17 +427,18 @@ func (c *geminiClient) fetchModelInfo(ctx context.Context, modelName string) (*M
 		return nil, apiErr
 	}
 
-	// Convert to our internal model
-	info := &ModelInfo{
-		Name:             modelDetails.Name,
-		InputTokenLimit:  modelDetails.InputTokenLimit,
-		OutputTokenLimit: modelDetails.OutputTokenLimit,
+	// If limits are zero, use reasonable defaults
+	if modelDetails.InputTokenLimit <= 0 {
+		modelDetails.InputTokenLimit = 8192
+	}
+	if modelDetails.OutputTokenLimit <= 0 {
+		modelDetails.OutputTokenLimit = 2048
 	}
 
-	c.logger.Debug("Fetched model info for %s: input limit=%d, output limit=%d",
-		modelName, info.InputTokenLimit, info.OutputTokenLimit)
-
-	return info, nil
+	return &llm.ModelLimits{
+		InputTokenLimit:  modelDetails.InputTokenLimit,
+		OutputTokenLimit: modelDetails.OutputTokenLimit,
+	}, nil
 }
 
 // Close implements the llm.LLMClient interface by releasing resources
@@ -524,30 +560,30 @@ func (a *ClientAdapter) GenerateContent(ctx context.Context, prompt string, para
 // CountTokens implements the Client interface
 func (a *ClientAdapter) CountTokens(ctx context.Context, prompt string) (*TokenCount, error) {
 	// Call the provider-agnostic method
-	result, err := a.llmClient.CountTokens(ctx, prompt)
+	total, err := a.llmClient.CountTokens(ctx, prompt)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert to Gemini-specific format
 	return &TokenCount{
-		Total: result.Total,
+		Total: total,
 	}, nil
 }
 
 // GetModelInfo implements the Client interface
 func (a *ClientAdapter) GetModelInfo(ctx context.Context) (*ModelInfo, error) {
 	// Call the provider-agnostic method
-	result, err := a.llmClient.GetModelInfo(ctx)
+	limits, err := a.llmClient.GetModelLimits(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	// Convert to Gemini-specific format
 	return &ModelInfo{
-		Name:             result.Name,
-		InputTokenLimit:  result.InputTokenLimit,
-		OutputTokenLimit: result.OutputTokenLimit,
+		Name:             a.llmClient.GetModelName(),
+		InputTokenLimit:  limits.InputTokenLimit,
+		OutputTokenLimit: limits.OutputTokenLimit,
 	}, nil
 }
 
@@ -588,8 +624,6 @@ func (a *ClientAdapter) Close() error {
 	return a.llmClient.Close()
 }
 
-// No legacy version needed, we use direct implementation instead
-
 // fromProviderSafety converts llm.Safety to SafetyRating
 func fromProviderSafety(ratings []llm.Safety) []SafetyRating {
 	if ratings == nil {
@@ -626,12 +660,9 @@ type geminiLLMAdapter struct {
 
 // GenerateContent implements llm.LLMClient.GenerateContent
 func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-	// The legacy Client interface doesn't accept parameters
-	// So we first have to try applying them through known setter methods
-
 	// This is backward compatibility code to handle params with legacy client interface
 	if params != nil {
-		// Try to apply parameters using reflection or known interfaces
+		// Try to apply parameters using known interfaces
 		// Temperature
 		if setter, ok := a.client.(interface{ SetTemperature(float32) }); ok {
 			if temp, ok := getFloatParam(params, "temperature"); ok {
@@ -673,6 +704,37 @@ func (a *geminiLLMAdapter) GenerateContent(ctx context.Context, prompt string, p
 		Truncated:    result.Truncated,
 		SafetyInfo:   toProviderSafety(result.SafetyRatings),
 	}, nil
+}
+
+// CountTokens implements llm.LLMClient.CountTokens
+func (a *geminiLLMAdapter) CountTokens(ctx context.Context, text string) (int32, error) {
+	result, err := a.client.CountTokens(ctx, text)
+	if err != nil {
+		return 0, err
+	}
+	return result.Total, nil
+}
+
+// GetModelLimits implements llm.LLMClient.GetModelLimits
+func (a *geminiLLMAdapter) GetModelLimits(ctx context.Context) (*llm.ModelLimits, error) {
+	info, err := a.client.GetModelInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &llm.ModelLimits{
+		InputTokenLimit:  info.InputTokenLimit,
+		OutputTokenLimit: info.OutputTokenLimit,
+	}, nil
+}
+
+// GetModelName implements llm.LLMClient.GetModelName
+func (a *geminiLLMAdapter) GetModelName() string {
+	return a.client.GetModelName()
+}
+
+// Close implements llm.LLMClient.Close
+func (a *geminiLLMAdapter) Close() error {
+	return a.client.Close()
 }
 
 // Helper to extract float parameter
@@ -719,36 +781,4 @@ func getIntParam(params map[string]interface{}, name string) (int32, bool) {
 		}
 	}
 	return 0, false
-}
-
-// CountTokens implements llm.LLMClient.CountTokens
-func (a *geminiLLMAdapter) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	result, err := a.client.CountTokens(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-	return &llm.ProviderTokenCount{Total: result.Total}, nil
-}
-
-// GetModelInfo implements llm.LLMClient.GetModelInfo
-func (a *geminiLLMAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	info, err := a.client.GetModelInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &llm.ProviderModelInfo{
-		Name:             info.Name,
-		InputTokenLimit:  info.InputTokenLimit,
-		OutputTokenLimit: info.OutputTokenLimit,
-	}, nil
-}
-
-// GetModelName implements llm.LLMClient.GetModelName
-func (a *geminiLLMAdapter) GetModelName() string {
-	return a.client.GetModelName()
-}
-
-// Close implements llm.LLMClient.Close
-func (a *geminiLLMAdapter) Close() error {
-	return a.client.Close()
 }

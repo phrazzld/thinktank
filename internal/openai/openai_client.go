@@ -349,39 +349,28 @@ func (c *openaiClient) GenerateContent(ctx context.Context, prompt string, param
 	}, nil
 }
 
-// CountTokens counts the tokens in a given prompt
-func (c *openaiClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	count, err := c.tokenizer.countTokens(prompt, c.modelName)
+// CountTokens implements the llm.LLMClient interface by counting tokens for a text
+func (c *openaiClient) CountTokens(ctx context.Context, text string) (int32, error) {
+	count, err := c.tokenizer.countTokens(text, c.modelName)
 	if err != nil {
-		return nil, fmt.Errorf("token counting error: %w", err)
+		return 0, err
 	}
-
-	return &llm.ProviderTokenCount{
-		Total: int32(count),
-	}, nil
+	return int32(count), nil
 }
 
-// GetModelInfo retrieves information about the current model
-func (c *openaiClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// The registry should always override these values when available
-	// We're only providing reasonable defaults here for when the registry
-	// is not available, which should be uncommon.
-
-	// Get model info from cache using exact match
+// GetModelLimits implements the llm.LLMClient interface
+func (c *openaiClient) GetModelLimits(ctx context.Context) (*llm.ModelLimits, error) {
+	// Get model limits from cached info
 	info, ok := c.modelLimits[c.modelName]
-
-	// If exact match fails, use default values
-	// This will be replaced by registry-based model info in future
 	if !ok {
-		// Use generous defaults for unknown models
+		// Use default limits if not found
 		info = &modelInfo{
-			inputTokenLimit:  200000, // Default to 200K tokens
-			outputTokenLimit: 4096,   // Default output limit
+			inputTokenLimit:  8192, // Conservative default
+			outputTokenLimit: 2048, // Conservative default
 		}
 	}
 
-	return &llm.ProviderModelInfo{
-		Name:             c.modelName,
+	return &llm.ModelLimits{
 		InputTokenLimit:  info.inputTokenLimit,
 		OutputTokenLimit: info.outputTokenLimit,
 	}, nil
