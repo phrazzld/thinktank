@@ -1,5 +1,56 @@
 # todo
 
+## token handling removal
+- [ ] **T032 · refactor · p0: remove all token counting, validation and handling**
+    - **context:** Remove all token counting logic entirely from the application
+    - **action:**
+        1. Remove TokenManager interface and implementations
+        2. Remove token counting from all providers
+        3. Remove token validation logic from ModelProcessor
+        4. Update orchestrator to not check tokens at all
+        5. Let provider APIs handle their own token limits natively
+    - **done-when:**
+        1. All token handling code is removed
+        2. Provider API calls have no token pre-checks
+        3. All tests pass
+    - **depends-on:** none
+
+- [ ] **T033 · refactor · p0: update LLM interface to remove token-related methods**
+    - **context:** Simplify provider interfaces by removing token-related functionality
+    - **action:**
+        1. Remove CountTokens method from LLMClient interface
+        2. Remove GetModelInfo method from LLMClient interface
+        3. Update all LLMClient implementations to match new interface
+        4. Remove token-related structs (ProviderTokenCount, ProviderModelInfo)
+    - **done-when:**
+        1. LLMClient interface has no token-related methods
+        2. All implementations are updated accordingly
+        3. Tests pass
+    - **depends-on:** [T032]
+
+- [ ] **T034 · refactor · p0: remove token fields from registry schema**
+    - **context:** Remove token-related fields from registry schema
+    - **action:**
+        1. Remove ContextWindow, MaxOutputTokens, Encoding fields from ModelDefinition
+        2. Update registry tests to handle new schema
+        3. Update any code using these fields
+    - **done-when:**
+        1. Registry schema has no token limit fields
+        2. All code using these fields is updated
+        3. All tests pass
+    - **depends-on:** [T032, T033]
+
+- [ ] **T035 · docs · p1: update documentation to reflect token handling removal**
+    - **context:** Update documentation to explain token handling removal
+    - **action:**
+        1. Document that application no longer does token counting/validation
+        2. Add notes that provider APIs handle their own limits natively
+        3. Update error handling documentation for provider token limit errors
+    - **done-when:**
+        1. Documentation reflects new approach
+        2. Error handling for provider limits is documented
+    - **depends-on:** [T032, T033, T034]
+
 ## test infrastructure
 - [x] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
     - **context:** Testing Infrastructure Maintenance
@@ -207,24 +258,26 @@
     - **depends-on:** none
 
 ## model info & token counting
-- [ ] **T021 · feature · p1: implement fetching token limits/encodings exclusively from registry**
+- [~] **T021 · feature · p1: implement fetching token limits/encodings exclusively from registry**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
+    - **status:** OBSOLETE - Superseded by T032, T033, T034 that simplify token handling
     - **action:**
-        1. Modify provider clients (`providers/*`) to retrieve token limits and encoding information only from the registry manager.
-        2. Ensure this data is accessed correctly during token counting and request preparation.
+        1. ~~Modify provider clients (`providers/*`) to retrieve token limits and encoding information only from the registry manager.~~
+        2. ~~Ensure this data is accessed correctly during token counting and request preparation.~~
     - **done-when:**
-        1. All provider clients use registry data for token limits/encodings.
-        2. Tests relying on this logic pass.
+        1. ~~All provider clients use registry data for token limits/encodings.~~
+        2. ~~Tests relying on this logic pass.~~
     - **depends-on:** [T015, T019, T020, T003]
 
-- [ ] **T022 · feature · p1: implement fast-fail for unknown models in token logic**
+- [~] **T022 · feature · p1: implement fast-fail for unknown models in token logic**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
+    - **status:** OBSOLETE - Superseded by T032, T033, T034 that simplify token handling
     - **action:**
-        1. Modify provider clients (`providers/*`) to explicitly check if a model exists in the registry before attempting token operations.
-        2. Return a clear error and log if the model is not found in the configuration.
+        1. ~~Modify provider clients (`providers/*`) to explicitly check if a model exists in the registry before attempting token operations.~~
+        2. ~~Return a clear error and log if the model is not found in the configuration.~~
     - **done-when:**
-        1. Clients fail fast with clear errors for unknown models during token operations.
-        2. Tests cover the unknown model scenario.
+        1. ~~Clients fail fast with clear errors for unknown models during token operations.~~
+        2. ~~Tests cover the unknown model scenario.~~
     - **depends-on:** [T021]
 
 ## testing
