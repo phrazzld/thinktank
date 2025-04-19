@@ -116,33 +116,59 @@ type ChatCompletionResponse struct {
 
 // GenerateContent sends a prompt to the LLM and returns the generated content
 func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// Create local variables for request parameters instead of modifying receiver fields
+	var temperature, topP, presencePenalty, frequencyPenalty *float32
+	var maxTokens *int32
+
+	// Copy receiver defaults to local variables if they exist
+	if c.temperature != nil {
+		temp := *c.temperature
+		temperature = &temp
+	}
+	if c.topP != nil {
+		tp := *c.topP
+		topP = &tp
+	}
+	if c.presencePenalty != nil {
+		pp := *c.presencePenalty
+		presencePenalty = &pp
+	}
+	if c.frequencyPenalty != nil {
+		fp := *c.frequencyPenalty
+		frequencyPenalty = &fp
+	}
+	if c.maxTokens != nil {
+		mt := *c.maxTokens
+		maxTokens = &mt
+	}
+
 	// Apply parameters from method argument if provided
 	if params != nil {
 		// Temperature
 		if temp, ok := params["temperature"]; ok {
 			switch v := temp.(type) {
 			case float32:
-				c.temperature = &v
+				temperature = &v
 			case float64:
 				tempFloat32 := float32(v)
-				c.temperature = &tempFloat32
+				temperature = &tempFloat32
 			case int:
 				tempFloat32 := float32(v)
-				c.temperature = &tempFloat32
+				temperature = &tempFloat32
 			}
 		}
 
 		// Top P
-		if topP, ok := params["top_p"]; ok {
-			switch v := topP.(type) {
+		if tp, ok := params["top_p"]; ok {
+			switch v := tp.(type) {
 			case float32:
-				c.topP = &v
+				topP = &v
 			case float64:
 				topPFloat32 := float32(v)
-				c.topP = &topPFloat32
+				topP = &topPFloat32
 			case int:
 				topPFloat32 := float32(v)
-				c.topP = &topPFloat32
+				topP = &topPFloat32
 			}
 		}
 
@@ -150,13 +176,13 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 		if penalty, ok := params["presence_penalty"]; ok {
 			switch v := penalty.(type) {
 			case float32:
-				c.presencePenalty = &v
+				presencePenalty = &v
 			case float64:
 				penaltyFloat32 := float32(v)
-				c.presencePenalty = &penaltyFloat32
+				presencePenalty = &penaltyFloat32
 			case int:
 				penaltyFloat32 := float32(v)
-				c.presencePenalty = &penaltyFloat32
+				presencePenalty = &penaltyFloat32
 			}
 		}
 
@@ -164,45 +190,45 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 		if penalty, ok := params["frequency_penalty"]; ok {
 			switch v := penalty.(type) {
 			case float32:
-				c.frequencyPenalty = &v
+				frequencyPenalty = &v
 			case float64:
 				penaltyFloat32 := float32(v)
-				c.frequencyPenalty = &penaltyFloat32
+				frequencyPenalty = &penaltyFloat32
 			case int:
 				penaltyFloat32 := float32(v)
-				c.frequencyPenalty = &penaltyFloat32
+				frequencyPenalty = &penaltyFloat32
 			}
 		}
 
 		// Max Tokens - try both OpenAI-style and Gemini-style parameter names
-		if maxTokens, ok := params["max_tokens"]; ok {
-			switch v := maxTokens.(type) {
+		if mt, ok := params["max_tokens"]; ok {
+			switch v := mt.(type) {
 			case int32:
-				c.maxTokens = &v
+				maxTokens = &v
 			case int:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			case int64:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			case float64:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			}
-		} else if maxTokens, ok := params["max_output_tokens"]; ok {
+		} else if mt, ok := params["max_output_tokens"]; ok {
 			// Try the Gemini-style parameter name as a fallback
-			switch v := maxTokens.(type) {
+			switch v := mt.(type) {
 			case int32:
-				c.maxTokens = &v
+				maxTokens = &v
 			case int:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			case int64:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			case float64:
 				maxInt32 := int32(v)
-				c.maxTokens = &maxInt32
+				maxTokens = &maxInt32
 			}
 		}
 	}
@@ -215,15 +241,15 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 		},
 	}
 
-	// Build the request body
+	// Build the request body using local variables instead of receiver fields
 	requestBody := ChatCompletionRequest{
 		Model:            c.modelID,
 		Messages:         messages,
-		Temperature:      c.temperature,
-		TopP:             c.topP,
-		FrequencyPenalty: c.frequencyPenalty,
-		PresencePenalty:  c.presencePenalty,
-		MaxTokens:        c.maxTokens,
+		Temperature:      temperature,
+		TopP:             topP,
+		FrequencyPenalty: frequencyPenalty,
+		PresencePenalty:  presencePenalty,
+		MaxTokens:        maxTokens,
 		Stream:           false, // Non-streaming implementation for initial version
 	}
 

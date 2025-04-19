@@ -162,7 +162,7 @@
         1. String matching logic for token properties is removed.
     - **depends-on:** none
 
-- [ ] **T016 · refactor · p1: refactor openrouter generatecontent to use request-local params**
+- [x] **T016 · refactor · p1: refactor openrouter generatecontent to use request-local params**
     - **context:** CR-05: Parameter Mapping: Remove Shared State
     - **action:**
         1. Modify `GenerateContent` in `providers/openrouter/client.go` to copy request parameters to local variables.
