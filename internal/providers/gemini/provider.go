@@ -210,18 +210,10 @@ func (a *GeminiClientAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderMo
 		// This indicates we should try using registry data, as zero is an invalid limit
 		// The TokenManager should automatically use registry data via registry_token.go
 		// when available, so we're covered for client usage inside TokenManager.
-		modelName := a.client.GetModelName()
 
-		// For now we use placeholder values that should be overridden by
-		// the registry-aware token manager if that's being used
-		if strings.HasPrefix(modelName, "gemini-1.5-") {
-			modelInfo.InputTokenLimit = 1000000 // 1M tokens for Gemini 1.5 models
-		} else if strings.HasPrefix(modelName, "gemini-1.0-") {
-			modelInfo.InputTokenLimit = 32768 // 32K for Gemini 1.0 models
-		} else {
-			// Default fallback for unknown models
-			modelInfo.InputTokenLimit = 32768
-		}
+		// Use a conservative default value that will be overridden by the registry
+		// when registry-based token handling is fully implemented
+		modelInfo.InputTokenLimit = 32768 // Conservative default for all models
 	}
 
 	return modelInfo, nil

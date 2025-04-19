@@ -198,7 +198,7 @@
         1. String matching logic for token properties is removed.
     - **depends-on:** none
 
-- [ ] **T020 · refactor · p1: remove string matching for token logic in gemini client**
+- [x] **T020 · refactor · p1: remove string matching for token logic in gemini client**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
     - **action:**
         1. Remove any code in `providers/gemini/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.
