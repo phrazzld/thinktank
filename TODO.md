@@ -1,5 +1,19 @@
 # todo
 
+## test infrastructure
+- [ ] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
+    - **context:** Testing Infrastructure Maintenance
+    - **action:**
+        1. Fix `internal/integration/rate_limit_test.go` - undefined methods and type issues
+        2. Update `internal/integration/test_utils.go` - remove unused imports and ensure types
+        3. Ensure all provider mock objects are properly initialized in TestEnv
+        4. Fix API client type mismatches and parameter issues
+    - **done-when:**
+        1. All integration tests pass.
+        2. Pre-commit hooks pass without --no-verify.
+        3. `go vet` and `go build` run without errors.
+    - **depends-on:** none
+
 ## registry & configuration
 - [x] **T001 · refactor · p1: remove absolute path fallback in registry config lookup**
     - **context:** CR-01: Registry Config Path: Kill Absolute Fallbacks
