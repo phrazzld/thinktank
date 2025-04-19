@@ -105,18 +105,8 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		}
 	}()
 
-	// Token validation has been removed as part of task T032
+	// Token validation has been completely removed as part of tasks T032A and T032B
 	// We now rely on provider APIs to enforce their own token limits
-	p.logger.Info("Relying on provider to enforce token limits for model %s", modelName)
-
-	// Check if confirmation is required based on command-line flags
-	if p.config.ConfirmTokens > 0 {
-		p.logger.Info("Token confirmation threshold is set to %d, but token validation is disabled", p.config.ConfirmTokens)
-		p.logger.Info("Do you want to proceed with the API call? [y/N]: ")
-
-		// TODO: Implement confirmation prompt logic if needed
-		// For now, always continue
-	}
 
 	// 3. Generate content with this model
 	p.logger.Info("Generating output with model %s...", modelName)
@@ -236,11 +226,6 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		Outputs: map[string]interface{}{
 			"finish_reason":      result.FinishReason,
 			"has_safety_ratings": len(result.SafetyInfo) > 0,
-			"response_tokens":    result.TokenCount,
-		},
-		TokenCounts: &auditlog.TokenCountInfo{
-			OutputTokens: int32(result.TokenCount),
-			// Note: We no longer track prompt tokens since token counting was removed
 		},
 		Message: "Content generation completed successfully for model " + modelName,
 	}); logErr != nil {
@@ -289,8 +274,8 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		}
 	}
 	contentLength := len(generatedOutput)
-	p.logger.Info("Output generated successfully with model %s (content length: %d characters, response tokens: %d)",
-		modelName, contentLength, result.TokenCount)
+	p.logger.Info("Output generated successfully with model %s (content length: %d characters)",
+		modelName, contentLength)
 
 	// 5. Sanitize model name for use in filename
 	sanitizedModelName := sanitizeFilename(modelName)

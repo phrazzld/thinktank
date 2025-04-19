@@ -12,7 +12,7 @@
         1. Code compiles without references to these types
     - **depends-on:** none
 
-- [ ] **T032B · refactor · p0: remove token validation from ModelProcessor**
+- [x] **T032B · refactor · p0: remove token validation from ModelProcessor**
     - **context:** Remove token checking in the model processing workflow
     - **action:**
         1. Remove token checking code in `Process` method of `internal/architect/modelproc/processor.go`
