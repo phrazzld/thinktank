@@ -61,6 +61,7 @@ func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil
 		Timeout: 120 * time.Second, // 2 minute timeout for potentially long LLM generations
 	}
 
+	// Registry will be injected later if needed
 	// Create and return client
 	return &openrouterClient{
 		apiKey:      apiKey,
@@ -381,8 +382,8 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 
 // CountTokens counts the tokens in the given prompt using tiktoken
 func (c *openrouterClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// Use tiktoken to count tokens
-	encoding := getEncodingForModelID(c.modelID)
+	// Always use cl100k_base for modern models
+	encoding := "cl100k_base"
 
 	// Get the tokenizer for the appropriate encoding
 	tokenizer, err := tiktoken.GetEncoding(encoding)
@@ -400,7 +401,7 @@ func (c *openrouterClient) CountTokens(ctx context.Context, prompt string) (*llm
 	count := len(tokens)
 
 	if c.logger != nil {
-		c.logger.Debug("Counted %d tokens for model %s", count, c.modelID)
+		c.logger.Debug("Counted %d tokens for model %s using encoding %s", count, c.modelID, encoding)
 	}
 
 	// Return the token count as a ProviderTokenCount struct
@@ -416,11 +417,6 @@ func (c *openrouterClient) GetModelInfo(ctx context.Context) (*llm.ProviderModel
 		Name: c.modelID,
 	}
 
-	// The registry is the source of truth for token limits
-	// This function provides reasonable defaults for when registry data is unavailable
-	// or for direct client usage outside of the TokenManager
-
-	// Determine appropriate token limits based on the model ID
 	// Get provider and model name from the OpenRouter model ID format
 	// which is typically "provider/model" or "provider/org/model"
 	parts := strings.Split(strings.ToLower(c.modelID), "/")
@@ -438,6 +434,10 @@ func (c *openrouterClient) GetModelInfo(ctx context.Context) (*llm.ProviderModel
 	}
 
 	provider := parts[0]
+
+	// Default values for most models
+	modelInfo.InputTokenLimit = 8192  // 8K input as a default
+	modelInfo.OutputTokenLimit = 2048 // 2K output as a default
 
 	// Set token limits based on known provider and model patterns
 	switch provider {
@@ -506,72 +506,11 @@ func (c *openrouterClient) GetModelInfo(ctx context.Context) (*llm.ProviderModel
 			modelInfo.InputTokenLimit = 32768
 			modelInfo.OutputTokenLimit = 4096
 		}
-
-	case "meta":
-		// Meta models (Llama)
-		if strings.Contains(c.modelID, "llama-3-70b") {
-			modelInfo.InputTokenLimit = 8192
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "llama-3") {
-			modelInfo.InputTokenLimit = 8192
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "llama-2-70b") {
-			modelInfo.InputTokenLimit = 4096
-			modelInfo.OutputTokenLimit = 4096
-		} else {
-			// Default for other Meta models
-			modelInfo.InputTokenLimit = 4096
-			modelInfo.OutputTokenLimit = 4096
-		}
-
-	case "mistral":
-		// Mistral models
-		if strings.Contains(c.modelID, "mixtral") || strings.Contains(c.modelID, "mixtral-8x7b") {
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "mistral-medium") {
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "mistral-small") {
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		} else if strings.Contains(c.modelID, "mistral-tiny") {
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		} else {
-			// Default for other Mistral models
-			modelInfo.InputTokenLimit = 32768
-			modelInfo.OutputTokenLimit = 4096
-		}
-
-	case "cohere":
-		// Cohere models
-		modelInfo.InputTokenLimit = 32768
-		modelInfo.OutputTokenLimit = 4096
-
-	case "deepseek":
-		// DeepSeek models
-		modelInfo.InputTokenLimit = 32768
-		modelInfo.OutputTokenLimit = 4096
-
-	case "perplexity":
-		// Perplexity models
-		modelInfo.InputTokenLimit = 32768
-		modelInfo.OutputTokenLimit = 4096
-
-	default:
-		// For unknown providers, use more conservative defaults
-		modelInfo.InputTokenLimit = 8192  // 8K input as a safe default
-		modelInfo.OutputTokenLimit = 2048 // 2K output as a safe default
-
-		if c.logger != nil {
-			c.logger.Debug("Unknown provider '%s' in model ID. Using conservative token limits.", provider)
-		}
 	}
 
 	if c.logger != nil {
-		c.logger.Debug("GetModelInfo for '%s': input limit = %d, output limit = %d",
-			c.modelID, modelInfo.InputTokenLimit, modelInfo.OutputTokenLimit)
+		c.logger.Debug("GetModelInfo for '%s': using provider '%s', input limit = %d, output limit = %d",
+			c.modelID, provider, modelInfo.InputTokenLimit, modelInfo.OutputTokenLimit)
 	}
 
 	return modelInfo, nil
@@ -621,60 +560,4 @@ func truncateString(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen] + "..."
-}
-
-// getEncodingForModelID determines the appropriate tiktoken encoding
-// for a given OpenRouter model ID (e.g., "anthropic/claude-3-sonnet-20240229")
-func getEncodingForModelID(modelID string) string {
-	// Convert to lowercase for consistent matching
-	modelID = strings.ToLower(modelID)
-
-	// Extract provider and model name from the OpenRouter model ID format
-	// which is typically "provider/model" or "provider/org/model"
-	parts := strings.Split(modelID, "/")
-	if len(parts) < 2 {
-		// If not in the expected format, use most modern encoding as fallback
-		return "cl100k_base"
-	}
-
-	provider := parts[0]
-
-	// Match by provider
-	switch provider {
-	case "openai", "openai-compatible", "perplexity", "mistral", "cohere":
-		// Most modern models use cl100k_base
-		return "cl100k_base"
-	case "anthropic":
-		// Claude models use cl100k_base
-		return "cl100k_base"
-	case "google":
-		// Gemini models use cl100k_base
-		return "cl100k_base"
-	case "meta":
-		// Llama models use cl100k_base
-		return "cl100k_base"
-	}
-
-	// For specific model patterns across providers
-	if strings.Contains(modelID, "claude") ||
-		strings.Contains(modelID, "gpt") ||
-		strings.Contains(modelID, "gpt-4") ||
-		strings.Contains(modelID, "gpt-3.5") ||
-		strings.Contains(modelID, "llama") ||
-		strings.Contains(modelID, "gemini") ||
-		strings.Contains(modelID, "mixtral") ||
-		strings.Contains(modelID, "text-embedding") {
-		return "cl100k_base"
-	}
-
-	// For older OpenAI models
-	if strings.Contains(modelID, "davinci") ||
-		strings.Contains(modelID, "curie") ||
-		strings.Contains(modelID, "babbage") ||
-		strings.Contains(modelID, "ada") {
-		return "p50k_base"
-	}
-
-	// Default to the most modern encoding for unknown models
-	return "cl100k_base"
 }

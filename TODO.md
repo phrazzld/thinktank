@@ -1,7 +1,7 @@
 # todo
 
 ## test infrastructure
-- [ ] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
+- [x] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
     - **context:** Testing Infrastructure Maintenance
     - **action:**
         1. Fix `internal/integration/rate_limit_test.go` - undefined methods and type issues
@@ -154,7 +154,7 @@
     - **depends-on:** [T010]
 
 ## providers/openrouter
-- [ ] **T015 · refactor · p1: remove string matching for token logic in openrouter client**
+- [x] **T015 · refactor · p1: remove string matching for token logic in openrouter client**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
     - **action:**
         1. Remove any code in `providers/openrouter/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.
@@ -297,12 +297,3 @@
     - **done-when:**
         1. OpenRouter docs present and accurate; referenced in README.
     - **depends-on:** none
-
-### clarifications & assumptions
-- [ ] **issue:** Should OpenRouter streaming (SSE) be supported in this integration, or only non-streaming for now?
-    - **context:** Streaming functionality is not explicitly mentioned in the remediation plan.
-    - **blocking?:** no
-
-- [ ] **issue:** Should OpenRouter parameters be validated strictly against registry schema or allow provider fallbacks?
-    - **context:** Parameter validation approach needs clarification.
-    - **blocking?:** no

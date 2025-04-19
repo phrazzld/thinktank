@@ -259,6 +259,7 @@ func TestIsGeminiError(t *testing.T) {
 			if tt.wantIsGemini {
 				if gotErr == nil {
 					t.Errorf("IsGeminiError() returned nil LLMError when expected non-nil")
+					return
 				}
 				if gotErr.Provider != "gemini" {
 					t.Errorf("IsGeminiError() returned LLMError with Provider = %q, want 'gemini'", gotErr.Provider)
@@ -747,6 +748,7 @@ func TestIsAPIError(t *testing.T) {
 
 	if llmErr == nil {
 		t.Errorf("IsAPIError() returned nil, want non-nil")
+		return
 	}
 
 	if llmErr.Provider != "gemini" {

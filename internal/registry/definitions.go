@@ -33,6 +33,10 @@ type ModelDefinition struct {
 	// MaxOutputTokens is the maximum output tokens allowed
 	MaxOutputTokens int32 `yaml:"max_output_tokens" json:"max_output_tokens"`
 
+	// Encoding specifies the tokenizer encoding to use (e.g., "cl100k_base", "p50k_base")
+	// If not specified, will default to "cl100k_base" for modern models
+	Encoding string `yaml:"encoding,omitempty" json:"encoding,omitempty"`
+
 	// Parameters is a map defining supported parameters for the model
 	// (e.g., temperature, top_p, reasoning_effort)
 	Parameters map[string]ParameterDefinition `yaml:"parameters" json:"parameters"`
