@@ -129,7 +129,7 @@
         2. Tests for Gemini error handling pass.
     - **depends-on:** [T010]
 
-- [ ] **T014 · test · p2: add tests for shared error handling logic**
+- [x] **T014 · test · p2: add tests for shared error handling logic**
     - **context:** CR-03: Error Handling: Deduplicate & Centralize
     - **action:**
         1. Create `internal/llm/errors_test.go`.

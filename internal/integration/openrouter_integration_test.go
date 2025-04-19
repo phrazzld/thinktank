@@ -47,7 +47,7 @@ func main() {
 	// Configure the mock client to return provider-specific content
 	env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 		// The model name is embedded in the context in tests
-		modelName, ok := ctx.Value(modelNameKey).(string)
+		modelName, ok := ctx.Value(ModelNameKey).(string)
 		if !ok {
 			modelName = "unknown-model"
 		}

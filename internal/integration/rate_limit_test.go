@@ -17,10 +17,7 @@ import (
 	"github.com/phrazzld/architect/internal/registry"
 )
 
-// Define a key type for context values
-type contextKey string
-
-const modelNameKey contextKey = "modelName"
+// Use the shared ContextKey and ModelNameKey from test_utils.go
 
 // TestRateLimiting tests that rate limits are enforced across provider implementations
 func TestRateLimiting(t *testing.T) {
@@ -29,11 +26,11 @@ func TestRateLimiting(t *testing.T) {
 	}
 
 	// Setup test environment
-	env := newTestEnvironment(t)
+	env := NewTestEnv(t)
 	defer env.Cleanup()
 
 	// Create rate limiter
-	rateLimiter := ratelimit.NewRateLimiter(2, 1*time.Second) // 2 requests per second
+	rateLimiter := ratelimit.NewRateLimiter(2, 60) // 2 concurrent, 60 requests per minute
 
 	// Define test cases
 	testCases := []struct {
@@ -120,7 +117,7 @@ func TestRateLimiting(t *testing.T) {
 			// Mock Gemini API responses
 			env.MockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*gemini.GenerationResult, error) {
 				// Extract model name from context
-				modelName := ctx.Value(modelNameKey).(string)
+				modelName := ctx.Value(ModelNameKey).(string)
 
 				// Track request count for this model
 				requestMu.Lock()
@@ -243,7 +240,7 @@ func TestRateLimiting(t *testing.T) {
 						model := tc.models[workerID%len(tc.models)]
 
 						// Create a context with the model name for Gemini
-						ctx := context.WithValue(context.Background(), modelNameKey, model)
+						ctx := context.WithValue(context.Background(), ModelNameKey, model)
 
 						// Prepare instructions
 						instructions := fmt.Sprintf("Test prompt for rate limiting with model %s", model)
@@ -305,7 +302,7 @@ func TestRateLimitRecovery(t *testing.T) {
 	}
 
 	// Setup test environment
-	env := newTestEnvironment(t)
+	env := NewTestEnv(t)
 	defer env.Cleanup()
 
 	// Rate limiter with relatively quick recovery
@@ -472,7 +469,7 @@ func TestRateLimitDistribution(t *testing.T) {
 	}
 
 	// Setup test environment
-	env := newTestEnvironment(t)
+	env := NewTestEnv(t)
 	defer env.Cleanup()
 
 	// Rate limiter with moderate capacity
