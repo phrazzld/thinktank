@@ -78,7 +78,7 @@
         3. Tests pass
     - **depends-on:** [T032A, T032B, T032C, T032D]
 
-- [ ] **T034 · refactor · p0: remove token fields from registry schema**
+- [x] **T034 · refactor · p0: remove token fields from registry schema**
     - **context:** Remove token-related fields from registry schema
     - **action:**
         1. Remove `ContextWindow`, `MaxOutputTokens`, `Encoding` fields from `ModelDefinition`
