@@ -1,32 +1,107 @@
 # todo
 
-## token handling removal
-- [ ] **T032 · refactor · p0: remove all token counting, validation and handling**
-    - **context:** Remove all token counting logic entirely from the application
+## token handling removal - atomic tasks
+
+- [x] **T032A · refactor · p0: remove TokenManager interface and implementations**
+    - **context:** First step in removing token counting logic from application
     - **action:**
-        1. Remove TokenManager interface and implementations
-        2. Remove token counting from all providers
-        3. Remove token validation logic from ModelProcessor
-        4. Update orchestrator to not check tokens at all
-        5. Let provider APIs handle their own token limits natively
+        1. Remove `TokenResult` struct from `internal/architect/interfaces/interfaces.go`
+        2. Remove `TokenManager` interface from `internal/architect/interfaces/interfaces.go`
+        3. Replace contents of `internal/architect/token.go` and `internal/architect/registry_token.go` with placeholders
     - **done-when:**
-        1. All token handling code is removed
-        2. Provider API calls have no token pre-checks
-        3. All tests pass
+        1. Code compiles without references to these types
     - **depends-on:** none
+
+- [ ] **T032B · refactor · p0: remove token validation from ModelProcessor**
+    - **context:** Remove token checking in the model processing workflow
+    - **action:**
+        1. Remove token checking code in `Process` method of `internal/architect/modelproc/processor.go`
+        2. Remove token-related warnings and confirmation prompts
+        3. Remove references to token limits in log messages
+        4. Update audit logging to no longer track token counts
+    - **done-when:**
+        1. ModelProcessor no longer validates tokens before API calls
+        2. ModelProcessor tests are updated/fixed
+    - **depends-on:** [T032A]
+
+- [ ] **T032C · refactor · p0: remove TokenManager from Orchestrator**
+    - **context:** Update Orchestrator to not use TokenManager
+    - **action:**
+        1. Remove `tokenManager` field from `Orchestrator` struct
+        2. Update `NewOrchestrator` constructor to not require `TokenManager`
+        3. Remove any token checking/confirmation logic in orchestrator methods
+    - **done-when:**
+        1. Orchestrator no longer has TokenManager dependency
+        2. Orchestrator tests are updated/fixed
+    - **depends-on:** [T032A]
+
+- [ ] **T032D · refactor · p0: update application flow in App**
+    - **context:** Remove token management from application initialization flow
+    - **action:**
+        1. Remove `TokenManager` creation and injection in `App.Run`
+        2. Remove token-related adapter logic
+    - **done-when:**
+        1. App no longer initializes TokenManager
+        2. App tests are updated/fixed
+    - **depends-on:** [T032A, T032C]
+
+- [ ] **T032E · refactor · p0: remove token flags from CLI**
+    - **context:** Remove token-related CLI flags and configuration
+    - **action:**
+        1. Remove `--confirm-tokens` flag from CLI
+        2. Remove `ConfirmTokens` field from `CliConfig`
+    - **done-when:**
+        1. CLI no longer offers token-related flags
+        2. CLI tests are updated/fixed
+    - **depends-on:** [T032B]
+
+- [ ] **T032F · refactor · p0: update token references in context gathering**
+    - **context:** Remove token counting/display from context gathering
+    - **action:**
+        1. Remove token counting from context gathering code
+        2. Update dry-run output to remove token limit comparisons
+    - **done-when:**
+        1. Context gathering no longer counts tokens
+        2. Dry run does not show token statistics
+    - **depends-on:** [T032A]
 
 - [ ] **T033 · refactor · p0: update LLM interface to remove token-related methods**
     - **context:** Simplify provider interfaces by removing token-related functionality
     - **action:**
-        1. Remove CountTokens method from LLMClient interface
-        2. Remove GetModelInfo method from LLMClient interface
-        3. Update all LLMClient implementations to match new interface
-        4. Remove token-related structs (ProviderTokenCount, ProviderModelInfo)
+        1. Remove `CountTokens` method from LLMClient interface
+        2. Remove `GetModelInfo` method from LLMClient interface
+        3. Remove `ProviderTokenCount`, `ProviderModelInfo` structs
+        4. Update all LLMClient implementations to match new interface
     - **done-when:**
         1. LLMClient interface has no token-related methods
         2. All implementations are updated accordingly
         3. Tests pass
-    - **depends-on:** [T032]
+    - **depends-on:** [T032A, T032B, T032C, T032D]
+
+- [ ] **T034 · refactor · p0: remove token fields from registry schema**
+    - **context:** Remove token-related fields from registry schema
+    - **action:**
+        1. Remove `ContextWindow`, `MaxOutputTokens`, `Encoding` fields from `ModelDefinition`
+        2. Update registry validation and configuration loading
+        3. Update registry tests to handle new schema
+        4. Update any code using these fields
+    - **done-when:**
+        1. Registry schema has no token limit fields
+        2. All code using these fields is updated
+        3. All tests pass
+    - **depends-on:** [T033]
+
+- [ ] **T035 · docs · p1: update documentation to reflect token handling removal**
+    - **context:** Update documentation to explain token handling removal
+    - **action:**
+        1. Remove token limit explanations from README
+        2. Update CLI documentation to remove token-related flags
+        3. Document that application no longer does token counting/validation
+        4. Add notes that provider APIs handle their own limits natively
+    - **done-when:**
+        1. Documentation reflects new approach
+        2. Error handling for provider limits is documented
+    - **depends-on:** [T032A, T032B, T032C, T032D, T032E, T032F, T033, T034]
 
 - [ ] **T034 · refactor · p0: remove token fields from registry schema**
     - **context:** Remove token-related fields from registry schema
@@ -38,7 +113,7 @@
         1. Registry schema has no token limit fields
         2. All code using these fields is updated
         3. All tests pass
-    - **depends-on:** [T032, T033]
+    - **depends-on:** [T033]
 
 - [ ] **T035 · docs · p1: update documentation to reflect token handling removal**
     - **context:** Update documentation to explain token handling removal
@@ -49,7 +124,7 @@
     - **done-when:**
         1. Documentation reflects new approach
         2. Error handling for provider limits is documented
-    - **depends-on:** [T032, T033, T034]
+    - **depends-on:** [T032A, T032B, T032C, T032D, T032E, T032F, T033, T034]
 
 ## test infrastructure
 - [x] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
@@ -260,7 +335,7 @@
 ## model info & token counting
 - [~] **T021 · feature · p1: implement fetching token limits/encodings exclusively from registry**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **status:** OBSOLETE - Superseded by T032, T033, T034 that simplify token handling
+    - **status:** OBSOLETE - Superseded by T032A-F, T033, T034 that simplify token handling
     - **action:**
         1. ~~Modify provider clients (`providers/*`) to retrieve token limits and encoding information only from the registry manager.~~
         2. ~~Ensure this data is accessed correctly during token counting and request preparation.~~
@@ -271,7 +346,7 @@
 
 - [~] **T022 · feature · p1: implement fast-fail for unknown models in token logic**
     - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **status:** OBSOLETE - Superseded by T032, T033, T034 that simplify token handling
+    - **status:** OBSOLETE - Superseded by T032A-F, T033, T034 that simplify token handling
     - **action:**
         1. ~~Modify provider clients (`providers/*`) to explicitly check if a model exists in the registry before attempting token operations.~~
         2. ~~Return a clear error and log if the model is not found in the configuration.~~

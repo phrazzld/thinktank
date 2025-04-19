@@ -13,7 +13,6 @@ func TestNewOrchestrator(t *testing.T) {
 	// Create mock dependencies
 	apiSvc := &mockAPIService{}
 	gatherer := &mockContextGatherer{}
-	tokenMgr := &mockTokenManager{}
 	writer := &mockFileWriter{}
 	auditor := &mockAuditLogger{}
 	limiter := ratelimit.NewRateLimiter(1, 1)
@@ -24,7 +23,6 @@ func TestNewOrchestrator(t *testing.T) {
 	orch := NewOrchestrator(
 		apiSvc,
 		gatherer,
-		tokenMgr,
 		writer,
 		auditor,
 		limiter,
@@ -43,9 +41,6 @@ func TestNewOrchestrator(t *testing.T) {
 	}
 	if orch.contextGatherer != gatherer {
 		t.Errorf("Expected contextGatherer to be %v, got %v", gatherer, orch.contextGatherer)
-	}
-	if orch.tokenManager != tokenMgr {
-		t.Errorf("Expected tokenManager to be %v, got %v", tokenMgr, orch.tokenManager)
 	}
 	if orch.fileWriter != writer {
 		t.Errorf("Expected fileWriter to be %v, got %v", writer, orch.fileWriter)

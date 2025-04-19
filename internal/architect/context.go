@@ -46,21 +46,19 @@ type ContextGatherer interface {
 
 // contextGatherer implements the ContextGatherer interface
 type contextGatherer struct {
-	logger       logutil.LoggerInterface
-	dryRun       bool
-	tokenManager TokenManager
-	client       llm.LLMClient
-	auditLogger  auditlog.AuditLogger
+	logger      logutil.LoggerInterface
+	dryRun      bool
+	client      llm.LLMClient
+	auditLogger auditlog.AuditLogger
 }
 
 // NewContextGatherer creates a new ContextGatherer instance
-func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, tokenManager TokenManager, client llm.LLMClient, auditLogger auditlog.AuditLogger) ContextGatherer {
+func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, client llm.LLMClient, auditLogger auditlog.AuditLogger) ContextGatherer {
 	return &contextGatherer{
-		logger:       logger,
-		dryRun:       dryRun,
-		tokenManager: tokenManager,
-		client:       client,
-		auditLogger:  auditLogger,
+		logger:      logger,
+		dryRun:      dryRun,
+		client:      client,
+		auditLogger: auditLogger,
 	}
 }
 

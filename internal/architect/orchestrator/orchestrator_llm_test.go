@@ -36,12 +36,6 @@ func TestOrchestrator_Run_UsesLLMClientExclusively(t *testing.T) {
 		},
 	}
 
-	tokenManager := &mockTokenManager{
-		CheckTokenLimitFunc: func(ctx context.Context, prompt string) error {
-			return nil
-		},
-	}
-
 	fileWriter := &mockFileWriter{
 		SaveToFileFunc: func(content, outputFile string) error {
 			return nil
@@ -61,7 +55,6 @@ func TestOrchestrator_Run_UsesLLMClientExclusively(t *testing.T) {
 	orch := NewOrchestrator(
 		apiService,
 		contextGatherer,
-		tokenManager,
 		fileWriter,
 		auditLogger,
 		rateLimiter,

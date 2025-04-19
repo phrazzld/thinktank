@@ -21,7 +21,6 @@ import (
 type orchestratorTestDeps struct {
 	apiService      *mockAPIService
 	contextGatherer *mockContextGatherer
-	tokenManager    *mockTokenManager
 	fileWriter      *mockFileWriter
 	auditLogger     *mockAuditLogger
 	rateLimiter     *ratelimit.RateLimiter
@@ -35,7 +34,6 @@ func newTestDeps() *orchestratorTestDeps {
 	return &orchestratorTestDeps{
 		apiService:      &mockAPIService{},
 		contextGatherer: &mockContextGatherer{},
-		tokenManager:    &mockTokenManager{},
 		fileWriter:      &mockFileWriter{},
 		auditLogger:     &mockAuditLogger{},
 		rateLimiter:     ratelimit.NewRateLimiter(1, 1),
@@ -50,7 +48,6 @@ func (d *orchestratorTestDeps) createOrchestrator() *Orchestrator {
 	return NewOrchestrator(
 		d.apiService,
 		d.contextGatherer,
-		d.tokenManager,
 		d.fileWriter,
 		d.auditLogger,
 		d.rateLimiter,

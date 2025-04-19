@@ -34,19 +34,8 @@ func (m *mockAuditLogger) Last() *auditlog.AuditEntry {
 	return m.lastEntry
 }
 
-// TokenResultAdapter converts from one TokenResult to another for testing
-func TokenResultAdapter(input *TokenResult) *TokenResult {
-	if input == nil {
-		return nil
-	}
-	return &TokenResult{
-		TokenCount:   input.TokenCount,
-		InputLimit:   input.InputLimit,
-		ExceedsLimit: input.ExceedsLimit,
-		LimitError:   input.LimitError,
-		Percentage:   input.Percentage,
-	}
-}
+// Note: TokenResultAdapter was removed as part of T032A
+// to remove token handling from the application.
 
 // mockLLMClient implements llm.LLMClient for testing
 type mockLLMClient struct {

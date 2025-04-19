@@ -34,11 +34,7 @@ func TestRun_DryRun(t *testing.T) {
 		t.Errorf("Expected 1 call to DisplayDryRunInfo, got %d", len(deps.contextGatherer.DisplayDryRunInfoCalls))
 	}
 
-	// In current implementation, token checks are not performed in dry run mode
-	// since we short-circuit after gathering context
-	if len(deps.tokenManager.CheckTokenLimitCalls) > 0 {
-		t.Error("Token checks should not be performed in dry run mode with current implementation")
-	}
+	// Note: Token checks were removed as part of T032A
 }
 
 // TestRun_ModelProcessing tests the Run method with model processing

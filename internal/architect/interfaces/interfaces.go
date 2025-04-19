@@ -12,15 +12,6 @@ import (
 	"github.com/phrazzld/architect/internal/registry"
 )
 
-// TokenResult holds information about token counts and limits
-type TokenResult struct {
-	TokenCount   int32
-	InputLimit   int32
-	ExceedsLimit bool
-	LimitError   string
-	Percentage   float64
-}
-
 // APIService defines the interface for API-related operations
 // It provides methods for initializing LLM clients, processing responses,
 // handling errors, and accessing model configuration from the registry.
@@ -101,18 +92,6 @@ type APIService interface {
 	// Returns:
 	//   - A user-friendly error message with details
 	GetErrorDetails(err error) string
-}
-
-// TokenManager defines the interface for token counting and management
-type TokenManager interface {
-	// GetTokenInfo retrieves token count information and checks limits
-	GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
-
-	// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
-	CheckTokenLimit(ctx context.Context, prompt string) error
-
-	// PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
-	PromptForConfirmation(tokenCount int32, threshold int) bool
 }
 
 // ContextStats holds information about processed files and context size

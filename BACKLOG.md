@@ -1,9 +1,10 @@
 # backlog
 
+* remove all the token counting stuff and input / output / context token counting / handling / config
+
 * support openrouter as a provider
 
 * rebrand to thinktank
-* remove all the token counting stuff and input / output / context token counting / handling / config
 * remove the cutesy directory naming stuff -- simplify
 * remove as much as possible, shrink it
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
