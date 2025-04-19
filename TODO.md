@@ -179,7 +179,7 @@
         1. No receiver fields are mutated based on request-specific parameters.
     - **depends-on:** [T016]
 
-- [ ] **T018 · test · p1: add race detector test for concurrent openrouter requests**
+- [x] **T018 · test · p1: add race detector test for concurrent openrouter requests**
     - **context:** CR-05: Parameter Mapping: Remove Shared State
     - **action:**
         1. Create a new test in `providers/openrouter/client_test.go` that makes concurrent calls to `GenerateContent`.
