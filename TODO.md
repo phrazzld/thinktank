@@ -115,7 +115,7 @@
         2. Legacy Client interface no longer has token-related methods
     - **depends-on:** [T034]
 
-- [ ] **T036A-2 · refactor · p0: Disable token-related test files**
+- [x] **T036A-2 · refactor · p0: Disable token-related test files**
     - **context:** Model info and token counting tests are no longer relevant
     - **action:**
         1. Rename `internal/gemini/model_info_test.go` to `internal/gemini/model_info_test.go.disabled`
