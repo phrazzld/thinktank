@@ -445,7 +445,7 @@
     - **depends-on:** [T021]
 
 ## testing
-- [ ] **T023 · test · p2: add table-driven tests for openrouter error/edge cases**
+- [x] **T023 · test · p2: add table-driven tests for openrouter error/edge cases**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Add table-driven tests in `providers/openrouter/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
