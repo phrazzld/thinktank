@@ -124,7 +124,7 @@
         1. Token-related test files are disabled with .disabled extension
     - **depends-on:** [T036A-1]
 
-- [ ] **T036A-3 · refactor · p0: Remove token references from provider_test.go**
+- [x] **T036A-3 · refactor · p0: Remove token references from provider_test.go**
     - **context:** The gemini provider tests still contain token-related mocks and tests
     - **action:**
         1. Remove `CountTokensFunc` and `GetModelLimitsFunc` fields from MockLLMClient
