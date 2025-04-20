@@ -201,7 +201,7 @@
         1. All unused token stub files are removed or disabled
     - **depends-on:** [T036A, T036B, T036C]
 
-- [ ] **T036E · test · p0: Fix token-related test failures**
+- [x] **T036E · test · p0: Fix token-related test failures**
     - **context:** Fix test failures from token removal to ensure pre-commit hooks pass
     - **action:**
         1. Update/disable test files in internal/architect/ that reference token structs

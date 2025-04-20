@@ -113,13 +113,7 @@ func TestDefaultModelsYAML(t *testing.T) {
 			t.Errorf("Model %s is missing api_model_id", model.Name)
 		}
 
-		if model.ContextWindow <= 0 {
-			t.Errorf("Model %s has invalid context_window", model.Name)
-		}
-
-		if model.MaxOutputTokens <= 0 {
-			t.Errorf("Model %s has invalid max_output_tokens", model.Name)
-		}
+		// Token-related validation removed in T036E
 
 		if len(model.Parameters) == 0 {
 			t.Errorf("Model %s should have parameters", model.Name)

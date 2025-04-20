@@ -9,6 +9,8 @@ import (
 )
 
 // Helper function to convert to a pointer
+//
+//nolint:unused
 func toPtr[T any](v T) *T {
 	return &v
 }

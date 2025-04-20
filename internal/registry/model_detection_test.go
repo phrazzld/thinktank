@@ -25,25 +25,19 @@ func setupTestRegistryWithModels(t *testing.T) *Manager {
 	// Add test models
 	registry.models = map[string]ModelDefinition{
 		"gpt-4": {
-			Name:            "gpt-4",
-			Provider:        "openai",
-			APIModelID:      "gpt-4",
-			ContextWindow:   8192,
-			MaxOutputTokens: 4096,
+			Name:       "gpt-4",
+			Provider:   "openai",
+			APIModelID: "gpt-4",
 		},
 		"gemini-pro": {
-			Name:            "gemini-pro",
-			Provider:        "gemini",
-			APIModelID:      "gemini-pro",
-			ContextWindow:   32768,
-			MaxOutputTokens: 8192,
+			Name:       "gemini-pro",
+			Provider:   "gemini",
+			APIModelID: "gemini-pro",
 		},
 		"openrouter/anthropic/claude-3-opus": {
-			Name:            "openrouter/anthropic/claude-3-opus",
-			Provider:        "openrouter",
-			APIModelID:      "anthropic/claude-3-opus",
-			ContextWindow:   200000,
-			MaxOutputTokens: 25000,
+			Name:       "openrouter/anthropic/claude-3-opus",
+			Provider:   "openrouter",
+			APIModelID: "anthropic/claude-3-opus",
 		},
 	}
 

@@ -90,11 +90,9 @@ func (s *mockModelTrackingAPIService) ProcessLLMResponse(result *llm.ProviderRes
 func (s *mockModelTrackingAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
 	// Return a basic model definition for testing
 	return &registry.ModelDefinition{
-		Name:            modelName,
-		Provider:        "gemini",
-		APIModelID:      modelName,
-		ContextWindow:   8192,
-		MaxOutputTokens: 8192,
+		Name:       modelName,
+		Provider:   "gemini",
+		APIModelID: modelName,
 		Parameters: map[string]registry.ParameterDefinition{
 			"temperature": {
 				Type:    "float",
@@ -157,16 +155,6 @@ type modelAwareLLMClient struct {
 func (m *modelAwareLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	// Use the context with model information instead of the one provided
 	return m.delegateClient.GenerateContent(m.ctx, prompt, params)
-}
-
-// CountTokens implements the LLMClient interface
-func (m *modelAwareLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	return m.delegateClient.CountTokens(m.ctx, prompt)
-}
-
-// GetModelInfo implements the LLMClient interface
-func (m *modelAwareLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	return m.delegateClient.GetModelInfo(m.ctx)
 }
 
 // GetModelName implements the LLMClient interface

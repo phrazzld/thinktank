@@ -135,9 +135,7 @@ func TestValidateConfig(t *testing.T) {
 			{
 				Name: "test-model",
 				// Missing Provider
-				APIModelID:      "test-model-id",
-				ContextWindow:   1000,
-				MaxOutputTokens: 100,
+				APIModelID: "test-model-id",
 			},
 		},
 	}
@@ -152,11 +150,9 @@ func TestValidateConfig(t *testing.T) {
 		Providers:     []ProviderDefinition{{Name: "test"}},
 		Models: []ModelDefinition{
 			{
-				Name:            "test-model",
-				Provider:        "unknown", // Doesn't match any provider
-				APIModelID:      "test-model-id",
-				ContextWindow:   1000,
-				MaxOutputTokens: 100,
+				Name:       "test-model",
+				Provider:   "unknown", // Doesn't match any provider
+				APIModelID: "test-model-id",
 			},
 		},
 	}
@@ -171,11 +167,9 @@ func TestValidateConfig(t *testing.T) {
 		Providers:     []ProviderDefinition{{Name: "test"}},
 		Models: []ModelDefinition{
 			{
-				Name:            "test-model",
-				Provider:        "test",
-				APIModelID:      "test-model-id",
-				ContextWindow:   1000,
-				MaxOutputTokens: 100,
+				Name:       "test-model",
+				Provider:   "test",
+				APIModelID: "test-model-id",
 			},
 		},
 	}
@@ -274,7 +268,5 @@ models:
 		t.Errorf("Expected first model to be 'gpt-4-turbo', got '%s'", config.Models[0].Name)
 	}
 
-	if config.Models[0].ContextWindow != 128000 {
-		t.Errorf("Expected context window of 128000, got %d", config.Models[0].ContextWindow)
-	}
+	// Token-related validation was removed in T036E
 }

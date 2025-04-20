@@ -30,72 +30,54 @@ func setupTestRegistryWithExtendedModels(t *testing.T) *Manager {
 	registry.models = map[string]ModelDefinition{
 		// Regular models
 		"gpt-4": {
-			Name:            "gpt-4",
-			Provider:        "openai",
-			APIModelID:      "gpt-4",
-			ContextWindow:   8192,
-			MaxOutputTokens: 4096,
+			Name:       "gpt-4",
+			Provider:   "openai",
+			APIModelID: "gpt-4",
 		},
 		"gemini-pro": {
-			Name:            "gemini-pro",
-			Provider:        "gemini",
-			APIModelID:      "gemini-pro",
-			ContextWindow:   32768,
-			MaxOutputTokens: 8192,
+			Name:       "gemini-pro",
+			Provider:   "gemini",
+			APIModelID: "gemini-pro",
 		},
 		// Models with similar prefixes
 		"gpt-4-turbo": {
-			Name:            "gpt-4-turbo",
-			Provider:        "openai",
-			APIModelID:      "gpt-4-turbo",
-			ContextWindow:   128000,
-			MaxOutputTokens: 4096,
+			Name:       "gpt-4-turbo",
+			Provider:   "openai",
+			APIModelID: "gpt-4-turbo",
 		},
 		"gpt-4-vision": {
-			Name:            "gpt-4-vision",
-			Provider:        "openai",
-			APIModelID:      "gpt-4-vision-preview",
-			ContextWindow:   128000,
-			MaxOutputTokens: 4096,
+			Name:       "gpt-4-vision",
+			Provider:   "openai",
+			APIModelID: "gpt-4-vision-preview",
 		},
 		// Models with different cases
 		"GPT-3.5-TURBO": {
-			Name:            "GPT-3.5-TURBO",
-			Provider:        "openai",
-			APIModelID:      "gpt-3.5-turbo",
-			ContextWindow:   16385,
-			MaxOutputTokens: 4096,
+			Name:       "GPT-3.5-TURBO",
+			Provider:   "openai",
+			APIModelID: "gpt-3.5-turbo",
 		},
 		// Models with special characters
 		"mistral-7b@dev": {
-			Name:            "mistral-7b@dev",
-			Provider:        "mistral",
-			APIModelID:      "mistral-7b-v2.0-dev",
-			ContextWindow:   32000,
-			MaxOutputTokens: 8000,
+			Name:       "mistral-7b@dev",
+			Provider:   "mistral",
+			APIModelID: "mistral-7b-v2.0-dev",
 		},
 		// Models with very long names
 		"a-very-long-model-name-that-exceeds-typical-length-limits-but-should-still-work-fine-in-our-system": {
-			Name:            "a-very-long-model-name-that-exceeds-typical-length-limits-but-should-still-work-fine-in-our-system",
-			Provider:        "custom",
-			APIModelID:      "long-name-model",
-			ContextWindow:   4096,
-			MaxOutputTokens: 1024,
+			Name:       "a-very-long-model-name-that-exceeds-typical-length-limits-but-should-still-work-fine-in-our-system",
+			Provider:   "custom",
+			APIModelID: "long-name-model",
 		},
 		// OpenRouter models with nested naming structure
 		"openrouter/anthropic/claude-3-opus": {
-			Name:            "openrouter/anthropic/claude-3-opus",
-			Provider:        "openrouter",
-			APIModelID:      "anthropic/claude-3-opus",
-			ContextWindow:   200000,
-			MaxOutputTokens: 25000,
+			Name:       "openrouter/anthropic/claude-3-opus",
+			Provider:   "openrouter",
+			APIModelID: "anthropic/claude-3-opus",
 		},
 		"openrouter/anthropic/claude-3-sonnet": {
-			Name:            "openrouter/anthropic/claude-3-sonnet",
-			Provider:        "openrouter",
-			APIModelID:      "anthropic/claude-3-sonnet",
-			ContextWindow:   180000,
-			MaxOutputTokens: 20000,
+			Name:       "openrouter/anthropic/claude-3-sonnet",
+			Provider:   "openrouter",
+			APIModelID: "anthropic/claude-3-sonnet",
 		},
 	}
 
@@ -261,12 +243,7 @@ func TestModelInfoProperties(t *testing.T) {
 			if modelInfo.Provider != tt.wantProvider {
 				t.Errorf("GetModelInfo().Provider = %v, want %v", modelInfo.Provider, tt.wantProvider)
 			}
-			if modelInfo.ContextWindow != tt.wantContextSize {
-				t.Errorf("GetModelInfo().ContextWindow = %v, want %v", modelInfo.ContextWindow, tt.wantContextSize)
-			}
-			if modelInfo.MaxOutputTokens != tt.wantMaxOutput {
-				t.Errorf("GetModelInfo().MaxOutputTokens = %v, want %v", modelInfo.MaxOutputTokens, tt.wantMaxOutput)
-			}
+			// Token-related validation removed in T036E
 		})
 	}
 }

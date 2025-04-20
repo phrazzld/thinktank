@@ -245,7 +245,6 @@ func createTestFile(t *testing.T, path, content string) string {
 // MockLLMClient implements the LLMClient interface for testing
 type MockLLMClient struct {
 	modelName       string
-	tokenCount      int32
 	generationErr   error
 	generatedOutput string
 }
@@ -253,7 +252,6 @@ type MockLLMClient struct {
 func NewMockLLMClient(modelName string) *MockLLMClient {
 	return &MockLLMClient{
 		modelName:       modelName,
-		tokenCount:      100,
 		generatedOutput: "Test Generated Plan",
 	}
 }
@@ -264,22 +262,7 @@ func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, para
 	}
 	return &llm.ProviderResult{
 		Content:      m.generatedOutput,
-		TokenCount:   100,
 		FinishReason: "STOP",
-	}, nil
-}
-
-func (m *MockLLMClient) CountTokens(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
-	return &llm.ProviderTokenCount{
-		Total: 100,
-	}, nil
-}
-
-func (m *MockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	return &llm.ProviderModelInfo{
-		Name:             m.modelName,
-		InputTokenLimit:  8192,
-		OutputTokenLimit: 8192,
 	}, nil
 }
 

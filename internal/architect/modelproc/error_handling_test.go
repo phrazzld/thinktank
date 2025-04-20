@@ -168,8 +168,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 			return &mockLLMClient{
 				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
-						Content:    "Generated content",
-						TokenCount: 50,
+						Content: "Generated content",
 					}, nil
 				},
 			}, nil
@@ -242,21 +241,11 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	mockAPI := &mockAPIService{
 		initLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 			return &mockLLMClient{
-				getModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
-					return &llm.ProviderModelInfo{
-						Name:             "test-model",
-						InputTokenLimit:  4000,
-						OutputTokenLimit: 1000,
-					}, nil
-				},
-				countTokensFunc: func(ctx context.Context, text string) (*llm.ProviderTokenCount, error) {
-					return &llm.ProviderTokenCount{Total: 5000}, nil
-				},
 				getModelNameFunc: func() string {
 					return "test-model"
 				},
 				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-					// Now this will be called, but should return a provider error about token limits
+					// Return a provider error about token limits
 					return nil, errors.New("token limit exceeded: provider error")
 				},
 			}, nil
@@ -328,8 +317,7 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 			return &mockLLMClient{
 				generateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 					return &llm.ProviderResult{
-						Content:    "Generated content",
-						TokenCount: 50,
+						Content: "Generated content",
 					}, nil
 				},
 			}, nil
