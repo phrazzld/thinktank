@@ -461,7 +461,7 @@
         1. Comprehensive table-driven tests for error/edge cases exist and pass.
     - **depends-on:** [T012]
 
-- [ ] **T025 · test · p2: add table-driven tests for gemini error/edge cases**
+- [x] **T025 · test · p2: add table-driven tests for gemini error/edge cases**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Add table-driven tests in `providers/gemini/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
