@@ -145,7 +145,7 @@
         2. No references to TokenCount in the adapter
     - **depends-on:** [T036A-1]
 
-- [ ] **T036A-5 · refactor · p0: Verify and mark T036A complete**
+- [x] **T036A-5 · refactor · p0: Verify and mark T036A complete**
     - **context:** Ensure all token references are removed and task is finished
     - **action:**
         1. Run `go build ./internal/gemini` to verify build succeeds
@@ -158,7 +158,7 @@
         2. T036A is marked complete with [x]
     - **depends-on:** [T036A-1, T036A-2, T036A-3, T036A-4]
 
-- [~] **T036A · refactor · p0: Remove token references from gemini client**
+- [x] **T036A · refactor · p0: Remove token references from gemini client**
     - **context:** Fix build errors in gemini client after removing token handling
     - **action:**
         1. Remove TokenCount field from ProviderResult struct in GenerateContent
