@@ -107,8 +107,8 @@ func TestGenerateContent(t *testing.T) {
 					Blocked:  false,
 				},
 			},
-			TokenCount: 42,
-			Truncated:  false,
+			// TokenCount field removed in T036A-1
+			Truncated: false,
 		}
 
 		client := &MockClient{

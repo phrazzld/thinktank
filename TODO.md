@@ -91,7 +91,7 @@
         3. All tests pass
     - **depends-on:** [T033]
 
-- [ ] **T035 · docs · p1: update documentation to reflect token handling removal**
+- [x] **T035 · docs · p1: update documentation to reflect token handling removal**
     - **context:** Update documentation to explain token handling removal
     - **action:**
         1. Remove token limit explanations from README
@@ -103,28 +103,103 @@
         2. Error handling for provider limits is documented
     - **depends-on:** [T032A, T032B, T032C, T032D, T032E, T032F, T033, T034]
 
-- [ ] **T034 · refactor · p0: remove token fields from registry schema**
-    - **context:** Remove token-related fields from registry schema
+- [x] **T036A-1 · refactor · p0: Remove token-related types from gemini/client.go**
+    - **context:** Continuing token handling removal - clean up client.go legacy types
     - **action:**
-        1. Remove ContextWindow, MaxOutputTokens, Encoding fields from ModelDefinition
-        2. Update registry tests to handle new schema
-        3. Update any code using these fields
+        1. Remove `TokenCount` struct from client.go
+        2. Remove `CountTokens` method from Client interface
+        3. Remove token-related fields from `GenerationResult` struct
+        4. Remove `GetModelInfo` method from Client interface
     - **done-when:**
-        1. Registry schema has no token limit fields
-        2. All code using these fields is updated
-        3. All tests pass
-    - **depends-on:** [T033]
+        1. client.go only contains essential model configuration types
+        2. Legacy Client interface no longer has token-related methods
+    - **depends-on:** [T034]
 
-- [ ] **T035 · docs · p1: update documentation to reflect token handling removal**
-    - **context:** Update documentation to explain token handling removal
+- [ ] **T036A-2 · refactor · p0: Disable token-related test files**
+    - **context:** Model info and token counting tests are no longer relevant
     - **action:**
-        1. Document that application no longer does token counting/validation
-        2. Add notes that provider APIs handle their own limits natively
-        3. Update error handling documentation for provider token limit errors
+        1. Rename `internal/gemini/model_info_test.go` to `internal/gemini/model_info_test.go.disabled`
+        2. Update skip messages to indicate these tests are for removed functionality
     - **done-when:**
-        1. Documentation reflects new approach
-        2. Error handling for provider limits is documented
-    - **depends-on:** [T032A, T032B, T032C, T032D, T032E, T032F, T033, T034]
+        1. Token-related test files are disabled with .disabled extension
+    - **depends-on:** [T036A-1]
+
+- [ ] **T036A-3 · refactor · p0: Remove token references from provider_test.go**
+    - **context:** The gemini provider tests still contain token-related mocks and tests
+    - **action:**
+        1. Remove `CountTokensFunc` and `GetModelLimitsFunc` fields from MockLLMClient
+        2. Remove implementations of `CountTokens` and `GetModelLimits` methods
+        3. Delete the `TestGeminiClientGetModelLimits` test function
+    - **done-when:**
+        1. provider_test.go has no token-related methods or tests
+        2. Tests run successfully without token functionality
+    - **depends-on:** [T036A-1]
+
+- [ ] **T036A-4 · refactor · p0: Update test_adapter.go**
+    - **context:** The integration test adapter still tries to use token functionality
+    - **action:**
+        1. Remove `TokenCount` field assignment in `ProviderResult` conversion
+        2. Delete the `CountTokens` and `GetModelLimits` methods
+    - **done-when:**
+        1. test_adapter.go has no token-related methods
+        2. No references to TokenCount in the adapter
+    - **depends-on:** [T036A-1]
+
+- [ ] **T036A-5 · refactor · p0: Verify and mark T036A complete**
+    - **context:** Ensure all token references are removed and task is finished
+    - **action:**
+        1. Run `go build ./internal/gemini` to verify build succeeds
+        2. Run `go test ./internal/gemini` to verify tests pass
+        3. Run `go build ./...` to check for other impacted packages
+        4. Fix any cascading issues in other packages
+        5. Mark original T036A task as complete
+    - **done-when:**
+        1. All builds and tests succeed
+        2. T036A is marked complete with [x]
+    - **depends-on:** [T036A-1, T036A-2, T036A-3, T036A-4]
+
+- [~] **T036A · refactor · p0: Remove token references from gemini client**
+    - **context:** Fix build errors in gemini client after removing token handling
+    - **action:**
+        1. Remove TokenCount field from ProviderResult struct in GenerateContent
+        2. Delete CountTokens and GetModelLimits methods
+        3. Remove ClientAdapter/geminiLLMAdapter token-related methods
+        4. Remove HTTPClient type and modelInfoMutex fields from geminiClient
+    - **done-when:**
+        1. gemini package builds without token-related errors
+    - **depends-on:** [T034]
+
+- [ ] **T036B · refactor · p0: Remove token references from openai client**
+    - **context:** Fix build errors in openai client after removing token handling
+    - **action:**
+        1. Remove tokenizerAPI interface and realTokenizer implementation
+        2. Remove modelInfo struct and modelLimits field
+        3. Remove getEncodingForModel helper and tiktoken import
+        4. Remove TokenCount field from ProviderResult in GenerateContent
+    - **done-when:**
+        1. openai package builds without token-related errors
+    - **depends-on:** [T034]
+
+- [ ] **T036C · refactor · p0: Remove or disable token-dependent tests**
+    - **context:** Fix build errors in test files that depend on token functionality
+    - **action:**
+        1. Rename internal/gemini/token_counting_test.go with .disabled extension
+        2. Rename internal/registry/registry_token_precedence_test.go with .disabled extension
+        3. Fix any test helpers dependent on token functionality
+    - **done-when:**
+        1. Renamed test files no longer cause build errors
+    - **depends-on:** [T034]
+
+- [ ] **T036D · refactor · p0: Clean up token stub files**
+    - **context:** Remove unused token stub files
+    - **action:**
+        1. Delete or rename internal/architect/token_stubs.go if not referenced
+        2. Remove any other remaining token stub files
+    - **done-when:**
+        1. All unused token stub files are removed or disabled
+    - **depends-on:** [T036A, T036B, T036C]
+
+
 
 ## test infrastructure
 - [x] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
