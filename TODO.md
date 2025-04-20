@@ -135,7 +135,7 @@
         2. Tests run successfully without token functionality
     - **depends-on:** [T036A-1]
 
-- [ ] **T036A-4 · refactor · p0: Update test_adapter.go**
+- [x] **T036A-4 · refactor · p0: Update test_adapter.go**
     - **context:** The integration test adapter still tries to use token functionality
     - **action:**
         1. Remove `TokenCount` field assignment in `ProviderResult` conversion
