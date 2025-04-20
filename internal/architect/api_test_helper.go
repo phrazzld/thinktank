@@ -56,19 +56,9 @@ type testLLMClient struct {
 
 func (c *testLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 	return &llm.ProviderResult{
-		Content:    "test content",
-		TokenCount: 10,
-	}, nil
-}
-
-func (c *testLLMClient) CountTokens(ctx context.Context, prompt string) (int32, error) {
-	return 10, nil
-}
-
-func (c *testLLMClient) GetModelLimits(ctx context.Context) (*llm.ModelLimits, error) {
-	return &llm.ModelLimits{
-		InputTokenLimit:  1000,
-		OutputTokenLimit: 1000,
+		Content:      "test content",
+		FinishReason: "stop",
+		Truncated:    false,
 	}, nil
 }
 

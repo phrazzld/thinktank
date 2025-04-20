@@ -132,13 +132,8 @@ func DetectProviderFromModel(modelName string) ProviderType {
 // newGeminiClientWrapper adapts the original Gemini client creation function to return llm.LLMClient
 func newGeminiClientWrapper(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	// Create the Gemini client
-	client, err := gemini.NewClient(ctx, apiKey, modelName, apiEndpoint)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert to LLMClient
-	return gemini.AsLLMClient(client), nil
+	// Use NewLLMClient directly as it returns the interface we need
+	return gemini.NewLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
 // newOpenAIClientWrapper wraps the OpenAI client creation to match function signature

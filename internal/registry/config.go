@@ -171,31 +171,13 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 			return fmt.Errorf("model '%s' is missing api_model_id", model.Name)
 		}
 
-		// Validate token limits with detailed feedback
-		if model.ContextWindow <= 0 {
-			return fmt.Errorf("model '%s' has invalid context_window (%d), must be positive",
-				model.Name, model.ContextWindow)
-		}
+		// Token validation removed as part of T036C
+		// The token validation logic has been removed since the token-related fields
+		// have been removed from the ModelDefinition struct.
+		// Token handling is now the responsibility of each provider.
 
-		if model.MaxOutputTokens <= 0 {
-			return fmt.Errorf("model '%s' has invalid max_output_tokens (%d), must be positive",
-				model.Name, model.MaxOutputTokens)
-		}
-
-		// Validate that max_output_tokens doesn't exceed context_window
-		if model.MaxOutputTokens > model.ContextWindow {
-			return fmt.Errorf("model '%s' has max_output_tokens (%d) larger than context_window (%d)",
-				model.Name, model.MaxOutputTokens, model.ContextWindow)
-		}
-
-		// Warn about suspicious token limit values (either too small or extremely large)
-		if model.ContextWindow < 1000 {
-			fmt.Printf("⚠ Warning: Model '%s' has a very small context window (%d tokens). Is this correct?\n",
-				model.Name, model.ContextWindow)
-		} else if model.ContextWindow > 2000000 {
-			fmt.Printf("⚠ Warning: Model '%s' has an extremely large context window (%d tokens). Is this correct?\n",
-				model.Name, model.ContextWindow)
-		}
+		// Token warnings removed as part of T036C
+		// These warnings have been removed since token-related fields were removed.
 
 		// Parameter validation
 		if len(model.Parameters) == 0 {
@@ -228,8 +210,8 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 		}
 
 		// Log successful model validation
-		fmt.Printf("✓ Validated model '%s' (provider: '%s', context window: %d tokens, max output: %d tokens)\n",
-			model.Name, model.Provider, model.ContextWindow, model.MaxOutputTokens)
+		fmt.Printf("✓ Validated model '%s' (provider: '%s')\n",
+			model.Name, model.Provider)
 	}
 
 	return nil

@@ -38,6 +38,7 @@ func (a *LLMClientAdapter) GenerateContent(ctx context.Context, prompt string, p
 		FinishReason: result.FinishReason,
 	}, nil
 }
+
 // GetModelName returns the model name stored in the adapter
 func (a *LLMClientAdapter) GetModelName() string {
 	return a.modelName

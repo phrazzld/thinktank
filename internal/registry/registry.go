@@ -239,9 +239,9 @@ func (r *Registry) CreateLLMClient(ctx context.Context, apiKey, modelName string
 		return nil, fmt.Errorf("failed to get model definition: %w", err)
 	}
 
-	// Log token limits for reference
-	r.logger.Debug("Model '%s' has context window of %d tokens and max output of %d tokens",
-		modelName, model.ContextWindow, model.MaxOutputTokens)
+	// Token logging removed as part of T036C
+	r.logger.Debug("Model '%s' using provider '%s'",
+		modelName, model.Provider)
 
 	// Get the provider definition
 	providerName := model.Provider

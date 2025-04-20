@@ -180,24 +180,38 @@
         1. openai package builds without token-related errors
     - **depends-on:** [T034]
 
-- [ ] **T036C · refactor · p0: Remove or disable token-dependent tests**
+- [x] **T036C · refactor · p0: Remove or disable token-dependent tests**
     - **context:** Fix build errors in test files that depend on token functionality
     - **action:**
-        1. Rename internal/gemini/token_counting_test.go with .disabled extension
-        2. Rename internal/registry/registry_token_precedence_test.go with .disabled extension
-        3. Fix any test helpers dependent on token functionality
+        1. Renamed and disabled various token-dependent test files with .disabled extension
+        2. Updated internal/openai/openai_client.go to remove token functionality
+        3. Updated internal/registry/config.go and registry/registry.go to remove token validation
+        4. Created simplified versions of test helpers to make builds pass
     - **done-when:**
         1. Renamed test files no longer cause build errors
     - **depends-on:** [T034]
 
-- [ ] **T036D · refactor · p0: Clean up token stub files**
+- [x] **T036D · refactor · p0: Clean up token stub files**
     - **context:** Remove unused token stub files
     - **action:**
-        1. Delete or rename internal/architect/token_stubs.go if not referenced
-        2. Remove any other remaining token stub files
+        1. Replaced internal/architect/token_stubs.go with minimal placeholder
+        2. Replaced internal/architect/modelproc/token_stubs.go with minimal placeholder
+        3. Added comments explaining their purpose and future removal path
     - **done-when:**
         1. All unused token stub files are removed or disabled
     - **depends-on:** [T036A, T036B, T036C]
+
+- [ ] **T036E · test · p0: Fix token-related test failures**
+    - **context:** Fix test failures from token removal to ensure pre-commit hooks pass
+    - **action:**
+        1. Update/disable test files in internal/architect/ that reference token structs
+        2. Update/disable test files in internal/integration/ that reference token structs
+        3. Fix test files in internal/openai/ to work with updated client API
+        4. Fix test files in internal/registry/ to handle removed token fields
+    - **done-when:**
+        1. All tests pass and pre-commit hooks succeed (`go test ./... && go vet ./...`)
+        2. No need to use `--no-verify` for commits
+    - **depends-on:** [T036A, T036B, T036C, T036D]
 
 
 

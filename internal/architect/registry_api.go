@@ -380,15 +380,19 @@ func (s *registryAPIService) GetModelDefinition(modelName string) (*registry.Mod
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model
+// Note: This method is kept for backward compatibility but now returns default values
+// Token handling has been removed as part of T036C
 func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	// Look up the model in the registry
-	modelDef, err := s.registry.GetModel(modelName)
+	// Look up the model in the registry to verify it exists
+	_, err = s.registry.GetModel(modelName)
 	if err != nil {
 		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
 		return 0, 0, fmt.Errorf("%w: %s", ErrModelNotFound, modelName)
 	}
 
-	return modelDef.ContextWindow, modelDef.MaxOutputTokens, nil
+	// Return default values instead of actual model values
+	// Token handling is now the responsibility of each provider
+	return 8192, 2048, nil
 }
 
 // ProcessLLMResponse processes a provider-agnostic API response and extracts content

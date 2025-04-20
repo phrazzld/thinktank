@@ -10,9 +10,18 @@ import (
 	"github.com/phrazzld/architect/internal/registry"
 )
 
-// TokenResult is a stub structure that was used for token count information
-// It has been retained as a placeholder for compatibility with existing tests
-// This will be completely removed in subsequent tasks
+// This file formerly contained token-related stubs that are no longer needed
+// after the token handling removal refactoring (T036D).
+//
+// Kept as minimal placeholders to maintain imports in existing tests.
+// This file should be removed in a future cleanup once all dependent tests
+// are updated or disabled.
+//
+// NOTE: T036C has already disabled most token-related tests, but some tests
+// still have references to token types. A future task may remove these
+// references completely.
+
+// TokenResult is a stub structure retained for test compatibility only
 type TokenResult struct {
 	TokenCount   int32
 	InputLimit   int32
@@ -21,23 +30,14 @@ type TokenResult struct {
 	Percentage   float64
 }
 
-// TokenManager is a stub interface that was used for token management
-// It has been retained as a placeholder for compatibility with existing tests
-// This will be completely removed in subsequent tasks
+// TokenManager is a stub interface retained for test compatibility only
 type TokenManager interface {
-	// GetTokenInfo retrieves token count information and checks limits
 	GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error)
-
-	// CheckTokenLimit verifies the prompt doesn't exceed the model's token limit
 	CheckTokenLimit(ctx context.Context, prompt string) error
-
-	// PromptForConfirmation asks for user confirmation to proceed if token count exceeds threshold
 	PromptForConfirmation(tokenCount int32, threshold int) bool
 }
 
-// NewTokenManagerWithClient is a stub function that returns a no-op TokenManager
-// It has been retained as a placeholder for compatibility with existing tests
-// This will be completely removed in subsequent tasks
+// NewTokenManagerWithClient is a stub function retained for test compatibility only
 var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, client llm.LLMClient, reg *registry.Registry) TokenManager {
 	return &noOpTokenManager{
 		logger:      logger,
@@ -47,14 +47,12 @@ var NewTokenManagerWithClient = func(logger logutil.LoggerInterface, auditLogger
 }
 
 // noOpTokenManager is a no-op implementation of TokenManager
-// It has been retained as a placeholder for compatibility with existing tests
 type noOpTokenManager struct {
 	logger      logutil.LoggerInterface
 	auditLogger auditlog.AuditLogger
 	client      llm.LLMClient
 }
 
-// GetTokenInfo always returns a dummy TokenResult with no errors
 func (m *noOpTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
 	return &TokenResult{
 		TokenCount:   100,
@@ -64,12 +62,10 @@ func (m *noOpTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*To
 	}, nil
 }
 
-// CheckTokenLimit always returns nil (no error)
 func (m *noOpTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
 	return nil
 }
 
-// PromptForConfirmation always returns true (proceed)
 func (m *noOpTokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
 	return true
 }
