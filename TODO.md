@@ -169,7 +169,7 @@
         1. gemini package builds without token-related errors
     - **depends-on:** [T034]
 
-- [ ] **T036B · refactor · p0: Remove token references from openai client**
+- [x] **T036B · refactor · p0: Remove token references from openai client**
     - **context:** Fix build errors in openai client after removing token handling
     - **action:**
         1. Remove tokenizerAPI interface and realTokenizer implementation
