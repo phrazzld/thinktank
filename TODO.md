@@ -453,7 +453,7 @@
         1. Comprehensive table-driven tests for error/edge cases exist and pass.
     - **depends-on:** [T011]
 
-- [ ] **T024 · test · p2: add table-driven tests for openai error/edge cases**
+- [x] **T024 · test · p2: add table-driven tests for openai error/edge cases**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Add table-driven tests in `providers/openai/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
