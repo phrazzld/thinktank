@@ -469,7 +469,7 @@
         1. Comprehensive table-driven tests for error/edge cases exist and pass.
     - **depends-on:** [T013]
 
-- [ ] **T026 · test · p2: add tests for config bootstrapping error/edge cases**
+- [x] **T026 · test · p2: add tests for config bootstrapping error/edge cases**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Add tests covering registry initialization errors (e.g., invalid YAML, missing file after install attempt).
@@ -478,7 +478,7 @@
         1. Tests pass for config bootstrapping error scenarios.
     - **depends-on:** [T001, T002]
 
-- [ ] **T027 · test · p2: add tests for audit logging error/edge cases**
+- [x] **T027 · test · p2: add tests for audit logging error/edge cases**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Add tests for `internal/auditlog/*` covering file write errors, JSON marshal errors, and concurrent logging.
