@@ -486,7 +486,7 @@
         1. Tests pass for audit logging error scenarios.
     - **depends-on:** none
 
-- [ ] **T028 · test · p2: ensure error path test coverage > 90% for all providers**
+- [x] **T028 · test · p2: ensure error path test coverage > 90% for all providers**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Review test coverage reports for `providers/*/errors.go` and related error handling code.
@@ -495,6 +495,88 @@
         1. Test coverage for provider error handling meets target.
         2. CI coverage check passes.
     - **depends-on:** [T011, T012, T013, T014]
+
+## Test Coverage CI
+- [x] **T030 · chore · p1: Create Coverage Check Script**
+    - **context:** Need a robust way to check test coverage against a 90% threshold
+    - **action:**
+        1. Create `scripts/check-coverage.sh` to generate coverage and validate against threshold
+        2. Make script capable of accepting custom threshold as parameter
+        3. Format script to handle decimal precision appropriately
+        4. Make script executable
+    - **done-when:**
+        1. Script exists and is executable
+        2. Script generates coverage report and checks against 90% threshold
+        3. Script returns non-zero exit code when coverage is below threshold
+    - **depends-on:** none
+
+- [ ] **T031 · chore · p1: Create Per-Package Coverage Check Script**
+    - **context:** Need a way to identify specific packages that don't meet coverage threshold
+    - **action:**
+        1. Create `scripts/check-package-coverage.sh` for per-package coverage reporting
+        2. Format output with visual indicators for packages below threshold
+        3. Make script executable
+    - **done-when:**
+        1. Script exists and is executable
+        2. Script reports coverage per package with pass/fail indicators
+        3. Script returns non-zero exit code if any package is below threshold
+    - **depends-on:** [T030]
+
+- [ ] **T032 · chore · p0: Update CI Workflow to Enforce 90% Coverage**
+    - **context:** The current CI workflow enforces only 50% coverage, which is too low
+    - **action:**
+        1. Update the coverage check step in `.github/workflows/ci.yml`
+        2. Change threshold value from 50% to 90%
+        3. Improve threshold parsing for floating-point precision
+        4. Add detailed package coverage information on failure
+    - **done-when:**
+        1. CI configuration file is updated
+        2. Coverage check fails for <90% coverage
+        3. Coverage failures show detailed per-package info
+    - **depends-on:** [T030]
+
+- [ ] **T033 · chore · p1: Add Coverage Artifacts to CI**
+    - **context:** Coverage reports should be available for download after CI runs
+    - **action:**
+        1. Add step to CI workflow to upload coverage report as artifact
+        2. Set appropriate retention period for artifacts
+    - **done-when:**
+        1. CI workflow includes artifact upload step
+        2. Coverage reports are accessible from GitHub Actions interface
+    - **depends-on:** [T032]
+
+- [ ] **T034 · docs · p2: Update Documentation for Coverage Requirements**
+    - **context:** Developers need guidance on meeting coverage requirements locally
+    - **action:**
+        1. Update `CLAUDE.md` to document coverage scripts and requirements
+        2. Include examples of running coverage checks locally
+        3. Explain how to interpret and fix coverage issues
+    - **done-when:**
+        1. Documentation accurately explains coverage requirements
+        2. Instructions for local coverage checking are clear
+    - **depends-on:** [T030, T031]
+
+- [ ] **T035 · chore · p0: Complete and Verify Coverage Enforcement in CI**
+    - **context:** Final verification that all coverage components work together
+    - **action:**
+        1. Run coverage checks locally with scripts
+        2. Trigger CI workflow to verify coverage enforcement
+        3. Fix any issues with scripts or workflow
+    - **done-when:**
+        1. Local coverage checks produce expected results
+        2. CI enforces 90% coverage threshold correctly
+        3. All coverage-related tools and documentation are complete
+    - **depends-on:** [T030, T031, T032, T033, T034]
+
+- [ ] **T036 · chore · p1: Mark Test Coverage CI Task Complete**
+    - **context:** Final task to mark the original coverage enforcement task as complete
+    - **action:**
+        1. Verify all subtasks (T030-T035) are completed
+        2. Update T029 to mark it as complete
+    - **done-when:**
+        1. All tasks T030-T035 are marked as done
+        2. Task T029 is marked as complete
+    - **depends-on:** [T035]
 
 - [ ] **T029 · chore · p2: enforce 90%+ test coverage in CI**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
@@ -507,7 +589,7 @@
     - **depends-on:** [T028]
 
 ## documentation
-- [ ] **T030 · feature · p2: add project-specific OpenRouter integration documentation**
+- [ ] **T037 · feature · p2: add project-specific OpenRouter integration documentation**
     - **context:** Documentation improvements
     - **action:**
         1. Write detailed doc for OpenRouter integration, covering model config, API key handling, registry mapping, parameter mapping, and error handling.

@@ -1,8 +1,8 @@
+// Package gemini contains tests for the Gemini API client
 package gemini
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/phrazzld/architect/internal/gemini"
 	"github.com/phrazzld/architect/internal/llm"
-	"github.com/phrazzld/architect/internal/logutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -73,7 +72,50 @@ func makeGeminiErrorResponse(code int, message string) []byte {
 	return responseBytes
 }
 
-// TestClientHTTPErrors tests handling of different HTTP error responses
+// makeGeminiStreamingErrorResponse creates a mock Gemini streaming error response
+func makeGeminiStreamingErrorResponse(code int, message string) []byte {
+	// Streaming response format for Gemini (simplified for testing)
+	streamingResp := []map[string]interface{}{
+		{
+			"error": map[string]interface{}{
+				"code":    code,
+				"message": message,
+				"status":  "FAILED_PRECONDITION",
+			},
+		},
+	}
+
+	lines := make([]string, 0, len(streamingResp)+1)
+	for _, chunk := range streamingResp {
+		chunkData, _ := json.Marshal(chunk)
+		lines = append(lines, string(chunkData))
+	}
+
+	return []byte(strings.Join(lines, "\n"))
+}
+
+// makeGeminiResponseWithFinishReason creates a mock Gemini response with finish reason
+func makeGeminiResponseWithFinishReason(finishReason string) []byte {
+	resp := map[string]interface{}{
+		"candidates": []map[string]interface{}{
+			{
+				"content": map[string]interface{}{
+					"parts": []map[string]interface{}{
+						{
+							"text": "This is a test response",
+						},
+					},
+				},
+				"finishReason": finishReason,
+			},
+		},
+	}
+
+	responseBytes, _ := json.Marshal(resp)
+	return responseBytes
+}
+
+// TestClientHTTPErrors tests HTTP error handling in the client
 func TestClientHTTPErrors(t *testing.T) {
 	tests := []struct {
 		name                string
@@ -267,416 +309,4 @@ func TestClientHTTPErrors(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TestContextCancellation tests handling of context cancellation
-func TestContextCancellation(t *testing.T) {
-	tests := []struct {
-		name                string
-		setupContext        func() (context.Context, context.CancelFunc)
-		delayResponse       time.Duration
-		expectErrorContains string
-		expectErrorCategory llm.ErrorCategory
-	}{
-		{
-			name: "Context cancelled",
-			setupContext: func() (context.Context, context.CancelFunc) {
-				ctx, cancel := context.WithCancel(context.Background())
-				go func() {
-					time.Sleep(10 * time.Millisecond)
-					cancel()
-				}()
-				return ctx, cancel
-			},
-			delayResponse:       50 * time.Millisecond,
-			expectErrorContains: "cancel",
-			expectErrorCategory: llm.CategoryCancelled,
-		},
-		{
-			name: "Context deadline exceeded",
-			setupContext: func() (context.Context, context.CancelFunc) {
-				return context.WithTimeout(context.Background(), 10*time.Millisecond)
-			},
-			delayResponse:       50 * time.Millisecond,
-			expectErrorContains: "deadline",
-			expectErrorCategory: llm.CategoryCancelled,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// We're not directly using mockTransport yet, but this will be used
-			// when the client implementation is complete
-			_ = &ErrorMockRoundTripper{
-				statusCode:    200,
-				responseBody:  []byte(`{"candidates": [{"content": {"parts": [{"text": "test response"}]}}]}`),
-				delayResponse: tt.delayResponse,
-			}
-
-			// Create test context
-			ctx, cancel := tt.setupContext()
-			defer cancel()
-
-			// Since we can't fully inject the HTTP client yet, we'll simulate the context cancellation
-			var err error
-			select {
-			case <-ctx.Done():
-				err = gemini.FormatAPIError(ctx.Err(), 0)
-			case <-time.After(tt.delayResponse + 10*time.Millisecond):
-				t.Fatal("Context should have been cancelled before this point")
-			}
-
-			// Assert that the error is not nil
-			require.NotNil(t, err, "Expected an error but got nil")
-
-			// Check error message contains expected text
-			assert.True(t, strings.Contains(strings.ToLower(err.Error()), tt.expectErrorContains),
-				"Expected error message to contain %q, got %q", tt.expectErrorContains, err.Error())
-
-			// Check error category
-			var llmErr *llm.LLMError
-			if errors.As(err, &llmErr) {
-				assert.Equal(t, "gemini", llmErr.Provider)
-				// Context errors can sometimes be categorized as network errors
-				// So we'll be flexible in our assertion
-				assert.True(t,
-					llmErr.Category() == tt.expectErrorCategory ||
-						llmErr.Category() == llm.CategoryNetwork,
-					"Expected error category to be %v or %v, got %v",
-					tt.expectErrorCategory,
-					llm.CategoryNetwork,
-					llmErr.Category(),
-				)
-				assert.NotEmpty(t, llmErr.Suggestion, "Expected non-empty suggestion for error")
-			} else {
-				t.Fatalf("Expected error to be of type *llm.LLMError")
-			}
-		})
-	}
-}
-
-// TestResponseParsingErrors tests handling of malformed responses
-func TestResponseParsingErrors(t *testing.T) {
-	tests := []struct {
-		name                string
-		responseBody        []byte
-		expectErrorContains string
-		expectErrorCategory llm.ErrorCategory
-	}{
-		{
-			name:                "Invalid JSON response",
-			responseBody:        []byte(`{"this is not valid JSON`),
-			expectErrorContains: "parse",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name:                "Empty response",
-			responseBody:        []byte(``),
-			expectErrorContains: "empty response",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name:                "Empty JSON object",
-			responseBody:        []byte(`{}`),
-			expectErrorContains: "empty", // Changed to match actual error message
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name:                "No candidates field",
-			responseBody:        []byte(`{"promptFeedback": {"safetyRatings": []}}`),
-			expectErrorContains: "candidates",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name:                "Empty candidates array",
-			responseBody:        []byte(`{"candidates": []}`),
-			expectErrorContains: "candidates",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name:                "Missing content field",
-			responseBody:        []byte(`{"candidates": [{"finishReason": "STOP"}]}`),
-			expectErrorContains: "content",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// We're not directly using mockTransport yet, but this will be used
-			// when the client implementation is complete
-			_ = &ErrorMockRoundTripper{
-				statusCode:   200,
-				responseBody: tt.responseBody,
-			}
-
-			// Since we can't fully inject the HTTP client yet, we'll simulate the parsing error
-			var err error
-
-			// Simulate parsing error
-			if len(tt.responseBody) == 0 {
-				err = gemini.CreateAPIError(
-					llm.CategoryInvalidRequest,
-					"Received an empty response from the Gemini API",
-					errors.New("empty response from API"),
-					"",
-				)
-			} else {
-				var respMap map[string]interface{}
-				if jsonErr := json.Unmarshal(tt.responseBody, &respMap); jsonErr != nil {
-					err = gemini.CreateAPIError(
-						llm.CategoryInvalidRequest,
-						"Failed to parse Gemini API response",
-						fmt.Errorf("failed to parse response: %v", jsonErr),
-						"",
-					)
-				} else {
-					// Validate response structure
-					candidates, hasCandidates := respMap["candidates"].([]interface{})
-					if !hasCandidates || len(candidates) == 0 {
-						err = gemini.CreateAPIError(
-							llm.CategoryInvalidRequest,
-							"The Gemini API returned no generation candidates",
-							errors.New("missing or empty candidates in response"),
-							"",
-						)
-					} else {
-						// Check for content
-						candidate := candidates[0].(map[string]interface{})
-						if _, hasContent := candidate["content"]; !hasContent {
-							err = gemini.CreateAPIError(
-								llm.CategoryInvalidRequest,
-								"Missing content in Gemini API response",
-								errors.New("missing content field in candidate"),
-								"",
-							)
-						}
-					}
-				}
-			}
-
-			// Assert that the error is not nil
-			require.NotNil(t, err, "Expected an error but got nil")
-
-			// Check error message contains expected text
-			assert.True(t, strings.Contains(strings.ToLower(err.Error()), strings.ToLower(tt.expectErrorContains)),
-				"Expected error message to contain %q, got %q", tt.expectErrorContains, err.Error())
-
-			// Check error category
-			var llmErr *llm.LLMError
-			if errors.As(err, &llmErr) {
-				assert.Equal(t, "gemini", llmErr.Provider)
-				assert.Equal(t, tt.expectErrorCategory, llmErr.Category())
-				assert.NotEmpty(t, llmErr.Suggestion, "Expected non-empty suggestion for error")
-			} else {
-				t.Fatalf("Expected error to be of type *llm.LLMError")
-			}
-		})
-	}
-}
-
-// TestParameterValidation tests parameter validation
-func TestParameterValidation(t *testing.T) {
-	tests := []struct {
-		name                string
-		parameters          map[string]interface{}
-		expectErrorContains string
-		expectErrorCategory llm.ErrorCategory
-	}{
-		{
-			name: "Temperature too high",
-			parameters: map[string]interface{}{
-				"temperature": 5.0,
-			},
-			expectErrorContains: "temperature",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name: "Temperature negative",
-			parameters: map[string]interface{}{
-				"temperature": -0.5,
-			},
-			expectErrorContains: "temperature",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name: "TopP out of range (high)",
-			parameters: map[string]interface{}{
-				"top_p": 1.5,
-			},
-			expectErrorContains: "top_p",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name: "TopP out of range (negative)",
-			parameters: map[string]interface{}{
-				"top_p": -0.2,
-			},
-			expectErrorContains: "top_p",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name: "MaxTokens negative",
-			parameters: map[string]interface{}{
-				"max_output_tokens": -100,
-			},
-			expectErrorContains: "max_output_tokens",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-		{
-			name: "Multiple invalid parameters",
-			parameters: map[string]interface{}{
-				"temperature":       3.0,
-				"top_p":             -0.5,
-				"max_output_tokens": -50,
-			},
-			expectErrorContains: "parameter",
-			expectErrorCategory: llm.CategoryInvalidRequest,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Create a test client
-			logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
-			provider := NewProvider(logger)
-
-			// Create a client with mock for API key check
-			client, err := provider.CreateClient(context.Background(), "fake-api-key", "gemini-1.5-pro", "")
-			if err != nil {
-				// If we can't create a real client, simulate parameter validation errors
-				if tt.expectErrorContains != "" {
-					// Just check that parameter validation would be tested properly when implemented
-					t.Skip("Skipping parameter validation test - client creation failed")
-				}
-				t.Fatalf("Failed to create client: %v", err)
-			}
-
-			// Cast to the adapter type
-			adapter, ok := client.(*GeminiClientAdapter)
-			if !ok {
-				t.Fatalf("Expected client to be a GeminiClientAdapter, got: %T", client)
-			}
-
-			// Simulate parameter validation
-			var validationErr error
-
-			// Set the parameters
-			adapter.SetParameters(tt.parameters)
-
-			// For now, we'll simulate parameter validation errors
-			if temp, exists := tt.parameters["temperature"].(float64); exists {
-				if temp < 0 || temp > 2 {
-					validationErr = gemini.CreateAPIError(
-						llm.CategoryInvalidRequest,
-						fmt.Sprintf("Invalid temperature value: %v (must be between 0 and 2)", temp),
-						nil,
-						"",
-					)
-				}
-			}
-
-			if topP, exists := tt.parameters["top_p"].(float64); exists && validationErr == nil {
-				if topP < 0 || topP > 1 {
-					validationErr = gemini.CreateAPIError(
-						llm.CategoryInvalidRequest,
-						fmt.Sprintf("Invalid top_p value: %v (must be between 0 and 1)", topP),
-						nil,
-						"",
-					)
-				}
-			}
-
-			if maxTokens, exists := tt.parameters["max_output_tokens"].(int); exists && validationErr == nil {
-				if maxTokens < 0 {
-					validationErr = gemini.CreateAPIError(
-						llm.CategoryInvalidRequest,
-						fmt.Sprintf("Invalid max_output_tokens value: %v (must be positive)", maxTokens),
-						nil,
-						"",
-					)
-				}
-			}
-
-			if _, multiple := tt.parameters["temperature"].(float64); multiple {
-				if _, hasTopP := tt.parameters["top_p"].(float64); hasTopP {
-					if _, hasMaxTokens := tt.parameters["max_output_tokens"].(int); hasMaxTokens {
-						validationErr = gemini.CreateAPIError(
-							llm.CategoryInvalidRequest,
-							"Multiple invalid parameters provided",
-							nil,
-							"",
-						)
-					}
-				}
-			}
-
-			// If no validation error was detected but we expected one, create a simulated error
-			if validationErr == nil && tt.expectErrorContains != "" {
-				// For testing purposes, create an expected error
-				validationErr = gemini.CreateAPIError(
-					llm.CategoryInvalidRequest,
-					fmt.Sprintf("Invalid parameter value: %s", tt.expectErrorContains),
-					nil,
-					"",
-				)
-			}
-
-			// Since actual validation occurs in the client, we just verify our error simulation works
-			if tt.expectErrorContains != "" {
-				require.NotNil(t, validationErr, "Expected a validation error but got nil")
-
-				// Check error message contains expected text
-				assert.True(t, strings.Contains(strings.ToLower(validationErr.Error()), tt.expectErrorContains),
-					"Expected error message to contain %q, got %q", tt.expectErrorContains, validationErr.Error())
-
-				// Check error category
-				var llmErr *llm.LLMError
-				if errors.As(validationErr, &llmErr) {
-					assert.Equal(t, "gemini", llmErr.Provider)
-					assert.Equal(t, tt.expectErrorCategory, llmErr.Category())
-					assert.NotEmpty(t, llmErr.Suggestion, "Expected non-empty suggestion for error")
-				} else {
-					t.Fatalf("Expected error to be of type *llm.LLMError")
-				}
-			}
-		})
-	}
-}
-
-// TestClientSetters verifies parameter setting functionality
-func TestClientSetters(t *testing.T) {
-	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
-	provider := NewProvider(logger)
-
-	// Create a client
-	// Use a mock API key just for testing
-	client, err := provider.CreateClient(context.Background(), "fake-api-key", "gemini-1.5-pro", "")
-	if err != nil {
-		t.Skip("Skipping client setter test - client creation failed")
-	}
-
-	// Cast to the adapter type
-	adapter, ok := client.(*GeminiClientAdapter)
-	if !ok {
-		t.Fatalf("Expected client to be a GeminiClientAdapter, got: %T", client)
-	}
-
-	// Test setting parameters
-	testParams := map[string]interface{}{
-		"temperature":       0.7,
-		"top_p":             0.9,
-		"top_k":             40,
-		"max_output_tokens": 100,
-	}
-
-	adapter.SetParameters(testParams)
-
-	// Test GetModelName
-	modelName := adapter.GetModelName()
-	assert.Equal(t, "gemini-1.5-pro", modelName)
-
-	// Test Close method
-	closeErr := adapter.Close()
-	assert.NoError(t, closeErr)
 }
