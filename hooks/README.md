@@ -12,6 +12,12 @@ We use the [pre-commit](https://pre-commit.com/) framework for managing pre-comm
 4. **Quick tests**: Runs a subset of unit tests with the `-short` flag, excluding the orchestrator package which has tests that may fail in the pre-commit environment
 5. **Large file detection**: Warns about Go files exceeding 1000 lines, encouraging refactoring
 
+## Post-commit Hook
+
+We also use a post-commit hook that runs after each successful commit:
+
+1. **Directory Overview Generation**: Runs `glance ./` to generate directory overview documentation
+
 ## Installation
 
 There are two ways to set up the hooks:
@@ -39,15 +45,21 @@ Run our setup script, which will check for and install required dependencies (in
 2. Install the hooks:
    ```bash
    # From the project root
-   pre-commit install
+   pre-commit install  # For pre-commit hooks
+   pre-commit install --hook-type post-commit  # For post-commit hooks
    ```
 
 ## Usage
 
-- The hooks will run automatically on `git commit`
+- The pre-commit hooks will run automatically on `git commit`
+- The post-commit hooks will run automatically after a successful commit
 - To run all hooks manually:
   ```bash
   pre-commit run --all-files
+  ```
+- To run a specific hook manually:
+  ```bash
+  pre-commit run run-glance --hook-stage post-commit
   ```
 
 ## Skipping Hooks
@@ -64,5 +76,5 @@ If you encounter issues with the hooks:
 
 1. Ensure pre-commit is installed: `pre-commit --version`
 2. Check the configuration in `.pre-commit-config.yaml`
-3. Try running individual hooks manually, e.g.: `pre-commit run go-fmt`
+3. Try running individual hooks manually, e.g.: `pre-commit run go-fmt` or `pre-commit run run-glance --hook-stage post-commit`
 4. For unit test issues, you can run the tests directly with: `go test -short ./cmd/architect/... ./internal/architect/interfaces ./internal/architect/modelproc ./internal/architect/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil`

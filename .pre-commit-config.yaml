@@ -34,3 +34,9 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: run-glance
+        name: Generate directory overview with glance
+        entry: glance ./
+        language: system
+        stages: [post-commit]
+        pass_filenames: false

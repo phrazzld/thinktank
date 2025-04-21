@@ -43,6 +43,8 @@ PLAN.md
 test-results/
 thinktank-output/
 architect_output/
+architect_output_tasks/
+consultation-report/
 *-TASK.md
 *-PLAN.md
 CONSULT-REQUEST.md

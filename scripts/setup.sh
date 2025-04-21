@@ -108,10 +108,11 @@ fi
 print_header "Installing Git hooks"
 if command -v pre-commit >/dev/null 2>&1; then
     pre-commit install
+    pre-commit install --hook-type post-commit
     print_success "Git hooks installed successfully"
 else
     print_warning "Skipping Git hook installation (pre-commit not available)"
-    echo "Please install pre-commit and run 'pre-commit install' later."
+    echo "Please install pre-commit and run 'pre-commit install' and 'pre-commit install --hook-type post-commit' later."
 fi
 
 # Check for golangci-lint
