@@ -39,6 +39,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Test Coverage:** Maintain 90% or higher code coverage for all packages
   * CI will fail if overall coverage drops below 90%
   * Use coverage scripts to identify coverage gaps before committing
+* **Do not add your signature to commit messages**
 
 ## Using the `architect` CLI
 

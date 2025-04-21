@@ -589,7 +589,7 @@
     - **depends-on:** [T028]
 
 ## documentation
-- [ ] **T037 · feature · p2: add project-specific OpenRouter integration documentation**
+- [x] **T037 · feature · p2: add project-specific OpenRouter integration documentation**
     - **context:** Documentation improvements
     - **action:**
         1. Write detailed doc for OpenRouter integration, covering model config, API key handling, registry mapping, parameter mapping, and error handling.

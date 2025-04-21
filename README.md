@@ -231,6 +231,8 @@ architect supports generating plans with multiple AI models from multiple provid
 - **Output Files**: Each model's output is saved in its own file within the output directory
 - **Provider-Specific Error Handling**: Each provider's errors are properly handled and reported
 
+For detailed information about OpenRouter integration, see [OpenRouter Integration Guide](docs/openrouter-integration.md).
+
 Example:
 ```bash
 # Generate plans with models from all supported providers
