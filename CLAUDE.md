@@ -32,6 +32,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 * **Use TDD:** Write tests first, make them fail, then implement code to pass
 * **Conventional Commits:** Follow the spec for automated versioning/changelogs
+* **Write detailed multiline conventional commit messages**
 * **No Secrets in Code:** Use environment variables or designated secret managers
 * **Structured Logging:** Use the project's standard structured logging library
 * **Pre-commit Quality:** All code must pass tests, lint, and format checks

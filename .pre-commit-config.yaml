@@ -35,10 +35,9 @@ repos:
         types: [go]
         pass_filenames: false
     -   id: run-glance
-        name: Generate directory overview with glance
-        entry: /Users/phaedrus/go/bin/glance ./
-        language: system
-        stages: [post-commit]
-        pass_filenames: false
+        name: Run glance to update directory overviews
+        entry: .pre-commit-hooks/run_glance.sh
+        language: script
+        stages: [post-commit]  # Run after commit is completed
+        pass_filenames: false  # Run once per commit, not per file
         always_run: true
-        verbose: true
