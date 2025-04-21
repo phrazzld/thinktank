@@ -72,7 +72,7 @@
         2. Existing tests still pass
     - **depends-on:** []
 
-- [ ] **T106 · fix · p0: Pass Empty API Key to InitLLMClient**
+- [x] **T106 · fix · p0: Pass Empty API Key to InitLLMClient**
     - **context:** The app passes `cliConfig.APIKey` to `InitLLMClient` which sets incorrect precedence
     - **action:**
         1. In `internal/architect/app.go`, find the call to `apiService.InitLLMClient`

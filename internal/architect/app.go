@@ -157,7 +157,9 @@ func Execute(
 	registryMutex.Unlock()
 
 	// Create a reference client for token counting in context gathering
-	referenceClientLLM, err := apiService.InitLLMClient(ctx, cliConfig.APIKey, cliConfig.ModelNames[0], cliConfig.APIEndpoint)
+	// Pass empty string instead of cliConfig.APIKey to force environment variable lookup
+	// This ensures each provider uses its own API key from the appropriate environment variable
+	referenceClientLLM, err := apiService.InitLLMClient(ctx, "", cliConfig.ModelNames[0], cliConfig.APIEndpoint)
 	if err != nil {
 		// Check if this is a categorized error to provide better error messages
 		if catErr, ok := llm.IsCategorizedError(err); ok {
