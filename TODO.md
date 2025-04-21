@@ -1,644 +1,142 @@
-# todo
+# TODO - OpenRouter Authentication Fix
 
-## token handling removal - atomic tasks
+## OpenRouter Integration Authentication Issue
 
-- [x] **T032A · refactor · p0: remove TokenManager interface and implementations**
-    - **context:** First step in removing token counting logic from application
+- [~] **T100 · fix · p0: Fix API Key Isolation in Registry API Service**
+    - **context:** Different provider API keys are being mixed up, causing authentication failures with OpenRouter
     - **action:**
-        1. Remove `TokenResult` struct from `internal/architect/interfaces/interfaces.go`
-        2. Remove `TokenManager` interface from `internal/architect/interfaces/interfaces.go`
-        3. Replace contents of `internal/architect/token.go` and `internal/architect/registry_token.go` with placeholders
+        1. Update `internal/architect/registry_api.go` to properly isolate API keys per provider
+        2. Add debug logging to show which API key is being used for each provider (first 5 chars only)
+        3. Ensure the OpenRouter provider uses the correct OPENROUTER_API_KEY environment variable
     - **done-when:**
-        1. Code compiles without references to these types
-    - **depends-on:** none
+        1. Debug logs show correct API key for OpenRouter (starting with "sk-or")
+        2. Authentication works correctly for OpenRouter models
+    - **depends-on:** []
+    - **status:** Initial implementation was incomplete. Additional tasks T105-T111 added to address the root cause.
 
-- [x] **T032B · refactor · p0: remove token validation from ModelProcessor**
-    - **context:** Remove token checking in the model processing workflow
+- [ ] **T101 · fix · p1: Add API Key Validation in OpenRouter Provider**
+    - **context:** The OpenRouter provider should validate the API key format before attempting to use it
     - **action:**
-        1. Remove token checking code in `Process` method of `internal/architect/modelproc/processor.go`
-        2. Remove token-related warnings and confirmation prompts
-        3. Remove references to token limits in log messages
-        4. Update audit logging to no longer track token counts
+        1. Update `internal/providers/openrouter/provider.go` to check if the API key starts with "sk-or"
+        2. Add warning log if key has incorrect format
+        3. Improve error message if authentication fails
     - **done-when:**
-        1. ModelProcessor no longer validates tokens before API calls
-        2. ModelProcessor tests are updated/fixed
-    - **depends-on:** [T032A]
+        1. Client creation fails with clear error message if key format is incorrect
+        2. Debug logs show API key validation is being performed
+    - **depends-on:** [T100]
 
-- [x] **T032C · refactor · p0: remove TokenManager from Orchestrator**
-    - **context:** Update Orchestrator to not use TokenManager
+- [ ] **T102 · refactor · p1: Improve API Key Documentation and Error Messages**
+    - **context:** Users need clear guidance on API key setup and better error messages
     - **action:**
-        1. Remove `tokenManager` field from `Orchestrator` struct
-        2. Update `NewOrchestrator` constructor to not require `TokenManager`
-        3. Remove any token checking/confirmation logic in orchestrator methods
+        1. Add comments in code explaining API key retrieval logic
+        2. Improve error messages for auth failures to suggest checking environment variables
+        3. Update API key handling documentation
     - **done-when:**
-        1. Orchestrator no longer has TokenManager dependency
-        2. Orchestrator tests are updated/fixed
-    - **depends-on:** [T032A]
+        1. Code has clear comments about API key handling
+        2. Error messages provide helpful troubleshooting guidance
+    - **depends-on:** [T100]
 
-- [x] **T032D · refactor · p0: update application flow in App**
-    - **context:** Remove token management from application initialization flow
+- [ ] **T103 · test · p1: Create Multi-Provider Integration Test**
+    - **context:** We need to verify API key isolation works with multiple providers
     - **action:**
-        1. Remove `TokenManager` creation and injection in `App.Run`
-        2. Remove token-related adapter logic
+        1. Create test that uses both Gemini and OpenRouter models in a single run
+        2. Verify each provider uses the correct API key
+        3. Add detailed logging of which keys are used
     - **done-when:**
-        1. App no longer initializes TokenManager
-        2. App tests are updated/fixed
-    - **depends-on:** [T032A, T032C]
+        1. Test successfully authenticates with both providers
+        2. Each provider uses its own correct API key
+    - **depends-on:** [T100, T101]
 
-- [x] **T032E · refactor · p0: remove token flags from CLI**
-    - **context:** Remove token-related CLI flags and configuration
+- [ ] **T104 · test · p0: Validate OpenRouter Authentication End-to-End**
+    - **context:** Final verification that the authentication issue is fixed
     - **action:**
-        1. Remove `--confirm-tokens` flag from CLI
-        2. Remove `ConfirmTokens` field from `CliConfig`
+        1. Run the architect tool with an OpenRouter model
+        2. Verify authentication succeeds
+        3. Check logs to confirm correct API key is used
     - **done-when:**
-        1. CLI no longer offers token-related flags
-        2. CLI tests are updated/fixed
-    - **depends-on:** [T032B]
+        1. The application successfully authenticates with OpenRouter
+        2. API call succeeds with 200 OK response
+        3. Generated output shows model response
+    - **depends-on:** [T103]
 
-- [x] **T032F · refactor · p0: update token references in context gathering**
-    - **context:** Remove token counting/display from context gathering
+## API Key Management Fix (OpenRouter Authentication Fix)
+
+- [x] **T105 · fix · p0: Remove Hardcoded Gemini API Key Assignment**
+    - **context:** In `cmd/architect/cli.go`, the `ParseFlagsWithEnv` function always sets `cfg.APIKey` from `GEMINI_API_KEY`
     - **action:**
-        1. Remove token counting from context gathering code
-        2. Update dry-run output to remove token limit comparisons
+        1. Remove or comment out the line that assigns `GEMINI_API_KEY` to `cfg.APIKey`
+        2. Verify this doesn't break existing CLI validation logic
+        3. Update any associated tests if needed
     - **done-when:**
-        1. Context gathering no longer counts tokens
-        2. Dry run does not show token statistics
-    - **depends-on:** [T032A]
+        1. Code no longer automatically assigns `GEMINI_API_KEY` to `cfg.APIKey`
+        2. Existing tests still pass
+    - **depends-on:** []
 
-- [x] **T033 · refactor · p0: update LLM interface to remove token-related methods**
-    - **context:** Simplify provider interfaces by removing token-related functionality
+- [ ] **T106 · fix · p0: Pass Empty API Key to InitLLMClient**
+    - **context:** The app passes `cliConfig.APIKey` to `InitLLMClient` which sets incorrect precedence
     - **action:**
-        1. Remove `CountTokens` method from LLMClient interface
-        2. Remove `GetModelInfo` method from LLMClient interface
-        3. Remove `ProviderTokenCount`, `ProviderModelInfo` structs
-        4. Update all LLMClient implementations to match new interface
+        1. In `internal/architect/app.go`, find the call to `apiService.InitLLMClient`
+        2. Change the first argument from `cliConfig.APIKey` to an empty string `""`
+        3. Update any associated documentation
     - **done-when:**
-        1. LLMClient interface has no token-related methods
-        2. All implementations are updated accordingly
-        3. Tests pass
-    - **depends-on:** [T032A, T032B, T032C, T032D]
+        1. The application passes an empty string as the API key to force environment lookup
+        2. All tests still pass
+    - **depends-on:** [T105]
 
-- [x] **T034 · refactor · p0: remove token fields from registry schema**
-    - **context:** Remove token-related fields from registry schema
+- [ ] **T107 · fix · p0: Prioritize Environment Variables in InitLLMClient**
+    - **context:** The `InitLLMClient` method prioritizes the passed API key over environment variables
     - **action:**
-        1. Remove `ContextWindow`, `MaxOutputTokens`, `Encoding` fields from `ModelDefinition`
-        2. Update registry validation and configuration loading
-        3. Update registry tests to handle new schema
-        4. Update any code using these fields
+        1. Modify `InitLLMClient` in `registry_api.go` to always check the environment variable first
+        2. Only fall back to the passed `apiKey` parameter if the environment variable is not set
+        3. Add clear logging to show which API key source is being used
     - **done-when:**
-        1. Registry schema has no token limit fields
-        2. All code using these fields is updated
-        3. All tests pass
-    - **depends-on:** [T033]
+        1. The method always checks environment variables first before using the provided apiKey
+        2. Unit tests pass with the modified logic
+    - **depends-on:** [T106]
 
-- [x] **T035 · docs · p1: update documentation to reflect token handling removal**
-    - **context:** Update documentation to explain token handling removal
+- [ ] **T108 · test · p1: Add Unit Tests for API Key Precedence Logic**
+    - **context:** Need comprehensive test coverage for the key selection logic
     - **action:**
-        1. Remove token limit explanations from README
-        2. Update CLI documentation to remove token-related flags
-        3. Document that application no longer does token counting/validation
-        4. Add notes that provider APIs handle their own limits natively
+        1. Create test cases for when environment variables are set/unset
+        2. Test with different providers (Gemini, OpenAI, OpenRouter)
+        3. Verify correct precedence of env vars over passed parameters
     - **done-when:**
-        1. Documentation reflects new approach
-        2. Error handling for provider limits is documented
-    - **depends-on:** [T032A, T032B, T032C, T032D, T032E, T032F, T033, T034]
+        1. Tests verify the environment variable is properly used when available
+        2. Tests verify fallback behavior when environment variable is not set
+        3. Tests cover multiple providers
+    - **depends-on:** [T107]
 
-- [x] **T036A-1 · refactor · p0: Remove token-related types from gemini/client.go**
-    - **context:** Continuing token handling removal - clean up client.go legacy types
+- [ ] **T109 · test · p1: Create Multi-Provider Test for API Key Isolation**
+    - **context:** Need an integration test that verifies API keys aren't mixed between providers
     - **action:**
-        1. Remove `TokenCount` struct from client.go
-        2. Remove `CountTokens` method from Client interface
-        3. Remove token-related fields from `GenerationResult` struct
-        4. Remove `GetModelInfo` method from Client interface
+        1. Set up test environment with distinct API keys for different providers
+        2. Create a test that uses models from multiple providers in one run
+        3. Verify that each provider uses its correct API key
     - **done-when:**
-        1. client.go only contains essential model configuration types
-        2. Legacy Client interface no longer has token-related methods
-    - **depends-on:** [T034]
+        1. Test can successfully call multiple providers in one run
+        2. Each provider uses the correct API key from its environment variable
+    - **depends-on:** [T107]
 
-- [x] **T036A-2 · refactor · p0: Disable token-related test files**
-    - **context:** Model info and token counting tests are no longer relevant
+- [ ] **T110 · test · p0: Manual End-to-End Testing**
+    - **context:** Need to verify fixes work in a real environment
     - **action:**
-        1. Rename `internal/gemini/model_info_test.go` to `internal/gemini/model_info_test.go.disabled`
-        2. Update skip messages to indicate these tests are for removed functionality
+        1. Build the application with all fixes
+        2. Test with OpenRouter model using valid OPENROUTER_API_KEY
+        3. Test with Gemini model using valid GEMINI_API_KEY
+        4. Test with both models in sequence or parallel
     - **done-when:**
-        1. Token-related test files are disabled with .disabled extension
-    - **depends-on:** [T036A-1]
+        1. OpenRouter authentication works correctly
+        2. Gemini authentication works correctly
+        3. Both can work in the same session without key leakage
+    - **depends-on:** [T107]
 
-- [x] **T036A-3 · refactor · p0: Remove token references from provider_test.go**
-    - **context:** The gemini provider tests still contain token-related mocks and tests
+- [ ] **T111 · task · p1: Update T100 Status and Documentation**
+    - **context:** Original task T100 was marked complete but the fix was incomplete
     - **action:**
-        1. Remove `CountTokensFunc` and `GetModelLimitsFunc` fields from MockLLMClient
-        2. Remove implementations of `CountTokens` and `GetModelLimits` methods
-        3. Delete the `TestGeminiClientGetModelLimits` test function
+        1. Update T100 status to indicate partial implementation
+        2. Add references to T105-T110 as the complete fix
+        3. Update documentation to explain the root cause that was missed
     - **done-when:**
-        1. provider_test.go has no token-related methods or tests
-        2. Tests run successfully without token functionality
-    - **depends-on:** [T036A-1]
-
-- [x] **T036A-4 · refactor · p0: Update test_adapter.go**
-    - **context:** The integration test adapter still tries to use token functionality
-    - **action:**
-        1. Remove `TokenCount` field assignment in `ProviderResult` conversion
-        2. Delete the `CountTokens` and `GetModelLimits` methods
-    - **done-when:**
-        1. test_adapter.go has no token-related methods
-        2. No references to TokenCount in the adapter
-    - **depends-on:** [T036A-1]
-
-- [x] **T036A-5 · refactor · p0: Verify and mark T036A complete**
-    - **context:** Ensure all token references are removed and task is finished
-    - **action:**
-        1. Run `go build ./internal/gemini` to verify build succeeds
-        2. Run `go test ./internal/gemini` to verify tests pass
-        3. Run `go build ./...` to check for other impacted packages
-        4. Fix any cascading issues in other packages
-        5. Mark original T036A task as complete
-    - **done-when:**
-        1. All builds and tests succeed
-        2. T036A is marked complete with [x]
-    - **depends-on:** [T036A-1, T036A-2, T036A-3, T036A-4]
-
-- [x] **T036A · refactor · p0: Remove token references from gemini client**
-    - **context:** Fix build errors in gemini client after removing token handling
-    - **action:**
-        1. Remove TokenCount field from ProviderResult struct in GenerateContent
-        2. Delete CountTokens and GetModelLimits methods
-        3. Remove ClientAdapter/geminiLLMAdapter token-related methods
-        4. Remove HTTPClient type and modelInfoMutex fields from geminiClient
-    - **done-when:**
-        1. gemini package builds without token-related errors
-    - **depends-on:** [T034]
-
-- [x] **T036B · refactor · p0: Remove token references from openai client**
-    - **context:** Fix build errors in openai client after removing token handling
-    - **action:**
-        1. Remove tokenizerAPI interface and realTokenizer implementation
-        2. Remove modelInfo struct and modelLimits field
-        3. Remove getEncodingForModel helper and tiktoken import
-        4. Remove TokenCount field from ProviderResult in GenerateContent
-    - **done-when:**
-        1. openai package builds without token-related errors
-    - **depends-on:** [T034]
-
-- [x] **T036C · refactor · p0: Remove or disable token-dependent tests**
-    - **context:** Fix build errors in test files that depend on token functionality
-    - **action:**
-        1. Renamed and disabled various token-dependent test files with .disabled extension
-        2. Updated internal/openai/openai_client.go to remove token functionality
-        3. Updated internal/registry/config.go and registry/registry.go to remove token validation
-        4. Created simplified versions of test helpers to make builds pass
-    - **done-when:**
-        1. Renamed test files no longer cause build errors
-    - **depends-on:** [T034]
-
-- [x] **T036D · refactor · p0: Clean up token stub files**
-    - **context:** Remove unused token stub files
-    - **action:**
-        1. Replaced internal/architect/token_stubs.go with minimal placeholder
-        2. Replaced internal/architect/modelproc/token_stubs.go with minimal placeholder
-        3. Added comments explaining their purpose and future removal path
-    - **done-when:**
-        1. All unused token stub files are removed or disabled
-    - **depends-on:** [T036A, T036B, T036C]
-
-- [x] **T036E · test · p0: Fix token-related test failures**
-    - **context:** Fix test failures from token removal to ensure pre-commit hooks pass
-    - **action:**
-        1. Update/disable test files in internal/architect/ that reference token structs
-        2. Update/disable test files in internal/integration/ that reference token structs
-        3. Fix test files in internal/openai/ to work with updated client API
-        4. Fix test files in internal/registry/ to handle removed token fields
-    - **done-when:**
-        1. All tests pass and pre-commit hooks succeed (`go test ./... && go vet ./...`)
-        2. No need to use `--no-verify` for commits
-    - **depends-on:** [T036A, T036B, T036C, T036D]
-
-
-
-## test infrastructure
-- [x] **T031 · chore · p0: fix integration test failures and pre-commit hooks**
-    - **context:** Testing Infrastructure Maintenance
-    - **action:**
-        1. Fix `internal/integration/rate_limit_test.go` - undefined methods and type issues
-        2. Update `internal/integration/test_utils.go` - remove unused imports and ensure types
-        3. Ensure all provider mock objects are properly initialized in TestEnv
-        4. Fix API client type mismatches and parameter issues
-    - **done-when:**
-        1. All integration tests pass.
-        2. Pre-commit hooks pass without --no-verify.
-        3. `go vet` and `go build` run without errors.
-    - **depends-on:** none
-
-## registry & configuration
-- [x] **T001 · refactor · p1: remove absolute path fallback in registry config lookup**
-    - **context:** CR-01: Registry Config Path: Kill Absolute Fallbacks
-    - **action:**
-        1. Remove hardcoding of `/Users/phaedrus/Development/architect/config/models.yaml` in `internal/registry/manager.go`.
-        2. Log and return clear error if default config missing.
-    - **done-when:**
-        1. Code referencing absolute paths is removed.
-        2. Tests pass demonstrating error handling for missing config.
-        3. CLI returns informative error if config is missing.
-    - **depends-on:** none
-
-- [x] **T002 · test · p2: update registry tests to use injected config paths**
-    - **context:** CR-01: Registry Config Path: Kill Absolute Fallbacks
-    - **action:**
-        1. Refactor tests in `internal/registry/manager_test.go` to inject configuration paths or use temporary test files.
-        2. Ensure tests cover scenarios where config file exists and where it is missing.
-    - **done-when:**
-        1. Registry tests no longer rely on hardcoded paths.
-        2. Tests pass for both found and missing config file scenarios.
-    - **depends-on:** [T001]
-
-- [x] **T003 · refactor · p1: centralize model/provider detection in registry**
-    - **context:** CR-06: Model Detection: Config-driven Not String Matching
-    - **action:**
-        1. Implement functions in `internal/registry/manager.go` to determine provider based on model name using registry data.
-        2. Ensure these functions handle unknown models gracefully (e.g., return error or specific type).
-    - **done-when:**
-        1. Registry provides functions like `GetProviderForModel(modelName)`.
-        2. Logic relies solely on loaded registry configuration.
-    - **depends-on:** none
-
-- [x] **T004 · test · p2: add tests for registry model detection**
-    - **context:** CR-06: Model Detection: Config-driven Not String Matching
-    - **action:**
-        1. Add unit tests in `internal/registry/manager_test.go` to verify the model/provider detection logic.
-        2. Include test cases for known models, unknown models, and potentially malformed model names.
-    - **done-when:**
-        1. Tests pass covering various detection scenarios.
-    - **depends-on:** [T003]
-
-- [x] **T005 · refactor · p2: refactor CLI code to use registry for model detection**
-    - **context:** CR-06: Model Detection: Config-driven Not String Matching
-    - **action:**
-        1. Update `cmd/architect/cli.go` validation logic to use `registry.GetProviderForModel`.
-        2. Update `internal/architect/app.go` or orchestrator logic to use registry detection instead of string matching.
-    - **done-when:**
-        1. CLI and core app logic use registry for provider detection.
-        2. String matching for provider detection is removed.
-    - **depends-on:** [T003]
-
-## security & logging
-- [x] **T006 · test · p0: audit logger calls for secret leaks in registry**
-    - **context:** CR-02: Secrets: Audit & Seal Log Leaks
-    - **action:**
-        1. Review all logger calls in `internal/registry/*` for potential leaks of API keys or other sensitive info.
-    - **done-when:**
-        1. Audit complete and documented.
-    - **depends-on:** none
-
-- [x] **T007 · test · p0: audit logger calls for secret leaks in openrouter provider**
-    - **context:** CR-02: Secrets: Audit & Seal Log Leaks
-    - **action:**
-        1. Review all logger calls in `providers/openrouter/*` for potential leaks of API keys or other sensitive info.
-    - **done-when:**
-        1. Audit complete and documented.
-    - **depends-on:** none
-
-- [x] **T008 · refactor · p0: refactor logging calls to avoid outputting secrets**
-    - **context:** CR-02: Secrets: Audit & Seal Log Leaks
-    - **action:**
-        1. Modify logger calls identified in audits to log only presence/absence of secrets, never values.
-        2. Ensure error messages returned from providers do not inadvertently contain secrets before logging.
-    - **done-when:**
-        1. Code refactored to prevent secret logging.
-        2. Manual code review confirms no secrets are logged.
-    - **depends-on:** [T006, T007]
-
-- [x] **T009 · test · p0: add unit test to detect secrets in logs**
-    - **context:** CR-02: Secrets: Audit & Seal Log Leaks
-    - **action:**
-        1. Create a test helper or modify logger mock to fail tests if a pattern resembling a secret (e.g., API key format) is logged.
-        2. Integrate this check into relevant unit tests for providers and registry.
-    - **done-when:**
-        1. Unit tests fail if secrets are logged.
-        2. Relevant tests pass with the new check incorporated.
-    - **depends-on:** [T008]
-
-## error handling
-- [x] **T010 · refactor · p1: create shared errors package**
-    - **context:** CR-03: Error Handling: Deduplicate & Centralize
-    - **action:**
-        1. Create `internal/llm/errors.go` (or similar).
-        2. Define shared error types/structs and categorization logic (e.g., rate limit, auth, invalid request).
-    - **done-when:**
-        1. Shared errors package exists with core definitions.
-        2. Basic structure for categorization logic is in place.
-    - **depends-on:** none
-
-- [x] **T011 · refactor · p2: refactor openrouter provider errors to use shared package**
-    - **context:** CR-03: Error Handling: Deduplicate & Centralize
-    - **action:**
-        1. Modify `providers/openrouter/errors.go` to use types and logic from `internal/llm/errors.go`.
-        2. Remove duplicated error definitions/logic.
-    - **done-when:**
-        1. OpenRouter provider uses the shared errors package.
-        2. Tests for OpenRouter error handling pass.
-    - **depends-on:** [T010]
-
-- [x] **T012 · refactor · p2: refactor openai provider errors to use shared package**
-    - **context:** CR-03: Error Handling: Deduplicate & Centralize
-    - **action:**
-        1. Modify `providers/openai/errors.go` to use types and logic from `internal/llm/errors.go`.
-        2. Remove duplicated error definitions/logic.
-    - **done-when:**
-        1. OpenAI provider uses the shared errors package.
-        2. Tests for OpenAI error handling pass.
-    - **depends-on:** [T010]
-
-- [x] **T013 · refactor · p2: refactor gemini provider errors to use shared package**
-    - **context:** CR-03: Error Handling: Deduplicate & Centralize
-    - **action:**
-        1. Modify `providers/gemini/errors.go` to use types and logic from `internal/llm/errors.go`.
-        2. Remove duplicated error definitions/logic.
-    - **done-when:**
-        1. Gemini provider uses the shared errors package.
-        2. Tests for Gemini error handling pass.
-    - **depends-on:** [T010]
-
-- [x] **T014 · test · p2: add tests for shared error handling logic**
-    - **context:** CR-03: Error Handling: Deduplicate & Centralize
-    - **action:**
-        1. Create `internal/llm/errors_test.go`.
-        2. Add unit tests verifying the error categorization logic for various error patterns/types.
-    - **done-when:**
-        1. Shared error logic has sufficient test coverage.
-        2. Tests pass.
-    - **depends-on:** [T010]
-
-## providers/openrouter
-- [x] **T015 · refactor · p1: remove string matching for token logic in openrouter client**
-    - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **action:**
-        1. Remove any code in `providers/openrouter/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.
-    - **done-when:**
-        1. String matching logic for token properties is removed.
-    - **depends-on:** none
-
-- [x] **T016 · refactor · p1: refactor openrouter generatecontent to use request-local params**
-    - **context:** CR-05: Parameter Mapping: Remove Shared State
-    - **action:**
-        1. Modify `GenerateContent` in `providers/openrouter/client.go` to copy request parameters to local variables.
-        2. Ensure no parameters are read directly from receiver fields within the request handling logic.
-    - **done-when:**
-        1. `GenerateContent` uses only method-local variables for request parameters.
-    - **depends-on:** none
-
-- [x] **T017 · refactor · p1: remove receiver field mutations for request params in openrouter client**
-    - **context:** CR-05: Parameter Mapping: Remove Shared State
-    - **action:**
-        1. Identify and remove any code in `providers/openrouter/client.go` that modifies receiver fields (e.g., `c.temperature = ...`) based on request parameters.
-    - **done-when:**
-        1. No receiver fields are mutated based on request-specific parameters.
-    - **depends-on:** [T016]
-
-- [x] **T018 · test · p1: add race detector test for concurrent openrouter requests**
-    - **context:** CR-05: Parameter Mapping: Remove Shared State
-    - **action:**
-        1. Create a new test in `providers/openrouter/client_test.go` that makes concurrent calls to `GenerateContent`.
-        2. Run this test with the `-race` flag enabled.
-    - **done-when:**
-        1. Concurrent request test exists.
-        2. Test passes under the race detector (`go test -race ./...`).
-    - **depends-on:** [T017]
-
-## other providers
-- [x] **T019 · refactor · p1: remove string matching for token logic in openai client**
-    - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **action:**
-        1. Remove any code in `providers/openai/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.
-    - **done-when:**
-        1. String matching logic for token properties is removed.
-    - **depends-on:** none
-
-- [x] **T020 · refactor · p1: remove string matching for token logic in gemini client**
-    - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **action:**
-        1. Remove any code in `providers/gemini/client.go` that uses string matching on model names to determine token limits or tokenizer encoding.
-    - **done-when:**
-        1. String matching logic for token properties is removed.
-    - **depends-on:** none
-
-## model info & token counting
-- [~] **T021 · feature · p1: implement fetching token limits/encodings exclusively from registry**
-    - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **status:** OBSOLETE - Superseded by T032A-F, T033, T034 that simplify token handling
-    - **action:**
-        1. ~~Modify provider clients (`providers/*`) to retrieve token limits and encoding information only from the registry manager.~~
-        2. ~~Ensure this data is accessed correctly during token counting and request preparation.~~
-    - **done-when:**
-        1. ~~All provider clients use registry data for token limits/encodings.~~
-        2. ~~Tests relying on this logic pass.~~
-    - **depends-on:** [T015, T019, T020, T003]
-
-- [~] **T022 · feature · p1: implement fast-fail for unknown models in token logic**
-    - **context:** CR-04: Token Logic: Eliminate String Matching Hacks
-    - **status:** OBSOLETE - Superseded by T032A-F, T033, T034 that simplify token handling
-    - **action:**
-        1. ~~Modify provider clients (`providers/*`) to explicitly check if a model exists in the registry before attempting token operations.~~
-        2. ~~Return a clear error and log if the model is not found in the configuration.~~
-    - **done-when:**
-        1. ~~Clients fail fast with clear errors for unknown models during token operations.~~
-        2. ~~Tests cover the unknown model scenario.~~
-    - **depends-on:** [T021]
-
-## testing
-- [x] **T023 · test · p2: add table-driven tests for openrouter error/edge cases**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Add table-driven tests in `providers/openrouter/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
-    - **done-when:**
-        1. Comprehensive table-driven tests for error/edge cases exist and pass.
-    - **depends-on:** [T011]
-
-- [x] **T024 · test · p2: add table-driven tests for openai error/edge cases**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Add table-driven tests in `providers/openai/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
-    - **done-when:**
-        1. Comprehensive table-driven tests for error/edge cases exist and pass.
-    - **depends-on:** [T012]
-
-- [x] **T025 · test · p2: add table-driven tests for gemini error/edge cases**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Add table-driven tests in `providers/gemini/*_test.go` covering API errors, HTTP errors, invalid inputs, streaming issues, etc.
-    - **done-when:**
-        1. Comprehensive table-driven tests for error/edge cases exist and pass.
-    - **depends-on:** [T013]
-
-- [x] **T026 · test · p2: add tests for config bootstrapping error/edge cases**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Add tests covering registry initialization errors (e.g., invalid YAML, missing file after install attempt).
-        2. Add tests for CLI flag parsing errors related to config/registry.
-    - **done-when:**
-        1. Tests pass for config bootstrapping error scenarios.
-    - **depends-on:** [T001, T002]
-
-- [x] **T027 · test · p2: add tests for audit logging error/edge cases**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Add tests for `internal/auditlog/*` covering file write errors, JSON marshal errors, and concurrent logging.
-    - **done-when:**
-        1. Tests pass for audit logging error scenarios.
-    - **depends-on:** none
-
-- [x] **T028 · test · p2: ensure error path test coverage > 90% for all providers**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Review test coverage reports for `providers/*/errors.go` and related error handling code.
-        2. Add necessary tests to achieve >= 90% coverage for error paths.
-    - **done-when:**
-        1. Test coverage for provider error handling meets target.
-        2. CI coverage check passes.
-    - **depends-on:** [T011, T012, T013, T014]
-
-## Test Coverage CI
-- [x] **T030 · chore · p1: Create Coverage Check Script**
-    - **context:** Need a robust way to check test coverage against a 90% threshold
-    - **action:**
-        1. Create `scripts/check-coverage.sh` to generate coverage and validate against threshold
-        2. Make script capable of accepting custom threshold as parameter
-        3. Format script to handle decimal precision appropriately
-        4. Make script executable
-    - **done-when:**
-        1. Script exists and is executable
-        2. Script generates coverage report and checks against 90% threshold
-        3. Script returns non-zero exit code when coverage is below threshold
-    - **depends-on:** none
-
-- [x] **T031 · chore · p1: Create Per-Package Coverage Check Script**
-    - **context:** Need a way to identify specific packages that don't meet coverage threshold
-    - **action:**
-        1. Create `scripts/check-package-coverage.sh` for per-package coverage reporting
-        2. Format output with visual indicators for packages below threshold
-        3. Make script executable
-    - **done-when:**
-        1. Script exists and is executable
-        2. Script reports coverage per package with pass/fail indicators
-        3. Script returns non-zero exit code if any package is below threshold
-    - **depends-on:** [T030]
-
-- [x] **T032 · chore · p0: Update CI Workflow to Enforce 90% Coverage**
-    - **context:** The current CI workflow enforces only 50% coverage, which is too low
-    - **action:**
-        1. Update the coverage check step in `.github/workflows/ci.yml`
-        2. Change threshold value from 50% to 90%
-        3. Improve threshold parsing for floating-point precision
-        4. Add detailed package coverage information on failure
-    - **done-when:**
-        1. CI configuration file is updated
-        2. Coverage check fails for <90% coverage
-        3. Coverage failures show detailed per-package info
-    - **depends-on:** [T030]
-
-- [x] **T033 · chore · p1: Add Coverage Artifacts to CI**
-    - **context:** Coverage reports should be available for download after CI runs
-    - **action:**
-        1. Add step to CI workflow to upload coverage report as artifact
-        2. Set appropriate retention period for artifacts
-    - **done-when:**
-        1. CI workflow includes artifact upload step
-        2. Coverage reports are accessible from GitHub Actions interface
-    - **depends-on:** [T032]
-
-- [x] **T034 · docs · p2: Update Documentation for Coverage Requirements**
-    - **context:** Developers need guidance on meeting coverage requirements locally
-    - **action:**
-        1. Update `CLAUDE.md` to document coverage scripts and requirements
-        2. Include examples of running coverage checks locally
-        3. Explain how to interpret and fix coverage issues
-    - **done-when:**
-        1. Documentation accurately explains coverage requirements
-        2. Instructions for local coverage checking are clear
-    - **depends-on:** [T030, T031]
-
-- [x] **T035 · chore · p0: Complete and Verify Coverage Enforcement in CI**
-    - **context:** Final verification that all coverage components work together
-    - **action:**
-        1. Run coverage checks locally with scripts
-        2. Trigger CI workflow to verify coverage enforcement
-        3. Fix any issues with scripts or workflow
-    - **done-when:**
-        1. Local coverage checks produce expected results
-        2. CI enforces 90% coverage threshold correctly
-        3. All coverage-related tools and documentation are complete
-    - **depends-on:** [T030, T031, T032, T033, T034]
-
-- [x] **T036 · chore · p1: Mark Test Coverage CI Task Complete**
-    - **context:** Final task to mark the original coverage enforcement task as complete
-    - **action:**
-        1. Verify all subtasks (T030-T035) are completed
-        2. Update T029 to mark it as complete
-    - **done-when:**
-        1. All tasks T030-T035 are marked as done
-        2. Task T029 is marked as complete
-    - **depends-on:** [T035]
-
-- [x] **T029 · chore · p2: enforce 90%+ test coverage in CI**
-    - **context:** CR-07: Test Coverage: Error & Edge Paths
-    - **action:**
-        1. Configure CI workflow (e.g., GitHub Actions) to run code coverage checks.
-        2. Set the failure threshold to 90% for relevant packages/overall coverage.
-    - **done-when:**
-        1. CI pipeline includes a coverage check step.
-        2. CI fails if coverage drops below 90%.
-    - **depends-on:** [T028]
-
-## documentation
-- [x] **T037 · feature · p2: add project-specific OpenRouter integration documentation**
-    - **context:** Documentation improvements
-    - **action:**
-        1. Write detailed doc for OpenRouter integration, covering model config, API key handling, registry mapping, parameter mapping, and error handling.
-    - **done-when:**
-        1. OpenRouter docs present and accurate; referenced in README.
-    - **depends-on:** none
-
-## Post-commit glance hook fix
-- [x] **T038 · fix · p0: Update post-commit hook configuration to always run glance**
-    - **context:** The post-commit hook for generating directory overviews with glance is not running after commits
-    - **action:**
-        1. Modify `.pre-commit-config.yaml` to add `always_run: true` to the run-glance hook
-        2. Update the hook entry to use an absolute path or explicit PATH setting for glance
-        3. Add appropriate error handling and logging for debugging purposes
-    - **done-when:**
-        1. Hook configuration is updated with all necessary changes
-        2. PR is prepared with the changes
-    - **depends-on:** none
-
-- [x] **T039 · chore · p1: Ensure consistent hook installation across environments**
-    - **context:** The post-commit hook needs to be properly installed and refreshed after configuration changes
-    - **action:**
-        1. Update `scripts/setup.sh` to verify glance installation if needed
-        2. Ensure the setup script correctly installs post-commit hooks
-        3. Add instructions for manual hook reinstallation if needed
-    - **done-when:**
-        1. Setup script handles post-commit hook installation reliably
-        2. Documentation for hook installation is up-to-date
-    - **depends-on:** [T038]
-
-- [x] **T040 · docs · p1: Update hook documentation for glance integration**
-    - **context:** Documentation should clearly explain the glance post-commit hook functionality
-    - **action:**
-        1. Update hooks/README.md to document the glance post-commit hook purpose
-        2. Add troubleshooting tips for hook-related issues
-        3. Include information about glance installation requirements
-    - **done-when:**
-        1. Documentation is complete and accurate regarding post-commit hooks
-        2. Troubleshooting information is included for common issues
-    - **depends-on:** [T039]
-
-- [ ] **T041 · test · p0: Verify post-commit hook functionality**
-    - **context:** The updated post-commit hook needs thorough testing to ensure it works reliably
-    - **action:**
-        1. Reinstall hooks with the updated configuration
-        2. Create test commits and verify glance runs automatically
-        3. Test edge cases (empty commits, different file types, etc.)
-        4. Fix any remaining issues identified during testing
-    - **done-when:**
-        1. Post-commit hook reliably runs glance after commits
-        2. Generated glance.md files are properly created/updated
-    - **depends-on:** [T038, T039, T040]
+        1. T100 status accurately reflects partial implementation
+        2. Documentation clearly explains the issue and complete fix
+    - **depends-on:** [T105, T106, T107, T108, T109, T110]

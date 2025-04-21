@@ -16,6 +16,14 @@ import (
 	"github.com/phrazzld/architect/internal/registry"
 )
 
+// Helper function to get minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // registryAPIService implements the APIService interface using the Registry
 type registryAPIService struct {
 	registry *registry.Registry
@@ -94,7 +102,8 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 		if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
 			if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {
 				effectiveApiKey = os.Getenv(envVar)
-				s.logger.Debug("Using API key from environment variable %s", envVar)
+				s.logger.Debug("Using API key from environment variable %s for provider '%s'",
+					envVar, modelDef.Provider)
 			}
 		}
 
@@ -108,6 +117,21 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// Create the client using the provider implementation
 	s.logger.Debug("Creating LLM client for model '%s' using provider '%s'",
 		modelName, modelDef.Provider)
+
+	// Verify the API key is non-empty before passing it to the provider
+	if effectiveApiKey == "" {
+		s.logger.Error("Empty API key for provider '%s' - this will cause authentication failures", modelDef.Provider)
+	} else {
+		// Log a prefix of the API key for easier debugging while maintaining security
+		keyPrefix := ""
+		if len(effectiveApiKey) >= 5 {
+			keyPrefix = effectiveApiKey[:5]
+		} else if len(effectiveApiKey) > 0 {
+			keyPrefix = effectiveApiKey[:]
+		}
+		s.logger.Debug("Using API key for provider '%s' (length: %d, starts with: %s)",
+			modelDef.Provider, len(effectiveApiKey), keyPrefix)
+	}
 
 	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelDef.APIModelID, effectiveEndpoint)
 	if err != nil {
@@ -163,6 +187,18 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 					effectiveApiKey = os.Getenv(envVar)
 					s.logger.Debug("Using API key from environment variable %s for provider %s",
 						envVar, providerName)
+
+					// Log the API key prefix for debugging
+					if len(effectiveApiKey) > 0 {
+						keyPrefix := ""
+						if len(effectiveApiKey) >= 5 {
+							keyPrefix = effectiveApiKey[:5]
+						} else {
+							keyPrefix = effectiveApiKey[:]
+						}
+						s.logger.Debug("API key for provider %s (length: %d, starts with: %s)",
+							providerName, len(effectiveApiKey), keyPrefix)
+					}
 				}
 			}
 		} else {
@@ -171,9 +207,17 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 			case ProviderGemini:
 				effectiveApiKey = os.Getenv("GEMINI_API_KEY")
 				s.logger.Debug("No config found. Using API key from GEMINI_API_KEY environment variable")
+				if len(effectiveApiKey) > 0 {
+					s.logger.Debug("API key length: %d, starts with: %s",
+						len(effectiveApiKey), effectiveApiKey[:min(5, len(effectiveApiKey))])
+				}
 			case ProviderOpenAI:
 				effectiveApiKey = os.Getenv("OPENAI_API_KEY")
 				s.logger.Debug("No config found. Using API key from OPENAI_API_KEY environment variable")
+				if len(effectiveApiKey) > 0 {
+					s.logger.Debug("API key length: %d, starts with: %s",
+						len(effectiveApiKey), effectiveApiKey[:min(5, len(effectiveApiKey))])
+				}
 			}
 		}
 	}

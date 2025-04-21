@@ -255,7 +255,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	if cfg.Verbose {
 		cfg.LogLevel = logutil.DebugLevel
 	}
-	cfg.APIKey = getenv(apiKeyEnvVar)
+	// Line removed per T105: No longer hardcoding Gemini API key
+	// The API key should be determined by the provider-specific logic in InitLLMClient
 	cfg.APIEndpoint = getenv(apiEndpointEnvVar)
 
 	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)

@@ -12,6 +12,14 @@ import (
 	"github.com/phrazzld/architect/internal/providers"
 )
 
+// Helper function to get minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+
 // OpenRouterProvider implements the Provider interface for OpenRouter models.
 type OpenRouterProvider struct {
 	logger logutil.LoggerInterface
@@ -41,14 +49,20 @@ func (p *OpenRouterProvider) CreateClient(
 	// Initialize API key from provided argument or environment variable
 	effectiveAPIKey := apiKey
 	if effectiveAPIKey != "" {
-		p.logger.Debug("Using provided API key")
+		p.logger.Debug("Using provided API key (length: %d, starts with: %s)", len(effectiveAPIKey), effectiveAPIKey[:min(5, len(effectiveAPIKey))])
 	} else {
 		// Fall back to the OPENROUTER_API_KEY environment variable
 		effectiveAPIKey = os.Getenv("OPENROUTER_API_KEY")
+		p.logger.Debug("OPENROUTER_API_KEY environment variable length: %d", len(effectiveAPIKey))
 		if effectiveAPIKey == "" {
 			return nil, fmt.Errorf("no OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set")
 		}
-		p.logger.Debug("Using API key from OPENROUTER_API_KEY environment variable")
+		p.logger.Debug("Using API key from OPENROUTER_API_KEY environment variable (starts with: %s)", effectiveAPIKey[:min(5, len(effectiveAPIKey))])
+	}
+
+	// Validate the API key format
+	if !strings.HasPrefix(effectiveAPIKey, "sk-or") {
+		p.logger.Warn("OpenRouter API key does not have the expected 'sk-or' prefix. This may cause authentication failures.")
 	}
 
 	// Set default API endpoint if none provided
