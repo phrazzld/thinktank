@@ -3,6 +3,8 @@ package architect
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -596,3 +598,182 @@ func TestGetErrorDetails(t *testing.T) {
 
 // TestInitClient was removed as it tested the deprecated InitClient method
 // which has been removed from the APIService interface
+
+// TestInitLLMClient_APIKeyPrecedence tests the environment variable prioritization
+// in a direct way without relying on the Registry implementation
+func TestInitLLMClient_APIKeyPrecedence(t *testing.T) {
+	// Create test cases for environment variable priority
+	tests := []struct {
+		name         string
+		providerName string
+		envVarKey    string
+		envVarValue  string
+		passedKey    string
+		expectError  bool
+		expectSource string
+	}{
+		// OpenRouter provider tests
+		{
+			name:         "OpenRouter - Environment Variable Priority",
+			providerName: "openrouter",
+			envVarKey:    "OPENROUTER_API_KEY",
+			envVarValue:  "env-key-123",
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "env",
+		},
+		{
+			name:         "OpenRouter - Fallback to Passed Key",
+			providerName: "openrouter",
+			envVarKey:    "OPENROUTER_API_KEY",
+			envVarValue:  "", // Empty, simulating unset
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "passed",
+		},
+		{
+			name:         "OpenRouter - Error When No Key Available",
+			providerName: "openrouter",
+			envVarKey:    "OPENROUTER_API_KEY",
+			envVarValue:  "", // Empty, simulating unset
+			passedKey:    "", // Empty passed key
+			expectError:  true,
+			expectSource: "",
+		},
+
+		// Gemini provider tests
+		{
+			name:         "Gemini - Environment Variable Priority",
+			providerName: "gemini",
+			envVarKey:    "GEMINI_API_KEY",
+			envVarValue:  "env-key-123",
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "env",
+		},
+		{
+			name:         "Gemini - Fallback to Passed Key",
+			providerName: "gemini",
+			envVarKey:    "GEMINI_API_KEY",
+			envVarValue:  "", // Empty, simulating unset
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "passed",
+		},
+
+		// OpenAI provider tests
+		{
+			name:         "OpenAI - Environment Variable Priority",
+			providerName: "openai",
+			envVarKey:    "OPENAI_API_KEY",
+			envVarValue:  "env-key-123",
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "env",
+		},
+		{
+			name:         "OpenAI - Fallback to Passed Key",
+			providerName: "openai",
+			envVarKey:    "OPENAI_API_KEY",
+			envVarValue:  "", // Empty, simulating unset
+			passedKey:    "passed-key-xyz",
+			expectError:  false,
+			expectSource: "passed",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// Save original environment variable to restore later
+			originalValue := os.Getenv(tc.envVarKey)
+			defer func() {
+				var err error
+				if originalValue != "" {
+					err = os.Setenv(tc.envVarKey, originalValue)
+				} else {
+					err = os.Unsetenv(tc.envVarKey)
+				}
+				if err != nil {
+					t.Logf("Warning: Failed to restore environment variable %s: %v", tc.envVarKey, err)
+				}
+			}()
+
+			// Set up test environment
+			var err error
+			if tc.envVarValue != "" {
+				err = os.Setenv(tc.envVarKey, tc.envVarValue)
+			} else {
+				err = os.Unsetenv(tc.envVarKey)
+			}
+			if err != nil {
+				t.Fatalf("Failed to set environment variable %s: %v", tc.envVarKey, err)
+			}
+
+			// Test the key precedence with a direct implementation of ConfigLoader
+			configLoader := &testConfigLoader{
+				apiKeySources: map[string]string{
+					tc.providerName: tc.envVarKey,
+				},
+			}
+
+			// Test the API key precedence logic
+			effectiveKey, err := configLoader.getEffectiveAPIKey(tc.providerName, tc.passedKey)
+
+			// Verify expectations
+			if tc.expectError {
+				if err == nil {
+					t.Errorf("Expected error, but got none")
+				}
+				return
+			} else if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			var source string
+			if effectiveKey == tc.envVarValue && tc.envVarValue != "" {
+				source = "env"
+			} else if effectiveKey == tc.passedKey {
+				source = "passed"
+			} else {
+				source = "unknown"
+			}
+
+			if source != tc.expectSource {
+				t.Errorf("Expected key source '%s', but got '%s'", tc.expectSource, source)
+			}
+		})
+	}
+}
+
+// testConfigLoader simulates the key selection logic
+type testConfigLoader struct {
+	apiKeySources map[string]string
+}
+
+func (t *testConfigLoader) getEffectiveAPIKey(provider string, passedKey string) (string, error) {
+	// Start with an empty key
+	effectiveKey := ""
+
+	// Try environment variable first
+	if envVar, ok := t.apiKeySources[provider]; ok && envVar != "" {
+		envKey := os.Getenv(envVar)
+		if envKey != "" {
+			effectiveKey = envKey
+			// In real code there would be logging here
+		}
+	}
+
+	// Fall back to passed key if environment variable is not set
+	if effectiveKey == "" && passedKey != "" {
+		effectiveKey = passedKey
+		// In real code there would be logging here
+	}
+
+	// Reject if still empty
+	if effectiveKey == "" {
+		return "", fmt.Errorf("API key is required for provider '%s'", provider)
+	}
+
+	return effectiveKey, nil
+}

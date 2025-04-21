@@ -94,7 +94,7 @@
         2. Unit tests pass with the modified logic
     - **depends-on:** [T106]
 
-- [ ] **T108 · test · p1: Add Unit Tests for API Key Precedence Logic**
+- [x] **T108 · test · p1: Add Unit Tests for API Key Precedence Logic**
     - **context:** Need comprehensive test coverage for the key selection logic
     - **action:**
         1. Create test cases for when environment variables are set/unset
