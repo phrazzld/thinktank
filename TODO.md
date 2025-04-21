@@ -14,7 +14,7 @@
     - **depends-on:** []
     - **status:** Initial implementation was incomplete. Additional tasks T105-T111 added to address the root cause.
 
-- [ ] **T101 · fix · p1: Add API Key Validation in OpenRouter Provider**
+- [x] **T101 · fix · p1: Add API Key Validation in OpenRouter Provider**
     - **context:** The OpenRouter provider should validate the API key format before attempting to use it
     - **action:**
         1. Update `internal/providers/openrouter/provider.go` to check if the API key starts with "sk-or"

@@ -133,7 +133,7 @@ func FormatAPIError(err error, statusCode int, responseBody []byte) *llm.LLMErro
 	// Add OpenRouter-specific suggestions for certain error types
 	switch category {
 	case llm.CategoryAuth:
-		llmError.Suggestion = "Check that your OpenRouter API key is valid and has not expired. Ensure OPENROUTER_API_KEY environment variable is set correctly."
+		llmError.Suggestion = "Check that your OpenRouter API key is valid, has not expired, and starts with 'sk-or'. Ensure OPENROUTER_API_KEY environment variable is set correctly and not confused with other provider keys."
 	case llm.CategoryInsufficientCredits:
 		llmError.Suggestion = "Check your OpenRouter account balance and add credits if needed. Visit https://openrouter.ai/account for account details."
 	case llm.CategoryNotFound:
@@ -167,7 +167,7 @@ func CreateAPIError(category llm.ErrorCategory, errMsg string, originalErr error
 	// Add OpenRouter-specific suggestions
 	switch category {
 	case llm.CategoryAuth:
-		llmError.Suggestion = "Check that your OpenRouter API key is valid and has not expired. Ensure OPENROUTER_API_KEY environment variable is set correctly."
+		llmError.Suggestion = "Check that your OpenRouter API key is valid, has not expired, and starts with 'sk-or'. Ensure OPENROUTER_API_KEY environment variable is set correctly and not confused with other provider keys."
 	case llm.CategoryRateLimit:
 		llmError.Suggestion = "Wait and try again later. Consider adjusting the --max-concurrent and --rate-limit flags to limit request rate."
 	case llm.CategoryInsufficientCredits:

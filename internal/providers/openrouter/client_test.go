@@ -35,14 +35,14 @@ func TestCreateClientThroughProvider(t *testing.T) {
 	}{
 		{
 			name:        "Valid inputs with default endpoint",
-			apiKey:      "test-api-key",
+			apiKey:      "sk-or-test-api-key",
 			modelID:     "anthropic/claude-3-opus-20240229",
 			apiEndpoint: "",
 			wantErr:     false,
 		},
 		{
 			name:        "Valid inputs with custom endpoint",
-			apiKey:      "test-api-key",
+			apiKey:      "sk-or-test-api-key",
 			modelID:     "anthropic/claude-3-opus-20240229",
 			apiEndpoint: "https://custom-endpoint.com/api/v1",
 			wantErr:     false,
@@ -56,8 +56,16 @@ func TestCreateClientThroughProvider(t *testing.T) {
 			errContains: "no OpenRouter API key provided",
 		},
 		{
-			name:        "Empty model ID",
+			name:        "Invalid API key format",
 			apiKey:      "test-api-key",
+			modelID:     "anthropic/claude-3-opus-20240229",
+			apiEndpoint: "",
+			wantErr:     true,
+			errContains: "invalid OpenRouter API key format",
+		},
+		{
+			name:        "Empty model ID",
+			apiKey:      "sk-or-test-api-key",
 			modelID:     "",
 			apiEndpoint: "",
 			wantErr:     true,
@@ -96,7 +104,7 @@ func TestClientMethodsThroughProvider(t *testing.T) {
 	provider := NewProvider(logger)
 
 	// Get client
-	client, err := provider.CreateClient(context.Background(), "test-api-key", "anthropic/claude-3-opus-20240229", "")
+	client, err := provider.CreateClient(context.Background(), "sk-or-test-api-key", "anthropic/claude-3-opus-20240229", "")
 	require.NoError(t, err)
 
 	// Test GetModelName
@@ -282,7 +290,7 @@ func TestConcurrentGenerateContent(t *testing.T) {
 	}
 
 	// Create a client with the mock HTTP client
-	client, err := NewClient("test-api-key", "anthropic/claude-3-opus", "", logger)
+	client, err := NewClient("sk-or-test-api-key", "anthropic/claude-3-opus", "", logger)
 	require.NoError(t, err)
 
 	// Replace the client's HTTP client with our mock

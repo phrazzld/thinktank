@@ -62,7 +62,8 @@ func (p *OpenRouterProvider) CreateClient(
 
 	// Validate the API key format
 	if !strings.HasPrefix(effectiveAPIKey, "sk-or") {
-		p.logger.Warn("OpenRouter API key does not have the expected 'sk-or' prefix. This may cause authentication failures.")
+		p.logger.Warn("OpenRouter API key does not have the expected 'sk-or' prefix. This will cause authentication failures.")
+		return nil, fmt.Errorf("invalid OpenRouter API key format: key should start with 'sk-or'. Please check your API key and ensure you're using an OpenRouter key, not another provider's key")
 	}
 
 	// Set default API endpoint if none provided
