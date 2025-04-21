@@ -106,7 +106,7 @@
         3. Tests cover multiple providers
     - **depends-on:** [T107]
 
-- [ ] **T109 · test · p1: Create Multi-Provider Test for API Key Isolation**
+- [x] **T109 · test · p1: Create Multi-Provider Test for API Key Isolation**
     - **context:** Need an integration test that verifies API keys aren't mixed between providers
     - **action:**
         1. Set up test environment with distinct API keys for different providers
