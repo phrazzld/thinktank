@@ -596,3 +596,49 @@
     - **done-when:**
         1. OpenRouter docs present and accurate; referenced in README.
     - **depends-on:** none
+
+## Post-commit glance hook fix
+- [~] **T038 · fix · p0: Update post-commit hook configuration to always run glance**
+    - **context:** The post-commit hook for generating directory overviews with glance is not running after commits
+    - **action:**
+        1. Modify `.pre-commit-config.yaml` to add `always_run: true` to the run-glance hook
+        2. Update the hook entry to use an absolute path or explicit PATH setting for glance
+        3. Add appropriate error handling and logging for debugging purposes
+    - **done-when:**
+        1. Hook configuration is updated with all necessary changes
+        2. PR is prepared with the changes
+    - **depends-on:** none
+
+- [ ] **T039 · chore · p1: Ensure consistent hook installation across environments**
+    - **context:** The post-commit hook needs to be properly installed and refreshed after configuration changes
+    - **action:**
+        1. Update `scripts/setup.sh` to verify glance installation if needed
+        2. Ensure the setup script correctly installs post-commit hooks
+        3. Add instructions for manual hook reinstallation if needed
+    - **done-when:**
+        1. Setup script handles post-commit hook installation reliably
+        2. Documentation for hook installation is up-to-date
+    - **depends-on:** [T038]
+
+- [ ] **T040 · docs · p1: Update hook documentation for glance integration**
+    - **context:** Documentation should clearly explain the glance post-commit hook functionality
+    - **action:**
+        1. Update hooks/README.md to document the glance post-commit hook purpose
+        2. Add troubleshooting tips for hook-related issues
+        3. Include information about glance installation requirements
+    - **done-when:**
+        1. Documentation is complete and accurate regarding post-commit hooks
+        2. Troubleshooting information is included for common issues
+    - **depends-on:** [T039]
+
+- [ ] **T041 · test · p0: Verify post-commit hook functionality**
+    - **context:** The updated post-commit hook needs thorough testing to ensure it works reliably
+    - **action:**
+        1. Reinstall hooks with the updated configuration
+        2. Create test commits and verify glance runs automatically
+        3. Test edge cases (empty commits, different file types, etc.)
+        4. Fix any remaining issues identified during testing
+    - **done-when:**
+        1. Post-commit hook reliably runs glance after commits
+        2. Generated glance.md files are properly created/updated
+    - **depends-on:** [T038, T039, T040]

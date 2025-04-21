@@ -36,7 +36,9 @@ repos:
         pass_filenames: false
     -   id: run-glance
         name: Generate directory overview with glance
-        entry: glance ./
+        entry: /Users/phaedrus/go/bin/glance ./
         language: system
         stages: [post-commit]
         pass_filenames: false
+        always_run: true
+        verbose: true
