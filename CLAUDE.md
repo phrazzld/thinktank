@@ -8,7 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Run Tests:** `go test ./...`
 * **Run Single Test:** `go test -v -run TestName ./path/to/package`
 * **Run E2E Tests:** `./internal/e2e/run_e2e_tests.sh [-v] [-r TestPattern]`
-* **Check Coverage:** `go test -cover ./...` or `go test -coverprofile=coverage.out ./...`
+* **Check Coverage:**
+  * Basic: `go test -cover ./...`
+  * Detailed: `go test -coverprofile=coverage.out ./...`
+  * Verify 90% threshold: `./scripts/check-coverage.sh [threshold]`
+  * Per-package report: `./scripts/check-package-coverage.sh [threshold]`
 * **Format Code:** `go fmt ./...`
 * **Lint Code:** `go vet ./...`
 
@@ -32,6 +36,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Structured Logging:** Use the project's standard structured logging library
 * **Pre-commit Quality:** All code must pass tests, lint, and format checks
 * **Cross-Package Testing:** Focus on robust integration tests over unit tests
+* **Test Coverage:** Maintain 90% or higher code coverage for all packages
+  * CI will fail if overall coverage drops below 90%
+  * Use coverage scripts to identify coverage gaps before committing
 
 ## Using the `architect` CLI
 

@@ -510,7 +510,7 @@
         3. Script returns non-zero exit code when coverage is below threshold
     - **depends-on:** none
 
-- [ ] **T031 · chore · p1: Create Per-Package Coverage Check Script**
+- [x] **T031 · chore · p1: Create Per-Package Coverage Check Script**
     - **context:** Need a way to identify specific packages that don't meet coverage threshold
     - **action:**
         1. Create `scripts/check-package-coverage.sh` for per-package coverage reporting
@@ -522,7 +522,7 @@
         3. Script returns non-zero exit code if any package is below threshold
     - **depends-on:** [T030]
 
-- [ ] **T032 · chore · p0: Update CI Workflow to Enforce 90% Coverage**
+- [x] **T032 · chore · p0: Update CI Workflow to Enforce 90% Coverage**
     - **context:** The current CI workflow enforces only 50% coverage, which is too low
     - **action:**
         1. Update the coverage check step in `.github/workflows/ci.yml`
@@ -535,7 +535,7 @@
         3. Coverage failures show detailed per-package info
     - **depends-on:** [T030]
 
-- [ ] **T033 · chore · p1: Add Coverage Artifacts to CI**
+- [x] **T033 · chore · p1: Add Coverage Artifacts to CI**
     - **context:** Coverage reports should be available for download after CI runs
     - **action:**
         1. Add step to CI workflow to upload coverage report as artifact
@@ -545,7 +545,7 @@
         2. Coverage reports are accessible from GitHub Actions interface
     - **depends-on:** [T032]
 
-- [ ] **T034 · docs · p2: Update Documentation for Coverage Requirements**
+- [x] **T034 · docs · p2: Update Documentation for Coverage Requirements**
     - **context:** Developers need guidance on meeting coverage requirements locally
     - **action:**
         1. Update `CLAUDE.md` to document coverage scripts and requirements
@@ -556,7 +556,7 @@
         2. Instructions for local coverage checking are clear
     - **depends-on:** [T030, T031]
 
-- [ ] **T035 · chore · p0: Complete and Verify Coverage Enforcement in CI**
+- [x] **T035 · chore · p0: Complete and Verify Coverage Enforcement in CI**
     - **context:** Final verification that all coverage components work together
     - **action:**
         1. Run coverage checks locally with scripts
@@ -568,7 +568,7 @@
         3. All coverage-related tools and documentation are complete
     - **depends-on:** [T030, T031, T032, T033, T034]
 
-- [ ] **T036 · chore · p1: Mark Test Coverage CI Task Complete**
+- [x] **T036 · chore · p1: Mark Test Coverage CI Task Complete**
     - **context:** Final task to mark the original coverage enforcement task as complete
     - **action:**
         1. Verify all subtasks (T030-T035) are completed
@@ -578,7 +578,7 @@
         2. Task T029 is marked as complete
     - **depends-on:** [T035]
 
-- [ ] **T029 · chore · p2: enforce 90%+ test coverage in CI**
+- [x] **T029 · chore · p2: enforce 90%+ test coverage in CI**
     - **context:** CR-07: Test Coverage: Error & Edge Paths
     - **action:**
         1. Configure CI workflow (e.g., GitHub Actions) to run code coverage checks.
