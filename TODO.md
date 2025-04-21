@@ -620,7 +620,7 @@
         2. Documentation for hook installation is up-to-date
     - **depends-on:** [T038]
 
-- [ ] **T040 · docs · p1: Update hook documentation for glance integration**
+- [x] **T040 · docs · p1: Update hook documentation for glance integration**
     - **context:** Documentation should clearly explain the glance post-commit hook functionality
     - **action:**
         1. Update hooks/README.md to document the glance post-commit hook purpose
