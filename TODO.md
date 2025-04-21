@@ -598,7 +598,7 @@
     - **depends-on:** none
 
 ## Post-commit glance hook fix
-- [~] **T038 · fix · p0: Update post-commit hook configuration to always run glance**
+- [x] **T038 · fix · p0: Update post-commit hook configuration to always run glance**
     - **context:** The post-commit hook for generating directory overviews with glance is not running after commits
     - **action:**
         1. Modify `.pre-commit-config.yaml` to add `always_run: true` to the run-glance hook
@@ -609,7 +609,7 @@
         2. PR is prepared with the changes
     - **depends-on:** none
 
-- [ ] **T039 · chore · p1: Ensure consistent hook installation across environments**
+- [x] **T039 · chore · p1: Ensure consistent hook installation across environments**
     - **context:** The post-commit hook needs to be properly installed and refreshed after configuration changes
     - **action:**
         1. Update `scripts/setup.sh` to verify glance installation if needed

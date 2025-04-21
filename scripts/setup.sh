@@ -107,12 +107,46 @@ fi
 # Install git hooks
 print_header "Installing Git hooks"
 if command -v pre-commit >/dev/null 2>&1; then
+    # Install pre-commit hooks
+    echo "Installing pre-commit hooks..."
     pre-commit install
+
+    if [ $? -eq 0 ]; then
+        print_success "Pre-commit hooks installed successfully"
+    else
+        print_error "Failed to install pre-commit hooks"
+        echo "Please try running 'pre-commit install' manually"
+    fi
+
+    # Install post-commit hooks
+    echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
-    print_success "Git hooks installed successfully"
+
+    if [ $? -eq 0 ]; then
+        print_success "Post-commit hooks installed successfully"
+    else
+        print_error "Failed to install post-commit hooks"
+        echo "Please try running 'pre-commit install --hook-type post-commit' manually"
+    fi
+
+    # Verify hook installation
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
+        print_success "Git hooks verified in .git/hooks/"
+    else
+        print_warning "Hook files not found in .git/hooks/ directory"
+        echo "There may be an issue with your git configuration"
+    fi
+
+    # If glance is not installed, warn about post-commit hook potentially failing
+    if ! command -v glance >/dev/null 2>&1; then
+        print_warning "Post-commit hook requires glance, which is not installed"
+        echo "The post-commit hook will fail until glance is installed"
+    fi
 else
     print_warning "Skipping Git hook installation (pre-commit not available)"
-    echo "Please install pre-commit and run 'pre-commit install' and 'pre-commit install --hook-type post-commit' later."
+    echo "Please install pre-commit and run the following commands later:"
+    echo "  pre-commit install"
+    echo "  pre-commit install --hook-type post-commit"
 fi
 
 # Check for golangci-lint
@@ -126,6 +160,46 @@ else
     echo "Install instructions: https://golangci-lint.run/usage/install/"
 fi
 
+# Check for glance installation
+print_header "Checking glance installation"
+if command -v glance >/dev/null 2>&1; then
+    GLANCE_VERSION=$(glance --version 2>&1 || echo "version unknown")
+    print_success "glance is installed: $GLANCE_VERSION"
+else
+    print_warning "glance is not installed"
+    echo "glance is required for generating directory overview documentation."
+    echo "It is used by the post-commit hook to automatically update documentation."
+    echo ""
+    echo "Would you like to install glance automatically? (y/n) [y recommended]"
+    read -r INSTALL_GLANCE
+
+    if [[ $INSTALL_GLANCE =~ ^[Yy]$ ]] || [[ -z $INSTALL_GLANCE ]]; then
+        echo "Installing glance..."
+
+        if command -v go >/dev/null 2>&1; then
+            go install github.com/phaedrus-dev/glance@latest
+
+            # Check if installation was successful
+            if command -v glance >/dev/null 2>&1; then
+                print_success "glance installed successfully"
+            else
+                print_warning "glance was installed but is not in PATH"
+                echo "Please ensure your Go bin directory is in your PATH."
+                echo "For example, add this to your shell profile:"
+                echo "  export PATH=\$PATH:\$(go env GOPATH)/bin"
+            fi
+        else
+            print_error "Could not install glance - Go is not available"
+            echo "Please install glance manually:"
+            echo "  go install github.com/phaedrus-dev/glance@latest"
+        fi
+    else
+        print_warning "glance installation skipped, but it is required for directory documentation"
+        echo "The post-commit hook will not function properly without glance."
+        echo "To install glance later, run: go install github.com/phaedrus-dev/glance@latest"
+    fi
+fi
+
 # Building the project
 print_header "Building the project"
 go build -v
@@ -135,6 +209,48 @@ else
     print_error "Build failed"
 fi
 
+# Function to reinstall hooks if requested
+reinstall_hooks() {
+    print_header "Reinstalling Git Hooks"
+
+    if ! command -v pre-commit >/dev/null 2>&1; then
+        print_error "pre-commit is not installed"
+        echo "Please install pre-commit first"
+        return 1
+    fi
+
+    echo "Cleaning existing hooks..."
+    pre-commit clean
+
+    echo "Installing pre-commit hooks..."
+    pre-commit install
+
+    echo "Installing post-commit hooks..."
+    pre-commit install --hook-type post-commit
+
+    # Verify installation
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
+        print_success "Hooks reinstalled successfully"
+    else
+        print_error "Hook reinstallation may have failed - hook files not found"
+    fi
+}
+
+# Offer to reinstall hooks
+if [ -f ".git/hooks/pre-commit" ] || [ -f ".git/hooks/post-commit" ]; then
+    echo ""
+    echo "Would you like to reinstall all Git hooks? (y/n)"
+    echo "This can help fix hook issues by ensuring the latest configuration is used."
+    read -r REINSTALL_HOOKS
+
+    if [[ $REINSTALL_HOOKS =~ ^[Yy]$ ]]; then
+        reinstall_hooks
+    fi
+fi
+
 print_header "Setup Complete"
 echo "Your environment is now ready for development."
 echo "For more information, see the project README.md and hooks/README.md"
+echo ""
+echo "If you encounter issues with Git hooks, you can run this script again"
+echo "or follow the manual reinstallation steps in hooks/README.md"
