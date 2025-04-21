@@ -59,6 +59,9 @@ main
 # Test files
 test.txt
 
+# Glance files (temporary notes)
+**/glance.md
+
 # Development symlinks
 DEVELOPMENT_PHILOSOPHY.md
 DEVELOPMENT_PHILOSOPHY_APPENDIX_GO.md
