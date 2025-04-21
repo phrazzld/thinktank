@@ -117,7 +117,7 @@
         2. Each provider uses the correct API key from its environment variable
     - **depends-on:** [T107]
 
-- [ ] **T110 · test · p0: Manual End-to-End Testing**
+- [x] **T110 · test · p0: Manual End-to-End Testing**
     - **context:** Need to verify fixes work in a real environment
     - **action:**
         1. Build the application with all fixes
