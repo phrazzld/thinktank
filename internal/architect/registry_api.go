@@ -93,25 +93,37 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 			ErrClientInitialization, modelDef.Provider)
 	}
 
-	// Use the API key provided or get it from the appropriate environment variable
-	effectiveApiKey := apiKey
-	if effectiveApiKey == "" {
-		// Create a new config loader and use it directly to get the API key sources
-		configLoader := registry.NewConfigLoader()
-		modelConfig, err := configLoader.Load()
-		if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
-			if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {
-				effectiveApiKey = os.Getenv(envVar)
+	// IMPORTANT: Always prioritize environment variables for API keys to ensure proper isolation
+	// This ensures each provider uses its own correct API key, even if a key is passed as parameter
+
+	// Start with an empty key, which we'll populate from environment or passed parameter
+	effectiveApiKey := ""
+
+	// First try to get the key from environment variable based on provider
+	configLoader := registry.NewConfigLoader()
+	modelConfig, err := configLoader.Load()
+	if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
+		if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {
+			envApiKey := os.Getenv(envVar)
+			if envApiKey != "" {
+				effectiveApiKey = envApiKey
 				s.logger.Debug("Using API key from environment variable %s for provider '%s'",
 					envVar, modelDef.Provider)
 			}
 		}
+	}
 
-		// If still empty, check if we need to reject
-		if effectiveApiKey == "" {
-			return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'",
-				ErrClientInitialization, modelName, modelDef.Provider)
-		}
+	// Only fall back to the passed apiKey if environment variable is not set
+	if effectiveApiKey == "" && apiKey != "" {
+		effectiveApiKey = apiKey
+		s.logger.Debug("Environment variable not set or empty, using provided API key for provider '%s'",
+			modelDef.Provider)
+	}
+
+	// If still empty, we need to reject
+	if effectiveApiKey == "" {
+		return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'",
+			ErrClientInitialization, modelName, modelDef.Provider)
 	}
 
 	// Create the client using the provider implementation
@@ -160,31 +172,35 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 	// Detect provider type from model name using the legacy method
 	providerType := DetectProviderFromModel(modelName)
 
-	// Prepare provider-specific API key if not explicitly provided
-	effectiveApiKey := apiKey
-	if effectiveApiKey == "" {
-		// Create a new config loader to get the API key sources from config
-		configLoader := registry.NewConfigLoader()
-		modelConfig, err := configLoader.Load()
+	// IMPORTANT: Always prioritize environment variables for API keys to ensure proper isolation
+	// Start with an empty key, which we'll populate from environment or passed parameter
+	effectiveApiKey := ""
 
-		// If we have a config, use its API key mappings
-		if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
-			var envVar string
-			var ok bool
+	// First, try to get the key from environment variables
+	// Create a new config loader to get the API key sources from config
+	configLoader := registry.NewConfigLoader()
+	modelConfig, configErr := configLoader.Load()
 
-			// Map the provider type to the provider name used in the config
-			var providerName string
-			switch providerType {
-			case ProviderGemini:
-				providerName = "gemini"
-			case ProviderOpenAI:
-				providerName = "openai"
-			}
+	// If we have a config, use its API key mappings
+	if configErr == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
+		var envVar string
+		var ok bool
 
-			// Look up the environment variable name for this provider
-			if providerName != "" {
-				if envVar, ok = modelConfig.APIKeySources[providerName]; ok && envVar != "" {
-					effectiveApiKey = os.Getenv(envVar)
+		// Map the provider type to the provider name used in the config
+		var providerName string
+		switch providerType {
+		case ProviderGemini:
+			providerName = "gemini"
+		case ProviderOpenAI:
+			providerName = "openai"
+		}
+
+		// Look up the environment variable name for this provider
+		if providerName != "" {
+			if envVar, ok = modelConfig.APIKeySources[providerName]; ok && envVar != "" {
+				envApiKey := os.Getenv(envVar)
+				if envApiKey != "" {
+					effectiveApiKey = envApiKey
 					s.logger.Debug("Using API key from environment variable %s for provider %s",
 						envVar, providerName)
 
@@ -201,18 +217,24 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 					}
 				}
 			}
-		} else {
-			// Fallback if no config is available
-			switch providerType {
-			case ProviderGemini:
-				effectiveApiKey = os.Getenv("GEMINI_API_KEY")
+		}
+	} else {
+		// Fallback if no config is available
+		switch providerType {
+		case ProviderGemini:
+			envApiKey := os.Getenv("GEMINI_API_KEY")
+			if envApiKey != "" {
+				effectiveApiKey = envApiKey
 				s.logger.Debug("No config found. Using API key from GEMINI_API_KEY environment variable")
 				if len(effectiveApiKey) > 0 {
 					s.logger.Debug("API key length: %d, starts with: %s",
 						len(effectiveApiKey), effectiveApiKey[:min(5, len(effectiveApiKey))])
 				}
-			case ProviderOpenAI:
-				effectiveApiKey = os.Getenv("OPENAI_API_KEY")
+			}
+		case ProviderOpenAI:
+			envApiKey := os.Getenv("OPENAI_API_KEY")
+			if envApiKey != "" {
+				effectiveApiKey = envApiKey
 				s.logger.Debug("No config found. Using API key from OPENAI_API_KEY environment variable")
 				if len(effectiveApiKey) > 0 {
 					s.logger.Debug("API key length: %d, starts with: %s",
@@ -220,6 +242,13 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 				}
 			}
 		}
+	}
+
+	// Only fall back to the passed apiKey if environment variable is not set
+	if effectiveApiKey == "" && apiKey != "" {
+		effectiveApiKey = apiKey
+		s.logger.Debug("Environment variable not set or empty, using provided API key for provider type %v",
+			providerType)
 	}
 
 	// Check that we have an API key now

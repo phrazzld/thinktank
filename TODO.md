@@ -83,7 +83,7 @@
         2. All tests still pass
     - **depends-on:** [T105]
 
-- [ ] **T107 · fix · p0: Prioritize Environment Variables in InitLLMClient**
+- [x] **T107 · fix · p0: Prioritize Environment Variables in InitLLMClient**
     - **context:** The `InitLLMClient` method prioritizes the passed API key over environment variables
     - **action:**
         1. Modify `InitLLMClient` in `registry_api.go` to always check the environment variable first
