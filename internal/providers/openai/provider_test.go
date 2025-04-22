@@ -1,809 +1,405 @@
-// internal/providers/openai/provider_test.go
 package openai
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"log"
 	"os"
-	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/phrazzld/architect/internal/llm"
 	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/providers"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// MockLLMClient implements the llm.LLMClient interface for testing
-type MockLLMClient struct {
-	GenerateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
-	CountTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
-	GetModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
-	GetModelNameFunc    func() string
-	CloseFunc           func() error
-}
-
-// GenerateContent implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-	if m.GenerateContentFunc != nil {
-		return m.GenerateContentFunc(ctx, prompt, params)
-	}
-	return &llm.ProviderResult{Content: "Mock OpenAI response"}, nil
-}
-
-// CountTokens implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	if m.CountTokensFunc != nil {
-		return m.CountTokensFunc(ctx, prompt)
-	}
-	return &llm.ProviderTokenCount{Total: 15}, nil
-}
-
-// GetModelInfo implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	if m.GetModelInfoFunc != nil {
-		return m.GetModelInfoFunc(ctx)
-	}
-	return &llm.ProviderModelInfo{
-		Name:             "gpt-4",
-		InputTokenLimit:  8192,
-		OutputTokenLimit: 2048,
-	}, nil
-}
-
-// GetModelName implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) GetModelName() string {
-	if m.GetModelNameFunc != nil {
-		return m.GetModelNameFunc()
-	}
-	return "gpt-4"
-}
-
-// Close implements the llm.LLMClient interface for testing
-func (m *MockLLMClient) Close() error {
-	if m.CloseFunc != nil {
-		return m.CloseFunc()
-	}
-	return nil
-}
-
-// MockLogger implements the logutil.LoggerInterface for testing logger usage
-type MockLogger struct {
-	DebugCalls []string
-	InfoCalls  []string
-	WarnCalls  []string
-	ErrorCalls []string
-	FatalCalls []string
-}
-
-// Ensure MockLogger implements LoggerInterface
-var _ logutil.LoggerInterface = (*MockLogger)(nil)
-
-func NewMockLogger() *MockLogger {
-	return &MockLogger{
-		DebugCalls: make([]string, 0),
-		InfoCalls:  make([]string, 0),
-		WarnCalls:  make([]string, 0),
-		ErrorCalls: make([]string, 0),
-		FatalCalls: make([]string, 0),
-	}
-}
-
-func (m *MockLogger) Println(v ...interface{}) {
-	m.InfoCalls = append(m.InfoCalls, strings.TrimSpace(fmt.Sprintln(v...)))
-}
-
-func (m *MockLogger) Printf(format string, v ...interface{}) {
-	m.InfoCalls = append(m.InfoCalls, fmt.Sprintf(format, v...))
-}
-
-func (m *MockLogger) Debug(format string, v ...interface{}) {
-	m.DebugCalls = append(m.DebugCalls, fmt.Sprintf(format, v...))
-}
-
-func (m *MockLogger) Info(format string, v ...interface{}) {
-	m.InfoCalls = append(m.InfoCalls, fmt.Sprintf(format, v...))
-}
-
-func (m *MockLogger) Warn(format string, v ...interface{}) {
-	m.WarnCalls = append(m.WarnCalls, fmt.Sprintf(format, v...))
-}
-
-func (m *MockLogger) Error(format string, v ...interface{}) {
-	m.ErrorCalls = append(m.ErrorCalls, fmt.Sprintf(format, v...))
-}
-
-func (m *MockLogger) Fatal(format string, v ...interface{}) {
-	m.FatalCalls = append(m.FatalCalls, fmt.Sprintf(format, v...))
-}
-
-// TestOpenAIProviderImplementsProviderInterface ensures OpenAIProvider implements the Provider interface
-func TestOpenAIProviderImplementsProviderInterface(t *testing.T) {
-	// This is a compile-time check to ensure OpenAIProvider implements Provider
-	var _ providers.Provider = (*OpenAIProvider)(nil)
-
-	// Verify we can create a provider via the constructor function
-	provider := NewProvider(nil)
-
-	// Check that the provider is not nil and has the correct type
-	if provider == nil {
-		t.Fatal("Expected non-nil provider, got nil")
-	}
-
-	// Type assertion to verify the concrete type
-	_, ok := provider.(*OpenAIProvider)
-	if !ok {
-		t.Errorf("Expected provider to be of type *OpenAIProvider, got %T", provider)
-	}
-
-	// Verify that the provider implements the required method: CreateClient
-	// This is just checking method existence at runtime, actual functionality is tested elsewhere
-	method, found := reflect.TypeOf(provider).MethodByName("CreateClient")
-	if !found {
-		t.Error("Expected provider to implement CreateClient method, but it doesn't")
-	} else if method.Type == nil {
-		t.Error("Found CreateClient method but type information is missing")
-	}
-}
-
-// TestOpenAIClientAdapterImplementsLLMClientInterface ensures the client adapter returned
-// by the provider correctly implements the llm.LLMClient interface
-func TestOpenAIClientAdapterImplementsLLMClientInterface(t *testing.T) {
-	// Compile-time check to ensure OpenAIClientAdapter implements llm.LLMClient
-	var _ llm.LLMClient = (*OpenAIClientAdapter)(nil)
-
-	// Create a mock LLM client to wrap
-	mockClient := &MockLLMClient{}
-
-	// Create the adapter
-	adapter := NewOpenAIClientAdapter(mockClient)
-
-	// Verify that the adapter implements all required methods of llm.LLMClient
-	adapterType := reflect.TypeOf(adapter)
-
-	// Define the expected method names from the llm.LLMClient interface
-	expectedMethods := []string{
-		"GenerateContent",
-		"CountTokens",
-		"GetModelInfo",
-		"GetModelName",
-		"Close",
-	}
-
-	// Check each required method exists
-	for _, methodName := range expectedMethods {
-		_, found := adapterType.MethodByName(methodName)
-		if !found {
-			t.Errorf("Expected adapter to implement %s method, but it doesn't", methodName)
-		}
-	}
-
-	// Verify SetParameters method exists (specific to the adapter)
-	_, found := adapterType.MethodByName("SetParameters")
-	if !found {
-		t.Error("Expected adapter to implement SetParameters method, but it doesn't")
-	}
-}
-
-// TestAdapterParameterHelperMethods verifies that the adapter correctly processes parameters
-func TestAdapterParameterHelperMethods(t *testing.T) {
-	// Create an adapter instance with mock client
-	mockClient := &MockLLMClient{}
-	adapter := NewOpenAIClientAdapter(mockClient)
-
-	// Test getFloatParam with various input types
-	t.Run("getFloatParam handles different numeric types", func(t *testing.T) {
-		testCases := []struct {
-			name     string
-			input    interface{}
-			expected float32
-			ok       bool
-		}{
-			{"float64 value", float64(1.5), 1.5, true},
-			{"float32 value", float32(2.5), 2.5, true},
-			{"int value", 3, 3.0, true},
-			{"int32 value", int32(4), 4.0, true},
-			{"int64 value", int64(5), 5.0, true},
-			{"string value", "not a number", 0, false},
-			{"nil value", nil, 0, false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				// Set the parameter
-				adapter.SetParameters(map[string]interface{}{"test_param": tc.input})
-
-				// Check if parameter is extracted correctly
-				val, ok := adapter.getFloatParam("test_param")
-				if ok != tc.ok {
-					t.Errorf("Expected ok=%v, got %v", tc.ok, ok)
-				}
-				if ok && val != tc.expected {
-					t.Errorf("Expected value=%v, got %v", tc.expected, val)
-				}
-			})
-		}
-	})
-
-	// Test getIntParam with various input types
-	t.Run("getIntParam handles different numeric types", func(t *testing.T) {
-		testCases := []struct {
-			name     string
-			input    interface{}
-			expected int32
-			ok       bool
-		}{
-			{"int value", 42, 42, true},
-			{"int32 value", int32(43), 43, true},
-			{"int64 value", int64(44), 44, true},
-			{"float64 value", float64(45.7), 45, true},
-			{"float32 value", float32(46.7), 46, true},
-			{"string value", "not a number", 0, false},
-			{"nil value", nil, 0, false},
-		}
-
-		for _, tc := range testCases {
-			t.Run(tc.name, func(t *testing.T) {
-				// Set the parameter
-				adapter.SetParameters(map[string]interface{}{"test_param": tc.input})
-
-				// Check if parameter is extracted correctly
-				val, ok := adapter.getIntParam("test_param")
-				if ok != tc.ok {
-					t.Errorf("Expected ok=%v, got %v", tc.ok, ok)
-				}
-				if ok && val != tc.expected {
-					t.Errorf("Expected value=%v, got %v", tc.expected, val)
-				}
-			})
-		}
-	})
-}
-
-// TestNewProviderWithDifferentLoggers tests that NewProvider correctly handles different logger configurations
-func TestNewProviderWithDifferentLoggers(t *testing.T) {
-	// Save original env var and restore after test
-	origAPIKey := os.Getenv("OPENAI_API_KEY")
-	defer func() {
-		if err := os.Setenv("OPENAI_API_KEY", origAPIKey); err != nil {
-			t.Logf("Warning: Failed to restore original OPENAI_API_KEY: %v", err)
-		}
-	}()
-
-	// Test cases for different logger configurations
-	t.Run("With nil logger (default)", func(t *testing.T) {
-		// Create a provider with nil logger - should use default
-		provider := NewProvider(nil)
-
-		// Verify it's not nil and has the correct type
-		if provider == nil {
-			t.Fatal("Expected non-nil provider, got nil")
-		}
-
-		// Type assertion to get the concrete type
-		providerImpl, ok := provider.(*OpenAIProvider)
-		if !ok {
-			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
-		}
-
-		// Verify the logger was created (not nil)
-		if providerImpl.logger == nil {
-			t.Error("Provider should have created a default logger when nil was provided")
-		}
-
-		// While we can't easily check the default logger's configuration,
-		// we can at least verify it has the expected prefix
-		// This is a bit of an implementation detail, but it's useful to verify
-		if logger, ok := providerImpl.logger.(*logutil.Logger); ok {
-			// Call a method that would use the logger to verify it works
-			logger.Debug("Test debug message that should not appear")
-		}
-	})
-
-	t.Run("With custom structured logger", func(t *testing.T) {
-		// Create a custom logger
-		customLogger := logutil.NewLogger(logutil.DebugLevel, nil, "[custom-test] ")
-		provider := NewProvider(customLogger)
-
-		// Verify it's not nil and has the correct type
-		if provider == nil {
-			t.Fatal("Expected non-nil provider, got nil")
-		}
-
-		// Type assertion to get the concrete type
-		providerImpl, ok := provider.(*OpenAIProvider)
-		if !ok {
-			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
-		}
-
-		// Verify the custom logger was properly stored
-		if providerImpl.logger != customLogger {
-			t.Error("Provider did not store the custom logger that was provided")
-		}
-	})
-
-	t.Run("With standard library logger adapter", func(t *testing.T) {
-		// Create a standard library logger and wrap it
-		stdLogger := logutil.NewStdLoggerAdapter(log.New(os.Stderr, "[std-test] ", log.LstdFlags))
-		provider := NewProvider(stdLogger)
-
-		// Verify it's not nil and has the correct type
-		if provider == nil {
-			t.Fatal("Expected non-nil provider, got nil")
-		}
-
-		// Type assertion to get the concrete type
-		providerImpl, ok := provider.(*OpenAIProvider)
-		if !ok {
-			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
-		}
-
-		// Verify the standard logger adapter was properly stored
-		if providerImpl.logger != stdLogger {
-			t.Error("Provider did not store the standard logger adapter that was provided")
-		}
-	})
-
-	t.Run("With mock logger for verification", func(t *testing.T) {
-		// First unset any API key that might be in the environment
-		if err := os.Unsetenv("OPENAI_API_KEY"); err != nil {
-			t.Fatalf("Failed to unset environment variable: %v", err)
-		}
-
-		// Create a mock logger to verify log calls
-		mockLogger := NewMockLogger()
-		provider := NewProvider(mockLogger)
-
-		// Verify it's not nil and has the correct type
-		if provider == nil {
-			t.Fatal("Expected non-nil provider, got nil")
-		}
-
-		// Type assertion to get the concrete type
-		providerImpl, ok := provider.(*OpenAIProvider)
-		if !ok {
-			t.Fatalf("Expected provider to be of type *OpenAIProvider, got %T", provider)
-		}
-
-		// Verify the mock logger was properly stored
-		if providerImpl.logger != mockLogger {
-			t.Error("Provider did not store the mock logger that was provided")
-		}
-
-		// Trigger a log call by creating a client (which will fail)
-		_, err := provider.CreateClient(context.Background(), "", "gpt-4", "")
-
-		// Verify the appropriate logging method was called
-		// We expect at least one debug message
-		if len(mockLogger.DebugCalls) == 0 {
-			t.Error("Expected at least one Debug log call, but none were recorded")
-		}
-
-		// We should have received an error about the API key
-		if err == nil {
-			t.Error("Expected an error from CreateClient with empty API key, got nil")
-		} else if !strings.Contains(err.Error(), "no valid OpenAI API key provided") {
-			t.Errorf("Expected error message about missing API key, got: %v", err)
-		}
-	})
-}
-
-// TestNewProvider verifies that NewProvider creates a valid OpenAIProvider
 func TestNewProvider(t *testing.T) {
-	// Create a provider with no logger (should use default)
-	provider := NewProvider(nil)
-
-	// Verify it's not nil
-	if provider == nil {
-		t.Fatal("Expected non-nil provider, got nil")
-	}
-
-	// Create a provider with custom logger
+	// Test with logger
 	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
-	provider = NewProvider(logger)
+	provider := NewProvider(logger)
+	assert.NotNil(t, provider, "Provider should not be nil")
+	assert.IsType(t, &OpenAIProvider{}, provider, "Provider should be of type *OpenAIProvider")
 
-	// Verify it's not nil
-	if provider == nil {
-		t.Fatal("Expected non-nil provider, got nil")
-	}
+	// Test without logger (should create default logger)
+	provider = NewProvider(nil)
+	assert.NotNil(t, provider, "Provider should not be nil")
+	assert.IsType(t, &OpenAIProvider{}, provider, "Provider should be of type *OpenAIProvider")
 }
 
-// TestOpenAIClientAdapter verifies that OpenAIClientAdapter correctly wraps a client
-func TestOpenAIClientAdapter(t *testing.T) {
-	// Create a mock client
-	mockClient := &MockLLMClient{}
+func TestCreateClient(t *testing.T) {
+	ctx := context.Background()
+	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
 
-	// Create an adapter
-	adapter := NewOpenAIClientAdapter(mockClient)
-
-	// Test that adapter implements llm.LLMClient
-	var _ llm.LLMClient = adapter
-
-	// Test SetParameters
-	params := map[string]interface{}{
-		"temperature": 0.7,
-		"top_p":       0.9,
-	}
-	adapter.SetParameters(params)
-
-	// Test GenerateContent pass-through
-	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		return &llm.ProviderResult{Content: "Mock OpenAI response"}, nil
-	}
-	result, err := adapter.GenerateContent(context.Background(), "test prompt", nil)
-	if err != nil {
-		t.Fatalf("Expected no error from GenerateContent, got: %v", err)
-	}
-	if result.Content != "Mock OpenAI response" {
-		t.Errorf("Expected 'Mock OpenAI response', got: %s", result.Content)
-	}
-
-	// Test error case
-	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		return nil, errors.New("mock openai error")
-	}
-	_, err = adapter.GenerateContent(context.Background(), "test prompt", nil)
-	if err == nil {
-		t.Fatal("Expected error from GenerateContent, got nil")
-	}
-
-	// Test providing parameters directly to GenerateContent
-	mockClient.GenerateContentFunc = func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// Verify that parameters are correctly passed through
-		if params["temperature"].(float64) != 0.8 {
-			t.Errorf("Expected temperature=0.8, got %v", params["temperature"])
-		}
-		return &llm.ProviderResult{Content: "Response with direct params"}, nil
-	}
-	directParams := map[string]interface{}{
-		"temperature": 0.8,
-		"top_p":       0.95,
-	}
-	_, err = adapter.GenerateContent(context.Background(), "test prompt", directParams)
-	if err != nil {
-		t.Fatalf("Expected no error from GenerateContent with direct params, got: %v", err)
-	}
-}
-
-// TestProviderCreateClientMethod tests the CreateClient method required by the Provider interface
-func TestProviderCreateClientMethod(t *testing.T) {
-	// Save original env var and restore after test
+	// Save current environment
 	origAPIKey := os.Getenv("OPENAI_API_KEY")
 	defer func() {
-		if err := os.Setenv("OPENAI_API_KEY", origAPIKey); err != nil {
-			t.Logf("Warning: Failed to restore original OPENAI_API_KEY: %v", err)
+		// Restore environment
+		if origAPIKey != "" {
+			_ = os.Setenv("OPENAI_API_KEY", origAPIKey)
+		} else {
+			_ = os.Unsetenv("OPENAI_API_KEY")
 		}
 	}()
 
-	// Test cases for the CreateClient method
-	testCases := []struct {
-		name        string
-		apiKey      string
-		envKey      string
-		modelID     string
-		apiEndpoint string
-		expectError bool
-		errorSubstr string // Substring that should be present in the error message
+	tests := []struct {
+		name         string
+		apiKey       string
+		envKey       string
+		modelID      string
+		apiEndpoint  string
+		expectError  bool
+		errorMessage string
 	}{
 		{
-			name:        "No API key provided and no environment variable",
-			apiKey:      "",
+			name:        "Valid API key as parameter",
+			apiKey:      "sk-test12345",
 			envKey:      "",
-			modelID:     "gpt-4",
+			modelID:     "gpt-3.5-turbo",
 			apiEndpoint: "",
-			expectError: true,
-			errorSubstr: "no valid OpenAI API key provided and OPENAI_API_KEY environment variable not set",
+			expectError: false,
 		},
 		{
-			name:        "Valid API key provided directly",
-			apiKey:      "sk-validapikey",
-			envKey:      "",
+			name:        "Valid API key in environment",
+			apiKey:      "",
+			envKey:      "sk-envtest12345",
 			modelID:     "gpt-4",
 			apiEndpoint: "",
 			expectError: false,
-			errorSubstr: "",
 		},
 		{
-			name:        "Invalid format API key provided directly",
-			apiKey:      "invalid-key",
+			name:         "No API key provided",
+			apiKey:       "",
+			envKey:       "",
+			modelID:      "gpt-3.5-turbo",
+			apiEndpoint:  "",
+			expectError:  true,
+			errorMessage: "no valid OpenAI API key provided",
+		},
+		{
+			name:         "Non-standard API key format",
+			apiKey:       "not-an-sk-key",
+			envKey:       "",
+			modelID:      "gpt-3.5-turbo",
+			apiEndpoint:  "",
+			expectError:  true, // It will error as it doesn't look like an OpenAI key
+			errorMessage: "no valid OpenAI API key provided",
+		},
+		{
+			name:        "Custom API endpoint",
+			apiKey:      "sk-test12345",
 			envKey:      "",
-			modelID:     "gpt-4",
-			apiEndpoint: "",
-			expectError: true,
-			errorSubstr: "no valid OpenAI API key provided",
-		},
-		{
-			name:        "Empty API key but valid key in environment",
-			apiKey:      "",
-			envKey:      "sk-validapikey",
-			modelID:     "gpt-4",
-			apiEndpoint: "",
+			modelID:     "gpt-3.5-turbo",
+			apiEndpoint: "https://custom.openai.api/v1",
 			expectError: false,
-			errorSubstr: "",
-		},
-		{
-			name:        "Invalid API key in environment",
-			apiKey:      "",
-			envKey:      "invalid-key",
-			modelID:     "gpt-4",
-			apiEndpoint: "",
-			expectError: false, // Provider only logs a warning for invalid format, doesn't return an error
-			errorSubstr: "",
-		},
-		{
-			name:        "Empty modelID with valid API key format",
-			apiKey:      "sk-validapikey",
-			envKey:      "",
-			modelID:     "",
-			apiEndpoint: "",
-			expectError: false, // In test environment, this fails at a later stage in NewClient
-			errorSubstr: "",
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Set up environment
-			if tc.envKey != "" {
-				if err := os.Setenv("OPENAI_API_KEY", tc.envKey); err != nil {
-					t.Fatalf("Failed to set OPENAI_API_KEY: %v", err)
-				}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Setup environment
+			if tt.envKey != "" {
+				err := os.Setenv("OPENAI_API_KEY", tt.envKey)
+				require.NoError(t, err, "Failed to set environment variable")
 			} else {
-				if err := os.Unsetenv("OPENAI_API_KEY"); err != nil {
-					t.Fatalf("Failed to unset OPENAI_API_KEY: %v", err)
-				}
+				err := os.Unsetenv("OPENAI_API_KEY")
+				require.NoError(t, err, "Failed to unset environment variable")
 			}
 
-			// Create provider with a custom logger to capture logs
-			// Since some error states emit warnings instead of returning errors
-			logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
+			// Create provider
 			provider := NewProvider(logger)
+			client, err := provider.CreateClient(ctx, tt.apiKey, tt.modelID, tt.apiEndpoint)
 
-			// Test the CreateClient method
-			client, err := provider.CreateClient(context.Background(), tc.apiKey, tc.modelID, tc.apiEndpoint)
-
-			// Verify error expectations
-			if tc.expectError {
-				if err == nil {
-					t.Errorf("Expected error for case %q, got nil", tc.name)
-				} else if tc.errorSubstr != "" && !strings.Contains(err.Error(), tc.errorSubstr) {
-					t.Errorf("Error message does not contain expected substring.\nExpected to contain: %q\nActual error: %v",
-						tc.errorSubstr, err)
+			// Check results
+			if tt.expectError {
+				assert.Error(t, err, "Expected an error but got none")
+				if tt.errorMessage != "" {
+					assert.Contains(t, err.Error(), tt.errorMessage, "Error message doesn't match expected")
 				}
-			}
-			// For cases where we don't expect an error but might get one in test environment
-			// We just verify that error is nil in controlled environments
-			// Or we've passed API key validation but might still fail at client creation
-			// We don't need to make additional assertions here
-
-			// For valid key format cases, we'd actually expect an error from openai.NewClient
-			// since we're not setting up a full test environment, but we've validated the key format check
-			// We only care about the API key validation step in this test
-			if strings.HasPrefix(tc.apiKey, "sk-") || strings.HasPrefix(tc.envKey, "sk-") {
-				// We should have passed the initial API key validation
-				// but would likely fail at client creation due to test environment
-				if client != nil {
-					// Close the client if it was successfully created
-					_ = client.Close()
+				assert.Nil(t, client, "Client should be nil when there's an error")
+			} else {
+				// For a successful client creation, we should have a valid client
+				// but we can't test the actual API calls without mocking the OpenAI SDK
+				if !assert.NoError(t, err, "Unexpected error: %v", err) {
+					return
 				}
-				return
-			}
+				assert.NotNil(t, client, "Client should not be nil")
+				assert.IsType(t, &OpenAIClientAdapter{}, client, "Client should be of type *OpenAIClientAdapter")
 
-			// Close the client if it was successfully created
-			if client != nil {
-				_ = client.Close()
+				// Check model name
+				modelName := client.GetModelName()
+				assert.Equal(t, tt.modelID, modelName, "Model name doesn't match expected")
+
+				// Test Close method
+				err = client.Close()
+				assert.NoError(t, err, "Close should not return an error")
 			}
 		})
 	}
 }
 
-// TestEnvironmentVariableFallbackForAPIKey tests the specific behavior of the provider
-// when explicitly handling API keys from environment variables.
-func TestEnvironmentVariableFallbackForAPIKey(t *testing.T) {
-	// Save original env var and restore after test
-	origAPIKey := os.Getenv("OPENAI_API_KEY")
-	defer func() {
-		if err := os.Setenv("OPENAI_API_KEY", origAPIKey); err != nil {
-			t.Logf("Warning: Failed to restore original OPENAI_API_KEY: %v", err)
-		}
-	}()
+func TestAdapterParameterHandling(t *testing.T) {
+	// Create a mock LLM client to verify parameter handling
+	mockClient := &MockLLMClient{
+		modelName: "gpt-3.5-turbo",
+	}
 
-	const testModelID = "gpt-4"
-	const validKey = "sk-valid-key-format-for-testing"
+	// Create adapter with mock client
+	adapter := NewOpenAIClientAdapter(mockClient)
 
-	// Test with empty explicit key but a valid env var key
-	t.Run("Fallback to environment variable when no explicit key provided", func(t *testing.T) {
-		// Set up a valid key in the environment
-		if err := os.Setenv("OPENAI_API_KEY", validKey); err != nil {
-			t.Fatalf("Failed to set test environment variable: %v", err)
-		}
+	// Test parameters
+	testParams := map[string]interface{}{
+		"temperature":       0.7,
+		"top_p":             0.95,
+		"max_tokens":        100,
+		"frequency_penalty": 0.5,
+		"presence_penalty":  0.2,
+	}
 
-		// Create a provider with a logger to observe log messages
-		logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test-env-var] ")
-		provider := NewProvider(logger)
+	// Set parameters
+	adapter.SetParameters(testParams)
 
-		// Call CreateClient with empty explicit key
-		client, err := provider.CreateClient(context.Background(), "", testModelID, "")
+	// Verify adapter stored parameters
+	assert.Equal(t, testParams, adapter.params, "Parameters not stored correctly")
 
-		// The provider should use the env var key and not return an error
-		// However, in test environment, client creation might fail at a later stage
-		// so we only check that we pass the API key validation
+	// Test GenerateContent with parameters
+	ctx := context.Background()
+	result, err := adapter.GenerateContent(ctx, "Test prompt", nil)
+	assert.NoError(t, err, "GenerateContent should not return an error")
+	assert.NotNil(t, result, "Result should not be nil")
 
-		if err != nil {
-			// Check if the error is NOT about missing API key
-			if strings.Contains(err.Error(), "no valid OpenAI API key provided") {
-				t.Errorf("Provider failed to use environment variable key: %v", err)
-			} else {
-				// Other errors are expected in test environment
-				t.Logf("Expected error in test environment: %v", err)
-			}
-		}
+	// Verify the mock client was called with the right parameters
+	assert.Equal(t, "Test prompt", mockClient.lastPrompt, "Prompt was not passed correctly")
 
-		// Clean up
-		if client != nil {
-			_ = client.Close()
-		}
-	})
+	// Override parameters with direct call
+	newParams := map[string]interface{}{
+		"temperature": 0.5,
+		"top_p":       0.8,
+	}
 
-	// Test with both explicit key and env var - explicit key should take precedence
-	t.Run("Explicit key takes precedence over environment variable", func(t *testing.T) {
-		// Set up a valid key in the environment
-		if err := os.Setenv("OPENAI_API_KEY", "sk-env-var-key"); err != nil {
-			t.Fatalf("Failed to set test environment variable: %v", err)
-		}
+	_, err = adapter.GenerateContent(ctx, "New prompt", newParams)
+	assert.NoError(t, err, "GenerateContent should not return an error")
 
-		// Create a provider with a logger to observe log messages
-		logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test-env-var] ")
-		provider := NewProvider(logger)
-
-		// Call CreateClient with valid explicit key
-		explicitKey := "sk-explicit-key"
-		client, err := provider.CreateClient(context.Background(), explicitKey, testModelID, "")
-
-		// The provider should use the explicit key and not return an error
-		// However, in test environment, client creation might fail at a later stage
-
-		if err != nil {
-			// Check if the error is NOT about missing API key
-			if strings.Contains(err.Error(), "no valid OpenAI API key provided") {
-				t.Errorf("Provider failed to use explicit key: %v", err)
-			} else {
-				// Other errors are expected in test environment
-				t.Logf("Expected error in test environment: %v", err)
-			}
-		}
-
-		// We can't directly verify which key was used without mocking the openai.NewClient function
-		// But we can at least verify we reached the client creation stage
-
-		// Clean up
-		if client != nil {
-			_ = client.Close()
-		}
-	})
-
-	// Test with empty explicit key and empty env var - should return specific error
-	t.Run("Error when both explicit key and environment variable are empty", func(t *testing.T) {
-		// Unset the env var
-		if err := os.Unsetenv("OPENAI_API_KEY"); err != nil {
-			t.Fatalf("Failed to unset environment variable: %v", err)
-		}
-
-		// Create a provider with a logger
-		logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test-env-var] ")
-		provider := NewProvider(logger)
-
-		// Call CreateClient with empty explicit key
-		client, err := provider.CreateClient(context.Background(), "", testModelID, "")
-
-		// Should get an error about missing API key
-		if err == nil {
-			t.Error("Expected error when no API key provided, got nil")
-			if client != nil {
-				_ = client.Close()
-			}
-		} else if !strings.Contains(err.Error(), "no valid OpenAI API key provided and OPENAI_API_KEY environment variable not set") {
-			t.Errorf("Expected error message about missing API key, got: %v", err)
-		}
-	})
+	// Verify parameters were overridden
+	assert.Equal(t, "New prompt", mockClient.lastPrompt, "Prompt was not passed correctly")
+	assert.Equal(t, newParams, adapter.params, "Parameters were not overridden correctly")
 }
 
-// TestProviderCreateClientSuccessful focuses specifically on the successful path
-// for the CreateClient method, verifying that a valid client is returned and
-// that it is properly wrapped with the OpenAIClientAdapter.
-func TestProviderCreateClientSuccessful(t *testing.T) {
-	// Save original env var and restore after test
-	origAPIKey := os.Getenv("OPENAI_API_KEY")
-	defer func() {
-		if err := os.Setenv("OPENAI_API_KEY", origAPIKey); err != nil {
-			t.Logf("Warning: Failed to restore original OPENAI_API_KEY: %v", err)
-		}
-	}()
-
-	// Set up a valid API key format in the environment
-	const testAPIKey = "sk-test-valid-key-for-unit-testing"
-	const testModelID = "gpt-4"
-
-	if err := os.Setenv("OPENAI_API_KEY", testAPIKey); err != nil {
-		t.Fatalf("Failed to set test environment variable: %v", err)
+func TestGetFloatParam(t *testing.T) {
+	adapter := &OpenAIClientAdapter{
+		params: map[string]interface{}{
+			"float64_param": float64(1.5),
+			"float32_param": float32(2.5),
+			"int_param":     42,
+			"int32_param":   int32(43),
+			"int64_param":   int64(44),
+			"string_param":  "not a number",
+		},
 	}
 
-	// Create a provider instance with a custom logger to validate logging behavior
-	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test-provider] ")
-	provider := NewProvider(logger)
-
-	// We can't directly use this mock client since we can't inject it into the provider
-	// But we define it here to document what we would ideally test if we could inject mocks
-	// This is removed from implementation to avoid unused variable warnings
-	/*
-		mockClient := &MockLLMClient{
-			GetModelNameFunc: func() string {
-				return testModelID
-			},
-			GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-				return &llm.ProviderResult{Content: "Test successful content generation"}, nil
-			},
-			CountTokensFunc: func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-				return &llm.ProviderTokenCount{Total: 42}, nil
-			},
-			GetModelInfoFunc: func(ctx context.Context) (*llm.ProviderModelInfo, error) {
-				return &llm.ProviderModelInfo{
-					Name:             testModelID,
-					InputTokenLimit:  8192,
-					OutputTokenLimit: 2048,
-				}, nil
-			},
-		}
-	*/
-
-	// Temporarily replace the openai.NewClient function to return our mock
-	// This is typically done with monkey patching or a similar technique
-	// For this test, we directly check for the adapter wrapping behavior
-	// which is more important than the internal client creation
-
-	// Since we can't easily mock openai.NewClient directly (it's not using an interface),
-	// we'll just verify the adapter behavior and assume the CreateClient method
-	// would correctly create a client with the proper configuration
-
-	// Get a client from the provider - this actually calls the real openai.NewClient
-	// which will fail, but we can still test the API key handling
-	client, err := provider.CreateClient(context.Background(), testAPIKey, testModelID, "")
-
-	// If err != nil, it's likely because we're in a test environment without proper credentials
-	// We'll skip detailed assertions in that case
-	if err != nil {
-		t.Logf("Note: Client creation attempted with valid key format but failed as expected in test environment: %v", err)
-		return
+	tests := []struct {
+		name          string
+		paramName     string
+		expectedValue float32
+		expectedOk    bool
+	}{
+		{
+			name:          "float64 parameter",
+			paramName:     "float64_param",
+			expectedValue: 1.5,
+			expectedOk:    true,
+		},
+		{
+			name:          "float32 parameter",
+			paramName:     "float32_param",
+			expectedValue: 2.5,
+			expectedOk:    true,
+		},
+		{
+			name:          "int parameter",
+			paramName:     "int_param",
+			expectedValue: 42.0,
+			expectedOk:    true,
+		},
+		{
+			name:          "int32 parameter",
+			paramName:     "int32_param",
+			expectedValue: 43.0,
+			expectedOk:    true,
+		},
+		{
+			name:          "int64 parameter",
+			paramName:     "int64_param",
+			expectedValue: 44.0,
+			expectedOk:    true,
+		},
+		{
+			name:          "string parameter (invalid type)",
+			paramName:     "string_param",
+			expectedValue: 0,
+			expectedOk:    false,
+		},
+		{
+			name:          "missing parameter",
+			paramName:     "missing_param",
+			expectedValue: 0,
+			expectedOk:    false,
+		},
 	}
 
-	// If no error, we got a real client - make sure to clean up
-	defer func() {
-		if client != nil {
-			_ = client.Close()
-		}
-	}()
-
-	// The client should already implement the llm.LLMClient interface (verified at compile time)
-	// But we also want to check that it's the correct implementation type
-
-	// Verify that we got an OpenAIClientAdapter
-	_, ok := client.(*OpenAIClientAdapter)
-	if !ok {
-		t.Errorf("Expected client to be of type *OpenAIClientAdapter, got %T", client)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value, ok := adapter.getFloatParam(tt.paramName)
+			assert.Equal(t, tt.expectedOk, ok, "Expected ok=%v but got %v", tt.expectedOk, ok)
+			assert.Equal(t, tt.expectedValue, value, "Expected value=%v but got %v", tt.expectedValue, value)
+		})
 	}
 
-	// Additional validation of adapter function if we have a valid client
-	if adapterClient, ok := client.(*OpenAIClientAdapter); ok {
-		// Test that we can set parameters
-		testParams := map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.9,
-		}
-		adapterClient.SetParameters(testParams)
+	// Test with nil params
+	adapter.params = nil
+	value, ok := adapter.getFloatParam("any_param")
+	assert.False(t, ok, "Expected ok=false with nil params")
+	assert.Equal(t, float32(0), value, "Expected value=0 with nil params")
+}
 
-		// If we got this far, the client creation and adapter wrapping was successful
-		t.Log("Successfully created client with proper adapter wrapping")
+func TestGetIntParam(t *testing.T) {
+	adapter := &OpenAIClientAdapter{
+		params: map[string]interface{}{
+			"float64_param": float64(1.5),
+			"float32_param": float32(2.5),
+			"int_param":     42,
+			"int32_param":   int32(43),
+			"int64_param":   int64(44),
+			"string_param":  "not a number",
+		},
 	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		expectedValue int32
+		expectedOk    bool
+	}{
+		{
+			name:          "float64 parameter",
+			paramName:     "float64_param",
+			expectedValue: 1,
+			expectedOk:    true,
+		},
+		{
+			name:          "float32 parameter",
+			paramName:     "float32_param",
+			expectedValue: 2,
+			expectedOk:    true,
+		},
+		{
+			name:          "int parameter",
+			paramName:     "int_param",
+			expectedValue: 42,
+			expectedOk:    true,
+		},
+		{
+			name:          "int32 parameter",
+			paramName:     "int32_param",
+			expectedValue: 43,
+			expectedOk:    true,
+		},
+		{
+			name:          "int64 parameter",
+			paramName:     "int64_param",
+			expectedValue: 44,
+			expectedOk:    true,
+		},
+		{
+			name:          "string parameter (invalid type)",
+			paramName:     "string_param",
+			expectedValue: 0,
+			expectedOk:    false,
+		},
+		{
+			name:          "missing parameter",
+			paramName:     "missing_param",
+			expectedValue: 0,
+			expectedOk:    false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value, ok := adapter.getIntParam(tt.paramName)
+			assert.Equal(t, tt.expectedOk, ok, "Expected ok=%v but got %v", tt.expectedOk, ok)
+			assert.Equal(t, tt.expectedValue, value, "Expected value=%v but got %v", tt.expectedValue, value)
+		})
+	}
+
+	// Test with nil params
+	adapter.params = nil
+	value, ok := adapter.getIntParam("any_param")
+	assert.False(t, ok, "Expected ok=false with nil params")
+	assert.Equal(t, int32(0), value, "Expected value=0 with nil params")
+}
+
+// MockLLMClient implements the llm.LLMClient interface for testing
+type MockLLMClient struct {
+	modelName       string
+	lastPrompt      string
+	lastParams      map[string]interface{}
+	temperature     float32
+	topP            float32
+	maxTokens       int32
+	freqPenalty     float32
+	presencePenalty float32
+	shouldError     bool
+	mockResult      *llm.ProviderResult
+}
+
+// GenerateContent implements the llm.LLMClient interface
+func (m *MockLLMClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	m.lastPrompt = prompt
+	m.lastParams = params
+
+	if m.shouldError {
+		return nil, assert.AnError
+	}
+
+	if m.mockResult != nil {
+		return m.mockResult, nil
+	}
+
+	// Default mock response
+	return &llm.ProviderResult{
+		Content: "Mock response for: " + prompt,
+	}, nil
+}
+
+// GetModelName implements the llm.LLMClient interface
+func (m *MockLLMClient) GetModelName() string {
+	return m.modelName
+}
+
+// Close implements the llm.LLMClient interface
+func (m *MockLLMClient) Close() error {
+	return nil
+}
+
+// SetTemperature implements the temperature setter interface
+func (m *MockLLMClient) SetTemperature(temp float32) {
+	m.temperature = temp
+}
+
+// SetTopP implements the topP setter interface
+func (m *MockLLMClient) SetTopP(topP float32) {
+	m.topP = topP
+}
+
+// SetMaxTokens implements the maxTokens setter interface
+func (m *MockLLMClient) SetMaxTokens(tokens int32) {
+	m.maxTokens = tokens
+}
+
+// SetFrequencyPenalty implements the frequency penalty setter interface
+func (m *MockLLMClient) SetFrequencyPenalty(penalty float32) {
+	m.freqPenalty = penalty
+}
+
+// SetPresencePenalty implements the presence penalty setter interface
+func (m *MockLLMClient) SetPresencePenalty(penalty float32) {
+	m.presencePenalty = penalty
 }

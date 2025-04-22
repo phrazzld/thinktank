@@ -133,8 +133,6 @@ func (m *mockFileWriter) SaveToFile(content, outputFile string) error {
 
 type mockLLMClient struct {
 	generateContentFunc func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error)
-	countTokensFunc     func(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error)
-	getModelInfoFunc    func(ctx context.Context) (*llm.ProviderModelInfo, error)
 	getModelNameFunc    func() string
 	closeFunc           func() error
 }
@@ -144,24 +142,6 @@ func (m *mockLLMClient) GenerateContent(ctx context.Context, prompt string, para
 		return m.generateContentFunc(ctx, prompt, params)
 	}
 	return &llm.ProviderResult{Content: "mock content"}, nil
-}
-
-func (m *mockLLMClient) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	if m.countTokensFunc != nil {
-		return m.countTokensFunc(ctx, prompt)
-	}
-	return &llm.ProviderTokenCount{Total: 100}, nil
-}
-
-func (m *mockLLMClient) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	if m.getModelInfoFunc != nil {
-		return m.getModelInfoFunc(ctx)
-	}
-	return &llm.ProviderModelInfo{
-		Name:             "mock-model",
-		InputTokenLimit:  32000,
-		OutputTokenLimit: 8000,
-	}, nil
 }
 
 func (m *mockLLMClient) GetModelName() string {

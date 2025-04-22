@@ -43,6 +43,8 @@ PLAN.md
 test-results/
 thinktank-output/
 architect_output/
+architect_output_tasks/
+consultation-report/
 *-TASK.md
 *-PLAN.md
 CONSULT-REQUEST.md
@@ -58,3 +60,15 @@ main
 
 # Test files
 test.txt
+
+# Glance files (temporary notes)
+**/glance.md
+
+# Debug files
+DEBUG-*.md
+*_instructions.txt
+
+# Development symlinks
+DEVELOPMENT_PHILOSOPHY.md
+DEVELOPMENT_PHILOSOPHY_APPENDIX_GO.md
+docs/prompts

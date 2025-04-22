@@ -35,38 +35,7 @@ func (a *LLMClientAdapter) GenerateContent(ctx context.Context, prompt string, p
 	// Convert gemini.GenerationResult to llm.ProviderResult
 	return &llm.ProviderResult{
 		Content:      result.Content,
-		TokenCount:   result.TokenCount,
 		FinishReason: result.FinishReason,
-	}, nil
-}
-
-// CountTokens adapts gemini.Client.CountTokens to llm.LLMClient.CountTokens
-func (a *LLMClientAdapter) CountTokens(ctx context.Context, prompt string) (*llm.ProviderTokenCount, error) {
-	// Call the wrapped gemini client's CountTokens method
-	result, err := a.geminiClient.CountTokens(ctx, prompt)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert gemini.TokenCount to llm.ProviderTokenCount
-	return &llm.ProviderTokenCount{
-		Total: result.Total,
-	}, nil
-}
-
-// GetModelInfo adapts gemini.Client.GetModelInfo to llm.LLMClient.GetModelInfo
-func (a *LLMClientAdapter) GetModelInfo(ctx context.Context) (*llm.ProviderModelInfo, error) {
-	// Call the wrapped gemini client's GetModelInfo method
-	result, err := a.geminiClient.GetModelInfo(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert gemini.ModelInfo to llm.ProviderModelInfo
-	return &llm.ProviderModelInfo{
-		Name:             result.Name,
-		InputTokenLimit:  result.InputTokenLimit,
-		OutputTokenLimit: result.OutputTokenLimit,
 	}, nil
 }
 

@@ -48,6 +48,8 @@ func (m *mockHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 // newMockHTTPClient creates a new HTTP client with a mock transport
+//
+//nolint:unused
 func newMockHTTPClient(resp *http.Response, err error) *http.Client {
 	return &http.Client{
 		Transport: &mockHTTPTransport{
@@ -77,6 +79,8 @@ func getMockTransport(client *http.Client) *mockHTTPTransport {
 // Helper functions for creating test responses
 
 // createSuccessResponse creates a mock HTTP success response with the given body
+//
+//nolint:unused
 func createSuccessResponse(body interface{}) *http.Response {
 	jsonBody, _ := json.Marshal(body)
 	return &http.Response{
@@ -87,6 +91,8 @@ func createSuccessResponse(body interface{}) *http.Response {
 }
 
 // createErrorResponse creates a mock HTTP error response
+//
+//nolint:unused
 func createErrorResponse(statusCode int, errorMessage string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
@@ -96,6 +102,8 @@ func createErrorResponse(statusCode int, errorMessage string) *http.Response {
 }
 
 // createNetworkErrorClient creates a mock client that simulates network errors
+//
+//nolint:unused
 func createNetworkErrorClient(errorMessage string) *http.Client {
 	return &http.Client{
 		Transport: &mockHTTPTransport{
@@ -118,6 +126,8 @@ func createRequestErrorClient(errorMessage string, inspectFunc func(*http.Reques
 }
 
 // sequenceTransport is a custom transport that returns responses in sequence
+//
+//nolint:unused
 type sequenceTransport struct {
 	responses      []*http.Response
 	errors         []error
@@ -126,6 +136,7 @@ type sequenceTransport struct {
 	inspectRequest func(*http.Request)
 }
 
+//nolint:unused
 func (t *sequenceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.lastRequest = req
 	if t.inspectRequest != nil {
@@ -152,6 +163,8 @@ func (t *sequenceTransport) RoundTrip(req *http.Request) (*http.Response, error)
 }
 
 // createResponseSequenceClient creates a client that returns responses in sequence
+//
+//nolint:unused
 func createResponseSequenceClient(responses []*http.Response, errors []error) *http.Client {
 	transport := &sequenceTransport{
 		responses: responses,

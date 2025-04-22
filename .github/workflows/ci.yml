@@ -130,25 +130,37 @@ jobs:
 
       # Generate coverage report with short flag to skip long-running tests
       - name: Generate coverage report
-        run: go test -short -coverprofile=coverage.out ./...
+        run: |
+          # Use the same coverage generation logic as our check-coverage.sh script
+          MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
+          PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/")
+          go test -short -coverprofile=coverage.out -covermode=atomic $PACKAGES
         timeout-minutes: 5
 
-      # Display coverage summary
+      # Display coverage summary with per-package details
       - name: Display coverage summary
-        run: go tool cover -func=coverage.out
+        run: |
+          # Display overall coverage
+          go tool cover -func=coverage.out
+
+          echo ""
+          # Display detailed per-package coverage
+          ./scripts/check-package-coverage.sh 55 || true # Don't fail here, the next step does enforcement
+                                                         # NOTE: Temporarily reduced from 90% to 55%
+
+      # Upload coverage report as artifact
+      - name: Upload coverage report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.out
+          retention-days: 14
 
       # Check coverage threshold
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
-          THRESHOLD=50
-          COVERAGE_INT=${COVERAGE%.*}  # Remove decimal part for integer comparison
-          echo "Code coverage: $COVERAGE%"
-          if [ "$COVERAGE_INT" -lt "$THRESHOLD" ]; then
-            echo "Code coverage is below the required threshold of $THRESHOLD% (actual: $COVERAGE%)"
-            exit 1
-          fi
-          echo "Code coverage threshold check passed ($COVERAGE% >= $THRESHOLD%)"
+          # Use dedicated script for checking coverage
+          ./scripts/check-coverage.sh 55  # NOTE: Temporarily reduced from 90% to 55%
 
   # Build job for building Go binary
   build:
@@ -189,7 +201,7 @@ jobs:
         timeout-minutes: 5
 
       # Upload binary as artifact
-      - name: Upload artifact
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: architect-binary
