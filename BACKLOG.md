@@ -1,15 +1,12 @@
 # backlog
 
-* remove all the token counting stuff and input / output / context token counting / handling / config
-
-* support openrouter as a provider
-
 * rebrand to thinktank
-* audit whole codebase against dev philosophy, identify key things to hit
+
 * remove the cutesy directory naming stuff -- simplify
+
+* audit whole codebase against dev philosophy, identify key things to hit
 * remove as much as possible, shrink it
 * add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
-- run `glance` on precommit hook
 * implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
 * improve arbitrary model handling
 * add support for grounding with gemini models
@@ -36,6 +33,5 @@
 * make `architect` aware of claude code's memory files (`CLAUDE.md`, `CLAUDE.local.md`) to read configuration settings, respecting the same hierarchy
 * investigate presenting `architect` itself as a tool to claude code, potentially via mcp, defining its capabilities for planning, critique, and refinement
 * review and significantly improve the clarity, detail, and actionability of all error messages throughout the application
-* enhance token count handling to allow setting maximum tokens per model and provide clearer warnings or errors if limits are exceeded
 * add metadata (file paths, git status) to the context provided to the llm.
 * support a "modify my instructions" flag that extracts intent from the passed instructions and sends it to a model to rewrite according to best prompt engineering practices before sending your actual request complete with context to your target models

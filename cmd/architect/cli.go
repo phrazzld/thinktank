@@ -121,9 +121,12 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 	}
 
 	// API key validation based on model requirements
-	if config.APIKey == "" && modelNeedsGeminiKey {
-		logger.Error("%s environment variable not set.", apiKeyEnvVar)
-		return fmt.Errorf("gemini API key not set")
+	if modelNeedsGeminiKey {
+		geminiKey := getenv(apiKeyEnvVar)
+		if geminiKey == "" {
+			logger.Error("%s environment variable not set.", apiKeyEnvVar)
+			return fmt.Errorf("gemini API key not set")
+		}
 	}
 
 	// If any OpenAI model is used, check for OpenAI API key

@@ -149,6 +149,9 @@ func TestValidateInputs(t *testing.T) {
 				if key == openaiAPIKeyEnvVar && tt.name == "OpenAI model requires OpenAI API key" {
 					return "" // Return empty string for OpenAI API key
 				}
+				if key == apiKeyEnvVar && (tt.name == "Missing API key" || tt.name == "Dry run still requires API key") {
+					return "" // Return empty string for Gemini API key
+				}
 				return "mock-value" // Return a valid value for any other key
 			}
 			err := ValidateInputsWithEnv(tt.config, logger, mockGetenv)
