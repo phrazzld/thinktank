@@ -4,6 +4,8 @@
 
 set -e
 
-echo "Running glance to update directory overviews..."
-glance ./
-echo "Glance directory overviews updated successfully."
+echo "Starting glance to update directory overviews in the background..."
+(
+  glance ./
+  echo "Glance directory overviews updated successfully."
+) > /tmp/glance_output.log 2>&1 &
