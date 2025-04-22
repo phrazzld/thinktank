@@ -1,4 +1,4 @@
-// main.go - Simple entry point for architect
+// main.go - Simple entry point for thinktank
 package main
 
 import "github.com/phrazzld/architect/cmd/architect"

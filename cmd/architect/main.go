@@ -1,4 +1,4 @@
-// Package architect provides the command-line interface for the architect tool
+// Package architect provides the command-line interface for the thinktank tool
 package architect
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/phrazzld/architect/internal/registry"
 )
 
-// Main is the entry point for the architect CLI
+// Main is the entry point for the thinktank CLI
 func Main() {
 	// Create a base context
 	ctx := context.Background()
@@ -25,7 +25,7 @@ func Main() {
 
 	// Setup logging early for error reporting
 	logger := SetupLogging(config)
-	logger.Info("Starting Architect - AI-assisted content generation tool")
+	logger.Info("Starting thinktank - AI-assisted content generation tool")
 
 	// Initialize the audit logger
 	var auditLogger auditlog.AuditLogger

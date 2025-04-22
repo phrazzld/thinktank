@@ -1,4 +1,4 @@
-// Package interfaces provides shared interfaces used across the architect tool.
+// Package interfaces provides shared interfaces used across the thinktank tool.
 // It helps prevent import cycles between packages that depend on each other.
 package interfaces
 

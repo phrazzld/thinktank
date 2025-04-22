@@ -33,7 +33,7 @@ This document outlines tasks to complete the project rename from "architect" to 
 - [x] Update README.md to use "thinktank" instead of "architect"
 - [x] Update CLAUDE.md reference to using the CLI (section "Using the `architect` CLI")
 - [x] Update any examples in documentation that use "architect" command
-- [ ] Update any API documentation that references "architect"
+- [x] Update any API documentation that references "architect"
 - [ ] Check for references in all markdown files
 ## Code References
 

@@ -1,4 +1,4 @@
-// Package modelproc provides model processing functionality for the architect tool.
+// Package modelproc provides model processing functionality for the thinktank tool.
 // It encapsulates the logic for interacting with AI models, managing tokens,
 // writing outputs, and logging operations.
 package modelproc
