@@ -181,7 +181,7 @@ If you encounter issues with the hooks:
 1. Ensure pre-commit is installed: `pre-commit --version`
 2. Check the configuration in `.pre-commit-config.yaml`
 3. Try running individual hooks manually, e.g.: `pre-commit run go-fmt` or `pre-commit run run-glance --hook-stage post-commit`
-4. For unit test issues, you can run the tests directly with: `go test -short ./cmd/architect/... ./internal/architect/interfaces ./internal/architect/modelproc ./internal/architect/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil`
+4. For unit test issues, you can run the tests directly with: `go test -short ./cmd/thinktank/... ./internal/thinktank/interfaces ./internal/thinktank/modelproc ./internal/thinktank/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil`
 
 ### Post-commit Hook Issues:
 

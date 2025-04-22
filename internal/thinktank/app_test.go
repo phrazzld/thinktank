@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the thinktank tool
+// Package thinktank contains the core application logic for the thinktank tool
 package thinktank
 
 import (
@@ -212,7 +212,7 @@ func (m *MockOrchestrator) Run(ctx context.Context, instructions string) error {
 
 // setupTestEnvironment creates a temporary directory for testing
 func setupTestEnvironment(t *testing.T) (string, func()) {
-	testDir, err := os.MkdirTemp("", "architect-test-*")
+	testDir, err := os.MkdirTemp("", "thinktank-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
@@ -699,7 +699,7 @@ func TestExecuteOrchestratorError(t *testing.T) {
 // TestSetupOutputDirectoryError tests error handling when output directory creation fails
 func TestSetupOutputDirectoryError(t *testing.T) {
 	// Create a temporary test directory
-	parentDir, err := os.MkdirTemp("", "architect-test-*")
+	parentDir, err := os.MkdirTemp("", "thinktank-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}

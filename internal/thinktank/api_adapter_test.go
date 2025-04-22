@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the architect tool.
+// Package thinktank contains the core application logic for the thinktank tool.
 // This file tests the API service adapter.
 package thinktank
 

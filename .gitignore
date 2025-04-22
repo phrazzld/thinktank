@@ -6,6 +6,7 @@
 *.dylib
 # Binary executable named architect, but not the directory
 /architect
+/thinktank
 
 # Test binary, built with `go test -c`
 *.test

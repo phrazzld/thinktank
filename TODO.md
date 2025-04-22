@@ -25,7 +25,7 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 - [x] Update binary name reference in build scripts
 - [x] Update CLI help text and command name references
-- [ ] Update CLI documentation in README.md and other documentation
+- [x] Update CLI documentation in README.md and other documentation
 - [x] Ensure the built binary is named "thinktank" instead of "architect"
 
 ## Documentation
