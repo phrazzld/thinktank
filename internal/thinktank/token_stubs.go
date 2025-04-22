@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the architect tool
+// Package thinktank contains the core application logic for the thinktank tool
 package thinktank
 
 // This file formerly contained token-related stubs that are no longer needed

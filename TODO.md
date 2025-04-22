@@ -24,7 +24,7 @@ This document outlines tasks to complete the project rename from "architect" to 
 ## Command Line Interface
 
 - [x] Update binary name reference in build scripts
-- [ ] Update CLI help text and command name references
+- [x] Update CLI help text and command name references
 - [ ] Update CLI documentation in README.md and other documentation
 - [x] Ensure the built binary is named "thinktank" instead of "architect"
 
@@ -99,13 +99,13 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 ## Testing
 
-- [ ] Update end-to-end tests in `internal/e2e/` to use "thinktank" instead of "architect"
-- [ ] Make sure all tests pass with the new naming
+- [x] Update end-to-end tests in `internal/e2e/` to use "thinktank" instead of "architect"
+- [x] Make sure all tests pass with the new naming
 
 ## Package Names
 
 - [x] Rename all Go package declarations from "architect" to "thinktank"
-- [ ] Update any package documentation containing "architect" references
+- [x] Update any package documentation containing "architect" references
 
 ## Verification
 

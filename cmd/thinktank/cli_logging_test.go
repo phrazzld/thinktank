@@ -1,4 +1,4 @@
-// Package architect provides the command-line interface for the thinktank tool
+// Package thinktank provides the command-line interface for the thinktank tool
 package thinktank
 
 import (

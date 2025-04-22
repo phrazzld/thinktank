@@ -1,4 +1,4 @@
-// Package architect provides core functionality for the thinktank application
+// Package thinktank provides core functionality for the thinktank application
 package thinktank
 
 import (

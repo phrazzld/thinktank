@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the architect tool.
+// Package thinktank contains the core application logic for the thinktank tool.
 // This file implements the FileWriter interface for saving generated content to files,
 // handling file creation, directory resolution, and related audit logging.
 // The FileWriter component is responsible for the final output step in the workflow,

@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the thinktank tool.
+// Package thinktank contains the core application logic for the thinktank tool.
 // This file contains shared mock definitions for adapter tests.
 package thinktank
 

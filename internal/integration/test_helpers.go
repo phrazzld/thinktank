@@ -1,4 +1,4 @@
-// Package integration provides testing utilities for the architect project
+// Package integration provides testing utilities for the thinktank project
 // This is a simplified version with token functionality removed (T036C)
 package integration
 

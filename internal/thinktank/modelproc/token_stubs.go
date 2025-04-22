@@ -1,4 +1,4 @@
-// Package modelproc provides model processing functionality for the architect tool.
+// Package modelproc provides model processing functionality for the thinktank tool.
 package modelproc
 
 import (

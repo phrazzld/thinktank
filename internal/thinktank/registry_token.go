@@ -1,4 +1,4 @@
-// Package architect contains the core application logic for the architect tool
+// Package thinktank contains the core application logic for the thinktank tool
 package thinktank
 
 // This file previously contained the registry-aware TokenManager implementation.
