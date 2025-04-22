@@ -93,13 +93,25 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 			ErrClientInitialization, modelDef.Provider)
 	}
 
-	// IMPORTANT: Always prioritize environment variables for API keys to ensure proper isolation
-	// This ensures each provider uses its own correct API key, even if a key is passed as parameter
+	// API Key Resolution Logic
+	// ------------------------
+	// The system follows this precedence order for API keys:
+	// 1. Environment variables specific to each provider (highest priority)
+	//    - For OpenAI: OPENAI_API_KEY
+	//    - For Gemini: GEMINI_API_KEY
+	//    - For OpenRouter: OPENROUTER_API_KEY
+	//    These mappings are defined in ~/.config/architect/models.yaml
+	// 2. Explicitly provided API key parameter (fallback only)
+	//
+	// This ensures proper isolation of API keys between different providers,
+	// preventing issues like using an OpenAI key for OpenRouter requests.
+	// Each provider requires its own specific API key format.
 
 	// Start with an empty key, which we'll populate from environment or passed parameter
 	effectiveApiKey := ""
 
-	// First try to get the key from environment variable based on provider
+	// STEP 1: First try to get the key from environment variable based on provider
+	// This is the recommended and preferred method for providing API keys
 	configLoader := registry.NewConfigLoader()
 	modelConfig, err := configLoader.Load()
 	if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
@@ -113,17 +125,20 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 		}
 	}
 
-	// Only fall back to the passed apiKey if environment variable is not set
+	// STEP 2: Only fall back to the passed apiKey if environment variable is not set
+	// This is discouraged for production use but supported for testing/development
 	if effectiveApiKey == "" && apiKey != "" {
 		effectiveApiKey = apiKey
 		s.logger.Debug("Environment variable not set or empty, using provided API key for provider '%s'",
 			modelDef.Provider)
 	}
 
-	// If still empty, we need to reject
+	// STEP 3: If no API key is available from either source, reject the request
+	// API keys are required for all providers
 	if effectiveApiKey == "" {
-		return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'",
-			ErrClientInitialization, modelName, modelDef.Provider)
+		envVarName := getEnvVarNameForProvider(modelDef.Provider, modelConfig)
+		return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'. Please set the %s environment variable",
+			ErrClientInitialization, modelName, modelDef.Provider, envVarName)
 	}
 
 	// Create the client using the provider implementation
@@ -172,16 +187,23 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 	// Detect provider type from model name using the legacy method
 	providerType := DetectProviderFromModel(modelName)
 
-	// IMPORTANT: Always prioritize environment variables for API keys to ensure proper isolation
+	// API Key Resolution Logic for Legacy Provider Detection
+	// --------------------------------------------------
+	// This follows the same precedence logic as the main path:
+	// 1. Environment variables specific to each provider (highest priority)
+	// 2. Explicitly provided API key parameter (fallback only)
+	//
+	// Note: This is a legacy fallback path for models not found in the registry
+
 	// Start with an empty key, which we'll populate from environment or passed parameter
 	effectiveApiKey := ""
 
-	// First, try to get the key from environment variables
+	// STEP 1: First, try to get the key from environment variables based on provider type
 	// Create a new config loader to get the API key sources from config
 	configLoader := registry.NewConfigLoader()
 	modelConfig, configErr := configLoader.Load()
 
-	// If we have a config, use its API key mappings
+	// If we have a config, use its API key mappings from models.yaml
 	if configErr == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
 		var envVar string
 		var ok bool
@@ -219,7 +241,10 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 			}
 		}
 	} else {
-		// Fallback if no config is available
+		// Fallback to hardcoded defaults if no config is available
+		// This path is rarely used but provided as a safety net
+		s.logger.Warn("No models.yaml configuration found. Using hardcoded environment variable names.")
+
 		switch providerType {
 		case ProviderGemini:
 			envApiKey := os.Getenv("GEMINI_API_KEY")
@@ -244,17 +269,29 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 		}
 	}
 
-	// Only fall back to the passed apiKey if environment variable is not set
+	// STEP 2: Only fall back to the passed apiKey if environment variable is not set
+	// This is discouraged for production use but supported for testing/development
 	if effectiveApiKey == "" && apiKey != "" {
 		effectiveApiKey = apiKey
 		s.logger.Debug("Environment variable not set or empty, using provided API key for provider type %v",
 			providerType)
 	}
 
-	// Check that we have an API key now
+	// STEP 3: If no API key is available from either source, reject the request
+	// API keys are required for all providers
 	if effectiveApiKey == "" {
-		return nil, fmt.Errorf("%w: API key is required for provider %s",
-			ErrClientInitialization, providerType)
+		var envVarName string
+		switch providerType {
+		case ProviderGemini:
+			envVarName = "GEMINI_API_KEY"
+		case ProviderOpenAI:
+			envVarName = "OPENAI_API_KEY"
+		default:
+			envVarName = "API_KEY for this provider"
+		}
+
+		return nil, fmt.Errorf("%w: API key is required for provider %s. Please set the %s environment variable",
+			ErrClientInitialization, providerType, envVarName)
 	}
 
 	// Initialize the appropriate client based on provider type
@@ -582,6 +619,30 @@ func (s *registryAPIService) IsSafetyBlockedError(err error) bool {
 	}
 
 	return false
+}
+
+// getEnvVarNameForProvider returns the appropriate environment variable name for a given provider
+// This helper function is used to provide better error messages to users
+func getEnvVarNameForProvider(providerName string, modelConfig *registry.ModelsConfig) string {
+	// Try to get the env var name from the config
+	if modelConfig != nil && modelConfig.APIKeySources != nil {
+		if envVar, ok := modelConfig.APIKeySources[providerName]; ok && envVar != "" {
+			return envVar
+		}
+	}
+
+	// Fallback to hard-coded defaults if not in config
+	switch providerName {
+	case "openai":
+		return "OPENAI_API_KEY"
+	case "gemini":
+		return "GEMINI_API_KEY"
+	case "openrouter":
+		return "OPENROUTER_API_KEY"
+	default:
+		// Use a generic format for unknown providers
+		return strings.ToUpper(providerName) + "_API_KEY"
+	}
 }
 
 // GetErrorDetails extracts detailed information from an error

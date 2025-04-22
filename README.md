@@ -131,7 +131,14 @@ export OPENAI_API_KEY="your-openai-api-key-here"
 export OPENROUTER_API_KEY="your-openrouter-api-key-here"
 ```
 
-> **Note**: You only need to set the API key for the provider(s) you're using. If you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. Similarly, if you're only using OpenAI models, only `OPENAI_API_KEY` is required. If you're using OpenRouter models, `OPENROUTER_API_KEY` is required. Set all relevant environment variables for the providers you intend to use.
+> **Important**: You must set the correct API key for each provider you intend to use. Each provider requires its own specific API key format:
+> - **OpenAI keys** typically start with `sk-` but not `sk-or`
+> - **Gemini keys** often have no standard prefix pattern
+> - **OpenRouter keys** must start with `sk-or-`
+>
+> Using the wrong key type (e.g., using an OpenAI key for OpenRouter) will cause authentication failures. The application strictly validates API key formats and will reject invalid keys with clear error messages.
+
+Set only the environment variables you need for the models you plan to use. For example, if you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. If you're using models from multiple providers in a single run, you must set all the relevant environment variables.
 
 The required API key environment variables are defined in the `api_key_sources` section of your `~/.config/architect/models.yaml` file. If you add new providers, you can specify custom environment variable names for their API keys in this section.
 
