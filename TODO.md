@@ -4,9 +4,9 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 ## Repository Management
 
-- [ ] Rename the repository on GitHub (phrazzld/architect → phrazzld/thinktank)
-- [ ] Update git remote URLs on all development machines
-- [ ] Update any CI/CD configurations that reference the old repository name
+- [x] T132: Rename the repository on GitHub (phrazzld/architect → phrazzld/thinktank)
+- [x] T133: Update git remote URLs on all development machines
+- [x] T134: Update any CI/CD configurations that reference the old repository name
 
 ## Code Structure
 
@@ -87,13 +87,13 @@ This document outlines tasks to complete the project rename from "architect" to 
   Depends On: [T107, T108, T109, T110, T111, T112, T113, T114]
   AC Ref: None
 
-- [ ] Update any error messages that include "architect"
-- [ ] Update any log messages that include "architect"
-- [ ] Update any test fixtures or test data with "architect" references
+- [x] T126: Update any error messages that include "architect"
+- [x] T127: Update any log messages that include "architect"
+- [x] T128: Update any test fixtures or test data with "architect" references
 
 ## Configuration
 
-- [ ] Update any config files that might contain "architect" references
+- [x] T129: Update any config files that might contain "architect" references
 - [x] Update scripts/setup.sh if it contains "architect" references
 - [x] Check config/ directory for any configuration referencing "architect"
 
@@ -109,5 +109,5 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 ## Verification
 
-- [ ] Grep for any remaining instances of "architect" or "Architect"
-- [ ] Run all tests to ensure everything works with the new name
+- [x] T130: Grep for any remaining instances of "architect" or "Architect"
+- [x] T131: Run all tests to ensure everything works with the new name
