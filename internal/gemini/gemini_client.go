@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/llm"
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 
 	genai "github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"

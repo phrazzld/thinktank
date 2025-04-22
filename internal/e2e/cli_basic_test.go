@@ -1,7 +1,7 @@
 //go:build manual_api_test
 // +build manual_api_test
 
-// Package e2e contains end-to-end tests for the architect CLI
+// Package e2e contains end-to-end tests for the thinktank CLI
 // These tests require a valid API key to run properly and are skipped by default
 // To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// TestBasicExecution tests the most basic execution of the architect CLI
+// TestBasicExecution tests the most basic execution of the thinktank CLI
 func TestBasicExecution(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping e2e test in short mode")

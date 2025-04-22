@@ -4,7 +4,7 @@ package providers
 import (
 	"context"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // Provider defines the interface for LLM provider implementations.

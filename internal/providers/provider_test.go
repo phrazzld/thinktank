@@ -5,7 +5,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // MockProvider implements the Provider interface for testing

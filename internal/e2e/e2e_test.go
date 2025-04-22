@@ -1,7 +1,7 @@
 //go:build manual_api_test
 // +build manual_api_test
 
-// Package e2e contains end-to-end tests for the architect CLI
+// Package e2e contains end-to-end tests for the thinktank CLI
 // These tests require a valid API key to run properly and are skipped by default
 // To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
@@ -21,8 +21,8 @@ import (
 	"testing"
 )
 
-// architectBinaryPath stores the path to the compiled binary, set once in TestMain
-var architectBinaryPath string
+// thinktankBinaryPath stores the path to the compiled binary, set once in TestMain
+var thinktankBinaryPath string
 
 const (
 	// Mock API responses
@@ -104,16 +104,16 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	tempDir := t.TempDir()
 
 	// Ensure the binary path was set by TestMain
-	if architectBinaryPath == "" {
+	if thinktankBinaryPath == "" {
 		// This should not happen if TestMain ran correctly
-		t.Fatal("FATAL: architectBinaryPath not set by TestMain. E2E test setup failed.")
+		t.Fatal("FATAL: thinktankBinaryPath not set by TestMain. E2E test setup failed.")
 	}
 
 	// Initialize the test environment using the binary path set by TestMain
 	env := &TestEnv{
 		t:          t,
 		TempDir:    tempDir,
-		BinaryPath: architectBinaryPath,
+		BinaryPath: thinktankBinaryPath,
 	}
 
 	// Set up default mock handlers
@@ -298,8 +298,8 @@ func (e *TestEnv) CreateTestDirectory(relativePath string) string {
 	return fullPath
 }
 
-// RunArchitect runs the architect binary with the provided arguments
-func (e *TestEnv) RunArchitect(args []string, stdin io.Reader) (stdout, stderr string, exitCode int, err error) {
+// RunThinktank runs the thinktank binary with the provided arguments
+func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr string, exitCode int, err error) {
 	e.t.Helper()
 
 	// Create buffers for stdout and stderr
@@ -332,7 +332,7 @@ func (e *TestEnv) RunArchitect(args []string, stdin io.Reader) (stdout, stderr s
 		"GEMINI_API_KEY_SOURCE=env",
 
 		// Debug mode for detailed logging
-		"ARCHITECT_DEBUG=true",
+		"THINKTANK_DEBUG=true",
 
 		// Explicitly set PATH to ensure binary can find dependencies
 		fmt.Sprintf("PATH=%s", os.Getenv("PATH")),
@@ -363,7 +363,7 @@ func (e *TestEnv) RunArchitect(args []string, stdin io.Reader) (stdout, stderr s
 	return stdoutBuf.String(), stderrBuf.String(), exitCode, nil
 }
 
-// RunWithFlags runs the architect binary with the provided flags and additional arguments
+// RunWithFlags runs the thinktank binary with the provided flags and additional arguments
 func (e *TestEnv) RunWithFlags(flags testFlags, additionalArgs []string) (stdout, stderr string, exitCode int, err error) {
 	e.t.Helper()
 
@@ -424,10 +424,10 @@ func (e *TestEnv) RunWithFlags(flags testFlags, additionalArgs []string) (stdout
 	args = append(args, additionalArgs...)
 
 	// Run the command
-	return e.RunArchitect(args, nil)
+	return e.RunThinktank(args, nil)
 }
 
-// findOrBuildBinary locates or builds the architect binary
+// findOrBuildBinary locates or builds the thinktank binary
 func findOrBuildBinary() (string, error) {
 	// Determine the project root directory relative to this test file
 	projectRoot, err := os.Getwd() // Start from current dir
@@ -445,7 +445,7 @@ func findOrBuildBinary() (string, error) {
 	// e.g., searching upward for go.mod file
 
 	// Define potential binary locations relative to the project root
-	binaryName := "architect"
+	binaryName := "thinktank"
 	if os.PathSeparator == '\\' { // Handle Windows executable extension
 		binaryName += ".exe"
 	}
@@ -463,17 +463,17 @@ func findOrBuildBinary() (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("failed to get absolute path for %s: %v", candidate, err)
 			}
-			fmt.Printf("Found architect binary at: %s\n", absPath)
+			fmt.Printf("Found thinktank binary at: %s\n", absPath)
 			return absPath, nil
 		}
 	}
 
 	// If not found, build it
-	fmt.Println("Architect binary not found, building from source...")
+	fmt.Println("Thinktank binary not found, building from source...")
 	buildOutput := filepath.Join(projectRoot, binaryName)
 
 	// Build command targeting the main package
-	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/architect/cmd/architect")
+	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -481,7 +481,7 @@ func findOrBuildBinary() (string, error) {
 	cmd.Stderr = stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to build architect binary: %v\nBuild Directory: %s\nStdout: %s\nStderr: %s",
+		return "", fmt.Errorf("failed to build thinktank binary: %v\nBuild Directory: %s\nStdout: %s\nStderr: %s",
 			err, projectRoot, stdout.String(), stderr.String())
 	}
 
@@ -495,7 +495,7 @@ func findOrBuildBinary() (string, error) {
 		return "", fmt.Errorf("failed to get absolute path for built binary: %v", err)
 	}
 
-	fmt.Printf("Successfully built architect binary at: %s\n", absPath)
+	fmt.Printf("Successfully built thinktank binary at: %s\n", absPath)
 	return absPath, nil
 }
 
@@ -522,14 +522,14 @@ func SimulateUserInput(input string) io.Reader {
 }
 
 // TestMain runs once before all tests in the package.
-// It finds or builds the architect binary needed for the tests.
+// It finds or builds the thinktank binary needed for the tests.
 func TestMain(m *testing.M) {
 	// Find or build the binary only once for all tests
 	var err error
-	architectBinaryPath, err = findOrBuildBinary()
+	thinktankBinaryPath, err = findOrBuildBinary()
 	if err != nil {
 		// Use log.Fatalf for cleaner exit on failure during setup
-		log.Fatalf("FATAL: Failed to find or build architect binary for E2E tests: %v", err)
+		log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
 	}
 
 	// Run all tests in the package

@@ -18,7 +18,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 
 	genai "github.com/google/generative-ai-go/genai"
 )

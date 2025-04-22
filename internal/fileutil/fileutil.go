@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // FileMeta represents a file with its path and content.

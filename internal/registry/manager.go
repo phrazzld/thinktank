@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/providers/gemini"
-	"github.com/phrazzld/architect/internal/providers/openai"
-	"github.com/phrazzld/architect/internal/providers/openrouter"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/providers/gemini"
+	"github.com/phrazzld/thinktank/internal/providers/openai"
+	"github.com/phrazzld/thinktank/internal/providers/openrouter"
 )
 
 // Manager provides a singleton-like access to the registry.
@@ -177,7 +177,7 @@ func (m *Manager) installDefaultConfig() error {
 
 	if !found {
 		// Use relative paths in the error message to avoid hardcoding absolute paths
-		configRelPath := filepath.Join("$HOME", ".config", "architect", ModelsConfigFileName)
+		configRelPath := filepath.Join("$HOME", ".config", "thinktank", ModelsConfigFileName)
 		return fmt.Errorf("default configuration file not found. Please run setup script or manually install models.yaml to %s",
 			configRelPath)
 	}

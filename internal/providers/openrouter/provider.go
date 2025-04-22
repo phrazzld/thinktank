@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/llm"
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/providers"
+	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/providers"
 )
 
 // Helper function to get minimum of two integers

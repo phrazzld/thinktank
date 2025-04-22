@@ -5,7 +5,7 @@ package integration
 import (
 	"context"
 
-	"github.com/phrazzld/architect/internal/gemini"
+	"github.com/phrazzld/thinktank/internal/gemini"
 )
 
 // TestEnv represents a test environment for integration tests

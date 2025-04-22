@@ -2,7 +2,7 @@
 package gemini
 
 import (
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // For backward compatibility in tests

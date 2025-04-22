@@ -7,7 +7,7 @@ package config
 
 import (
 	"fmt"
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"os"
 	"strings"
 )

@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // Helper function to convert to a pointer

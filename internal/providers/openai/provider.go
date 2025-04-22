@@ -8,10 +8,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/phrazzld/architect/internal/llm"
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/openai"
-	"github.com/phrazzld/architect/internal/providers"
+	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/openai"
+	"github.com/phrazzld/thinktank/internal/providers"
 )
 
 // OpenAIProvider implements the Provider interface for OpenAI models.

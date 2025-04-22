@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // Registry-related errors

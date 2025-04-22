@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // mockLogger implements the logutil.LoggerInterface for testing
