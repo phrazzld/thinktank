@@ -34,7 +34,7 @@ This document outlines tasks to complete the project rename from "architect" to 
 - [x] Update CLAUDE.md reference to using the CLI (section "Using the `architect` CLI")
 - [x] Update any examples in documentation that use "architect" command
 - [x] Update any API documentation that references "architect"
-- [ ] Check for references in all markdown files
+- [x] Check for references in all markdown files
 ## Code References
 
 - [ ] Update comments in code that refer to "architect"
