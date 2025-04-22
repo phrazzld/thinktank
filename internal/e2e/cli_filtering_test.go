@@ -1,7 +1,7 @@
 //go:build manual_api_test
 // +build manual_api_test
 
-// Package e2e contains end-to-end tests for the architect CLI
+// Package e2e contains end-to-end tests for the thinktank CLI
 // These tests require a valid API key to run properly and are skipped by default
 // To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
@@ -42,10 +42,10 @@ func add(a, b int) int { return a + b }`)
 	flags.ExcludeNames = "node_modules"
 	flags.DryRun = true
 
-	// Run the architect binary
+	// Run the thinktank binary
 	stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{filepath.Join(env.TempDir, "src")})
 	if err != nil {
-		t.Fatalf("Failed to run architect: %v", err)
+		t.Fatalf("Failed to run thinktank: %v", err)
 	}
 
 	// Verify exit code

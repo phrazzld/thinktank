@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // AuditLogger defines the interface for logging audit events.

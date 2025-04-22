@@ -3,7 +3,7 @@ package registry
 import (
 	"testing"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // TestGetGlobalManager tests the singleton behavior of GetGlobalManager

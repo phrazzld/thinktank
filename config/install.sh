@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Installation script for Architect models configuration
+# Installation script for Thinktank models configuration
 #
 # This script installs the default models.yaml file to the user's
-# ~/.config/architect directory, creating the directory if it doesn't exist.
+# ~/.config/thinktank directory, creating the directory if it doesn't exist.
 
 set -e
 
@@ -17,11 +17,11 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Define paths
-CONFIG_DIR="$HOME/.config/architect"
+CONFIG_DIR="$HOME/.config/thinktank"
 MODELS_CONFIG="$CONFIG_DIR/models.yaml"
 SOURCE_CONFIG="$SCRIPT_DIR/models.yaml"
 
-echo -e "${GREEN}Installing Architect models configuration...${NC}"
+echo -e "${GREEN}Installing Thinktank models configuration...${NC}"
 
 # Check if source file exists
 if [ ! -f "$SOURCE_CONFIG" ]; then
@@ -76,4 +76,4 @@ else
 fi
 
 echo -e "\n${GREEN}Installation complete!${NC}"
-echo "You can now use Architect with the configured models."
+echo "You can now use Thinktank with the configured models."

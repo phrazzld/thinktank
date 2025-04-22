@@ -4,8 +4,8 @@ package integration
 import (
 	"context"
 
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/gemini"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // LLMClientAdapter adapts a gemini.Client to implement the llm.LLMClient interface

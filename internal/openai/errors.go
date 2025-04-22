@@ -4,7 +4,7 @@ package openai
 import (
 	"errors"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // IsOpenAIError checks if an error is an llm.LLMError originating from OpenAI

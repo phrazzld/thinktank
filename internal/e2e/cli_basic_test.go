@@ -1,7 +1,7 @@
 //go:build manual_api_test
 // +build manual_api_test
 
-// Package e2e contains end-to-end tests for the architect CLI
+// Package e2e contains end-to-end tests for the thinktank CLI
 // These tests require a valid API key to run properly and are skipped by default
 // To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// TestBasicExecution tests the most basic execution of the architect CLI
+// TestBasicExecution tests the most basic execution of the thinktank CLI
 func TestBasicExecution(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping e2e test in short mode")
@@ -33,10 +33,10 @@ func TestBasicExecution(t *testing.T) {
 	// Construct arguments
 	args := CreateStandardArgsWithPaths(instructionsFile, outputDir, env.TempDir+"/src")
 
-	// Run the architect binary
-	stdout, stderr, exitCode, err := env.RunArchitect(args, nil)
+	// Run the thinktank binary
+	stdout, stderr, exitCode, err := env.RunThinktank(args, nil)
 	if err != nil {
-		t.Fatalf("Failed to run architect: %v", err)
+		t.Fatalf("Failed to run thinktank: %v", err)
 	}
 
 	// Use our new API-aware assertion helper that allows for mock API issues
@@ -76,10 +76,10 @@ func TestDryRunMode(t *testing.T) {
 	flags.DryRun = true
 	flags.Instructions = "Test instructions"
 
-	// Run the architect binary
+	// Run the thinktank binary
 	stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{env.TempDir + "/src"})
 	if err != nil {
-		t.Fatalf("Failed to run architect in dry run mode: %v", err)
+		t.Fatalf("Failed to run thinktank in dry run mode: %v", err)
 	}
 
 	// For dry run, we specifically expect to see these messages
@@ -142,10 +142,10 @@ func TestMissingRequiredFlags(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Run the architect binary
-			stdout, stderr, exitCode, err := env.RunArchitect(tc.args, nil)
+			// Run the thinktank binary
+			stdout, stderr, exitCode, err := env.RunThinktank(tc.args, nil)
 			if err != nil && err.Error() != "exit status 1" {
-				t.Fatalf("Failed to run architect: %v", err)
+				t.Fatalf("Failed to run thinktank: %v", err)
 			}
 
 			// Use the appropriate assertion based on whether we expect success or failure
@@ -164,7 +164,7 @@ func TestAPIKeyError(t *testing.T) {
 		t.Skip("Skipping e2e test in short mode")
 	}
 
-	// Create a new test environment with a modified RunArchitect that doesn't set the API key
+	// Create a new test environment with a modified RunThinktank that doesn't set the API key
 	env := NewTestEnv(t)
 	defer env.Cleanup()
 
@@ -177,10 +177,10 @@ func main() {}`)
 	t.Skip("Skipping API key error test as we now use mock server")
 
 	/*
-		// Run the architect binary without API key in environment
+		// Run the thinktank binary without API key in environment
 		stdout, stderr, exitCode, err := runWithoutAPIKey(args)
 		if err != nil && err.Error() != "exit status 1" {
-			t.Fatalf("Failed to run architect: %v", err)
+			t.Fatalf("Failed to run thinktank: %v", err)
 		}
 
 		// Verify exit code and error message
@@ -237,10 +237,10 @@ func main() {}`)
 			}
 			flags.DryRun = true // Use dry run to make tests faster
 
-			// Run the architect binary
+			// Run the thinktank binary
 			stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{filepath.Join(env.TempDir, srcDir)})
 			if err != nil {
-				t.Fatalf("Failed to run architect: %v", err)
+				t.Fatalf("Failed to run thinktank: %v", err)
 			}
 
 			// Verify log level appears in output

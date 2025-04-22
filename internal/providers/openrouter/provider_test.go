@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/stretchr/testify/assert"
 )
 

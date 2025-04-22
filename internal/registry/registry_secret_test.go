@@ -3,8 +3,8 @@ package registry_test
 import (
 	"testing"
 
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/registry"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/registry"
 )
 
 // TestRegistryLoggingNoSecrets verifies that registry code doesn't log secrets

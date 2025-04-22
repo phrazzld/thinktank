@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to run the E2E tests for Architect CLI
+# Script to run the E2E tests for Thinktank CLI
 
 # Display usage instructions
 function show_usage {
@@ -73,11 +73,11 @@ done
 
 # Print header
 echo
-echo "=== Running Architect E2E Tests ==="
+echo "=== Running Thinktank E2E Tests ==="
 echo
 
 # Set environment to make tests run reliably
-export ARCHITECT_DEBUG=true
+export THINKTANK_DEBUG=true
 export GEMINI_API_KEY_SOURCE=env
 export GEMINI_API_KEY="$API_KEY"
 

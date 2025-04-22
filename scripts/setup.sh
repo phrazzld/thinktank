@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup.sh - Project setup script for architect
+# setup.sh - Project setup script for thinktank
 # This script ensures necessary dependencies are installed and sets up development tools
 
 # Text formatting
@@ -26,7 +26,7 @@ print_error() {
     echo -e "${RED}✗ $1${NC}"
 }
 
-print_header "Architect Project Setup"
+print_header "Thinktank Project Setup"
 echo "This script will help set up your development environment."
 
 # Check for Go installation

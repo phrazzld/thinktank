@@ -4,7 +4,7 @@ package gemini
 import (
 	"context"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // ModelConfig holds Gemini model configuration parameters

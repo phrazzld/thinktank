@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // IsGeminiError checks if an error is an llm.LLMError originating from Gemini

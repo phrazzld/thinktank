@@ -1,18 +1,18 @@
-# architect
+# thinktank
 
 A powerful code-base context analysis and planning tool that leverages Google's Gemini, OpenAI, and OpenRouter models to generate detailed, actionable technical plans for software projects.
 
 ## Overview
 
-architect analyzes your codebase and uses Gemini, OpenAI, or OpenRouter models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, architect provides contextually relevant guidance tailored to your specific project.
+thinktank analyzes your codebase and uses Gemini, OpenAI, or OpenRouter models to create comprehensive technical plans for new features, refactoring, bug fixes, or any software development task. By understanding your existing code structure and patterns, thinktank provides contextually relevant guidance tailored to your specific project.
 
 ## Important Updates
 
 ### Token Handling Removal (v0.8.0)
 
-**Important:** Token counting and validation functionality has been removed from architect. Key changes include:
+**Important:** Token counting and validation functionality has been removed from thinktank. Key changes include:
 
-* Token counting is no longer performed by architect - provider APIs handle their own token limits natively
+* Token counting is no longer performed by thinktank - provider APIs handle their own token limits natively
 * The `--confirm-tokens` flag has been removed
 * Token statistics are no longer shown in dry run mode
 * Error handling for token limits now relies on provider API error responses
@@ -21,11 +21,11 @@ This simplifies the application architecture and removes potential inaccuracies 
 
 ### Instruction Input Method
 
-**Please note:** The way you provide instructions to architect has changed:
+**Please note:** The way you provide instructions to thinktank has changed:
 
 * The `--instructions` flag is now **required** for generating plans. You must provide the instructions in a file. This allows for more complex and structured inputs.
 * The `--task-file` flag has been **removed** and replaced with the `--instructions` flag.
-* For `--dry-run` operations, the `--instructions` flag is optional. You can run a simple dry run with just `architect --dry-run ./` to see which files would be included.
+* For `--dry-run` operations, the `--instructions` flag is optional. You can run a simple dry run with just `thinktank --dry-run ./` to see which files would be included.
 
 Please update your workflows accordingly. See the Usage examples and Configuration Options below for details.
 
@@ -36,9 +36,9 @@ Please update your workflows accordingly. See the Usage examples and Configurati
 * `InitClient` method - Use `InitLLMClient` instead
 * `ProcessResponse` method - Use `ProcessLLMResponse` instead
 * `llmToGeminiClientAdapter` - Use the provider-agnostic `llm.LLMClient` interface directly
-* The entire `internal/architect/compat` package
+* The entire `internal/thinktank/compat` package
 
-If you're developing with or extending Architect, please migrate to the provider-agnostic methods. See the [Migration Guide](MIGRATION-GUIDE.md) and [Deprecation Plan](DEPRECATED-API-REMOVAL-PLAN.md) for details.
+If you're developing with or extending thinktank, please migrate to the provider-agnostic methods. See the [Migration Guide](MIGRATION-GUIDE.md) and [Deprecation Plan](DEPRECATED-API-REMOVAL-PLAN.md) for details.
 
 ## Features
 
@@ -56,8 +56,8 @@ If you're developing with or extending Architect, please migrate to the provider
 
 ```bash
 # Build from source
-git clone https://github.com/yourusername/architect.git
-cd architect
+git clone https://github.com/yourusername/thinktank.git
+cd thinktank
 
 # Recommended: Run the setup script to check dependencies and install pre-commit hooks
 ./scripts/setup.sh
@@ -75,47 +75,47 @@ The setup script checks for required dependencies (like Go and pre-commit), offe
 
 ```bash
 # Basic usage (Instructions in instructions.txt)
-architect --instructions instructions.txt path/to/your/project
+thinktank --instructions instructions.txt path/to/your/project
 
 # Example: Create a plan using an instructions file
 # Contents of auth_instructions.txt: "Implement JWT-based user authentication and authorization"
-architect --instructions auth_instructions.txt ./
+thinktank --instructions auth_instructions.txt ./
 
 # Specify output directory (default generates a unique run name directory)
-architect --instructions instructions.txt --output-dir custom-dir ./
+thinktank --instructions instructions.txt --output-dir custom-dir ./
 
 # Generate plans with multiple models (repeatable flag)
-architect --instructions instructions.txt --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 ./
+thinktank --instructions instructions.txt --model gemini-1.5-pro --model gemini-2.5-pro-exp-03-25 ./
 
 # Include only specific file extensions
-architect --instructions instructions.txt --include .go,.md ./
+thinktank --instructions instructions.txt --include .go,.md ./
 
 # Use a different Gemini model
-architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 ./
+thinktank --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 ./
 
 # Use an OpenAI model
-architect --instructions instructions.txt --model gpt-4-turbo ./
+thinktank --instructions instructions.txt --model gpt-4-turbo ./
 
 # Use both Gemini and OpenAI models
-architect --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
+thinktank --instructions instructions.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
 
 # Use an OpenRouter model
-architect --instructions instructions.txt --model openrouter/deepseek/deepseek-r1 ./
+thinktank --instructions instructions.txt --model openrouter/deepseek/deepseek-r1 ./
 
 # Use models from multiple providers
-architect --instructions instructions.txt --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/x-ai/grok-3-beta ./
+thinktank --instructions instructions.txt --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/x-ai/grok-3-beta ./
 
 # Enable structured audit logging (JSON Lines format)
-architect --instructions instructions.txt --audit-log-file audit.jsonl ./
+thinktank --instructions instructions.txt --audit-log-file audit.jsonl ./
 
 # Dry run to see which files would be included (without generating a plan)
-architect --dry-run ./
+thinktank --dry-run ./
 
 # Dry run with instructions file
-architect --dry-run --instructions instructions.txt ./
+thinktank --dry-run --instructions instructions.txt ./
 
 # Control concurrency and rate limiting for multiple models
-architect --instructions task.txt --model gemini-1.5-pro --model gpt-4-turbo --max-concurrent 3 --rate-limit 30 ./
+thinktank --instructions task.txt --model gemini-1.5-pro --model gpt-4-turbo --max-concurrent 3 --rate-limit 30 ./
 ```
 
 ### Required Environment Variables
@@ -140,7 +140,7 @@ export OPENROUTER_API_KEY="your-openrouter-api-key-here"
 
 Set only the environment variables you need for the models you plan to use. For example, if you're exclusively using Gemini models, only `GEMINI_API_KEY` is required. If you're using models from multiple providers in a single run, you must set all the relevant environment variables.
 
-The required API key environment variables are defined in the `api_key_sources` section of your `~/.config/architect/models.yaml` file. If you add new providers, you can specify custom environment variable names for their API keys in this section.
+The required API key environment variables are defined in the `api_key_sources` section of your `~/.config/thinktank/models.yaml` file. If you add new providers, you can specify custom environment variable names for their API keys in this section.
 
 ## Configuration Options
 
@@ -162,13 +162,13 @@ The required API key environment variables are defined in the `api_key_sources` 
 
 ## Configuration
 
-architect is configured through command-line flags, environment variables (`GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `OPENROUTER_API_KEY`), and a models.yaml configuration file for provider and model settings.
+thinktank is configured through command-line flags, environment variables (`GEMINI_API_KEY`, `OPENAI_API_KEY`, and/or `OPENROUTER_API_KEY`), and a models.yaml configuration file for provider and model settings.
 
 ### Models Configuration File
 
-architect uses a `models.yaml` configuration file to define LLM providers and models:
+thinktank uses a `models.yaml` configuration file to define LLM providers and models:
 
-- **Location**: `~/.config/architect/models.yaml`
+- **Location**: `~/.config/thinktank/models.yaml`
 - **Purpose**: Centralizes all model configuration including:
   - Available providers (OpenAI, Gemini, OpenRouter)
   - Model definitions with their API identifiers
@@ -180,22 +180,22 @@ architect uses a `models.yaml` configuration file to define LLM providers and mo
 
 ```bash
 # Create the configuration directory
-mkdir -p ~/.config/architect
+mkdir -p ~/.config/thinktank
 
 # Copy the default configuration file
-cp config/models.yaml ~/.config/architect/models.yaml
+cp config/models.yaml ~/.config/thinktank/models.yaml
 ```
 
 #### Customizing the Configuration
 
-You can customize `~/.config/architect/models.yaml` to:
+You can customize `~/.config/thinktank/models.yaml` to:
 - Add new models as they become available
 - Configure default parameters for each model
 - Add custom API endpoints (for self-hosted models or proxies)
 
 ### Default Values
 
-architect comes with sensible defaults for most options:
+thinktank comes with sensible defaults for most options:
 
 - Output directory: Auto-generated run name directory (e.g., `eloquent-rabbit`)
 - Output files: One file per model with name format `modelname.md`
@@ -212,9 +212,9 @@ You can override any of these defaults using the appropriate command-line flags.
 Each LLM provider has its own context length limits and error handling mechanisms:
 
 - **Provider-Native Limit Handling**: Each provider's API will return appropriate errors when limits are exceeded
-- **Error Categorization**: architect categorizes provider errors into common types (authentication, rate limiting, context length)
+- **Error Categorization**: thinktank categorizes provider errors into common types (authentication, rate limiting, context length)
 - **Clear Error Messages**: Descriptive error messages help identify the cause of failures
-- **Provider-Specific Guidance**: When limits are exceeded, architect provides guidance specific to the provider
+- **Provider-Specific Guidance**: When limits are exceeded, thinktank provides guidance specific to the provider
 
 When you receive context length errors from a provider:
 1. Reduce the scope of files included in your analysis
@@ -225,7 +225,7 @@ When you receive context length errors from a provider:
 
 ## Multi-Provider and Multi-Model Support
 
-architect supports generating plans with multiple AI models from multiple providers simultaneously:
+thinktank supports generating plans with multiple AI models from multiple providers simultaneously:
 
 - **Multiple Models**: Specify multiple models with the repeatable `--model` flag
 - **Multiple Providers**: Seamlessly use Gemini, OpenAI, and OpenRouter models in the same run
@@ -243,7 +243,7 @@ For detailed information about OpenRouter integration, see [OpenRouter Integrati
 Example:
 ```bash
 # Generate plans with models from all supported providers
-architect --instructions task.md --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/deepseek/deepseek-r1 ./src
+thinktank --instructions task.md --model gemini-1.5-pro --model gpt-4-turbo --model openrouter/deepseek/deepseek-r1 ./src
 ```
 
 This will generate:
@@ -255,7 +255,7 @@ This will generate:
 
 ### Concurrency Control
 
-architect processes multiple models concurrently for improved performance, with built-in safeguards to prevent overwhelming API endpoints:
+thinktank processes multiple models concurrently for improved performance, with built-in safeguards to prevent overwhelming API endpoints:
 
 - **Concurrent Execution**: Multiple model requests run in parallel using goroutines
 - **Per-Model Rate Limiting**: Each model has its own rate limit bucket to prevent API throttling
@@ -276,7 +276,7 @@ Each generated plan file includes:
 
 ## XML-Structured Approach
 
-architect uses a simple XML structure to organize instructions and context:
+thinktank uses a simple XML structure to organize instructions and context:
 
 1. Instructions are wrapped in `<instructions>...</instructions>` tags
 2. Context files are wrapped in `<context>...</context>` tags
@@ -305,7 +305,7 @@ Each log entry contains structured information that can be processed by tools, w
 ## Troubleshooting
 
 ### Configuration Issues
-- Ensure the `~/.config/architect/models.yaml` file exists and is properly formatted
+- Ensure the `~/.config/thinktank/models.yaml` file exists and is properly formatted
 - Check that the models you're using are defined in your models.yaml file
 - Make sure the provider definitions in models.yaml match your needs
 
@@ -320,7 +320,7 @@ Each log entry contains structured information that can be processed by tools, w
 - Reduce the number of files analyzed with `--include` or other filtering flags
 - Try a model with a higher token limit
 - If you receive API errors about context length or token limits, the provider's limits have been exceeded
-- Remember that each provider handles their own token limits; architect no longer tracks this
+- Remember that each provider handles their own token limits; thinktank no longer tracks this
 
 ### Performance Tips
 - Start with small, focused parts of your codebase and gradually include more
@@ -338,7 +338,7 @@ Each log entry contains structured information that can be processed by tools, w
 ### Common Issues
 - **No files processed**: Check paths and filters; use `--dry-run` to see what would be included
 - **Missing API key**: Ensure the appropriate API key environment variable is set correctly for the models you're using
-- **Missing or invalid models.yaml**: Make sure the configuration file exists at `~/.config/architect/models.yaml`
+- **Missing or invalid models.yaml**: Make sure the configuration file exists at `~/.config/thinktank/models.yaml`
 - **Path issues**: When running commands, use absolute or correct relative paths to your project files
 - **Flag precedence**: Remember that CLI flags always take precedence over default values
 - **Model name errors**: Ensure you're using valid model names that are defined in your models.yaml file

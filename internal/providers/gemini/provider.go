@@ -7,10 +7,10 @@ import (
 	"os"
 	"sync"
 
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/llm"
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/providers"
+	"github.com/phrazzld/thinktank/internal/gemini"
+	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/providers"
 )
 
 // GeminiProvider implements the Provider interface for Gemini models.

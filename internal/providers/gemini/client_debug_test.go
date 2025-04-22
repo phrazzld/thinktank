@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/gemini"
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/gemini"
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/stretchr/testify/assert"
 )
 

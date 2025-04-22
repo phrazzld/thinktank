@@ -1,12 +1,12 @@
-# End-to-End Tests for Architect CLI
+# End-to-End Tests for thinktank CLI
 
-This directory contains end-to-end tests for the Architect CLI. These tests verify the functionality of the compiled binary by running it with various arguments and verifying the output.
+This directory contains end-to-end tests for the thinktank CLI. These tests verify the functionality of the compiled binary by running it with various arguments and verifying the output.
 
 ## Test Structure
 
 The E2E tests in this directory:
 
-1. Build the Architect binary (if it's not already built)
+1. Build the thinktank binary (if it's not already built)
 2. Run the binary with various arguments
 3. Verify the output against expected values
 4. Verify that output files are created as expected
@@ -51,7 +51,7 @@ Each test creates a `TestEnv` which provides:
 
 1. A temporary directory for test files
 2. Helper methods to create test files and directories
-3. Methods to run the Architect binary with various arguments
+3. Methods to run the thinktank binary with various arguments
 4. The mock HTTP server
 
 ## Assertion Framework

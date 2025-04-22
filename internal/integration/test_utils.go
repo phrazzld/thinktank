@@ -1,4 +1,4 @@
-// Package integration provides integration tests for the architect package
+// Package integration provides integration tests for the thinktank package
 package integration
 
 // No imports needed

@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/phrazzld/architect/internal/architect"
-	"github.com/phrazzld/architect/internal/logutil"
-	"github.com/phrazzld/architect/internal/registry"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/thinktank"
 )
 
 // TestAPIKeyIsolation verifies that the API key isolation logic works correctly
@@ -20,7 +20,7 @@ func TestAPIKeyIsolation(t *testing.T) {
 
 	// Create a new registry API service
 	registryManager := registry.NewManager(testLogger)
-	apiService := architect.NewRegistryAPIService(registryManager, testLogger)
+	apiService := thinktank.NewRegistryAPIService(registryManager, testLogger)
 
 	// Save the original environment variables so we can restore them
 	originalGeminiKey := os.Getenv("GEMINI_API_KEY")

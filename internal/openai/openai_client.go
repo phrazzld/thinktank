@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/phrazzld/architect/internal/llm"
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // openaiClient implements the llm.LLMClient interface for OpenAI

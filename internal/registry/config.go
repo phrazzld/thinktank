@@ -13,7 +13,7 @@ import (
 
 const (
 	// ConfigDirName is the name of the configuration directory
-	ConfigDirName = ".config/architect"
+	ConfigDirName = ".config/thinktank"
 	// ModelsConfigFileName is the name of the models configuration file
 	ModelsConfigFileName = "models.yaml"
 )

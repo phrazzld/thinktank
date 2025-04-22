@@ -1,4 +1,4 @@
-// Package logutil provides logging utilities for the architect project
+// Package logutil provides logging utilities for the thinktank project
 package logutil
 
 import (
