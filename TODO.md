@@ -19,14 +19,14 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 - [x] Update Go module name in go.mod (github.com/phrazzld/architect → github.com/phrazzld/thinktank)
 - [x] Fix all import paths referencing the old module name
-- [ ] Update any hardcoded import paths in test files
+- [x] Update any hardcoded import paths in test files
 
 ## Command Line Interface
 
-- [ ] Update binary name reference in build scripts
+- [x] Update binary name reference in build scripts
 - [ ] Update CLI help text and command name references
 - [ ] Update CLI documentation in README.md and other documentation
-- [ ] Ensure the built binary is named "thinktank" instead of "architect"
+- [x] Ensure the built binary is named "thinktank" instead of "architect"
 
 ## Documentation
 
@@ -94,8 +94,8 @@ This document outlines tasks to complete the project rename from "architect" to 
 ## Configuration
 
 - [ ] Update any config files that might contain "architect" references
-- [ ] Update scripts/setup.sh if it contains "architect" references
-- [ ] Check config/ directory for any configuration referencing "architect"
+- [x] Update scripts/setup.sh if it contains "architect" references
+- [x] Check config/ directory for any configuration referencing "architect"
 
 ## Testing
 
@@ -104,7 +104,7 @@ This document outlines tasks to complete the project rename from "architect" to 
 
 ## Package Names
 
-- [ ] Rename all Go package declarations from "architect" to "thinktank"
+- [x] Rename all Go package declarations from "architect" to "thinktank"
 - [ ] Update any package documentation containing "architect" references
 
 ## Verification

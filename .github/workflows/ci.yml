@@ -125,7 +125,7 @@ jobs:
 
       # Run other tests with race detection
       - name: Run other tests with race detection
-        run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/architect/internal/integration" | grep -v "github.com/phrazzld/architect/internal/e2e")
+        run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/thinktank/internal/integration" | grep -v "github.com/phrazzld/thinktank/internal/e2e")
         timeout-minutes: 8
 
       # Generate coverage report with short flag to skip long-running tests
@@ -197,15 +197,15 @@ jobs:
 
       # Build the project
       - name: Build
-        run: go build -v -ldflags="-s -w" -o architect
+        run: go build -v -ldflags="-s -w" -o thinktank
         timeout-minutes: 5
 
       # Upload binary as artifact
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: architect-binary
-          path: architect
+          name: thinktank-binary
+          path: thinktank
           retention-days: 7
 
   # Profiling job for analyzing test performance (runs on manual trigger)

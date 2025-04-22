@@ -1,7 +1,7 @@
 //go:build manual_api_test
 // +build manual_api_test
 
-// Package e2e contains end-to-end tests for the architect CLI
+// Package e2e contains end-to-end tests for the thinktank CLI
 // These tests require a valid API key to run properly and are skipped by default
 // To run these tests: go test -tags=manual_api_test ./internal/e2e/...
 package e2e
@@ -86,10 +86,10 @@ func TestUserConfirmation(t *testing.T) {
 				filepath.Join(env.TempDir, "src"),
 			}
 
-			// Run the architect binary
-			stdout, stderr, exitCode, err := env.RunArchitect(args, stdin)
+			// Run the thinktank binary
+			stdout, stderr, exitCode, err := env.RunThinktank(args, stdin)
 			if err != nil && tc.expectedExit == 0 {
-				t.Fatalf("Failed to run architect: %v", err)
+				t.Fatalf("Failed to run thinktank: %v", err)
 			}
 
 			// In test environment, we might not see confirmation prompt due to API errors
