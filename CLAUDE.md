@@ -42,12 +42,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   * Use coverage scripts to identify coverage gaps before committing
 * **Do not add your signature to commit messages**
 
-## Using the `architect` CLI
+## Using the `thinktank` CLI
 
-This repo contains the `architect` CLI tool itself, which can analyze code using different LLM models. When working on problems:
+This repo contains the `thinktank` CLI tool itself, which can analyze code using different LLM models. When working on problems:
 
 1. For complex tasks, outline your approach first
-2. If stuck, consider using `architect` to get a different perspective
-3. Example: `architect --instructions temp_instructions.txt ./path/to/relevant/files`
+2. If stuck, consider using `thinktank` to get a different perspective
+3. Example: `thinktank --instructions temp_instructions.txt ./path/to/relevant/files`
 
 The tool works by creating a temporary file with instructions, then analyzing the specified paths. API keys are pre-configured locally.
