@@ -1,10 +1,10 @@
-# Architect Configuration Files
+# thinktank Configuration Files
 
-This directory contains default configuration files for the Architect tool.
+This directory contains default configuration files for the thinktank tool.
 
 ## Models Configuration
 
-The `models.yaml` file defines the LLM providers and models available to the Architect tool. It includes:
+The `models.yaml` file defines the LLM providers and models available to the thinktank tool. It includes:
 
 - API key environment variable mappings
 - Provider definitions (OpenAI, Gemini, OpenRouter)
@@ -19,7 +19,7 @@ You can install the configuration files using the provided installation script:
 ./config/install.sh
 ```
 
-This will create the necessary directories and copy the configuration files to `~/.config/architect/`.
+This will create the necessary directories and copy the configuration files to `~/.config/thinktank/`.
 
 ## Manual Installation
 
@@ -27,12 +27,12 @@ If you prefer to install manually:
 
 1. Create the configuration directory:
    ```bash
-   mkdir -p ~/.config/architect
+   mkdir -p ~/.config/thinktank
    ```
 
 2. Copy the models.yaml file:
    ```bash
-   cp config/models.yaml ~/.config/architect/models.yaml
+   cp config/models.yaml ~/.config/thinktank/models.yaml
    ```
 
 3. Set your API keys as environment variables:
@@ -51,7 +51,7 @@ You can customize the `models.yaml` file to:
 - Configure default parameters for each model
 - Add custom API endpoints (for self-hosted models or proxies)
 
-After modifying the configuration, restart Architect for the changes to take effect.
+After modifying the configuration, restart thinktank for the changes to take effect.
 
 ## Provider-Specific Configuration
 
@@ -101,4 +101,4 @@ The `api_model_id` is the identifier used when making API requests to OpenRouter
 - **Context Window**: For each model, specify the appropriate context window and maximum output tokens as provided by OpenRouter.
 - **Parameters**: OpenRouter supports standard parameters like temperature and top_p.
 
-To use OpenRouter models with Architect, ensure the `OPENROUTER_API_KEY` environment variable is set and reference the models using their full names (e.g., `--model openrouter/deepseek/deepseek-r1`).
+To use OpenRouter models with thinktank, ensure the `OPENROUTER_API_KEY` environment variable is set and reference the models using their full names (e.g., `--model openrouter/deepseek/deepseek-r1`).

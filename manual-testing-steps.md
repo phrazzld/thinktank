@@ -11,7 +11,7 @@ This document outlines the steps for manual testing of the OpenRouter authentica
 
 2. Make sure you have the latest version of the application built:
    ```bash
-   go build -o architect ./cmd/architect
+   go build -o thinktank ./cmd/thinktank
    ```
 
 ## Test Cases
@@ -20,7 +20,7 @@ This document outlines the steps for manual testing of the OpenRouter authentica
 
 1. Run the following command:
    ```bash
-   LOGRUS_DEBUG=1 ./architect --instructions test-prompt.txt --model gemini-2.5-pro-preview-03-25 --output-dir ./test-output ./
+   LOGRUS_DEBUG=1 ./thinktank --instructions test-prompt.txt --model gemini-2.5-pro-preview-03-25 --output-dir ./test-output ./
    ```
 
 2. Verify the following in the debug logs:
@@ -32,7 +32,7 @@ This document outlines the steps for manual testing of the OpenRouter authentica
 
 1. Run the following command:
    ```bash
-   LOGRUS_DEBUG=1 ./architect --instructions test-prompt.txt --model openrouter/deepseek/deepseek-r1 --output-dir ./test-output ./
+   LOGRUS_DEBUG=1 ./thinktank --instructions test-prompt.txt --model openrouter/deepseek/deepseek-r1 --output-dir ./test-output ./
    ```
 
 2. Verify the following in the debug logs:
@@ -45,7 +45,7 @@ This document outlines the steps for manual testing of the OpenRouter authentica
 
 1. Run the following command with multiple models:
    ```bash
-   LOGRUS_DEBUG=1 ./architect --instructions test-prompt.txt --model gemini-2.5-pro-preview-03-25 --model openrouter/deepseek/deepseek-r1 --output-dir ./test-output ./
+   LOGRUS_DEBUG=1 ./thinktank --instructions test-prompt.txt --model gemini-2.5-pro-preview-03-25 --model openrouter/deepseek/deepseek-r1 --output-dir ./test-output ./
    ```
 
 2. Verify the following in the debug logs:
@@ -68,7 +68,7 @@ If authentication fails:
 1. Verify the environment variables are set correctly
 2. Check that the API keys are valid and have the correct format
 3. Look for error messages in the debug logs that might indicate issues with the API keys
-4. Verify that the `InitLLMClient` method in `internal/architect/registry_api.go` is correctly prioritizing environment variables
+4. Verify that the `InitLLMClient` method in `internal/thinktank/registry_api.go` is correctly prioritizing environment variables
 
 ## Test Completion Criteria
 

@@ -1,12 +1,12 @@
-# OpenRouter Integration in Architect
+# OpenRouter Integration in thinktank
 
-This document explains how Architect integrates with OpenRouter, a unified gateway service that provides access to various LLM models from different providers through a single consistent API.
+This document explains how thinktank integrates with OpenRouter, a unified gateway service that provides access to various LLM models from different providers through a single consistent API.
 
 ## Overview
 
-Architect supports OpenRouter as a first-class provider alongside OpenAI and Gemini. OpenRouter allows you to access a wide range of models from providers like DeepSeek, Anthropic, xAI (Grok), and others through a single API with a consistent interface.
+thinktank supports OpenRouter as a first-class provider alongside OpenAI and Gemini. OpenRouter allows you to access a wide range of models from providers like DeepSeek, Anthropic, xAI (Grok), and others through a single API with a consistent interface.
 
-The OpenRouter integration in Architect includes:
+The OpenRouter integration in thinktank includes:
 - Registry-based model configuration
 - Uniform API key handling
 - Parameter mapping that preserves model-specific options
@@ -17,7 +17,7 @@ The OpenRouter integration in Architect includes:
 
 ### API Key Setup
 
-To use OpenRouter models with Architect, you need to set up an API key:
+To use OpenRouter models with thinktank, you need to set up an API key:
 
 1. Create an account on [OpenRouter](https://openrouter.ai/)
 2. Navigate to the [API Keys page](https://openrouter.ai/keys)
@@ -31,7 +31,7 @@ The key can also be passed programmatically when creating a new client, but the 
 
 ### Model Configuration
 
-OpenRouter models are defined in `~/.config/architect/models.yaml` using the following format:
+OpenRouter models are defined in `~/.config/thinktank/models.yaml` using the following format:
 
 ```yaml
 - name: openrouter/deepseek/deepseek-r1
@@ -72,10 +72,10 @@ You can customize the base URL if needed, e.g., for self-hosted proxies.
 
 ```bash
 # Use an OpenRouter model
-architect --instructions task.txt --model openrouter/deepseek/deepseek-r1 ./src
+thinktank --instructions task.txt --model openrouter/deepseek/deepseek-r1 ./src
 
 # Compare outputs from multiple providers
-architect --instructions task.txt \
+thinktank --instructions task.txt \
   --model gemini-2.5-pro-preview-03-25 \
   --model gpt-4-turbo \
   --model openrouter/x-ai/grok-3-beta \
@@ -106,15 +106,15 @@ The OpenRouter provider is implemented in `internal/providers/openrouter/provide
 The OpenRouter client is implemented in `internal/providers/openrouter/client.go`. Key features:
 
 1. **Request Parameters**: Local parameter handling for thread safety during concurrent requests
-2. **API Mapping**: Maps Architect's parameter format to OpenRouter's API format
-3. **Response Processing**: Translates OpenRouter API responses into Architect's internal format
+2. **API Mapping**: Maps thinktank's parameter format to OpenRouter's API format
+3. **Response Processing**: Translates OpenRouter API responses into thinktank's internal format
 4. **Error Handling**: Comprehensive error detection, categorization, and reporting
 
 ### Parameter Mapping
 
-The OpenRouter client maps the following parameters from Architect to the OpenRouter API:
+The OpenRouter client maps the following parameters from thinktank to the OpenRouter API:
 
-| Architect Parameter | OpenRouter API Parameter | Notes |
+| thinktank Parameter | OpenRouter API Parameter | Notes |
 |---------------------|--------------------------|-------|
 | `temperature`       | `temperature`            | Range 0.0-1.0, controls randomness |
 | `top_p`             | `top_p`                  | Range 0.0-1.0, controls diversity |
@@ -179,5 +179,5 @@ Common error types and their resolution:
 
 - [OpenRouter Website](https://openrouter.ai/)
 - [OpenRouter API Documentation](https://openrouter.ai/docs)
-- [Architect README](../README.md)
+- [thinktank README](../README.md)
 - [General OpenRouter API Guide](./openrouter-docs.md)
