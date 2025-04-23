@@ -4,6 +4,7 @@ package thinktank
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sync"
@@ -14,7 +15,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/runutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
@@ -286,18 +286,33 @@ var orchestratorConstructor = func(
 	)
 }
 
+// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNN
+// where NNNN is a 4-digit random number to ensure uniqueness for runs in the same second.
+func generateTimestampedRunName() string {
+	// Generate timestamp in format YYYYMMDD_HHMMSS
+	timestamp := time.Now().Format("20060102_150405")
+
+	// Generate random 4-digit number (0000-9999) for uniqueness
+	randNum := rand.Intn(10000)
+
+	// Combine with prefix and format with leading zeros for the random number
+	return fmt.Sprintf("thinktank_%s_%04d", timestamp, randNum)
+}
+
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.
 func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
 	if cliConfig.OutputDir == "" {
-		// Generate a unique run name (e.g., "curious-panther")
-		runName := runutil.GenerateRunName()
+		// Generate a unique timestamped run name
+		runName := generateTimestampedRunName()
+
 		// Get the current working directory
 		cwd, err := os.Getwd()
 		if err != nil {
 			logger.Error("Error getting current working directory: %v", err)
 			return fmt.Errorf("error getting current working directory: %w", err)
 		}
+
 		// Set the output directory to the run name in the current working directory
 		cliConfig.OutputDir = filepath.Join(cwd, runName)
 		logger.Info("Generated output directory: %s", cliConfig.OutputDir)

@@ -12,14 +12,14 @@ Replace the current "cutesy" adjective-noun directory naming system with a more 
   - Add imports for "math/rand" and "time"
   - Add `rand.Seed(time.Now().UnixNano())` at the start of main()
 
-- [ ] T003: Implement the new timestamp-based run name generator in `internal/thinktank/app.go`
+- [x] T003: Implement the new timestamp-based run name generator in `internal/thinktank/app.go`
   - Add imports for "fmt", "math/rand", "os", "path/filepath", "time"
   - Remove import for "github.com/phrazzld/thinktank/internal/runutil"
   - Add `generateTimestampedRunName()` function
   - Format: `thinktank_YYYYMMDD_HHMMSS_NNNN`
   - Depends on: T001
 
-- [ ] T004: Update output directory setup in `internal/thinktank/app.go`
+- [x] T004: Update output directory setup in `internal/thinktank/app.go`
   - Replace call to `runutil.GenerateRunName()` with `generateTimestampedRunName()`
   - Update directory creation logic with proper error handling
   - Depends on: T003
