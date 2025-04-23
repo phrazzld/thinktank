@@ -1,5 +1,24 @@
 # BACKLOG
 
+## OpenAI Integration Improvements
+
+- [ ] **T41: Implement Parameter Validation**
+  Add validation for parameter values (temperature 0-2, top_p 0-1, etc.) before sending to the OpenAI API to provide better error messages.
+
+- [ ] **T42: Consolidate API Services**
+  Deprecate and remove the legacy `apiService` implementation to avoid confusion and inconsistent behavior between the legacy and registry implementations.
+
+- [ ] **T43: Improve Model Name Lookup**
+  Make model lookup in the registry case-insensitive to prevent user confusion with model capitalization.
+
+- [ ] **T44: Standardize API Key Handling**
+  Ensure consistent API key resolution logic across all code paths and providers to prevent subtle bugs.
+
+- [ ] **T45: Restore Integration Tests**
+  Update and re-enable the disabled integration tests to verify end-to-end functionality across all providers.
+
+## Other Backlog Items
+
 - [ ] **T10: Remove cutesy directory naming**
   Remove the cutesy directory naming stuff -- simplify
 
