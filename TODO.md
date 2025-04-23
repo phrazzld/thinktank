@@ -8,7 +8,7 @@ Replace the current "cutesy" adjective-noun directory naming system with a more 
   - `internal/runutil/runutil.go`
   - `internal/runutil/runutil_test.go`
 
-- [ ] T002: Add random number generator seeding in main.go
+- [x] T002: Add random number generator seeding in main.go
   - Add imports for "math/rand" and "time"
   - Add `rand.Seed(time.Now().UnixNano())` at the start of main()
 

@@ -4,7 +4,9 @@ package thinktank
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/registry"
@@ -13,6 +15,9 @@ import (
 
 // Main is the entry point for the thinktank CLI
 func Main() {
+	// Seed the random number generator at program start
+	rand.Seed(time.Now().UnixNano())
+
 	// Create a base context
 	ctx := context.Background()
 
