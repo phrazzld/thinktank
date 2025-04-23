@@ -29,7 +29,7 @@ The OpenAI provider is currently completely mocked and returns dummy responses. 
   - Verify the `OpenAIClientAdapter` works with the restored client
   - Make sure parameter handling is working correctly
 
-- [ ] **T5: Add Tests** depends-on: T4
+- [x] **T5: Add Tests** depends-on: T4
   - Restore skipped tests in `openai_content_test.go`
   - Ensure all test mocks are updated to match the new implementation
   - Add specific tests for streaming functionality if implemented

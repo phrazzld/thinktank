@@ -1,4 +1,4 @@
-// Package openai provides a mock implementation of the OpenAI client for testing
+// Package openai provides a client for interacting with the OpenAI API
 package openai
 
 import (
@@ -103,4 +103,208 @@ func TestEmptyPromptError(t *testing.T) {
 	var llmErr *llm.LLMError
 	require.True(t, errors.As(err, &llmErr))
 	assert.Equal(t, llm.CategoryInvalidRequest, llmErr.ErrorCategory)
+}
+
+// TestSystemPromptExtraction tests the system prompt extraction functionality
+func TestSystemPromptExtraction(t *testing.T) {
+	// Test with standard system tag
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			// Check that we have exactly 2 messages (system + user)
+			if len(params.Messages) != 2 {
+				t.Errorf("Expected 2 messages, got %d", len(params.Messages))
+			}
+
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{
+					{
+						Message: openai.ChatCompletionMessage{
+							Content: "Mock response",
+						},
+					},
+				},
+			}, nil
+		},
+	}
+
+	client := &openaiClient{
+		api:       mockAPI,
+		modelName: "gpt-4",
+	}
+
+	// Call with a prompt containing a system tag
+	_, err := client.GenerateContent(context.Background(), "<system>System instruction</system>User prompt", nil)
+	require.NoError(t, err)
+
+	// Test with s tag
+	_, err = client.GenerateContent(context.Background(), "<s>System instruction</s>User prompt", nil)
+	require.NoError(t, err)
+}
+
+// TestParameterHandling tests parameter handling in the GenerateContent method
+func TestParameterHandling(t *testing.T) {
+	// Test that parameter settings are properly applied
+	// We'll use simpler tests focused on the client setters
+
+	// Test temperature setting
+	client := &openaiClient{
+		modelName: "gpt-4",
+	}
+	tempValue := float32(0.7)
+	client.SetTemperature(tempValue)
+	assert.Equal(t, &tempValue, client.temperature)
+
+	// Test top_p setting
+	topPValue := float32(0.95)
+	client.SetTopP(topPValue)
+	assert.Equal(t, &topPValue, client.topP)
+
+	// Test max tokens setting
+	maxTokensValue := int32(100)
+	client.SetMaxTokens(maxTokensValue)
+	assert.Equal(t, &maxTokensValue, client.maxTokens)
+
+	// Test frequency penalty setting
+	freqPenaltyValue := float32(0.5)
+	client.SetFrequencyPenalty(freqPenaltyValue)
+	assert.Equal(t, &freqPenaltyValue, client.frequencyPenalty)
+
+	// Test presence penalty setting
+	presPenaltyValue := float32(0.7)
+	client.SetPresencePenalty(presPenaltyValue)
+	assert.Equal(t, &presPenaltyValue, client.presencePenalty)
+
+	// Test applyOpenAIParameters function
+	params := &openai.ChatCompletionNewParams{}
+	customParams := map[string]interface{}{
+		"temperature":       0.7,
+		"top_p":             0.95,
+		"max_tokens":        100,
+		"frequency_penalty": 0.5,
+		"presence_penalty":  0.7,
+	}
+
+	// Apply the parameters
+	applyOpenAIParameters(params, customParams)
+
+	// Verify the parameters were set properly
+	// We can't directly check the values, but we can verify the parameters were changed
+	// from their default nil state by the applyOpenAIParameters function
+	assert.NotNil(t, params.Temperature)
+	assert.NotNil(t, params.TopP)
+	assert.NotNil(t, params.MaxTokens)
+	assert.NotNil(t, params.FrequencyPenalty)
+	assert.NotNil(t, params.PresencePenalty)
+}
+
+// TestSuccessfulGeneration tests a successful content generation
+func TestSuccessfulGeneration(t *testing.T) {
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{
+					{
+						Message: openai.ChatCompletionMessage{
+							Content: "Generated response",
+						},
+						FinishReason: "stop",
+					},
+				},
+			}, nil
+		},
+	}
+
+	client := &openaiClient{
+		api:       mockAPI,
+		modelName: "gpt-4",
+	}
+
+	// Call GenerateContent
+	result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+	// Verify success
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "Generated response", result.Content)
+	assert.Equal(t, "stop", result.FinishReason)
+	assert.False(t, result.Truncated)
+}
+
+// TestTruncatedResponse tests response truncation detection
+func TestTruncatedResponse(t *testing.T) {
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{
+					{
+						Message: openai.ChatCompletionMessage{
+							Content: "Truncated response...",
+						},
+						FinishReason: "length",
+					},
+				},
+			}, nil
+		},
+	}
+
+	client := &openaiClient{
+		api:       mockAPI,
+		modelName: "gpt-4",
+	}
+
+	// Call GenerateContent
+	result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+	// Verify success but with truncation
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "Truncated response...", result.Content)
+	assert.Equal(t, "length", result.FinishReason)
+	assert.True(t, result.Truncated)
+}
+
+// TestEmptyChoicesError tests empty choices error handling
+func TestEmptyChoicesError(t *testing.T) {
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			return &openai.ChatCompletion{
+				Choices: []openai.ChatCompletionChoice{},
+			}, nil
+		},
+	}
+
+	client := &openaiClient{
+		api:       mockAPI,
+		modelName: "gpt-4",
+	}
+
+	// Call GenerateContent
+	result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+	// Verify error
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "no completions returned")
+}
+
+// TestAPIError tests API error handling
+func TestAPIError(t *testing.T) {
+	mockAPI := &mockOpenAIAPI{
+		createChatCompletionWithParamsFunc: func(ctx context.Context, params openai.ChatCompletionNewParams) (*openai.ChatCompletion, error) {
+			return nil, errors.New("API error")
+		},
+	}
+
+	client := &openaiClient{
+		api:       mockAPI,
+		modelName: "gpt-4",
+	}
+
+	// Call GenerateContent
+	result, err := client.GenerateContent(context.Background(), "Test prompt", nil)
+
+	// Verify error
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "API error")
 }
