@@ -53,6 +53,8 @@ CONSULTANT-PLAN.md
 BUG.md
 BUGFIXPLAN.md
 TASK-PROMPT.md
+thinktank_output/
+
 # Profiling data
 profile_data/
 
@@ -70,6 +72,4 @@ DEBUG-*.md
 *_instructions.txt
 
 # Development symlinks
-DEVELOPMENT_PHILOSOPHY.md
-DEVELOPMENT_PHILOSOPHY_APPENDIX_GO.md
 docs/prompts

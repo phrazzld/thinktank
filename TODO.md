@@ -34,7 +34,7 @@ The OpenAI provider is currently completely mocked and returns dummy responses. 
   - Ensure all test mocks are updated to match the new implementation
   - Add specific tests for streaming functionality if implemented
 
-- [ ] **T6: Test End-to-End** depends-on: T5
+- [x] **T6: Test End-to-End** depends-on: T5
   - Manually verify that OpenAI models work correctly
   - Check that responses are complete (not truncated)
   - Verify all parameters are correctly passed to the API
