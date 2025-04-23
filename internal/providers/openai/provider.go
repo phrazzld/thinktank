@@ -70,26 +70,14 @@ func (p *OpenAIProvider) CreateClient(
 	// Store API key for later use
 	p.apiKey = effectiveAPIKey
 
-	// We need to set the environment variable temporarily for the openai client
-	// Since the OpenAI client directly reads from the environment
-	oldAPIKey := os.Getenv("OPENAI_API_KEY")
-	if err := os.Setenv("OPENAI_API_KEY", effectiveAPIKey); err != nil {
-		return nil, fmt.Errorf("failed to set OpenAI API key in environment: %w", err)
+	// Determine API endpoint if provided
+	apiBase := ""
+	if apiEndpoint != "" {
+		apiBase = apiEndpoint
 	}
-	defer func() {
-		var err error
-		if oldAPIKey != "" {
-			err = os.Setenv("OPENAI_API_KEY", oldAPIKey)
-		} else {
-			err = os.Unsetenv("OPENAI_API_KEY")
-		}
-		if err != nil {
-			p.logger.Warn("Failed to restore original OpenAI API key environment variable: %v", err)
-		}
-	}()
 
-	// Create the client using the existing OpenAI implementation
-	baseClient, err := openai.NewClient(modelID)
+	// Create the client using the updated OpenAI implementation that accepts API key
+	baseClient, err := openai.NewClient(effectiveAPIKey, modelID, apiBase)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create OpenAI client: %w", err)
 	}

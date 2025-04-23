@@ -19,7 +19,7 @@ The OpenAI provider is currently completely mocked and returns dummy responses. 
     - Proper API call implementation in `GenerateContent`
     - Tag extraction helper functions
 
-- [ ] **T3: Update OpenAI Client Constructor** depends-on: T2
+- [x] **T3: Update OpenAI Client Constructor** depends-on: T2
   - Modify `NewClient` function to accept API key again
   - Restore OpenAI client initialization code
   - Update error handling for API initialization failures

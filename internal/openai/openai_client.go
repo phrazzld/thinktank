@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/openai/openai-go"
+	"github.com/openai/openai-go/option"
 	"github.com/phrazzld/thinktank/internal/llm"
 )
 
@@ -70,13 +71,27 @@ func (api *realOpenAIAPI) createChatCompletionWithParams(ctx context.Context, pa
 }
 
 // NewClient creates a new OpenAI client that implements the llm.LLMClient interface
-func NewClient(modelName string) (llm.LLMClient, error) {
+func NewClient(apiKey, modelName, apiBase string) (llm.LLMClient, error) {
+	if apiKey == "" {
+		return nil, fmt.Errorf("API key is required")
+	}
+
 	if modelName == "" {
 		return nil, fmt.Errorf("model name is required")
 	}
 
-	// Create the OpenAI client - API key is set in environment variable
-	client := openai.NewClient()
+	// Create a list of client options
+	clientOptions := []option.RequestOption{
+		option.WithAPIKey(apiKey),
+	}
+
+	// Add custom base URL if provided
+	if apiBase != "" {
+		clientOptions = append(clientOptions, option.WithBaseURL(apiBase))
+	}
+
+	// Create the OpenAI client with options
+	client := openai.NewClient(clientOptions...)
 
 	// Create the real API implementation
 	api := &realOpenAIAPI{

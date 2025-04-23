@@ -5,44 +5,55 @@ import (
 	"testing"
 )
 
-// TestClientCreationWithDefaultConfigurationSkip is the original test moved from openai_client_test.go
-// It tests the creation of a client with default configuration
-func TestClientCreationWithDefaultConfigurationSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
+// TestClientCreation tests basic client creation with API key
+func TestClientCreation(t *testing.T) {
+	// Create a client with a valid API key and model name
+	client, err := NewClient("test-api-key", "gpt-4", "")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client to be created, got nil")
+	}
+
+	// Check the model name is set correctly
+	if client.GetModelName() != "gpt-4" {
+		t.Errorf("Expected model name to be gpt-4, got %s", client.GetModelName())
+	}
 }
 
-// TestClientCreationWithCustomConfigurationSkip is the original test moved from openai_client_test.go
-// It tests the creation and configuration of a client with custom parameters
-func TestClientCreationWithCustomConfigurationSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
+// TestClientCreationWithCustomBaseURL tests client creation with a custom base URL
+func TestClientCreationWithCustomBaseURL(t *testing.T) {
+	// Create a client with a valid API key, model name, and custom base URL
+	client, err := NewClient("test-api-key", "gpt-4", "https://custom-openai-endpoint.example.com")
+	if err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+	if client == nil {
+		t.Fatal("Expected client to be created, got nil")
+	}
 }
 
-// TestEmptyAPIKeyHandlingSkip is the original test moved from openai_client_test.go
-// It tests how the client handles empty API keys
-func TestEmptyAPIKeyHandlingSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
+// TestEmptyAPIKeyHandling tests how the client handles empty API keys
+func TestEmptyAPIKeyHandling(t *testing.T) {
+	// Create a client with an empty API key
+	_, err := NewClient("", "gpt-4", "")
+	if err == nil {
+		t.Fatal("Expected error for empty API key, got nil")
+	}
+	if err.Error() != "API key is required" {
+		t.Errorf("Expected error message 'API key is required', got '%s'", err.Error())
+	}
 }
 
-// TestValidAPIKeyFormatDetectionSkip is the original test moved from openai_client_test.go
-// It tests the detection of valid API key formats
-func TestValidAPIKeyFormatDetectionSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
-}
-
-// TestInvalidAPIKeyFormatHandlingSkip is the original test moved from openai_client_test.go
-// It tests how the client handles invalid API key formats
-func TestInvalidAPIKeyFormatHandlingSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
-}
-
-// TestAPIKeyEnvironmentVariableFallbackSkip is the original test moved from openai_client_test.go
-// It tests that the client correctly falls back to the OPENAI_API_KEY environment variable
-func TestAPIKeyEnvironmentVariableFallbackSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
-}
-
-// TestAPIKeyPermissionValidationLogicSkip is the original test moved from openai_client_test.go
-// It tests how the client handles API keys that are syntactically valid but fail for permission or validation reasons
-func TestAPIKeyPermissionValidationLogicSkip(t *testing.T) {
-	t.Skip("Skipping during refactoring - Part of tests being extracted from openai_client_test.go")
+// TestEmptyModelNameHandling tests how the client handles empty model names
+func TestEmptyModelNameHandling(t *testing.T) {
+	// Create a client with an empty model name
+	_, err := NewClient("test-api-key", "", "")
+	if err == nil {
+		t.Fatal("Expected error for empty model name, got nil")
+	}
+	if err.Error() != "model name is required" {
+		t.Errorf("Expected error message 'model name is required', got '%s'", err.Error())
+	}
 }
