@@ -10,7 +10,7 @@ The OpenAI provider is currently completely mocked and returns dummy responses. 
   - Run `go mod tidy` to update dependencies
   - Verify dependency is correctly installed
 
-- [ ] **T2: Restore OpenAI Client Implementation** depends-on: T1
+- [x] **T2: Restore OpenAI Client Implementation** depends-on: T1
   - Update `/internal/openai/openai_client.go` to use the actual OpenAI API client
   - Replace the mock implementation with the original implementation from commit `1db5091`
   - Restore the following key components:
