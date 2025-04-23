@@ -24,7 +24,7 @@ The OpenAI provider is currently completely mocked and returns dummy responses. 
   - Restore OpenAI client initialization code
   - Update error handling for API initialization failures
 
-- [ ] **T4: Update Provider Integration** depends-on: T3
+- [x] **T4: Update Provider Integration** depends-on: T3
   - Ensure `/internal/providers/openai/provider.go` correctly calls the updated client
   - Verify the `OpenAIClientAdapter` works with the restored client
   - Make sure parameter handling is working correctly
