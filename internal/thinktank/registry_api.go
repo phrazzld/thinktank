@@ -305,26 +305,7 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 	case ProviderOpenAI:
 		s.logger.Debug("Using OpenAI provider for model %s (legacy detection)", modelName)
 
-		// Set OPENAI_API_KEY environment variable temporarily for OpenAI client
-		oldAPIKey := os.Getenv("OPENAI_API_KEY")
-		if err := os.Setenv("OPENAI_API_KEY", effectiveApiKey); err != nil {
-			return nil, fmt.Errorf("failed to set OpenAI API key in environment: %w", err)
-		}
-
-		// Restore the original value when done
-		defer func() {
-			var err error
-			if oldAPIKey != "" {
-				err = os.Setenv("OPENAI_API_KEY", oldAPIKey)
-			} else {
-				err = os.Unsetenv("OPENAI_API_KEY")
-			}
-			if err != nil {
-				s.logger.Warn("Failed to restore original OpenAI API key environment variable: %v", err)
-			}
-		}()
-
-		client, err = openai.NewClient(modelName)
+		client, err = openai.NewClient(effectiveApiKey, modelName, apiEndpoint)
 	case ProviderUnknown:
 		return nil, fmt.Errorf("%w: %s", ErrUnsupportedModel, modelName)
 	}

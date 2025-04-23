@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/phrazzld/thinktank/internal/gemini"
@@ -138,7 +139,14 @@ func newGeminiClientWrapper(ctx context.Context, apiKey, modelName, apiEndpoint 
 
 // newOpenAIClientWrapper wraps the OpenAI client creation to match function signature
 func newOpenAIClientWrapper(modelName string) (llm.LLMClient, error) {
-	return openai.NewClient(modelName)
+	// Get API key from environment
+	apiKey := os.Getenv("OPENAI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is required")
+	}
+
+	// Use default API endpoint
+	return openai.NewClient(apiKey, modelName, "")
 }
 
 // NewAPIService creates a new instance of APIService
