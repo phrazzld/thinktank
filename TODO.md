@@ -26,7 +26,7 @@ Replace the current "cutesy" adjective-noun directory naming system with a more 
 
 ## Testing
 
-- [ ] T005: Create unit tests for the new naming function in `internal/thinktank/app_naming_test.go`
+- [x] T005: Create unit tests for the new naming function in `internal/thinktank/app_naming_test.go`
   - Test pattern: `^thinktank_\d{8}_\d{6}_\d{4}$`
   - Depends on: T003
 
