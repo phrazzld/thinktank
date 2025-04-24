@@ -41,7 +41,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--model` | Model to use (repeatable) | `gemini-2.5-pro-exp-03-25` |
-| `--output-dir` | Output directory | Auto-generated name |
+| `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
 | `--dry-run` | Preview without API calls | `false` |
 | `--log-level` | Logging level (debug,info,warn,error) | `info` |
@@ -78,6 +78,25 @@ The output depends entirely on your instructions, but common use cases include:
 - Documentation generation
 
 Output files are saved in the specified directory (or auto-generated directory) with one file per model.
+
+### Output Directory Naming
+
+When no `--output-dir` is specified, thinktank automatically generates a timestamped directory name using the format:
+
+```
+thinktank_YYYYMMDD_HHMMSS_NNNN
+```
+
+Where:
+- `YYYYMMDD` is the current date (year, month, day)
+- `HHMMSS` is the current time (hour, minute, second)
+- `NNNN` is a 4-digit random number to ensure uniqueness
+
+Examples:
+- `thinktank_20250424_152230_3721` (April 24, 2025 at 15:22:30, random number 3721)
+- `thinktank_20250424_152231_0498` (Same date, one second later, different random number)
+
+This naming convention ensures that each run has a unique, sortable, and identifiable output directory.
 
 ## Troubleshooting
 

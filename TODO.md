@@ -38,7 +38,7 @@ Replace the current "cutesy" adjective-noun directory naming system with a more 
 
 ## Documentation & Verification
 
-- [ ] T007: Update README.md to document the new naming scheme
+- [x] T007: Update README.md to document the new naming scheme
   - Explain format: `thinktank_YYYYMMDD_HHMMSS_NNNN`
   - Provide examples
 
