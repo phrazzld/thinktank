@@ -61,9 +61,9 @@ func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]
 	// Format model outputs section with model names as attributes
 	builder.WriteString("<model_outputs>\n")
 	for modelName, output := range modelOutputs {
-		builder.WriteString(fmt.Sprintf("<output model=\"%s\">\n", modelName))
+		builder.WriteString(fmt.Sprintf("<model_result model=\"%s\">\n", modelName))
 		builder.WriteString(output)
-		builder.WriteString("\n</output>\n\n")
+		builder.WriteString("\n</model_result>\n\n")
 	}
 	builder.WriteString("</model_outputs>\n\n")
 

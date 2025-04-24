@@ -167,7 +167,7 @@
         1. Tests pass, confirming correct flag parsing and validation.
     - **Depends‑on:** [T004]
 
-- [ ] **T019 · Test · P2: add unit tests for `StitchSynthesisPrompt`**
+- [x] **T019 · Test · P2: add unit tests for `StitchSynthesisPrompt`**
     - **Context:** PLAN.md § 3.1.2 Prompt Tests
     - **Action:**
         1. Write tests for different input combinations (empty, single model, multiple models).
