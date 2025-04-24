@@ -151,9 +151,23 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 				return fmt.Errorf("failed to synthesize results: %w", err)
 			}
 
-			// This will be extended in T015 to save the synthesized output to a file
+			// Log synthesis success
 			o.logger.Info("Successfully synthesized results from %d model outputs", len(modelOutputs))
 			o.logger.Debug("Synthesis output length: %d characters", len(synthesisContent))
+
+			// Sanitize model name for use in filename
+			sanitizedModelName := sanitizeFilename(o.config.SynthesisModel)
+
+			// Construct output file path with -synthesis suffix
+			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")
+
+			// Save the synthesis output to file
+			o.logger.Debug("Saving synthesis output to %s", outputFilePath)
+			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
+				o.logger.Error("Failed to save synthesis output: %v", err)
+			} else {
+				o.logger.Info("Successfully saved synthesis output to %s", outputFilePath)
+			}
 		} else {
 			o.logger.Warn("No model outputs available for synthesis")
 		}

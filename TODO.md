@@ -131,7 +131,7 @@
         1. Method successfully calls synthesis model and returns result or error.
     - **Depends‑on:** [T013]
 
-- [ ] **T015 · Feature · P2: implement synthesis file saving in `Orchestrator.Run`**
+- [x] **T015 · Feature · P2: implement synthesis file saving in `Orchestrator.Run`**
     - **Context:** PLAN.md § 2.3.3 Modify `Run` Method (Synthesis case)
     - **Action:**
         1. Implement the logic within the synthesis branch after calling `synthesizeResults`.
