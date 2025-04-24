@@ -141,9 +141,22 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 	} else {
 		// Synthesis model specified - process all outputs with synthesis model
-		// This will be implemented in T013-T017
 		o.logger.Info("Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
 		o.logger.Debug("Synthesizing %d model outputs", len(modelOutputs))
+
+		// Only proceed with synthesis if we have model outputs to synthesize
+		if len(modelOutputs) > 0 {
+			synthesisContent, err := o.synthesizeResults(ctx, instructions, modelOutputs)
+			if err != nil {
+				return fmt.Errorf("failed to synthesize results: %w", err)
+			}
+
+			// This will be extended in T015 to save the synthesized output to a file
+			o.logger.Info("Successfully synthesized results from %d model outputs", len(modelOutputs))
+			o.logger.Debug("Synthesis output length: %d characters", len(synthesisContent))
+		} else {
+			o.logger.Warn("No model outputs available for synthesis")
+		}
 	}
 
 	return nil
@@ -455,6 +468,60 @@ func sanitizeFilename(filename string) string {
 		" ", "_", // Replace spaces with underscores for better readability
 	)
 	return replacer.Replace(filename)
+}
+
+// synthesizeResults processes multiple model outputs through a synthesis model.
+// It builds a prompt that includes the original instructions and all model outputs,
+// then sends this to the synthesis model to generate a consolidated result.
+//
+// Parameters:
+//   - ctx: The context for API client communication
+//   - originalInstructions: The user's original instructions
+//   - modelOutputs: A map of model names to their generated content
+//
+// Returns:
+//   - A string containing the synthesized result
+//   - An error if any step of the synthesis process fails
+func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructions string, modelOutputs map[string]string) (string, error) {
+	// Build synthesis prompt using the dedicated prompt function
+	o.logger.Debug("Building synthesis prompt")
+	synthesisPrompt := prompt.StitchSynthesisPrompt(originalInstructions, modelOutputs)
+	o.logger.Debug("Synthesis prompt built, length: %d characters", len(synthesisPrompt))
+
+	// Get model parameters
+	o.logger.Debug("Getting model parameters for synthesis model: %s", o.config.SynthesisModel)
+	modelParams, err := o.apiService.GetModelParameters(o.config.SynthesisModel)
+	if err != nil {
+		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", err)
+	}
+
+	// Get client for synthesis model
+	o.logger.Debug("Initializing client for synthesis model: %s", o.config.SynthesisModel)
+	client, err := o.apiService.InitLLMClient(ctx, "", o.config.SynthesisModel, "")
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize synthesis model client: %w", err)
+	}
+	defer func() {
+		if closeErr := client.Close(); closeErr != nil {
+			o.logger.Warn("Error closing synthesis model client: %v", closeErr)
+		}
+	}()
+
+	// Call model API
+	o.logger.Info("Calling synthesis model API: %s", o.config.SynthesisModel)
+	result, err := client.GenerateContent(ctx, synthesisPrompt, modelParams)
+	if err != nil {
+		return "", fmt.Errorf("synthesis model API call failed: %w", err)
+	}
+
+	// Process response
+	o.logger.Debug("Processing synthesis model response")
+	synthesisOutput, err := o.apiService.ProcessLLMResponse(result)
+	if err != nil {
+		return "", fmt.Errorf("failed to process synthesis model response: %w", err)
+	}
+
+	return synthesisOutput, nil
 }
 
 // NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager

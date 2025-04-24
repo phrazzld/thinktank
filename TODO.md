@@ -122,7 +122,7 @@
         1. Function correctly combines instructions and model outputs into a single prompt string.
     - **Depends‑on:** none
 
-- [ ] **T014 · Feature · P2: implement `synthesizeResults` method**
+- [x] **T014 · Feature · P2: implement `synthesizeResults` method**
     - **Context:** PLAN.md § 2.4.2 Implement Synthesis Method
     - **Action:**
         1. Add `synthesizeResults` method to `Orchestrator`.
