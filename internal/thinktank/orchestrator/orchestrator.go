@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -105,9 +106,39 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	// STEP 6: Handle synthesis or individual model outputs based on configuration
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
-		// This will be implemented in T012
 		o.logger.Info("Processing completed, saving individual model outputs")
 		o.logger.Debug("Collected %d model outputs", len(modelOutputs))
+
+		// Track stats for logging
+		savedCount := 0
+		errorCount := 0
+
+		// Iterate over the model outputs and save each to a file
+		for modelName, content := range modelOutputs {
+			// Sanitize model name for use in filename
+			sanitizedModelName := sanitizeFilename(modelName)
+
+			// Construct output file path
+			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+".md")
+
+			// Save the output to file
+			o.logger.Debug("Saving output for model %s to %s", modelName, outputFilePath)
+			if err := o.fileWriter.SaveToFile(content, outputFilePath); err != nil {
+				o.logger.Error("Failed to save output for model %s: %v", modelName, err)
+				errorCount++
+			} else {
+				savedCount++
+				o.logger.Info("Successfully saved output for model %s", modelName)
+			}
+		}
+
+		// Log summary of file operations
+		if errorCount > 0 {
+			o.logger.Error("Completed with errors: %d files saved successfully, %d files failed",
+				savedCount, errorCount)
+		} else {
+			o.logger.Info("All %d model outputs saved successfully", savedCount)
+		}
 	} else {
 		// Synthesis model specified - process all outputs with synthesis model
 		// This will be implemented in T013-T017
@@ -405,6 +436,25 @@ func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, 
 	}
 	// Return true if the underlying implementation doesn't support this method
 	return true, nil
+}
+
+// sanitizeFilename replaces characters that are not valid in filenames
+// with safe alternatives to ensure filenames are valid across different operating systems.
+func sanitizeFilename(filename string) string {
+	// Replace slashes and other problematic characters with hyphens
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "-",
+		"?", "-",
+		"\"", "-",
+		"<", "-",
+		">", "-",
+		"|", "-",
+		" ", "_", // Replace spaces with underscores for better readability
+	)
+	return replacer.Replace(filename)
 }
 
 // NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager

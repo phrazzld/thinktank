@@ -103,7 +103,7 @@
         2. Basic structure for both paths is in place.
     - **Depends‑on:** [T004, T010]
 
-- [ ] **T012 · Feature · P2: implement file writing without synthesis**
+- [x] **T012 · Feature · P2: implement file writing without synthesis**
     - **Context:** PLAN.md § 2.3.3 Modify `Run` Method (No synthesis case)
     - **Action:**
         1. Implement the logic within the "no synthesis" branch.
