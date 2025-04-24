@@ -1,38 +1,20 @@
 # BACKLOG
 
-## OpenAI Integration Improvements
-
-- [ ] **T41: Implement Parameter Validation**
-  Add validation for parameter values (temperature 0-2, top_p 0-1, etc.) before sending to the OpenAI API to provide better error messages.
-
-- [ ] **T42: Consolidate API Services**
-  Deprecate and remove the legacy `apiService` implementation to avoid confusion and inconsistent behavior between the legacy and registry implementations.
-
-- [ ] **T43: Improve Model Name Lookup**
-  Make model lookup in the registry case-insensitive to prevent user confusion with model capitalization.
-
-- [ ] **T44: Standardize API Key Handling**
-  Ensure consistent API key resolution logic across all code paths and providers to prevent subtle bugs.
-
-- [ ] **T45: Restore Integration Tests**
-  Update and re-enable the disabled integration tests to verify end-to-end functionality across all providers.
-
 ## Other Backlog Items
-
-- [ ] **T10: Remove cutesy directory naming**
-  Remove the cutesy directory naming stuff -- simplify
-
-- [ ] **T11: Audit codebase against dev philosophy**
-  Audit whole codebase against dev philosophy, identify key things to hit
-
-- [ ] **T12: Code minimization**
-  Remove as much as possible, shrink the codebase
 
 - [ ] **T13: Add synthesis step**
   Add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization or consolidation.
 
 - [ ] **T14: Implement semantic versioning**
   Implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
+
+- [ ] **T11: Audit codebase against dev philosophy**
+  Audit whole codebase against dev philosophy, identify key things to hit
+
+- [ ] add grok support for native grok api
+
+- [ ] **T12: Code minimization**
+  Remove as much as possible, shrink the codebase
 
 - [ ] **T15: Improve arbitrary model handling**
   Improve arbitrary model handling
@@ -112,3 +94,16 @@
 
 - [ ] **T40: Add instruction enhancement**
   Support a "modify my instructions" flag that extracts intent from the passed instructions and sends it to a model to rewrite according to best prompt engineering practices before sending your actual request complete with context to your target models
+## OpenAI Integration Improvements
+
+- [ ] **T42: Consolidate API Services**
+  Deprecate and remove the legacy `apiService` implementation to avoid confusion and inconsistent behavior between the legacy and registry implementations.
+
+- [ ] **T43: Improve Model Name Lookup**
+  Make model lookup in the registry case-insensitive to prevent user confusion with model capitalization.
+
+- [ ] **T44: Standardize API Key Handling**
+  Ensure consistent API key resolution logic across all code paths and providers to prevent subtle bugs.
+
+- [ ] **T45: Restore Integration Tests**
+  Update and re-enable the disabled integration tests to verify end-to-end functionality across all providers.

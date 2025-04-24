@@ -13,6 +13,9 @@ import (
 
 // Main is the entry point for the thinktank CLI
 func Main() {
+	// As of Go 1.20, there's no need to seed the global random number generator
+	// The runtime now automatically seeds it with a random value
+
 	// Create a base context
 	ctx := context.Background()
 

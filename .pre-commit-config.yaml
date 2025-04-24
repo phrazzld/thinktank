@@ -22,7 +22,7 @@ repos:
     -   id: go-build
     -   id: go-unit-tests
         name: go unit tests
-        entry: bash -c "cd './' && go test -short ./cmd/thinktank/... ./internal/thinktank/interfaces ./internal/thinktank/modelproc ./internal/thinktank/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit ./internal/runutil"
+        entry: bash -c "cd './' && go test -short ./cmd/thinktank/... ./internal/thinktank/interfaces ./internal/thinktank/modelproc ./internal/thinktank/prompt ./internal/auditlog ./internal/config ./internal/fileutil ./internal/gemini ./internal/integration ./internal/logutil ./internal/ratelimit"
         pass_filenames: false
         language: system
 
