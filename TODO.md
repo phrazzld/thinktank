@@ -140,7 +140,7 @@
         1. With synthesis, synthesized output is saved to a file with the correct naming convention.
     - **Depends‑on:** [T011, T014]
 
-- [ ] **T016 · Feature · P2: add error handling for synthesis failure**
+- [x] **T016 · Feature · P2: add error handling for synthesis failure**
     - **Context:** PLAN.md § 2.3.3 Modify `Run` Method (Error handling)
     - **Action:**
         1. Add error handling for synthesis API failures.

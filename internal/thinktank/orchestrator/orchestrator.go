@@ -146,9 +146,11 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 		// Only proceed with synthesis if we have model outputs to synthesize
 		if len(modelOutputs) > 0 {
+			// Attempt to synthesize results
 			synthesisContent, err := o.synthesizeResults(ctx, instructions, modelOutputs)
 			if err != nil {
-				return fmt.Errorf("failed to synthesize results: %w", err)
+				// Process the error with specialized handling
+				return o.handleSynthesisError(err)
 			}
 
 			// Log synthesis success
@@ -536,6 +538,58 @@ func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructio
 	}
 
 	return synthesisOutput, nil
+}
+
+// handleSynthesisError processes a synthesis error and generates a user-friendly error message.
+// It categorizes the error based on its type and adds helpful guidance for the user.
+// This ensures that synthesis errors are presented in a clear, actionable format.
+func (o *Orchestrator) handleSynthesisError(err error) error {
+	// Log the detailed error for debugging purposes
+	o.logger.Error("Synthesis error occurred: %v", err)
+
+	var errMsg string
+
+	// Check for specific error types
+	switch {
+	case strings.Contains(err.Error(), "rate limit"):
+		// Rate limiting error
+		errMsg = fmt.Sprintf("Synthesis model '%s' encountered rate limiting: %v", o.config.SynthesisModel, err)
+		errMsg += "\n\nTip: If you're encountering rate limit errors, consider waiting a moment before retrying or using a different synthesis model."
+
+	case strings.Contains(err.Error(), "safety") || strings.Contains(err.Error(), "content filter") || o.apiService.IsSafetyBlockedError(err):
+		// Content filtering/safety error
+		errMsg = fmt.Sprintf("Synthesis was blocked by content safety filters: %v", err)
+		errMsg += "\n\nTip: Your input or the model outputs may contain content that triggered safety filters. Consider reviewing your prompts and instructions."
+
+	case strings.Contains(err.Error(), "connect") || strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline"):
+		// Connectivity error
+		errMsg = fmt.Sprintf("Connectivity issue when calling synthesis model '%s': %v", o.config.SynthesisModel, err)
+		errMsg += "\n\nTip: Check your internet connection and try again. If the issue persists, the service might be experiencing temporary problems."
+
+	case strings.Contains(err.Error(), "auth") || strings.Contains(err.Error(), "key") || strings.Contains(err.Error(), "credential"):
+		// Authentication error
+		errMsg = fmt.Sprintf("Authentication failed for synthesis model '%s': %v", o.config.SynthesisModel, err)
+		errMsg += "\n\nTip: Check your API key and ensure it has proper permissions for this model."
+
+	case o.apiService.IsEmptyResponseError(err):
+		// Empty response error
+		errMsg = fmt.Sprintf("Synthesis model '%s' returned an empty response: %v", o.config.SynthesisModel, err)
+		errMsg += "\n\nTip: The model might be having trouble with your instructions or the outputs from other models. Try simplifying the instructions."
+
+	default:
+		// Generic error with model details
+		errMsg = fmt.Sprintf("Error synthesizing results with model '%s': %v", o.config.SynthesisModel, err)
+
+		// Add any additional details from API service
+		if details := o.apiService.GetErrorDetails(err); details != "" {
+			errMsg += "\nDetails: " + details
+		}
+
+		errMsg += "\n\nTip: If this error persists, try using a different synthesis model or check the model's documentation for limitations."
+	}
+
+	// Return a new error with the formatted message
+	return fmt.Errorf("synthesis failure: %s", errMsg)
 }
 
 // NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager
