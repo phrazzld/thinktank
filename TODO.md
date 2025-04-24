@@ -30,7 +30,7 @@ Replace the current "cutesy" adjective-noun directory naming system with a more 
   - Test pattern: `^thinktank_\d{8}_\d{6}_\d{4}$`
   - Depends on: T003
 
-- [ ] T006: Create E2E test for default directory naming in `internal/e2e/cli_naming_test.go`
+- [x] T006: Create E2E test for default directory naming in `internal/e2e/cli_naming_test.go`
   - Test using CLI without --output-dir
   - Verify directory format and file creation
   - Test explicit --output-dir still works
