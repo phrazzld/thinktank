@@ -36,7 +36,7 @@
     - **Depends‑on:** [T003]
 
 ## Model Processing
-- [ ] **T005 · Refactor · P2: update `Processor.Process` method signature to return content**
+- [x] **T005 · Refactor · P2: update `Processor.Process` method signature to return content**
     - **Context:** PLAN.md § 2.2.1 Update Process Method Signature
     - **Action:**
         1. Change `Process` method signature in `internal/thinktank/modelproc/processor.go` from `(...) error` to `(...) (string, error)`.

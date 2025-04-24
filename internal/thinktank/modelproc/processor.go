@@ -83,7 +83,8 @@ func NewProcessor(
 // Process handles the entire model processing workflow for a single model.
 // It implements the logic from the previous processModel/processModelConcurrently functions,
 // including initialization, token checking, generation, response processing, and output saving.
-func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) error {
+// Returns the generated content as a string and any error encountered.
+func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) (string, error) {
 	p.logger.Info("Processing model: %s", modelName)
 
 	// 1. Initialize model-specific LLM client
