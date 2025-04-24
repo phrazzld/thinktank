@@ -77,7 +77,7 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -88,6 +88,11 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 		t.Errorf("Expected error for client initialization, got nil")
 	} else if !errors.Is(err, expectedErr) {
 		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -143,7 +148,7 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -154,6 +159,11 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 		t.Errorf("Expected error for generation failure, got nil")
 	} else if !errors.Is(err, expectedErr) {
 		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -219,7 +229,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -230,6 +240,11 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 		t.Errorf("Expected error for save failure, got nil")
 	} else if !errors.Is(err, expectedErr) {
 		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -289,7 +304,7 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -300,6 +315,11 @@ func TestModelProcessor_Process_TokenLimitExceeded(t *testing.T) {
 		t.Errorf("Expected error for token limit exceeded, got nil")
 	} else if !strings.Contains(err.Error(), "token limit exceeded") {
 		t.Errorf("Unexpected error message: %v", err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -363,7 +383,7 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -374,6 +394,11 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 		t.Errorf("Expected error for response processing, got nil")
 	} else if !errors.Is(err, expectedError) {
 		t.Errorf("Expected error '%v', got '%v'", expectedError, err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -438,7 +463,7 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -449,6 +474,11 @@ func TestProcess_EmptyResponseError(t *testing.T) {
 		t.Errorf("Expected error for empty response, got nil")
 	} else if !strings.Contains(err.Error(), "empty response") {
 		t.Errorf("Expected error to mention empty response, got: %v", err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -516,7 +546,7 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 	)
 
 	// Run test
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -527,6 +557,11 @@ func TestProcess_SafetyBlockedError(t *testing.T) {
 		t.Errorf("Expected error for safety blocked, got nil")
 	} else if !strings.Contains(err.Error(), "safety") {
 		t.Errorf("Expected error to mention safety concerns, got: %v", err)
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }
 
@@ -573,7 +608,7 @@ func TestProcess_NilClientDeference(t *testing.T) {
 	)
 
 	// Run test - this should not panic due to nil pointer dereference in defer
-	err := processor.Process(
+	output, err := processor.Process(
 		context.Background(),
 		"test-model",
 		"Test prompt",
@@ -582,5 +617,10 @@ func TestProcess_NilClientDeference(t *testing.T) {
 	// Verify an error was returned but no panic occurred
 	if err == nil {
 		t.Errorf("Expected error for client initialization failure, got nil")
+	}
+
+	// Check that output is empty on error
+	if output != "" {
+		t.Errorf("Expected empty output on error, got: %s", output)
 	}
 }

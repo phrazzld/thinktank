@@ -45,7 +45,7 @@
         2. Code compiles.
     - **Depends‑on:** none
 
-- [ ] **T006 · Refactor · P2: implement content return in `Processor.Process`**
+- [x] **T006 · Refactor · P2: implement content return in `Processor.Process`**
     - **Context:** PLAN.md § 2.2.1 Update Process Method Signature
     - **Action:**
         1. Modify the implementation of `Process` to return the `generatedOutput` string on success.

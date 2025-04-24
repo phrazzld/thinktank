@@ -227,7 +227,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	)
 
 	// Process the model
-	err := processor.Process(ctx, modelName, stitchedPrompt)
+	_, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
 		o.logger.Error("Processing model %s failed: %v", modelName, err)
 		errChan <- fmt.Errorf("model %s: %w", modelName, err)
