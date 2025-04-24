@@ -176,7 +176,7 @@
         1. Tests pass, verifying correct prompt formatting.
     - **Depends‑on:** [T013]
 
-- [ ] **T020 · Test · P2: add unit tests for `synthesizeResults`**
+- [x] **T020 · Test · P2: add unit tests for `synthesizeResults`**
     - **Context:** PLAN.md § 3.1.3 Orchestrator Tests
     - **Action:**
         1. Write tests with mocked `APIService` to verify synthesis API calls.
