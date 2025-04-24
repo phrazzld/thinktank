@@ -1,7 +1,7 @@
 # Todo
 
 ## CLI & Configuration
-- [ ] **T001 · Feature · P2: add `--synthesis-model` cli flag**
+- [x] **T001 · Feature · P2: add `--synthesis-model` cli flag**
     - **Context:** PLAN.md § 2.1.1 Add CLI Flag
     - **Action:**
         1. Add `synthesisModelFlag` using `flagSet.String` in `cmd/thinktank/cli.go`.

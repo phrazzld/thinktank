@@ -169,6 +169,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Define flags
 	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
 	outputDirFlag := flagSet.String("output-dir", "", "Directory path to store generated plans (one per model).")
+	synthesisModelFlag := flagSet.String("synthesis-model", "", "Optional: Model to use for synthesizing results from multiple models.")
+	// Note: SynthesisModel storage will be implemented in tasks T002 and T003
+	_ = synthesisModelFlag // Temporary to prevent unused variable error
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
@@ -200,6 +203,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt ./src                        Generate plan using default model\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output-dir custom-dir ./       Generate plans in custom directory\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./  Generate plans for multiple models\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --synthesis-model model3 ./       Synthesize outputs from multiple models\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                 Show files without generating plan\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Options:\n")
