@@ -160,13 +160,14 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 // processModels processes each model concurrently with rate limiting.
 // This is a key orchestration method that manages the concurrent execution
 // of model processing while respecting rate limits. It coordinates multiple
-// goroutines, each handling a different model, and collects any errors that
-// occur during processing. This approach significantly improves throughput
-// when multiple models are specified.
+// goroutines, each handling a different model, and collects both outputs and
+// errors that occur during processing. This approach significantly improves 
+// throughput when multiple models are specified.
 //
-// Returns a slice of errors encountered during processing, which will be empty
-// if all models were processed successfully.
-func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) []error {
+// Returns:
+// - A map of model names to their generated content (empty for models that failed)
+// - A slice of errors encountered during processing (empty if all models were successful)
+func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) (map[string]string, []error) {
 	var wg sync.WaitGroup
 	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
@@ -180,17 +181,21 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	wg.Wait()
 	close(resultChan)
 
-	// Collect errors from the channel
-	// Note: This temporary implementation only collects errors, discarding content
-	// A future task (T009) will update this to return both outputs and errors
+	// Collect outputs and errors from the channel
+	modelOutputs := make(map[string]string)
 	var modelErrors []error
+	
 	for result := range resultChan {
+		// Always store the output (which may be empty if there was an error)
+		modelOutputs[result.modelName] = result.content
+		
+		// Collect errors separately
 		if result.err != nil {
 			modelErrors = append(modelErrors, result.err)
 		}
 	}
 
-	return modelErrors
+	return modelOutputs, modelErrors
 }
 
 // modelResult represents the result of processing a single model.

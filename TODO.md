@@ -74,7 +74,7 @@
         2. Correctly captures model outputs or errors.
     - **Depends‑on:** [T006, T007]
 
-- [ ] **T009 · Refactor · P2: update `processModels` to collect and return outputs/errors**
+- [x] **T009 · Refactor · P2: update `processModels` to collect and return outputs/errors**
     - **Context:** PLAN.md § 2.3.2 Update `processModels`
     - **Action:**
         1. Change signature to return `(map[string]string, []error)`.
