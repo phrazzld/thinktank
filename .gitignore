@@ -31,9 +31,6 @@ go.work
 .DS_Store
 Thumbs.db
 
-# Plan output
-PLAN.md
-
 # Temporary files
 *.bak*
 *~
