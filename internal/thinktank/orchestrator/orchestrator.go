@@ -92,12 +92,16 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 	// STEP 4: Process models concurrently
 	o.logRateLimitingConfiguration()
-	modelErrors := o.processModels(ctx, stitchedPrompt)
+	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
 
 	// STEP 5: Handle any errors from model processing
 	if len(modelErrors) > 0 {
 		return o.aggregateAndFormatErrors(modelErrors)
 	}
+
+	// Note: modelOutputs will be used in the next tasks for synthesis
+	// This is intentionally unused for now, but will be utilized in T011-T016
+	_ = modelOutputs
 
 	return nil
 }
@@ -161,7 +165,7 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 // This is a key orchestration method that manages the concurrent execution
 // of model processing while respecting rate limits. It coordinates multiple
 // goroutines, each handling a different model, and collects both outputs and
-// errors that occur during processing. This approach significantly improves 
+// errors that occur during processing. This approach significantly improves
 // throughput when multiple models are specified.
 //
 // Returns:
@@ -184,11 +188,11 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	// Collect outputs and errors from the channel
 	modelOutputs := make(map[string]string)
 	var modelErrors []error
-	
+
 	for result := range resultChan {
 		// Always store the output (which may be empty if there was an error)
 		modelOutputs[result.modelName] = result.content
-		
+
 		// Collect errors separately
 		if result.err != nil {
 			modelErrors = append(modelErrors, result.err)

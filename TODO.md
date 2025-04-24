@@ -84,7 +84,7 @@
         2. Returns both model outputs and errors.
     - **Depends‑on:** [T008]
 
-- [ ] **T010 · Refactor · P2: update `Orchestrator.Run` to call new `processModels`**
+- [x] **T010 · Refactor · P2: update `Orchestrator.Run` to call new `processModels`**
     - **Context:** PLAN.md § 2.3.3 Modify `Run` Method
     - **Action:**
         1. Modify the call to `o.processModels` to handle the new return signature.
