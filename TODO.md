@@ -19,7 +19,7 @@
         1. `CliConfig` struct includes the `SynthesisModel` field.
     - **Depends‑on:** none
 
-- [ ] **T003 · Feature · P2: parse and store synthesis model flag in config**
+- [x] **T003 · Feature · P2: parse and store synthesis model flag in config**
     - **Context:** PLAN.md § 2.1.2 Update Configuration
     - **Action:**
         1. Update `ParseFlagsWithEnv` to assign `*synthesisModelFlag` to `cfg.SynthesisModel`.

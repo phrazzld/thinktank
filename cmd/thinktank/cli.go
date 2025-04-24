@@ -170,8 +170,6 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
 	outputDirFlag := flagSet.String("output-dir", "", "Directory path to store generated plans (one per model).")
 	synthesisModelFlag := flagSet.String("synthesis-model", "", "Optional: Model to use for synthesizing results from multiple models.")
-	// Note: SynthesisModel storage will be implemented in tasks T002 and T003
-	_ = synthesisModelFlag // Temporary to prevent unused variable error
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
@@ -225,6 +223,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Set output directory
 	cfg.OutputDir = *outputDirFlag
+
+	// Set synthesis model
+	cfg.SynthesisModel = *synthesisModelFlag
 
 	cfg.AuditLogFile = *auditLogFileFlag
 	cfg.Verbose = *verboseFlag
