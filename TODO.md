@@ -64,7 +64,7 @@
         1. The `modelResult` struct is defined.
     - **Depends‑on:** none
 
-- [ ] **T008 · Refactor · P2: update `processModelWithRateLimit` to use result struct**
+- [x] **T008 · Refactor · P2: update `processModelWithRateLimit` to use result struct**
     - **Context:** PLAN.md § 2.3.1 Modify `processModelWithRateLimit`
     - **Action:**
         1. Change the result channel from `chan error` to `chan modelResult`.

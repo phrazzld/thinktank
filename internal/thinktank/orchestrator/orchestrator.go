@@ -168,22 +168,26 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 // if all models were processed successfully.
 func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) []error {
 	var wg sync.WaitGroup
-	errChan := make(chan error, len(o.config.ModelNames))
+	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
 	// Launch a goroutine for each model
 	for _, modelName := range o.config.ModelNames {
 		wg.Add(1)
-		go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, &wg, errChan)
+		go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, &wg, resultChan)
 	}
 
 	// Wait for all goroutines to complete
 	wg.Wait()
-	close(errChan)
+	close(resultChan)
 
 	// Collect errors from the channel
+	// Note: This temporary implementation only collects errors, discarding content
+	// A future task (T009) will update this to return both outputs and errors
 	var modelErrors []error
-	for err := range errChan {
-		modelErrors = append(modelErrors, err)
+	for result := range resultChan {
+		if result.err != nil {
+			modelErrors = append(modelErrors, result.err)
+		}
 	}
 
 	return modelErrors
@@ -198,12 +202,14 @@ type modelResult struct {
 }
 
 // processModelWithRateLimit processes a single model with rate limiting.
+// It acquires a rate limiting token, processes the model, and sends the result
+// (containing model name, content, and any error) to the result channel.
 func (o *Orchestrator) processModelWithRateLimit(
 	ctx context.Context,
 	modelName string,
 	stitchedPrompt string,
 	wg *sync.WaitGroup,
-	errChan chan<- error,
+	resultChan chan<- modelResult,
 ) {
 	defer wg.Done()
 
@@ -212,7 +218,11 @@ func (o *Orchestrator) processModelWithRateLimit(
 	acquireStart := time.Now()
 	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
 		o.logger.Error("Rate limiting error for model %s: %v", modelName, err)
-		errChan <- fmt.Errorf("model %s rate limit: %w", modelName, err)
+		resultChan <- modelResult{
+			modelName: modelName,
+			content:   "",
+			err:       fmt.Errorf("model %s rate limit: %w", modelName, err),
+		}
 		return
 	}
 	acquireDuration := time.Since(acquireStart)
@@ -235,10 +245,23 @@ func (o *Orchestrator) processModelWithRateLimit(
 	)
 
 	// Process the model
-	_, err := processor.Process(ctx, modelName, stitchedPrompt)
+	content, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
 		o.logger.Error("Processing model %s failed: %v", modelName, err)
-		errChan <- fmt.Errorf("model %s: %w", modelName, err)
+		resultChan <- modelResult{
+			modelName: modelName,
+			content:   "",
+			err:       fmt.Errorf("model %s: %w", modelName, err),
+		}
+		return
+	}
+
+	// Send successful result
+	o.logger.Debug("Processing model %s completed successfully", modelName)
+	resultChan <- modelResult{
+		modelName: modelName,
+		content:   content,
+		err:       nil,
 	}
 }
 
