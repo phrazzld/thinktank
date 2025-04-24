@@ -189,6 +189,14 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	return modelErrors
 }
 
+// modelResult represents the result of processing a single model.
+// It includes the model name, generated content, and any error encountered.
+type modelResult struct {
+	modelName string // Name of the processed model
+	content   string // Generated content from the model
+	err       error  // Any error encountered during processing
+}
+
 // processModelWithRateLimit processes a single model with rate limiting.
 func (o *Orchestrator) processModelWithRateLimit(
 	ctx context.Context,

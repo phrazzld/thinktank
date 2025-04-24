@@ -56,7 +56,7 @@
     - **Depends‑on:** [T005]
 
 ## Orchestration
-- [ ] **T007 · Refactor · P2: define `modelResult` struct for orchestrator**
+- [x] **T007 · Refactor · P2: define `modelResult` struct for orchestrator**
     - **Context:** PLAN.md § 2.3.1 Modify `processModelWithRateLimit`
     - **Action:**
         1. Define `type modelResult struct { modelName string; content string; err error }` within `internal/thinktank/orchestrator/orchestrator.go`.
