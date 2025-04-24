@@ -67,6 +67,9 @@ func NewOrchestrator(
 // 3. Build the complete prompt by combining instructions with context
 // 4. Process all configured models concurrently with rate limiting
 // 5. Handle and format any errors that occurred during processing
+// 6. Based on configuration, either:
+//   - Save individual model outputs (when no synthesis model is specified)
+//   - Synthesize results using a designated synthesis model
 //
 // The method enforces a clear separation of concerns by delegating specific tasks
 // to helper methods, making the high-level workflow easy to understand.
@@ -99,9 +102,18 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		return o.aggregateAndFormatErrors(modelErrors)
 	}
 
-	// Note: modelOutputs will be used in the next tasks for synthesis
-	// This is intentionally unused for now, but will be utilized in T011-T016
-	_ = modelOutputs
+	// STEP 6: Handle synthesis or individual model outputs based on configuration
+	if o.config.SynthesisModel == "" {
+		// No synthesis model specified - save individual model outputs
+		// This will be implemented in T012
+		o.logger.Info("Processing completed, saving individual model outputs")
+		o.logger.Debug("Collected %d model outputs", len(modelOutputs))
+	} else {
+		// Synthesis model specified - process all outputs with synthesis model
+		// This will be implemented in T013-T017
+		o.logger.Info("Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
+		o.logger.Debug("Synthesizing %d model outputs", len(modelOutputs))
+	}
 
 	return nil
 }

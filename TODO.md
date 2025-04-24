@@ -93,7 +93,7 @@
         1. `Run` method correctly calls the updated `processModels` and receives both outputs and errors.
     - **Depends‑on:** [T009]
 
-- [ ] **T011 · Feature · P2: add conditional synthesis logic in `Orchestrator.Run`**
+- [x] **T011 · Feature · P2: add conditional synthesis logic in `Orchestrator.Run`**
     - **Context:** PLAN.md § 2.3.3 Modify `Run` Method
     - **Action:**
         1. Add an `if o.config.SynthesisModel == ""` check after calling `processModels`.
