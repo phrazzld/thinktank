@@ -158,7 +158,7 @@
     - **Depends‑on:** [T014]
 
 ## Unit Testing
-- [ ] **T018 · Test · P2: add unit tests for CLI flag and config parsing**
+- [x] **T018 · Test · P2: add unit tests for CLI flag and config parsing**
     - **Context:** PLAN.md § 3.1.1 CLI and Config Tests
     - **Action:**
         1. Write tests for `--synthesis-model` flag parsing and validation.

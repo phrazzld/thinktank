@@ -123,3 +123,74 @@ func TestValidateInputs_ConfigPathNotFound(t *testing.T) {
 	// directly check for config file existence - it's handled at initialization
 	t.Skip("Skipping test as ValidateInputs doesn't validate config path existence")
 }
+
+// TestParseFlags_SynthesisModel tests parsing of the synthesis-model flag
+func TestParseFlags_SynthesisModel(t *testing.T) {
+	// Create a flag set
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(io.Discard) // suppress flag error output
+
+	// Test cases
+	testCases := []struct {
+		name           string
+		args           []string
+		expectedModel  string
+		expectError    bool
+		errorSubstring string
+	}{
+		{
+			name:          "Set synthesis model",
+			args:          []string{"--synthesis-model=gpt-4"},
+			expectedModel: "gpt-4",
+			expectError:   false,
+		},
+		{
+			name:          "Set synthesis model with space",
+			args:          []string{"--synthesis-model", "gemini-2.5-pro"},
+			expectedModel: "gemini-2.5-pro",
+			expectError:   false,
+		},
+		{
+			name:          "No synthesis model specified",
+			args:          []string{"--instructions=test.txt"},
+			expectedModel: "", // Default is empty string
+			expectError:   false,
+		},
+		{
+			name:          "Invalid flag format",
+			args:          []string{"--synthesis-model="},
+			expectedModel: "",
+			expectError:   false, // Go's flag package allows empty values
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset flag set for each test case
+			fs := flag.NewFlagSet("test", flag.ContinueOnError)
+			fs.SetOutput(io.Discard)
+
+			// Parse with the test args
+			cfg, err := ParseFlagsWithEnv(fs, tc.args, func(string) string { return "mock-value" })
+
+			// Check error expectations
+			if (err != nil) != tc.expectError {
+				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
+			}
+
+			// If expecting an error, check error message
+			if tc.expectError && err != nil && tc.errorSubstring != "" {
+				if !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error containing '%s', got: %v", tc.errorSubstring, err)
+				}
+			}
+
+			// Check the parsed synthesis model
+			if !tc.expectError && cfg != nil {
+				if cfg.SynthesisModel != tc.expectedModel {
+					t.Errorf("Expected SynthesisModel: %s, got: %s", tc.expectedModel, cfg.SynthesisModel)
+				}
+			}
+		})
+	}
+}
