@@ -104,9 +104,10 @@ type CliConfig struct {
 	Verbose      bool
 
 	// API configuration
-	APIKey      string
-	APIEndpoint string
-	ModelNames  []string
+	APIKey         string
+	APIEndpoint    string
+	ModelNames     []string
+	SynthesisModel string // Model to use for synthesizing results from multiple models
 
 	// Token management field removed as part of T032E
 

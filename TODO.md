@@ -11,7 +11,7 @@
         2. CLI help output displays the new flag.
     - **Depends‑on:** none
 
-- [ ] **T002 · Feature · P2: add `SynthesisModel` field to config struct**
+- [x] **T002 · Feature · P2: add `SynthesisModel` field to config struct**
     - **Context:** PLAN.md § 2.1.2 Update Configuration
     - **Action:**
         1. Add `SynthesisModel string` field to `CliConfig` in `internal/config/config.go`.
