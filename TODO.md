@@ -113,7 +113,7 @@
     - **Depends‑on:** [T011]
 
 ## Synthesis Logic
-- [ ] **T013 · Feature · P2: create `StitchSynthesisPrompt` function**
+- [x] **T013 · Feature · P2: create `StitchSynthesisPrompt` function**
     - **Context:** PLAN.md § 2.4.1 Add Prompt Function
     - **Action:**
         1. Implement `StitchSynthesisPrompt` in `internal/thinktank/prompt/prompt.go`.

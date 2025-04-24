@@ -4,6 +4,7 @@
 package prompt
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/phrazzld/thinktank/internal/fileutil"
@@ -44,4 +45,32 @@ func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string 
 	sb.WriteString("</context>")
 
 	return sb.String()
+}
+
+// StitchSynthesisPrompt combines original instructions and multiple model outputs
+// into a single prompt for a synthesis model. Each model output is clearly labeled
+// with the model name for reference.
+func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]string) string {
+	var builder strings.Builder
+
+	// Format original instructions with clear delimiters
+	builder.WriteString("<instructions>\n")
+	builder.WriteString(originalInstructions)
+	builder.WriteString("\n</instructions>\n\n")
+
+	// Format model outputs section with model names as attributes
+	builder.WriteString("<model_outputs>\n")
+	for modelName, output := range modelOutputs {
+		builder.WriteString(fmt.Sprintf("<output model=\"%s\">\n", modelName))
+		builder.WriteString(output)
+		builder.WriteString("\n</output>\n\n")
+	}
+	builder.WriteString("</model_outputs>\n\n")
+
+	// Add synthesis instructions
+	builder.WriteString("Please synthesize these outputs into a single, comprehensive response that addresses " +
+		"the original instructions. Your synthesis should incorporate the strongest insights and information " +
+		"from each model's output, resolving any contradictions and presenting a cohesive, well-structured result.")
+
+	return builder.String()
 }
