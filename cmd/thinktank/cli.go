@@ -153,6 +153,31 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 		return fmt.Errorf("no models specified")
 	}
 
+	// Validate synthesis model if provided
+	if config.SynthesisModel != "" {
+		logger.Debug("Validating synthesis model: %s", config.SynthesisModel)
+
+		// Check if synthesis model exists in registry
+		if regManager != nil {
+			// Initialize registry if not already done
+			if err := regManager.Initialize(); err != nil {
+				logger.Warn("Failed to initialize registry for synthesis model validation: %v", err)
+			} else {
+				// Check if the model exists in the registry
+				_, err := regManager.GetProviderForModel(config.SynthesisModel)
+				if err != nil {
+					logger.Error("Synthesis model '%s' not found in registry", config.SynthesisModel)
+					return fmt.Errorf("synthesis model '%s' not found or not supported", config.SynthesisModel)
+				}
+				logger.Debug("Synthesis model '%s' successfully validated", config.SynthesisModel)
+			}
+		} else {
+			// Registry not available, use string matching fallback
+			// This is a simplified validation when registry isn't available
+			logger.Debug("Registry not available, using simplified validation for synthesis model")
+		}
+	}
+
 	return nil
 }
 

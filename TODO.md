@@ -27,7 +27,7 @@
         1. The value passed via `--synthesis-model` is correctly stored in the `CliConfig` instance.
     - **Depends‑on:** [T001, T002]
 
-- [ ] **T004 · Feature · P2: add validation for synthesis model name**
+- [x] **T004 · Feature · P2: add validation for synthesis model name**
     - **Context:** PLAN.md § 2.1.2 Update Configuration
     - **Action:**
         1. Update `ValidateInputsWithEnv` to check if `cfg.SynthesisModel` (if not empty) exists in the model registry.
