@@ -499,43 +499,286 @@ func sanitizeFilename(filename string) string {
 //   - A string containing the synthesized result
 //   - An error if any step of the synthesis process fails
 func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructions string, modelOutputs map[string]string) (string, error) {
+	startTime := time.Now()
+
+	// Log synthesis process start with audit logger
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation: "SynthesisStart",
+		Status:    "InProgress",
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+			"model_count":     len(modelOutputs),
+			"model_names":     getMapKeys(modelOutputs),
+		},
+		Message: fmt.Sprintf("Starting synthesis with model %s, processing %d outputs",
+			o.config.SynthesisModel, len(modelOutputs)),
+	})
+
 	// Build synthesis prompt using the dedicated prompt function
 	o.logger.Debug("Building synthesis prompt")
 	synthesisPrompt := prompt.StitchSynthesisPrompt(originalInstructions, modelOutputs)
 	o.logger.Debug("Synthesis prompt built, length: %d characters", len(synthesisPrompt))
 
+	// Log prompt building completed
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation: "SynthesisPromptCreated",
+		Status:    "Success",
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+			"prompt_length":   len(synthesisPrompt),
+		},
+		Message: "Synthesis prompt built successfully",
+	})
+
 	// Get model parameters
 	o.logger.Debug("Getting model parameters for synthesis model: %s", o.config.SynthesisModel)
 	modelParams, err := o.apiService.GetModelParameters(o.config.SynthesisModel)
 	if err != nil {
+		duration := time.Since(startTime).Milliseconds()
+		durationMs := duration
+
+		// Log error with audit logger
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisModelParameters",
+			Status:     "Failure",
+			DurationMs: &durationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "ModelParameterError",
+			},
+			Message: fmt.Sprintf("Failed to get parameters for synthesis model %s", o.config.SynthesisModel),
+		})
+
 		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", err)
 	}
+
+	// Log successful parameter retrieval
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation: "SynthesisModelParameters",
+		Status:    "Success",
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+			"param_count":     len(modelParams),
+		},
+		Message: "Successfully retrieved synthesis model parameters",
+	})
 
 	// Get client for synthesis model
 	o.logger.Debug("Initializing client for synthesis model: %s", o.config.SynthesisModel)
 	client, err := o.apiService.InitLLMClient(ctx, "", o.config.SynthesisModel, "")
 	if err != nil {
+		duration := time.Since(startTime).Milliseconds()
+		durationMs := duration
+
+		// Log error with audit logger
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisClientInit",
+			Status:     "Failure",
+			DurationMs: &durationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "ClientInitializationError",
+			},
+			Message: fmt.Sprintf("Failed to initialize client for synthesis model %s", o.config.SynthesisModel),
+		})
+
 		return "", fmt.Errorf("failed to initialize synthesis model client: %w", err)
 	}
+
+	// Log successful client initialization
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation: "SynthesisClientInit",
+		Status:    "Success",
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+		},
+		Message: "Successfully initialized synthesis model client",
+	})
+
 	defer func() {
 		if closeErr := client.Close(); closeErr != nil {
 			o.logger.Warn("Error closing synthesis model client: %v", closeErr)
+
+			// Log client close error
+			o.logAuditEvent(auditlog.AuditEntry{
+				Operation: "SynthesisClientClose",
+				Status:    "Failure",
+				Inputs: map[string]interface{}{
+					"synthesis_model": o.config.SynthesisModel,
+				},
+				Error: &auditlog.ErrorInfo{
+					Message: closeErr.Error(),
+					Type:    "ClientCloseError",
+				},
+				Message: "Error closing synthesis model client",
+			})
+		} else {
+			// Log successful client close
+			o.logAuditEvent(auditlog.AuditEntry{
+				Operation: "SynthesisClientClose",
+				Status:    "Success",
+				Inputs: map[string]interface{}{
+					"synthesis_model": o.config.SynthesisModel,
+				},
+				Message: "Successfully closed synthesis model client",
+			})
 		}
 	}()
+
+	// Log API call start
+	apiCallStartTime := time.Now()
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation: "SynthesisAPICall",
+		Status:    "InProgress",
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+			"prompt_length":   len(synthesisPrompt),
+		},
+		Message: fmt.Sprintf("Calling synthesis model API: %s", o.config.SynthesisModel),
+	})
 
 	// Call model API
 	o.logger.Info("Calling synthesis model API: %s", o.config.SynthesisModel)
 	result, err := client.GenerateContent(ctx, synthesisPrompt, modelParams)
+
+	// Calculate API call duration
+	apiCallDurationMs := time.Since(apiCallStartTime).Milliseconds()
+
 	if err != nil {
+		duration := time.Since(startTime).Milliseconds()
+		durationMs := duration
+
+		// Log API call failure
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisAPICall",
+			Status:     "Failure",
+			DurationMs: &apiCallDurationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+				"prompt_length":   len(synthesisPrompt),
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "APICallError",
+			},
+			Message: fmt.Sprintf("Synthesis model API call failed for model %s", o.config.SynthesisModel),
+		})
+
+		// Log overall synthesis failure
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisEnd",
+			Status:     "Failure",
+			DurationMs: &durationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "SynthesisError",
+			},
+			Message: fmt.Sprintf("Synthesis process failed with model %s", o.config.SynthesisModel),
+		})
+
 		return "", fmt.Errorf("synthesis model API call failed: %w", err)
 	}
 
+	// Log successful API call
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation:  "SynthesisAPICall",
+		Status:     "Success",
+		DurationMs: &apiCallDurationMs,
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+		},
+		Outputs: map[string]interface{}{
+			"result_received": result != nil,
+		},
+		Message: "Synthesis model API call completed successfully",
+	})
+
 	// Process response
+	responseStartTime := time.Now()
 	o.logger.Debug("Processing synthesis model response")
+
 	synthesisOutput, err := o.apiService.ProcessLLMResponse(result)
+
+	// Calculate response processing duration
+	responseDurationMs := time.Since(responseStartTime).Milliseconds()
+
 	if err != nil {
+		duration := time.Since(startTime).Milliseconds()
+		durationMs := duration
+
+		// Log response processing failure
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisResponseProcessing",
+			Status:     "Failure",
+			DurationMs: &responseDurationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "ResponseProcessingError",
+			},
+			Message: "Failed to process synthesis model response",
+		})
+
+		// Log overall synthesis failure
+		o.logAuditEvent(auditlog.AuditEntry{
+			Operation:  "SynthesisEnd",
+			Status:     "Failure",
+			DurationMs: &durationMs,
+			Inputs: map[string]interface{}{
+				"synthesis_model": o.config.SynthesisModel,
+			},
+			Error: &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "SynthesisError",
+			},
+			Message: fmt.Sprintf("Synthesis process failed with model %s", o.config.SynthesisModel),
+		})
+
 		return "", fmt.Errorf("failed to process synthesis model response: %w", err)
 	}
+
+	// Log successful response processing
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation:  "SynthesisResponseProcessing",
+		Status:     "Success",
+		DurationMs: &responseDurationMs,
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+		},
+		Outputs: map[string]interface{}{
+			"output_length": len(synthesisOutput),
+		},
+		Message: "Successfully processed synthesis model response",
+	})
+
+	// Calculate total duration and log overall success
+	duration := time.Since(startTime).Milliseconds()
+	durationMs := duration
+
+	o.logAuditEvent(auditlog.AuditEntry{
+		Operation:  "SynthesisEnd",
+		Status:     "Success",
+		DurationMs: &durationMs,
+		Inputs: map[string]interface{}{
+			"synthesis_model": o.config.SynthesisModel,
+			"model_count":     len(modelOutputs),
+		},
+		Outputs: map[string]interface{}{
+			"output_length": len(synthesisOutput),
+		},
+		Message: fmt.Sprintf("Synthesis completed successfully with model %s", o.config.SynthesisModel),
+	})
 
 	return synthesisOutput, nil
 }
@@ -595,3 +838,21 @@ func (o *Orchestrator) handleSynthesisError(err error) error {
 // NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager
 // and modelproc.TokenManager. This has been replaced by direct creation of TokenManager
 // instances in ModelProcessor.Process with model-specific LLMClient instances.
+
+// getMapKeys extracts and returns all keys from a map as a sorted string slice.
+// This helper function is used for audit logging to capture all model names.
+func getMapKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// logAuditEvent writes an audit log entry and logs any errors that occur.
+// This helper ensures proper error handling for all audit log operations.
+func (o *Orchestrator) logAuditEvent(entry auditlog.AuditEntry) {
+	if err := o.auditLogger.Log(entry); err != nil {
+		o.logger.Warn("Failed to write audit log: %v", err)
+	}
+}

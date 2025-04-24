@@ -149,7 +149,7 @@
         1. Errors from synthesis are handled gracefully and reported to the user.
     - **Depends‑on:** [T015]
 
-- [ ] **T017 · Feature · P2: add audit logging for synthesis process**
+- [x] **T017 · Feature · P2: add audit logging for synthesis process**
     - **Context:** PLAN.md § 2.4.3 Add Audit Logging
     - **Action:**
         1. Add structured log entries within `synthesizeResults` (start/end, model used, success/failure).
