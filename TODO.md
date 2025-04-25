@@ -213,7 +213,7 @@
         1. Test passes, confirming expected file outputs.
     - **Depends‑on:** [T012]
 
-- [ ] **T024 · Test · P1: add integration test for flow with synthesis**
+- [x] **T024 · Test · P1: add integration test for flow with synthesis**
     - **Context:** PLAN.md § 3.2.1 End-to-End Flow Tests
     - **Action:**
         1. Create test running with `--synthesis-model`.
