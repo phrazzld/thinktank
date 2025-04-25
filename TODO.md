@@ -241,7 +241,7 @@
     - **Depends‑on:** [T004]
 
 ## E2E Testing
-- [ ] **T027 · Test · P1: create E2E test file for synthesis feature**
+- [x] **T027 · Test · P1: create E2E test file for synthesis feature**
     - **Context:** PLAN.md § 3.3.1 Create New E2E Test File
     - **Action:**
         1. Create `internal/e2e/cli_synthesis_test.go`.
