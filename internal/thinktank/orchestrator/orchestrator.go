@@ -104,9 +104,18 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	o.logRateLimitingConfiguration()
 	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
 
-	// STEP 5: Handle any errors from model processing
+	// STEP 5: Handle model processing errors
+	// If there were errors but we still have model outputs, log errors but continue
 	if len(modelErrors) > 0 {
-		return o.aggregateAndFormatErrors(modelErrors)
+		// Only fail completely if ALL models failed (no outputs available)
+		if len(modelOutputs) == 0 {
+			return o.aggregateAndFormatErrors(modelErrors)
+		}
+		// Otherwise, log errors but continue with available outputs
+		o.logger.Warn("Some models failed but continuing with available outputs from %d successful models", len(modelOutputs))
+		for _, err := range modelErrors {
+			o.logger.Error("%v", err)
+		}
 	}
 
 	// STEP 6: Handle synthesis or individual model outputs based on configuration

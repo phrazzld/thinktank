@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -22,6 +21,7 @@ import (
 
 // TestSynthesisWithModelFailuresFlow tests the synthesis flow with one or more model failures
 // This test verifies that synthesis proceeds with available outputs when some models fail
+// but at least one model succeeds
 func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	// Create logger for the test
 	logger := logutil.NewTestLogger(t)
@@ -265,30 +265,39 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 		}
 	}
 
-	// Verify that the orchestrator returned an error due to the model failure
-	if err == nil {
-		t.Errorf("Expected Orchestrator.Run to return an error due to model failure, but it didn't")
+	// Verify that the orchestrator does NOT return an error when some models succeed
+	// Under our new behavior, as long as at least one model succeeds, orchestrator should not fail
+	if err != nil {
+		t.Errorf("Expected Orchestrator.Run to NOT return an error when some models succeed, but got: %v", err)
 	} else {
-		// Check that the error message contains information about the failing model
-		if !strings.Contains(err.Error(), failingModel) {
-			t.Errorf("Expected error message to mention failing model %s, but got: %v", failingModel, err)
+		t.Logf("Orchestrator correctly continued execution despite partial model failures")
+	}
+
+	// Verify that synthesis model WAS called despite some model failures
+	// The new orchestrator implementation continues as long as at least one model succeeds
+	if !calledModels[synthesisModel] {
+		t.Errorf("Expected synthesis model %s to be called despite partial model failures, but it wasn't", synthesisModel)
+	} else {
+		t.Logf("Synthesis model was correctly called despite partial model failures")
+	}
+
+	// Verify that synthesis output file WAS created despite some model failures
+	expectedSynthesisFile := filepath.Join(outputDir, synthesisModel+"-synthesis.md")
+	_, statErr := os.Stat(expectedSynthesisFile)
+	if os.IsNotExist(statErr) {
+		t.Errorf("Expected synthesis output file %s to be created despite partial model failures, but it wasn't", expectedSynthesisFile)
+	} else {
+		// Verify synthesis file content
+		content, synthReadErr := os.ReadFile(expectedSynthesisFile)
+		if synthReadErr != nil {
+			t.Errorf("Failed to read synthesis output file: %v", synthReadErr)
+		} else if string(content) != synthesisOutput {
+			t.Errorf("Synthesis content mismatch:\nExpected: %s\nActual: %s",
+				synthesisOutput, string(content))
 		} else {
-			t.Logf("Orchestrator correctly returned error for failing model: %v", err)
+			t.Logf("Verified correct synthesis content despite partial model failures")
 		}
 	}
 
-	// Verify that synthesis model was NOT called because of the model failure
-	// The current orchestrator implementation aborts when any model fails
-	if calledModels[synthesisModel] {
-		t.Errorf("Expected synthesis model %s NOT to be called due to model failure, but it was", synthesisModel)
-	}
-
-	// Verify that synthesis output file was NOT created due to model failure
-	expectedSynthesisFile := filepath.Join(outputDir, synthesisModel+"-synthesis.md")
-	_, statErr := os.Stat(expectedSynthesisFile)
-	if !os.IsNotExist(statErr) {
-		t.Errorf("Unexpected synthesis output file %s was created despite model failure", expectedSynthesisFile)
-	}
-
-	t.Logf("Test verified correct behavior: orchestrator halts on model failure")
+	t.Logf("Test verified correct behavior: orchestrator continues with synthesis when some models succeed")
 }
