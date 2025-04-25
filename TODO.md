@@ -204,7 +204,7 @@
     - **Depends‑on:** [T015, T016]
 
 ## Integration Testing
-- [ ] **T023 · Test · P1: add integration test for flow without synthesis**
+- [x] **T023 · Test · P1: add integration test for flow without synthesis**
     - **Context:** PLAN.md § 3.2.1 End-to-End Flow Tests
     - **Action:**
         1. Create test running without `--synthesis-model`.
