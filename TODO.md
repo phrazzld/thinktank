@@ -50,7 +50,7 @@
         3. Manual test with mixed-failure scenario confirms exit status is non-zero.
     - **Depends-on:** [T002]
 
-- [ ] **T005 · Test · P0: add unit tests for partial-failure scenarios**
+- [x] **T005 · Test · P0: add unit tests for partial-failure scenarios**
     - **Context:** PLAN.md cr-02 Steps 1-3 (test mixed success/failure paths)
     - **Action:**
         1. Create or extend `internal/thinktank/orchestrator/orchestrator_run_test.go` with table-driven tests.
@@ -64,8 +64,3 @@
         2. Tests pass and demonstrate correct error/nil return values for all scenarios.
         3. CI shows 100% coverage for the partial-failure code paths.
     - **Depends-on:** [T002, T003]
-
-### Clarifications & Assumptions
-- [ ] **Issue:** Identify any CI/script-specific changes needed beyond CLI handling
-    - **Context:** PLAN.md cr-01 Step 3: "Ensure downstream callers (CLI, scripts) propagate non-zero exit codes on this error."
-    - **Blocking?:** no
