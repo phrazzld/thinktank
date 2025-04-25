@@ -231,7 +231,7 @@
         1. Test passes, confirming synthesis robustness to model failures.
     - **Depends‑on:** [T016]
 
-- [ ] **T026 · Test · P2: add integration test for invalid synthesis model**
+- [x] **T026 · Test · P2: add integration test for invalid synthesis model**
     - **Context:** PLAN.md § 3.2.2 Edge Case Tests
     - **Action:**
         1. Create test with invalid synthesis model name.
