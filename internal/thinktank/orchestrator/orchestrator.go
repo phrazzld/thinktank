@@ -114,7 +114,17 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 
 		// Otherwise, log errors but continue with available outputs
-		o.logger.Warn("Some models failed but continuing with available outputs from %d successful models", len(modelOutputs))
+		// Get list of successful model names for the log
+		var successfulModels []string
+		for modelName := range modelOutputs {
+			successfulModels = append(successfulModels, modelName)
+		}
+
+		// Log a warning with detailed counts and successful model names
+		o.logger.Warn("Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
+			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
+
+		// Log individual error details
 		for _, err := range modelErrors {
 			o.logger.Error("%v", err)
 		}

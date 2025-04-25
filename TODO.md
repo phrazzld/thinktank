@@ -29,7 +29,7 @@
         3. `Run` returns `nil` only if all models succeed.
     - **Depends-on:** [T001]
 
-- [ ] **T003 · Bugfix · P0: add warning logs for partial model failures**
+- [x] **T003 · Bugfix · P0: add warning logs for partial model failures**
     - **Context:** PLAN.md cr-01 Step 4 (warning-level log on partial failures)
     - **Action:**
         1. After detecting `len(modelErrors) > 0` in `Run`, emit a warning log via the structured logger.
