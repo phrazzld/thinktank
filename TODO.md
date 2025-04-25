@@ -38,7 +38,7 @@
     - **Depends-on:** none
 
 ## output writer error propagation
-- [ ] **T004 · Bugfix · P1: surface file-save errors to exit code**
+- [x] **T004 · Bugfix · P1: surface file-save errors to exit code**
     - **Context:** Detailed Remedies → cr-04 → Steps 1-4
     - **Action:**
         1. In individual and synthesis save loops, track a `failCount`.

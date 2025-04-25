@@ -137,15 +137,18 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// STEP 6: Handle synthesis or individual model outputs based on configuration
+	// We'll track file-save errors separately from model processing errors
+	var fileSaveErrors error
+
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
 		o.logger.Info("Processing completed, saving individual model outputs")
 		o.logger.Debug("Collected %d model outputs", len(modelOutputs))
 
 		// Track stats for logging
+		totalCount := len(modelOutputs)
 		savedCount := 0
 		errorCount := 0
-
 		// Iterate over the model outputs and save each to a file
 		for modelName, content := range modelOutputs {
 			// Sanitize model name for use in filename
@@ -169,6 +172,9 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		if errorCount > 0 {
 			o.logger.Error("Completed with errors: %d files saved successfully, %d files failed",
 				savedCount, errorCount)
+
+			// Create a descriptive error for the file save failures
+			fileSaveErrors = fmt.Errorf("%d/%d files failed to save", errorCount, totalCount)
 		} else {
 			o.logger.Info("All %d model outputs saved successfully", savedCount)
 		}
@@ -200,6 +206,9 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 			o.logger.Debug("Saving synthesis output to %s", outputFilePath)
 			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
 				o.logger.Error("Failed to save synthesis output: %v", err)
+
+				// Create a descriptive error for the synthesis file save failure
+				fileSaveErrors = fmt.Errorf("failed to save synthesis output to %s: %w", outputFilePath, err)
 			} else {
 				o.logger.Info("Successfully saved synthesis output to %s", outputFilePath)
 			}
@@ -208,8 +217,18 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 	}
 
-	// Return any model errors that occurred, even though we completed processing
-	return returnErr
+	// Return any model errors or file save errors that occurred, combining them if both exist
+	if returnErr != nil && fileSaveErrors != nil {
+		// Combine model and file save errors
+		return fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
+			returnErr, fileSaveErrors)
+	} else if fileSaveErrors != nil {
+		// Only file save errors occurred
+		return fileSaveErrors
+	} else {
+		// Only model errors or no errors
+		return returnErr
+	}
 }
 
 // gatherProjectContext collects relevant files from the project based on configuration.
@@ -390,40 +409,6 @@ func (o *Orchestrator) processModelWithRateLimit(
 		content:   content,
 		err:       nil,
 	}
-}
-
-// aggregateAndFormatErrors combines multiple errors into a single, user-friendly error message.
-// This method consolidates errors from multiple model processing operations into
-// a coherent error message for the user. It specially handles rate limit errors
-// by providing additional guidance on how to adjust configuration parameters
-// to avoid these errors in the future. This approach ensures users receive
-// actionable feedback when errors occur.
-func (o *Orchestrator) aggregateAndFormatErrors(modelErrors []error) error {
-	// If there are no errors, return nil
-	if len(modelErrors) == 0 {
-		return nil
-	}
-
-	// Count rate limit errors
-	var rateLimitErrors []error
-	for _, err := range modelErrors {
-		if strings.Contains(err.Error(), "rate limit") {
-			rateLimitErrors = append(rateLimitErrors, err)
-		}
-	}
-
-	// Build the error message
-	errMsg := "errors occurred during model processing:"
-	for _, e := range modelErrors {
-		errMsg += "\n  - " + e.Error()
-	}
-
-	// Add rate limit guidance if applicable
-	if len(rateLimitErrors) > 0 {
-		errMsg += "\n\nTip: If you're encountering rate limit errors, consider adjusting the --max-concurrent and --rate-limit flags to prevent overwhelming the API."
-	}
-
-	return errors.New(errMsg)
 }
 
 // APIServiceAdapter adapts interfaces.APIService to modelproc.APIService.
