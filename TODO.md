@@ -269,7 +269,7 @@
     - **Depends‑on:** [T027]
 
 ## Documentation
-- [ ] **T030 · Chore · P2: update README with synthesis flag info**
+- [x] **T030 · Chore · P2: update README with synthesis flag info**
     - **Context:** PLAN.md § 4.1.1 Update README.md
     - **Action:**
         1. Add `--synthesis-model` flag to options table in README.
