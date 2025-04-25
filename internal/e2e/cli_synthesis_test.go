@@ -126,19 +126,86 @@ func verifyModelOutputs(t *testing.T, env *TestEnv, modelNames []string, outputD
 	}
 }
 
-// TestSynthesisBasic is a placeholder for the basic synthesis workflow test (T028)
-// This will be implemented in the T028 ticket
+// TestSynthesisBasic tests the complete synthesis workflow
+// It verifies that running thinktank with multiple models and a synthesis model
+// correctly generates both individual model outputs and a synthesized output
 func TestSynthesisBasic(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping e2e test in short mode")
 	}
 
-	t.Skip("TODO: This test will be implemented in T028")
+	// Set up test environment with mock handlers for synthesis
+	env := setupSynthesisTest(t)
 
-	// This test will verify:
-	// 1. Running thinktank with multiple models and a synthesis model
-	// 2. Checking that individual model outputs are generated
-	// 3. Verifying the synthesis output is generated correctly
+	// Create test instructions file
+	instructionsFile := env.CreateTestFile("instructions-synthesis.md",
+		"Implement a new feature that performs data analysis and visualization")
+
+	// Set up the source directory with sample code
+	srcDir := filepath.Join(env.TempDir, "src-synthesis")
+	env.CreateTestFile(filepath.Join(srcDir, "main.go"), CreateGoSourceFileContent())
+	env.CreateTestFile(filepath.Join(srcDir, "README.md"), "# Sample Project\n\nThis is a sample project for testing synthesis.")
+
+	// Set up the output directory
+	outputDir := filepath.Join(env.TempDir, "output-synthesis")
+
+	// Define multiple model names
+	primaryModelNames := []string{"model1", "model2", "model3"}
+	synthesisModelName := "synthesis-model"
+
+	// Set up basic flags
+	flags := env.DefaultFlags
+	flags.Instructions = instructionsFile
+	flags.OutputDir = outputDir
+	flags.ModelNames = primaryModelNames
+
+	// Since the testFlags struct doesn't have a SynthesisModel field,
+	// we'll add the synthesis model flag directly to the args when running the command
+
+	// Create custom arguments with synthesis model flag
+	args := []string{
+		"--synthesis-model", synthesisModelName,
+		srcDir,
+	}
+
+	// Run the thinktank binary with the custom synthesis flag
+	stdout, stderr, exitCode, err := env.RunWithFlags(flags, args)
+	if err != nil {
+		t.Fatalf("Failed to run thinktank with synthesis: %v", err)
+	}
+
+	// Verify command executed successfully
+	AssertAPICommandSuccess(t, stdout, stderr, exitCode,
+		"Processing completed", "synthesizing results")
+
+	// Verify that the synthesis flag was recognized in output
+	combinedOutput := stdout + stderr
+	if strings.Contains(combinedOutput, synthesisModelName) {
+		t.Logf("Output contains reference to synthesis model: %s", synthesisModelName)
+	} else {
+		t.Logf("Note: Output does not mention synthesis model (may be acceptable in mock environment)")
+	}
+
+	// Verify synthesis output was created
+	verifySynthesisOutput(t, env, synthesisModelName, outputDir)
+
+	// Verify individual model outputs were created
+	verifyModelOutputs(t, env, primaryModelNames, outputDir)
+
+	// Check for synthesis-specific messages in output
+	synthesisIndicators := []string{
+		"synthesizing results",
+		"synthesis model",
+		"Successfully synthesized",
+	}
+
+	for _, indicator := range synthesisIndicators {
+		if strings.Contains(combinedOutput, indicator) {
+			t.Logf("Output contains expected synthesis indicator: %s", indicator)
+		} else {
+			t.Logf("Note: Output does not contain expected synthesis indicator: %s (may be acceptable in mock environment)", indicator)
+		}
+	}
 }
 
 // TestSynthesisModelFailures is a placeholder for the model failures test (T029)

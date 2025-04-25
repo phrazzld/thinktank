@@ -250,7 +250,7 @@
         1. File exists with basic test structure.
     - **Depends‑on:** [T015]
 
-- [ ] **T028 · Test · P1: add E2E test for basic synthesis workflow**
+- [x] **T028 · Test · P1: add E2E test for basic synthesis workflow**
     - **Context:** PLAN.md § 3.3.2 Test Cases
     - **Action:**
         1. Implement test for full workflow with multiple models and synthesis.
