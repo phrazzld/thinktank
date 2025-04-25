@@ -110,7 +110,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	if len(modelErrors) > 0 {
 		// If ALL models failed (no outputs available), fail immediately
 		if len(modelOutputs) == 0 {
-			return o.aggregateAndFormatErrors(modelErrors)
+			return fmt.Errorf("all models failed: %v", aggregateErrorMessages(modelErrors))
 		}
 
 		// Otherwise, log errors but continue with available outputs
@@ -122,7 +122,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		// Create a descriptive error to return after processing is complete
 		returnErr = fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors),
-			o.aggregateAndFormatErrors(modelErrors))
+			aggregateErrorMessages(modelErrors))
 	}
 
 	// STEP 6: Handle synthesis or individual model outputs based on configuration
@@ -895,6 +895,24 @@ func getMapKeys(m map[string]string) []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// aggregateErrorMessages combines multiple error messages into a single string.
+// It takes a slice of errors and returns a string with each error message separated
+// by a semicolon and space.
+func aggregateErrorMessages(errs []error) string {
+	if len(errs) == 0 {
+		return ""
+	}
+
+	var messages []string
+	for _, err := range errs {
+		if err != nil {
+			messages = append(messages, err.Error())
+		}
+	}
+
+	return strings.Join(messages, "; ")
 }
 
 // logAuditEvent writes an audit log entry and logs any errors that occur.

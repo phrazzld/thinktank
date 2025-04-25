@@ -1,233 +1,64 @@
-# Implementation Plan: Add Synthesis Step (T13)
+# Remediation Plan – Sprint 1
 
-## 1. Context Analysis
+## Executive Summary
+This sprint fixes a critical flaw in the orchestrator where partial model failures were silently treated as success, breaking CLI, scripts, and CI pipelines. We will first change the `Run` method to always return a composite error when any model fails, ensuring no errors are masked. Immediately after, we will add targeted unit tests to cover all partial-failure paths and prevent regressions.
 
-### Current Architecture
-- The `thinktank` CLI currently runs multiple models in parallel via the `Orchestrator.Run` method, which processes each model through `processModelWithRateLimit`
-- Each model's output is saved individually to a separate file (e.g., `<output_dir>/<model_name>.md`)
-- There is no mechanism to collect and synthesize outputs from multiple models
+## Strike List
+| Seq | CR-ID | Title                                          | Effort | Owner   |
+|-----|-------|------------------------------------------------|--------|---------|
+| 1   | cr-01 | Do not swallow errors on partial model failures | s      | backend |
+| 2   | cr-02 | Add unit tests for partial-failure error path   | s      | backend |
 
-### Key Components to Modify
-- **CLI Parsing**: `cmd/thinktank/cli.go` - Need to add new `--synthesis-model` flag
-- **Configuration**: `internal/config/config.go` - Need to add field for synthesis model name
-- **Orchestration**: `internal/thinktank/orchestrator/orchestrator.go` - Major changes needed to collect outputs and add synthesis step
-- **Model Processing**: `internal/thinktank/modelproc/processor.go` - Modify to return content in addition to writing to file
-- **Prompt Generation**: `internal/thinktank/prompt/prompt.go` - Add new function for synthesis prompt
-- **API Service**: Existing interfaces will be used for synthesis model interaction
+## Detailed Remedies
 
-### Interface Changes
-- The `modelproc.Processor.Process` signature needs to change to return content
-- The `Orchestrator.processModels` needs to collect and return outputs from all models
+### cr-01 Do not swallow errors on partial model failures
+- **Problem:** The orchestrator's `Run` returns `nil` whenever at least one model succeeds, even if others fail.
+- **Impact:** Partial failures go undetected, causing CLI/CI tooling to report success and masking real issues.
+- **Chosen Fix:** After processing all models, check for any errors and, if present, return a composite error summarizing success vs. failure counts along with underlying messages.
+- **Steps:**
+  1. In `internal/thinktank/orchestrator/orchestrator.go` (lines 108–116), collect outputs and errors from `processModels`.
+  2. If `len(modelErrors) > 0`, call a helper (e.g., `aggregateErrorMessages(modelErrors)`) and return:
+     ```go
+     fmt.Errorf(
+       "processed %d/%d models successfully; %d failed: %v",
+       len(modelOutputs), len(o.config.ModelNames), len(modelErrors), aggregateErrorMessages(modelErrors),
+     )
+     ```
+  3. Ensure downstream callers (CLI, scripts) propagate non-zero exit codes on this error.
+  4. Add a warning-level log when partial failures occur.
+- **Done-When:**
+  - Any model failure yields a non-nil error from `Run`.
+  - CLI and CI detect and report partial-failure runs as failures.
+  - Warning logs appear with failure summary.
 
-## 2. Implementation Strategy
+### cr-02 Add unit tests for partial-failure error path
+- **Problem:** The new partial-failure logic in `Run` is untested.
+- **Impact:** Future changes may reintroduce silent-error swallowing without detection.
+- **Chosen Fix:** Write table-driven unit tests simulating mixed success and failure in `processModels`, asserting correct error return, logs, and output handling.
+- **Steps:**
+  1. Create or extend `internal/thinktank/orchestrator/orchestrator_run_test.go`.
+  2. Mock or stub `processModels` (or the underlying model calls) to return:
+     - All succeed
+     - Mixed succeed/fail
+     - All fail
+  3. For each scenario, assert:
+     - `Run` returns the expected composite error when failures exist.
+     - `Run` returns `nil` only when all succeed.
+     - Warning logs are emitted for partial failures.
+     - Successful outputs are still passed to the next step.
+- **Done-When:**
+  - Tests covering lines 108–116 pass and fail appropriately on regressions.
+  - CI shows 100% coverage for partial-failure branches.
 
-### 2.1 Add CLI Flag and Configuration
-1. **Add CLI Flag**:
-   - Update `cmd/thinktank/cli.go`:
-   ```go
-   synthesisModelFlag := flagSet.String("synthesis-model", "", "Optional: Model to use for synthesizing results from multiple models.")
-   ```
-   - Update help/usage output
+## Standards Alignment
+- Simplicity: Adds minimal code around existing `Run` logic, keeping error-handling straightforward.
+- Design for Observability: Exposes partial failures via return values and warning logs.
+- Design for Testability: Introduces focused tests for every partial-failure branch.
+- Coding Standards: Follows idiomatic Go error patterns; no panics or hidden control flows.
+- Security: No sensitive data is leaked in error messages or logs.
 
-2. **Update Configuration**:
-   - Add `SynthesisModel string` field to `CliConfig` in `internal/config/config.go`
-   - Update `ParseFlagsWithEnv` to store flag value in config
-   ```go
-   cfg.SynthesisModel = *synthesisModelFlag
-   ```
-   - Add validation in `ValidateInputsWithEnv` to check if synthesis model exists in registry
-
-### 2.2 Modify Model Processor to Return Content
-1. **Update Process Method Signature**:
-   - Change from `Process(ctx context.Context, modelName string, stitchedPrompt string) error` to `Process(ctx context.Context, modelName string, stitchedPrompt string) (string, error)`
-   - Return the generated content instead of only writing to file
-   ```go
-   // After ProcessLLMResponse
-   if err != nil {
-       return "", fmt.Errorf(...) // Return empty string on error
-   }
-   return generatedOutput, nil
-   ```
-
-### 2.3 Update Orchestrator for Result Collection and Synthesis
-1. **Modify `processModelWithRateLimit`**:
-   - Create a result struct to capture model output and errors
-   ```go
-   type modelResult struct {
-       modelName string
-       content   string
-       err       error
-   }
-   ```
-   - Update channel to use result struct instead of just errors
-
-2. **Update `processModels`**:
-   - Collect and return both outputs and errors
-   ```go
-   modelOutputs := make(map[string]string)
-   var modelErrors []error
-   for result := range resultChan {
-       if result.err != nil {
-           modelErrors = append(modelErrors, result.err)
-       } else {
-           modelOutputs[result.modelName] = result.content
-       }
-   }
-   return modelOutputs, modelErrors
-   ```
-   - Change return type to `(map[string]string, []error)`
-
-3. **Modify `Run` Method**:
-   - Call updated `processModels`: `modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)`
-   - Add conditional logic for synthesis:
-   ```go
-   if o.config.SynthesisModel == "" {
-       // No synthesis: Write individual files
-       for modelName, content := range modelOutputs {
-           // Save individual files using o.fileWriter
-       }
-   } else {
-       // Synthesis required
-       if len(modelOutputs) > 0 {
-           synthesisContent, err := o.synthesizeResults(ctx, instructions, modelOutputs)
-           if err != nil {
-               // Handle synthesis error
-           } else {
-               // Save synthesis file using o.fileWriter
-           }
-       }
-   }
-   ```
-
-### 2.4 Implement Synthesis Logic
-1. **Add Prompt Function**:
-   - Create `StitchSynthesisPrompt` in `internal/thinktank/prompt/prompt.go`:
-   ```go
-   func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]string) string {
-       var builder strings.Builder
-       // Format original instructions and model outputs with clear delimiters
-       builder.WriteString("<instructions>\n")
-       builder.WriteString(originalInstructions)
-       builder.WriteString("\n</instructions>\n\n")
-
-       builder.WriteString("<model_outputs>\n")
-       for modelName, output := range modelOutputs {
-           builder.WriteString(fmt.Sprintf("<output model=\"%s\">\n", modelName))
-           builder.WriteString(output)
-           builder.WriteString("\n</output>\n\n")
-       }
-       builder.WriteString("</model_outputs>\n\n")
-
-       builder.WriteString("Please synthesize these outputs into a single, consolidated summary that addresses the original instructions...")
-
-       return builder.String()
-   }
-   ```
-
-2. **Implement Synthesis Method**:
-   - Add `synthesizeResults` method to `Orchestrator`:
-   ```go
-   func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructions string, modelOutputs map[string]string) (string, error) {
-       // Build synthesis prompt
-       synthesisPrompt := prompt.StitchSynthesisPrompt(originalInstructions, modelOutputs)
-
-       // Get client for synthesis model
-       client, err := o.apiService.InitLLMClient(ctx, o.config.SynthesisModel)
-       if err != nil {
-           return "", fmt.Errorf("failed to initialize synthesis model client: %w", err)
-       }
-       defer client.Close()
-
-       // Call model API
-       result, err := client.GenerateContent(ctx, synthesisPrompt)
-       if err != nil {
-           return "", fmt.Errorf("synthesis model API call failed: %w", err)
-       }
-
-       // Process response
-       synthesisOutput, err := o.apiService.ProcessLLMResponse(result)
-       if err != nil {
-           return "", fmt.Errorf("failed to process synthesis response: %w", err)
-       }
-
-       return synthesisOutput, nil
-   }
-   ```
-
-3. **Add Audit Logging**:
-   - Include log entries for synthesis start/end, model used, success/failure
-
-## 3. Testing Strategy
-
-### 3.1 Unit Tests
-1. **CLI and Config Tests**:
-   - Test parsing and validation of `--synthesis-model` flag
-   - Test `config.CliConfig` handles `SynthesisModel` field correctly
-
-2. **Prompt Tests**:
-   - Test `StitchSynthesisPrompt` with various inputs:
-     - Empty map of outputs
-     - Single model output
-     - Multiple model outputs
-     - Long content
-
-3. **Orchestrator Tests**:
-   - Mock `APIService`, `ContextGatherer`, `FileWriter`
-   - Test `Run` method logic:
-     - Without synthesis flag -> individual files saved
-     - With synthesis flag -> synthesis occurs and single file saved
-   - Test `synthesizeResults` method:
-     - Mock API calls and verify correct prompt is passed
-     - Verify error handling for API failures
-
-### 3.2 Integration Tests
-1. **End-to-End Flow Tests**:
-   - Test without synthesis flag -> multiple output files
-   - Test with synthesis flag -> single synthesis output file
-   - Test with failed model + synthesis flag -> synthesis proceeds with available outputs
-
-2. **Edge Case Tests**:
-   - Test with invalid synthesis model name
-   - Test with missing API key for synthesis model
-   - Test with synthesis model failing
-
-### 3.3 E2E Tests
-1. **Create New E2E Test File**:
-   - `internal/e2e/cli_synthesis_test.go`
-   - Configure mock API to handle synthesis model
-   - Test full workflow with multiple models and synthesis
-
-2. **Test Cases**:
-   - Basic synthesis workflow
-   - Handling of primary model failures
-   - Error propagation from synthesis step
-
-## 4. Documentation
-
-### 4.1 User Documentation
-1. **Update README.md**:
-   - Add `--synthesis-model <model_name>` to options table
-   - Explain purpose: "Optional flag to specify a model for summarizing outputs from primary models into a single result"
-   - Add example command showing synthesis usage
-
-2. **CLI Help**:
-   - Update flag descriptions in CLI help output
-
-### 4.2 Code Documentation
-1. **Add/Update GoDoc Comments**:
-   - Document new `SynthesisModel` field in `CliConfig`
-   - Document updated method signatures
-   - Document new methods and functions
-   - Explain synthesis workflow in orchestrator
-
-## 5. Implementation Sequence
-
-1. Add CLI flag and config field
-2. Modify `ModelProcessor.Process` to return content
-3. Update orchestrator to collect model outputs
-4. Implement synthesis prompt builder
-5. Implement synthesis method in orchestrator
-6. Update result handling in orchestrator
-7. Add unit tests for all components
-8. Add integration and E2E tests
-9. Update documentation
+## Validation Checklist
+- [ ] Automated tests (unit and integration) pass, including new tests.
+- [ ] `golangci-lint` and `go vet` show no new warnings.
+- [ ] Manual test: simulate model failures and confirm CLI/CI exit code is non-zero with correct error summary.
+- [ ] No new lint, audit, or security warnings introduced.
