@@ -39,7 +39,7 @@
         2. Log entries contain relevant context about which models succeeded and which failed.
     - **Depends-on:** [T002]
 
-- [ ] **T004 · Bugfix · P0: update CLI to exit non-zero on orchestrator partial failure**
+- [x] **T004 · Bugfix · P0: update CLI to exit non-zero on orchestrator partial failure**
     - **Context:** PLAN.md cr-01 Step 3 (ensure downstream callers propagate error)
     - **Action:**
         1. In the CLI entrypoint (likely `cmd/thinktank/main.go`), check the error returned by `orchestrator.Run`.
