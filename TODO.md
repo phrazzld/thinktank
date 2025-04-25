@@ -11,7 +11,7 @@
         1. Helper properly formats multiple errors into a single message string.
     - **Depends-on:** none
 
-- [ ] **T002 · Bugfix · P0: refactor orchestrator run to return composite error on partial failure**
+- [x] **T002 · Bugfix · P0: refactor orchestrator run to return composite error on partial failure**
     - **Context:** PLAN.md cr-01 Steps 1-2 (always return composite error if any model fails)
     - **Action:**
         1. In `internal/thinktank/orchestrator/orchestrator.go` (lines 108–116), modify `Run` to collect outputs and errors from `processModels`.
