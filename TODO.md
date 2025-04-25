@@ -259,7 +259,7 @@
         1. Test passes, validating the complete synthesis workflow.
     - **Depends‑on:** [T027]
 
-- [ ] **T029 · Test · P2: add E2E test for primary model failures**
+- [x] **T029 · Test · P2: add E2E test for primary model failures**
     - **Context:** PLAN.md § 3.3.2 Test Cases
     - **Action:**
         1. Create test where some primary models fail.
