@@ -185,7 +185,7 @@
         1. Tests pass, covering success and error scenarios.
     - **Depends‑on:** [T014]
 
-- [ ] **T021 · Test · P2: add unit tests for orchestrator without synthesis**
+- [x] **T021 · Test · P2: add unit tests for orchestrator without synthesis**
     - **Context:** PLAN.md § 3.1.3 Orchestrator Tests
     - **Action:**
         1. Write tests for `Run` method without synthesis model.
