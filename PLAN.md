@@ -1,64 +1,156 @@
 # Remediation Plan – Sprint 1
 
 ## Executive Summary
-This sprint fixes a critical flaw in the orchestrator where partial model failures were silently treated as success, breaking CLI, scripts, and CI pipelines. We will first change the `Run` method to always return a composite error when any model fails, ensuring no errors are masked. Immediately after, we will add targeted unit tests to cover all partial-failure paths and prevent regressions.
+This sprint fixes critical correctness and reliability bugs in the orchestrator’s model-processing and I/O paths, then rapidly improves observability and audit logging. We start by repairing partial-failure counting and blank-output propagation (cr-01, cr-02), add fast CLI validation and proper error surfacing for file writes (cr-03, cr-04), then enhance logging with correlation IDs and centralized audit events (cr-07, cr-08). Foundational refactors to modularize the orchestrator (cr-05), harden tests (cr-06), and sweep minor nits (cr-09) follow to restore simplicity, testability, and code-style compliance.
 
 ## Strike List
-| Seq | CR-ID | Title                                          | Effort | Owner   |
-|-----|-------|------------------------------------------------|--------|---------|
-| 1   | cr-01 | Do not swallow errors on partial model failures | s      | backend |
-| 2   | cr-02 | Add unit tests for partial-failure error path   | s      | backend |
+
+| Seq | CR-ID | Title                                            | Effort | Owner   |
+|-----|-------|--------------------------------------------------|--------|---------|
+| 1   | cr-01 | Fix partial-failure success counting             | s      | backend |
+| 2   | cr-02 | Exclude failed models from synthesis prompt      | s      | backend |
+| 3   | cr-03 | Fail fast on invalid `--synthesis-model`         | s      | backend |
+| 4   | cr-04 | Surface file-save errors to exit code            | s      | backend |
+| 5   | cr-07 | Add `correlation_id` to all structured logs      | s      | backend |
+| 6   | cr-08 | Centralize and trim audit logging                | s      | backend |
+| 7   | cr-05 | Extract SynthesisService & OutputWriter          | m      | backend |
+| 8   | cr-06 | Refactor tests to mock only external boundaries  | m      | backend |
+| 9   | cr-09 | Minor naming, lint & documentation fixes         | xs     | backend |
 
 ## Detailed Remedies
 
-### cr-01 Do not swallow errors on partial model failures
-- **Problem:** The orchestrator's `Run` returns `nil` whenever at least one model succeeds, even if others fail.
-- **Impact:** Partial failures go undetected, causing CLI/CI tooling to report success and masking real issues.
-- **Chosen Fix:** After processing all models, check for any errors and, if present, return a composite error summarizing success vs. failure counts along with underlying messages.
+### cr-01 Fix partial-failure success counting
+- **Problem:** `Run` and its logs use `len(modelOutputs)` (including empty entries) to report success, so partial failures always appear as 100% success.
+- **Impact:** Silent logic bombs: failed models are never detected or surfaced, undermining reliability.
+- **Chosen Fix:**
+  • In `processModels`, only add entries for models where `err == nil`.
+  • In `Run`, compute `successCount` from the slice/map of truly successful models.
+  • Update warning/error logs and return value to use the new counts.
 - **Steps:**
-  1. In `internal/thinktank/orchestrator/orchestrator.go` (lines 108–116), collect outputs and errors from `processModels`.
-  2. If `len(modelErrors) > 0`, call a helper (e.g., `aggregateErrorMessages(modelErrors)`) and return:
-     ```go
-     fmt.Errorf(
-       "processed %d/%d models successfully; %d failed: %v",
-       len(modelOutputs), len(o.config.ModelNames), len(modelErrors), aggregateErrorMessages(modelErrors),
-     )
-     ```
-  3. Ensure downstream callers (CLI, scripts) propagate non-zero exit codes on this error.
-  4. Add a warning-level log when partial failures occur.
+  1. Change `processModels` result-channel handling to `if err==nil { emit result }`.
+  2. Build `successfulModelsSlice` and use `len(successfulModelsSlice)` in `Run`.
+  3. Adjust all logs and error messages to reflect accurate success/fail counts.
+  4. Add unit tests covering 0%, partial, and 100% success scenarios.
 - **Done-When:**
-  - Any model failure yields a non-nil error from `Run`.
-  - CLI and CI detect and report partial-failure runs as failures.
-  - Warning logs appear with failure summary.
+  • Partial-failure tests pass, logs show correct counts; no empty entries in `modelOutputs`.
 
-### cr-02 Add unit tests for partial-failure error path
-- **Problem:** The new partial-failure logic in `Run` is untested.
-- **Impact:** Future changes may reintroduce silent-error swallowing without detection.
-- **Chosen Fix:** Write table-driven unit tests simulating mixed success and failure in `processModels`, asserting correct error return, logs, and output handling.
+### cr-02 Exclude failed models from synthesis prompt
+- **Problem:** `processModels` inserts empty strings for failed models into `modelOutputs`, and synthesis includes blank `<model_result>` sections.
+- **Impact:** Misleading or confusing prompts cause poor summaries and potential misinterpretation by the LLM.
+- **Chosen Fix:** Only include successful model results in the map passed to synthesis.
 - **Steps:**
-  1. Create or extend `internal/thinktank/orchestrator/orchestrator_run_test.go`.
-  2. Mock or stub `processModels` (or the underlying model calls) to return:
-     - All succeed
-     - Mixed succeed/fail
-     - All fail
-  3. For each scenario, assert:
-     - `Run` returns the expected composite error when failures exist.
-     - `Run` returns `nil` only when all succeed.
-     - Warning logs are emitted for partial failures.
-     - Successful outputs are still passed to the next step.
+  1. Filter out `result.content` when `err != nil`; do not add blank entries.
+  2. In prompt builder, iterate only over `modelOutputs` keys for which content exists.
+  3. Write a test verifying that failed-model keys are absent from the final prompt.
 - **Done-When:**
-  - Tests covering lines 108–116 pass and fail appropriately on regressions.
-  - CI shows 100% coverage for partial-failure branches.
+  • Synthesized prompt contains no placeholders or blank sections for failures; related test passes.
+
+### cr-03 Fail fast on invalid `--synthesis-model`
+- **Problem:** CLI validation falls back silently when registry is nil, accepting any synthesis-model string.
+- **Impact:** Long runs and wasted API calls before encountering an unsupported model, degrading UX.
+- **Chosen Fix:** Always validate the flag against a static or configured whitelist; error out immediately if invalid.
+- **Steps:**
+  1. Introduce a constant list of allowed synthesis models or load from config.
+  2. In `ValidateInputsWithEnv`, if `regManager==nil` or lookup fails, return a clear error:
+     `invalid synthesis model: %q`.
+  3. Update CLI tests to assert that invalid values exit with non-zero code and message.
+- **Done-When:**
+  • CLI rejects bad `--synthesis-model` immediately; tests confirm failure path.
+
+### cr-04 Surface file-save errors to exit code
+- **Problem:** Write failures (disk full, perms) are only logged, not propagated to the exit status—users assume success despite data loss.
+- **Impact:** Silent data loss and mismatched user expectations.
+- **Chosen Fix:** Collect save errors in loops, then return a summarized error and non-zero exit.
+- **Steps:**
+  1. In both individual and synthesis save loops, track `failCount`.
+  2. After saving all files, if `failCount > 0`, return `fmt.Errorf("%d/%d files failed to save", failCount, total)`.
+  3. Ensure `main` or CLI runner calls `os.Exit(1)` on non-nil error.
+  4. Add tests simulating permission/disk errors verifying non-zero exit and correct message.
+- **Done-When:**
+  • Simulated save failures surface an error and exit code ≠ 0; tests pass.
+
+### cr-07 Add `correlation_id` to all structured logs
+- **Problem:** Logs omit a `correlation_id`, thwarting end-to-end request tracing.
+- **Impact:** Poor observability—hard to follow a single CLI run across concurrent operations.
+- **Chosen Fix:** Generate or extract a `correlation_id` at `Run` entry, store it in `context.Context`, and have every log call include it.
+- **Steps:**
+  1. In `Orchestrator.Run`, generate a UUID or accept a passed-in ID and insert into `ctx`.
+  2. Pass `ctx` through all downstream calls; update logger calls to `WithContext(ctx)` or include `ctx.Value("correlation_id")`.
+  3. Update unit tests for logger stubs to assert presence of the field.
+- **Done-When:**
+  • Every `Info/Warn/Error` call logs `correlation_id`; trace tests confirm consistency.
+
+### cr-08 Centralize and trim audit logging
+- **Problem:** Excessive, low-value audit events clutter logs and slow execution.
+- **Impact:** Harder debugging, inflated log volumes, violation of simplicity.
+- **Chosen Fix:** Audit only high-value steps (Start, API call, End) via a single helper.
+- **Steps:**
+  1. Remove granular audit calls; leave only key events.
+  2. Create `AuditLogger.Log(operation, status)` helper.
+  3. Replace in-line audit calls with helper invocations.
+  4. Add tests for helper outputs.
+- **Done-When:**
+  • Audit logs show only Start/API/End events; helper covers all cases.
+
+### cr-05 Extract SynthesisService & OutputWriter
+- **Problem:** `orchestrator.go` exceeds SRP, mixing context gathering, concurrency, prompt building, synthesis, file I/O, and logging.
+- **Impact:** Poor modularity, testability, and maintainability.
+- **Chosen Fix:**
+  • Introduce `SynthesisService` for synthesis logic.
+  • Introduce `OutputWriter` for file writes.
+  • Refactor `Orchestrator.Run` to orchestrate these interfaces and remain <100 lines.
+- **Steps:**
+  1. Define interfaces and move `synthesizeResults` into `synthesis_service.go`.
+  2. Move save loops into `output_writer.go`.
+  3. Inject instances into `Orchestrator`.
+  4. Update dependency wiring and tests.
+- **Done-When:**
+  • `orchestrator.go` shrinks significantly; new services are independently unit-tested; all tests pass.
+
+### cr-06 Refactor tests to mock only external boundaries
+- **Problem:** Integration tests mock internal services (ContextGatherer, ModelProcessor), hiding real interactions.
+- **Impact:** Missed coupling issues; false confidence; high maintenance.
+- **Chosen Fix:**
+  • Define clear boundary interfaces (HTTP client, FS).
+  • Mock only those; use real internal implementations in tests.
+- **Steps:**
+  1. Identify and remove mocks of internal collaborators.
+  2. Introduce boundary interfaces and adjust production code.
+  3. Update tests to use real components + lightweight fakes at boundaries.
+  4. Verify full-flow integration tests pass without internal mocks.
+- **Done-When:**
+  • No test mocks of internal packages; integration tests cover real orchestration.
+
+### cr-09 Minor naming, lint & documentation fixes
+- **Problem:** Inconsistent export naming, unused imports, redundant tests, `fmt.Errorf` used without verbs, overlapping docs.
+- **Impact:** Linter warnings, confusion, minor maintenance friction.
+- **Chosen Fix:**
+  • Align function names (`SanitizeFilename` vs `sanitizeFilename`).
+  • Remove dead imports; merge redundant tests into tables.
+  • Replace `fmt.Errorf("static")` with `errors.New`.
+  • Consolidate `TODO.md` into `PLAN.md`.
+- **Steps:**
+  1. Apply lint fixes and run `golangci-lint`.
+  2. Refactor test suites for table-driven subtests.
+  3. Update docs and remove `TODO.md`.
+- **Done-When:**
+  • Code is lint-clean; no warnings; documentation is unambiguous.
 
 ## Standards Alignment
-- Simplicity: Adds minimal code around existing `Run` logic, keeping error-handling straightforward.
-- Design for Observability: Exposes partial failures via return values and warning logs.
-- Design for Testability: Introduces focused tests for every partial-failure branch.
-- Coding Standards: Follows idiomatic Go error patterns; no panics or hidden control flows.
-- Security: No sensitive data is leaked in error messages or logs.
+- Simplicity: Early bug fixes remove hidden logic; audit logging trimmed.
+- Modularity: Synthesis and output concerns extracted; test boundaries tightened.
+- Testability: New and updated tests cover real flows, partial failures, and error paths.
+- Explicitness: Fail-fast CLI validation; explicit error returns for I/O.
+- Logging Strategy: All logs carry `correlation_id`; audit via centralized helper.
+- Security & Reliability: No silent failures; clear user feedback on error conditions.
 
 ## Validation Checklist
-- [ ] Automated tests (unit and integration) pass, including new tests.
-- [ ] `golangci-lint` and `go vet` show no new warnings.
-- [ ] Manual test: simulate model failures and confirm CLI/CI exit code is non-zero with correct error summary.
-- [ ] No new lint, audit, or security warnings introduced.
+- [ ] Unit & integration tests pass with new coverage for partial failures, CLI validation, and save errors.
+- [ ] `golangci-lint`, `go vet`, and `staticcheck` show zero new issues.
+- [ ] Manual CLI validation:
+  - Partial failures report correct counts.
+  - Synthesis prompt omits blanks.
+  - Invalid `--synthesis-model` fails immediately.
+  - File‐save errors produce non-zero exit.
+  - Logs include consistent `correlation_id`.
+- [ ] Documentation updated; `PLAN.md` reflects all tasks; `TODO.md` removed.

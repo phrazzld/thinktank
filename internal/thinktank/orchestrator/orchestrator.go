@@ -114,6 +114,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 
 		// Otherwise, log errors but continue with available outputs
+		// Note: modelOutputs only contains entries for successful models (no empty entries for failed models)
 		// Get list of successful model names for the log
 		var successfulModels []string
 		for modelName := range modelOutputs {
@@ -278,8 +279,13 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 // model. This enables combining insights from multiple models into a cohesive
 // response.
 //
+// IMPORTANT: Only successful model outputs (where err == nil) are added to the
+// modelOutputs map. Failed models are not included in the map at all, which ensures
+// accurate success counting and prevents empty/failed outputs from being included
+// in synthesis prompts.
+//
 // Returns:
-// - A map of model names to their generated content (empty for models that failed)
+// - A map of model names to their generated content (contains only successful models)
 // - A slice of errors encountered during processing (empty if all models were successful)
 func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string) (map[string]string, []error) {
 	var wg sync.WaitGroup
@@ -300,11 +306,11 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	var modelErrors []error
 
 	for result := range resultChan {
-		// Always store the output (which may be empty if there was an error)
-		modelOutputs[result.modelName] = result.content
-
-		// Collect errors separately
-		if result.err != nil {
+		// Only store output for successful models
+		if result.err == nil {
+			modelOutputs[result.modelName] = result.content
+		} else {
+			// Collect errors
 			modelErrors = append(modelErrors, result.err)
 		}
 	}
