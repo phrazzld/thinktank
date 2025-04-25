@@ -26,7 +26,7 @@
     - **Depends-on:** none
 
 ## cli input validation
-- [ ] **T003 · Bugfix · P1: fail fast on invalid `--synthesis-model`**
+- [x] **T003 · Bugfix · P1: fail fast on invalid `--synthesis-model`**
     - **Context:** Detailed Remedies → cr-03 → Steps 1-3
     - **Action:**
         1. Define a constant whitelist of allowed synthesis models or load from config.

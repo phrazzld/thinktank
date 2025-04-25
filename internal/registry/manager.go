@@ -58,6 +58,15 @@ func GetGlobalManager(logger logutil.LoggerInterface) *Manager {
 	return globalManager
 }
 
+// SetGlobalManagerForTesting sets the global manager to a specific instance.
+// This function should only be used in tests.
+func SetGlobalManagerForTesting(manager *Manager) {
+	managerMu.Lock()
+	defer managerMu.Unlock()
+
+	globalManager = manager
+}
+
 // Initialize loads the registry configuration and registers
 // provider implementations.
 func (m *Manager) Initialize() error {
