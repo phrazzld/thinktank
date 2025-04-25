@@ -72,6 +72,12 @@ func NewOrchestrator(
 //   - Save individual model outputs (when no synthesis model is specified)
 //   - Synthesize results using a designated synthesis model
 //
+// The synthesis workflow branch (activated when SynthesisModel is specified in config)
+// will send all individual model outputs to the synthesis model, which combines
+// them into a unified response. This synthesis output is saved as
+// <synthesis-model-name>-synthesis.md in the output directory, alongside the
+// individual model outputs.
+//
 // The method enforces a clear separation of concerns by delegating specific tasks
 // to helper methods, making the high-level workflow easy to understand.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
@@ -240,6 +246,11 @@ func (o *Orchestrator) logRateLimitingConfiguration() {
 // errors that occur during processing. This approach significantly improves
 // throughput when multiple models are specified.
 //
+// When the synthesis feature is used, this method collects and returns all
+// model outputs in a map, which will later be used as input for the synthesis
+// model. This enables combining insights from multiple models into a cohesive
+// response.
+//
 // Returns:
 // - A map of model names to their generated content (empty for models that failed)
 // - A slice of errors encountered during processing (empty if all models were successful)
@@ -276,9 +287,11 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 
 // modelResult represents the result of processing a single model.
 // It includes the model name, generated content, and any error encountered.
+// This struct is crucial for the synthesis feature as it captures outputs
+// from multiple models so they can be combined by a synthesis model.
 type modelResult struct {
 	modelName string // Name of the processed model
-	content   string // Generated content from the model
+	content   string // Generated content from the model, which may be used for synthesis
 	err       error  // Any error encountered during processing
 }
 
@@ -489,6 +502,16 @@ func sanitizeFilename(filename string) string {
 // synthesizeResults processes multiple model outputs through a synthesis model.
 // It builds a prompt that includes the original instructions and all model outputs,
 // then sends this to the synthesis model to generate a consolidated result.
+//
+// This is a key component of the synthesis feature, which allows combining outputs
+// from multiple models into a single coherent response. The method:
+// 1. Creates a specially formatted synthesis prompt using StitchSynthesisPrompt
+// 2. Initializes a client for the synthesis model
+// 3. Calls the synthesis model API with the combined prompt
+// 4. Processes and returns the synthesized result
+//
+// The method includes comprehensive audit logging at each step of the synthesis process,
+// allowing for detailed tracking and debugging.
 //
 // Parameters:
 //   - ctx: The context for API client communication
@@ -785,7 +808,15 @@ func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructio
 
 // handleSynthesisError processes a synthesis error and generates a user-friendly error message.
 // It categorizes the error based on its type and adds helpful guidance for the user.
-// This ensures that synthesis errors are presented in a clear, actionable format.
+//
+// This method is a key part of the synthesis feature's error handling, providing
+// detailed, actionable feedback when synthesis fails. It analyzes the error type
+// (e.g., rate limiting, content filtering, connectivity, authentication) and
+// provides specific guidance for each case. For example, rate limit errors include
+// tips on waiting and retrying, while content filtering errors suggest reviewing prompts.
+//
+// This ensures that synthesis errors are presented in a clear, actionable format,
+// improving the user experience when problems occur.
 func (o *Orchestrator) handleSynthesisError(err error) error {
 	// Log the detailed error for debugging purposes
 	o.logger.Error("Synthesis error occurred: %v", err)

@@ -50,6 +50,15 @@ func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string 
 // StitchSynthesisPrompt combines original instructions and multiple model outputs
 // into a single prompt for a synthesis model. Each model output is clearly labeled
 // with the model name for reference.
+//
+// This function creates a structured prompt with XML-like tags that:
+// 1. Includes the original instructions in an <instructions> section
+// 2. Wraps all model outputs in a <model_outputs> section
+// 3. Labels each model output with its source model name via <model_result model="name"> tags
+// 4. Adds synthesis instructions that guide the model on how to combine the outputs
+//
+// The structured format ensures the synthesis model can clearly distinguish between
+// different model outputs and understand its task of combining them into a unified response.
 func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]string) string {
 	var builder strings.Builder
 

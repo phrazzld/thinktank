@@ -278,7 +278,7 @@
         1. README includes complete documentation for the new flag.
     - **Depends‑on:** [T001]
 
-- [ ] **T031 · Chore · P2: update code documentation with GoDoc comments**
+- [x] **T031 · Chore · P2: update code documentation with GoDoc comments**
     - **Context:** PLAN.md § 4.2.1 Add/Update GoDoc Comments
     - **Action:**
         1. Add GoDoc comments for all new/modified components.

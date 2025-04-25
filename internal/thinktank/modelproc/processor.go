@@ -83,7 +83,12 @@ func NewProcessor(
 // Process handles the entire model processing workflow for a single model.
 // It implements the logic from the previous processModel/processModelConcurrently functions,
 // including initialization, token checking, generation, response processing, and output saving.
-// Returns the generated content as a string and any error encountered.
+// When used with the synthesis feature, this method also returns the generated content as a string,
+// allowing the orchestrator to collect outputs from multiple models for synthesis.
+//
+// Returns:
+//   - The generated content as a string, which can be used for synthesis
+//   - Any error encountered during processing
 func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) (string, error) {
 	p.logger.Info("Processing model: %s", modelName)
 

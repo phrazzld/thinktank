@@ -104,10 +104,14 @@ type CliConfig struct {
 	Verbose      bool
 
 	// API configuration
-	APIKey         string
-	APIEndpoint    string
-	ModelNames     []string
-	SynthesisModel string // Model to use for synthesizing results from multiple models
+	APIKey      string
+	APIEndpoint string
+	ModelNames  []string
+	// SynthesisModel specifies the model to use for combining (synthesizing) outputs from multiple models.
+	// When specified, all individual model outputs will be sent to this model along with original instructions,
+	// and the synthesis model will generate a consolidated result combining insights from all models.
+	// The synthesized output will be saved with the format `<synthesis-model-name>-synthesis.md`.
+	SynthesisModel string
 
 	// Token management field removed as part of T032E
 
