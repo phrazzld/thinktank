@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -389,7 +390,7 @@ func TestRunWithoutSynthesis(t *testing.T) {
 			},
 			saveError:         nil,
 			expectError:       true,
-			expectedErrorMsg:  "errors occurred during model processing",
+			expectedErrorMsg:  "processed 3/3 models successfully",
 			expectedFileCount: 0,
 		},
 	}
@@ -495,6 +496,20 @@ func (o *testOrchestrator) Run(ctx context.Context, instructions string) error {
 	// Skip all the context gathering and processing
 	// and go directly to the handling of model outputs
 
+	// Store any model errors to return after processing
+	var returnErr error
+	if len(o.mockModelErrors) > 0 {
+		// Only fail immediately if no model outputs (all models failed)
+		if len(o.mockModelOutputs) == 0 {
+			return o.aggregateAndFormatErrors(o.mockModelErrors)
+		}
+
+		// Otherwise create descriptive error to return after processing
+		returnErr = fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
+			len(o.mockModelOutputs), len(o.config.ModelNames), len(o.mockModelErrors),
+			o.aggregateAndFormatErrors(o.mockModelErrors))
+	}
+
 	// Handle synthesis or individual model outputs based on configuration
 	// This is what we're actually testing
 	if o.config.SynthesisModel == "" {
@@ -535,11 +550,7 @@ func (o *testOrchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// Return model errors if any
-	if len(o.mockModelErrors) > 0 {
-		return o.aggregateAndFormatErrors(o.mockModelErrors)
-	}
-
-	return nil
+	return returnErr
 }
 
 // TestRunWithSynthesis tests the Run method when a synthesis model is specified
@@ -611,13 +622,10 @@ func TestRunWithSynthesis(t *testing.T) {
 			expectedFileCount: 1,
 		},
 		{
-			name:         "Synthesis with model errors",
+			name:         "Synthesis with all models failing",
 			instructions: "Test instructions",
 			modelNames:   []string{"model1", "model2"},
-			modelOutputs: map[string]string{
-				"model1": "",
-				"model2": "",
-			},
+			modelOutputs: map[string]string{},
 			modelErrors: []error{
 				errors.New("model1: processing failed"),
 				errors.New("model2: processing failed"),
@@ -628,6 +636,26 @@ func TestRunWithSynthesis(t *testing.T) {
 			saveError:        nil,
 			expectError:      true,
 			expectedErrorMsg: "errors occurred during model processing",
+		},
+		{
+			name:         "Synthesis with some models failing",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2", "model3"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+				"model3": "Output from model 3",
+			},
+			modelErrors: []error{
+				errors.New("model2: processing failed"),
+			},
+			synthesisModel:    "synthesis-model",
+			synthesisOutput:   "Synthesized output despite partial failures",
+			synthesisError:    nil,
+			saveError:         nil,
+			expectError:       true,
+			expectedErrorMsg:  "processed 2/3 models successfully",
+			expectedFilePath:  "test-output/synthesis-model-synthesis.md",
+			expectedFileCount: 1,
 		},
 		{
 			name:         "Synthesis method returns error",
@@ -778,9 +806,21 @@ func (o *testOrchestratorWithSynthesis) Run(ctx context.Context, instructions st
 	}
 
 	// Skip context gathering, prompt building, etc.
+
+	// Create variable to store return error (for partial failure case)
+	var returnErr error
+
 	// Simulate model processing errors, if any
 	if len(o.mockModelErrors) > 0 {
-		return o.aggregateAndFormatErrors(o.mockModelErrors)
+		// Only fail completely if no model outputs (all models failed)
+		if len(o.mockModelOutputs) == 0 {
+			return o.aggregateAndFormatErrors(o.mockModelErrors)
+		}
+
+		// Otherwise create a descriptive error but continue processing
+		returnErr = fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
+			len(o.mockModelOutputs), len(o.config.ModelNames), len(o.mockModelErrors),
+			o.aggregateAndFormatErrors(o.mockModelErrors))
 	}
 
 	// Handle synthesis path directly
@@ -821,7 +861,8 @@ func (o *testOrchestratorWithSynthesis) Run(ctx context.Context, instructions st
 		o.logger.Info("No synthesis model specified")
 	}
 
-	return nil
+	// Return any error from partial failures
+	return returnErr
 }
 
 // Test invalid paths in the Run method

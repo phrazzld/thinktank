@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -265,12 +266,14 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 		}
 	}
 
-	// Verify that the orchestrator does NOT return an error when some models succeed
-	// Under our new behavior, as long as at least one model succeeds, orchestrator should not fail
-	if err != nil {
-		t.Errorf("Expected Orchestrator.Run to NOT return an error when some models succeed, but got: %v", err)
+	// Verify that the orchestrator returns a descriptive error when some models fail
+	// But still processes the synthesis with successful outputs
+	if err == nil {
+		t.Errorf("Expected Orchestrator.Run to return an error detailing partial failures")
+	} else if !strings.Contains(err.Error(), "processed") || !strings.Contains(err.Error(), "models successfully") {
+		t.Errorf("Expected error to contain information about successful models, but got: %v", err)
 	} else {
-		t.Logf("Orchestrator correctly continued execution despite partial model failures")
+		t.Logf("Orchestrator correctly returned partial failure error: %v", err)
 	}
 
 	// Verify that synthesis model WAS called despite some model failures

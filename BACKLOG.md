@@ -6,6 +6,20 @@
 - [ ] **T14: Implement semantic versioning**
   Implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
 
+## Synthesis Feature Improvements (T13 follow-ups)
+
+- [ ] **T13.1: Improve Error Context in Logs**
+  Add better context to error logs in the orchestrator, including model name and operation phase. Use structured logging with sanitized error details instead of raw error formatting.
+
+- [ ] **T13.2: Fix Leaky Abstraction in Error Handling**
+  Refactor error handling to maintain strict separation of concerns. Have `processModels` return rich, self-describing errors that include model name and phase, so the orchestrator only needs to decide "log vs. return" rather than building error messages.
+
+- [ ] **T13.3: Prevent Sensitive Data Exposure in Logs**
+  Implement an `sanitizeError(err error)` helper to redact confidential information like API tokens, file paths, and stack traces from error logs.
+
+- [ ] **T13.4: Improve Log Usability**
+  Enhance warning messages with specific model names that failed, consolidate error logging approaches, and clarify code comments describing error handling logic.
+
 - [ ] **T11: Audit codebase against dev philosophy**
   Audit whole codebase against dev philosophy, identify key things to hit
 

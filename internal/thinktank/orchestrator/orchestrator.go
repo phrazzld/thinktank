@@ -105,17 +105,24 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
 
 	// STEP 5: Handle model processing errors
-	// If there were errors but we still have model outputs, log errors but continue
+	// Store any model errors to return later - we'll proceed with synthesis if possible
+	var returnErr error
 	if len(modelErrors) > 0 {
-		// Only fail completely if ALL models failed (no outputs available)
+		// If ALL models failed (no outputs available), fail immediately
 		if len(modelOutputs) == 0 {
 			return o.aggregateAndFormatErrors(modelErrors)
 		}
+
 		// Otherwise, log errors but continue with available outputs
 		o.logger.Warn("Some models failed but continuing with available outputs from %d successful models", len(modelOutputs))
 		for _, err := range modelErrors {
 			o.logger.Error("%v", err)
 		}
+
+		// Create a descriptive error to return after processing is complete
+		returnErr = fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
+			len(modelOutputs), len(o.config.ModelNames), len(modelErrors),
+			o.aggregateAndFormatErrors(modelErrors))
 	}
 
 	// STEP 6: Handle synthesis or individual model outputs based on configuration
@@ -190,7 +197,8 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 	}
 
-	return nil
+	// Return any model errors that occurred, even though we completed processing
+	return returnErr
 }
 
 // gatherProjectContext collects relevant files from the project based on configuration.
