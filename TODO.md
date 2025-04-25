@@ -222,7 +222,7 @@
         1. Test passes, confirming synthesis output file.
     - **Depends‑on:** [T015]
 
-- [ ] **T025 · Test · P2: add integration test for synthesis with model failures**
+- [x] **T025 · Test · P2: add integration test for synthesis with model failures**
     - **Context:** PLAN.md § 3.2.1 End-to-End Flow Tests
     - **Action:**
         1. Create test with one primary model configured to fail.
