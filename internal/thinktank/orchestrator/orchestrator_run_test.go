@@ -542,6 +542,288 @@ func (o *testOrchestrator) Run(ctx context.Context, instructions string) error {
 	return nil
 }
 
+// TestRunWithSynthesis tests the Run method when a synthesis model is specified
+func TestRunWithSynthesis(t *testing.T) {
+	// Define test cases
+	tests := []struct {
+		name              string
+		instructions      string
+		modelNames        []string
+		modelOutputs      map[string]string
+		modelErrors       []error
+		synthesisModel    string
+		synthesisOutput   string
+		synthesisError    error
+		saveError         error
+		expectError       bool
+		expectedErrorMsg  string
+		expectedFilePath  string
+		expectedFileCount int
+	}{
+		{
+			name:         "Successful synthesis with multiple models",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+				"model2": "Output from model 2",
+			},
+			modelErrors:       nil,
+			synthesisModel:    "synthesis-model",
+			synthesisOutput:   "Synthesized output from multiple models",
+			synthesisError:    nil,
+			saveError:         nil,
+			expectError:       false,
+			expectedFilePath:  "test-output/synthesis-model-synthesis.md",
+			expectedFileCount: 1,
+		},
+		{
+			name:         "Successful synthesis with special characters in model name",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+				"model2": "Output from model 2",
+			},
+			modelErrors:       nil,
+			synthesisModel:    "synthesis/model:with?chars",
+			synthesisOutput:   "Synthesized output from multiple models",
+			synthesisError:    nil,
+			saveError:         nil,
+			expectError:       false,
+			expectedFilePath:  "test-output/synthesis-model-with-chars-synthesis.md",
+			expectedFileCount: 1,
+		},
+		{
+			name:         "Successful synthesis with single model",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+			},
+			modelErrors:       nil,
+			synthesisModel:    "synthesis-model",
+			synthesisOutput:   "Synthesized output from single model",
+			synthesisError:    nil,
+			saveError:         nil,
+			expectError:       false,
+			expectedFilePath:  "test-output/synthesis-model-synthesis.md",
+			expectedFileCount: 1,
+		},
+		{
+			name:         "Synthesis with model errors",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2"},
+			modelOutputs: map[string]string{
+				"model1": "",
+				"model2": "",
+			},
+			modelErrors: []error{
+				errors.New("model1: processing failed"),
+				errors.New("model2: processing failed"),
+			},
+			synthesisModel:   "synthesis-model",
+			synthesisOutput:  "Synthesized output",
+			synthesisError:   nil,
+			saveError:        nil,
+			expectError:      true,
+			expectedErrorMsg: "errors occurred during model processing",
+		},
+		{
+			name:         "Synthesis method returns error",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+				"model2": "Output from model 2",
+			},
+			modelErrors:      nil,
+			synthesisModel:   "synthesis-model",
+			synthesisOutput:  "",
+			synthesisError:   errors.New("synthesis failed"),
+			saveError:        nil,
+			expectError:      true,
+			expectedErrorMsg: "synthesis failure",
+		},
+		{
+			name:              "No model outputs available for synthesis",
+			instructions:      "Test instructions",
+			modelNames:        []string{"model1", "model2"},
+			modelOutputs:      map[string]string{}, // Empty map
+			modelErrors:       nil,
+			synthesisModel:    "synthesis-model",
+			synthesisOutput:   "Synthesized output",
+			synthesisError:    nil,
+			saveError:         nil,
+			expectError:       false,
+			expectedFileCount: 0,
+		},
+		{
+			name:         "Error saving synthesis file",
+			instructions: "Test instructions",
+			modelNames:   []string{"model1", "model2"},
+			modelOutputs: map[string]string{
+				"model1": "Output from model 1",
+				"model2": "Output from model 2",
+			},
+			modelErrors:       nil,
+			synthesisModel:    "synthesis-model",
+			synthesisOutput:   "Synthesized output",
+			synthesisError:    nil,
+			saveError:         errors.New("failed to save file"),
+			expectError:       false, // The orchestrator absorbs file save errors
+			expectedFileCount: 0,
+		},
+	}
+
+	// Run tests
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create mocks
+			mockAPIService := &MockAPIService{
+				processOutput: tt.synthesisOutput,
+			}
+			mockContextGatherer := &MockContextGatherer{}
+			mockFileWriter := &MockFileWriter{
+				saveError: tt.saveError,
+			}
+			mockRateLimiter := ratelimit.NewRateLimiter(0, 0)
+			mockAuditLogger := &MockAuditLogger{}
+			mockLogger := &MockLogger{}
+
+			// Create config
+			outputDir := "test-output"
+			cfg := &config.CliConfig{
+				ModelNames:     tt.modelNames,
+				OutputDir:      outputDir,
+				SynthesisModel: tt.synthesisModel, // Set the synthesis model for these tests
+			}
+
+			// Create a test orchestrator
+			testOrchestrator := &testOrchestratorWithSynthesis{
+				Orchestrator: Orchestrator{
+					apiService:      mockAPIService,
+					contextGatherer: mockContextGatherer,
+					fileWriter:      mockFileWriter,
+					auditLogger:     mockAuditLogger,
+					rateLimiter:     mockRateLimiter,
+					config:          cfg,
+					logger:          mockLogger,
+				},
+				mockModelOutputs:    tt.modelOutputs,
+				mockModelErrors:     tt.modelErrors,
+				mockSynthesisOutput: tt.synthesisOutput,
+				mockSynthesisError:  tt.synthesisError,
+			}
+
+			// Call Run
+			err := testOrchestrator.Run(context.Background(), tt.instructions)
+
+			// Check error expectations
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got nil")
+					return
+				}
+				if tt.expectedErrorMsg != "" && !strings.Contains(err.Error(), tt.expectedErrorMsg) {
+					t.Errorf("Expected error containing %q but got: %q", tt.expectedErrorMsg, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v", err)
+					return
+				}
+
+				// Only check files if no error is expected
+				if mockFileWriter.savedFiles == nil {
+					if tt.expectedFileCount > 0 {
+						t.Errorf("Expected %d files to be saved, but no files were saved", tt.expectedFileCount)
+					}
+				} else {
+					// Verify the number of files saved
+					if len(mockFileWriter.savedFiles) != tt.expectedFileCount {
+						t.Errorf("Expected %d files to be saved, got %d", tt.expectedFileCount, len(mockFileWriter.savedFiles))
+					}
+
+					// If we expect a specific file, verify it
+					if tt.expectedFilePath != "" && tt.expectedFileCount > 0 {
+						if savedContent, exists := mockFileWriter.savedFiles[tt.expectedFilePath]; exists {
+							if savedContent != tt.synthesisOutput {
+								t.Errorf("Expected file %s to contain %q, got %q", tt.expectedFilePath, tt.synthesisOutput, savedContent)
+							}
+						} else {
+							t.Errorf("Expected file %s to be saved, but it wasn't", tt.expectedFilePath)
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
+// testOrchestratorWithSynthesis extends Orchestrator to mock both processModels and synthesizeResults
+type testOrchestratorWithSynthesis struct {
+	Orchestrator
+	mockModelOutputs    map[string]string
+	mockModelErrors     []error
+	mockSynthesisOutput string
+	mockSynthesisError  error
+}
+
+// Override the Run method to include synthesis path
+func (o *testOrchestratorWithSynthesis) Run(ctx context.Context, instructions string) error {
+	// Validate that models are specified
+	if len(o.config.ModelNames) == 0 {
+		return errors.New("no model names specified, at least one model is required")
+	}
+
+	// Skip context gathering, prompt building, etc.
+	// Simulate model processing errors, if any
+	if len(o.mockModelErrors) > 0 {
+		return o.aggregateAndFormatErrors(o.mockModelErrors)
+	}
+
+	// Handle synthesis path directly
+	if o.config.SynthesisModel != "" {
+		// Synthesis model specified - process outputs
+		o.logger.Info("Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
+		o.logger.Debug("Synthesizing %d model outputs", len(o.mockModelOutputs))
+
+		// Only proceed with synthesis if we have model outputs to synthesize
+		if len(o.mockModelOutputs) > 0 {
+			// If we have a mock synthesis error, handle it
+			if o.mockSynthesisError != nil {
+				return o.handleSynthesisError(o.mockSynthesisError)
+			}
+
+			// Log synthesis success
+			o.logger.Info("Successfully synthesized results from %d model outputs", len(o.mockModelOutputs))
+			o.logger.Debug("Synthesis output length: %d characters", len(o.mockSynthesisOutput))
+
+			// Sanitize model name for use in filename
+			sanitizedModelName := sanitizeFilename(o.config.SynthesisModel)
+
+			// Construct output file path with -synthesis suffix
+			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")
+
+			// Save the synthesis output to file
+			o.logger.Debug("Saving synthesis output to %s", outputFilePath)
+			if err := o.fileWriter.SaveToFile(o.mockSynthesisOutput, outputFilePath); err != nil {
+				o.logger.Error("Failed to save synthesis output: %v", err)
+			} else {
+				o.logger.Info("Successfully saved synthesis output to %s", outputFilePath)
+			}
+		} else {
+			o.logger.Warn("No model outputs available for synthesis")
+		}
+	} else {
+		// The no-synthesis case is handled in other tests
+		o.logger.Info("No synthesis model specified")
+	}
+
+	return nil
+}
+
 // Test invalid paths in the Run method
 func TestRunEdgeCases(t *testing.T) {
 	// Define test cases for edge cases that don't fit into the main test

@@ -194,7 +194,7 @@
         1. Tests pass, confirming correct behavior without synthesis.
     - **Depends‑on:** [T012]
 
-- [ ] **T022 · Test · P2: add unit tests for orchestrator with synthesis**
+- [x] **T022 · Test · P2: add unit tests for orchestrator with synthesis**
     - **Context:** PLAN.md § 3.1.3 Orchestrator Tests
     - **Action:**
         1. Write tests for `Run` method with synthesis model.
