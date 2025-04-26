@@ -52,7 +52,7 @@
         1. Every entrypoint uses `WithContext(ctx)` before logging.
     - Depends-on: none
 
-- [ ] **T007 · Chore · P2: add linter rule to forbid literal correlation_id= in logs**
+- [x] **T007 · Chore · P2: add linter rule to forbid literal correlation_id= in logs**
     - Context: cr-02 step 4
     - Action:
         1. Extend linter configuration to error on patterns matching `"correlation_id="` in log messages.

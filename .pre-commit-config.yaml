@@ -34,6 +34,12 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: check-correlation-id
+        name: Check for manual correlation_id formatting in logs
+        entry: scripts/check-correlation-id.sh
+        language: script
+        types: [go]
+        pass_filenames: false
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh
