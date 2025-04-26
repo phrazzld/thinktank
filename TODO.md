@@ -78,7 +78,7 @@
     - **Depends-on:** none
 
 ## orchestrator refactoring
-- [ ] **T007 · Refactor · P2: extract SynthesisService & OutputWriter**
+- [x] **T007 · Refactor · P2: extract SynthesisService & OutputWriter**
     - **Context:** Detailed Remedies → cr-05 → Steps 1-4
     - **Action:**
         1. Define `SynthesisService` interface; move `synthesizeResults` into `synthesis_service.go`.

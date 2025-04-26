@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -29,13 +28,15 @@ import (
 // It depends on various services to perform tasks like interacting with the API,
 // gathering context, writing files, logging audits, and handling rate limits.
 type Orchestrator struct {
-	apiService      interfaces.APIService
-	contextGatherer interfaces.ContextGatherer
-	fileWriter      interfaces.FileWriter
-	auditLogger     auditlog.AuditLogger
-	rateLimiter     *ratelimit.RateLimiter
-	config          *config.CliConfig
-	logger          logutil.LoggerInterface
+	apiService       interfaces.APIService
+	contextGatherer  interfaces.ContextGatherer
+	fileWriter       interfaces.FileWriter
+	auditLogger      auditlog.AuditLogger
+	rateLimiter      *ratelimit.RateLimiter
+	config           *config.CliConfig
+	logger           logutil.LoggerInterface
+	synthesisService SynthesisService
+	outputWriter     OutputWriter
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -50,14 +51,25 @@ func NewOrchestrator(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 ) *Orchestrator {
+	// Create the output writer
+	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
+
+	// Create a synthesis service only if synthesis model is specified
+	var synthesisService SynthesisService
+	if config.SynthesisModel != "" {
+		synthesisService = NewSynthesisService(apiService, auditLogger, logger, config.SynthesisModel)
+	}
+
 	return &Orchestrator{
-		apiService:      apiService,
-		contextGatherer: contextGatherer,
-		fileWriter:      fileWriter,
-		auditLogger:     auditLogger,
-		rateLimiter:     rateLimiter,
-		config:          config,
-		logger:          logger,
+		apiService:       apiService,
+		contextGatherer:  contextGatherer,
+		fileWriter:       fileWriter,
+		auditLogger:      auditLogger,
+		rateLimiter:      rateLimiter,
+		config:           config,
+		logger:           logger,
+		synthesisService: synthesisService,
+		outputWriter:     outputWriter,
 	}
 }
 
@@ -164,36 +176,12 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
 		contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
-		// Track stats for logging
-		totalCount := len(modelOutputs)
-		savedCount := 0
-		errorCount := 0
-		// Iterate over the model outputs and save each to a file
-		for modelName, content := range modelOutputs {
-			// Sanitize model name for use in filename
-			sanitizedModelName := sanitizeFilename(modelName)
-
-			// Construct output file path
-			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+".md")
-
-			// Save the output to file
-			contextLogger.DebugContext(ctx, "Saving output for model %s to %s", modelName, outputFilePath)
-			if err := o.fileWriter.SaveToFile(content, outputFilePath); err != nil {
-				contextLogger.ErrorContext(ctx, "Failed to save output for model %s: %v", modelName, err)
-				errorCount++
-			} else {
-				savedCount++
-				contextLogger.InfoContext(ctx, "Successfully saved output for model %s", modelName)
-			}
-		}
-
-		// Log summary of file operations
-		if errorCount > 0 {
+		// Use the OutputWriter to save individual model outputs
+		savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
+		if err != nil {
 			contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
-				savedCount, errorCount)
-
-			// Create a descriptive error for the file save failures
-			fileSaveErrors = fmt.Errorf("%d/%d files failed to save", errorCount, totalCount)
+				savedCount, len(modelOutputs)-savedCount)
+			fileSaveErrors = err
 		} else {
 			contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 		}
@@ -204,34 +192,25 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 		// Only proceed with synthesis if we have model outputs to synthesize
 		if len(modelOutputs) > 0 {
-			// Attempt to synthesize results
+			// Attempt to synthesize results using the SynthesisService
 			contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
-			synthesisContent, err := o.synthesizeResults(ctx, instructions, modelOutputs)
+			synthesisContent, err := o.synthesisService.SynthesizeResults(ctx, instructions, modelOutputs)
 			if err != nil {
 				// Process the error with specialized handling
 				contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
-				return o.handleSynthesisError(ctx, err)
+				return err
 			}
 
 			// Log synthesis success
 			contextLogger.InfoContext(ctx, "Successfully synthesized results from %d model outputs", len(modelOutputs))
 			contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
 
-			// Sanitize model name for use in filename
-			sanitizedModelName := sanitizeFilename(o.config.SynthesisModel)
-
-			// Construct output file path with -synthesis suffix
-			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")
-
-			// Save the synthesis output to file
-			contextLogger.DebugContext(ctx, "Saving synthesis output to %s", outputFilePath)
-			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
+			// Save the synthesis output using the OutputWriter
+			if err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir); err != nil {
 				contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-
-				// Create a descriptive error for the synthesis file save failure
-				fileSaveErrors = fmt.Errorf("failed to save synthesis output to %s: %w", outputFilePath, err)
+				fileSaveErrors = err
 			} else {
-				contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputFilePath)
+				contextLogger.InfoContext(ctx, "Successfully saved synthesis output")
 			}
 		} else {
 			contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
@@ -391,11 +370,14 @@ func (o *Orchestrator) processModelWithRateLimit(
 ) {
 	defer wg.Done()
 
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+
 	// Acquire rate limiting permission
-	o.logger.Debug("Attempting to acquire rate limiter for model %s...", modelName)
+	contextLogger.DebugContext(ctx, "Attempting to acquire rate limiter for model %s...", modelName)
 	acquireStart := time.Now()
 	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
-		o.logger.Error("Rate limiting error for model %s: %v", modelName, err)
+		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
 		resultChan <- modelResult{
 			modelName: modelName,
 			content:   "",
@@ -404,11 +386,11 @@ func (o *Orchestrator) processModelWithRateLimit(
 		return
 	}
 	acquireDuration := time.Since(acquireStart)
-	o.logger.Debug("Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
+	contextLogger.DebugContext(ctx, "Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
 
 	// Release rate limiter when done
 	defer func() {
-		o.logger.Debug("Releasing rate limiter for model %s", modelName)
+		contextLogger.DebugContext(ctx, "Releasing rate limiter for model %s", modelName)
 		o.rateLimiter.Release()
 	}()
 
@@ -425,7 +407,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Process the model
 	content, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
-		o.logger.Error("Processing model %s failed: %v", modelName, err)
+		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
 		resultChan <- modelResult{
 			modelName: modelName,
 			content:   "",
@@ -435,7 +417,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	}
 
 	// Send successful result
-	o.logger.Debug("Processing model %s completed successfully", modelName)
+	contextLogger.DebugContext(ctx, "Processing model %s completed successfully", modelName)
 	resultChan <- modelResult{
 		modelName: modelName,
 		content:   content,
@@ -530,414 +512,6 @@ func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, 
 	return true, nil
 }
 
-// sanitizeFilename replaces characters that are not valid in filenames
-// with safe alternatives to ensure filenames are valid across different operating systems.
-func sanitizeFilename(filename string) string {
-	// Replace slashes and other problematic characters with hyphens
-	replacer := strings.NewReplacer(
-		"/", "-",
-		"\\", "-",
-		":", "-",
-		"*", "-",
-		"?", "-",
-		"\"", "-",
-		"<", "-",
-		">", "-",
-		"|", "-",
-		" ", "_", // Replace spaces with underscores for better readability
-	)
-	return replacer.Replace(filename)
-}
-
-// synthesizeResults processes multiple model outputs through a synthesis model.
-// It builds a prompt that includes the original instructions and all model outputs,
-// then sends this to the synthesis model to generate a consolidated result.
-//
-// This is a key component of the synthesis feature, which allows combining outputs
-// from multiple models into a single coherent response. The method:
-// 1. Creates a specially formatted synthesis prompt using StitchSynthesisPrompt
-// 2. Initializes a client for the synthesis model
-// 3. Calls the synthesis model API with the combined prompt
-// 4. Processes and returns the synthesized result
-//
-// The method includes comprehensive audit logging at each step of the synthesis process,
-// allowing for detailed tracking and debugging.
-//
-// Parameters:
-//   - ctx: The context for API client communication
-//   - originalInstructions: The user's original instructions
-//   - modelOutputs: A map of model names to their generated content
-//
-// Returns:
-//   - A string containing the synthesized result
-//   - An error if any step of the synthesis process fails
-func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructions string, modelOutputs map[string]string) (string, error) {
-	startTime := time.Now()
-
-	// Log synthesis process start with audit logger
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation: "SynthesisStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-			"model_count":     len(modelOutputs),
-			"model_names":     getMapKeys(modelOutputs),
-		},
-		Message: fmt.Sprintf("Starting synthesis with model %s, processing %d outputs",
-			o.config.SynthesisModel, len(modelOutputs)),
-	})
-
-	// Build synthesis prompt using the dedicated prompt function
-	o.logger.Debug("Building synthesis prompt")
-	synthesisPrompt := prompt.StitchSynthesisPrompt(originalInstructions, modelOutputs)
-	o.logger.Debug("Synthesis prompt built, length: %d characters", len(synthesisPrompt))
-
-	// Log prompt building completed
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation: "SynthesisPromptCreated",
-		Status:    "Success",
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-			"prompt_length":   len(synthesisPrompt),
-		},
-		Message: "Synthesis prompt built successfully",
-	})
-
-	// Get model parameters
-	o.logger.Debug("Getting model parameters for synthesis model: %s", o.config.SynthesisModel)
-	modelParams, err := o.apiService.GetModelParameters(o.config.SynthesisModel)
-	if err != nil {
-		duration := time.Since(startTime).Milliseconds()
-		durationMs := duration
-
-		// Log error with audit logger
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisModelParameters",
-			Status:     "Failure",
-			DurationMs: &durationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "ModelParameterError",
-			},
-			Message: fmt.Sprintf("Failed to get parameters for synthesis model %s", o.config.SynthesisModel),
-		})
-
-		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", err)
-	}
-
-	// Log successful parameter retrieval
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation: "SynthesisModelParameters",
-		Status:    "Success",
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-			"param_count":     len(modelParams),
-		},
-		Message: "Successfully retrieved synthesis model parameters",
-	})
-
-	// Get client for synthesis model
-	o.logger.Debug("Initializing client for synthesis model: %s", o.config.SynthesisModel)
-	client, err := o.apiService.InitLLMClient(ctx, "", o.config.SynthesisModel, "")
-	if err != nil {
-		duration := time.Since(startTime).Milliseconds()
-		durationMs := duration
-
-		// Log error with audit logger
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisClientInit",
-			Status:     "Failure",
-			DurationMs: &durationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "ClientInitializationError",
-			},
-			Message: fmt.Sprintf("Failed to initialize client for synthesis model %s", o.config.SynthesisModel),
-		})
-
-		return "", fmt.Errorf("failed to initialize synthesis model client: %w", err)
-	}
-
-	// Log successful client initialization
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation: "SynthesisClientInit",
-		Status:    "Success",
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-		},
-		Message: "Successfully initialized synthesis model client",
-	})
-
-	defer func() {
-		if closeErr := client.Close(); closeErr != nil {
-			o.logger.Warn("Error closing synthesis model client: %v", closeErr)
-
-			// Log client close error
-			o.logAuditEvent(auditlog.AuditEntry{
-				Operation: "SynthesisClientClose",
-				Status:    "Failure",
-				Inputs: map[string]interface{}{
-					"synthesis_model": o.config.SynthesisModel,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: closeErr.Error(),
-					Type:    "ClientCloseError",
-				},
-				Message: "Error closing synthesis model client",
-			})
-		} else {
-			// Log successful client close
-			o.logAuditEvent(auditlog.AuditEntry{
-				Operation: "SynthesisClientClose",
-				Status:    "Success",
-				Inputs: map[string]interface{}{
-					"synthesis_model": o.config.SynthesisModel,
-				},
-				Message: "Successfully closed synthesis model client",
-			})
-		}
-	}()
-
-	// Log API call start
-	apiCallStartTime := time.Now()
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation: "SynthesisAPICall",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-			"prompt_length":   len(synthesisPrompt),
-		},
-		Message: fmt.Sprintf("Calling synthesis model API: %s", o.config.SynthesisModel),
-	})
-
-	// Call model API
-	o.logger.Info("Calling synthesis model API: %s", o.config.SynthesisModel)
-	result, err := client.GenerateContent(ctx, synthesisPrompt, modelParams)
-
-	// Calculate API call duration
-	apiCallDurationMs := time.Since(apiCallStartTime).Milliseconds()
-
-	if err != nil {
-		duration := time.Since(startTime).Milliseconds()
-		durationMs := duration
-
-		// Log API call failure
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisAPICall",
-			Status:     "Failure",
-			DurationMs: &apiCallDurationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-				"prompt_length":   len(synthesisPrompt),
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "APICallError",
-			},
-			Message: fmt.Sprintf("Synthesis model API call failed for model %s", o.config.SynthesisModel),
-		})
-
-		// Log overall synthesis failure
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisEnd",
-			Status:     "Failure",
-			DurationMs: &durationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "SynthesisError",
-			},
-			Message: fmt.Sprintf("Synthesis process failed with model %s", o.config.SynthesisModel),
-		})
-
-		return "", fmt.Errorf("synthesis model API call failed: %w", err)
-	}
-
-	// Log successful API call
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation:  "SynthesisAPICall",
-		Status:     "Success",
-		DurationMs: &apiCallDurationMs,
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-		},
-		Outputs: map[string]interface{}{
-			"result_received": result != nil,
-		},
-		Message: "Synthesis model API call completed successfully",
-	})
-
-	// Process response
-	responseStartTime := time.Now()
-	o.logger.Debug("Processing synthesis model response")
-
-	synthesisOutput, err := o.apiService.ProcessLLMResponse(result)
-
-	// Calculate response processing duration
-	responseDurationMs := time.Since(responseStartTime).Milliseconds()
-
-	if err != nil {
-		duration := time.Since(startTime).Milliseconds()
-		durationMs := duration
-
-		// Log response processing failure
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisResponseProcessing",
-			Status:     "Failure",
-			DurationMs: &responseDurationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "ResponseProcessingError",
-			},
-			Message: "Failed to process synthesis model response",
-		})
-
-		// Log overall synthesis failure
-		o.logAuditEvent(auditlog.AuditEntry{
-			Operation:  "SynthesisEnd",
-			Status:     "Failure",
-			DurationMs: &durationMs,
-			Inputs: map[string]interface{}{
-				"synthesis_model": o.config.SynthesisModel,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "SynthesisError",
-			},
-			Message: fmt.Sprintf("Synthesis process failed with model %s", o.config.SynthesisModel),
-		})
-
-		return "", fmt.Errorf("failed to process synthesis model response: %w", err)
-	}
-
-	// Log successful response processing
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation:  "SynthesisResponseProcessing",
-		Status:     "Success",
-		DurationMs: &responseDurationMs,
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-		},
-		Outputs: map[string]interface{}{
-			"output_length": len(synthesisOutput),
-		},
-		Message: "Successfully processed synthesis model response",
-	})
-
-	// Calculate total duration and log overall success
-	duration := time.Since(startTime).Milliseconds()
-	durationMs := duration
-
-	o.logAuditEvent(auditlog.AuditEntry{
-		Operation:  "SynthesisEnd",
-		Status:     "Success",
-		DurationMs: &durationMs,
-		Inputs: map[string]interface{}{
-			"synthesis_model": o.config.SynthesisModel,
-			"model_count":     len(modelOutputs),
-		},
-		Outputs: map[string]interface{}{
-			"output_length": len(synthesisOutput),
-		},
-		Message: fmt.Sprintf("Synthesis completed successfully with model %s", o.config.SynthesisModel),
-	})
-
-	return synthesisOutput, nil
-}
-
-// handleSynthesisError processes a synthesis error and generates a user-friendly error message.
-// It categorizes the error based on its type and adds helpful guidance for the user.
-//
-// This method is a key part of the synthesis feature's error handling, providing
-// detailed, actionable feedback when synthesis fails. It analyzes the error type
-// (e.g., rate limiting, content filtering, connectivity, authentication) and
-// provides specific guidance for each case. For example, rate limit errors include
-// tips on waiting and retrying, while content filtering errors suggest reviewing prompts.
-//
-// This ensures that synthesis errors are presented in a clear, actionable format,
-// improving the user experience when problems occur.
-func (o *Orchestrator) handleSynthesisError(ctx context.Context, err error) error {
-	// Get correlation ID for logging
-	correlationID := logutil.GetCorrelationID(ctx)
-
-	// Log the detailed error for debugging purposes
-	if correlationID != "" {
-		o.logger.ErrorContext(ctx, "Synthesis error occurred: %v", err)
-	} else {
-		// Fallback to regular logging if context doesn't have correlation ID
-		o.logger.Error("Synthesis error occurred: %v", err)
-	}
-
-	var errMsg string
-
-	// Check for specific error types
-	switch {
-	case strings.Contains(err.Error(), "rate limit"):
-		// Rate limiting error
-		errMsg = fmt.Sprintf("Synthesis model '%s' encountered rate limiting: %v", o.config.SynthesisModel, err)
-		errMsg += "\n\nTip: If you're encountering rate limit errors, consider waiting a moment before retrying or using a different synthesis model."
-
-	case strings.Contains(err.Error(), "safety") || strings.Contains(err.Error(), "content filter") || o.apiService.IsSafetyBlockedError(err):
-		// Content filtering/safety error
-		errMsg = fmt.Sprintf("Synthesis was blocked by content safety filters: %v", err)
-		errMsg += "\n\nTip: Your input or the model outputs may contain content that triggered safety filters. Consider reviewing your prompts and instructions."
-
-	case strings.Contains(err.Error(), "connect") || strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline"):
-		// Connectivity error
-		errMsg = fmt.Sprintf("Connectivity issue when calling synthesis model '%s': %v", o.config.SynthesisModel, err)
-		errMsg += "\n\nTip: Check your internet connection and try again. If the issue persists, the service might be experiencing temporary problems."
-
-	case strings.Contains(err.Error(), "auth") || strings.Contains(err.Error(), "key") || strings.Contains(err.Error(), "credential"):
-		// Authentication error
-		errMsg = fmt.Sprintf("Authentication failed for synthesis model '%s': %v", o.config.SynthesisModel, err)
-		errMsg += "\n\nTip: Check your API key and ensure it has proper permissions for this model."
-
-	case o.apiService.IsEmptyResponseError(err):
-		// Empty response error
-		errMsg = fmt.Sprintf("Synthesis model '%s' returned an empty response: %v", o.config.SynthesisModel, err)
-		errMsg += "\n\nTip: The model might be having trouble with your instructions or the outputs from other models. Try simplifying the instructions."
-
-	default:
-		// Generic error with model details
-		errMsg = fmt.Sprintf("Error synthesizing results with model '%s': %v", o.config.SynthesisModel, err)
-
-		// Add any additional details from API service
-		if details := o.apiService.GetErrorDetails(err); details != "" {
-			errMsg += "\nDetails: " + details
-		}
-
-		errMsg += "\n\nTip: If this error persists, try using a different synthesis model or check the model's documentation for limitations."
-	}
-
-	// Return a new error with the formatted message
-	return fmt.Errorf("synthesis failure: %s", errMsg)
-}
-
-// NOTE: Previous versions used a TokenManagerAdapter between interfaces.TokenManager
-// and modelproc.TokenManager. This has been replaced by direct creation of TokenManager
-// instances in ModelProcessor.Process with model-specific LLMClient instances.
-
-// getMapKeys extracts and returns all keys from a map as a sorted string slice.
-// This helper function is used for audit logging to capture all model names.
-func getMapKeys(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	return keys
-}
-
 // aggregateErrorMessages combines multiple error messages into a single string.
 // It takes a slice of errors and returns a string with each error message separated
 // by a semicolon and space.
@@ -954,19 +528,4 @@ func aggregateErrorMessages(errs []error) string {
 	}
 
 	return strings.Join(messages, "; ")
-}
-
-// logAuditEvent writes an audit log entry and logs any errors that occur.
-// This helper ensures proper error handling for all audit log operations.
-// It converts an AuditEntry to LogOp parameters for consistent logging.
-func (o *Orchestrator) logAuditEvent(entry auditlog.AuditEntry) {
-	// Create an error from entry.Error if present
-	var err error
-	if entry.Error != nil {
-		err = fmt.Errorf("%s: %s", entry.Error.Type, entry.Error.Message)
-	}
-
-	if logErr := o.auditLogger.LogOp(entry.Operation, entry.Status, entry.Inputs, entry.Outputs, err); logErr != nil {
-		o.logger.Warn("Failed to write audit log: %v", logErr)
-	}
 }

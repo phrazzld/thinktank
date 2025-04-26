@@ -19,10 +19,7 @@ func TestAPIServiceAdapter(t *testing.T) {
 	t.Skip("Skipping test while fixing mock implementation")
 }
 
-// TestSanitizeFilename tests the sanitizeFilename function
-func TestSanitizeFilename(t *testing.T) {
-	t.Skip("Skipping test while fixing mock implementation")
-}
+// TestSanitizeFilename moved to output_writer_test.go
 
 // TestRunWithoutSynthesis tests the Run method when no synthesis model is specified
 func TestRunWithoutSynthesis(t *testing.T) {
