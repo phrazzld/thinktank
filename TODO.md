@@ -44,7 +44,7 @@
         1. No log calls include literal `"correlation_id="` in messages.
     - Depends-on: none
 
-- [ ] **T006 · Refactor · P2: enforce logger.WithContext(ctx) at entry points**
+- [x] **T006 · Refactor · P2: enforce logger.WithContext(ctx) at entry points**
     - Context: cr-02 step 3
     - Action:
         1. Ensure `main`, handlers, and CLI entrypoints assign `logger = logger.WithContext(ctx)` before any logging.

@@ -28,6 +28,9 @@ func Execute(
 	auditLogger auditlog.AuditLogger,
 	apiService interfaces.APIService,
 ) (err error) {
+	// Ensure the logger has the context attached
+	// This is important for correlation ID propagation
+	logger = logger.WithContext(ctx)
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
 		status := "Success"
@@ -284,6 +287,7 @@ func generateTimestampedRunName() string {
 
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.
+// Note: The logger passed to this function should already have context attached.
 func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
 	if cliConfig.OutputDir == "" {
 		// Generate a unique timestamped run name

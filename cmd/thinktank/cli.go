@@ -43,12 +43,14 @@ const (
 )
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
+// Note: The logger passed to this function should already have context attached
 func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) error {
 	return ValidateInputsWithEnv(config, logger, os.Getenv)
 }
 
 // ValidateInputsWithEnv checks if the configuration is valid and returns an error if not
 // This version takes a getenv function for easier testing
+// Note: The logger passed to this function should already have context attached
 func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterface, getenv func(string) string) error {
 	// Check for instructions file
 	if config.InstructionsFile == "" && !config.DryRun {
@@ -335,6 +337,8 @@ func setupLoggingCustomImpl(config *config.CliConfig, _ *flag.Flag, output io.Wr
 
 	// Use the LogLevel set in the config
 	logger := logutil.NewLogger(config.LogLevel, output, "[thinktank] ")
+	// Note: The WithContext call should be done at the entry point after context creation
+	// This function just creates the base logger
 	return logger
 }
 
