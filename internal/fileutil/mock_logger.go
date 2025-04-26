@@ -208,59 +208,79 @@ func (m *MockLogger) SetVerbose(verbose bool) {
 // DebugContext logs a formatted message at debug level with context
 func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.DebugLevel {
+		// Format the message first
+		msg := fmt.Sprintf(format, args...)
+		// Add correlation ID as a structured field
 		correlationID := logutil.GetCorrelationID(ctx)
-		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		formattedMsg := fmt.Sprintf("%s [correlation_id=%s]", msg, correlationID)
+
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, msg)
-		m.debugMsgs = append(m.debugMsgs, msg)
+		m.messages = append(m.messages, formattedMsg)
+		m.debugMsgs = append(m.debugMsgs, formattedMsg)
 	}
 }
 
 // InfoContext logs a formatted message at info level with context
 func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.InfoLevel {
+		// Format the message first
+		msg := fmt.Sprintf(format, args...)
+		// Add correlation ID as a structured field
 		correlationID := logutil.GetCorrelationID(ctx)
-		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		formattedMsg := fmt.Sprintf("%s [correlation_id=%s]", msg, correlationID)
+
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, msg)
-		m.infoMsgs = append(m.infoMsgs, msg)
+		m.messages = append(m.messages, formattedMsg)
+		m.infoMsgs = append(m.infoMsgs, formattedMsg)
 	}
 }
 
 // WarnContext logs a formatted message at warn level with context
 func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.WarnLevel {
+		// Format the message first
+		msg := fmt.Sprintf(format, args...)
+		// Add correlation ID as a structured field
 		correlationID := logutil.GetCorrelationID(ctx)
-		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		formattedMsg := fmt.Sprintf("%s [correlation_id=%s]", msg, correlationID)
+
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, msg)
-		m.warnMsgs = append(m.warnMsgs, msg)
+		m.messages = append(m.messages, formattedMsg)
+		m.warnMsgs = append(m.warnMsgs, formattedMsg)
 	}
 }
 
 // ErrorContext logs a formatted message at error level with context
 func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.ErrorLevel {
+		// Format the message first
+		msg := fmt.Sprintf(format, args...)
+		// Add correlation ID as a structured field
 		correlationID := logutil.GetCorrelationID(ctx)
-		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		formattedMsg := fmt.Sprintf("%s [correlation_id=%s]", msg, correlationID)
+
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, msg)
-		m.errorMsgs = append(m.errorMsgs, msg)
+		m.messages = append(m.messages, formattedMsg)
+		m.errorMsgs = append(m.errorMsgs, formattedMsg)
 	}
 }
 
 // FatalContext logs a formatted message at fatal level with context
 func (m *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	// Format the message first
+	msg := fmt.Sprintf(format, args...)
+	// Add correlation ID as a structured field
 	correlationID := logutil.GetCorrelationID(ctx)
-	msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+	formattedMsg := fmt.Sprintf("%s [correlation_id=%s]", msg, correlationID)
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.messages = append(m.messages, msg)
-	m.fatalMsgs = append(m.fatalMsgs, msg)
+	m.messages = append(m.messages, formattedMsg)
+	m.fatalMsgs = append(m.fatalMsgs, formattedMsg)
 	// Note: We don't exit in tests
 }
 

@@ -126,8 +126,9 @@ func (s *StdLoggerAdapter) Fatal(format string, v ...interface{}) {
 // DebugContext implements context-aware debug logging
 func (s *StdLoggerAdapter) DebugContext(ctx context.Context, format string, v ...interface{}) {
 	id := GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format, v...)
 	if id != "" {
-		s.Printf("[DEBUG] [correlation_id=%s] "+format, append([]interface{}{id}, v...)...)
+		s.Printf("[DEBUG] %s [correlation_id=%s]", msg, id)
 	} else {
 		s.Debug(format, v...)
 	}
@@ -136,8 +137,9 @@ func (s *StdLoggerAdapter) DebugContext(ctx context.Context, format string, v ..
 // InfoContext implements context-aware info logging
 func (s *StdLoggerAdapter) InfoContext(ctx context.Context, format string, v ...interface{}) {
 	id := GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format, v...)
 	if id != "" {
-		s.Printf("[INFO] [correlation_id=%s] "+format, append([]interface{}{id}, v...)...)
+		s.Printf("[INFO] %s [correlation_id=%s]", msg, id)
 	} else {
 		s.Info(format, v...)
 	}
@@ -146,8 +148,9 @@ func (s *StdLoggerAdapter) InfoContext(ctx context.Context, format string, v ...
 // WarnContext implements context-aware warn logging
 func (s *StdLoggerAdapter) WarnContext(ctx context.Context, format string, v ...interface{}) {
 	id := GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format, v...)
 	if id != "" {
-		s.Printf("[WARN] [correlation_id=%s] "+format, append([]interface{}{id}, v...)...)
+		s.Printf("[WARN] %s [correlation_id=%s]", msg, id)
 	} else {
 		s.Warn(format, v...)
 	}
@@ -156,8 +159,9 @@ func (s *StdLoggerAdapter) WarnContext(ctx context.Context, format string, v ...
 // ErrorContext implements context-aware error logging
 func (s *StdLoggerAdapter) ErrorContext(ctx context.Context, format string, v ...interface{}) {
 	id := GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format, v...)
 	if id != "" {
-		s.Printf("[ERROR] [correlation_id=%s] "+format, append([]interface{}{id}, v...)...)
+		s.Printf("[ERROR] %s [correlation_id=%s]", msg, id)
 	} else {
 		s.Error(format, v...)
 	}
@@ -166,8 +170,9 @@ func (s *StdLoggerAdapter) ErrorContext(ctx context.Context, format string, v ..
 // FatalContext implements context-aware fatal logging
 func (s *StdLoggerAdapter) FatalContext(ctx context.Context, format string, v ...interface{}) {
 	id := GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format, v...)
 	if id != "" {
-		s.Printf("[FATAL] [correlation_id=%s] "+format, append([]interface{}{id}, v...)...)
+		s.Printf("[FATAL] %s [correlation_id=%s]", msg, id)
 	} else {
 		s.Fatal(format, v...)
 	}
@@ -253,8 +258,9 @@ func (l *Logger) formatMessageWithCorrelationID(ctx context.Context, level LogLe
 	msg := fmt.Sprintf(format, args...)
 	correlationID := GetCorrelationID(ctx)
 	if correlationID != "" {
-		return fmt.Sprintf("%s [%s] [correlation_id=%s] %s%s",
-			timestamp, level.String(), correlationID, l.prefix, msg)
+		// Format with correlation ID as a structured field, separated from the message itself
+		return fmt.Sprintf("%s [%s] %s%s [correlation_id=%s]",
+			timestamp, level.String(), l.prefix, msg, correlationID)
 	}
 	return fmt.Sprintf("%s [%s] %s%s", timestamp, level.String(), l.prefix, msg)
 }

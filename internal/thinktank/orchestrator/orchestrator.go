@@ -95,9 +95,8 @@ func NewOrchestrator(
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	// Ensure context has a correlation ID for tracing and structured logging
 	ctx = logutil.WithCorrelationID(ctx)
-	correlationID := logutil.GetCorrelationID(ctx)
 
-	// Create a logger with the correlation ID for all subsequent logging
+	// Create a logger with the context for all subsequent logging
 	contextLogger := o.logger.WithContext(ctx)
 
 	// Validate that models are specified
@@ -105,8 +104,8 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		return errors.New("no model names specified, at least one model is required")
 	}
 
-	// Log the start of processing with correlation ID
-	contextLogger.InfoContext(ctx, "Starting processing with correlation_id=%s", correlationID)
+	// Log the start of processing
+	contextLogger.InfoContext(ctx, "Starting processing")
 
 	// STEP 1: Gather context from files
 	contextLogger.DebugContext(ctx, "Gathering project context")

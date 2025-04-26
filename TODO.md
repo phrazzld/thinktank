@@ -35,7 +35,7 @@
     - Depends-on: T003
 
 ## Logging
-- [ ] **T005 · Refactor · P2: remove manual correlation_id formatting from log calls**
+- [x] **T005 · Refactor · P2: remove manual correlation_id formatting from log calls**
     - Context: cr-02 steps 1–2
     - Action:
         1. Search for log format strings containing `"correlation_id=%s"` in code.

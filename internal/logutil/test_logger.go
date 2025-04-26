@@ -111,7 +111,8 @@ func (l *TestLogger) DebugContext(ctx context.Context, format string, args ...in
 	if l.level <= DebugLevel {
 		msg := fmt.Sprintf(format, args...)
 		correlationID := GetCorrelationID(ctx)
-		logMsg := fmt.Sprintf("[DEBUG] %s%s correlation_id=%s", l.prefix, msg, correlationID)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[DEBUG] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
 		l.t.Logf("%s", logMsg)
 		l.captureLog(logMsg)
 	}
@@ -122,7 +123,8 @@ func (l *TestLogger) InfoContext(ctx context.Context, format string, args ...int
 	if l.level <= InfoLevel {
 		msg := fmt.Sprintf(format, args...)
 		correlationID := GetCorrelationID(ctx)
-		logMsg := fmt.Sprintf("[INFO] %s%s correlation_id=%s", l.prefix, msg, correlationID)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[INFO] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
 		l.t.Logf("%s", logMsg)
 		l.captureLog(logMsg)
 	}
@@ -133,7 +135,8 @@ func (l *TestLogger) WarnContext(ctx context.Context, format string, args ...int
 	if l.level <= WarnLevel {
 		msg := fmt.Sprintf(format, args...)
 		correlationID := GetCorrelationID(ctx)
-		logMsg := fmt.Sprintf("[WARN] %s%s correlation_id=%s", l.prefix, msg, correlationID)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[WARN] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
 		l.t.Logf("%s", logMsg)
 		l.captureLog(logMsg)
 	}
@@ -144,7 +147,8 @@ func (l *TestLogger) ErrorContext(ctx context.Context, format string, args ...in
 	if l.level <= ErrorLevel {
 		msg := fmt.Sprintf(format, args...)
 		correlationID := GetCorrelationID(ctx)
-		logMsg := fmt.Sprintf("[ERROR] %s%s correlation_id=%s", l.prefix, msg, correlationID)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[ERROR] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
 		l.t.Logf("%s", logMsg)
 		l.captureLog(logMsg)
 	}
@@ -154,7 +158,8 @@ func (l *TestLogger) ErrorContext(ctx context.Context, format string, args ...in
 func (l *TestLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
 	correlationID := GetCorrelationID(ctx)
-	logMsg := fmt.Sprintf("[FATAL] %s%s correlation_id=%s", l.prefix, msg, correlationID)
+	// Format the log message with correlation ID as a structured field
+	logMsg := fmt.Sprintf("[FATAL] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
 	l.t.Logf("%s", logMsg)
 	l.captureLog(logMsg)
 	// Don't call os.Exit in tests

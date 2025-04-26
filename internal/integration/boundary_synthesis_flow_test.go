@@ -15,8 +15,7 @@ import (
 // This test demonstrates the approach of mocking only external boundaries while using real
 // internal implementations.
 func TestBoundarySynthesisFlow(t *testing.T) {
-	// Skip this test until we fix the file system mocking implementation
-	t.Skip("Skipping until filesystem mock implementation is fixed")
+	// Use the real orchestrator logic with mocked external boundaries
 	// Create test environment with mocked boundaries
 	env := NewBoundaryTestEnv(t)
 
@@ -100,8 +99,7 @@ func TestBoundarySynthesisFlow(t *testing.T) {
 
 // TestBoundarySynthesisWithPartialFailure tests synthesis with some failed models
 func TestBoundarySynthesisWithPartialFailure(t *testing.T) {
-	// Skip this test until we fix the file system mocking implementation
-	t.Skip("Skipping until filesystem mock implementation is fixed")
+	// Use the real orchestrator logic with mocked external boundaries
 	// Create test environment with mocked boundaries
 	env := NewBoundaryTestEnv(t)
 
