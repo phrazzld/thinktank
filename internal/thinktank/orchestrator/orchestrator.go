@@ -335,6 +335,7 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	modelOutputs := make(map[string]string)
 	var modelErrors []error
 
+	// We're processing a channel that's already closed, so there's no race condition here
 	for result := range resultChan {
 		// Only store output for successful models
 		if result.err == nil {
@@ -373,16 +374,17 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
+	// Create a local variable to store the result to avoid accessing it from multiple goroutines
+	var result modelResult
+	result.modelName = modelName
+
 	// Acquire rate limiting permission
 	contextLogger.DebugContext(ctx, "Attempting to acquire rate limiter for model %s...", modelName)
 	acquireStart := time.Now()
 	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
 		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
-		resultChan <- modelResult{
-			modelName: modelName,
-			content:   "",
-			err:       fmt.Errorf("model %s rate limit: %w", modelName, err),
-		}
+		result.err = fmt.Errorf("model %s rate limit: %w", modelName, err)
+		resultChan <- result
 		return
 	}
 	acquireDuration := time.Since(acquireStart)
@@ -408,21 +410,16 @@ func (o *Orchestrator) processModelWithRateLimit(
 	content, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
-		resultChan <- modelResult{
-			modelName: modelName,
-			content:   "",
-			err:       fmt.Errorf("model %s: %w", modelName, err),
-		}
+		result.err = fmt.Errorf("model %s: %w", modelName, err)
+		resultChan <- result
 		return
 	}
 
-	// Send successful result
+	// Store the successful result in local variable before sending
 	contextLogger.DebugContext(ctx, "Processing model %s completed successfully", modelName)
-	resultChan <- modelResult{
-		modelName: modelName,
-		content:   content,
-		err:       nil,
-	}
+	result.content = content
+	result.err = nil
+	resultChan <- result
 }
 
 // APIServiceAdapter adapts interfaces.APIService to modelproc.APIService.

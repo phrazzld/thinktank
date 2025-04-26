@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -67,6 +68,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 	// Track whether files were written
 	filesWritten := make(map[string]bool)
+	var filesMutex sync.Mutex
 
 	// Create mock API service that returns error for the invalid model
 	apiService := &MockAPIService{
@@ -133,8 +135,10 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	// Create file writer that tracks written files
 	fileWriter := &MockFileWriter{
 		SaveToFileFunc: func(content, filePath string) error {
-			// Record that this file was written
+			// Record that this file was written with mutex protection
+			filesMutex.Lock()
 			filesWritten[filePath] = true
+			filesMutex.Unlock()
 
 			// Actually save the file to test file existence later
 			dir := filepath.Dir(filePath)

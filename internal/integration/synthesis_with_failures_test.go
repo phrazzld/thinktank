@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -81,6 +82,7 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	calledModels := make(map[string]bool)
 	modelSucceeded := make(map[string]bool)
 	modelFailed := make(map[string]bool)
+	var modelsMutex sync.Mutex
 
 	// Create mock API service
 	apiService := &MockAPIService{
@@ -93,8 +95,10 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 			return mockOutputs[result.Content], nil
 		},
 		InitLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-			// Add model to called models
+			// Add model to called models with mutex protection
+			modelsMutex.Lock()
 			calledModels[modelName] = true
+			modelsMutex.Unlock()
 
 			// Return appropriate mock client based on whether it's a synthesis model or one of the regular models
 			switch modelName {
@@ -116,7 +120,9 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 				}, nil
 			case failingModel:
 				// Failing model client
+				modelsMutex.Lock()
 				modelFailed[modelName] = true
+				modelsMutex.Unlock()
 				return &llm.MockLLMClient{
 					GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 						// Return an error for the failing model
@@ -131,7 +137,9 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 				}, nil
 			default:
 				// Regular working model client
+				modelsMutex.Lock()
 				modelSucceeded[modelName] = true
+				modelsMutex.Unlock()
 				return &llm.MockLLMClient{
 					GenerateContentFunc: func(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
 						// Store the model name in the content field so we can identify it in ProcessLLMResponse
@@ -176,10 +184,13 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Create file writer that records what files are written
 	savedFiles := make(map[string]string)
+	var filesMutex sync.Mutex
 	fileWriter := &MockFileWriter{
 		SaveToFileFunc: func(content, filePath string) error {
-			// Store the file content for verification
+			// Store the file content for verification with mutex protection
+			filesMutex.Lock()
 			savedFiles[filePath] = content
+			filesMutex.Unlock()
 
 			// Actually save the files to verify they exist later
 			dir := filepath.Dir(filePath)
@@ -192,11 +203,14 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Track audit log entries for verification
 	var auditEntries []auditlog.AuditEntry
+	var auditMutex sync.Mutex
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
 		LogFunc: func(entry auditlog.AuditEntry) error {
+			auditMutex.Lock()
 			auditEntries = append(auditEntries, entry)
+			auditMutex.Unlock()
 			return nil
 		},
 		CloseFunc: func() error {
@@ -222,6 +236,7 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	err = orch.Run(context.Background(), instructions)
 
 	// Verify that all models were called (even the failing one)
+	modelsMutex.Lock()
 	for _, modelName := range modelNames {
 		if !calledModels[modelName] {
 			t.Errorf("Expected model %s to be called, but it wasn't", modelName)
@@ -242,8 +257,10 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 			}
 		}
 	}
+	modelsMutex.Unlock()
 
 	// Verify files for successful models were created
+	modelsMutex.Lock()
 	for modelName := range modelSucceeded {
 		expectedFilePath := filepath.Join(outputDir, modelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
@@ -265,6 +282,7 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 			}
 		}
 	}
+	modelsMutex.Unlock()
 
 	// Verify that the orchestrator returns a descriptive error when some models fail
 	// But still processes the synthesis with successful outputs
@@ -278,11 +296,13 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Verify that synthesis model WAS called despite some model failures
 	// The new orchestrator implementation continues as long as at least one model succeeds
+	modelsMutex.Lock()
 	if !calledModels[synthesisModel] {
 		t.Errorf("Expected synthesis model %s to be called despite partial model failures, but it wasn't", synthesisModel)
 	} else {
 		t.Logf("Synthesis model was correctly called despite partial model failures")
 	}
+	modelsMutex.Unlock()
 
 	// Verify that synthesis output file WAS created despite some model failures
 	expectedSynthesisFile := filepath.Join(outputDir, synthesisModel+"-synthesis.md")

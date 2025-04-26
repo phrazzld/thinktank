@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -75,6 +76,7 @@ func TestSynthesisFlow(t *testing.T) {
 
 	// Track which models were called
 	calledModels := make(map[string]bool)
+	var modelsMutex sync.Mutex
 
 	// Create mock API service
 	apiService := &MockAPIService{
@@ -87,8 +89,10 @@ func TestSynthesisFlow(t *testing.T) {
 			return mockOutputs[result.Content], nil
 		},
 		InitLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-			// Add model to called models
+			// Add model to called models with mutex protection
+			modelsMutex.Lock()
 			calledModels[modelName] = true
+			modelsMutex.Unlock()
 
 			// Return appropriate mock client based on whether it's a synthesis model or regular model
 			if modelName == synthesisModel {
@@ -153,10 +157,13 @@ func TestSynthesisFlow(t *testing.T) {
 
 	// Create file writer that records what files are written
 	savedFiles := make(map[string]string)
+	var filesMutex sync.Mutex
 	fileWriter := &MockFileWriter{
 		SaveToFileFunc: func(content, filePath string) error {
-			// Store the file content for verification
+			// Store the file content for verification with mutex protection
+			filesMutex.Lock()
 			savedFiles[filePath] = content
+			filesMutex.Unlock()
 
 			// Actually save the files to verify they exist later
 			dir := filepath.Dir(filePath)
@@ -168,8 +175,13 @@ func TestSynthesisFlow(t *testing.T) {
 	}
 
 	// Create audit logger
+	var auditEntries []auditlog.AuditEntry
+	var auditMutex sync.Mutex
 	auditLogger := &MockAuditLogger{
 		LogFunc: func(entry auditlog.AuditEntry) error {
+			auditMutex.Lock()
+			auditEntries = append(auditEntries, entry)
+			auditMutex.Unlock()
 			return nil
 		},
 		CloseFunc: func() error {
@@ -198,6 +210,7 @@ func TestSynthesisFlow(t *testing.T) {
 	}
 
 	// Verify that all models were called
+	modelsMutex.Lock()
 	for _, modelName := range modelNames {
 		if !calledModels[modelName] {
 			t.Errorf("Expected model %s to be called, but it wasn't", modelName)
@@ -208,6 +221,7 @@ func TestSynthesisFlow(t *testing.T) {
 	if !calledModels[synthesisModel] {
 		t.Errorf("Expected synthesis model %s to be called, but it wasn't", synthesisModel)
 	}
+	modelsMutex.Unlock()
 
 	// Verify that synthesis output file was created
 	expectedSynthesisFile := filepath.Join(outputDir, synthesisModel+"-synthesis.md")
@@ -257,8 +271,10 @@ func TestSynthesisFlow(t *testing.T) {
 	}
 
 	// Verify the total number of files saved (should be models + synthesis = 4)
+	filesMutex.Lock()
 	expectedFileCount := len(modelNames) + 1 // individual models + synthesis
 	if len(savedFiles) != expectedFileCount {
 		t.Errorf("Expected %d saved files, but got %d", expectedFileCount, len(savedFiles))
 	}
+	filesMutex.Unlock()
 }
