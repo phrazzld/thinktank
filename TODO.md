@@ -9,7 +9,7 @@
         1. No integration test imports or uses internal collaborator mocks.
     - Depends-on: none
 
-- [ ] **T002 · Feature · P2: introduce boundary interface mocks in integration tests**
+- [x] **T002 · Feature · P2: introduce boundary interface mocks in integration tests**
     - Context: cr-01 step 2
     - Action:
         1. Add or reuse `FileWriter`, `SynthesisService`, HTTP client interfaces in integration tests.
