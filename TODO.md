@@ -67,12 +67,14 @@
     - **Context:** Detailed Remedies → cr-08 → Steps 1-4
     - **Action:**
         1. Remove granular audit calls, retaining only Start/API call/End events.
-        2. Implement an `AuditLogger.Log(operation, status)` helper.
+        2. Implement an `AuditLogger.LogOp(operation, status)` helper.
         3. Replace in-line audit calls with helper invocations.
         4. Add tests to verify helper output for each key event.
+        5. Fix tests to check error returns and to adhere to file size limits.
     - **Done-when:**
         1. Audit logs show only Start, API call, and End events.
         2. Helper tests pass.
+        3. All mock implementations properly implement the interface.
     - **Depends-on:** none
 
 ## orchestrator refactoring
