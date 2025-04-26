@@ -70,7 +70,7 @@
         1. `Orchestrator.Run` no longer contains dry-run code; `runDryRunFlow` is invoked.
     - Depends-on: none
 
-- [ ] **T009 · Refactor · P2: extract runIndividualOutputFlow method from Orchestrator.Run**
+- [x] **T009 · Refactor · P2: extract runIndividualOutputFlow method from Orchestrator.Run**
     - Context: cr-03 steps 1–2
     - Action:
         1. Move individual output flow code into `runIndividualOutputFlow(ctx, params)`.

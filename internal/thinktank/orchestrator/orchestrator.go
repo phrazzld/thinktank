@@ -175,18 +175,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
-		contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
-		contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
-
-		// Use the OutputWriter to save individual model outputs
-		savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
-		if err != nil {
-			contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
-				savedCount, len(modelOutputs)-savedCount)
-			fileSaveErrors = err
-		} else {
-			contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
-		}
+		fileSaveErrors = o.runIndividualOutputFlow(ctx, modelOutputs)
 	} else {
 		// Synthesis model specified - process all outputs with synthesis model
 		contextLogger.InfoContext(ctx, "Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
@@ -286,6 +275,29 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 	
 	// Indicate dry run was handled successfully
 	return true, nil
+}
+
+// runIndividualOutputFlow handles the saving of individual model outputs when no synthesis model is specified.
+// It saves each model's output to a separate file in the output directory.
+// Returns an error if any of the outputs fail to save.
+func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) error {
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+	
+	// Log that individual outputs are being saved
+	contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
+	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
+	
+	// Use the OutputWriter to save individual model outputs
+	savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
+	if err != nil {
+		contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
+			savedCount, len(modelOutputs)-savedCount)
+		return err
+	}
+	
+	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
+	return nil
 }
 
 // handleDryRun displays context statistics without performing API calls.
