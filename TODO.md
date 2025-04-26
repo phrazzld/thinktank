@@ -51,7 +51,7 @@
     - **Depends-on:** none
 
 ## structured logging
-- [ ] **T005 · Feature · P2: add correlation_id to all structured logs**
+- [x] **T005 · Feature · P2: add correlation_id to all structured logs**
     - **Context:** Detailed Remedies → cr-07 → Steps 1-3
     - **Action:**
         1. In `Orchestrator.Run`, generate or accept a `correlation_id` and store in `context.Context`.
@@ -63,7 +63,7 @@
     - **Depends-on:** none
 
 ## audit logging
-- [ ] **T006 · Feature · P2: centralize and trim audit logging**
+- [x] **T006 · Feature · P2: centralize and trim audit logging**
     - **Context:** Detailed Remedies → cr-08 → Steps 1-4
     - **Action:**
         1. Remove granular audit calls, retaining only Start/API call/End events.

@@ -33,6 +33,14 @@ func (l *noOpLogger) Fatal(format string, args ...interface{})  {}
 func (l *noOpLogger) Println(args ...interface{})               {}
 func (l *noOpLogger) Printf(format string, args ...interface{}) {}
 
+// Context-aware logging methods
+func (l *noOpLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *noOpLogger) InfoContext(ctx context.Context, format string, args ...interface{})  {}
+func (l *noOpLogger) WarnContext(ctx context.Context, format string, args ...interface{})  {}
+func (l *noOpLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *noOpLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *noOpLogger) WithContext(ctx context.Context) logutil.LoggerInterface              { return l }
+
 func newNoOpLogger() logutil.LoggerInterface {
 	return &noOpLogger{}
 }

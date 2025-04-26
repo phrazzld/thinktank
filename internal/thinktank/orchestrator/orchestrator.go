@@ -81,27 +81,44 @@ func NewOrchestrator(
 // The method enforces a clear separation of concerns by delegating specific tasks
 // to helper methods, making the high-level workflow easy to understand.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
+	// Ensure context has a correlation ID for tracing and structured logging
+	ctx = logutil.WithCorrelationID(ctx)
+	correlationID := logutil.GetCorrelationID(ctx)
+
+	// Create a logger with the correlation ID for all subsequent logging
+	contextLogger := o.logger.WithContext(ctx)
+
 	// Validate that models are specified
 	if len(o.config.ModelNames) == 0 {
 		return errors.New("no model names specified, at least one model is required")
 	}
 
+	// Log the start of processing with correlation ID
+	contextLogger.InfoContext(ctx, "Starting processing with correlation_id=%s", correlationID)
+
 	// STEP 1: Gather context from files
+	contextLogger.DebugContext(ctx, "Gathering project context")
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
 	if err != nil {
+		contextLogger.ErrorContext(ctx, "Failed to gather project context: %v", err)
 		return err
 	}
+	contextLogger.DebugContext(ctx, "Project context gathered: %d files", len(contextFiles))
 
 	// STEP 2: Handle dry run mode (short-circuit if dry run)
 	if o.config.DryRun {
+		contextLogger.InfoContext(ctx, "Running in dry-run mode")
 		return o.handleDryRun(ctx, contextStats)
 	}
 
 	// STEP 3: Build prompt by combining instructions and context
+	contextLogger.DebugContext(ctx, "Building prompt from instructions and context")
 	stitchedPrompt := o.buildPrompt(instructions, contextFiles)
+	contextLogger.DebugContext(ctx, "Prompt built successfully, length: %d characters", len(stitchedPrompt))
 
 	// STEP 4: Process models concurrently
-	o.logRateLimitingConfiguration()
+	contextLogger.InfoContext(ctx, "Beginning model processing")
+	o.logRateLimitingConfiguration(ctx)
 	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
 
 	// STEP 5: Handle model processing errors
@@ -110,7 +127,9 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	if len(modelErrors) > 0 {
 		// If ALL models failed (no outputs available), fail immediately
 		if len(modelOutputs) == 0 {
-			return fmt.Errorf("all models failed: %v", aggregateErrorMessages(modelErrors))
+			errorMsg := fmt.Sprintf("all models failed: %v", aggregateErrorMessages(modelErrors))
+			contextLogger.ErrorContext(ctx, errorMsg)
+			return errors.New(errorMsg)
 		}
 
 		// Otherwise, log errors but continue with available outputs
@@ -122,12 +141,12 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 
 		// Log a warning with detailed counts and successful model names
-		o.logger.Warn("Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
+		contextLogger.WarnContext(ctx, "Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
 
 		// Log individual error details
 		for _, err := range modelErrors {
-			o.logger.Error("%v", err)
+			contextLogger.ErrorContext(ctx, "%v", err)
 		}
 
 		// Create a descriptive error to return after processing is complete
@@ -142,8 +161,8 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
-		o.logger.Info("Processing completed, saving individual model outputs")
-		o.logger.Debug("Collected %d model outputs", len(modelOutputs))
+		contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
+		contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
 		// Track stats for logging
 		totalCount := len(modelOutputs)
@@ -158,43 +177,45 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+".md")
 
 			// Save the output to file
-			o.logger.Debug("Saving output for model %s to %s", modelName, outputFilePath)
+			contextLogger.DebugContext(ctx, "Saving output for model %s to %s", modelName, outputFilePath)
 			if err := o.fileWriter.SaveToFile(content, outputFilePath); err != nil {
-				o.logger.Error("Failed to save output for model %s: %v", modelName, err)
+				contextLogger.ErrorContext(ctx, "Failed to save output for model %s: %v", modelName, err)
 				errorCount++
 			} else {
 				savedCount++
-				o.logger.Info("Successfully saved output for model %s", modelName)
+				contextLogger.InfoContext(ctx, "Successfully saved output for model %s", modelName)
 			}
 		}
 
 		// Log summary of file operations
 		if errorCount > 0 {
-			o.logger.Error("Completed with errors: %d files saved successfully, %d files failed",
+			contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
 				savedCount, errorCount)
 
 			// Create a descriptive error for the file save failures
 			fileSaveErrors = fmt.Errorf("%d/%d files failed to save", errorCount, totalCount)
 		} else {
-			o.logger.Info("All %d model outputs saved successfully", savedCount)
+			contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 		}
 	} else {
 		// Synthesis model specified - process all outputs with synthesis model
-		o.logger.Info("Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
-		o.logger.Debug("Synthesizing %d model outputs", len(modelOutputs))
+		contextLogger.InfoContext(ctx, "Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
+		contextLogger.DebugContext(ctx, "Synthesizing %d model outputs", len(modelOutputs))
 
 		// Only proceed with synthesis if we have model outputs to synthesize
 		if len(modelOutputs) > 0 {
 			// Attempt to synthesize results
+			contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
 			synthesisContent, err := o.synthesizeResults(ctx, instructions, modelOutputs)
 			if err != nil {
 				// Process the error with specialized handling
-				return o.handleSynthesisError(err)
+				contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
+				return o.handleSynthesisError(ctx, err)
 			}
 
 			// Log synthesis success
-			o.logger.Info("Successfully synthesized results from %d model outputs", len(modelOutputs))
-			o.logger.Debug("Synthesis output length: %d characters", len(synthesisContent))
+			contextLogger.InfoContext(ctx, "Successfully synthesized results from %d model outputs", len(modelOutputs))
+			contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
 
 			// Sanitize model name for use in filename
 			sanitizedModelName := sanitizeFilename(o.config.SynthesisModel)
@@ -203,31 +224,39 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")
 
 			// Save the synthesis output to file
-			o.logger.Debug("Saving synthesis output to %s", outputFilePath)
+			contextLogger.DebugContext(ctx, "Saving synthesis output to %s", outputFilePath)
 			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
-				o.logger.Error("Failed to save synthesis output: %v", err)
+				contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
 
 				// Create a descriptive error for the synthesis file save failure
 				fileSaveErrors = fmt.Errorf("failed to save synthesis output to %s: %w", outputFilePath, err)
 			} else {
-				o.logger.Info("Successfully saved synthesis output to %s", outputFilePath)
+				contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputFilePath)
 			}
 		} else {
-			o.logger.Warn("No model outputs available for synthesis")
+			contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
 		}
 	}
 
 	// Return any model errors or file save errors that occurred, combining them if both exist
 	if returnErr != nil && fileSaveErrors != nil {
 		// Combine model and file save errors
-		return fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
+		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
 			returnErr, fileSaveErrors)
+		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
+		return err
 	} else if fileSaveErrors != nil {
 		// Only file save errors occurred
+		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErrors)
 		return fileSaveErrors
-	} else {
-		// Only model errors or no errors
+	} else if returnErr != nil {
+		// Only model errors
+		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", returnErr)
 		return returnErr
+	} else {
+		// No errors
+		contextLogger.InfoContext(ctx, "Processing completed successfully")
+		return nil
 	}
 }
 
@@ -270,20 +299,23 @@ func (o *Orchestrator) buildPrompt(instructions string, contextFiles []fileutil.
 }
 
 // logRateLimitingConfiguration logs information about concurrency and rate limits.
-func (o *Orchestrator) logRateLimitingConfiguration() {
+func (o *Orchestrator) logRateLimitingConfiguration(ctx context.Context) {
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+
 	if o.config.MaxConcurrentRequests > 0 {
-		o.logger.Info("Concurrency limited to %d simultaneous requests", o.config.MaxConcurrentRequests)
+		contextLogger.InfoContext(ctx, "Concurrency limited to %d simultaneous requests", o.config.MaxConcurrentRequests)
 	} else {
-		o.logger.Info("No concurrency limit applied")
+		contextLogger.InfoContext(ctx, "No concurrency limit applied")
 	}
 
 	if o.config.RateLimitRequestsPerMinute > 0 {
-		o.logger.Info("Rate limited to %d requests per minute per model", o.config.RateLimitRequestsPerMinute)
+		contextLogger.InfoContext(ctx, "Rate limited to %d requests per minute per model", o.config.RateLimitRequestsPerMinute)
 	} else {
-		o.logger.Info("No rate limit applied")
+		contextLogger.InfoContext(ctx, "No rate limit applied")
 	}
 
-	o.logger.Info("Processing %d models concurrently...", len(o.config.ModelNames))
+	contextLogger.InfoContext(ctx, "Processing %d models concurrently...", len(o.config.ModelNames))
 }
 
 // processModels processes each model concurrently with rate limiting.
@@ -835,9 +867,17 @@ func (o *Orchestrator) synthesizeResults(ctx context.Context, originalInstructio
 //
 // This ensures that synthesis errors are presented in a clear, actionable format,
 // improving the user experience when problems occur.
-func (o *Orchestrator) handleSynthesisError(err error) error {
+func (o *Orchestrator) handleSynthesisError(ctx context.Context, err error) error {
+	// Get correlation ID for logging
+	correlationID := logutil.GetCorrelationID(ctx)
+
 	// Log the detailed error for debugging purposes
-	o.logger.Error("Synthesis error occurred: %v", err)
+	if correlationID != "" {
+		o.logger.ErrorContext(ctx, "Synthesis error occurred: %v", err)
+	} else {
+		// Fallback to regular logging if context doesn't have correlation ID
+		o.logger.Error("Synthesis error occurred: %v", err)
+	}
 
 	var errMsg string
 
@@ -918,8 +958,15 @@ func aggregateErrorMessages(errs []error) string {
 
 // logAuditEvent writes an audit log entry and logs any errors that occur.
 // This helper ensures proper error handling for all audit log operations.
+// It converts an AuditEntry to LogOp parameters for consistent logging.
 func (o *Orchestrator) logAuditEvent(entry auditlog.AuditEntry) {
-	if err := o.auditLogger.Log(entry); err != nil {
-		o.logger.Warn("Failed to write audit log: %v", err)
+	// Create an error from entry.Error if present
+	var err error
+	if entry.Error != nil {
+		err = fmt.Errorf("%s: %s", entry.Error.Type, entry.Error.Message)
+	}
+
+	if logErr := o.auditLogger.LogOp(entry.Operation, entry.Status, entry.Inputs, entry.Outputs, err); logErr != nil {
+		o.logger.Warn("Failed to write audit log: %v", logErr)
 	}
 }

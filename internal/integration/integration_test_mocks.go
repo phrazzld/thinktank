@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/fileutil"
@@ -116,12 +117,38 @@ func (m *MockFileWriter) SaveToFile(content, filePath string) error {
 // MockAuditLogger is a mock implementation of the audit logger
 type MockAuditLogger struct {
 	LogFunc   func(entry auditlog.AuditEntry) error
+	LogOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
 	CloseFunc func() error
 }
 
 // Log implements the audit logger interface
 func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
 	if m.LogFunc != nil {
+		return m.LogFunc(entry)
+	}
+	return nil
+}
+
+// LogOp implements the audit logger interface
+func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.LogOpFunc != nil {
+		return m.LogOpFunc(operation, status, inputs, outputs, err)
+	}
+	// Create an AuditEntry from the parameters and pass to Log if LogFunc is defined
+	if m.LogFunc != nil {
+		entry := auditlog.AuditEntry{
+			Operation: operation,
+			Status:    status,
+			Inputs:    inputs,
+			Outputs:   outputs,
+			Message:   fmt.Sprintf("%s - %s", operation, status),
+		}
+		if err != nil {
+			entry.Error = &auditlog.ErrorInfo{
+				Message: err.Error(),
+				Type:    "GeneralError",
+			}
+		}
 		return m.LogFunc(entry)
 	}
 	return nil

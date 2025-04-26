@@ -22,6 +22,18 @@ func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
 	return nil
 }
 
+func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Create an AuditEntry from the parameters
+	entry := auditlog.AuditEntry{
+		Operation: operation,
+		Status:    status,
+		Inputs:    inputs,
+		Outputs:   outputs,
+	}
+	m.entries = append(m.entries, entry)
+	return nil
+}
+
 func (m *mockAuditLogger) Close() error {
 	return nil
 }

@@ -1,6 +1,7 @@
 package fileutil
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -200,4 +201,71 @@ func (m *MockLogger) ContainsMessage(substr string) bool {
 // SetVerbose sets the verbose mode for testing
 func (m *MockLogger) SetVerbose(verbose bool) {
 	m.verboseMode = verbose
+}
+
+// Context-aware logging methods
+
+// DebugContext logs a formatted message at debug level with context
+func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	if m.logLevel <= logutil.DebugLevel {
+		correlationID := logutil.GetCorrelationID(ctx)
+		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		m.messages = append(m.messages, msg)
+		m.debugMsgs = append(m.debugMsgs, msg)
+	}
+}
+
+// InfoContext logs a formatted message at info level with context
+func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	if m.logLevel <= logutil.InfoLevel {
+		correlationID := logutil.GetCorrelationID(ctx)
+		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		m.messages = append(m.messages, msg)
+		m.infoMsgs = append(m.infoMsgs, msg)
+	}
+}
+
+// WarnContext logs a formatted message at warn level with context
+func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	if m.logLevel <= logutil.WarnLevel {
+		correlationID := logutil.GetCorrelationID(ctx)
+		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		m.messages = append(m.messages, msg)
+		m.warnMsgs = append(m.warnMsgs, msg)
+	}
+}
+
+// ErrorContext logs a formatted message at error level with context
+func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	if m.logLevel <= logutil.ErrorLevel {
+		correlationID := logutil.GetCorrelationID(ctx)
+		msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+		m.messages = append(m.messages, msg)
+		m.errorMsgs = append(m.errorMsgs, msg)
+	}
+}
+
+// FatalContext logs a formatted message at fatal level with context
+func (m *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	correlationID := logutil.GetCorrelationID(ctx)
+	msg := fmt.Sprintf(format+" correlation_id=%s", append(args, correlationID)...)
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.messages = append(m.messages, msg)
+	m.fatalMsgs = append(m.fatalMsgs, msg)
+	// Note: We don't exit in tests
+}
+
+// WithContext returns a logger with context information
+func (m *MockLogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+	// For mock logger, we just return the same logger
+	return m
 }

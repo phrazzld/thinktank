@@ -2,6 +2,7 @@
 package thinktank
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,6 +34,22 @@ func (l *fileWriterMockLogger) Fatal(format string, args ...interface{})  {}
 func (l *fileWriterMockLogger) Printf(format string, args ...interface{}) {}
 func (l *fileWriterMockLogger) Println(v ...interface{})                  {}
 func (l *fileWriterMockLogger) GetLevel() logutil.LogLevel                { return logutil.InfoLevel }
+
+// Context-aware logging methods
+func (l *fileWriterMockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+}
+func (l *fileWriterMockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	l.infoCalled = true
+	l.infoMsg = format
+}
+func (l *fileWriterMockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *fileWriterMockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	l.errorCalled = true
+	l.errorMsg = format
+}
+func (l *fileWriterMockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+}
+func (l *fileWriterMockLogger) WithContext(ctx context.Context) logutil.LoggerInterface { return l }
 
 func TestNewFileWriter(t *testing.T) {
 	logger := &fileWriterMockLogger{}

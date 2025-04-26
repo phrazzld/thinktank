@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
@@ -39,6 +40,32 @@ func NewMockAuditLogger() *MockAuditLogger {
 func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	m.entries = append(m.entries, entry)
+	return m.logErr
+}
+
+func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Create an AuditEntry from the parameters
+	entry := auditlog.AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Operation: operation,
+		Status:    status,
+		Inputs:    inputs,
+		Outputs:   outputs,
+		Message:   fmt.Sprintf("%s - %s", operation, status),
+	}
+
+	// Add error info if provided
+	if err != nil {
+		entry.Error = &auditlog.ErrorInfo{
+			Message: err.Error(),
+			Type:    "GeneralError",
+		}
+	}
+
 	m.entries = append(m.entries, entry)
 	return m.logErr
 }
@@ -112,6 +139,31 @@ func (m *MockLogger) Fatal(format string, args ...interface{}) {
 func (m *MockLogger) Println(args ...interface{}) {}
 
 func (m *MockLogger) Printf(format string, args ...interface{}) {}
+
+// Context-aware logging methods
+func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	m.debugMessages = append(m.debugMessages, fmt.Sprintf(format, args...))
+}
+
+func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, fmt.Sprintf(format, args...))
+}
+
+func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	m.warnMessages = append(m.warnMessages, fmt.Sprintf(format, args...))
+}
+
+func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, fmt.Sprintf(format, args...))
+}
+
+func (m *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, "FATAL: "+fmt.Sprintf(format, args...))
+}
+
+func (m *MockLogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+	return m
+}
 
 // MockAPIService mocks the APIService interface
 type MockAPIService struct {

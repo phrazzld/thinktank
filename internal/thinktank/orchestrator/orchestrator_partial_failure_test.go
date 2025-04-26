@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 )
 
@@ -192,6 +193,17 @@ func (m *MockLoggerWithWarnings) Warn(format string, args ...interface{}) {
 	m.warnMessages = append(m.warnMessages, message)
 }
 
+// Override WarnContext to capture warning messages with context
+func (m *MockLoggerWithWarnings) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	m.warnMessages = append(m.warnMessages, message)
+}
+
+// WithContext returns the logger with context information
+func (m *MockLoggerWithWarnings) WithContext(ctx context.Context) logutil.LoggerInterface {
+	return m
+}
+
 // formatCountsForTest creates formatted count strings for the error message
 func formatCountsForTest(successCount, totalCount, failCount int) string {
 	return fmt.Sprintf("%d/%d models successfully; %d failed",
@@ -207,6 +219,12 @@ type testOrchestratorErrorHandling struct {
 
 // Run overrides the Orchestrator.Run method to test error handling logic
 func (o *testOrchestratorErrorHandling) Run(ctx context.Context, instructions string) error {
+	// Ensure context has a correlation ID
+	ctx = logutil.WithCorrelationID(ctx)
+
+	// Get a logger with the context
+	contextLogger := o.logger.WithContext(ctx)
+
 	// Validate that models are specified
 	if len(o.config.ModelNames) == 0 {
 		return errors.New("no model names specified, at least one model is required")
@@ -232,7 +250,7 @@ func (o *testOrchestratorErrorHandling) Run(ctx context.Context, instructions st
 		}
 
 		// Log a warning with detailed counts and successful model names
-		o.logger.Warn("Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
+		contextLogger.WarnContext(ctx, "Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
 
 		// Create a descriptive error to return after processing is complete

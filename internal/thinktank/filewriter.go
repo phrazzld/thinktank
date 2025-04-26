@@ -44,16 +44,11 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
-	if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: saveStartTime,
-		Operation: "SaveOutputStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"output_path":    outputFile,
-			"content_length": len(content),
-		},
-		Message: "Starting to save output to file",
-	}); logErr != nil {
+	inputs := map[string]interface{}{
+		"output_path":    outputFile,
+		"content_length": len(content),
+	}
+	if logErr := fw.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -66,20 +61,8 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 			// Log failure to save output
 			saveDurationMs := time.Since(saveStartTime).Milliseconds()
-			if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-				Timestamp:  time.Now().UTC(),
-				Operation:  "SaveOutputEnd",
-				Status:     "Failure",
-				DurationMs: &saveDurationMs,
-				Inputs: map[string]interface{}{
-					"output_path": outputFile,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: fmt.Sprintf("Error getting current working directory: %v", err),
-					Type:    "FileIOError",
-				},
-				Message: "Failed to save output to file",
-			}); logErr != nil {
+			inputs["duration_ms"] = saveDurationMs
+			if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 				fw.logger.Error("Failed to write audit log: %v", logErr)
 			}
 
@@ -95,20 +78,8 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 		// Log failure to save output
 		saveDurationMs := time.Since(saveStartTime).Milliseconds()
-		if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "SaveOutputEnd",
-			Status:     "Failure",
-			DurationMs: &saveDurationMs,
-			Inputs: map[string]interface{}{
-				"output_path": outputPath,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Error creating output directory %s: %v", outputDir, err),
-				Type:    "FileIOError",
-			},
-			Message: "Failed to save output to file",
-		}); logErr != nil {
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -126,20 +97,8 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 		fw.logger.Error("Error writing to file %s: %v", outputPath, err)
 
 		// Log failure to save output
-		if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "SaveOutputEnd",
-			Status:     "Failure",
-			DurationMs: &saveDurationMs,
-			Inputs: map[string]interface{}{
-				"output_path": outputPath,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Error writing to file %s: %v", outputPath, err),
-				Type:    "FileIOError",
-			},
-			Message: "Failed to save output to file",
-		}); logErr != nil {
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -147,19 +106,11 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	}
 
 	// Log successful saving of output
-	if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "SaveOutputEnd",
-		Status:     "Success",
-		DurationMs: &saveDurationMs,
-		Inputs: map[string]interface{}{
-			"output_path": outputPath,
-		},
-		Outputs: map[string]interface{}{
-			"content_length": len(content),
-		},
-		Message: "Successfully saved output to file",
-	}); logErr != nil {
+	inputs["duration_ms"] = saveDurationMs
+	outputs := map[string]interface{}{
+		"content_length": len(content),
+	}
+	if logErr := fw.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 

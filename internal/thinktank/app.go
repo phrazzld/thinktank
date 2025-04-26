@@ -31,41 +31,12 @@ func Execute(
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
 		status := "Success"
-		var errorInfo *auditlog.ErrorInfo
 		if err != nil {
 			status = "Failure"
-			errorInfo = &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "ExecutionError",
-			}
-
-			// Check if it's a categorized error for more detailed information
-			if catErr, ok := llm.IsCategorizedError(err); ok {
-				category := catErr.Category()
-				// Update the error type to include the category
-				errorInfo.Type = fmt.Sprintf("ExecutionError:%s", category.String())
-
-				// For certain error categories, add more context to the message
-				switch category {
-				case llm.CategoryAuth:
-					errorInfo.Message = "Authentication failed. Check your API key."
-				case llm.CategoryRateLimit:
-					errorInfo.Message = "Rate limit exceeded. Try again later or adjust rate limiting parameters."
-				case llm.CategoryInputLimit:
-					errorInfo.Message = "Input token limit exceeded. Try reducing the context size."
-				case llm.CategoryContentFiltered:
-					errorInfo.Message = "Content was filtered by safety settings."
-				}
-			}
 		}
 
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "ExecuteEnd",
-			Status:    status,
-			Error:     errorInfo,
-			Message:   fmt.Sprintf("Execution completed with status: %s", status),
-		}); logErr != nil {
+		// Log execution end with appropriate status and any error
+		if logErr := auditLogger.LogOp("ExecuteEnd", status, nil, nil, err); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 	}()
@@ -92,14 +63,8 @@ func Execute(
 		"log_level": cliConfig.LogLevel,
 	}
 
-	if err := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: time.Now().UTC(),
-		Operation: "ExecuteStart",
-		Status:    "InProgress",
-		Inputs:    inputs,
-		Message:   "Starting execution of thinktank tool",
-	}); err != nil {
-		logger.Error("Failed to write audit log: %v", err)
+	if logErr := auditLogger.LogOp("ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
+		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	// 3. Read instructions from file
@@ -108,18 +73,8 @@ func Execute(
 		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
 
 		// Log the failure to read the instructions file to the audit log
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "ReadInstructions",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"path": cliConfig.InstructionsFile,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to read instructions file: %v", err),
-				Type:    "FileIOError",
-			},
-		}); logErr != nil {
+		inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
+		if logErr := auditLogger.LogOp("ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 

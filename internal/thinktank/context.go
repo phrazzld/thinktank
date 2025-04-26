@@ -66,19 +66,14 @@ func NewContextGatherer(logger logutil.LoggerInterface, dryRun bool, client llm.
 func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
 	// Log start of context gathering operation to audit log
 	gatherStartTime := time.Now()
-	if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: gatherStartTime,
-		Operation: "GatherContextStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"paths":         config.Paths,
-			"include":       config.Include,
-			"exclude":       config.Exclude,
-			"exclude_names": config.ExcludeNames,
-			"format":        config.Format,
-		},
-		Message: "Starting to gather project context files",
-	}); logErr != nil {
+	inputs := map[string]interface{}{
+		"paths":         config.Paths,
+		"include":       config.Include,
+		"exclude":       config.Exclude,
+		"exclude_names": config.ExcludeNames,
+		"format":        config.Format,
+	}
+	if logErr := cg.auditLogger.LogOp("GatherContext", "InProgress", inputs, nil, nil); logErr != nil {
 		cg.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -123,22 +118,14 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 		cg.logger.Error("Failed during project context gathering: %v", err)
 
 		// Log the failure of context gathering to audit log
-		if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "GatherContextEnd",
-			Status:     "Failure",
-			DurationMs: &gatherDurationMs,
-			Inputs: map[string]interface{}{
-				"paths":         config.Paths,
-				"include":       config.Include,
-				"exclude":       config.Exclude,
-				"exclude_names": config.ExcludeNames,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to gather project context: %v", err),
-				Type:    "ContextGatheringError",
-			},
-		}); logErr != nil {
+		inputs := map[string]interface{}{
+			"paths":         config.Paths,
+			"include":       config.Include,
+			"exclude":       config.Exclude,
+			"exclude_names": config.ExcludeNames,
+			"duration_ms":   gatherDurationMs,
+		}
+		if logErr := cg.auditLogger.LogOp("GatherContext", "Failure", inputs, nil, err); logErr != nil {
 			cg.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -193,26 +180,14 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 	}
 
 	// Log the successful completion of context gathering to audit log
-	if logErr := cg.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "GatherContextEnd",
-		Status:     "Success",
-		DurationMs: &gatherDurationMs,
-		Inputs: map[string]interface{}{
-			"paths":         config.Paths,
-			"include":       config.Include,
-			"exclude":       config.Exclude,
-			"exclude_names": config.ExcludeNames,
-		},
-		Outputs: map[string]interface{}{
-			"processed_files_count": stats.ProcessedFilesCount,
-			"char_count":            stats.CharCount,
-			"line_count":            stats.LineCount,
-			// token_count field removed as part of T032F - token handling refactoring
-			"files_count": len(contextFiles),
-		},
-		Message: "Successfully gathered project context files",
-	}); logErr != nil {
+	outputs := map[string]interface{}{
+		"processed_files_count": stats.ProcessedFilesCount,
+		"char_count":            stats.CharCount,
+		"line_count":            stats.LineCount,
+		// token_count field removed as part of T032F - token handling refactoring
+		"files_count": len(contextFiles),
+	}
+	if logErr := cg.auditLogger.LogOp("GatherContext", "Success", inputs, outputs, nil); logErr != nil {
 		cg.logger.Error("Failed to write audit log: %v", logErr)
 	}
 

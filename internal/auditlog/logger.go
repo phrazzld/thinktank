@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
@@ -18,7 +19,14 @@ type AuditLogger interface {
 	// Log records a single audit entry.
 	// The entry contains information about operations, status, and relevant metadata.
 	// Returns an error if the logging operation fails.
+	// NOTE: Prefer using the LogOp method instead of this method directly.
 	Log(entry AuditEntry) error
+
+	// LogOp is a helper method for logging operations with minimal parameters.
+	// It creates an AuditEntry with the given operation, status, and optional data,
+	// sets a timestamp, and logs it. The method returns any error from logging.
+	// This is the recommended way to log audit events to ensure consistency.
+	LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
 
 	// Close releases any resources used by the logger (e.g., open file handles).
 	// Should be called when the logger is no longer needed.
@@ -75,6 +83,52 @@ func (l *FileAuditLogger) Log(entry AuditEntry) error {
 	return nil
 }
 
+// LogOp implements the AuditLogger interface's LogOp method.
+// It creates an AuditEntry with the provided parameters and logs it.
+func (l *FileAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Create a new entry with current timestamp
+	entry := AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Operation: operation,
+		Status:    status,
+		Inputs:    inputs,
+		Outputs:   outputs,
+	}
+
+	// Add message based on status and operation
+	var message string
+	switch status {
+	case "Success":
+		message = fmt.Sprintf("%s completed successfully", operation)
+	case "InProgress":
+		message = fmt.Sprintf("%s started", operation)
+	case "Failure":
+		message = fmt.Sprintf("%s failed", operation)
+	default:
+		message = fmt.Sprintf("%s - %s", operation, status)
+	}
+	entry.Message = message
+
+	// Add error information if provided
+	if err != nil {
+		errorType := "GeneralError"
+
+		// Extract error category for categorized errors
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			category := catErr.Category()
+			errorType = fmt.Sprintf("Error:%s", category.String())
+		}
+
+		entry.Error = &ErrorInfo{
+			Message: err.Error(),
+			Type:    errorType,
+		}
+	}
+
+	// Log the entry
+	return l.Log(entry)
+}
+
 // Close properly closes the log file.
 // It ensures thread safety with a mutex lock and prevents double-closing.
 func (l *FileAuditLogger) Close() error {
@@ -105,6 +159,12 @@ func NewNoOpAuditLogger() *NoOpAuditLogger {
 // Log implements the AuditLogger interface but performs no action.
 // It always returns nil (no error).
 func (l *NoOpAuditLogger) Log(entry AuditEntry) error {
+	return nil // Do nothing
+}
+
+// LogOp implements the AuditLogger interface's LogOp method but performs no action.
+// It always returns nil (no error).
+func (l *NoOpAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	return nil // Do nothing
 }
 

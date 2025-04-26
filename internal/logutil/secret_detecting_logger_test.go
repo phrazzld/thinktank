@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"strings"
@@ -184,6 +185,7 @@ func TestWithSecretDetection(t *testing.T) {
 // Mock logger for testing
 type mockLoggingDelegate struct {
 	messages []string
+	ctx      context.Context
 }
 
 func (m *mockLoggingDelegate) Println(v ...interface{}) {
@@ -213,6 +215,35 @@ func (m *mockLoggingDelegate) Error(format string, v ...interface{}) {
 func (m *mockLoggingDelegate) Fatal(format string, v ...interface{}) {
 	m.messages = append(m.messages, fmt.Sprintf(format, v...))
 	// Don't exit in tests
+}
+
+// Context-aware logging methods
+func (m *mockLoggingDelegate) DebugContext(ctx context.Context, format string, v ...interface{}) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+}
+
+func (m *mockLoggingDelegate) InfoContext(ctx context.Context, format string, v ...interface{}) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+}
+
+func (m *mockLoggingDelegate) WarnContext(ctx context.Context, format string, v ...interface{}) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+}
+
+func (m *mockLoggingDelegate) ErrorContext(ctx context.Context, format string, v ...interface{}) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+}
+
+func (m *mockLoggingDelegate) FatalContext(ctx context.Context, format string, v ...interface{}) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+	// Don't exit in tests
+}
+
+func (m *mockLoggingDelegate) WithContext(ctx context.Context) LoggerInterface {
+	return &mockLoggingDelegate{
+		messages: m.messages,
+		ctx:      ctx,
+	}
 }
 
 // Test the DefaultSecretPatterns

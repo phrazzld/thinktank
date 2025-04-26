@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -206,6 +207,17 @@ func (l *MockLogger) Warn(format string, args ...interface{})   {}
 func (l *MockLogger) Fatal(format string, args ...interface{})  {}
 func (l *MockLogger) Printf(format string, args ...interface{}) {}
 func (l *MockLogger) Println(v ...interface{})                  {}
+
+// Context-aware logging methods
+func (l *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{})  {}
+func (l *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{})  {}
+func (l *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	l.ErrorCalled = true
+	l.ErrorMessages = append(l.ErrorMessages, fmt.Sprintf(format, args...))
+}
+func (l *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
+func (l *MockLogger) WithContext(ctx context.Context) logutil.LoggerInterface              { return l }
 
 // TestValidateConfig tests the ValidateConfig function
 func TestValidateConfig(t *testing.T) {

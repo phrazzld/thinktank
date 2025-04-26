@@ -51,6 +51,31 @@ func (m *mockAPILogger) Printf(format string, v ...interface{}) {
 	// No-op for tests
 }
 
+// Context-aware logging methods
+func (m *mockAPILogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	m.debugMessages = append(m.debugMessages, format)
+}
+
+func (m *mockAPILogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, format)
+}
+
+func (m *mockAPILogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	m.warnMessages = append(m.warnMessages, format)
+}
+
+func (m *mockAPILogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, format)
+}
+
+func (m *mockAPILogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	// Don't actually exit in tests
+}
+
+func (m *mockAPILogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+	return m
+}
+
 // TestNewAPIService tests the creation of a new APIService
 func TestNewAPIService(t *testing.T) {
 	logger := &mockAPILogger{}
