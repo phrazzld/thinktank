@@ -479,3 +479,19 @@ func FormatAPIError(provider string, err error, statusCode int, responseBody str
 
 // Ensure LLMError implements the CategorizedError interface (compile-time check)
 var _ CategorizedError = (*LLMError)(nil)
+
+// MockError is a simple implementation of CategorizedError for testing purposes
+type MockError struct {
+	Message       string
+	ErrorCategory ErrorCategory
+}
+
+// Error implements the error interface
+func (e *MockError) Error() string {
+	return e.Message
+}
+
+// Category implements the CategorizedError interface
+func (e *MockError) Category() ErrorCategory {
+	return e.ErrorCategory
+}

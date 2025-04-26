@@ -92,7 +92,7 @@
     - **Depends-on:** none
 
 ## tests mocking boundaries
-- [ ] **T008 · Refactor · P2: refactor tests to mock only external boundaries**
+- [x] **T008 · Refactor · P2: refactor tests to mock only external boundaries**
     - **Context:** Detailed Remedies → cr-06 → Steps 1-4
     - **Action:**
         1. Remove mocks of internal collaborators in integration tests.

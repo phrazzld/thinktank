@@ -241,6 +241,34 @@ var orchestratorConstructor = func(
 	)
 }
 
+// GetOrchestratorConstructor returns the current orchestrator constructor function.
+// This is useful for tests that need to temporarily override the constructor.
+func GetOrchestratorConstructor() func(
+	apiService interfaces.APIService,
+	contextGatherer interfaces.ContextGatherer,
+	fileWriter interfaces.FileWriter,
+	auditLogger auditlog.AuditLogger,
+	rateLimiter *ratelimit.RateLimiter,
+	config *config.CliConfig,
+	logger logutil.LoggerInterface,
+) Orchestrator {
+	return orchestratorConstructor
+}
+
+// SetOrchestratorConstructor sets the orchestrator constructor function.
+// This is useful for tests that need to temporarily override the constructor.
+func SetOrchestratorConstructor(constructor func(
+	apiService interfaces.APIService,
+	contextGatherer interfaces.ContextGatherer,
+	fileWriter interfaces.FileWriter,
+	auditLogger auditlog.AuditLogger,
+	rateLimiter *ratelimit.RateLimiter,
+	config *config.CliConfig,
+	logger logutil.LoggerInterface,
+) Orchestrator) {
+	orchestratorConstructor = constructor
+}
+
 // generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNN
 // where NNNN is a 4-digit random number to ensure uniqueness for runs in the same second.
 func generateTimestampedRunName() string {
