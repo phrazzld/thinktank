@@ -12,7 +12,9 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
-// MockAPIService is a mock implementation of the APIService interface
+// Deprecated: MockAPIService directly mocks an internal implementation
+// This will be removed in favor of boundary-based mocks
+// Use BoundaryAPIService from boundary_test_adapter.go instead
 type MockAPIService struct {
 	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
@@ -88,7 +90,9 @@ func (m *MockAPIService) GetErrorDetails(err error) string {
 	return ""
 }
 
-// MockContextGatherer is a mock implementation of the context gatherer
+// Deprecated: MockContextGatherer directly mocks an internal implementation
+// This will be removed in favor of boundary-based mocks
+// Use BoundaryContextGatherer from boundary_test_adapter.go instead
 type MockContextGatherer struct {
 	GatherContextFunc     func(ctx context.Context, config interfaces.GatherConfig) ([]fileutil.FileMeta, *interfaces.ContextStats, error)
 	DisplayDryRunInfoFunc func(ctx context.Context, stats *interfaces.ContextStats) error
@@ -104,7 +108,9 @@ func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 	return m.DisplayDryRunInfoFunc(ctx, stats)
 }
 
-// MockFileWriter is a mock implementation of the file writer
+// Deprecated: MockFileWriter directly mocks an internal implementation
+// This will be removed in favor of boundary-based mocks
+// Use BoundaryFileWriter from boundary_test_adapter.go instead
 type MockFileWriter struct {
 	SaveToFileFunc func(content, filePath string) error
 }
@@ -114,7 +120,9 @@ func (m *MockFileWriter) SaveToFile(content, filePath string) error {
 	return m.SaveToFileFunc(content, filePath)
 }
 
-// MockAuditLogger is a mock implementation of the audit logger
+// Deprecated: MockAuditLogger directly mocks an internal implementation
+// This will be removed in favor of boundary-based mocks
+// Use BoundaryAuditLogger from boundary_test_adapter.go instead
 type MockAuditLogger struct {
 	LogFunc   func(entry auditlog.AuditEntry) error
 	LogOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
