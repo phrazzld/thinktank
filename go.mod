@@ -6,6 +6,8 @@ toolchain go1.23.7
 
 require (
 	github.com/google/generative-ai-go v0.19.0
+	github.com/google/uuid v1.6.0
+	github.com/openai/openai-go v0.1.0-beta.10
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.228.0
@@ -24,10 +26,8 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.6 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
-	github.com/openai/openai-go v0.1.0-beta.10 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect

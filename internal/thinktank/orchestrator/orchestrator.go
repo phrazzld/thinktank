@@ -485,7 +485,7 @@ func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.Mode
 		return apiService.GetModelDefinition(modelName)
 	}
 	// Return nil with error if the underlying implementation doesn't support this method
-	return nil, fmt.Errorf("GetModelDefinition not supported by the underlying APIService implementation")
+	return nil, errors.New("GetModelDefinition not supported by the underlying APIService implementation")
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model.
@@ -497,7 +497,7 @@ func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow
 		return apiService.GetModelTokenLimits(modelName)
 	}
 	// Return zero values with error if the underlying implementation doesn't support this method
-	return 0, 0, fmt.Errorf("GetModelTokenLimits not supported by the underlying APIService implementation")
+	return 0, 0, errors.New("GetModelTokenLimits not supported by the underlying APIService implementation")
 }
 
 // ValidateModelParameter validates a parameter value against its constraints.

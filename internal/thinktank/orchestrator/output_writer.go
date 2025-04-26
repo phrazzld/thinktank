@@ -8,11 +8,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strings"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // OutputWriter handles writing model outputs to files
@@ -69,7 +69,7 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 	// Iterate over the model outputs and save each to a file
 	for modelName, content := range modelOutputs {
 		// Sanitize model name for use in filename
-		sanitizedModelName := sanitizeFilename(modelName)
+		sanitizedModelName := modelproc.SanitizeFilename(modelName)
 
 		// Construct output file path
 		outputFilePath := filepath.Join(outputDir, sanitizedModelName+".md")
@@ -111,7 +111,7 @@ func (w *DefaultOutputWriter) SaveSynthesisOutput(
 	contextLogger := w.logger.WithContext(ctx)
 
 	// Sanitize model name for use in filename
-	sanitizedModelName := sanitizeFilename(modelName)
+	sanitizedModelName := modelproc.SanitizeFilename(modelName)
 
 	// Construct output file path with -synthesis suffix
 	outputFilePath := filepath.Join(outputDir, sanitizedModelName+"-synthesis.md")
@@ -125,24 +125,4 @@ func (w *DefaultOutputWriter) SaveSynthesisOutput(
 
 	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputFilePath)
 	return nil
-}
-
-// sanitizeFilename replaces characters that are not valid in filenames
-// with safe alternatives to ensure filenames are valid across different operating systems.
-func sanitizeFilename(filename string) string {
-	// Replace slashes and other problematic characters with hyphens
-	replacer := strings.NewReplacer(
-		"/", "-",
-		"\\", "-",
-		":", "-",
-		"*", "-",
-		"?", "-",
-		"\"", "-",
-		"'", "-", // Also replace single quotes
-		"<", "-",
-		">", "-",
-		"|", "-",
-		" ", "_", // Replace spaces with underscores for better readability
-	)
-	return replacer.Replace(filename)
 }

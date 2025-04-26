@@ -6,6 +6,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -428,7 +429,8 @@ func (s *DefaultSynthesisService) handleSynthesisError(ctx context.Context, err 
 	}
 
 	// Return a new error with the formatted message
-	return fmt.Errorf("synthesis failure: %s", errMsg)
+	// Use errors package for consistency with other error handling in this file
+	return errors.New("synthesis failure: " + errMsg)
 }
 
 // logAuditEvent writes an audit log entry and logs any errors that occur.

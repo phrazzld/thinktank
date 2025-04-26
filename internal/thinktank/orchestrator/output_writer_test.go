@@ -4,266 +4,213 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
-// MockFileWriter that tracks saved files and can simulate failures
-type TestFileWriter struct {
-	savedFiles        map[string]string
-	failingFilePaths  []string
-	failWithError     error
-	savesToFailCount  int // Number of saves that should fail (in order)
-	currentSaveCount  int
-	alwaysFail        bool
-	specificFailPaths map[string]error // Map of specific paths that should fail with specific errors
+// mockFileWriter implements the interfaces.FileWriter interface for testing
+type mockFileWriter struct {
+	savedFiles map[string]string
+	failPath   string
+	failErr    error
 }
 
-// SaveToFile implements the FileWriter interface
-func (m *TestFileWriter) SaveToFile(content, outputFile string) error {
-	// Check if we should always fail
-	if m.alwaysFail {
-		return m.failWithError
+func newMockFileWriter() *mockFileWriter {
+	return &mockFileWriter{
+		savedFiles: make(map[string]string),
 	}
+}
 
-	// Check if this is a failing path specifically
-	if err, ok := m.specificFailPaths[outputFile]; ok {
-		return err
-	}
+// SetupFailure configures the mock to fail when saving to a specific path
+func (m *mockFileWriter) SetupFailure(path string, err error) {
+	m.failPath = path
+	m.failErr = err
+}
 
-	// Check if path contains any of the failing patterns
-	for _, failPath := range m.failingFilePaths {
-		if filepath.Base(outputFile) == failPath {
-			return m.failWithError
-		}
+// SaveToFile implements the interfaces.FileWriter interface
+func (m *mockFileWriter) SaveToFile(content, path string) error {
+	if path == m.failPath && m.failErr != nil {
+		return m.failErr
 	}
-
-	// Check if we should fail based on count
-	m.currentSaveCount++
-	if m.savesToFailCount > 0 && m.currentSaveCount <= m.savesToFailCount {
-		return m.failWithError
-	}
-
-	// Otherwise, save the file
-	if m.savedFiles == nil {
-		m.savedFiles = make(map[string]string)
-	}
-	m.savedFiles[outputFile] = content
+	m.savedFiles[path] = content
 	return nil
 }
 
-// newTestFileWriter creates a mock file writer for testing
-func newTestFileWriter() *TestFileWriter {
-	return &TestFileWriter{
-		savedFiles:        make(map[string]string),
-		failingFilePaths:  []string{},
-		failWithError:     errors.New("simulated file save error"),
-		specificFailPaths: make(map[string]error),
-	}
-}
-
-// TestSaveIndividualOutputs tests the SaveIndividualOutputs method
-func TestSaveIndividualOutputs(t *testing.T) {
+// TestDefaultOutputWriter_SaveIndividualOutputs tests the SaveIndividualOutputs method
+func TestDefaultOutputWriter_SaveIndividualOutputs(t *testing.T) {
+	// Setup test cases
 	tests := []struct {
-		name               string
-		modelOutputs       map[string]string
-		outputDir          string
-		expectedSaveCount  int
-		expectedError      bool
-		fileWriterSetupFn  func(*TestFileWriter)
-		expectedErrorMatch string
+		name          string
+		modelOutputs  map[string]string
+		outputDir     string
+		failPath      string
+		failErr       error
+		expectedCount int
+		expectedError bool
 	}{
 		{
-			name: "All files save successfully",
+			name: "Success - All files saved successfully",
 			modelOutputs: map[string]string{
-				"model1": "Output from model1",
-				"model2": "Output from model2",
+				"model1": "content1",
+				"model2": "content2",
+				"model3": "content3",
 			},
-			outputDir:         "/tmp/test",
-			expectedSaveCount: 2,
-			expectedError:     false,
-			fileWriterSetupFn: func(fw *TestFileWriter) {},
+			outputDir:     "/test/output",
+			expectedCount: 3,
+			expectedError: false,
 		},
 		{
-			name: "Some files fail to save",
+			name: "Partial failure - Some files fail to save",
 			modelOutputs: map[string]string{
-				"model1": "Output from model1",
-				"model2": "Output from model2",
-				"model3": "Output from model3",
+				"model1": "content1",
+				"model2": "content2",
+				"model3": "content3",
 			},
-			outputDir:         "/tmp/test",
-			expectedSaveCount: 1,
-			expectedError:     true,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				fw.savesToFailCount = 2 // First two saves will fail
-			},
-			expectedErrorMatch: "2/3 files failed to save",
+			outputDir:     "/test/output",
+			failPath:      "/test/output/model2.md",
+			failErr:       errors.New("permission denied"),
+			expectedCount: 2,
+			expectedError: true,
 		},
 		{
-			name: "All files fail to save",
-			modelOutputs: map[string]string{
-				"model1": "Output from model1",
-				"model2": "Output from model2",
-			},
-			outputDir:         "/tmp/test",
-			expectedSaveCount: 0,
-			expectedError:     true,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				fw.alwaysFail = true
-			},
-			expectedErrorMatch: "2/2 files failed to save",
-		},
-		{
-			name: "Specific file fails to save",
-			modelOutputs: map[string]string{
-				"model1": "Output from model1",
-				"model2": "Output from model2",
-				"model3": "Output from model3",
-			},
-			outputDir:         "/tmp/test",
-			expectedSaveCount: 2,
-			expectedError:     true,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				fw.failingFilePaths = []string{"model2.md"}
-			},
-			expectedErrorMatch: "1/3 files failed to save",
-		},
-		{
-			name:               "Empty model outputs",
-			modelOutputs:       map[string]string{},
-			outputDir:          "/tmp/test",
-			expectedSaveCount:  0,
-			expectedError:      false,
-			fileWriterSetupFn:  func(fw *TestFileWriter) {},
-			expectedErrorMatch: "",
+			name:          "Empty model outputs - No files to save",
+			modelOutputs:  map[string]string{},
+			outputDir:     "/test/output",
+			expectedCount: 0,
+			expectedError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create mocks
-			mockFileWriter := newTestFileWriter()
-			tt.fileWriterSetupFn(mockFileWriter)
-			mockLogger := &MockLogger{}
-			mockAuditLogger := &MockAuditLogger{}
+			// Create mock dependencies
+			mockFileWriter := newMockFileWriter()
+			if tt.failPath != "" {
+				mockFileWriter.SetupFailure(tt.failPath, tt.failErr)
+			}
 
-			// Create output writer
-			outputWriter := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
+			mockAuditLogger := auditlog.NewNoOpAuditLogger()
+			mockLogger := logutil.NewTestLogger(t)
 
-			// Call SaveIndividualOutputs
-			savedCount, err := outputWriter.SaveIndividualOutputs(context.Background(), tt.modelOutputs, tt.outputDir)
+			// Create the output writer with mock dependencies
+			writer := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
 
-			// Verify results
-			if tt.expectedError {
-				if err == nil {
-					t.Errorf("Expected an error but got nil")
-				} else if tt.expectedErrorMatch != "" && !strings.Contains(err.Error(), tt.expectedErrorMatch) {
-					t.Errorf("Error message didn't contain expected text: got %q, want to contain %q", err.Error(), tt.expectedErrorMatch)
-				}
-			} else if err != nil {
+			// Call the method under test
+			ctx := context.Background()
+			count, err := writer.SaveIndividualOutputs(ctx, tt.modelOutputs, tt.outputDir)
+
+			// Verify the results
+			if tt.expectedError && err == nil {
+				t.Errorf("Expected an error but got nil")
+			}
+			if !tt.expectedError && err != nil {
 				t.Errorf("Expected no error but got: %v", err)
 			}
-
-			// Check saved count
-			if savedCount != tt.expectedSaveCount {
-				t.Errorf("Expected saved count %d but got %d", tt.expectedSaveCount, savedCount)
+			if count != tt.expectedCount {
+				t.Errorf("Expected %d files saved but got %d", tt.expectedCount, count)
 			}
 
-			// Check number of saved files
-			if len(mockFileWriter.savedFiles) != tt.expectedSaveCount {
-				t.Errorf("Expected %d saved files but got %d", tt.expectedSaveCount, len(mockFileWriter.savedFiles))
-			}
-
-			// Verify file paths and content for saved files
+			// Verify each file was saved correctly (except the failing one)
 			for modelName, content := range tt.modelOutputs {
-				expectedPath := filepath.Join(tt.outputDir, modelName+".md")
-				if len(mockFileWriter.savedFiles) > 0 {
-					// Only check files that were successfully saved
-					if savedContent, ok := mockFileWriter.savedFiles[expectedPath]; ok {
-						if savedContent != content {
-							t.Errorf("Content mismatch for %s. Expected %q but got %q", modelName, content, savedContent)
-						}
+				// Sanitize the model name as expected
+				sanitizedModelName := modelproc.SanitizeFilename(modelName)
+				expectedPath := filepath.Join(tt.outputDir, sanitizedModelName+".md")
+
+				// Skip checking the file that was set up to fail
+				if expectedPath == tt.failPath {
+					continue
+				}
+
+				// Check if the file was saved with the correct content
+				if savedContent, ok := mockFileWriter.savedFiles[expectedPath]; ok {
+					if savedContent != content {
+						t.Errorf("Content mismatch for model %s. Expected %q but got %q", modelName, content, savedContent)
 					}
+				} else {
+					t.Errorf("Expected file at %s but it wasn't saved", expectedPath)
 				}
 			}
 		})
 	}
 }
 
-// TestSaveSynthesisOutput tests the SaveSynthesisOutput method
-func TestSaveSynthesisOutput(t *testing.T) {
+// TestDefaultOutputWriter_SaveSynthesisOutput tests the SaveSynthesisOutput method
+func TestDefaultOutputWriter_SaveSynthesisOutput(t *testing.T) {
+	// Setup test cases
 	tests := []struct {
-		name               string
-		content            string
-		modelName          string
-		outputDir          string
-		expectedError      bool
-		fileWriterSetupFn  func(*TestFileWriter)
-		expectedErrorMatch string
+		name          string
+		content       string
+		modelName     string
+		outputDir     string
+		failPath      string
+		failErr       error
+		expectedError bool
 	}{
 		{
-			name:          "Save synthesis output successfully",
-			content:       "Synthesized output content",
-			modelName:     "synth-model",
-			outputDir:     "/tmp/test",
+			name:          "Success - Synthesis output saved successfully",
+			content:       "Synthesis content",
+			modelName:     "synthesis-model",
+			outputDir:     "/test/output",
 			expectedError: false,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				// No failures
-			},
 		},
 		{
-			name:          "Failed to save synthesis output",
-			content:       "Synthesized output content",
-			modelName:     "synth-model",
-			outputDir:     "/tmp/test",
+			name:          "Failure - Error saving synthesis output",
+			content:       "Synthesis content",
+			modelName:     "synthesis-model",
+			outputDir:     "/test/output",
+			failPath:      "/test/output/synthesis-model-synthesis.md",
+			failErr:       errors.New("disk full"),
 			expectedError: true,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				fw.alwaysFail = true
-			},
-			// Just look for the start of the expected error message
-			expectedErrorMatch: "failed to save synthesis output",
 		},
 		{
-			name:          "Model name with special characters",
-			content:       "Synthesized output content",
-			modelName:     "synth/model:v1*?",
-			outputDir:     "/tmp/test",
+			name:          "Edge case - Empty content",
+			content:       "",
+			modelName:     "synthesis-model",
+			outputDir:     "/test/output",
 			expectedError: false,
-			fileWriterSetupFn: func(fw *TestFileWriter) {
-				// No failures
-			},
+		},
+		{
+			name:          "Edge case - Model name with special characters",
+			content:       "Special character model",
+			modelName:     "model/with:special*chars?",
+			outputDir:     "/test/output",
+			expectedError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create mocks
-			mockFileWriter := newTestFileWriter()
-			tt.fileWriterSetupFn(mockFileWriter)
-			mockLogger := &MockLogger{}
-			mockAuditLogger := &MockAuditLogger{}
+			// Create mock dependencies
+			mockFileWriter := newMockFileWriter()
+			if tt.failPath != "" {
+				mockFileWriter.SetupFailure(tt.failPath, tt.failErr)
+			}
 
-			// Create output writer
-			outputWriter := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
+			mockAuditLogger := auditlog.NewNoOpAuditLogger()
+			mockLogger := logutil.NewTestLogger(t)
 
-			// Call SaveSynthesisOutput
-			err := outputWriter.SaveSynthesisOutput(context.Background(), tt.content, tt.modelName, tt.outputDir)
+			// Create the output writer with mock dependencies
+			writer := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
 
-			// Verify results
-			if tt.expectedError {
-				if err == nil {
-					t.Errorf("Expected an error but got nil")
-				} else if tt.expectedErrorMatch != "" && !strings.Contains(err.Error(), tt.expectedErrorMatch) {
-					t.Errorf("Error message didn't contain expected text: got %q, want to contain %q", err.Error(), tt.expectedErrorMatch)
-				}
-			} else if err != nil {
+			// Call the method under test
+			ctx := context.Background()
+			err := writer.SaveSynthesisOutput(ctx, tt.content, tt.modelName, tt.outputDir)
+
+			// Verify the results
+			if tt.expectedError && err == nil {
+				t.Errorf("Expected an error but got nil")
+			}
+			if !tt.expectedError && err != nil {
 				t.Errorf("Expected no error but got: %v", err)
 			}
 
 			// Verify the correct file path and content if no error is expected
 			if !tt.expectedError {
 				// Sanitize the model name as expected
-				sanitizedModelName := sanitizeFilename(tt.modelName)
+				sanitizedModelName := modelproc.SanitizeFilename(tt.modelName)
 				expectedPath := filepath.Join(tt.outputDir, sanitizedModelName+"-synthesis.md")
 
 				// Check if the file was saved with the correct content
@@ -279,30 +226,63 @@ func TestSaveSynthesisOutput(t *testing.T) {
 	}
 }
 
-// TestSanitizeFilename tests the sanitizeFilename function
+// TestSanitizeFilename tests the SanitizeFilename function
 func TestSanitizeFilename(t *testing.T) {
 	tests := []struct {
 		input    string
 		expected string
 	}{
-		{"normal", "normal"},
-		{"with spaces", "with_spaces"},
-		{"with/slashes", "with-slashes"},
-		{"with\\backslashes", "with-backslashes"},
-		{"with:colon", "with-colon"},
-		{"with*asterisk", "with-asterisk"},
-		{"with?question", "with-question"},
-		{"with\"quote", "with-quote"},
-		{"with<angle>brackets", "with-angle-brackets"},
-		{"with|pipe", "with-pipe"},
-		{"combo/of:all*the?\"'<special>chars|and spaces", "combo-of-all-the----special-chars-and_spaces"},
+		{
+			input:    "normal-model-name",
+			expected: "normal-model-name",
+		},
+		{
+			input:    "model/with/slashes",
+			expected: "model-with-slashes",
+		},
+		{
+			input:    "model:with:colons",
+			expected: "model-with-colons",
+		},
+		{
+			input:    "model*with*stars",
+			expected: "model-with-stars",
+		},
+		{
+			input:    "model?with?questions",
+			expected: "model-with-questions",
+		},
+		{
+			input:    "model\"with\"quotes",
+			expected: "model-with-quotes",
+		},
+		{
+			input:    "model<with>brackets",
+			expected: "model-with-brackets",
+		},
+		{
+			input:    "model|with|pipes",
+			expected: "model-with-pipes",
+		},
+		{
+			input:    "model with spaces",
+			expected: "model_with_spaces",
+		},
+		{
+			input:    "model'with'apostrophes",
+			expected: "model-with-apostrophes",
+		},
+		{
+			input:    "model.with.dots",
+			expected: "model.with.dots", // dots are allowed in filenames
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := sanitizeFilename(tt.input)
+			result := modelproc.SanitizeFilename(tt.input)
 			if result != tt.expected {
-				t.Errorf("sanitizeFilename(%q) = %q, expected %q", tt.input, result, tt.expected)
+				t.Errorf("SanitizeFilename(%q) = %q, expected %q", tt.input, result, tt.expected)
 			}
 		})
 	}

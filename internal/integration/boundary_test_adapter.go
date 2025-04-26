@@ -3,6 +3,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -298,12 +299,12 @@ func (s *BoundaryAPIService) ValidateModelParameter(modelName, paramName string,
 		if temp, ok := value.(float64); ok && temp >= 0 && temp <= 1 {
 			return true, nil
 		}
-		return false, fmt.Errorf("temperature must be a float between 0 and 1")
+		return false, errors.New("temperature must be a float between 0 and 1")
 	case "max_tokens":
 		if tokens, ok := value.(int); ok && tokens > 0 {
 			return true, nil
 		}
-		return false, fmt.Errorf("max_tokens must be a positive integer")
+		return false, errors.New("max_tokens must be a positive integer")
 	default:
 		// Accept any value for other parameters
 		return true, nil
@@ -354,7 +355,7 @@ func (s *BoundaryAPIService) GetModelTokenLimits(modelName string) (contextWindo
 // ProcessLLMResponse processes a provider-agnostic response
 func (s *BoundaryAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	if result == nil {
-		return "", fmt.Errorf("nil result")
+		return "", errors.New("nil result")
 	}
 	return result.Content, nil
 }

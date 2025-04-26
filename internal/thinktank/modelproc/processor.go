@@ -223,7 +223,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		modelName, contentLength)
 
 	// 5. Sanitize model name for use in filename
-	sanitizedModelName := sanitizeFilename(modelName)
+	sanitizedModelName := SanitizeFilename(modelName)
 
 	// 6. Construct output file path
 	outputFilePath := filepath.Join(p.config.OutputDir, sanitizedModelName+".md")
@@ -237,8 +237,9 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	return generatedOutput, nil
 }
 
-// sanitizeFilename replaces characters that are not valid in filenames
-func sanitizeFilename(filename string) string {
+// SanitizeFilename replaces characters that are not valid in filenames
+// with safe alternatives to ensure filenames are valid across different operating systems.
+func SanitizeFilename(filename string) string {
 	// Replace slashes and other problematic characters with hyphens
 	replacer := strings.NewReplacer(
 		"/", "-",
@@ -247,9 +248,11 @@ func sanitizeFilename(filename string) string {
 		"*", "-",
 		"?", "-",
 		"\"", "-",
+		"'", "-", // Also replace single quotes
 		"<", "-",
 		">", "-",
 		"|", "-",
+		" ", "_", // Replace spaces with underscores for better readability
 	)
 	return replacer.Replace(filename)
 }

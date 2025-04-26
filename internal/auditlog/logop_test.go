@@ -30,7 +30,7 @@ func TestFileAuditLogger_LogOp(t *testing.T) {
 		}
 	}()
 
-	// Test LogOp with success status
+	// Standard inputs and outputs for test cases
 	inputs := map[string]interface{}{
 		"param1": "value1",
 		"param2": 42,
@@ -40,195 +40,158 @@ func TestFileAuditLogger_LogOp(t *testing.T) {
 		"code":   200,
 	}
 
-	// Log success operation
-	err = logger.LogOp("TestOperation", "Success", inputs, outputs, nil)
-	if err != nil {
-		t.Fatalf("Failed to log operation: %v", err)
+	// Define test cases
+	testCases := []struct {
+		name           string
+		operation      string
+		status         string
+		inputs         map[string]interface{}
+		outputs        map[string]interface{}
+		err            error
+		expectedMsg    string
+		expectedErrMsg string
+		expectedErrTyp string
+	}{
+		{
+			name:        "Success Status",
+			operation:   "TestOperation",
+			status:      "Success",
+			inputs:      inputs,
+			outputs:     outputs,
+			err:         nil,
+			expectedMsg: "TestOperation completed successfully",
+		},
+		{
+			name:        "InProgress Status",
+			operation:   "StartOperation",
+			status:      "InProgress",
+			inputs:      inputs,
+			outputs:     nil,
+			err:         nil,
+			expectedMsg: "StartOperation started",
+		},
+		{
+			name:           "Failure Status",
+			operation:      "FailOperation",
+			status:         "Failure",
+			inputs:         inputs,
+			outputs:        nil,
+			err:            fmt.Errorf("test error"),
+			expectedMsg:    "FailOperation failed",
+			expectedErrMsg: "test error",
+			expectedErrTyp: "GeneralError",
+		},
+		{
+			name:        "Custom Status",
+			operation:   "CustomOperation",
+			status:      "CustomStatus",
+			inputs:      inputs,
+			outputs:     nil,
+			err:         nil,
+			expectedMsg: "CustomOperation - CustomStatus",
+		},
+		{
+			name:           "Categorized Error",
+			operation:      "SafetyOperation",
+			status:         "Failure",
+			inputs:         inputs,
+			outputs:        nil,
+			err:            &mockCategorizedError{msg: "content safety error", category: llm.CategoryContentFiltered},
+			expectedMsg:    "SafetyOperation failed",
+			expectedErrMsg: "content safety error",
+			expectedErrTyp: fmt.Sprintf("Error:%s", llm.CategoryContentFiltered.String()),
+		},
 	}
 
-	// Read the log file
-	content, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clear the file for this test case
+			if err := logger.file.Truncate(0); err != nil {
+				t.Fatalf("Failed to truncate log file: %v", err)
+			}
+			if _, err := logger.file.Seek(0, 0); err != nil {
+				t.Fatalf("Failed to seek in log file: %v", err)
+			}
 
-	// Parse the JSON line
-	var parsedEntry AuditEntry
-	if err := json.Unmarshal(content, &parsedEntry); err != nil {
-		t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
-	}
+			// Execute LogOp with the test case parameters
+			err = logger.LogOp(tc.operation, tc.status, tc.inputs, tc.outputs, tc.err)
+			if err != nil {
+				t.Fatalf("Failed to log operation: %v", err)
+			}
 
-	// Verify the entry was logged correctly
-	if parsedEntry.Operation != "TestOperation" {
-		t.Errorf("Expected Operation TestOperation, got %s", parsedEntry.Operation)
-	}
-	if parsedEntry.Status != "Success" {
-		t.Errorf("Expected Status Success, got %s", parsedEntry.Status)
-	}
-	if parsedEntry.Timestamp.IsZero() {
-		t.Error("Expected Timestamp to be set")
-	}
-	expectedMessage := "TestOperation completed successfully"
-	if parsedEntry.Message != expectedMessage {
-		t.Errorf("Expected Message %q, got %q", expectedMessage, parsedEntry.Message)
-	}
+			// Read the log file
+			content, err := os.ReadFile(logPath)
+			if err != nil {
+				t.Fatalf("Failed to read log file: %v", err)
+			}
 
-	// Verify input parameters
-	if val, ok := parsedEntry.Inputs["param1"]; !ok || val != "value1" {
-		t.Errorf("Expected Inputs to contain param1=value1, got %v", parsedEntry.Inputs)
-	}
-	if val, ok := parsedEntry.Inputs["param2"]; !ok || val != float64(42) { // JSON unmarshals to float64
-		t.Errorf("Expected Inputs to contain param2=42, got %v", parsedEntry.Inputs)
-	}
+			// Parse the JSON line
+			var parsedEntry AuditEntry
+			if err := json.Unmarshal(content, &parsedEntry); err != nil {
+				t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
+			}
 
-	// Verify output parameters
-	if val, ok := parsedEntry.Outputs["result"]; !ok || val != "success" {
-		t.Errorf("Expected Outputs to contain result=success, got %v", parsedEntry.Outputs)
-	}
-	if val, ok := parsedEntry.Outputs["code"]; !ok || val != float64(200) { // JSON unmarshals to float64
-		t.Errorf("Expected Outputs to contain code=200, got %v", parsedEntry.Outputs)
-	}
+			// Verify the entry was logged correctly
+			if parsedEntry.Operation != tc.operation {
+				t.Errorf("Expected Operation %s, got %s", tc.operation, parsedEntry.Operation)
+			}
+			if parsedEntry.Status != tc.status {
+				t.Errorf("Expected Status %s, got %s", tc.status, parsedEntry.Status)
+			}
+			if parsedEntry.Timestamp.IsZero() {
+				t.Error("Expected Timestamp to be set")
+			}
+			if parsedEntry.Message != tc.expectedMsg {
+				t.Errorf("Expected Message %q, got %q", tc.expectedMsg, parsedEntry.Message)
+			}
 
-	// Test LogOp with in-progress status
-	if err := logger.file.Truncate(0); err != nil { // Clear the file for new test
-		t.Fatalf("Failed to truncate log file: %v", err)
-	}
-	if _, err := logger.file.Seek(0, 0); err != nil {
-		t.Fatalf("Failed to seek in log file: %v", err)
-	}
+			// Verify inputs (if provided)
+			if tc.inputs != nil {
+				for k, v := range tc.inputs {
+					if k == "param2" {
+						// JSON unmarshals numbers to float64
+						if val, ok := parsedEntry.Inputs[k]; !ok || val != float64(v.(int)) {
+							t.Errorf("Expected Inputs to contain %s=%v, got %v", k, v, parsedEntry.Inputs[k])
+						}
+					} else {
+						if val, ok := parsedEntry.Inputs[k]; !ok || val != v {
+							t.Errorf("Expected Inputs to contain %s=%v, got %v", k, v, parsedEntry.Inputs[k])
+						}
+					}
+				}
+			}
 
-	err = logger.LogOp("StartOperation", "InProgress", inputs, nil, nil)
-	if err != nil {
-		t.Fatalf("Failed to log in-progress operation: %v", err)
-	}
+			// Verify outputs (if provided)
+			if tc.outputs != nil {
+				for k, v := range tc.outputs {
+					if k == "code" {
+						// JSON unmarshals numbers to float64
+						if val, ok := parsedEntry.Outputs[k]; !ok || val != float64(v.(int)) {
+							t.Errorf("Expected Outputs to contain %s=%v, got %v", k, v, parsedEntry.Outputs[k])
+						}
+					} else {
+						if val, ok := parsedEntry.Outputs[k]; !ok || val != v {
+							t.Errorf("Expected Outputs to contain %s=%v, got %v", k, v, parsedEntry.Outputs[k])
+						}
+					}
+				}
+			}
 
-	// Read the log file
-	content, err = os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	// Parse the JSON
-	if err := json.Unmarshal(content, &parsedEntry); err != nil {
-		t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
-	}
-
-	// Verify in-progress message
-	expectedInProgressMessage := "StartOperation started"
-	if parsedEntry.Message != expectedInProgressMessage {
-		t.Errorf("Expected Message %q, got %q", expectedInProgressMessage, parsedEntry.Message)
-	}
-
-	// Test LogOp with failure status and error
-	if err := logger.file.Truncate(0); err != nil { // Clear the file for new test
-		t.Fatalf("Failed to truncate log file: %v", err)
-	}
-	if _, err := logger.file.Seek(0, 0); err != nil {
-		t.Fatalf("Failed to seek in log file: %v", err)
-	}
-
-	testError := fmt.Errorf("test error")
-	err = logger.LogOp("FailOperation", "Failure", inputs, nil, testError)
-	if err != nil {
-		t.Fatalf("Failed to log failure operation: %v", err)
-	}
-
-	// Read the log file
-	content, err = os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	// Parse the JSON
-	if err := json.Unmarshal(content, &parsedEntry); err != nil {
-		t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
-	}
-
-	// Verify failure message and error
-	expectedFailureMessage := "FailOperation failed"
-	if parsedEntry.Message != expectedFailureMessage {
-		t.Errorf("Expected Message %q, got %q", expectedFailureMessage, parsedEntry.Message)
-	}
-	if parsedEntry.Error == nil {
-		t.Fatal("Expected Error to be set for failure operation")
-	}
-	if parsedEntry.Error.Message != "test error" {
-		t.Errorf("Expected Error.Message %q, got %q", "test error", parsedEntry.Error.Message)
-	}
-	if parsedEntry.Error.Type != "GeneralError" {
-		t.Errorf("Expected Error.Type %q, got %q", "GeneralError", parsedEntry.Error.Type)
-	}
-
-	// Test LogOp with custom status
-	if err := logger.file.Truncate(0); err != nil { // Clear the file for new test
-		t.Fatalf("Failed to truncate log file: %v", err)
-	}
-	if _, err := logger.file.Seek(0, 0); err != nil {
-		t.Fatalf("Failed to seek in log file: %v", err)
-	}
-
-	err = logger.LogOp("CustomOperation", "CustomStatus", inputs, nil, nil)
-	if err != nil {
-		t.Fatalf("Failed to log custom status operation: %v", err)
-	}
-
-	// Read the log file
-	content, err = os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	// Parse the JSON
-	if err := json.Unmarshal(content, &parsedEntry); err != nil {
-		t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
-	}
-
-	// Verify custom status message
-	expectedCustomMessage := "CustomOperation - CustomStatus"
-	if parsedEntry.Message != expectedCustomMessage {
-		t.Errorf("Expected Message %q, got %q", expectedCustomMessage, parsedEntry.Message)
-	}
-
-	// Test with categorized error
-	if err := logger.file.Truncate(0); err != nil { // Clear the file for new test
-		t.Fatalf("Failed to truncate log file: %v", err)
-	}
-	if _, err := logger.file.Seek(0, 0); err != nil {
-		t.Fatalf("Failed to seek in log file: %v", err)
-	}
-
-	// Create a mock categorized error
-	categorizedErr := &mockCategorizedError{
-		msg:      "content safety error",
-		category: llm.CategoryContentFiltered,
-	}
-
-	err = logger.LogOp("SafetyOperation", "Failure", inputs, nil, categorizedErr)
-	if err != nil {
-		t.Fatalf("Failed to log operation with categorized error: %v", err)
-	}
-
-	// Read the log file
-	content, err = os.ReadFile(logPath)
-	if err != nil {
-		t.Fatalf("Failed to read log file: %v", err)
-	}
-
-	// Parse the JSON
-	if err := json.Unmarshal(content, &parsedEntry); err != nil {
-		t.Fatalf("Failed to parse JSON: %v\nContent: %s", err, content)
-	}
-
-	// Verify error type for categorized error
-	if parsedEntry.Error == nil {
-		t.Fatal("Expected Error to be set for operation with categorized error")
-	}
-	if parsedEntry.Error.Message != "content safety error" {
-		t.Errorf("Expected Error.Message %q, got %q", "content safety error", parsedEntry.Error.Message)
-	}
-	expectedErrorType := fmt.Sprintf("Error:%s", llm.CategoryContentFiltered.String())
-	if parsedEntry.Error.Type != expectedErrorType {
-		t.Errorf("Expected Error.Type %q, got %q", expectedErrorType, parsedEntry.Error.Type)
+			// Verify error (if expected)
+			if tc.expectedErrMsg != "" {
+				if parsedEntry.Error == nil {
+					t.Fatal("Expected Error to be set")
+				}
+				if parsedEntry.Error.Message != tc.expectedErrMsg {
+					t.Errorf("Expected Error.Message %q, got %q", tc.expectedErrMsg, parsedEntry.Error.Message)
+				}
+				if parsedEntry.Error.Type != tc.expectedErrTyp {
+					t.Errorf("Expected Error.Type %q, got %q", tc.expectedErrTyp, parsedEntry.Error.Type)
+				}
+			} else if parsedEntry.Error != nil {
+				t.Errorf("Expected no error, but got %v", parsedEntry.Error)
+			}
+		})
 	}
 }
 

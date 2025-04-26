@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // MockFileWriter that simulates failures based on file path
@@ -225,7 +226,7 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 		// Iterate over the model outputs and save each to a file
 		for modelName, content := range modelOutputs {
 			// Sanitize model name for use in filename
-			sanitizedModelName := sanitizeFilename(modelName)
+			sanitizedModelName := modelproc.SanitizeFilename(modelName)
 
 			// Construct output file path
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+".md")
@@ -249,7 +250,7 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 			synthesisContent := "Synthesized content"
 
 			// Sanitize model name for use in filename
-			sanitizedModelName := sanitizeFilename(o.config.SynthesisModel)
+			sanitizedModelName := modelproc.SanitizeFilename(o.config.SynthesisModel)
 
 			// Construct output file path with -synthesis suffix
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")

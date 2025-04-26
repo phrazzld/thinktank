@@ -17,7 +17,7 @@ import (
 // - t015_model_info_client_test.go - Temporary file for model info tests
 //
 // This file will be deleted once all tests have been verified to pass
-// See task R009 and R010 in the project TODO.md
+// Notes about tasks R009 and R010 from previous project planning
 
 // TestClientTestFileShouldBeDeleted is a placeholder to ensure this file
 // compiles while we verify other tests are working correctly
