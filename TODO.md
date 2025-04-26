@@ -26,7 +26,7 @@
         1. Integration tests execute real orchestrator logic without internal collaborator mocks.
     - Depends-on: T002
 
-- [ ] **T004 · Chore · P2: remove t.Skip placeholders from integration tests**
+- [x] **T004 · Chore · P2: remove t.Skip placeholders from integration tests**
     - Context: cr-01 step 4
     - Action:
         1. Delete `t.Skip` calls in `internal/integration` tests.
