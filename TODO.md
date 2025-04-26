@@ -61,7 +61,7 @@
     - Depends-on: none
 
 ## Orchestrator Refactoring
-- [ ] **T008 · Refactor · P2: extract runDryRunFlow method from Orchestrator.Run**
+- [x] **T008 · Refactor · P2: extract runDryRunFlow method from Orchestrator.Run**
     - Context: cr-03 steps 1–2
     - Action:
         1. Identify dry-run flow code and move it into private method `runDryRunFlow(ctx, params)`.

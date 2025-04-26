@@ -117,9 +117,12 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	contextLogger.DebugContext(ctx, "Project context gathered: %d files", len(contextFiles))
 
 	// STEP 2: Handle dry run mode (short-circuit if dry run)
-	if o.config.DryRun {
-		contextLogger.InfoContext(ctx, "Running in dry-run mode")
-		return o.handleDryRun(ctx, contextStats)
+	dryRunExecuted, err := o.runDryRunFlow(ctx, contextStats)
+	if err != nil {
+		return err
+	}
+	if dryRunExecuted {
+		return nil
 	}
 
 	// STEP 3: Build prompt by combining instructions and context
@@ -256,6 +259,33 @@ func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.Fil
 	}
 
 	return contextFiles, contextStats, nil
+}
+
+// runDryRunFlow handles the dry run mode by displaying statistics without performing API calls.
+// It short-circuits the execution flow when in dry run mode.
+// Returns:
+// - bool: true if dry run was executed (to stop normal flow), false if normal processing should continue
+// - error: any error that occurred during dry run handling
+func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfaces.ContextStats) (bool, error) {
+	// Early return if not in dry run mode
+	if !o.config.DryRun {
+		return false, nil
+	}
+	
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+	
+	// Log that we're in dry run mode
+	contextLogger.InfoContext(ctx, "Running in dry-run mode")
+	
+	// Call the existing handleDryRun method
+	err := o.handleDryRun(ctx, contextStats)
+	if err != nil {
+		return true, err
+	}
+	
+	// Indicate dry run was handled successfully
+	return true, nil
 }
 
 // handleDryRun displays context statistics without performing API calls.
