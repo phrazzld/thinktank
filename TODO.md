@@ -18,7 +18,7 @@
         1. Integration tests mock only external boundary interfaces.
     - Depends-on: T001
 
-- [ ] **T003 · Feature · P2: invoke real orchestrator logic in integration tests**
+- [x] **T003 · Feature · P2: invoke real orchestrator logic in integration tests**
     - Context: cr-01 step 3
     - Action:
         1. Configure integration tests to call actual `Orchestrator.Run` with mocked external dependencies.
