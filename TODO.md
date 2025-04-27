@@ -138,7 +138,7 @@
     - Depends-on: T011
 
 ## Audit Logging
-- [ ] **T017 · Feature · P2: implement logAuditEvent helper in Orchestrator**
+- [x] **T017 · Feature · P2: implement logAuditEvent helper in Orchestrator**
     - Context: cr-04 step 1
     - Action:
         1. Add method `logAuditEvent(ctx, op, status string, inputs, outputs map[string]interface{}, err error)` on `*Orchestrator`.

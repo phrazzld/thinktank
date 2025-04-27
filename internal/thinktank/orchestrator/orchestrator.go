@@ -623,3 +623,45 @@ func aggregateErrorMessages(errs []error) string {
 
 	return strings.Join(messages, "; ")
 }
+
+// logAuditEvent is a helper method that constructs an AuditEntry and logs it via the audit logger.
+// It simplifies and standardizes audit event logging across the orchestrator.
+//
+// Parameters:
+//   - ctx: context containing correlation ID and cancellation signals
+//   - op: operation name (e.g., "ModelProcessing", "SynthesisStart")
+//   - status: status of the operation (e.g., "Success", "Failure", "InProgress")
+//   - inputs: map of operation inputs (e.g., model names, instruction details)
+//   - outputs: map of operation outputs (e.g., file paths, processing statistics)
+//   - err: optional error to include in the audit entry
+//
+// This method extracts the correlation ID from context, handles error information properly,
+// and ensures consistent audit logging across all orchestrator operations.
+func (o *Orchestrator) logAuditEvent(
+	ctx context.Context,
+	op string,
+	status string,
+	inputs map[string]interface{},
+	outputs map[string]interface{},
+	err error,
+) {
+	// Ensure inputs and outputs are never nil
+	if inputs == nil {
+		inputs = make(map[string]interface{})
+	}
+	if outputs == nil {
+		outputs = make(map[string]interface{})
+	}
+
+	// Add correlation ID from context if available
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		inputs["correlation_id"] = correlationID
+	}
+
+	// Log using the audit logger's LogOp method
+	if logErr := o.auditLogger.LogOp(op, status, inputs, outputs, err); logErr != nil {
+		// Log any errors that occur during audit logging using the regular logger
+		o.logger.WarnContext(ctx, "Failed to write audit log: %v", logErr)
+	}
+}
