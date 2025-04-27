@@ -74,131 +74,54 @@ func NewOrchestrator(
 }
 
 // Run executes the main application workflow, representing the core business logic.
-// It coordinates the entire process from context gathering to model processing:
-// 1. Gather context from project files based on configuration
-// 2. Handle dry run mode by displaying statistics (if enabled)
-// 3. Build the complete prompt by combining instructions with context
-// 4. Process all configured models concurrently with rate limiting
-// 5. Handle and format any errors that occurred during processing
-// 6. Based on configuration, either:
-//   - Save individual model outputs (when no synthesis model is specified)
-//   - Synthesize results using a designated synthesis model
+// It functions as a coordinator, delegating specific tasks to helper methods.
 //
-// The synthesis workflow branch (activated when SynthesisModel is specified in config)
-// will send all individual model outputs to the synthesis model, which combines
-// them into a unified response. This synthesis output is saved as
-// <synthesis-model-name>-synthesis.md in the output directory, alongside the
-// individual model outputs.
+// Workflow:
+// 1. Setup context with correlation ID and validate configuration
+// 2. Gather context from project files
+// 3. Handle dry run mode (if enabled)
+// 4. Build the complete prompt
+// 5. Process models concurrently with error handling
+// 6. Save outputs (either individually or via synthesis)
+// 7. Handle and report any errors
 //
-// The method enforces a clear separation of concerns by delegating specific tasks
-// to helper methods, making the high-level workflow easy to understand.
+// Each step is delegated to a specialized helper method, making the workflow
+// clear and maintainable.
 func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
-	// Ensure context has a correlation ID for tracing and structured logging
-	ctx = logutil.WithCorrelationID(ctx)
-
-	// Create a logger with the context for all subsequent logging
-	contextLogger := o.logger.WithContext(ctx)
-
-	// Validate that models are specified
-	if len(o.config.ModelNames) == 0 {
-		return errors.New("no model names specified, at least one model is required")
+	// Setup: initialize context and validate configuration
+	ctx, contextLogger, err := o.setupContext(ctx)
+	if err != nil {
+		return err
 	}
 
-	// Log the start of processing
-	contextLogger.InfoContext(ctx, "Starting processing")
-
-	// STEP 1: Gather context from files
-	contextLogger.DebugContext(ctx, "Gathering project context")
+	// Step 1: Gather file context for the prompt
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to gather project context: %v", err)
 		return err
 	}
-	contextLogger.DebugContext(ctx, "Project context gathered: %d files", len(contextFiles))
 
-	// STEP 2: Handle dry run mode (short-circuit if dry run)
-	dryRunExecuted, err := o.runDryRunFlow(ctx, contextStats)
-	if err != nil {
+	// Step 2: Handle dry run mode (short-circuit if enabled)
+	if dryRunExecuted, err := o.runDryRunFlow(ctx, contextStats); err != nil {
 		return err
-	}
-	if dryRunExecuted {
+	} else if dryRunExecuted {
 		return nil
 	}
 
-	// STEP 3: Build prompt by combining instructions and context
-	contextLogger.DebugContext(ctx, "Building prompt from instructions and context")
+	// Step 3: Build the complete prompt
 	stitchedPrompt := o.buildPrompt(instructions, contextFiles)
-	contextLogger.DebugContext(ctx, "Prompt built successfully, length: %d characters", len(stitchedPrompt))
 
-	// STEP 4: Process models concurrently
-	contextLogger.InfoContext(ctx, "Beginning model processing")
-	o.logRateLimitingConfiguration(ctx)
-	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
-
-	// STEP 5: Handle model processing errors
-	// Store any model errors to return later - we'll proceed with synthesis if possible
-	var returnErr error
-	if len(modelErrors) > 0 {
-		// If ALL models failed (no outputs available), fail immediately
-		if len(modelOutputs) == 0 {
-			returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), 0)
-			contextLogger.ErrorContext(ctx, returnErr.Error())
-			return returnErr
-		}
-
-		// Otherwise, log errors but continue with available outputs
-		// Note: modelOutputs only contains entries for successful models (no empty entries for failed models)
-		// Get list of successful model names for the log
-		var successfulModels []string
-		for modelName := range modelOutputs {
-			successfulModels = append(successfulModels, modelName)
-		}
-
-		// Log a warning with detailed counts and successful model names
-		contextLogger.WarnContext(ctx, "Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
-			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
-
-		// Log individual error details
-		for _, err := range modelErrors {
-			contextLogger.ErrorContext(ctx, "%v", err)
-		}
-
-		// Create a descriptive error to return after processing is complete
-		returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), len(modelOutputs))
+	// Step 4: Process all models and handle errors
+	modelOutputs, processingErr, criticalErr := o.processModelsWithErrorHandling(ctx, stitchedPrompt, contextLogger)
+	if criticalErr != nil {
+		return criticalErr
 	}
 
-	// STEP 6: Handle synthesis or individual model outputs based on configuration
-	// We'll track file-save errors separately from model processing errors
-	var fileSaveErrors error
+	// Step 5: Save outputs (via synthesis or individually)
+	fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
 
-	if o.config.SynthesisModel == "" {
-		// No synthesis model specified - save individual model outputs
-		fileSaveErrors = o.runIndividualOutputFlow(ctx, modelOutputs)
-	} else {
-		// Synthesis model specified - process all outputs with synthesis model
-		fileSaveErrors = o.runSynthesisFlow(ctx, instructions, modelOutputs)
-	}
-
-	// Return any model errors or file save errors that occurred, combining them if both exist
-	if returnErr != nil && fileSaveErrors != nil {
-		// Combine model and file save errors
-		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
-			returnErr, fileSaveErrors)
-		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
-		return err
-	} else if fileSaveErrors != nil {
-		// Only file save errors occurred
-		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErrors)
-		return fileSaveErrors
-	} else if returnErr != nil {
-		// Only model errors
-		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", returnErr)
-		return returnErr
-	} else {
-		// No errors
-		contextLogger.InfoContext(ctx, "Processing completed successfully")
-		return nil
-	}
+	// Step 6: Final error processing and return
+	return o.handleProcessingOutcome(ctx, processingErr, fileSaveErr, contextLogger)
 }
 
 // gatherProjectContext collects relevant files from the project based on configuration.
@@ -580,6 +503,107 @@ func (o *Orchestrator) aggregateErrors(errs []error, totalCount, successCount in
 	return fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
 		successCount, totalCount, len(errs),
 		aggregateErrorMessages(errs))
+}
+
+// setupContext handles the initial setup of the context, validation, and logging.
+// It ensures that the context has a correlation ID and validates that the required
+// configuration values are present.
+// Returns the enhanced context, a context logger, and an error if validation fails.
+func (o *Orchestrator) setupContext(ctx context.Context) (context.Context, logutil.LoggerInterface, error) {
+	// Ensure context has a correlation ID for tracing and structured logging
+	ctx = logutil.WithCorrelationID(ctx)
+
+	// Create a logger with the context for all subsequent logging
+	contextLogger := o.logger.WithContext(ctx)
+
+	// Validate that models are specified
+	if len(o.config.ModelNames) == 0 {
+		return ctx, contextLogger, errors.New("no model names specified, at least one model is required")
+	}
+
+	// Log the start of processing
+	contextLogger.InfoContext(ctx, "Starting processing")
+
+	return ctx, contextLogger, nil
+}
+
+// processModelsWithErrorHandling processes models and handles any errors that occur.
+// It runs the model processing and handles error aggregation and logging.
+// Returns the model outputs, any processing errors for later handling, and a critical
+// error that should interrupt processing immediately.
+func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitchedPrompt string, contextLogger logutil.LoggerInterface) (map[string]string, error, error) {
+	// Start model processing
+	contextLogger.InfoContext(ctx, "Beginning model processing")
+	o.logRateLimitingConfiguration(ctx)
+	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
+
+	// Handle model processing errors
+	var returnErr error
+	if len(modelErrors) > 0 {
+		// If ALL models failed (no outputs available), fail immediately
+		if len(modelOutputs) == 0 {
+			returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), 0)
+			contextLogger.ErrorContext(ctx, returnErr.Error())
+			return nil, nil, returnErr
+		}
+
+		// Otherwise, log errors but continue with available outputs
+		// Get list of successful model names for the log
+		var successfulModels []string
+		for modelName := range modelOutputs {
+			successfulModels = append(successfulModels, modelName)
+		}
+
+		// Log a warning with detailed counts and successful model names
+		contextLogger.WarnContext(ctx, "Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
+			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
+
+		// Log individual error details
+		for _, err := range modelErrors {
+			contextLogger.ErrorContext(ctx, "%v", err)
+		}
+
+		// Create a descriptive error to return after processing is complete
+		returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), len(modelOutputs))
+	}
+
+	return modelOutputs, returnErr, nil
+}
+
+// handleOutputFlow decides whether to use synthesis or individual output flow
+// based on configuration and handles the saving of outputs accordingly.
+func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+	if o.config.SynthesisModel == "" {
+		// No synthesis model specified - save individual model outputs
+		return o.runIndividualOutputFlow(ctx, modelOutputs)
+	}
+
+	// Synthesis model specified - process all outputs with synthesis model
+	return o.runSynthesisFlow(ctx, instructions, modelOutputs)
+}
+
+// handleProcessingOutcome combines and reports any errors from model processing and file saving.
+// It formats and logs appropriate error messages based on the types of errors encountered.
+func (o *Orchestrator) handleProcessingOutcome(ctx context.Context, processingErr, fileSaveErr error, contextLogger logutil.LoggerInterface) error {
+	if processingErr != nil && fileSaveErr != nil {
+		// Combine model and file save errors
+		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
+			processingErr, fileSaveErr)
+		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
+		return err
+	} else if fileSaveErr != nil {
+		// Only file save errors occurred
+		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErr)
+		return fileSaveErr
+	} else if processingErr != nil {
+		// Only model errors
+		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", processingErr)
+		return processingErr
+	} else {
+		// No errors
+		contextLogger.InfoContext(ctx, "Processing completed successfully")
+		return nil
+	}
 }
 
 // aggregateErrorMessages combines multiple error messages into a single string.

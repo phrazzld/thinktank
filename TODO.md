@@ -97,7 +97,7 @@
         1. `aggregateErrors` exists and is used by `Run`.
     - Depends-on: none
 
-- [ ] **T012 · Refactor · P2: simplify Orchestrator.Run to coordinator method**
+- [x] **T012 · Refactor · P2: simplify Orchestrator.Run to coordinator method**
     - Context: cr-03 step 3
     - Action:
         1. Refactor `Run` to <30 lines, calling `runDryRunFlow`, `runIndividualOutputFlow`, `runSynthesisFlow`, `aggregateErrors` in sequence.
