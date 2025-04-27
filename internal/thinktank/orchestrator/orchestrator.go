@@ -590,18 +590,42 @@ func (o *Orchestrator) handleProcessingOutcome(ctx context.Context, processingEr
 		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
 			processingErr, fileSaveErr)
 		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
+
+		// Log the completion outcome with audit logger
+		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+			map[string]interface{}{"error_type": "combined_errors"},
+			nil, err)
+
 		return err
 	} else if fileSaveErr != nil {
 		// Only file save errors occurred
 		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErr)
+
+		// Log the completion outcome with audit logger
+		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+			map[string]interface{}{"error_type": "file_save_errors"},
+			nil, fileSaveErr)
+
 		return fileSaveErr
 	} else if processingErr != nil {
 		// Only model errors
 		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", processingErr)
+
+		// Log the completion outcome with audit logger
+		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+			map[string]interface{}{"error_type": "model_processing_errors"},
+			nil, processingErr)
+
 		return processingErr
 	} else {
 		// No errors
 		contextLogger.InfoContext(ctx, "Processing completed successfully")
+
+		// Log the successful completion with audit logger
+		o.logAuditEvent(ctx, "ExecuteEnd", "Success",
+			map[string]interface{}{"status": "complete"},
+			map[string]interface{}{"outcome": "success"}, nil)
+
 		return nil
 	}
 }

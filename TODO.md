@@ -146,7 +146,7 @@
         1. Method compiles and constructs `auditlog.AuditEntry` and calls `o.auditLogger.LogOp`.
     - Depends-on: none
 
-- [ ] **T018 · Refactor · P2: replace inline AuditEntry and LogOp calls with logAuditEvent**
+- [x] **T018 · Refactor · P2: replace inline AuditEntry and LogOp calls with logAuditEvent**
     - Context: cr-04 step 3
     - Action:
         1. Locate all direct `auditlog.AuditEntry` constructions and `LogOp` calls.
