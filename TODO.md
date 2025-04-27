@@ -172,7 +172,7 @@
         1. `MockLogger` type exists and compiles.
     - Depends-on: none
 
-- [ ] **T021 · Feature · P2: implement InfoContext, ErrorContext, WithContext, and LogOp on MockLogger**
+- [x] **T021 · Feature · P2: implement InfoContext, ErrorContext, WithContext, and LogOp on MockLogger**
     - Context: cr-05 step 2
     - Action:
         1. Implement methods capturing parameters for test assertions.
