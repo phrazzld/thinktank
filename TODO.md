@@ -188,7 +188,7 @@
         1. No custom logger mocks in tests; `MockLogger` is used everywhere.
     - Depends-on: T021
 
-- [ ] **T023 · Test · P2: verify MockLogger captures log and audit calls**
+- [x] **T023 · Test · P2: verify MockLogger captures log and audit calls**
     - Context: cr-05 step 2
     - Action:
         1. Add tests asserting `MockLogger` recorded `InfoContext`, `ErrorContext`, and `LogOp` invocations.
