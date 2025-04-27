@@ -164,7 +164,7 @@
     - Depends-on: T017
 
 ## Test Utilities
-- [ ] **T020 · Chore · P2: create MockLogger in internal/testutil**
+- [x] **T020 · Chore · P2: create MockLogger in internal/testutil**
     - Context: cr-05 step 1
     - Action:
         1. Add `internal/testutil/mocklogger.go` with type `MockLogger`.
