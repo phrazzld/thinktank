@@ -31,7 +31,7 @@ FOUND=0
 for FILE in $FILES; do
   # Use grep to find the pattern, excluding comments
   MATCHES=$(grep -n "correlation_id=" "$FILE" | grep -v "//")
-  
+
   if [ -n "$MATCHES" ]; then
     echo -e "${RED}Linter Error:${NC} ${FILE} contains forbidden pattern 'correlation_id=':"
     echo "$MATCHES"

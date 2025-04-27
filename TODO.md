@@ -79,7 +79,7 @@
         1. No individual output flow code remains in `Run`; method invocation present.
     - Depends-on: none
 
-- [ ] **T010 · Refactor · P2: extract runSynthesisFlow method from Orchestrator.Run**
+- [x] **T010 · Refactor · P2: extract runSynthesisFlow method from Orchestrator.Run**
     - Context: cr-03 steps 1–2
     - Action:
         1. Move synthesis flow code block into `runSynthesisFlow(ctx, params)`.

@@ -178,34 +178,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		fileSaveErrors = o.runIndividualOutputFlow(ctx, modelOutputs)
 	} else {
 		// Synthesis model specified - process all outputs with synthesis model
-		contextLogger.InfoContext(ctx, "Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
-		contextLogger.DebugContext(ctx, "Synthesizing %d model outputs", len(modelOutputs))
-
-		// Only proceed with synthesis if we have model outputs to synthesize
-		if len(modelOutputs) > 0 {
-			// Attempt to synthesize results using the SynthesisService
-			contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
-			synthesisContent, err := o.synthesisService.SynthesizeResults(ctx, instructions, modelOutputs)
-			if err != nil {
-				// Process the error with specialized handling
-				contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
-				return err
-			}
-
-			// Log synthesis success
-			contextLogger.InfoContext(ctx, "Successfully synthesized results from %d model outputs", len(modelOutputs))
-			contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
-
-			// Save the synthesis output using the OutputWriter
-			if err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir); err != nil {
-				contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-				fileSaveErrors = err
-			} else {
-				contextLogger.InfoContext(ctx, "Successfully saved synthesis output")
-			}
-		} else {
-			contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
-		}
+		fileSaveErrors = o.runSynthesisFlow(ctx, instructions, modelOutputs)
 	}
 
 	// Return any model errors or file save errors that occurred, combining them if both exist
@@ -260,19 +233,19 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 	if !o.config.DryRun {
 		return false, nil
 	}
-	
+
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
-	
+
 	// Log that we're in dry run mode
 	contextLogger.InfoContext(ctx, "Running in dry-run mode")
-	
+
 	// Call the existing handleDryRun method
 	err := o.handleDryRun(ctx, contextStats)
 	if err != nil {
 		return true, err
 	}
-	
+
 	// Indicate dry run was handled successfully
 	return true, nil
 }
@@ -283,11 +256,11 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) error {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
-	
+
 	// Log that individual outputs are being saved
 	contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
-	
+
 	// Use the OutputWriter to save individual model outputs
 	savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
 	if err != nil {
@@ -295,8 +268,48 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 			savedCount, len(modelOutputs)-savedCount)
 		return err
 	}
-	
+
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
+	return nil
+}
+
+// runSynthesisFlow handles the synthesis of multiple model outputs using the specified synthesis model.
+// It synthesizes the results and saves the output to a file.
+// Returns an error if synthesis fails or if the output cannot be saved.
+func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+
+	// Log that we're starting synthesis
+	contextLogger.InfoContext(ctx, "Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
+	contextLogger.DebugContext(ctx, "Synthesizing %d model outputs", len(modelOutputs))
+
+	// Only proceed with synthesis if we have model outputs to synthesize
+	if len(modelOutputs) == 0 {
+		contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
+		return nil
+	}
+
+	// Attempt to synthesize results using the SynthesisService
+	contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
+	synthesisContent, err := o.synthesisService.SynthesizeResults(ctx, instructions, modelOutputs)
+	if err != nil {
+		// Process the error with specialized handling
+		contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
+		return err
+	}
+
+	// Log synthesis success
+	contextLogger.InfoContext(ctx, "Successfully synthesized results from %d model outputs", len(modelOutputs))
+	contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
+
+	// Save the synthesis output using the OutputWriter
+	if err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir); err != nil {
+		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
+		return err
+	}
+
+	contextLogger.InfoContext(ctx, "Successfully saved synthesis output")
 	return nil
 }
 
