@@ -121,7 +121,7 @@
         1. Tests for `runIndividualOutputFlow` pass.
     - Depends-on: T009
 
-- [ ] **T015 · Test · P2: add unit tests for runSynthesisFlow method**
+- [x] **T015 · Test · P2: add unit tests for runSynthesisFlow method**
     - Context: cr-03 step 4
     - Action:
         1. Cover concurrency and error scenarios in `runSynthesisFlow` tests.
