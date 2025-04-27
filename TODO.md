@@ -88,7 +88,7 @@
         1. Synthesis code has moved and is invoked via `runSynthesisFlow`.
     - Depends-on: none
 
-- [ ] **T011 · Refactor · P2: extract aggregateErrors method from Orchestrator.Run**
+- [x] **T011 · Refactor · P2: extract aggregateErrors method from Orchestrator.Run**
     - Context: cr-03 steps 1–2
     - Action:
         1. Extract error aggregation logic into private method `aggregateErrors(errors []error)`.

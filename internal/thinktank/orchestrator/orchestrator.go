@@ -141,9 +141,9 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	if len(modelErrors) > 0 {
 		// If ALL models failed (no outputs available), fail immediately
 		if len(modelOutputs) == 0 {
-			errorMsg := fmt.Sprintf("all models failed: %v", aggregateErrorMessages(modelErrors))
-			contextLogger.ErrorContext(ctx, errorMsg)
-			return errors.New(errorMsg)
+			returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), 0)
+			contextLogger.ErrorContext(ctx, returnErr.Error())
+			return returnErr
 		}
 
 		// Otherwise, log errors but continue with available outputs
@@ -164,9 +164,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 		}
 
 		// Create a descriptive error to return after processing is complete
-		returnErr = fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
-			len(modelOutputs), len(o.config.ModelNames), len(modelErrors),
-			aggregateErrorMessages(modelErrors))
+		returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), len(modelOutputs))
 	}
 
 	// STEP 6: Handle synthesis or individual model outputs based on configuration
@@ -561,6 +559,27 @@ func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, 
 	}
 	// Return true if the underlying implementation doesn't support this method
 	return true, nil
+}
+
+// aggregateErrors combines multiple errors into a single error with context.
+// It takes a slice of errors, total expected count, successful count, and creates
+// a descriptive error message that includes statistics and all individual error messages.
+// Returns nil if the error slice is empty.
+func (o *Orchestrator) aggregateErrors(errs []error, totalCount, successCount int) error {
+	if len(errs) == 0 {
+		return nil
+	}
+
+	// If all operations failed (no successes)
+	if successCount == 0 {
+		errorMsg := fmt.Sprintf("all models failed: %v", aggregateErrorMessages(errs))
+		return errors.New(errorMsg)
+	}
+
+	// Some operations succeeded but others failed
+	return fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
+		successCount, totalCount, len(errs),
+		aggregateErrorMessages(errs))
 }
 
 // aggregateErrorMessages combines multiple error messages into a single string.
