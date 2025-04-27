@@ -129,7 +129,7 @@
         1. `runSynthesisFlow` tests pass.
     - Depends-on: T010
 
-- [ ] **T016 · Test · P2: add unit tests for aggregateErrors method**
+- [x] **T016 · Test · P2: add unit tests for aggregateErrors method**
     - Context: cr-03 step 4
     - Action:
         1. Validate that `aggregateErrors` combines multiple errors correctly.
