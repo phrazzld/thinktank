@@ -155,7 +155,7 @@
         1. No direct `AuditEntry` or `LogOp` outside `logAuditEvent`.
     - Depends-on: T017
 
-- [ ] **T019 · Test · P2: add unit tests for logAuditEvent helper**
+- [x] **T019 · Test · P2: add unit tests for logAuditEvent helper**
     - Context: cr-04 step 2
     - Action:
         1. Write tests verifying duration calculation, `ErrorInfo` wrapping, and `LogOp` invocation.

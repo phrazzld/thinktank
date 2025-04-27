@@ -50,17 +50,46 @@ func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 	return nil
 }
 
+// LogCall represents a single call to LogOp
+type LogCall struct {
+	Operation string
+	Status    string
+	Inputs    map[string]interface{}
+	Outputs   map[string]interface{}
+	Error     error
+}
+
 // MockAuditLogger provides a mock implementation for testing
-type MockAuditLogger struct{}
+type MockAuditLogger struct {
+	LogCalls []LogCall
+	LogError error // To simulate logging errors for testing error handling
+}
+
+// NewMockAuditLogger creates a new instance of MockAuditLogger
+func NewMockAuditLogger() *MockAuditLogger {
+	return &MockAuditLogger{
+		LogCalls: make([]LogCall, 0),
+		LogError: nil,
+	}
+}
 
 // Log is a mock implementation
 func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
-	return nil
+	return m.LogError
 }
 
 // LogOp is a mock implementation
 func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
-	return nil
+	// Record the call parameters
+	m.LogCalls = append(m.LogCalls, LogCall{
+		Operation: operation,
+		Status:    status,
+		Inputs:    inputs,
+		Outputs:   outputs,
+		Error:     err,
+	})
+	// Return configured error (nil by default)
+	return m.LogError
 }
 
 // Close is a mock implementation
