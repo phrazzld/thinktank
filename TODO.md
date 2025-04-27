@@ -105,7 +105,7 @@
         1. `Run` is under 30 lines and compiles.
     - Depends-on: [T008, T009, T010, T011]
 
-- [ ] **T013 · Test · P2: add unit tests for runDryRunFlow method**
+- [x] **T013 · Test · P2: add unit tests for runDryRunFlow method**
     - Context: cr-03 step 4
     - Action:
         1. Write table-driven tests for `runDryRunFlow`, covering happy and error paths.
