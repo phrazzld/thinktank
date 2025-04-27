@@ -113,7 +113,7 @@
         1. Tests for `runDryRunFlow` pass.
     - Depends-on: T008
 
-- [ ] **T014 · Test · P2: add unit tests for runIndividualOutputFlow method**
+- [x] **T014 · Test · P2: add unit tests for runIndividualOutputFlow method**
     - Context: cr-03 step 4
     - Action:
         1. Write tests for typical and edge-case behavior of `runIndividualOutputFlow`.
