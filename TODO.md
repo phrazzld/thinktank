@@ -291,7 +291,7 @@
         1. No direct `os` or `filepath` calls in tests; `FilesystemIO` used.
     - Depends-on: T033
 
-- [ ] **T035 · Refactor · P2: update test assertions to use FilesystemIO reading API**
+- [x] **T035 · Refactor · P2: update test assertions to use FilesystemIO reading API**
     - Context: cr-09 step 3
     - Action:
         1. Change test reads and existence checks to use `FilesystemIO` methods.

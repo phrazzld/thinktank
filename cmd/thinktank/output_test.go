@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
 // fileWriterMockLogger is a minimal logger for testing file writing
@@ -61,12 +62,15 @@ func TestNewFileWriter(t *testing.T) {
 }
 
 func TestSaveToFile(t *testing.T) {
+	// Create a filesystem abstraction for testing
+	fs := testutil.NewRealFS()
+
 	// Create a temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "filewriter-test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	defer func() { _ = fs.RemoveAll(tempDir) }()
 
 	tests := []struct {
 		name           string
@@ -94,7 +98,7 @@ func TestSaveToFile(t *testing.T) {
 			content:        "New content that should overwrite existing content",
 			outputFilePath: filepath.Join(tempDir, "test_overwrite.txt"),
 			preparePath: func(path string) error {
-				return os.WriteFile(path, []byte("Original content"), 0640)
+				return fs.WriteFile(path, []byte("Original content"), 0640)
 			},
 			expectError: false,
 		},
@@ -158,11 +162,11 @@ func TestSaveToFile(t *testing.T) {
 				// For relative paths, the file should be in the current working directory
 				filePath = filepath.Join(cwd, tt.outputFilePath)
 				// Clean up relative path files at the end of the test
-				defer func() { _ = os.Remove(filePath) }()
+				defer func() { _ = fs.RemoveAll(filePath) }()
 			}
 
-			// Read the file content
-			content, err := os.ReadFile(filePath)
+			// Read the file content using FilesystemIO
+			content, err := fs.ReadFile(filePath)
 			if err != nil {
 				t.Fatalf("Failed to read file: %v", err)
 			}
@@ -184,12 +188,15 @@ func TestSaveToFile(t *testing.T) {
 }
 
 func TestSaveToFile_ErrorConditions(t *testing.T) {
+	// Create a filesystem abstraction for testing
+	fs := testutil.NewRealFS()
+
 	// Create a temporary directory for test files
 	tempDir, err := os.MkdirTemp("", "filewriter-error-test-")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
-	defer func() { _ = os.RemoveAll(tempDir) }()
+	defer func() { _ = fs.RemoveAll(tempDir) }()
 
 	// Test error with current working directory
 	t.Run("Error getting current working directory", func(t *testing.T) {
@@ -213,6 +220,12 @@ func TestSaveToFile_ErrorConditions(t *testing.T) {
 		// Verify error was logged
 		if !logger.errorCalled {
 			t.Errorf("Expected error to be logged")
+		}
+
+		// Verify file doesn't exist using FilesystemIO
+		exists, _ := fs.Stat(filepath.Join(invalidPath, "subdir", "test.txt"))
+		if exists {
+			t.Errorf("File should not exist after error")
 		}
 	})
 }

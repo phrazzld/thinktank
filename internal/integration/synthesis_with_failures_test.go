@@ -16,6 +16,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/testutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
@@ -27,19 +28,22 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	// Create logger for the test
 	logger := logutil.NewTestLogger(t)
 
+	// Create filesystem abstraction for testing
+	fs := testutil.NewRealFS()
+
 	// Create temp directory for outputs
 	tempDir, err := os.MkdirTemp("", "thinktank-synthesis-failures-test")
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 	defer func() {
-		if err := os.RemoveAll(tempDir); err != nil {
+		if err := fs.RemoveAll(tempDir); err != nil {
 			t.Logf("Failed to clean up temp directory: %v", err)
 		}
 	}()
 
 	outputDir := filepath.Join(tempDir, "output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := fs.MkdirAll(outputDir, 0755); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 
@@ -193,10 +197,10 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 			// Actually save the files to verify they exist later
 			dir := filepath.Dir(filePath)
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := fs.MkdirAll(dir, 0755); err != nil {
 				return err
 			}
-			return os.WriteFile(filePath, []byte(content), 0640)
+			return fs.WriteFile(filePath, []byte(content), 0640)
 		},
 	}
 
@@ -262,12 +266,14 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	modelsMutex.Lock()
 	for modelName := range modelSucceeded {
 		expectedFilePath := filepath.Join(outputDir, modelName+".md")
-		_, modelStatErr := os.Stat(expectedFilePath)
-		if os.IsNotExist(modelStatErr) {
+		exists, modelStatErr := fs.Stat(expectedFilePath)
+		if !exists {
 			t.Errorf("Expected output file %s for successful model not created", expectedFilePath)
+		} else if modelStatErr != nil {
+			t.Errorf("Error checking file %s: %v", expectedFilePath, modelStatErr)
 		} else {
 			// Verify file content
-			content, modelReadErr := os.ReadFile(expectedFilePath)
+			content, modelReadErr := fs.ReadFile(expectedFilePath)
 			if modelReadErr != nil {
 				t.Errorf("Failed to read output file %s: %v", expectedFilePath, modelReadErr)
 			} else {
@@ -305,12 +311,14 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Verify that synthesis output file WAS created despite some model failures
 	expectedSynthesisFile := filepath.Join(outputDir, synthesisModel+"-synthesis.md")
-	_, statErr := os.Stat(expectedSynthesisFile)
-	if os.IsNotExist(statErr) {
+	exists, statErr := fs.Stat(expectedSynthesisFile)
+	if !exists {
 		t.Errorf("Expected synthesis output file %s to be created despite partial model failures, but it wasn't", expectedSynthesisFile)
+	} else if statErr != nil {
+		t.Errorf("Error checking synthesis file: %v", statErr)
 	} else {
 		// Verify synthesis file content
-		content, synthReadErr := os.ReadFile(expectedSynthesisFile)
+		content, synthReadErr := fs.ReadFile(expectedSynthesisFile)
 		if synthReadErr != nil {
 			t.Errorf("Failed to read synthesis output file: %v", synthReadErr)
 		} else if string(content) != synthesisOutput {

@@ -18,6 +18,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/testutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -264,13 +265,16 @@ func (m *MockOrchestrator) Run(ctx context.Context, instructions string) error {
 
 // setupTestEnvironment creates a temporary directory for testing
 func setupTestEnvironment(t *testing.T) (string, func()) {
+	// Create filesystem abstraction
+	fs := testutil.NewRealFS()
+
 	testDir, err := os.MkdirTemp("", "thinktank-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
 
 	cleanup := func() {
-		err := os.RemoveAll(testDir)
+		err := fs.RemoveAll(testDir)
 		if err != nil {
 			t.Logf("Warning: Failed to clean up test directory: %v", err)
 		}
@@ -281,12 +285,15 @@ func setupTestEnvironment(t *testing.T) (string, func()) {
 
 // createTestFile creates a test file with the given content
 func createTestFile(t *testing.T, path, content string) string {
-	err := os.MkdirAll(filepath.Dir(path), 0755)
+	// Create filesystem abstraction
+	fs := testutil.NewRealFS()
+
+	err := fs.MkdirAll(filepath.Dir(path), 0755)
 	if err != nil {
 		t.Fatalf("Failed to create directory for test file: %v", err)
 	}
 
-	err = os.WriteFile(path, []byte(content), 0640)
+	err = fs.WriteFile(path, []byte(content), 0640)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
@@ -381,7 +388,11 @@ func TestExecuteHappyPath(t *testing.T) {
 	}
 
 	// Verify output directory was created
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+	// Create filesystem abstraction
+	fs := testutil.NewRealFS()
+
+	exists, _ := fs.Stat(outputDir)
+	if !exists {
 		t.Errorf("Output directory was not created at %s", outputDir)
 	}
 
@@ -465,7 +476,11 @@ func TestExecuteDryRun(t *testing.T) {
 	}
 
 	// Verify output directory was created (even in dry run mode, we create the directory)
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
+	// Create filesystem abstraction
+	fs := testutil.NewRealFS()
+
+	exists, _ := fs.Stat(outputDir)
+	if !exists {
 		t.Errorf("Output directory was not created at %s", outputDir)
 	}
 
@@ -750,16 +765,19 @@ func TestExecuteOrchestratorError(t *testing.T) {
 
 // TestSetupOutputDirectoryError tests error handling when output directory creation fails
 func TestSetupOutputDirectoryError(t *testing.T) {
+	// Create filesystem abstraction
+	fs := testutil.NewRealFS()
+
 	// Create a temporary test directory
 	parentDir, err := os.MkdirTemp("", "thinktank-test-*")
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
-	defer func() { _ = os.RemoveAll(parentDir) }()
+	defer func() { _ = fs.RemoveAll(parentDir) }()
 
 	// Create a file with the same name where we will try to create a directory
 	invalidDirPath := filepath.Join(parentDir, "cannot-be-dir")
-	err = os.WriteFile(invalidDirPath, []byte("this is a file"), 0640)
+	err = fs.WriteFile(invalidDirPath, []byte("this is a file"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -767,7 +785,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	// Create a valid instructions file
 	instructionsContent := "Test instructions for plan generation"
 	instructionsFile := filepath.Join(parentDir, "instructions.md")
-	err = os.WriteFile(instructionsFile, []byte(instructionsContent), 0640)
+	err = fs.WriteFile(instructionsFile, []byte(instructionsContent), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create instructions file: %v", err)
 	}
