@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/phrazzld/thinktank/internal/config"
@@ -32,15 +33,17 @@ func (s *stringSliceFlag) Set(value string) error {
 
 // Constants referencing the config package defaults
 const (
-	defaultOutputFile   = config.DefaultOutputFile
-	defaultModel        = config.DefaultModel
-	apiKeyEnvVar        = config.APIKeyEnvVar
-	apiEndpointEnvVar   = config.APIEndpointEnvVar
-	openaiAPIKeyEnvVar  = config.OpenAIAPIKeyEnvVar
-	defaultFormat       = config.DefaultFormat
-	defaultExcludes     = config.DefaultExcludes
-	defaultExcludeNames = config.DefaultExcludeNames
-	defaultTimeout      = config.DefaultTimeout
+	defaultOutputFile      = config.DefaultOutputFile
+	defaultModel           = config.DefaultModel
+	apiKeyEnvVar           = config.APIKeyEnvVar
+	apiEndpointEnvVar      = config.APIEndpointEnvVar
+	openaiAPIKeyEnvVar     = config.OpenAIAPIKeyEnvVar
+	defaultFormat          = config.DefaultFormat
+	defaultExcludes        = config.DefaultExcludes
+	defaultExcludeNames    = config.DefaultExcludeNames
+	defaultTimeout         = config.DefaultTimeout
+	defaultDirPermissions  = config.DefaultDirPermissions
+	defaultFilePermissions = config.DefaultFilePermissions
 )
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
@@ -247,6 +250,12 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	timeoutFlag := flagSet.Duration("timeout", defaultTimeout,
 		"Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
 
+	// Permission flags
+	dirPermFlag := flagSet.String("dir-permissions", fmt.Sprintf("%#o", defaultDirPermissions),
+		"Directory creation permissions (octal, e.g., 0750)")
+	filePermFlag := flagSet.String("file-permissions", fmt.Sprintf("%#o", defaultFilePermissions),
+		"File creation permissions (octal, e.g., 0640)")
+
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
 	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", defaultModel, defaultModel))
@@ -306,6 +315,19 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Store timeout configuration
 	cfg.Timeout = *timeoutFlag
 
+	// Parse and store permissions
+	if dirPerm, err := parseOctalPermission(*dirPermFlag); err == nil {
+		cfg.DirPermissions = dirPerm
+	} else {
+		return nil, fmt.Errorf("invalid directory permission format: %w", err)
+	}
+
+	if filePerm, err := parseOctalPermission(*filePermFlag); err == nil {
+		cfg.FilePermissions = filePerm
+	} else {
+		return nil, fmt.Errorf("invalid file permission format: %w", err)
+	}
+
 	// Set model names from the flag, defaulting to a single default model if none provided
 	if len(*modelFlag) > 0 {
 		cfg.ModelNames = *modelFlag
@@ -335,6 +357,17 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// ParseFlagsWithEnv no longer does logical validation (just parsing errors)
 	// Validation is now exclusively handled by ValidateInputs
 	return cfg, nil
+}
+
+// parseOctalPermission converts a string representation of an octal permission
+// to an os.FileMode
+func parseOctalPermission(permStr string) (os.FileMode, error) {
+	// Parse the octal permission string
+	n, err := strconv.ParseUint(strings.TrimPrefix(permStr, "0"), 8, 32)
+	if err != nil {
+		return 0, err
+	}
+	return os.FileMode(n), nil
 }
 
 // setupLoggingCustomImpl is the implementation of SetupLoggingCustom

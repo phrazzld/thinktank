@@ -31,6 +31,10 @@ const (
 	// Default timeout value
 	DefaultTimeout = 10 * time.Minute // Default timeout for the entire operation
 
+	// Default permission values
+	DefaultDirPermissions  = 0750 // Default directory permissions (rwxr-x---)
+	DefaultFilePermissions = 0640 // Default file permissions (rw-r-----)
+
 	// Default excludes for file extensions
 	DefaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
 		".zip,.tar,.gz,.rar,.7z,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.odt,.ods,.odp," +
@@ -128,6 +132,10 @@ type CliConfig struct {
 
 	// Timeout configuration
 	Timeout time.Duration // Global timeout for the entire operation
+
+	// Permission configuration
+	DirPermissions  os.FileMode // Directory permissions
+	FilePermissions os.FileMode // File permissions
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -144,6 +152,8 @@ func NewDefaultCliConfig() *CliConfig {
 		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
 		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
 		Timeout:                    DefaultTimeout,
+		DirPermissions:             DefaultDirPermissions,
+		FilePermissions:            DefaultFilePermissions,
 	}
 }
 

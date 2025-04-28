@@ -53,7 +53,7 @@ func (l *fileWriterMockLogger) WithContext(ctx context.Context) logutil.LoggerIn
 
 func TestNewFileWriter(t *testing.T) {
 	logger := &fileWriterMockLogger{}
-	fw := NewFileWriter(logger)
+	fw := NewFileWriter(logger, 0750, 0640)
 
 	if fw == nil {
 		t.Errorf("NewFileWriter() returned nil")
@@ -126,7 +126,7 @@ func TestSaveToFile(t *testing.T) {
 
 			// Create a new logger for each test
 			logger := &fileWriterMockLogger{}
-			fw := NewFileWriter(logger)
+			fw := NewFileWriter(logger, 0750, 0640)
 
 			// Capture the current working directory before the test
 			cwd, err := os.Getwd()
@@ -195,7 +195,7 @@ func TestSaveToFile_ErrorConditions(t *testing.T) {
 	t.Run("Error getting current working directory", func(t *testing.T) {
 		// Create a mock logger to capture errors
 		logger := &fileWriterMockLogger{}
-		fw := NewFileWriter(logger)
+		fw := NewFileWriter(logger, 0750, 0640)
 
 		// Create a test file with invalid permissions for directory creation
 		invalidPath := filepath.Join(tempDir, "invalid-dir")

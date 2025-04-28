@@ -153,7 +153,7 @@ func Execute(
 	// Create context gatherer with LLMClient
 	// Note: TokenManager was completely removed as part of tasks T032A through T032D
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, referenceClientLLM, auditLogger)
-	fileWriter := NewFileWriter(logger, auditLogger)
+	fileWriter := NewFileWriter(logger, auditLogger, cliConfig.DirPermissions, cliConfig.FilePermissions)
 
 	// Create rate limiter from configuration
 	rateLimiter := ratelimit.NewRateLimiter(
@@ -306,7 +306,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 	}
 
 	// Ensure the output directory exists
-	if err := os.MkdirAll(cliConfig.OutputDir, 0750); err != nil {
+	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
 		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
 		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
 	}

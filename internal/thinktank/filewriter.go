@@ -23,17 +23,21 @@ type FileWriter interface {
 
 // fileWriter implements the FileWriter interface
 type fileWriter struct {
-	logger      logutil.LoggerInterface
-	auditLogger auditlog.AuditLogger
+	logger          logutil.LoggerInterface
+	auditLogger     auditlog.AuditLogger
+	dirPermissions  os.FileMode
+	filePermissions os.FileMode
 }
 
 // NewFileWriter creates a new FileWriter instance with the specified dependencies.
 // It injects the required logger and audit logger to ensure proper output
 // handling and audit trail generation during file operations.
-func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) FileWriter {
+func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, dirPermissions, filePermissions os.FileMode) FileWriter {
 	return &fileWriter{
-		logger:      logger,
-		auditLogger: auditLogger,
+		logger:          logger,
+		auditLogger:     auditLogger,
+		dirPermissions:  dirPermissions,
+		filePermissions: filePermissions,
 	}
 }
 
@@ -73,7 +77,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(outputDir, 0750); err != nil {
+	if err := os.MkdirAll(outputDir, fw.dirPermissions); err != nil {
 		fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
 
 		// Log failure to save output
@@ -88,7 +92,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Write to file
 	fw.logger.Info("Writing to file %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), 0640)
+	err := os.WriteFile(outputPath, []byte(content), fw.filePermissions)
 
 	// Calculate duration in milliseconds
 	saveDurationMs := time.Since(saveStartTime).Milliseconds()

@@ -240,7 +240,7 @@
         1. Files written have mode `0640`; tests updated.
     - Depends-on: none
 
-- [ ] **T029 · Feature · P2: add config option for file and directory permissions**
+- [x] **T029 · Feature · P2: add config option for file and directory permissions**
     - Context: cr-07 step 3
     - Action:
         1. Expose permissions as configurable parameters in the configuration struct.

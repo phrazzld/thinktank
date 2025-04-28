@@ -46,8 +46,8 @@ func TestSaveToFile(t *testing.T) {
 	// Create mock audit logger
 	auditLogger := &mockAuditLogger{}
 
-	// Create a file writer
-	fileWriter := thinktank.NewFileWriter(logger, auditLogger)
+	// Create a file writer with default permissions
+	fileWriter := thinktank.NewFileWriter(logger, auditLogger, 0750, 0640)
 
 	// Create a temporary directory for testing
 	tempDir, err := os.MkdirTemp("", "filewriter_test")
