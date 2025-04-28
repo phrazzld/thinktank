@@ -283,7 +283,7 @@
         1. `NewMemFS` compiles and provides read/write methods.
     - Depends-on: none
 
-- [ ] **T034 · Refactor · P2: replace direct os/filepath calls with FilesystemIO in tests**
+- [x] **T034 · Refactor · P2: replace direct os/filepath calls with FilesystemIO in tests**
     - Context: cr-09 step 1
     - Action:
         1. Update tests to use `FilesystemIO` methods instead of `os.MkdirAll`, `os.WriteFile`, `filepath.Join`.
