@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
 // This test file uses the MockAuditLogger defined in mocks_test.go
@@ -98,7 +98,7 @@ func TestLogAuditEvent(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup test dependencies
-			mockLogger := fileutil.NewMockLogger()
+			mockLogger := testutil.NewMockLogger()
 			mockAuditLogger := NewMockAuditLogger()
 			mockAuditLogger.LogError = tt.mockLogError
 

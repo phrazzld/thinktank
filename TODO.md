@@ -180,7 +180,7 @@
         1. `MockLogger` satisfies `logutil.LoggerInterface` and `auditlog.AuditLogger`.
     - Depends-on: T020
 
-- [ ] **T022 · Refactor · P2: update tests to use MockLogger**
+- [x] **T022 · Refactor · P2: update tests to use MockLogger**
     - Context: cr-05 step 3
     - Action:
         1. Replace per-test logger mocks with `testutil.NewMockLogger()` in all tests.

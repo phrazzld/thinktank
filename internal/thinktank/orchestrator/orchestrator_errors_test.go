@@ -7,13 +7,13 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
 // TestAggregateErrors tests the aggregateErrors method of the Orchestrator
 func TestAggregateErrors(t *testing.T) {
 	// Create a minimal orchestrator with just the required dependencies for these tests
-	logger := &logutil.TestLogger{}
+	logger := testutil.NewMockLogger()
 	config := &config.CliConfig{}
 	o := &Orchestrator{
 		logger: logger,
@@ -171,7 +171,7 @@ func TestAggregateErrorMessages(t *testing.T) {
 
 // TestAggregateErrorsWrappedErrors tests aggregateErrors with wrapped errors
 func TestAggregateErrorsWrappedErrors(t *testing.T) {
-	logger := &logutil.TestLogger{}
+	logger := testutil.NewMockLogger()
 	config := &config.CliConfig{}
 	o := &Orchestrator{
 		logger: logger,

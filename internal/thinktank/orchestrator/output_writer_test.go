@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/testutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
@@ -93,7 +93,7 @@ func TestDefaultOutputWriter_SaveIndividualOutputs(t *testing.T) {
 			}
 
 			mockAuditLogger := auditlog.NewNoOpAuditLogger()
-			mockLogger := logutil.NewTestLogger(t)
+			mockLogger := testutil.NewMockLogger()
 
 			// Create the output writer with mock dependencies
 			writer := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
@@ -190,7 +190,7 @@ func TestDefaultOutputWriter_SaveSynthesisOutput(t *testing.T) {
 			}
 
 			mockAuditLogger := auditlog.NewNoOpAuditLogger()
-			mockLogger := logutil.NewTestLogger(t)
+			mockLogger := testutil.NewMockLogger()
 
 			// Create the output writer with mock dependencies
 			writer := NewOutputWriter(mockFileWriter, mockAuditLogger, mockLogger)
