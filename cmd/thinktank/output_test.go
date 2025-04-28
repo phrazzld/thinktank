@@ -94,7 +94,7 @@ func TestSaveToFile(t *testing.T) {
 			content:        "New content that should overwrite existing content",
 			outputFilePath: filepath.Join(tempDir, "test_overwrite.txt"),
 			preparePath: func(path string) error {
-				return os.WriteFile(path, []byte("Original content"), 0644)
+				return os.WriteFile(path, []byte("Original content"), 0640)
 			},
 			expectError: false,
 		},

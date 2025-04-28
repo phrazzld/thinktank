@@ -49,7 +49,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Write to file
 	fw.logger.Info("Writing to file %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), 0644)
+	err := os.WriteFile(outputPath, []byte(content), 0640)
 	if err != nil {
 		fw.logger.Error("Error writing to file %s: %v", outputPath, err)
 		return fmt.Errorf("error writing to file %s: %w", outputPath, err)

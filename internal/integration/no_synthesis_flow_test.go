@@ -116,7 +116,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 			if err := os.MkdirAll(dir, 0755); err != nil {
 				return err
 			}
-			return os.WriteFile(filePath, []byte(content), 0644)
+			return os.WriteFile(filePath, []byte(content), 0640)
 		},
 	}
 

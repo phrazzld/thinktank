@@ -276,7 +276,7 @@ func (e *TestEnv) CreateTestFile(relativePath, content string) string {
 	}
 
 	// Write the file
-	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(fullPath, []byte(content), 0640); err != nil {
 		e.t.Fatalf("Failed to write file %s: %v", fullPath, err)
 	}
 

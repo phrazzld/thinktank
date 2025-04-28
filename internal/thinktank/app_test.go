@@ -286,7 +286,7 @@ func createTestFile(t *testing.T, path, content string) string {
 		t.Fatalf("Failed to create directory for test file: %v", err)
 	}
 
-	err = os.WriteFile(path, []byte(content), 0644)
+	err = os.WriteFile(path, []byte(content), 0640)
 	if err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
@@ -759,7 +759,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 
 	// Create a file with the same name where we will try to create a directory
 	invalidDirPath := filepath.Join(parentDir, "cannot-be-dir")
-	err = os.WriteFile(invalidDirPath, []byte("this is a file"), 0644)
+	err = os.WriteFile(invalidDirPath, []byte("this is a file"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -767,7 +767,7 @@ func TestSetupOutputDirectoryError(t *testing.T) {
 	// Create a valid instructions file
 	instructionsContent := "Test instructions for plan generation"
 	instructionsFile := filepath.Join(parentDir, "instructions.md")
-	err = os.WriteFile(instructionsFile, []byte(instructionsContent), 0644)
+	err = os.WriteFile(instructionsFile, []byte(instructionsContent), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create instructions file: %v", err)
 	}

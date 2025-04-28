@@ -199,7 +199,7 @@ func (m *Manager) installDefaultConfig() error {
 
 	// Write to the user's config directory
 	targetConfigPath := filepath.Join(configDir, ModelsConfigFileName)
-	if err := os.WriteFile(targetConfigPath, defaultConfig, 0644); err != nil {
+	if err := os.WriteFile(targetConfigPath, defaultConfig, 0640); err != nil {
 		return fmt.Errorf("failed to write configuration file: %w", err)
 	}
 

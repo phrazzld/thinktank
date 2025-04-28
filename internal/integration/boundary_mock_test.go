@@ -56,7 +56,7 @@ func TestBoundaryMocking(t *testing.T) {
 		t.Fatalf("Failed to create output directory in mock filesystem: %v", err)
 	}
 	instructionsPath := filepath.Join(tempDir, "instructions.txt")
-	if err := filesystem.WriteFile(instructionsPath, []byte("Test instructions"), 0644); err != nil {
+	if err := filesystem.WriteFile(instructionsPath, []byte("Test instructions"), 0640); err != nil {
 		t.Fatalf("Failed to write file in mock filesystem: %v", err)
 	}
 

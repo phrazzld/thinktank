@@ -164,7 +164,7 @@ func (env *BoundaryTestEnv) SetupModelResponse(modelName, response string) {
 // SetupInstructionsFile creates a mock instructions file
 func (env *BoundaryTestEnv) SetupInstructionsFile(content string) string {
 	instructionsPath := filepath.Join(env.Config.OutputDir, "instructions.md")
-	err := env.Filesystem.WriteFile(instructionsPath, []byte(content), 0644)
+	err := env.Filesystem.WriteFile(instructionsPath, []byte(content), 0640)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to write instructions file: %v", err))
 	}
@@ -462,7 +462,7 @@ func (w *BoundaryFileWriter) SaveToFile(content, filePath string) error {
 	}
 
 	// Write file
-	if err := w.filesystem.WriteFile(filePath, []byte(content), 0644); err != nil {
+	if err := w.filesystem.WriteFile(filePath, []byte(content), 0640); err != nil {
 		w.logger.Error("Failed to write file %s: %v", filePath, err)
 		return err
 	}

@@ -45,7 +45,7 @@ type FileAuditLogger struct {
 // If the file doesn't exist, it will be created. If it does exist, logs will be appended.
 // The provided internal logger is used to log any errors that occur during audit logging operations.
 func NewFileAuditLogger(filePath string, internalLogger logutil.LoggerInterface) (*FileAuditLogger, error) {
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
 		internalLogger.Error("Failed to open audit log file '%s': %v", filePath, err)
 		return nil, fmt.Errorf("failed to open audit log file %s: %w", filePath, err)

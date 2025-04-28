@@ -232,7 +232,7 @@
         1. Directories created have mode `0750`; affected tests updated.
     - Depends-on: none
 
-- [ ] **T028 · Refactor · P2: change default file write permissions to 0640**
+- [x] **T028 · Refactor · P2: change default file write permissions to 0640**
     - Context: cr-07 step 2
     - Action:
         1. Update `os.WriteFile` or `FileWriter` default mode to `0640` and update tests.
