@@ -250,7 +250,7 @@
     - Depends-on: [T027, T028]
 
 ## Error Sentinels
-- [ ] **T030 · Chore · P2: define sentinel errors for synthesis and processing failures**
+- [x] **T030 · Chore · P2: define sentinel errors for synthesis and processing failures**
     - Context: cr-08 step 1
     - Action:
         1. Add exported variables `ErrInvalidSynthesisModel`, etc., using `errors.New` in relevant packages.
