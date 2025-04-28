@@ -275,7 +275,7 @@
     - Depends-on: [T030, T031]
 
 ## Filesystem Abstraction
-- [ ] **T033 · Chore · P2: create in-memory FilesystemIO stub**
+- [x] **T033 · Chore · P2: create in-memory FilesystemIO stub**
     - Context: cr-09 step 2
     - Action:
         1. Implement `testutil.NewMemFS()` returning a stub implementing `FilesystemIO`.
