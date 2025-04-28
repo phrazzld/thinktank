@@ -224,7 +224,7 @@
     - Depends-on: T025
 
 ## File Permissions
-- [ ] **T027 · Refactor · P2: change default directory permissions to 0750**
+- [x] **T027 · Refactor · P2: change default directory permissions to 0750**
     - Context: cr-07 step 1
     - Action:
         1. Update `os.MkdirAll` calls in `output_writer.go` and tests to use `0750`.

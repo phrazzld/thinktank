@@ -306,7 +306,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 	}
 
 	// Ensure the output directory exists
-	if err := os.MkdirAll(cliConfig.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(cliConfig.OutputDir, 0750); err != nil {
 		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
 		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
 	}

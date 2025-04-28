@@ -73,7 +73,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
 
 		// Log failure to save output

@@ -72,10 +72,10 @@ func NewBoundaryTestEnv(t testing.TB) *BoundaryTestEnv {
 	outputDir := filepath.Join(tempDir, "output")
 
 	// Set up mock filesystem
-	if err := filesystem.MkdirAll(tempDir, 0755); err != nil {
+	if err := filesystem.MkdirAll(tempDir, 0750); err != nil {
 		panic(fmt.Sprintf("Failed to create temp directory: %v", err))
 	}
-	if err := filesystem.MkdirAll(outputDir, 0755); err != nil {
+	if err := filesystem.MkdirAll(outputDir, 0750); err != nil {
 		panic(fmt.Sprintf("Failed to create output directory: %v", err))
 	}
 
@@ -456,7 +456,7 @@ type BoundaryFileWriter struct {
 func (w *BoundaryFileWriter) SaveToFile(content, filePath string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
-	if err := w.filesystem.MkdirAll(dir, 0755); err != nil {
+	if err := w.filesystem.MkdirAll(dir, 0750); err != nil {
 		w.logger.Error("Failed to create directory %s: %v", dir, err)
 		return err
 	}
