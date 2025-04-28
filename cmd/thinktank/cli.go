@@ -40,6 +40,7 @@ const (
 	defaultFormat       = config.DefaultFormat
 	defaultExcludes     = config.DefaultExcludes
 	defaultExcludeNames = config.DefaultExcludeNames
+	defaultTimeout      = config.DefaultTimeout
 )
 
 // ValidateInputs checks if the configuration is valid and returns an error if not
@@ -242,6 +243,10 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	rateLimitRPMFlag := flagSet.Int("rate-limit", 60, // Use hardcoded default for backward compatibility with tests
 		"Maximum requests per minute (RPM) per model (0 = no limit)")
 
+	// Timeout flag
+	timeoutFlag := flagSet.Duration("timeout", defaultTimeout,
+		"Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
+
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
 	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", defaultModel, defaultModel))
@@ -258,7 +263,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --output-dir custom-dir ./       Generate plans in custom directory\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./  Generate plans for multiple models\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --synthesis-model model3 ./       Synthesize outputs from multiple models\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                 Show files without generating plan\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --timeout 5m ./                  Run with 5-minute timeout\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                     Show files without generating plan\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flagSet.PrintDefaults()
@@ -296,6 +302,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Store rate limiting configuration
 	cfg.MaxConcurrentRequests = *maxConcurrentFlag
 	cfg.RateLimitRequestsPerMinute = *rateLimitRPMFlag
+
+	// Store timeout configuration
+	cfg.Timeout = *timeoutFlag
 
 	// Set model names from the flag, defaulting to a single default model if none provided
 	if len(*modelFlag) > 0 {

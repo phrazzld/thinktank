@@ -55,6 +55,11 @@ func TestParseFlags_InvalidValue(t *testing.T) {
 			args:   []string{"--rate-limit=invalid"},
 			errMsg: "invalid value",
 		},
+		{
+			name:   "Invalid timeout",
+			args:   []string{"--timeout=abc"},
+			errMsg: "invalid value",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -122,6 +127,78 @@ func TestValidateInputs_ConfigPathNotFound(t *testing.T) {
 	// Skip this test for now as the ValidateInputs function doesn't
 	// directly check for config file existence - it's handled at initialization
 	t.Skip("Skipping test as ValidateInputs doesn't validate config path existence")
+}
+
+// TestParseFlags_Timeout tests parsing of the timeout flag
+func TestParseFlags_Timeout(t *testing.T) {
+	// Create a flag set
+	fs := flag.NewFlagSet("test", flag.ContinueOnError)
+	fs.SetOutput(io.Discard) // suppress flag error output
+
+	// Test cases
+	testCases := []struct {
+		name            string
+		args            []string
+		expectedTimeout string
+		expectError     bool
+		errorSubstring  string
+	}{
+		{
+			name:            "Set 2 minute timeout",
+			args:            []string{"--timeout=2m"},
+			expectedTimeout: "2m0s",
+			expectError:     false,
+		},
+		{
+			name:            "Set 30 second timeout",
+			args:            []string{"--timeout", "30s"},
+			expectedTimeout: "30s",
+			expectError:     false,
+		},
+		{
+			name:            "Default timeout",
+			args:            []string{"--instructions=test.txt"},
+			expectedTimeout: "10m0s", // Default is 10 minutes
+			expectError:     false,
+		},
+		{
+			name:            "Invalid timeout",
+			args:            []string{"--timeout=invalid"},
+			expectedTimeout: "",
+			expectError:     true,
+			errorSubstring:  "invalid",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset flag set for each test case
+			fs := flag.NewFlagSet("test", flag.ContinueOnError)
+			fs.SetOutput(io.Discard)
+
+			// Parse with the test args
+			cfg, err := ParseFlagsWithEnv(fs, tc.args, func(string) string { return "mock-value" })
+
+			// Check error expectations
+			if (err != nil) != tc.expectError {
+				t.Errorf("Expected error: %v, got: %v", tc.expectError, err)
+			}
+
+			// If expecting an error, check error message
+			if tc.expectError && err != nil && tc.errorSubstring != "" {
+				if !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error containing '%s', got: %v", tc.errorSubstring, err)
+				}
+			}
+
+			// Check the parsed timeout
+			if !tc.expectError && cfg != nil {
+				if cfg.Timeout.String() != tc.expectedTimeout {
+					t.Errorf("Expected Timeout: %s, got: %s", tc.expectedTimeout, cfg.Timeout.String())
+				}
+			}
+		})
+	}
 }
 
 // TestParseFlags_SynthesisModel tests parsing of the synthesis-model flag

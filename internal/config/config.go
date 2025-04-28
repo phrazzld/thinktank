@@ -10,6 +10,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"os"
 	"strings"
+	"time"
 )
 
 // Configuration constants
@@ -26,6 +27,9 @@ const (
 	// Default rate limiting values
 	DefaultMaxConcurrentRequests      = 5  // Default maximum concurrent API requests
 	DefaultRateLimitRequestsPerMinute = 60 // Default requests per minute per model
+
+	// Default timeout value
+	DefaultTimeout = 10 * time.Minute // Default timeout for the entire operation
 
 	// Default excludes for file extensions
 	DefaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
@@ -121,6 +125,9 @@ type CliConfig struct {
 	// Rate limiting configuration
 	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
 	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
+
+	// Timeout configuration
+	Timeout time.Duration // Global timeout for the entire operation
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -136,6 +143,7 @@ func NewDefaultCliConfig() *CliConfig {
 		LogLevel:                   logutil.InfoLevel,
 		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
 		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
+		Timeout:                    DefaultTimeout,
 	}
 }
 

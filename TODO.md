@@ -197,7 +197,7 @@
     - Depends-on: T021
 
 ## Context Deadlines
-- [ ] **T024 · Feature · P2: add timeout CLI flag to main.go**
+- [x] **T024 · Feature · P2: add timeout CLI flag to main.go**
     - Context: cr-06 step 1
     - Action:
         1. Introduce `--timeout` flag with default `60s` in CLI setup.
