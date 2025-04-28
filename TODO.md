@@ -214,7 +214,7 @@
         1. External API calls receive a context with deadline.
     - Depends-on: T024
 
-- [ ] **T026 · Test · P2: add integration test for context deadline enforcement**
+- [x] **T026 · Test · P2: add integration test for context deadline enforcement**
     - Context: cr-06 step 4
     - Action:
         1. Simulate a hanging `SynthesisService` or `client.GenerateContent`.
