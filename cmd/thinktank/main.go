@@ -17,16 +17,17 @@ func Main() {
 	// As of Go 1.20, there's no need to seed the global random number generator
 	// The runtime now automatically seeds it with a random value
 
-	// Create a base context with correlation ID
-	ctx := context.Background()
-	ctx = logutil.WithCorrelationID(ctx)
-
-	// Parse command line flags
+	// Parse command line flags first to get the timeout value
 	config, err := ParseFlags()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
+
+	// Create a base context with timeout and correlation ID
+	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+	defer cancel() // Ensure resources are released when Main exits
+	ctx = logutil.WithCorrelationID(ctx)
 
 	// Setup logging early for error reporting with context
 	logger := SetupLogging(config)

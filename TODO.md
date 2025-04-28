@@ -205,7 +205,7 @@
         1. Flag recognized and parsed in `main`.
     - Depends-on: none
 
-- [ ] **T025 · Feature · P2: wrap root context with WithTimeout and propagate**
+- [x] **T025 · Feature · P2: wrap root context with WithTimeout and propagate**
     - Context: cr-06 steps 2–3
     - Action:
         1. Replace `context.Background()` with `context.WithTimeout` using the flag value.
