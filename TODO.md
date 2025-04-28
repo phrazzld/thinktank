@@ -266,7 +266,7 @@
         1. Code wraps errors and `errors.Is` can match sentinel values.
     - Depends-on: T030
 
-- [ ] **T032 · Refactor · P2: replace magic-string error assertions with errors.Is in tests**
+- [~] **T032 · Refactor · P2: replace magic-string error assertions with errors.Is in tests**
     - Context: cr-08 step 3
     - Action:
         1. Update tests to use `errors.Is`/`errors.As` instead of `strings.Contains(err.Error(), …)`.

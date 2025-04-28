@@ -124,8 +124,18 @@ func TestPartialFailureErrorHandling(t *testing.T) {
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
-				} else if !strings.Contains(err.Error(), tt.expectedErrorMsg) {
-					t.Errorf("Expected error containing %q, got %q", tt.expectedErrorMsg, err.Error())
+				} else {
+					// Check message content
+					if !strings.Contains(err.Error(), tt.expectedErrorMsg) {
+						t.Errorf("Expected error containing %q, got %q", tt.expectedErrorMsg, err.Error())
+					}
+
+					// Check sentinel error types
+					if tt.name == "All models fail" && !errors.Is(err, ErrAllProcessingFailed) {
+						t.Errorf("Expected error to be ErrAllProcessingFailed for failed models, got %T", err)
+					} else if tt.name != "All models fail" && !errors.Is(err, ErrPartialProcessingFailure) {
+						t.Errorf("Expected error to be ErrPartialProcessingFailure for partial failures, got %T", err)
+					}
 				}
 			} else {
 				if err != nil {
@@ -239,7 +249,7 @@ func (o *testOrchestratorErrorHandling) Run(ctx context.Context, instructions st
 	if len(modelErrors) > 0 {
 		// If ALL models failed (no outputs available), fail immediately
 		if len(modelOutputs) == 0 {
-			return errors.New("all models failed: " + aggregateErrorMessages(modelErrors))
+			return fmt.Errorf("%w: all models failed: %s", ErrAllProcessingFailed, aggregateErrorMessages(modelErrors))
 		}
 
 		// Otherwise, log errors but continue with available outputs
@@ -254,10 +264,10 @@ func (o *testOrchestratorErrorHandling) Run(ctx context.Context, instructions st
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
 
 		// Create a descriptive error to return after processing is complete
-		returnErr = errors.New(
-			"processed " +
-				formatCountsForTest(len(modelOutputs), len(o.config.ModelNames), len(modelErrors)) +
-				": " + aggregateErrorMessages(modelErrors))
+		returnErr = fmt.Errorf("%w: processed %s: %s",
+			ErrPartialProcessingFailure,
+			formatCountsForTest(len(modelOutputs), len(o.config.ModelNames), len(modelErrors)),
+			aggregateErrorMessages(modelErrors))
 	}
 
 	// Return any model errors if any

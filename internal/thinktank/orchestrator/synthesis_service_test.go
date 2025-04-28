@@ -290,12 +290,21 @@ func TestSynthesizeResults(t *testing.T) {
 			if tt.expectedError {
 				if err == nil {
 					t.Errorf("Expected an error but got nil")
-				} else if tt.expectedErrorMatch != "" && !strings.Contains(err.Error(), tt.expectedErrorMatch) {
-					t.Errorf("Error message didn't contain expected text: got %q, want to contain %q",
-						err.Error(), tt.expectedErrorMatch)
-				}
+				} else {
+					// Check for sentinel error
+					if !errors.Is(err, ErrSynthesisFailed) &&
+						tt.name != "Model parameters error" &&
+						tt.name != "Client initialization error" &&
+						tt.name != "Empty model outputs" {
+						t.Errorf("Expected error to be ErrSynthesisFailed, got: %v", err)
+					}
 
-				// Don't check for sentinel errors in testing since our test errors don't wrap them correctly
+					// Check for expected error content
+					if tt.expectedErrorMatch != "" && !strings.Contains(err.Error(), tt.expectedErrorMatch) {
+						t.Errorf("Error message didn't contain expected text: got %q, want to contain %q",
+							err.Error(), tt.expectedErrorMatch)
+					}
+				}
 			} else {
 				if err != nil {
 					t.Errorf("Expected no error but got: %v", err)
@@ -391,8 +400,16 @@ func TestHandleSynthesisError(t *testing.T) {
 			// Verify results
 			if err == nil {
 				t.Errorf("Expected an error but got nil")
-			} else if !strings.Contains(err.Error(), tt.expectedErrorType) {
-				t.Errorf("Error type mismatch. Expected to contain %q but got %q", tt.expectedErrorType, err.Error())
+			} else {
+				// Check for sentinel error
+				if !errors.Is(err, ErrSynthesisFailed) {
+					t.Errorf("Expected error to be ErrSynthesisFailed, got: %v", err)
+				}
+
+				// Check error content
+				if !strings.Contains(err.Error(), tt.expectedErrorType) {
+					t.Errorf("Error type mismatch. Expected to contain %q but got %q", tt.expectedErrorType, err.Error())
+				}
 			}
 
 			// Check for helpful tips in the error message

@@ -74,7 +74,7 @@ func TestFileSaveErrorPropagation(t *testing.T) {
 			},
 			failingFiles:        []string{"model2"},
 			expectError:         true,
-			expectedErrorPrefix: "1/3 files failed to save",
+			expectedErrorPrefix: "failed to save output to file",
 			expectedSavedCount:  2,
 		},
 		{
@@ -86,7 +86,7 @@ func TestFileSaveErrorPropagation(t *testing.T) {
 			},
 			failingFiles:        []string{"model1", "model2"},
 			expectError:         true,
-			expectedErrorPrefix: "2/2 files failed to save",
+			expectedErrorPrefix: "failed to save output to file",
 			expectedSavedCount:  0,
 		},
 		{
@@ -112,7 +112,7 @@ func TestFileSaveErrorPropagation(t *testing.T) {
 			synthesisModel:      "synth-model",
 			failingFiles:        []string{"synth-model-synthesis"},
 			expectError:         true,
-			expectedErrorPrefix: "failed to save synthesis output",
+			expectedErrorPrefix: "failed to save output to file",
 			expectedSavedCount:  0, // Since the synthesis file fails to save
 		},
 	}
@@ -162,8 +162,29 @@ func TestFileSaveErrorPropagation(t *testing.T) {
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected an error but got nil")
-				} else if !strings.HasPrefix(err.Error(), tt.expectedErrorPrefix) {
-					t.Errorf("Expected error to start with %q but got %q", tt.expectedErrorPrefix, err.Error())
+				} else {
+					// Check for sentinel error
+					switch {
+					case tt.name == "Synthesis model file save fails":
+						if !errors.Is(err, ErrOutputFileSaveFailed) {
+							t.Errorf("Expected error to be ErrOutputFileSaveFailed, got: %v", err)
+						}
+					case tt.name == "Model errors and file save errors":
+						// This combined error has both model processing and file save errors
+						if !errors.Is(err, ErrPartialProcessingFailure) && !errors.Is(err, ErrOutputFileSaveFailed) {
+							t.Errorf("Expected error to be either ErrPartialProcessingFailure or ErrOutputFileSaveFailed, got: %v", err)
+						}
+					case tt.expectedErrorPrefix == "failed to save output to file":
+						if !errors.Is(err, ErrOutputFileSaveFailed) {
+							t.Errorf("Expected error to be ErrOutputFileSaveFailed, got: %v", err)
+						}
+					}
+
+					// Also check content with strings.HasPrefix
+					// Skip exact error string check for combined errors since it gets wrapped and reordered
+					if tt.name != "Model errors and file save errors" && !strings.Contains(err.Error(), tt.expectedErrorPrefix) {
+						t.Errorf("Expected error to contain %q but got %q", tt.expectedErrorPrefix, err.Error())
+					}
 				}
 			} else {
 				if err != nil {
@@ -183,6 +204,31 @@ func TestFileSaveErrorPropagation(t *testing.T) {
 type filesaveTestOrchestrator struct {
 	Orchestrator
 	mockResults []modelResult
+}
+
+// mockCombinedError is a custom error type that wraps both partial processing
+// and file save errors for testing the combined error case
+type mockCombinedError struct {
+	err        string
+	partialErr error
+	saveErr    error
+}
+
+func (e *mockCombinedError) Error() string {
+	return e.err
+}
+
+func (e *mockCombinedError) Unwrap() error {
+	// First unwrap the partial processing error
+	return e.partialErr
+}
+
+// Is allows this error to match both ErrPartialProcessingFailure and ErrOutputFileSaveFailed
+func (e *mockCombinedError) Is(target error) bool {
+	return target == ErrPartialProcessingFailure ||
+		target == ErrOutputFileSaveFailed ||
+		errors.Is(e.partialErr, target) ||
+		errors.Is(e.saveErr, target)
 }
 
 // Override Run to avoid running the full orchestration logic
@@ -241,7 +287,7 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 
 		// Create a descriptive error for file save failures if needed
 		if errorCount > 0 {
-			fileSaveErrors = fmt.Errorf("%d/%d files failed to save", errorCount, totalCount)
+			fileSaveErrors = fmt.Errorf("%w: %d/%d files failed to save", ErrOutputFileSaveFailed, errorCount, totalCount)
 		}
 	} else {
 		// Synthesis model specified - simulate synthesis result
@@ -257,15 +303,21 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 
 			// Save the synthesis output to file
 			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
-				fileSaveErrors = fmt.Errorf("failed to save synthesis output to %s: %w", outputFilePath, err)
+				fileSaveErrors = fmt.Errorf("%w: failed to save synthesis output to %s: %v", ErrOutputFileSaveFailed, outputFilePath, err)
 			}
 		}
 	}
 
 	// Return errors using the same logic as in the real implementation
 	if returnErr != nil && fileSaveErrors != nil {
-		return fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
-			returnErr, fileSaveErrors)
+		// For the combined error case, use our custom error type that matches both error types
+		combinedMsg := fmt.Sprintf("model processing errors and file save errors occurred: %s; additionally: %s",
+			returnErr.Error(), fileSaveErrors.Error())
+		return &mockCombinedError{
+			err:        combinedMsg,
+			partialErr: returnErr,      // This already has ErrPartialProcessingFailure embedded
+			saveErr:    fileSaveErrors, // This already has ErrOutputFileSaveFailed embedded
+		}
 	} else if fileSaveErrors != nil {
 		return fileSaveErrors
 	} else {

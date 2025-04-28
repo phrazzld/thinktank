@@ -6,7 +6,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 
@@ -288,8 +287,8 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	// But still processes the synthesis with successful outputs
 	if err == nil {
 		t.Errorf("Expected Orchestrator.Run to return an error detailing partial failures")
-	} else if !strings.Contains(err.Error(), "processed") || !strings.Contains(err.Error(), "models successfully") {
-		t.Errorf("Expected error to contain information about successful models, but got: %v", err)
+	} else if !errors.Is(err, orchestrator.ErrPartialProcessingFailure) {
+		t.Errorf("Expected error to be ErrPartialProcessingFailure, but got: %v", err)
 	} else {
 		t.Logf("Orchestrator correctly returned partial failure error: %v", err)
 	}
