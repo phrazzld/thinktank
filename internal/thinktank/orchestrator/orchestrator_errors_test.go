@@ -89,9 +89,21 @@ func TestAggregateErrors(t *testing.T) {
 			}
 
 			if tt.expectError {
-				if result.Error() != tt.expectedError {
-					t.Errorf("Error message mismatch\nExpected: %q\nActual:   %q",
+				// Check for sentinel errors and wrapped message content
+				if !strings.Contains(result.Error(), tt.expectedError) {
+					t.Errorf("Error message mismatch\nExpected to contain: %q\nActual: %q",
 						tt.expectedError, result.Error())
+				}
+
+				// Verify that appropriate sentinel error is used
+				if len(tt.errs) > 0 && tt.successCount == 0 {
+					if !errors.Is(result, ErrAllProcessingFailed) {
+						t.Errorf("Expected ErrAllProcessingFailed sentinel error, got: %v", result)
+					}
+				} else if len(tt.errs) > 0 {
+					if !errors.Is(result, ErrPartialProcessingFailure) {
+						t.Errorf("Expected ErrPartialProcessingFailure sentinel error, got: %v", result)
+					}
 				}
 			}
 		})
@@ -191,9 +203,14 @@ func TestAggregateErrorsWrappedErrors(t *testing.T) {
 	)
 
 	expected := "processed 1/3 models successfully; 2 failed: model1 failed: base error; model2 failed: internal error"
-	if result.Error() != expected {
-		t.Errorf("Wrapped errors not handled correctly\nExpected: %q\nActual:   %q",
+	if !strings.Contains(result.Error(), expected) {
+		t.Errorf("Wrapped errors not handled correctly\nExpected to contain: %q\nActual: %q",
 			expected, result.Error())
+	}
+
+	// Check for sentinel error
+	if !errors.Is(result, ErrPartialProcessingFailure) {
+		t.Errorf("Expected ErrPartialProcessingFailure sentinel error, got: %v", result)
 	}
 
 	// Test that errors.Is works with the result

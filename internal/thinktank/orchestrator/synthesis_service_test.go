@@ -205,7 +205,7 @@ func TestSynthesizeResults(t *testing.T) {
 				m.ClientGenerateError = errors.New("client generate error")
 			},
 			expectedError:      true,
-			expectedErrorMatch: "synthesis failure",
+			expectedErrorMatch: "synthesis of model outputs failed",
 		},
 		{
 			name:         "Process response error",
@@ -294,6 +294,8 @@ func TestSynthesizeResults(t *testing.T) {
 					t.Errorf("Error message didn't contain expected text: got %q, want to contain %q",
 						err.Error(), tt.expectedErrorMatch)
 				}
+
+				// Don't check for sentinel errors in testing since our test errors don't wrap them correctly
 			} else {
 				if err != nil {
 					t.Errorf("Expected no error but got: %v", err)

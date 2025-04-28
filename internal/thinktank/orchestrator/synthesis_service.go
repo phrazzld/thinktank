@@ -6,7 +6,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -130,7 +129,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Failed to get parameters for synthesis model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", err)
+		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", fmt.Errorf("%w: %v", ErrInvalidSynthesisModel, err))
 	}
 
 	// Log successful parameter retrieval
@@ -166,7 +165,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Failed to initialize client for synthesis model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to initialize synthesis model client: %w", err)
+		return "", fmt.Errorf("failed to initialize synthesis model client: %w", fmt.Errorf("%w: %v", ErrInvalidSynthesisModel, err))
 	}
 
 	// Log successful client initialization
@@ -323,7 +322,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Synthesis process failed with model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to process synthesis model response: %w", err)
+		return "", fmt.Errorf("failed to process synthesis model response: %w", fmt.Errorf("%w: %v", ErrSynthesisFailed, err))
 	}
 
 	// Log successful response processing
@@ -430,7 +429,7 @@ func (s *DefaultSynthesisService) handleSynthesisError(ctx context.Context, err 
 
 	// Return a new error with the formatted message
 	// Use errors package for consistency with other error handling in this file
-	return errors.New("synthesis failure: " + errMsg)
+	return fmt.Errorf("%w: %s", ErrSynthesisFailed, errMsg)
 }
 
 // logAuditEvent writes an audit log entry and logs any errors that occur.

@@ -258,7 +258,7 @@
         1. Sentinel error variables compile and are documented.
     - Depends-on: none
 
-- [ ] **T031 · Refactor · P2: wrap error cases with %w for sentinel propagation**
+- [x] **T031 · Refactor · P2: wrap error cases with %w for sentinel propagation**
     - Context: cr-08 step 2
     - Action:
         1. Update return statements to use `fmt.Errorf("%w")` wrapping sentinel errors.

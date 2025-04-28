@@ -81,7 +81,7 @@ func Execute(
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("failed to read instructions file %s: %w", cliConfig.InstructionsFile, err)
+		return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 	}
 	instructions := string(instructionsContent)
 	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
@@ -130,22 +130,22 @@ func Execute(
 			// Use error category to give more specific error messages
 			switch category {
 			case llm.CategoryAuth:
-				return fmt.Errorf("API authentication failed for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
 			case llm.CategoryRateLimit:
-				return fmt.Errorf("API rate limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			case llm.CategoryNotFound:
-				return fmt.Errorf("model %s not found or not available: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			case llm.CategoryInputLimit:
-				return fmt.Errorf("input token limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
 			case llm.CategoryContentFiltered:
-				return fmt.Errorf("content was filtered by safety settings: %w", err)
+				return fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
 			default:
-				return fmt.Errorf("failed to initialize reference client for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			}
 		} else {
 			// If not a categorized error, use the standard error handling
 			logger.Error("Failed to initialize reference client for context gathering: %v", err)
-			return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+			return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 		}
 	}
 	defer func() { _ = referenceClientLLM.Close() }()
@@ -297,7 +297,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 		cwd, err := os.Getwd()
 		if err != nil {
 			logger.Error("Error getting current working directory: %v", err)
-			return fmt.Errorf("error getting current working directory: %w", err)
+			return fmt.Errorf("%w: error getting current working directory: %v", ErrContextGatheringFailed, err)
 		}
 
 		// Set the output directory to the run name in the current working directory
@@ -308,7 +308,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 	// Ensure the output directory exists
 	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
 		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
-		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
+		return fmt.Errorf("%w: error creating output directory %s: %v", ErrInvalidOutputDir, cliConfig.OutputDir, err)
 	}
 
 	logger.Info("Using output directory: %s", cliConfig.OutputDir)

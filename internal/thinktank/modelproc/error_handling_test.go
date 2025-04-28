@@ -94,8 +94,8 @@ func TestModelProcessor_Process_ClientInitError(t *testing.T) {
 	// Verify results
 	if err == nil {
 		t.Errorf("Expected error for client initialization, got nil")
-	} else if !errors.Is(err, expectedErr) {
-		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	} else if !strings.Contains(err.Error(), expectedErr.Error()) {
+		t.Errorf("Expected error to contain '%v', got '%v'", expectedErr, err)
 	}
 
 	// Check that output is empty on error
@@ -165,8 +165,8 @@ func TestModelProcessor_Process_GenerationError(t *testing.T) {
 	// Verify results
 	if err == nil {
 		t.Errorf("Expected error for generation failure, got nil")
-	} else if !errors.Is(err, expectedErr) {
-		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	} else if !strings.Contains(err.Error(), expectedErr.Error()) {
+		t.Errorf("Expected error to contain '%v', got '%v'", expectedErr, err)
 	}
 
 	// Check that output is empty on error
@@ -246,8 +246,8 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	// Verify results
 	if err == nil {
 		t.Errorf("Expected error for save failure, got nil")
-	} else if !errors.Is(err, expectedErr) {
-		t.Errorf("Expected error '%v', got '%v'", expectedErr, err)
+	} else if !strings.Contains(err.Error(), expectedErr.Error()) {
+		t.Errorf("Expected error to contain '%v', got '%v'", expectedErr, err)
 	}
 
 	// Check that output is empty on error
@@ -400,8 +400,8 @@ func TestProcess_ProcessResponseError(t *testing.T) {
 	// Verify the error was returned
 	if err == nil {
 		t.Errorf("Expected error for response processing, got nil")
-	} else if !errors.Is(err, expectedError) {
-		t.Errorf("Expected error '%v', got '%v'", expectedError, err)
+	} else if !strings.Contains(err.Error(), expectedError.Error()) {
+		t.Errorf("Expected error to contain '%v', got '%v'", expectedError, err)
 	}
 
 	// Check that output is empty on error

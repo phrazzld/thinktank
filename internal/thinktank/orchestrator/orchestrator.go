@@ -138,7 +138,7 @@ func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.Fil
 
 	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
+		return nil, nil, fmt.Errorf("failed during project context gathering: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
 	}
 
 	return contextFiles, contextStats, nil
@@ -239,7 +239,7 @@ func (o *Orchestrator) handleDryRun(ctx context.Context, stats *interfaces.Conte
 	err := o.contextGatherer.DisplayDryRunInfo(ctx, stats)
 	if err != nil {
 		o.logger.Error("Error displaying dry run information: %v", err)
-		return fmt.Errorf("error displaying dry run information: %w", err)
+		return fmt.Errorf("error displaying dry run information: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
 	}
 	return nil
 }
@@ -496,12 +496,12 @@ func (o *Orchestrator) aggregateErrors(errs []error, totalCount, successCount in
 	// If all operations failed (no successes)
 	if successCount == 0 {
 		errorMsg := fmt.Sprintf("all models failed: %v", aggregateErrorMessages(errs))
-		return errors.New(errorMsg)
+		return fmt.Errorf("%w: %s", ErrAllProcessingFailed, errorMsg)
 	}
 
 	// Some operations succeeded but others failed
-	return fmt.Errorf("processed %d/%d models successfully; %d failed: %v",
-		successCount, totalCount, len(errs),
+	return fmt.Errorf("%w: processed %d/%d models successfully; %d failed: %v",
+		ErrPartialProcessingFailure, successCount, totalCount, len(errs),
 		aggregateErrorMessages(errs))
 }
 
@@ -518,7 +518,7 @@ func (o *Orchestrator) setupContext(ctx context.Context) (context.Context, logut
 
 	// Validate that models are specified
 	if len(o.config.ModelNames) == 0 {
-		return ctx, contextLogger, errors.New("no model names specified, at least one model is required")
+		return ctx, contextLogger, fmt.Errorf("%w: at least one model is required", ErrNoValidModels)
 	}
 
 	// Log the start of processing
