@@ -13,7 +13,6 @@ import (
 
 // TestInvalidSynthesisModelRefactored tests that validation correctly rejects an invalid synthesis model
 func TestInvalidSynthesisModelRefactored(t *testing.T) {
-	t.Skip("Temporarily skipping test due to filesystem mocking issues")
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Set up test parameters
 		instructions := "Test instructions for synthesis"
@@ -30,18 +29,29 @@ func TestInvalidSynthesisModelRefactored(t *testing.T) {
 			"model2": "# Output from Model 2\n\nThis is test output from model2.",
 		}
 
-		// Configure the mock API caller to fail when the invalid synthesis model is used
+		// Setup the test environment first
+		SetupStandardTestEnvironment(t, env, instructions, modelNames, invalidSynthesisModel, mockOutputs)
+
+		// Then configure the mock API caller to fail when the invalid synthesis model is used
+		// This order is important because SetupStandardTestEnvironment also configures the API caller
 		mockAPICaller := env.APICaller.(*MockExternalAPICaller)
-		originalCallFunc := mockAPICaller.CallLLMAPIFunc
 		mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+			// The synthesis model should fail, but regular models should work
 			if modelName == invalidSynthesisModel {
 				return nil, fmt.Errorf("model '%s' not found or not supported", modelName)
 			}
-			return originalCallFunc(ctx, modelName, prompt, params)
-		}
 
-		// Setup the test environment
-		SetupStandardTestEnvironment(t, env, instructions, modelNames, invalidSynthesisModel, mockOutputs)
+			// For regular models, return their expected output
+			if content, ok := mockOutputs[modelName]; ok {
+				return &llm.ProviderResult{
+					Content:      content,
+					FinishReason: "stop",
+				}, nil
+			}
+
+			// Fallback for unknown models
+			return nil, fmt.Errorf("unexpected model: %s", modelName)
+		}
 
 		// Run the orchestrator, expecting failure due to invalid synthesis model
 		ctx := context.Background()

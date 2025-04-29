@@ -13,7 +13,6 @@ import (
 // TestSynthesisFlowRefactored tests the complete flow with synthesis model specified
 // This test verifies that a single synthesis output file is created
 func TestSynthesisFlowRefactored(t *testing.T) {
-	t.Skip("Temporarily skipping test due to filesystem mocking issues")
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Set up test parameters
 		instructions := "Test instructions for synthesis"
@@ -55,7 +54,6 @@ func TestSynthesisFlowRefactored(t *testing.T) {
 
 // TestSynthesisWithPartialFailureRefactored tests synthesis flow with some models failing
 func TestSynthesisWithPartialFailureRefactored(t *testing.T) {
-	t.Skip("Temporarily skipping test due to filesystem mocking issues")
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Set up test parameters
 		instructions := "Test instructions for synthesis with partial failure"

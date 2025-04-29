@@ -72,6 +72,9 @@ func NewBoundaryTestEnv(t testing.TB) *BoundaryTestEnv {
 	outputDir := filepath.Join(tempDir, "output")
 
 	// Set up mock filesystem
+	// For logging purposes, print what filesystem implementation we're using
+	fmt.Printf("Using %T filesystem implementation\n", filesystem)
+
 	if err := filesystem.MkdirAll(tempDir, 0750); err != nil {
 		panic(fmt.Sprintf("Failed to create temp directory: %v", err))
 	}
@@ -163,7 +166,9 @@ func (env *BoundaryTestEnv) SetupModelResponse(modelName, response string) {
 
 // SetupInstructionsFile creates a mock instructions file
 func (env *BoundaryTestEnv) SetupInstructionsFile(content string) string {
-	instructionsPath := filepath.Join(env.Config.OutputDir, "instructions.md")
+	// Create it in the parent directory, not in the output directory
+	// Instructions file should be separate from output files
+	instructionsPath := filepath.Join(filepath.Dir(env.Config.OutputDir), "instructions.md")
 	err := env.Filesystem.WriteFile(instructionsPath, []byte(content), 0640)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to write instructions file: %v", err))
@@ -172,8 +177,27 @@ func (env *BoundaryTestEnv) SetupInstructionsFile(content string) string {
 	// Verify file was created in filesystem mock
 	env.FileContents[instructionsPath] = []byte(content)
 
-	// Set in config
+	// Also create it on the real filesystem for debugging
+	dirPath := filepath.Dir(instructionsPath)
+	if err := os.MkdirAll(dirPath, 0750); err != nil {
+		fmt.Printf("Warning: Failed to create real directory %s: %v\n", dirPath, err)
+	}
+	if err := os.WriteFile(instructionsPath, []byte(content), 0640); err != nil {
+		fmt.Printf("Warning: Failed to write real file %s: %v\n", instructionsPath, err)
+	}
+
+	// Set in config and log for debugging
 	env.Config.InstructionsFile = instructionsPath
+	fmt.Printf("Set instructions file to %s\n", instructionsPath)
+
+	// Verify the file exists in the filesystem
+	exists, err := env.Filesystem.Stat(instructionsPath)
+	if !exists {
+		fmt.Printf("Warning: After writing, file %s doesn't exist: %v\n", instructionsPath, err)
+	} else {
+		fmt.Printf("Successfully verified file %s exists\n", instructionsPath)
+	}
+
 	return instructionsPath
 }
 

@@ -10,7 +10,6 @@ import (
 // TestNoSynthesisFlowRefactored tests the complete flow without synthesis model specified
 // This test verifies that multiple output files are created, one for each model
 func TestNoSynthesisFlowRefactored(t *testing.T) {
-	t.Skip("Temporarily skipping test due to filesystem mocking issues")
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Set up test parameters
 		instructions := "Test instructions for multiple models"
