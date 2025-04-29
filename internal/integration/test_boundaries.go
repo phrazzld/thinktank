@@ -4,6 +4,7 @@ package integration
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -76,6 +77,9 @@ type MockFilesystemIO struct {
 
 	// CreatedDirs tracks directories that have been created
 	CreatedDirs map[string]bool
+
+	// mutex for thread-safe access to maps
+	mutex sync.Mutex
 }
 
 // NewMockFilesystemIO creates a new MockFilesystemIO with default implementations
@@ -166,26 +170,36 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 
 // ReadFile implements the FilesystemIO interface
 func (m *MockFilesystemIO) ReadFile(path string) ([]byte, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	return m.ReadFileFunc(path)
 }
 
 // WriteFile implements the FilesystemIO interface
 func (m *MockFilesystemIO) WriteFile(path string, data []byte, perm int) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	return m.WriteFileFunc(path, data, perm)
 }
 
 // MkdirAll implements the FilesystemIO interface
 func (m *MockFilesystemIO) MkdirAll(path string, perm int) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	return m.MkdirAllFunc(path, perm)
 }
 
 // RemoveAll implements the FilesystemIO interface
 func (m *MockFilesystemIO) RemoveAll(path string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	return m.RemoveAllFunc(path)
 }
 
 // Stat implements the FilesystemIO interface
 func (m *MockFilesystemIO) Stat(path string) (bool, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 	return m.StatFunc(path)
 }
 
