@@ -1,4 +1,10 @@
 repos:
+-   repo: https://github.com/phrazzld/ward
+    rev: v0.1.0
+    hooks:
+    -   id: ward-check
+    -   id: ward-log
+
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0  # Use the latest stable version
     hooks:

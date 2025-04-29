@@ -71,5 +71,8 @@ DEBUG-*.md
 *_instructions.txt
 test_output_*.md
 
+# Ward log files
+.ward-warnings.log
+
 # Development symlinks
 docs/prompts
