@@ -36,6 +36,7 @@ When you make a commit:
    - **WARN**: Minor issues were found (commit proceeds with warnings)
    - **FAIL**: Major issues were found (commit is blocked)
 4. Detailed, actionable feedback is displayed for any issues
+5. Warnings and failures are logged to `.claude-warnings.log` with commit information
 
 ### Dependencies
 
@@ -118,6 +119,40 @@ The post-commit hook requires:
    - Configured through `.pre-commit-config.yaml`
 
 The `scripts/setup.sh` script attempts to detect and install these dependencies if needed.
+
+## Warning/Failure Logging
+
+The Claude AI code review hook now logs all warnings and failures to a `.claude-warnings.log` file in the project root. Each entry includes:
+
+- Timestamp
+- Status (WARN or FAIL)
+- Commit hash
+- Branch name
+- Commit message (first line)
+- Correlation ID (for tracking and cross-referencing)
+- Detailed feedback from Claude
+
+To analyze the logs, use the provided script:
+
+```bash
+# Show available options
+./scripts/analyze-claude-warnings.sh --help
+
+# List all entries
+./scripts/analyze-claude-warnings.sh --list
+
+# Show details for a specific commit
+./scripts/analyze-claude-warnings.sh -c <commit-hash>
+
+# Filter by status
+./scripts/analyze-claude-warnings.sh -s WARN
+
+# Filter by branch
+./scripts/analyze-claude-warnings.sh -b feature/branch-name
+
+# Show summary statistics
+./scripts/analyze-claude-warnings.sh --summary
+```
 
 ## Installation
 

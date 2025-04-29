@@ -46,6 +46,13 @@ repos:
         language: script
         pass_filenames: false
         verbose: true
+    -   id: claude-post-commit
+        name: Update Claude warning logs with actual commit hash
+        entry: .pre-commit-hooks/claude_post_commit.sh
+        language: script
+        stages: [post-commit]  # Run after commit is completed
+        pass_filenames: false  # Run once per commit, not per file
+        always_run: true
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh
