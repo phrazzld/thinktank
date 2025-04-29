@@ -11,6 +11,41 @@ We use the [pre-commit](https://pre-commit.com/) framework for managing pre-comm
 3. **Build verification**: Ensures the code builds without errors
 4. **Quick tests**: Runs a subset of unit tests with the `-short` flag, excluding the orchestrator package which has tests that may fail in the pre-commit environment
 5. **Large file detection**: Warns about Go files exceeding 1000 lines, encouraging refactoring
+6. **Claude AI code review**: Uses Claude to analyze the commit for adherence to our development philosophy
+
+## Claude AI Code Review
+
+The Claude AI code review hook analyzes your changes before each commit to ensure they adhere to our development philosophy and coding standards.
+
+### Purpose and Functionality
+
+The Claude hook:
+- Examines the diff of staged changes
+- Evaluates the commit message against Conventional Commits specification
+- Checks code against our development philosophy principles
+- Provides feedback on maintainability, testability, and Go best practices
+- Can block commits with significant issues or provide warnings for minor issues
+
+### How It Works
+
+When you make a commit:
+1. The hook extracts the staged diff and commit message
+2. It sends them to Claude with our development philosophy context
+3. Claude analyzes the changes and responds with one of:
+   - **PASS**: Everything looks good
+   - **WARN**: Minor issues were found (commit proceeds with warnings)
+   - **FAIL**: Major issues were found (commit is blocked)
+4. Detailed, actionable feedback is displayed for any issues
+
+### Dependencies
+
+The Claude AI hook requires:
+- **Claude CLI**: Must be installed and configured
+- **Git**: For accessing diff and commit information
+
+### Customizing
+
+The prompt used by Claude is defined in the `.pre-commit-hooks/claude_sanity_check.sh` script and can be modified to adjust the strictness or focus of the review.
 
 ## Post-commit Hook
 
@@ -140,10 +175,17 @@ git commit --no-verify -m "Your message"
 
 ### Selective Skip
 
-To skip only specific hooks (like the post-commit glance hook) while running others:
+To skip only specific hooks while running others:
 
 ```bash
+# Skip the post-commit glance hook
 SKIP=run-glance git commit -m "Your message"
+
+# Skip the Claude AI code review
+SKIP=claude-sanity-check git commit -m "Your message"
+
+# Skip multiple hooks
+SKIP=run-glance,claude-sanity-check git commit -m "Your message"
 ```
 
 ## Customizing and Maintaining
@@ -188,17 +230,29 @@ If you encounter issues with the hooks:
 #### Common Problems
 
 1. **"Command not found" errors**:
-   - **Symptom**: Error message like `glance: command not found` in hook output
+   - **Symptom**: Error message like `glance: command not found` or `claude: command not found` in hook output
    - **Causes**:
-     - Glance is not installed
-     - Glance is installed but not in PATH
+     - Required tool is not installed
+     - Tool is installed but not in PATH
      - Shell environment in hook differs from your interactive shell
    - **Solutions**:
-     - Install glance: `go install github.com/phaedrus-dev/glance@latest`
-     - Add Go bin directory to PATH: `export PATH=$PATH:$(go env GOPATH)/bin`
-     - Edit `.pre-commit-hooks/run_glance.sh` to use absolute path if needed
+     - For glance: `go install github.com/phaedrus-dev/glance@latest`
+     - For Claude CLI: Follow installation instructions at https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/getting-started
+     - Add required tools to PATH: `export PATH=$PATH:$(go env GOPATH)/bin`
+     - Edit hook scripts to use absolute paths if needed
 
-2. **"No hook with id 'run-glance' in stage 'post-commit'"**:
+2. **Claude hook issues**:
+   - **Symptom**: Claude hook fails or provides unexpected feedback
+   - **Causes**:
+     - Claude CLI not properly authenticated
+     - API rate limits exceeded
+     - Large diffs exceeding context limits
+   - **Solutions**:
+     - Verify Claude CLI works outside of hooks: `claude -p "hello"`
+     - Split very large commits into smaller ones
+     - Temporarily skip the hook if needed: `SKIP=claude-sanity-check git commit ...`
+
+3. **"No hook with id 'run-glance' in stage 'post-commit'"**:
    - **Symptom**: Hook doesn't run after commit, no glance.md files generated
    - **Causes**:
      - Hook not properly registered
@@ -220,25 +274,39 @@ If you encounter issues with the hooks:
 
 #### Diagnostic Steps
 
-1. **Verify glance installation**:
+1. **Verify tool installations**:
    ```bash
+   # Check glance
    which glance  # Should show path to glance
    glance --version  # Should show version information
+
+   # Check Claude CLI
+   which claude  # Should show path to claude
+   claude -p "hello"  # Should return a response from Claude
    ```
 
-2. **Check post-commit hook installation**:
+2. **Check hook installations**:
    ```bash
+   # Check pre-commit hooks
+   ls -la .git/hooks/pre-commit  # Should exist and be executable
+   cat .git/hooks/pre-commit  # Should include pre-commit framework code
+
+   # Check post-commit hooks
    ls -la .git/hooks/post-commit  # Should exist and be executable
    cat .git/hooks/post-commit  # Should include pre-commit framework code
    ```
 
-3. **Manually test the hook script**:
+3. **Manually test the hook scripts**:
    ```bash
-   # Test with bash directly
+   # Test glance script
    bash .pre-commit-hooks/run_glance.sh
+
+   # Test Claude script (note: this won't have actual diff/commit message during manual testing)
+   bash .pre-commit-hooks/claude_sanity_check.sh
 
    # Or run through pre-commit framework with verbose output
    PRE_COMMIT_COLOR=never pre-commit run run-glance --hook-stage post-commit -v
+   PRE_COMMIT_COLOR=never pre-commit run claude-sanity-check -v
    ```
 
 4. **Check PATH configuration**:

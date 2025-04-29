@@ -40,6 +40,12 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: claude-sanity-check
+        name: Claude AI code review
+        entry: .pre-commit-hooks/claude_sanity_check.sh
+        language: script
+        pass_filenames: false
+        verbose: true
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh
