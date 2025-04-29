@@ -12,6 +12,12 @@ handle_error() {
 # Set up trap to catch errors
 trap 'handle_error $LINENO' ERR
 
+# Skip in CI environments
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$TRAVIS" ] || [ -n "$GITLAB_CI" ] || [ -n "$JENKINS_URL" ]; then
+  echo "Skipping Claude post-commit hook in CI environment"
+  exit 0
+fi
+
 # Check if we have a temporary file with the last Claude check
 if [ -f "./.git/claude_last_check" ]; then
   if ! PLACEHOLDER_HASH=$(cat "./.git/claude_last_check" 2>/dev/null); then

@@ -44,6 +44,14 @@ The Claude AI hook requires:
 - **Claude CLI**: Must be installed and configured
 - **Git**: For accessing diff and commit information
 
+### CI Integration
+
+The Claude AI code review hook and post-commit hook are designed to run only in local environments and will automatically skip execution in CI environments like GitHub Actions. This is because:
+
+1. CI environments typically don't have access to the Claude API
+2. The hooks rely on interactive git commit states and files
+3. The focus is on improving developer workflow locally
+
 ### Customizing
 
 The prompt used by Claude is defined in the `.pre-commit-hooks/claude_sanity_check.sh` script and can be modified to adjust the strictness or focus of the review.
@@ -122,7 +130,9 @@ The `scripts/setup.sh` script attempts to detect and install these dependencies 
 
 ## Warning/Failure Logging
 
-The Claude AI code review hook now logs all warnings and failures to a `.claude-warnings.log` file in the project root. Each entry includes:
+The Claude AI code review hook now logs all warnings and failures to a `.claude-warnings.log` file in the project root. This log file is intended for local development only and should not be committed to the repository (it's added to `.gitignore`).
+
+Each log entry includes:
 
 - Timestamp
 - Status (WARN or FAIL)

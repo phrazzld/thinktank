@@ -13,6 +13,12 @@ handle_error() {
 # Set up trap to catch errors
 trap 'handle_error $LINENO' ERR
 
+# Skip in CI environments
+if [ -n "$CI" ] || [ -n "$GITHUB_ACTIONS" ] || [ -n "$TRAVIS" ] || [ -n "$GITLAB_CI" ] || [ -n "$JENKINS_URL" ]; then
+  echo "Skipping Claude sanity check in CI environment"
+  exit 0
+fi
+
 echo "Running Claude sanity check on commit changes..."
 
 # Get the commit message from the staged commit with error handling
