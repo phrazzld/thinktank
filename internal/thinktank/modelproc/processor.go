@@ -83,7 +83,13 @@ func NewProcessor(
 // Process handles the entire model processing workflow for a single model.
 // It implements the logic from the previous processModel/processModelConcurrently functions,
 // including initialization, token checking, generation, response processing, and output saving.
-func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) error {
+// When used with the synthesis feature, this method also returns the generated content as a string,
+// allowing the orchestrator to collect outputs from multiple models for synthesis.
+//
+// Returns:
+//   - The generated content as a string, which can be used for synthesis
+//   - Any error encountered during processing
+func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) (string, error) {
 	p.logger.Info("Processing model: %s", modelName)
 
 	// 1. Initialize model-specific LLM client
@@ -92,7 +98,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		// Use the APIService interface for consistent error detail extraction
 		errorDetails := p.apiService.GetErrorDetails(err)
 		p.logger.Error("Error creating LLM client for model %s: %s", modelName, errorDetails)
-		return fmt.Errorf("failed to initialize API client for model %s: %w", modelName, err)
+		return "", fmt.Errorf("%w: failed to initialize API client for model %s: %v", ErrModelInitializationFailed, modelName, err)
 	}
 
 	// BUGFIX: Ensure llmClient is not nil before attempting to close it
@@ -113,16 +119,11 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
-	if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: generateStartTime,
-		Operation: "GenerateContentStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"model_name":    modelName,
-			"prompt_length": len(stitchedPrompt),
-		},
-		Message: "Starting content generation with model " + modelName,
-	}); logErr != nil {
+	inputs := map[string]interface{}{
+		"model_name":    modelName,
+		"prompt_length": len(stitchedPrompt),
+	}
+	if logErr := p.auditLogger.LogOp("GenerateContent", "InProgress", inputs, nil, nil); logErr != nil {
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -155,80 +156,24 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		errorDetails := p.apiService.GetErrorDetails(err)
 		p.logger.Error("Error generating content with model %s: %s", modelName, errorDetails)
 
-		errorType := "ContentGenerationError"
-		errorMessage := fmt.Sprintf("Failed to generate content with model %s: %v", modelName, err)
-
-		// Check if it's a safety-blocked error
-		if p.apiService.IsSafetyBlockedError(err) {
-			errorType = "SafetyBlockedError"
-		} else {
-			// Use the new error categorization if available
-			if catErr, isCat := llm.IsCategorizedError(err); isCat {
-				// Get more specific error category information
-				switch catErr.Category() {
-				case llm.CategoryRateLimit:
-					errorType = "RateLimitError"
-					p.logger.Error("Rate limit or quota exceeded. Consider adjusting --max-concurrent and --rate-limit flags.")
-				case llm.CategoryAuth:
-					errorType = "AuthenticationError"
-					p.logger.Error("Authentication failed. Check that your API key is valid and has not expired.")
-				case llm.CategoryInputLimit:
-					errorType = "InputLimitError"
-					p.logger.Error("Input token limit exceeded. Try reducing context with --include/--exclude flags.")
-				case llm.CategoryContentFiltered:
-					errorType = "ContentFilteredError"
-					p.logger.Error("Content was filtered by safety settings. Review and modify your input.")
-				case llm.CategoryNetwork:
-					errorType = "NetworkError"
-					p.logger.Error("Network error occurred. Check your internet connection and try again.")
-				case llm.CategoryServer:
-					errorType = "ServerError"
-					p.logger.Error("Server error occurred. This is typically a temporary issue. Wait and try again.")
-				case llm.CategoryCancelled:
-					errorType = "CancelledError"
-					p.logger.Error("Request was cancelled. Try again with a longer timeout if needed.")
-				}
-			}
-		}
+		// Add generation duration to inputs for logging
+		inputs["duration_ms"] = generateDurationMs
 
 		// Log the content generation failure
-		if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "GenerateContentEnd",
-			Status:     "Failure",
-			DurationMs: &generateDurationMs,
-			Inputs: map[string]interface{}{
-				"model_name":    modelName,
-				"prompt_length": len(stitchedPrompt),
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: errorMessage,
-				Type:    errorType,
-			},
-			Message: "Content generation failed for model " + modelName,
-		}); logErr != nil {
+		if logErr := p.auditLogger.LogOp("GenerateContent", "Failure", inputs, nil, err); logErr != nil {
 			p.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("output generation failed for model %s: %w", modelName, err)
+		return "", fmt.Errorf("%w: output generation failed for model %s: %v", ErrModelProcessingFailed, modelName, err)
 	}
 
 	// Log successful content generation
-	if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "GenerateContentEnd",
-		Status:     "Success",
-		DurationMs: &generateDurationMs,
-		Inputs: map[string]interface{}{
-			"model_name":    modelName,
-			"prompt_length": len(stitchedPrompt),
-		},
-		Outputs: map[string]interface{}{
-			"finish_reason":      result.FinishReason,
-			"has_safety_ratings": len(result.SafetyInfo) > 0,
-		},
-		Message: "Content generation completed successfully for model " + modelName,
-	}); logErr != nil {
+	inputs["duration_ms"] = generateDurationMs
+	outputs := map[string]interface{}{
+		"finish_reason":      result.FinishReason,
+		"has_safety_ratings": len(result.SafetyInfo) > 0,
+	}
+	if logErr := p.auditLogger.LogOp("GenerateContent", "Success", inputs, outputs, nil); logErr != nil {
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -242,35 +187,35 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		if p.apiService.IsEmptyResponseError(err) {
 			p.logger.Error("Received empty or invalid response from API for model %s", modelName)
 			p.logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response for model %s due to empty content: %w", modelName, err)
+			return "", fmt.Errorf("%w: failed to process API response for model %s due to empty content: %v", ErrEmptyModelResponse, modelName, err)
 		} else if p.apiService.IsSafetyBlockedError(err) {
 			p.logger.Error("Content was blocked by safety filters for model %s", modelName)
 			p.logger.Error("Error details: %s", errorDetails)
-			return fmt.Errorf("failed to process API response for model %s due to safety restrictions: %w", modelName, err)
+			return "", fmt.Errorf("%w: failed to process API response for model %s due to safety restrictions: %v", ErrContentFiltered, modelName, err)
 		} else if catErr, isCat := llm.IsCategorizedError(err); isCat {
 			// Use the new error categorization for more specific messages
 			switch catErr.Category() {
 			case llm.CategoryContentFiltered:
 				p.logger.Error("Content was filtered by safety settings for model %s", modelName)
 				p.logger.Error("Error details: %s", errorDetails)
-				return fmt.Errorf("failed to process API response for model %s due to content filtering: %w", modelName, err)
+				return "", fmt.Errorf("%w: failed to process API response for model %s due to content filtering: %v", ErrContentFiltered, modelName, err)
 			case llm.CategoryRateLimit:
 				p.logger.Error("Rate limit exceeded while processing response for model %s", modelName)
 				p.logger.Error("Error details: %s", errorDetails)
-				return fmt.Errorf("failed to process API response for model %s due to rate limiting: %w", modelName, err)
+				return "", fmt.Errorf("%w: failed to process API response for model %s due to rate limiting: %v", ErrModelRateLimited, modelName, err)
 			case llm.CategoryInputLimit:
 				p.logger.Error("Input limit exceeded during response processing for model %s", modelName)
 				p.logger.Error("Error details: %s", errorDetails)
-				return fmt.Errorf("failed to process API response for model %s due to input limits: %w", modelName, err)
+				return "", fmt.Errorf("%w: failed to process API response for model %s due to input limits: %v", ErrModelTokenLimitExceeded, modelName, err)
 			default:
 				// Other categorized errors
 				p.logger.Error("Error processing response for model %s (%s category)", modelName, catErr.Category())
 				p.logger.Error("Error details: %s", errorDetails)
-				return fmt.Errorf("failed to process API response for model %s (%s error): %w", modelName, catErr.Category(), err)
+				return "", fmt.Errorf("%w: failed to process API response for model %s (%s error): %v", ErrInvalidModelResponse, modelName, catErr.Category(), err)
 			}
 		} else {
 			// Generic API error handling
-			return fmt.Errorf("failed to process API response for model %s: %w", modelName, err)
+			return "", fmt.Errorf("%w: failed to process API response for model %s: %v", ErrInvalidModelResponse, modelName, err)
 		}
 	}
 	contentLength := len(generatedOutput)
@@ -278,22 +223,23 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		modelName, contentLength)
 
 	// 5. Sanitize model name for use in filename
-	sanitizedModelName := sanitizeFilename(modelName)
+	sanitizedModelName := SanitizeFilename(modelName)
 
 	// 6. Construct output file path
 	outputFilePath := filepath.Join(p.config.OutputDir, sanitizedModelName+".md")
 
 	// 7. Save the output to file
 	if err := p.saveOutputToFile(outputFilePath, generatedOutput); err != nil {
-		return fmt.Errorf("failed to save output for model %s: %w", modelName, err)
+		return "", fmt.Errorf("%w: failed to save output for model %s: %v", ErrOutputWriteFailed, modelName, err)
 	}
 
 	p.logger.Info("Successfully processed model: %s", modelName)
-	return nil
+	return generatedOutput, nil
 }
 
-// sanitizeFilename replaces characters that are not valid in filenames
-func sanitizeFilename(filename string) string {
+// SanitizeFilename replaces characters that are not valid in filenames
+// with safe alternatives to ensure filenames are valid across different operating systems.
+func SanitizeFilename(filename string) string {
 	// Replace slashes and other problematic characters with hyphens
 	replacer := strings.NewReplacer(
 		"/", "-",
@@ -302,9 +248,11 @@ func sanitizeFilename(filename string) string {
 		"*", "-",
 		"?", "-",
 		"\"", "-",
+		"'", "-", // Also replace single quotes
 		"<", "-",
 		">", "-",
 		"|", "-",
+		" ", "_", // Replace spaces with underscores for better readability
 	)
 	return replacer.Replace(filename)
 }
@@ -314,16 +262,11 @@ func sanitizeFilename(filename string) string {
 func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
-	if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: saveStartTime,
-		Operation: "SaveOutputStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"output_path":    outputFilePath,
-			"content_length": len(content),
-		},
-		Message: "Starting to save output to file",
-	}); logErr != nil {
+	inputs := map[string]interface{}{
+		"output_path":    outputFilePath,
+		"content_length": len(content),
+	}
+	if logErr := p.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -338,40 +281,20 @@ func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error 
 		// Log failure to save output
 		p.logger.Error("Error saving output to file %s: %v", outputFilePath, err)
 
-		if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "SaveOutputEnd",
-			Status:     "Failure",
-			DurationMs: &saveDurationMs,
-			Inputs: map[string]interface{}{
-				"output_path": outputFilePath,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to save output to file: %v", err),
-				Type:    "FileIOError",
-			},
-			Message: "Failed to save output to file",
-		}); logErr != nil {
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := p.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			p.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("error saving output to file %s: %w", outputFilePath, err)
+		return fmt.Errorf("%w: error saving output to file %s: %v", ErrOutputWriteFailed, outputFilePath, err)
 	}
 
 	// Log successful saving of output
-	if logErr := p.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "SaveOutputEnd",
-		Status:     "Success",
-		DurationMs: &saveDurationMs,
-		Inputs: map[string]interface{}{
-			"output_path": outputFilePath,
-		},
-		Outputs: map[string]interface{}{
-			"content_length": len(content),
-		},
-		Message: "Successfully saved output to file",
-	}); logErr != nil {
+	inputs["duration_ms"] = saveDurationMs
+	outputs := map[string]interface{}{
+		"content_length": len(content),
+	}
+	if logErr := p.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		p.logger.Error("Failed to write audit log: %v", logErr)
 	}
 

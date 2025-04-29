@@ -18,7 +18,7 @@ repos:
     hooks:
     -   id: go-fmt
     -   id: go-vet
-        exclude: "internal/e2e/.*"
+        exclude: "(internal/e2e/.*|internal/lint/.*)"
     -   id: go-build
     -   id: go-unit-tests
         name: go unit tests
@@ -31,6 +31,12 @@ repos:
     -   id: check-large-files
         name: Check for large Go files
         entry: scripts/check-large-files.sh
+        language: script
+        types: [go]
+        pass_filenames: false
+    -   id: check-correlation-id
+        name: Check for manual correlation_id formatting in logs
+        entry: scripts/check-correlation-id.sh
         language: script
         types: [go]
         pass_filenames: false

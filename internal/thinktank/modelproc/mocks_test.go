@@ -160,12 +160,20 @@ func (m *mockLLMClient) Close() error {
 
 type mockAuditLogger struct {
 	logFunc   func(entry auditlog.AuditEntry) error
+	logOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
 	closeFunc func() error
 }
 
 func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
 	if m.logFunc != nil {
 		return m.logFunc(entry)
+	}
+	return nil
+}
+
+func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.logOpFunc != nil {
+		return m.logOpFunc(operation, status, inputs, outputs, err)
 	}
 	return nil
 }

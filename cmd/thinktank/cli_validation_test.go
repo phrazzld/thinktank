@@ -7,12 +7,23 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // Import constants directly from the tested file
 
 // TestValidateInputs ensures that the validation function correctly validates all required fields
 func TestValidateInputs(t *testing.T) {
+	// Save the original function to restore later
+	origGetManager := getRegistryManagerForValidation
+	// Override with a function that returns nil to force pattern matching
+	getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
+		return nil
+	}
+	// Restore at the end
+	defer func() {
+		getRegistryManagerForValidation = origGetManager
+	}()
 	// Create a test instructions file
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
@@ -139,6 +150,7 @@ func TestValidateInputs(t *testing.T) {
 			expectError:   true,
 			errorContains: "openAI API key not set",
 		},
+		// Synthesis model validation is tested in cli_synthesis_test.go and cli_pattern_test.go
 	}
 
 	for _, tt := range tests {

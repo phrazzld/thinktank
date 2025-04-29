@@ -27,6 +27,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 - **Multiple LLM Providers**: Supports Gemini, OpenAI, and OpenRouter models
 - **Smart Filtering**: Include/exclude specific files or directories
 - **Concurrent Processing**: Compare responses from multiple models in parallel
+- **Result Synthesis**: Combine outputs from multiple models using a synthesis model
 - **Git-Aware**: Respects .gitignore patterns
 - **Structured Output**: Formats responses based on your specific instructions
 
@@ -41,6 +42,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--model` | Model to use (repeatable) | `gemini-2.5-pro-exp-03-25` |
+| `--synthesis-model` | Model to synthesize results from multiple models | None |
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
 | `--dry-run` | Preview without API calls | `false` |
@@ -66,7 +68,21 @@ thinktank --instructions arch-questions.txt --include .go,.md,.yaml ./
 
 # General code questions
 thinktank --instructions questions.txt --output-dir answers ./src
+
+# Using synthesis to combine multiple model outputs
+thinktank --instructions complex-task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
 ```
+
+### Synthesis Feature
+
+The synthesis feature allows you to combine outputs from multiple models into a single coherent response. When you specify multiple models with `--model` and set a synthesis model with `--synthesis-model`, thinktank will:
+
+1. Process your instructions with each specified primary model
+2. Save individual model outputs as usual
+3. Send all model outputs to the synthesis model
+4. Generate a final synthesized output that combines insights from all models
+
+This is particularly useful for complex tasks where different models might have complementary strengths, or when you want to obtain a consensus view across multiple AI systems.
 
 ## Output
 
@@ -77,7 +93,7 @@ The output depends entirely on your instructions, but common use cases include:
 - Bug fixes and debugging assistance
 - Documentation generation
 
-Output files are saved in the specified directory (or auto-generated directory) with one file per model.
+Output files are saved in the specified directory (or auto-generated directory) with one file per model. If a synthesis model is specified, an additional file containing the synthesized output will be created with the naming format `<synthesis-model-name>-synthesis.md`.
 
 ### Output Directory Naming
 

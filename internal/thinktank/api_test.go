@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // mockAPILogger mocks the logger for testing
@@ -41,6 +42,31 @@ func (m *mockAPILogger) Fatal(format string, args ...interface{}) {
 
 func (m *mockAPILogger) Println(args ...interface{})               {}
 func (m *mockAPILogger) Printf(format string, args ...interface{}) {}
+
+// Context-aware logging methods
+func (m *mockAPILogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	m.debugMessages = append(m.debugMessages, formatLog(format, args...))
+}
+
+func (m *mockAPILogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	m.infoMessages = append(m.infoMessages, formatLog(format, args...))
+}
+
+func (m *mockAPILogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	m.warnMessages = append(m.warnMessages, formatLog(format, args...))
+}
+
+func (m *mockAPILogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, formatLog(format, args...))
+}
+
+func (m *mockAPILogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	m.errorMessages = append(m.errorMessages, "FATAL: "+formatLog(format, args...))
+}
+
+func (m *mockAPILogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+	return m
+}
 
 func formatLog(format string, args ...interface{}) string {
 	return format // Simplified for tests

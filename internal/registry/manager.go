@@ -58,6 +58,15 @@ func GetGlobalManager(logger logutil.LoggerInterface) *Manager {
 	return globalManager
 }
 
+// SetGlobalManagerForTesting sets the global manager to a specific instance.
+// This function should only be used in tests.
+func SetGlobalManagerForTesting(manager *Manager) {
+	managerMu.Lock()
+	defer managerMu.Unlock()
+
+	globalManager = manager
+}
+
 // Initialize loads the registry configuration and registers
 // provider implementations.
 func (m *Manager) Initialize() error {
@@ -190,7 +199,7 @@ func (m *Manager) installDefaultConfig() error {
 
 	// Write to the user's config directory
 	targetConfigPath := filepath.Join(configDir, ModelsConfigFileName)
-	if err := os.WriteFile(targetConfigPath, defaultConfig, 0644); err != nil {
+	if err := os.WriteFile(targetConfigPath, defaultConfig, 0640); err != nil {
 		return fmt.Errorf("failed to write configuration file: %w", err)
 	}
 

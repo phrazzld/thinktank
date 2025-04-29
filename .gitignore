@@ -31,9 +31,6 @@ go.work
 .DS_Store
 Thumbs.db
 
-# Plan output
-PLAN.md
-
 # Temporary files
 *.bak*
 *~
@@ -72,6 +69,7 @@ test.txt
 # Debug files
 DEBUG-*.md
 *_instructions.txt
+test_output_*.md
 
 # Development symlinks
 docs/prompts

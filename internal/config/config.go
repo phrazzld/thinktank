@@ -10,6 +10,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"os"
 	"strings"
+	"time"
 )
 
 // Configuration constants
@@ -26,6 +27,13 @@ const (
 	// Default rate limiting values
 	DefaultMaxConcurrentRequests      = 5  // Default maximum concurrent API requests
 	DefaultRateLimitRequestsPerMinute = 60 // Default requests per minute per model
+
+	// Default timeout value
+	DefaultTimeout = 10 * time.Minute // Default timeout for the entire operation
+
+	// Default permission values
+	DefaultDirPermissions  = 0750 // Default directory permissions (rwxr-x---)
+	DefaultFilePermissions = 0640 // Default file permissions (rw-r-----)
 
 	// Default excludes for file extensions
 	DefaultExcludes = ".exe,.bin,.obj,.o,.a,.lib,.so,.dll,.dylib,.class,.jar,.pyc,.pyo,.pyd," +
@@ -107,6 +115,11 @@ type CliConfig struct {
 	APIKey      string
 	APIEndpoint string
 	ModelNames  []string
+	// SynthesisModel specifies the model to use for combining (synthesizing) outputs from multiple models.
+	// When specified, all individual model outputs will be sent to this model along with original instructions,
+	// and the synthesis model will generate a consolidated result combining insights from all models.
+	// The synthesized output will be saved with the format `<synthesis-model-name>-synthesis.md`.
+	SynthesisModel string
 
 	// Token management field removed as part of T032E
 
@@ -116,6 +129,13 @@ type CliConfig struct {
 	// Rate limiting configuration
 	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
 	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
+
+	// Timeout configuration
+	Timeout time.Duration // Global timeout for the entire operation
+
+	// Permission configuration
+	DirPermissions  os.FileMode // Directory permissions
+	FilePermissions os.FileMode // File permissions
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -131,6 +151,9 @@ func NewDefaultCliConfig() *CliConfig {
 		LogLevel:                   logutil.InfoLevel,
 		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
 		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
+		Timeout:                    DefaultTimeout,
+		DirPermissions:             DefaultDirPermissions,
+		FilePermissions:            DefaultFilePermissions,
 	}
 }
 

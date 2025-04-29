@@ -23,17 +23,21 @@ type FileWriter interface {
 
 // fileWriter implements the FileWriter interface
 type fileWriter struct {
-	logger      logutil.LoggerInterface
-	auditLogger auditlog.AuditLogger
+	logger          logutil.LoggerInterface
+	auditLogger     auditlog.AuditLogger
+	dirPermissions  os.FileMode
+	filePermissions os.FileMode
 }
 
 // NewFileWriter creates a new FileWriter instance with the specified dependencies.
 // It injects the required logger and audit logger to ensure proper output
 // handling and audit trail generation during file operations.
-func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger) FileWriter {
+func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, dirPermissions, filePermissions os.FileMode) FileWriter {
 	return &fileWriter{
-		logger:      logger,
-		auditLogger: auditLogger,
+		logger:          logger,
+		auditLogger:     auditLogger,
+		dirPermissions:  dirPermissions,
+		filePermissions: filePermissions,
 	}
 }
 
@@ -44,16 +48,11 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
-	if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: saveStartTime,
-		Operation: "SaveOutputStart",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"output_path":    outputFile,
-			"content_length": len(content),
-		},
-		Message: "Starting to save output to file",
-	}); logErr != nil {
+	inputs := map[string]interface{}{
+		"output_path":    outputFile,
+		"content_length": len(content),
+	}
+	if logErr := fw.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -66,20 +65,8 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 			// Log failure to save output
 			saveDurationMs := time.Since(saveStartTime).Milliseconds()
-			if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-				Timestamp:  time.Now().UTC(),
-				Operation:  "SaveOutputEnd",
-				Status:     "Failure",
-				DurationMs: &saveDurationMs,
-				Inputs: map[string]interface{}{
-					"output_path": outputFile,
-				},
-				Error: &auditlog.ErrorInfo{
-					Message: fmt.Sprintf("Error getting current working directory: %v", err),
-					Type:    "FileIOError",
-				},
-				Message: "Failed to save output to file",
-			}); logErr != nil {
+			inputs["duration_ms"] = saveDurationMs
+			if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 				fw.logger.Error("Failed to write audit log: %v", logErr)
 			}
 
@@ -90,25 +77,13 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Ensure the output directory exists
 	outputDir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, fw.dirPermissions); err != nil {
 		fw.logger.Error("Error creating output directory %s: %v", outputDir, err)
 
 		// Log failure to save output
 		saveDurationMs := time.Since(saveStartTime).Milliseconds()
-		if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "SaveOutputEnd",
-			Status:     "Failure",
-			DurationMs: &saveDurationMs,
-			Inputs: map[string]interface{}{
-				"output_path": outputPath,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Error creating output directory %s: %v", outputDir, err),
-				Type:    "FileIOError",
-			},
-			Message: "Failed to save output to file",
-		}); logErr != nil {
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -117,7 +92,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 	// Write to file
 	fw.logger.Info("Writing to file %s...", outputPath)
-	err := os.WriteFile(outputPath, []byte(content), 0644)
+	err := os.WriteFile(outputPath, []byte(content), fw.filePermissions)
 
 	// Calculate duration in milliseconds
 	saveDurationMs := time.Since(saveStartTime).Milliseconds()
@@ -126,20 +101,8 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 		fw.logger.Error("Error writing to file %s: %v", outputPath, err)
 
 		// Log failure to save output
-		if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-			Timestamp:  time.Now().UTC(),
-			Operation:  "SaveOutputEnd",
-			Status:     "Failure",
-			DurationMs: &saveDurationMs,
-			Inputs: map[string]interface{}{
-				"output_path": outputPath,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Error writing to file %s: %v", outputPath, err),
-				Type:    "FileIOError",
-			},
-			Message: "Failed to save output to file",
-		}); logErr != nil {
+		inputs["duration_ms"] = saveDurationMs
+		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -147,19 +110,11 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	}
 
 	// Log successful saving of output
-	if logErr := fw.auditLogger.Log(auditlog.AuditEntry{
-		Timestamp:  time.Now().UTC(),
-		Operation:  "SaveOutputEnd",
-		Status:     "Success",
-		DurationMs: &saveDurationMs,
-		Inputs: map[string]interface{}{
-			"output_path": outputPath,
-		},
-		Outputs: map[string]interface{}{
-			"content_length": len(content),
-		},
-		Message: "Successfully saved output to file",
-	}); logErr != nil {
+	inputs["duration_ms"] = saveDurationMs
+	outputs := map[string]interface{}{
+		"content_length": len(content),
+	}
+	if logErr := fw.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 

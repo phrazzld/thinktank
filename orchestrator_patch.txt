@@ -1,0 +1,7 @@
+if o.config.SynthesisModel == "" {
+		// No synthesis model specified - save individual model outputs
+		fileSaveErrors = o.runIndividualOutputFlow(ctx, modelOutputs)
+	} else {
+		// Synthesis model specified - process all outputs with synthesis model
+		fileSaveErrors = o.runSynthesisFlow(ctx, instructions, modelOutputs)
+	}

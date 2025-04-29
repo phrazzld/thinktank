@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 )
@@ -16,18 +17,22 @@ func Main() {
 	// As of Go 1.20, there's no need to seed the global random number generator
 	// The runtime now automatically seeds it with a random value
 
-	// Create a base context
-	ctx := context.Background()
-
-	// Parse command line flags
+	// Parse command line flags first to get the timeout value
 	config, err := ParseFlags()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 
-	// Setup logging early for error reporting
+	// Create a base context with timeout and correlation ID
+	ctx, cancel := context.WithTimeout(context.Background(), config.Timeout)
+	defer cancel() // Ensure resources are released when Main exits
+	ctx = logutil.WithCorrelationID(ctx)
+
+	// Setup logging early for error reporting with context
 	logger := SetupLogging(config)
+	// Ensure context with correlation ID is attached to logger
+	logger = logger.WithContext(ctx)
 	logger.Info("Starting thinktank - AI-assisted content generation tool")
 
 	// Initialize the audit logger

@@ -38,7 +38,7 @@ func TestInstallDefaultConfigNoAbsolutePath(t *testing.T) {
 	// Create a test models.yaml file in the project config directory
 	testConfigContent := "# Test config file"
 	testConfigPath := filepath.Join(projectConfigDir, ModelsConfigFileName)
-	if err := os.WriteFile(testConfigPath, []byte(testConfigContent), 0644); err != nil {
+	if err := os.WriteFile(testConfigPath, []byte(testConfigContent), 0640); err != nil {
 		t.Fatalf("Failed to write test config file: %v", err)
 	}
 

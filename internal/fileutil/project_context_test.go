@@ -102,7 +102,7 @@ func TestGatherProjectContextWalkErrors(t *testing.T) {
 
 	// Create a test file with a known extension for filtering
 	testFilePath := filepath.Join(testDir, "testfile.txt")
-	err = os.WriteFile(testFilePath, []byte("test content"), 0644)
+	err = os.WriteFile(testFilePath, []byte("test content"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestGatherProjectContextWalkErrors(t *testing.T) {
 
 	// Create a file in the no-access directory
 	noAccessFile := filepath.Join(noAccessDir, "secretfile.txt")
-	err = os.WriteFile(noAccessFile, []byte("secret content"), 0644)
+	err = os.WriteFile(noAccessFile, []byte("secret content"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to create excluded directory: %v", err)
 	}
 	excludedFile := filepath.Join(excludedDir, "package.json")
-	err = os.WriteFile(excludedFile, []byte("{}"), 0644)
+	err = os.WriteFile(excludedFile, []byte("{}"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create file in excluded directory: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to create .git directory: %v", err)
 	}
 	gitFile := filepath.Join(gitDir, "HEAD")
-	err = os.WriteFile(gitFile, []byte("ref: refs/heads/main"), 0644)
+	err = os.WriteFile(gitFile, []byte("ref: refs/heads/main"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create file in .git directory: %v", err)
 	}
@@ -215,7 +215,7 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 		t.Fatalf("Failed to create src directory: %v", err)
 	}
 	srcFile := filepath.Join(srcDir, "main.go")
-	err = os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0644)
+	err = os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0640)
 	if err != nil {
 		t.Fatalf("Failed to create go file: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 
 			// Create a file inside that will be inaccessible
 			badFile := filepath.Join(badDir, "secret.txt")
-			err = os.WriteFile(badFile, []byte("secret"), 0644)
+			err = os.WriteFile(badFile, []byte("secret"), 0640)
 			if err != nil {
 				t.Fatalf("Failed to create file in bad directory: %v", err)
 			}
@@ -449,7 +449,7 @@ func TestGatherProjectContextFiltering(t *testing.T) {
 				}
 
 				// Create the file
-				err = os.WriteFile(fullPath, []byte(content), 0644)
+				err = os.WriteFile(fullPath, []byte(content), 0640)
 				if err != nil {
 					t.Fatalf("Failed to write file: %v", err)
 				}

@@ -3,6 +3,7 @@ package thinktank
 
 import (
 	"bytes"
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -317,3 +318,27 @@ func (l *errorTrackingLogger) Warn(format string, args ...interface{}) {
 func (l *errorTrackingLogger) Fatal(format string, args ...interface{})  {}
 func (l *errorTrackingLogger) Printf(format string, args ...interface{}) {}
 func (l *errorTrackingLogger) Println(v ...interface{})                  {}
+
+// Context-aware logging methods
+func (l *errorTrackingLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	l.debugCalled = true
+}
+
+func (l *errorTrackingLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	l.infoCalled = true
+}
+
+func (l *errorTrackingLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	l.warnCalled = true
+}
+
+func (l *errorTrackingLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	l.errorCalled = true
+	l.errorMessages = append(l.errorMessages, fmt.Sprintf(format, args...))
+}
+
+func (l *errorTrackingLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
+
+func (l *errorTrackingLogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+	return l
+}

@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"context"
 	"fmt"
 	"regexp"
 	"sync"
@@ -59,6 +60,7 @@ type SecretDetectingLogger struct {
 	detectedSecrets    []string        // List of detected secrets (for testing)
 	mu                 sync.Mutex      // Mutex for thread safety
 	failOnSecretDetect bool            // Whether to panic when a secret is detected
+	ctx                context.Context // Context for correlation ID
 }
 
 // Ensure SecretDetectingLogger implements LoggerInterface
@@ -71,6 +73,7 @@ func NewSecretDetectingLogger(delegate LoggerInterface) *SecretDetectingLogger {
 		patterns:           DefaultSecretPatterns,
 		detectedSecrets:    make([]string, 0),
 		failOnSecretDetect: true, // By default, fail tests if secrets are detected
+		ctx:                context.Background(),
 	}
 }
 
@@ -185,6 +188,53 @@ func truncateMessage(msg string) string {
 		return msg
 	}
 	return fmt.Sprintf("%s... [truncated]", msg[:maxLength])
+}
+
+// DebugContext implements context-aware debug logging
+func (s *SecretDetectingLogger) DebugContext(ctx context.Context, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	s.checkForSecrets(msg)
+	s.delegate.DebugContext(ctx, format, v...)
+}
+
+// InfoContext implements context-aware info logging
+func (s *SecretDetectingLogger) InfoContext(ctx context.Context, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	s.checkForSecrets(msg)
+	s.delegate.InfoContext(ctx, format, v...)
+}
+
+// WarnContext implements context-aware warn logging
+func (s *SecretDetectingLogger) WarnContext(ctx context.Context, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	s.checkForSecrets(msg)
+	s.delegate.WarnContext(ctx, format, v...)
+}
+
+// ErrorContext implements context-aware error logging
+func (s *SecretDetectingLogger) ErrorContext(ctx context.Context, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	s.checkForSecrets(msg)
+	s.delegate.ErrorContext(ctx, format, v...)
+}
+
+// FatalContext implements context-aware fatal logging
+func (s *SecretDetectingLogger) FatalContext(ctx context.Context, format string, v ...interface{}) {
+	msg := fmt.Sprintf(format, v...)
+	s.checkForSecrets(msg)
+	s.delegate.FatalContext(ctx, format, v...)
+}
+
+// WithContext returns a new logger with the given context
+func (s *SecretDetectingLogger) WithContext(ctx context.Context) LoggerInterface {
+	return &SecretDetectingLogger{
+		delegate:           s.delegate.WithContext(ctx),
+		patterns:           s.patterns,
+		detectedSecrets:    s.detectedSecrets,
+		mu:                 sync.Mutex{},
+		failOnSecretDetect: s.failOnSecretDetect,
+		ctx:                ctx,
+	}
 }
 
 // WithSecretDetection wraps a logger with secret detection capabilities

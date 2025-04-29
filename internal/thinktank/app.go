@@ -28,44 +28,18 @@ func Execute(
 	auditLogger auditlog.AuditLogger,
 	apiService interfaces.APIService,
 ) (err error) {
+	// Ensure the logger has the context attached
+	// This is important for correlation ID propagation
+	logger = logger.WithContext(ctx)
 	// Use a deferred function to ensure ExecuteEnd is always logged
 	defer func() {
 		status := "Success"
-		var errorInfo *auditlog.ErrorInfo
 		if err != nil {
 			status = "Failure"
-			errorInfo = &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "ExecutionError",
-			}
-
-			// Check if it's a categorized error for more detailed information
-			if catErr, ok := llm.IsCategorizedError(err); ok {
-				category := catErr.Category()
-				// Update the error type to include the category
-				errorInfo.Type = fmt.Sprintf("ExecutionError:%s", category.String())
-
-				// For certain error categories, add more context to the message
-				switch category {
-				case llm.CategoryAuth:
-					errorInfo.Message = "Authentication failed. Check your API key."
-				case llm.CategoryRateLimit:
-					errorInfo.Message = "Rate limit exceeded. Try again later or adjust rate limiting parameters."
-				case llm.CategoryInputLimit:
-					errorInfo.Message = "Input token limit exceeded. Try reducing the context size."
-				case llm.CategoryContentFiltered:
-					errorInfo.Message = "Content was filtered by safety settings."
-				}
-			}
 		}
 
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "ExecuteEnd",
-			Status:    status,
-			Error:     errorInfo,
-			Message:   fmt.Sprintf("Execution completed with status: %s", status),
-		}); logErr != nil {
+		// Log execution end with appropriate status and any error
+		if logErr := auditLogger.LogOp("ExecuteEnd", status, nil, nil, err); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 	}()
@@ -92,14 +66,8 @@ func Execute(
 		"log_level": cliConfig.LogLevel,
 	}
 
-	if err := auditLogger.Log(auditlog.AuditEntry{
-		Timestamp: time.Now().UTC(),
-		Operation: "ExecuteStart",
-		Status:    "InProgress",
-		Inputs:    inputs,
-		Message:   "Starting execution of thinktank tool",
-	}); err != nil {
-		logger.Error("Failed to write audit log: %v", err)
+	if logErr := auditLogger.LogOp("ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
+		logger.Error("Failed to write audit log: %v", logErr)
 	}
 
 	// 3. Read instructions from file
@@ -108,22 +76,12 @@ func Execute(
 		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
 
 		// Log the failure to read the instructions file to the audit log
-		if logErr := auditLogger.Log(auditlog.AuditEntry{
-			Timestamp: time.Now().UTC(),
-			Operation: "ReadInstructions",
-			Status:    "Failure",
-			Inputs: map[string]interface{}{
-				"path": cliConfig.InstructionsFile,
-			},
-			Error: &auditlog.ErrorInfo{
-				Message: fmt.Sprintf("Failed to read instructions file: %v", err),
-				Type:    "FileIOError",
-			},
-		}); logErr != nil {
+		inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
+		if logErr := auditLogger.LogOp("ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
 			logger.Error("Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("failed to read instructions file %s: %w", cliConfig.InstructionsFile, err)
+		return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 	}
 	instructions := string(instructionsContent)
 	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
@@ -172,22 +130,22 @@ func Execute(
 			// Use error category to give more specific error messages
 			switch category {
 			case llm.CategoryAuth:
-				return fmt.Errorf("API authentication failed for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
 			case llm.CategoryRateLimit:
-				return fmt.Errorf("API rate limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			case llm.CategoryNotFound:
-				return fmt.Errorf("model %s not found or not available: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			case llm.CategoryInputLimit:
-				return fmt.Errorf("input token limit exceeded for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
 			case llm.CategoryContentFiltered:
-				return fmt.Errorf("content was filtered by safety settings: %w", err)
+				return fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
 			default:
-				return fmt.Errorf("failed to initialize reference client for model %s: %w", cliConfig.ModelNames[0], err)
+				return fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 			}
 		} else {
 			// If not a categorized error, use the standard error handling
 			logger.Error("Failed to initialize reference client for context gathering: %v", err)
-			return fmt.Errorf("failed to initialize reference client for context gathering: %w", err)
+			return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 		}
 	}
 	defer func() { _ = referenceClientLLM.Close() }()
@@ -195,7 +153,7 @@ func Execute(
 	// Create context gatherer with LLMClient
 	// Note: TokenManager was completely removed as part of tasks T032A through T032D
 	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, referenceClientLLM, auditLogger)
-	fileWriter := NewFileWriter(logger, auditLogger)
+	fileWriter := NewFileWriter(logger, auditLogger, cliConfig.DirPermissions, cliConfig.FilePermissions)
 
 	// Create rate limiter from configuration
 	rateLimiter := ratelimit.NewRateLimiter(
@@ -286,6 +244,34 @@ var orchestratorConstructor = func(
 	)
 }
 
+// GetOrchestratorConstructor returns the current orchestrator constructor function.
+// This is useful for tests that need to temporarily override the constructor.
+func GetOrchestratorConstructor() func(
+	apiService interfaces.APIService,
+	contextGatherer interfaces.ContextGatherer,
+	fileWriter interfaces.FileWriter,
+	auditLogger auditlog.AuditLogger,
+	rateLimiter *ratelimit.RateLimiter,
+	config *config.CliConfig,
+	logger logutil.LoggerInterface,
+) Orchestrator {
+	return orchestratorConstructor
+}
+
+// SetOrchestratorConstructor sets the orchestrator constructor function.
+// This is useful for tests that need to temporarily override the constructor.
+func SetOrchestratorConstructor(constructor func(
+	apiService interfaces.APIService,
+	contextGatherer interfaces.ContextGatherer,
+	fileWriter interfaces.FileWriter,
+	auditLogger auditlog.AuditLogger,
+	rateLimiter *ratelimit.RateLimiter,
+	config *config.CliConfig,
+	logger logutil.LoggerInterface,
+) Orchestrator) {
+	orchestratorConstructor = constructor
+}
+
 // generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNN
 // where NNNN is a 4-digit random number to ensure uniqueness for runs in the same second.
 func generateTimestampedRunName() string {
@@ -301,6 +287,7 @@ func generateTimestampedRunName() string {
 
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.
+// Note: The logger passed to this function should already have context attached.
 func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
 	if cliConfig.OutputDir == "" {
 		// Generate a unique timestamped run name
@@ -310,7 +297,7 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 		cwd, err := os.Getwd()
 		if err != nil {
 			logger.Error("Error getting current working directory: %v", err)
-			return fmt.Errorf("error getting current working directory: %w", err)
+			return fmt.Errorf("%w: error getting current working directory: %v", ErrContextGatheringFailed, err)
 		}
 
 		// Set the output directory to the run name in the current working directory
@@ -319,9 +306,9 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 	}
 
 	// Ensure the output directory exists
-	if err := os.MkdirAll(cliConfig.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
 		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
-		return fmt.Errorf("error creating output directory %s: %w", cliConfig.OutputDir, err)
+		return fmt.Errorf("%w: error creating output directory %s: %v", ErrInvalidOutputDir, cliConfig.OutputDir, err)
 	}
 
 	logger.Info("Using output directory: %s", cliConfig.OutputDir)

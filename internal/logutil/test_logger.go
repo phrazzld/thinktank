@@ -2,6 +2,7 @@
 package logutil
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -101,4 +102,72 @@ func (l *TestLogger) ClearTestLogs() {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
 	l.logs = []string{}
+}
+
+// Context-aware logging methods
+
+// DebugContext logs a debug message with context
+func (l *TestLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+	if l.level <= DebugLevel {
+		msg := fmt.Sprintf(format, args...)
+		correlationID := GetCorrelationID(ctx)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[DEBUG] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
+		l.t.Logf("%s", logMsg)
+		l.captureLog(logMsg)
+	}
+}
+
+// InfoContext logs an info message with context
+func (l *TestLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	if l.level <= InfoLevel {
+		msg := fmt.Sprintf(format, args...)
+		correlationID := GetCorrelationID(ctx)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[INFO] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
+		l.t.Logf("%s", logMsg)
+		l.captureLog(logMsg)
+	}
+}
+
+// WarnContext logs a warning message with context
+func (l *TestLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	if l.level <= WarnLevel {
+		msg := fmt.Sprintf(format, args...)
+		correlationID := GetCorrelationID(ctx)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[WARN] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
+		l.t.Logf("%s", logMsg)
+		l.captureLog(logMsg)
+	}
+}
+
+// ErrorContext logs an error message with context
+func (l *TestLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	if l.level <= ErrorLevel {
+		msg := fmt.Sprintf(format, args...)
+		correlationID := GetCorrelationID(ctx)
+		// Format the log message with correlation ID as a structured field
+		logMsg := fmt.Sprintf("[ERROR] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
+		l.t.Logf("%s", logMsg)
+		l.captureLog(logMsg)
+	}
+}
+
+// FatalContext logs a fatal message with context
+func (l *TestLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	correlationID := GetCorrelationID(ctx)
+	// Format the log message with correlation ID as a structured field
+	logMsg := fmt.Sprintf("[FATAL] %s%s [correlation_id=%s]", l.prefix, msg, correlationID)
+	l.t.Logf("%s", logMsg)
+	l.captureLog(logMsg)
+	// Don't call os.Exit in tests
+}
+
+// WithContext returns a logger with context information
+func (l *TestLogger) WithContext(ctx context.Context) LoggerInterface {
+	// For test logger, we just return the same logger
+	// A real implementation might create a new logger with context attached
+	return l
 }
