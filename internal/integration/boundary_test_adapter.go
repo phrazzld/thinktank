@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -500,6 +501,7 @@ type BoundaryAuditLogger struct {
 	filesystem FilesystemIO
 	logger     logutil.LoggerInterface
 	entries    []auditlog.AuditEntry
+	mutex      sync.Mutex // Mutex for thread-safe access to entries
 }
 
 // NewBoundaryAuditLogger creates a new audit logger with mocked filesystem
@@ -513,6 +515,10 @@ func NewBoundaryAuditLogger(filesystem FilesystemIO, logger logutil.LoggerInterf
 
 // Log writes an audit entry to the log
 func (a *BoundaryAuditLogger) Log(entry auditlog.AuditEntry) error {
+	// Lock the mutex to prevent concurrent access to entries
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
 	// Add entry to in-memory log
 	a.entries = append(a.entries, entry)
 
