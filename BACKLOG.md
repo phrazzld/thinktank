@@ -3,6 +3,8 @@
 - [~] **T13: Add synthesis step**
   Add a built-in synthesis step where outputs from multiple preceding steps (e.g., multiple model responses, critiques) are sent to a final model for summarization / consolidation. i suspect implementation is some optional --synthesis-model flag where the user can set the model to use for synthesis
 
+- build mcp server
+
 - [ ] **T14: Implement semantic versioning**
   Implement semantic versioning (ideally automatically managed somehow ... conventional commits?)
 

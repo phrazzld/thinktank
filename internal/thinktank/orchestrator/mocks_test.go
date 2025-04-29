@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/fileutil"
@@ -62,7 +63,8 @@ type LogCall struct {
 // MockAuditLogger provides a mock implementation for testing
 type MockAuditLogger struct {
 	LogCalls []LogCall
-	LogError error // To simulate logging errors for testing error handling
+	LogError error      // To simulate logging errors for testing error handling
+	mutex    sync.Mutex // Mutex for thread-safe access to LogCalls
 }
 
 // NewMockAuditLogger creates a new instance of MockAuditLogger
@@ -80,6 +82,10 @@ func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
 
 // LogOp is a mock implementation
 func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Lock the mutex to prevent concurrent access to LogCalls
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	// Record the call parameters
 	m.LogCalls = append(m.LogCalls, LogCall{
 		Operation: operation,
