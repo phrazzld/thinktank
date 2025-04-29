@@ -69,6 +69,7 @@ test.txt
 # Debug files
 DEBUG-*.md
 *_instructions.txt
+test_output_*.md
 
 # Development symlinks
 docs/prompts
