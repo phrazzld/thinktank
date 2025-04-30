@@ -24,7 +24,7 @@
         2. No production code references the removed stubs.
         3. Code compiles (tests addressed in T004).
     - **Depends‑on:** none
-- [ ] **T003 · Refactor · P1: remove legacy provider detection fallback logic**
+- [x] **T003 · Refactor · P1: remove legacy provider detection fallback logic**
     - **Context:** PLAN.md / cr-08 Remove Legacy Provider Detection Logic
     - **Action:**
         1. Delete `createLLMClientFallback` and `detectProviderFromModelName` functions from `internal/thinktank/registry_api.go`.
@@ -45,7 +45,7 @@
         1. `ProviderType` enum is removed from `internal/thinktank/registry_api.go`.
         2. Code compiles and `go test ./...` passes.
     - **Depends‑on:** [T003]
-- [ ] **T006 · Refactor · P2: remove dead min helper function**
+- [x] **T006 · Refactor · P2: remove dead min helper function**
     - **Context:** PLAN.md / cr-09 Remove Dead `min` Helper Function
     - **Action:**
         1. Delete the `min` function definition (lines 32-35) from `internal/thinktank/registry_api.go`.
