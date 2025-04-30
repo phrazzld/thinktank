@@ -36,7 +36,7 @@
         3. Appropriate error is returned for models not found in the registry.
         4. `go test ./...` passes, including tests for non-existent models.
     - **Depends‑on:** none
-- [ ] **T005 · Refactor · P2: remove local providertype enum**
+- [x] **T005 · Refactor · P2: remove local providertype enum**
     - **Context:** PLAN.md / cr-11 Remove/Centralize Local `ProviderType` Enum
     - **Action:**
         1. Confirm `ProviderType` enum (lines 206-215) in `internal/thinktank/registry_api.go` is unused after T003 completion.
