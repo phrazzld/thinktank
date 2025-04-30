@@ -14,7 +14,7 @@
         3. `errors.Is` checks function correctly against central errors.
         4. `go test ./...` passes.
     - **Depends‑on:** none
-- [ ] **T002 · Refactor · P1: delete test stubs from production code**
+- [x] **T002 · Refactor · P1: delete test stubs from production code**
     - **Context:** PLAN.md / cr-04 Remove Test Stubs from Production Code / Steps 1, 3, 4
     - **Action:**
         1. Delete stub files: `internal/thinktank/modelproc/token_fixes.go`, `internal/thinktank/token_fixes.go`.
