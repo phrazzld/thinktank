@@ -8,6 +8,30 @@ import (
 	"strings"
 )
 
+// Define sentinel errors for common LLM-related error conditions
+var (
+	// ErrEmptyResponse indicates the API returned an empty response
+	ErrEmptyResponse = errors.New("received empty response from LLM")
+
+	// ErrWhitespaceContent indicates the API returned only whitespace content
+	ErrWhitespaceContent = errors.New("LLM returned an empty output text")
+
+	// ErrSafetyBlocked indicates content was blocked by safety filters
+	ErrSafetyBlocked = errors.New("content blocked by LLM safety filters")
+
+	// ErrAPICall indicates a general API call error
+	ErrAPICall = errors.New("error calling LLM API")
+
+	// ErrClientInitialization indicates client initialization failed
+	ErrClientInitialization = errors.New("error creating LLM client")
+
+	// ErrUnsupportedModel indicates an unsupported model was requested
+	ErrUnsupportedModel = errors.New("unsupported model type")
+
+	// ErrModelNotFound indicates a model definition was not found in registry
+	ErrModelNotFound = errors.New("model definition not found in registry")
+)
+
 // ErrorCategory represents different categories of errors that can occur when using LLM APIs
 type ErrorCategory int
 

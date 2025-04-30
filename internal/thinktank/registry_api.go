@@ -16,30 +16,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
-// Define package-level error types for better error handling
-var (
-	// ErrEmptyResponse indicates the API returned an empty response
-	ErrEmptyResponse = errors.New("received empty response from LLM")
-
-	// ErrWhitespaceContent indicates the API returned only whitespace content
-	ErrWhitespaceContent = errors.New("LLM returned an empty output text")
-
-	// ErrSafetyBlocked indicates content was blocked by safety filters
-	ErrSafetyBlocked = errors.New("content blocked by LLM safety filters")
-
-	// ErrAPICall indicates a general API call error
-	ErrAPICall = errors.New("error calling LLM API")
-
-	// ErrClientInitialization indicates client initialization failed
-	ErrClientInitialization = errors.New("error creating LLM client")
-
-	// ErrUnsupportedModel indicates an unsupported model was requested
-	ErrUnsupportedModel = errors.New("unsupported model type")
-
-	// ErrModelNotFound indicates a model definition was not found in the registry
-	ErrModelNotFound = errors.New("model definition not found in registry")
-)
-
 // Helper function to get minimum of two integers
 func min(a, b int) int {
 	if a < b {
@@ -69,12 +45,12 @@ func NewRegistryAPIService(registryManager *registry.Manager, logger logutil.Log
 func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	// Validate required parameters
 	if modelName == "" {
-		return nil, fmt.Errorf("%w: model name is required", ErrClientInitialization)
+		return nil, fmt.Errorf("%w: model name is required", llm.ErrClientInitialization)
 	}
 
 	// Check for context cancellation
 	if ctx.Err() != nil {
-		return nil, fmt.Errorf("%w: %v", ErrClientInitialization, ctx.Err())
+		return nil, fmt.Errorf("%w: %v", llm.ErrClientInitialization, ctx.Err())
 	}
 
 	// Log custom endpoint if provided (used for API endpoint override)
@@ -100,7 +76,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	if err != nil {
 		s.logger.Debug("Provider '%s' not found in registry: %v", modelDef.Provider, err)
 		return nil, fmt.Errorf("%w: provider for model '%s' not found: %v",
-			ErrClientInitialization, modelName, err)
+			llm.ErrClientInitialization, modelName, err)
 	}
 
 	// Determine which API endpoint to use
@@ -114,7 +90,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	if err != nil {
 		s.logger.Debug("Provider implementation '%s' not found: %v", modelDef.Provider, err)
 		return nil, fmt.Errorf("%w: provider implementation for '%s' not registered",
-			ErrClientInitialization, modelDef.Provider)
+			llm.ErrClientInitialization, modelDef.Provider)
 	}
 
 	// API Key Resolution Logic
@@ -162,7 +138,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	if effectiveApiKey == "" {
 		envVarName := getEnvVarNameForProvider(modelDef.Provider, modelConfig)
 		return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'. Please set the %s environment variable",
-			ErrClientInitialization, modelName, modelDef.Provider, envVarName)
+			llm.ErrClientInitialization, modelName, modelDef.Provider, envVarName)
 	}
 
 	// Create the client using the provider implementation
@@ -188,16 +164,16 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	if err != nil {
 		// Check if it's already an API error with enhanced details from Gemini
 		if apiErr, ok := gemini.IsAPIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
+			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
 		}
 
 		// Check if it's an OpenAI API error
 		if apiErr, ok := openai.IsOpenAIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
+			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
 		}
 
 		// Wrap the original error
-		return nil, fmt.Errorf("%w: %v", ErrClientInitialization, err)
+		return nil, fmt.Errorf("%w: %v", llm.ErrClientInitialization, err)
 	}
 
 	return client, nil
@@ -366,7 +342,7 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 		}
 
 		return nil, fmt.Errorf("%w: API key is required for provider %s. Please set the %s environment variable",
-			ErrClientInitialization, providerType, envVarName)
+			llm.ErrClientInitialization, providerType, envVarName)
 	}
 
 	// Initialize the appropriate client based on provider type
@@ -382,23 +358,23 @@ func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey
 
 		client, err = openai.NewClient(effectiveApiKey, modelName, apiEndpoint)
 	case ProviderUnknown:
-		return nil, fmt.Errorf("%w: %s", ErrUnsupportedModel, modelName)
+		return nil, fmt.Errorf("%w: %s", llm.ErrUnsupportedModel, modelName)
 	}
 
 	// Handle client creation error
 	if err != nil {
 		// Check if it's already an API error with enhanced details from Gemini
 		if apiErr, ok := gemini.IsAPIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
+			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
 		}
 
 		// Check if it's an OpenAI API error
 		if apiErr, ok := openai.IsOpenAIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", ErrClientInitialization, apiErr.UserFacingError())
+			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
 		}
 
 		// Wrap the original error
-		return nil, fmt.Errorf("%w: %v", ErrClientInitialization, err)
+		return nil, fmt.Errorf("%w: %v", llm.ErrClientInitialization, err)
 	}
 
 	return client, nil
@@ -539,7 +515,7 @@ func (s *registryAPIService) GetModelDefinition(modelName string) (*registry.Mod
 	modelDef, err := s.registry.GetModel(modelName)
 	if err != nil {
 		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		return nil, fmt.Errorf("%w: %s", ErrModelNotFound, modelName)
+		return nil, fmt.Errorf("%w: %s", llm.ErrModelNotFound, modelName)
 	}
 
 	return modelDef, nil
@@ -553,7 +529,7 @@ func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindo
 	_, err = s.registry.GetModel(modelName)
 	if err != nil {
 		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		return 0, 0, fmt.Errorf("%w: %s", ErrModelNotFound, modelName)
+		return 0, 0, fmt.Errorf("%w: %s", llm.ErrModelNotFound, modelName)
 	}
 
 	// Return default values instead of actual model values
@@ -565,7 +541,7 @@ func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindo
 func (s *registryAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	// Check for nil result
 	if result == nil {
-		return "", fmt.Errorf("%w: result is nil", ErrEmptyResponse)
+		return "", fmt.Errorf("%w: result is nil", llm.ErrEmptyResponse)
 	}
 
 	// Check for empty content
@@ -596,17 +572,17 @@ func (s *registryAPIService) ProcessLLMResponse(result *llm.ProviderResult) (str
 				errDetails.WriteString(safetyInfo)
 
 				// If we have safety blocks, use the specific safety error
-				return "", fmt.Errorf("%w%s", ErrSafetyBlocked, errDetails.String())
+				return "", fmt.Errorf("%w%s", llm.ErrSafetyBlocked, errDetails.String())
 			}
 		}
 
 		// If we don't have safety blocks, use the generic empty response error
-		return "", fmt.Errorf("%w%s", ErrEmptyResponse, errDetails.String())
+		return "", fmt.Errorf("%w%s", llm.ErrEmptyResponse, errDetails.String())
 	}
 
 	// Check for whitespace-only content
 	if strings.TrimSpace(result.Content) == "" {
-		return "", ErrWhitespaceContent
+		return "", llm.ErrWhitespaceContent
 	}
 
 	return result.Content, nil
@@ -619,7 +595,7 @@ func (s *registryAPIService) IsEmptyResponseError(err error) bool {
 	}
 
 	// Check for specific error types using errors.Is
-	if errors.Is(err, ErrEmptyResponse) || errors.Is(err, ErrWhitespaceContent) {
+	if errors.Is(err, llm.ErrEmptyResponse) || errors.Is(err, llm.ErrWhitespaceContent) {
 		return true
 	}
 
@@ -651,7 +627,7 @@ func (s *registryAPIService) IsSafetyBlockedError(err error) bool {
 	}
 
 	// Check for specific error types using errors.Is
-	if errors.Is(err, ErrSafetyBlocked) {
+	if errors.Is(err, llm.ErrSafetyBlocked) {
 		return true
 	}
 
