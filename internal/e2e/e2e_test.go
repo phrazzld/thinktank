@@ -32,14 +32,6 @@ const (
 	mockFinishReason        = "STOP"
 )
 
-// mockGeminiResponse is currently unused but kept for potential future use
-// TODO: Consider removing if not needed in future iterations
-// type mockGeminiResponse struct {
-//    Content      string `json:"content"`
-//    TokenCount   int    `json:"tokenCount"`
-//    FinishReason string `json:"finishReason"`
-// }
-
 // mockGeminiError represents the structure of a Gemini API error response
 type mockGeminiError struct {
 	Error struct {

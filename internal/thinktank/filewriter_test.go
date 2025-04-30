@@ -150,16 +150,6 @@ func TestSaveToFile(t *testing.T) {
 			// we can't actually verify reading the content with our test filesystem.
 			// This test is not verifying contents but just that the call succeeds.
 			// Full end-to-end verification would be done in integration tests.
-			// The original code that would attempt to read the file is commented below:
-
-			// content, err := fs.ReadFile(outputPath)
-			// if err != nil {
-			//    t.Errorf("Failed to read output file: %v", err)
-			//    return
-			// }
-			// if string(content) != tc.content {
-			//    t.Errorf("File content = %v, want %v", string(content), tc.content)
-			// }
 
 			// Instead, we'll just log success
 			t.Logf("Successfully wrote to file: %s", outputPath)

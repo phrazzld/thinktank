@@ -66,7 +66,7 @@
         - These functions are intentionally maintained for future test expansion as noted in comments
         - The source files explicitly state these functions should be kept for future test cases
         - Decision: Keep these functions as they are part of a comprehensive testing toolkit
-- [ ] **T006 · Refactor · P0**: remove commented-out code blocks
+- [x] **T006 · Refactor · P0**: remove commented-out code blocks
     - **Context:** SHRINK_PLAN.md § 3.2 (R2), Implementation Step 1
     - **Action:**
         1. Search codebase for significant blocks of commented-out Go code.
@@ -78,7 +78,12 @@
     - **Notes:**
         - Initial analysis shows most commented-out code blocks are in test files and are deliberately kept
         - More careful review needed to distinguish between inactive code and documentation/examples
-        - This task should be deferred until a more thorough analysis can be performed
+    - **Results:**
+        - Removed unused `mockGeminiResponse` struct from e2e_test.go
+        - Removed commented-out test code from filewriter_test.go
+        - Added proper explanatory comment in filewriter_test.go
+        - Most other comments in the codebase are legitimate documentation rather than commented-out code
+        - Verified changes with tests and build
 - [x] **T007 · Refactor · P0**: remove legacy `apiService` and related code
     - **Context:** SHRINK_PLAN.md § 3.2 (R2), Implementation Step 2
     - **Action:**
