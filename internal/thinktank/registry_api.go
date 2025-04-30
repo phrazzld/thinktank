@@ -16,13 +16,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
-// Helper function to get minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
+// Note: min helper function was removed as part of T003 and T006 - Remove Dead Code
+// Go 1.21+ provides built-in min/max functions
 
 // registryAPIService implements the APIService interface using the Registry
 type registryAPIService struct {
@@ -67,8 +62,8 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	modelDef, err := s.registry.GetModel(modelName)
 	if err != nil {
 		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		// If the model isn't found in the registry, try the fallback strategy
-		return s.createLLMClientFallback(ctx, apiKey, modelName, apiEndpoint)
+		// Do not use fallback strategy; return a specific error instead
+		return nil, fmt.Errorf("%w: model '%s' not found in registry: %v", llm.ErrModelNotFound, modelName, err)
 	}
 
 	// Get the provider info from the registry
@@ -179,206 +174,8 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	return client, nil
 }
 
-// ProviderType represents the type of LLM provider
-type ProviderType string
+// Note: ProviderType enum was removed as part of T003 - Remove Legacy Provider Detection Logic
 
-const (
-	// ProviderGemini represents the Gemini provider
-	ProviderGemini ProviderType = "gemini"
-	// ProviderOpenAI represents the OpenAI provider
-	ProviderOpenAI ProviderType = "openai"
-	// ProviderUnknown represents an unknown provider
-	ProviderUnknown ProviderType = "unknown"
-)
-
-// detectProviderFromModelName is an internal function that detects the provider type from model name
-// This is used only as a fallback when a model isn't found in the registry
-func detectProviderFromModelName(modelName string) ProviderType {
-	if modelName == "" {
-		return ProviderUnknown
-	}
-
-	// Check for Gemini models
-	if len(modelName) >= 6 && modelName[:6] == "gemini" {
-		return ProviderGemini
-	}
-
-	// Check for OpenAI GPT models
-	if len(modelName) >= 3 && modelName[:3] == "gpt" {
-		return ProviderOpenAI
-	}
-
-	// Check for other OpenAI models
-	otherOpenAIModels := []string{
-		"text-davinci",
-		"davinci",
-		"curie",
-		"babbage",
-		"ada",
-		"text-embedding",
-		"text-moderation",
-		"whisper",
-	}
-
-	for _, prefix := range otherOpenAIModels {
-		if len(modelName) >= len(prefix) && modelName[:len(prefix)] == prefix {
-			return ProviderOpenAI
-		}
-	}
-
-	// Unknown model type
-	return ProviderUnknown
-}
-
-// createLLMClientFallback is used when a model isn't found in the registry
-// It uses basic string pattern matching for backward compatibility
-func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-	s.logger.Warn("Using fallback provider detection for model '%s'. Please add it to your models.yaml configuration.", modelName)
-
-	// Detect provider type from model name using string pattern matching
-	providerType := detectProviderFromModelName(modelName)
-
-	// API Key Resolution Logic for Legacy Provider Detection
-	// --------------------------------------------------
-	// This follows the same precedence logic as the main path:
-	// 1. Environment variables specific to each provider (highest priority)
-	// 2. Explicitly provided API key parameter (fallback only)
-	//
-	// Note: This is a legacy fallback path for models not found in the registry
-
-	// Start with an empty key, which we'll populate from environment or passed parameter
-	effectiveApiKey := ""
-
-	// STEP 1: First, try to get the key from environment variables based on provider type
-	// Create a new config loader to get the API key sources from config
-	configLoader := registry.NewConfigLoader()
-	modelConfig, configErr := configLoader.Load()
-
-	// If we have a config, use its API key mappings from models.yaml
-	if configErr == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
-		var envVar string
-		var ok bool
-
-		// Map the provider type to the provider name used in the config
-		var providerName string
-		switch providerType {
-		case ProviderGemini:
-			providerName = "gemini"
-		case ProviderOpenAI:
-			providerName = "openai"
-		}
-
-		// Look up the environment variable name for this provider
-		if providerName != "" {
-			if envVar, ok = modelConfig.APIKeySources[providerName]; ok && envVar != "" {
-				envApiKey := os.Getenv(envVar)
-				if envApiKey != "" {
-					effectiveApiKey = envApiKey
-					s.logger.Debug("Using API key from environment variable %s for provider %s",
-						envVar, providerName)
-
-					// Log the API key prefix for debugging
-					if len(effectiveApiKey) > 0 {
-						keyPrefix := ""
-						if len(effectiveApiKey) >= 5 {
-							keyPrefix = effectiveApiKey[:5]
-						} else {
-							keyPrefix = effectiveApiKey[:]
-						}
-						s.logger.Debug("API key for provider %s (length: %d, starts with: %s)",
-							providerName, len(effectiveApiKey), keyPrefix)
-					}
-				}
-			}
-		}
-	} else {
-		// Fallback to hardcoded defaults if no config is available
-		// This path is rarely used but provided as a safety net
-		s.logger.Warn("No models.yaml configuration found. Using hardcoded environment variable names.")
-
-		switch providerType {
-		case ProviderGemini:
-			envApiKey := os.Getenv("GEMINI_API_KEY")
-			if envApiKey != "" {
-				effectiveApiKey = envApiKey
-				s.logger.Debug("No config found. Using API key from GEMINI_API_KEY environment variable")
-				if len(effectiveApiKey) > 0 {
-					s.logger.Debug("API key length: %d, starts with: %s",
-						len(effectiveApiKey), effectiveApiKey[:min(5, len(effectiveApiKey))])
-				}
-			}
-		case ProviderOpenAI:
-			envApiKey := os.Getenv("OPENAI_API_KEY")
-			if envApiKey != "" {
-				effectiveApiKey = envApiKey
-				s.logger.Debug("No config found. Using API key from OPENAI_API_KEY environment variable")
-				if len(effectiveApiKey) > 0 {
-					s.logger.Debug("API key length: %d, starts with: %s",
-						len(effectiveApiKey), effectiveApiKey[:min(5, len(effectiveApiKey))])
-				}
-			}
-		}
-	}
-
-	// STEP 2: Only fall back to the passed apiKey if environment variable is not set
-	// This is discouraged for production use but supported for testing/development
-	if effectiveApiKey == "" && apiKey != "" {
-		effectiveApiKey = apiKey
-		s.logger.Debug("Environment variable not set or empty, using provided API key for provider type %v",
-			providerType)
-	}
-
-	// STEP 3: If no API key is available from either source, reject the request
-	// API keys are required for all providers
-	if effectiveApiKey == "" {
-		var envVarName string
-		switch providerType {
-		case ProviderGemini:
-			envVarName = "GEMINI_API_KEY"
-		case ProviderOpenAI:
-			envVarName = "OPENAI_API_KEY"
-		default:
-			envVarName = "API_KEY for this provider"
-		}
-
-		return nil, fmt.Errorf("%w: API key is required for provider %s. Please set the %s environment variable",
-			llm.ErrClientInitialization, providerType, envVarName)
-	}
-
-	// Initialize the appropriate client based on provider type
-	var client llm.LLMClient
-	var err error
-
-	switch providerType {
-	case ProviderGemini:
-		s.logger.Debug("Using Gemini provider for model %s (legacy detection)", modelName)
-		client, err = gemini.NewLLMClient(ctx, effectiveApiKey, modelName, apiEndpoint)
-	case ProviderOpenAI:
-		s.logger.Debug("Using OpenAI provider for model %s (legacy detection)", modelName)
-
-		client, err = openai.NewClient(effectiveApiKey, modelName, apiEndpoint)
-	case ProviderUnknown:
-		return nil, fmt.Errorf("%w: %s", llm.ErrUnsupportedModel, modelName)
-	}
-
-	// Handle client creation error
-	if err != nil {
-		// Check if it's already an API error with enhanced details from Gemini
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
-		}
-
-		// Check if it's an OpenAI API error
-		if apiErr, ok := openai.IsOpenAIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
-		}
-
-		// Wrap the original error
-		return nil, fmt.Errorf("%w: %v", llm.ErrClientInitialization, err)
-	}
-
-	return client, nil
-}
 
 // The remaining methods are carried over from the existing APIService implementation
 // since they don't depend on the provider initialization logic
