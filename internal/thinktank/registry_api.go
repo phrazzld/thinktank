@@ -16,6 +16,30 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
+// Define package-level error types for better error handling
+var (
+	// ErrEmptyResponse indicates the API returned an empty response
+	ErrEmptyResponse = errors.New("received empty response from LLM")
+
+	// ErrWhitespaceContent indicates the API returned only whitespace content
+	ErrWhitespaceContent = errors.New("LLM returned an empty output text")
+
+	// ErrSafetyBlocked indicates content was blocked by safety filters
+	ErrSafetyBlocked = errors.New("content blocked by LLM safety filters")
+
+	// ErrAPICall indicates a general API call error
+	ErrAPICall = errors.New("error calling LLM API")
+
+	// ErrClientInitialization indicates client initialization failed
+	ErrClientInitialization = errors.New("error creating LLM client")
+
+	// ErrUnsupportedModel indicates an unsupported model was requested
+	ErrUnsupportedModel = errors.New("unsupported model type")
+
+	// ErrModelNotFound indicates a model definition was not found in the registry
+	ErrModelNotFound = errors.New("model definition not found in registry")
+)
+
 // Helper function to get minimum of two integers
 func min(a, b int) int {
 	if a < b {
@@ -179,13 +203,64 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	return client, nil
 }
 
-// createLLMClientFallback is used when a model isn't found in the registry
-// It uses the legacy provider detection mechanism for backward compatibility
-func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-	s.logger.Warn("Using legacy provider detection for model '%s'. Please add it to your models.yaml configuration.", modelName)
+// ProviderType represents the type of LLM provider
+type ProviderType string
 
-	// Detect provider type from model name using the legacy method
-	providerType := DetectProviderFromModel(modelName)
+const (
+	// ProviderGemini represents the Gemini provider
+	ProviderGemini ProviderType = "gemini"
+	// ProviderOpenAI represents the OpenAI provider
+	ProviderOpenAI ProviderType = "openai"
+	// ProviderUnknown represents an unknown provider
+	ProviderUnknown ProviderType = "unknown"
+)
+
+// detectProviderFromModelName is an internal function that detects the provider type from model name
+// This is used only as a fallback when a model isn't found in the registry
+func detectProviderFromModelName(modelName string) ProviderType {
+	if modelName == "" {
+		return ProviderUnknown
+	}
+
+	// Check for Gemini models
+	if len(modelName) >= 6 && modelName[:6] == "gemini" {
+		return ProviderGemini
+	}
+
+	// Check for OpenAI GPT models
+	if len(modelName) >= 3 && modelName[:3] == "gpt" {
+		return ProviderOpenAI
+	}
+
+	// Check for other OpenAI models
+	otherOpenAIModels := []string{
+		"text-davinci",
+		"davinci",
+		"curie",
+		"babbage",
+		"ada",
+		"text-embedding",
+		"text-moderation",
+		"whisper",
+	}
+
+	for _, prefix := range otherOpenAIModels {
+		if len(modelName) >= len(prefix) && modelName[:len(prefix)] == prefix {
+			return ProviderOpenAI
+		}
+	}
+
+	// Unknown model type
+	return ProviderUnknown
+}
+
+// createLLMClientFallback is used when a model isn't found in the registry
+// It uses basic string pattern matching for backward compatibility
+func (s *registryAPIService) createLLMClientFallback(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	s.logger.Warn("Using fallback provider detection for model '%s'. Please add it to your models.yaml configuration.", modelName)
+
+	// Detect provider type from model name using string pattern matching
+	providerType := detectProviderFromModelName(modelName)
 
 	// API Key Resolution Logic for Legacy Provider Detection
 	// --------------------------------------------------
