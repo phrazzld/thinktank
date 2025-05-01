@@ -66,7 +66,7 @@
         1. Obsolete tests related to stubs are removed or refactored.
         2. All remaining tests compile and `go test ./...` passes.
     - **Depends‑on:** [T002]
-- [ ] **T007 · Test · P0: reinstate secret leakage detection tests**
+- [x] **T007 · Test · P0: reinstate secret leakage detection tests**
     - **Context:** PLAN.md / cr-02 Reinstate Secret Leakage Detection Tests
     - **Action:**
         1. For each provider integration (OpenAI, Gemini, OpenRouter, etc.), create/restore a test file (e.g., `internal/providers/<provider>/provider_secrets_test.go`).
