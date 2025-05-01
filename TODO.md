@@ -130,7 +130,7 @@
         3. `PLAN.md` is refactored (code block removed, content focused).
         4. `BACKLOG.md` is deduplicated against this `TODO.md`.
     - **Depends‑on:** none
-- [ ] **T012 · Chore · P3: remove duplicate backlog entry for t25**
+- [x] **T012 · Chore · P3: remove duplicate backlog entry for t25**
     - **Context:** PLAN.md / cr-10 Remove Duplicate BACKLOG Entry
     - **Action:**
         1. Open `BACKLOG.md`.
