@@ -1,144 +1,227 @@
-```markdown
 # Todo
 
-## Backend - Core Refactoring
-- [x] **T001 · Refactor · P1: remove duplicate sentinel errors in registry_api**
-    - **Context:** PLAN.md / cr-03 Remove Duplicated Sentinel Errors
+## CR-01: Remove API Key Prefix Logging
+- [x] **T001 · Bugfix · P0: remove api key prefix logging**
+    - **Context:** cr-01 Remove API Key Prefix Logging
     - **Action:**
-        1. Delete the local sentinel error `var` block (lines 16-30) in `internal/thinktank/registry_api.go`.
-        2. Ensure `internal/llm` is imported and replace local error usages with canonical versions (e.g., `llm.ErrEmptyResponse`).
-        3. Define any missing sentinel errors *only* in `internal/llm/errors.go`.
+        1. Delete logging statement(s) emitting `effectiveApiKey` substrings in `internal/thinktank/registry_api.go` (approx. lines 154-169).
+        2. Replace with logging only the *source* of the key (e.g., env var name) if diagnostic info is required.
     - **Done‑when:**
-        1. Local error variables are removed from `internal/thinktank/registry_api.go`.
-        2. Code compiles and uses only errors from `internal/llm`.
-        3. `errors.Is` checks function correctly against central errors.
-        4. `go test ./...` passes.
-    - **Depends‑on:** none
-- [x] **T002 · Refactor · P1: delete test stubs from production code**
-    - **Context:** PLAN.md / cr-04 Remove Test Stubs from Production Code / Steps 1, 3, 4
-    - **Action:**
-        1. Delete stub files: `internal/thinktank/modelproc/token_fixes.go`, `internal/thinktank/token_fixes.go`.
-        2. Delete the associated `NewTokenManagerWithClient` variable.
-    - **Done‑when:**
-        1. Specified stub files and variables are deleted.
-        2. No production code references the removed stubs.
-        3. Code compiles (tests addressed in T004).
-    - **Depends‑on:** none
-- [x] **T003 · Refactor · P1: remove legacy provider detection fallback logic**
-    - **Context:** PLAN.md / cr-08 Remove Legacy Provider Detection Logic
-    - **Action:**
-        1. Delete `createLLMClientFallback` and `detectProviderFromModelName` functions from `internal/thinktank/registry_api.go`.
-        2. Modify `InitLLMClient` to remove the fallback call in the error path.
-        3. Ensure `InitLLMClient` returns a specific error (e.g., `llm.ErrModelNotFound`) if a model is not found in the registry.
-    - **Done‑when:**
-        1. Fallback functions are deleted.
-        2. `InitLLMClient` relies solely on the registry for model lookup.
-        3. Appropriate error is returned for models not found in the registry.
-        4. `go test ./...` passes, including tests for non-existent models.
-    - **Depends‑on:** none
-- [x] **T005 · Refactor · P2: remove local providertype enum**
-    - **Context:** PLAN.md / cr-11 Remove/Centralize Local `ProviderType` Enum
-    - **Action:**
-        1. Confirm `ProviderType` enum (lines 206-215) in `internal/thinktank/registry_api.go` is unused after T003 completion.
-        2. Delete the `ProviderType` type definition and its associated constants.
-    - **Done‑when:**
-        1. `ProviderType` enum is removed from `internal/thinktank/registry_api.go`.
-        2. Code compiles and `go test ./...` passes.
-    - **Depends‑on:** [T003]
-- [x] **T006 · Refactor · P2: remove dead min helper function**
-    - **Context:** PLAN.md / cr-09 Remove Dead `min` Helper Function
-    - **Action:**
-        1. Delete the `min` function definition (lines 32-35) from `internal/thinktank/registry_api.go`.
-        2. Ensure `go.mod` specifies `go 1.21` or higher.
-    - **Done‑when:**
-        1. The `min` function is deleted.
-        2. Code compiles and `go test ./...` passes.
-    - **Depends‑on:** none
-
-## Backend - Testing & CI
-- [x] **T004 · Test · P1: refactor or delete tests broken by stub removal**
-    - **Context:** PLAN.md / cr-04 Remove Test Stubs from Production Code / Step 2
-    - **Action:**
-        1. Identify specific `*_test.go` files that fail to compile or run after completing T002.
-        2. Analyze each failing test: Delete tests solely verifying the removed token management logic.
-        3. Refactor tests that have other value to work without the stubs (e.g., using production interfaces/mocks).
-    - **Done‑when:**
-        1. Obsolete tests related to stubs are removed or refactored.
-        2. All remaining tests compile and `go test ./...` passes.
-    - **Depends‑on:** [T002]
-- [x] **T007 · Test · P0: reinstate secret leakage detection tests**
-    - **Context:** PLAN.md / cr-02 Reinstate Secret Leakage Detection Tests
-    - **Action:**
-        1. For each provider integration (OpenAI, Gemini, OpenRouter, etc.), create/restore a test file (e.g., `internal/providers/<provider>/provider_secrets_test.go`).
-        2. Implement test cases using a logging interceptor (`logutil.WithSecretDetection` or similar) that trigger potentially problematic operations (client creation, errors).
-        3. Assert that captured logs **do not** contain API keys, tokens, or credentials.
-    - **Done‑when:**
-        1. Automated tests exist for each provider verifying absence of secrets in logs.
-        2. These tests run as part of `go test ./...`.
-        3. All secret detection tests pass.
-        4. CI runs these tests.
-    - **Depends‑on:** none # Best done after core refactors, but not strictly blocked
-- [x] **T008 · Test · P1: restore essential provider/adapter boundary tests**
-    - **Context:** PLAN.md / cr-05 Restore Essential Provider/Adapter Boundary Tests
-    - **Action:**
-        1. Identify key interfaces/adapters (`APIService`, `FileWriter`, `Provider`, etc.) needing contract verification.
-        2. Review deleted tests (`git show <commit>^:<path>`) or write new tests focusing on verifying contracts (inputs, outputs, errors, interaction logic like `CreateClient`).
-        3. Ensure adequate test coverage for the contracts of restored/newly tested components.
-    - **Done‑when:**
-        1. Automated tests exist verifying the contracts of key interfaces and adapter logic.
-        2. Tests cover parameter handling, error categorization, and expected outputs/side-effects.
-        3. Tests run as part of `go test ./...` and pass.
-        4. CI runs these tests.
-    - **Depends‑on:** none # Best done after core refactors, but not strictly blocked
-- [x] **T009 · Bugfix · P0: investigate and fix e2e test suite failure**
-    - **Context:** PLAN.md / cr-01 Investigate & Fix E2E Test Suite Failure
-    - **Action:**
-        1. Execute `./internal/e2e/run_e2e_tests.sh` locally against the branch incorporating fixes from T001, T003, T004 to reproduce the failure.
-        2. Investigate the root cause (remaining code issues, test environment, setup, flaky tests).
-        3. Implement the necessary fix (application code, test setup, mocks, test refactoring).
-    - **Done‑when:**
-        1. Root cause of E2E failure is identified and fixed.
-        2. `./internal/e2e/run_e2e_tests.sh` passes consistently locally.
-        3. CI pipeline passes the E2E stage reliably for the relevant branch.
+        1. Code removing key logging is merged.
+        2. Manual log inspection (including debug level) confirms zero key fragments are logged.
     - **Verification:**
-        1. Run `./internal/e2e/run_e2e_tests.sh` multiple times locally to check for flakiness.
-        2. Observe CI run passing E2E stage.
-    - **Depends‑on:** [T001, T003, T004] # Core refactors likely impact E2E
-
-## Code Standards
-- [x] **T010 · Chore · P2: add justifications for remaining //nolint:unused directives**
-    - **Context:** PLAN.md / cr-07 Add Justifications for Remaining `//nolint:unused`
-    - **Action:**
-        1. Search codebase for `//nolint:unused`.
-        2. For each instance: Verify necessity. If needed, add comment on the same line: `//nolint:unused // Reason: <concise justification>`. If not needed, remove suppression and associated dead code.
-    - **Done‑when:**
-        1. Every remaining `//nolint:unused` suppression has an adjacent justification comment.
-        2. Unnecessary suppressions and code are removed.
-        3. `golangci-lint` passes without related warnings.
+        1. Run the application locally, trigger API key usage, inspect logs (stdout/stderr/files) to confirm no API key fragments appear.
     - **Depends‑on:** none
 
-## Documentation
-- [ ] **T011 · Chore · P2: consolidate and simplify project documentation/tasks**
-    - **Context:** PLAN.md / cr-06 Consolidate & Simplify Project Documentation/Tasks
+## CR-04: Secret Detection Tests
+- [ ] **T002 · Test · P0: audit secret detection test coverage gaps**
+    - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Steps 1-2)
     - **Action:**
-        1. Merge actionable items from all `TODO-*.md` files into this `TODO.md` file and delete the `TODO-*.md` files.
-        2. Refactor `PLAN.md`: Remove the surrounding ```markdown code block, optionally rename (e.g., `DESIGN_NOTES.md`), and ensure content focuses on high-level design/architecture.
-        3. Review `BACKLOG.md` and remove entries that are now duplicated in this `TODO.md`.
+        1. Review `internal/providers/*/provider_secrets_test.go` for Gemini, OpenAI, OpenRouter.
+        2. Document specific scenarios (client creation, API calls, error handling) lacking secret detection tests using `logutil.WithSecretDetection`.
     - **Done‑when:**
-        1. All `TODO-*.md` files are removed.
-        2. Actionable tasks are consolidated into this `TODO.md`.
-        3. `PLAN.md` is refactored (code block removed, content focused).
-        4. `BACKLOG.md` is deduplicated against this `TODO.md`.
+        1. Audit document/comment outlining coverage gaps for each provider is complete.
     - **Depends‑on:** none
-- [x] **T012 · Chore · P3: remove duplicate backlog entry for t25**
-    - **Context:** PLAN.md / cr-10 Remove Duplicate BACKLOG Entry
+- [ ] **T003 · Test · P0: implement secret detection tests for coverage gaps**
+    - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Steps 3-4)
     - **Action:**
-        1. Open `BACKLOG.md`.
-        2. Delete one instance of the duplicate entry for Task T25.
+        1. Write new test cases for identified gaps (from T002) using `logutil.WithSecretDetection`.
+        2. Ensure assertions check `HasDetectedSecrets() == false` for relevant scenarios.
     - **Done‑when:**
-        1. `BACKLOG.md` contains only one entry for T25.
+        1. New test cases covering identified gaps are implemented and pass locally.
+    - **Depends‑on:** [T002]
+- [ ] **T004 · Chore · P0: ensure secret detection tests are mandatory in ci**
+    - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Step 5)
+    - **Action:**
+        1. Verify CI config includes `internal/providers/...` tests.
+        2. Ensure these tests are mandatory and block merges on failure.
+    - **Done‑when:**
+        1. CI configuration verified/updated to enforce secret detection tests.
+    - **Verification:**
+        1. Intentionally break a secret detection test, push branch, confirm CI fails and blocks merge.
+    - **Depends‑on:** [T003]
+
+## CR-03: E2E Testing
+- [ ] **T005 · Test · P0: fix failing e2e tests**
+    - **Context:** cr-03 Fix & Enforce E2E Test Suite in CI (Steps 1-2)
+    - **Action:**
+        1. Execute `./internal/e2e/run_e2e_tests.sh` locally.
+        2. Debug and fix root cause(s) of any failures.
+    - **Done‑when:**
+        1. `./internal/e2e/run_e2e_tests.sh` passes reliably locally.
     - **Depends‑on:** none
+- [ ] **T006 · Chore · P0: enforce e2e test success in ci**
+    - **Context:** cr-03 Fix & Enforce E2E Test Suite in CI (Steps 3-4)
+    - **Action:**
+        1. Add job/step to CI pipeline to execute `./internal/e2e/run_e2e_tests.sh`.
+        2. Configure CI platform (e.g., branch protection rules) to require this job to pass for merges to main.
+    - **Done‑when:**
+        1. CI configuration updated; merge to main is blocked if the E2E job fails.
+    - **Verification:**
+        1. Push a branch where E2E tests fail; confirm merge is blocked.
+    - **Depends‑on:** [T005]
+
+## CR-02: Default Model Consistency
+- [ ] **T007 · Chore · P1: align default model name in `readme.md` and `config.go`**
+    - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 1)
+    - **Action:**
+        1. Verify default model name (`gemini-2.5-pro-preview-03-25`) is identical in `README.md` and `internal/config/config.go`.
+        2. Update file(s) if mismatch exists.
+    - **Done‑when:**
+        1. The default model name is identical in both files.
+    - **Depends‑on:** none
+- [ ] **T008 · Feature · P1: create ci script (`check-defaults.sh`) to compare default models**
+    - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 2)
+    - **Action:**
+        1. Create `scripts/ci/check-defaults.sh` to extract default model from `README.md` and `internal/config/config.go`.
+        2. Implement comparison logic; exit non-zero on mismatch.
+    - **Done‑when:**
+        1. Script exists and correctly fails if default models mismatch.
+    - **Depends‑on:** [T007]
+- [ ] **T009 · Chore · P1: integrate `check-defaults.sh` into mandatory ci checks**
+    - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 3)
+    - **Action:**
+        1. Add step to CI workflow to execute `scripts/ci/check-defaults.sh`.
+        2. Ensure this step fails the build if the script exits non-zero.
+    - **Done‑when:**
+        1. CI configuration updated; build fails if default models mismatch.
+    - **Verification:**
+        1. Temporarily make defaults inconsistent, push branch, verify CI fails on the check.
+    - **Depends‑on:** [T008]
+
+## CR-09: Code Quality (`nolint:unused`)
+- [ ] **T010 · Refactor · P2: remove or justify `nolint:unused` directives**
+    - **Context:** cr-09 Remove/Justify all `nolint:unused`
+    - **Action:**
+        1. Search project for `//nolint:unused`.
+        2. For each: remove unused code/directive OR add specific inline justification comment (`// Reason: ...`).
+        3. Ensure `nolintlint` check passes in CI.
+    - **Done‑when:**
+        1. All `//nolint:unused` directives are removed or have specific justifications.
+        2. CI linter check passes without relevant errors.
+    - **Depends‑on:** none
+
+## CR-05: Refactor Testability Helper (Constructor Injection)
+- [ ] **T011 · Refactor · P1: modify `newregistryapiservice` signature for constructor injection**
+    - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Step 1)
+    - **Action:**
+        1. Change `NewRegistryAPIService` signature in `internal/thinktank/registry_api.go` to accept `*registry.Registry`.
+    - **Done‑when:**
+        1. Function signature updated; code compiles (ignoring call site errors).
+    - **Depends‑on:** none
+- [ ] **T012 · Refactor · P1: update call sites for `newregistryapiservice` constructor injection**
+    - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Steps 2, 4)
+    - **Action:**
+        1. Update production call site (e.g., `main.go`) to pass `*registry.Registry`.
+        2. Update tests to instantiate `registryAPIService` directly via modified constructor, injecting mocks.
+    - **Done‑when:**
+        1. All production and test call sites updated; code compiles and tests pass.
+    - **Depends‑on:** [T011]
+- [ ] **T013 · Refactor · P1: remove `registryapiservicefortesting` struct and `setregistry` method**
+    - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Step 3)
+    - **Action:**
+        1. Delete `RegistryAPIServiceForTesting` struct.
+        2. Delete `SetRegistry` method.
+    - **Done‑when:**
+        1. Struct and method are removed from codebase; code compiles and tests pass.
+    - **Verification:**
+        1. Search codebase for deleted symbols; confirm zero results.
+    - **Depends‑on:** [T012]
+
+## CR-06: Relocate Provider Registry (Modularity)
+- [ ] **T014 · Refactor · P2: create `internal/registry` package**
+    - **Context:** cr-06 Relocate Provider Registry/Types for Modularity (Step 1)
+    - **Action:**
+        1. Create the new package `internal/registry`.
+    - **Done‑when:**
+        1. Directory `internal/registry` exists.
+    - **Depends‑on:** none
+- [ ] **T015 · Refactor · P2: move provider registry types/implementation to `internal/registry`**
+    - **Context:** cr-06 Relocate Provider Registry/Types for Modularity (Steps 2-3)
+    - **Action:**
+        1. Move contents of `internal/thinktank/api_provider_types.go` to the new `internal/registry` package.
+        2. Update package declaration in moved file(s).
+    - **Done‑when:**
+        1. Provider registry code resides in `internal/registry` with correct package declaration.
+    - **Depends‑on:** [T014]
+- [ ] **T016 · Refactor · P2: update imports and verify no circular dependencies for registry move**
+    - **Context:** cr-06 Relocate Provider Registry/Types for Modularity (Steps 4-5)
+    - **Action:**
+        1. Update all import paths referencing the moved items to point to `internal/registry`.
+        2. Check for and resolve any circular dependencies introduced.
+    - **Done‑when:**
+        1. All imports updated; project builds and tests pass; no circular dependencies reported.
+    - **Verification:**
+        1. Run build and static analysis checks for cycles.
+    - **Depends‑on:** [T015]
+
+## CR-07: Documentation Consolidation
+- [ ] **T017 · Chore · P2: consolidate actionable tasks into `todo.md`**
+    - **Context:** cr-07 Consolidate Documentation Sprawl (Steps 1-2)
+    - **Action:**
+        1. Review `PLAN.md`, `T009-plan.md`, `TODO-*.md` files.
+        2. Merge all actionable, non-duplicate tasks into this `TODO.md` file.
+    - **Done‑when:**
+        1. `TODO.md` contains all current/near-term actionable tasks from source files.
+    - **Depends‑on:** none
+- [ ] **T018 · Chore · P2: delete redundant plan and task files**
+    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 3)
+    - **Action:**
+        1. Delete `T009-plan.md` and all `TODO-*.md` files.
+    - **Done‑when:**
+        1. Redundant files are removed from the repository.
+    - **Depends‑on:** [T017]
+- [ ] **T019 · Chore · P2: refactor `plan.md` into high-level strategy document**
+    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 4)
+    - **Action:**
+        1. Edit `PLAN.md` (or `REMEDIATION_PLAN.md`) to remove task lists and markdown code blocks.
+        2. Refocus content as a concise strategy/design overview.
+    - **Done‑when:**
+        1. `PLAN.md`/`REMEDIATION_PLAN.md` is refocused as a strategy doc.
+    - **Depends‑on:** [T017]
+- [ ] **T020 · Chore · P2: clarify `backlog.md` purpose and remove duplicates**
+    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 5)
+    - **Action:**
+        1. Remove tasks from `BACKLOG.md` that are now in `TODO.md`.
+        2. Add a clarifying header note to `BACKLOG.md` (e.g., "Future ideas/non-sprint items").
+    - **Done‑when:**
+        1. `BACKLOG.md` has no duplicates from `TODO.md` and purpose is clarified.
+    - **Depends‑on:** [T017]
+
+## CR-08: Test Coverage
+- [ ] **T021 · Test · P1: analyze test coverage for critical packages post-refactor**
+    - **Context:** cr-08 Audit & Restore Test Coverage Post-Deletion (Steps 1-2)
+    - **Action:**
+        1. Run `go test ./... -coverprofile=coverage.out` focusing on `internal/thinktank`, `internal/providers`, `internal/registry`, `internal/llm`.
+        2. Analyze `coverage.out` to identify low-coverage areas (interfaces, error paths).
+    - **Done‑when:**
+        1. Coverage analysis complete; list of specific gaps documented.
+    - **Depends‑on:** [T013, T016]
+- [ ] **T022 · Test · P1: implement tests to address identified coverage gaps**
+    - **Context:** cr-08 Audit & Restore Test Coverage Post-Deletion (Step 3)
+    - **Action:**
+        1. Write new/restored unit/integration tests for gaps identified in T021.
+        2. Focus on interface contracts and boundary conditions.
+    - **Done‑when:**
+        1. New/restored tests implemented and passing locally; coverage report shows improvement.
+    - **Depends‑on:** [T021]
+- [ ] **T023 · Chore · P1: configure ci to enforce minimum test coverage threshold**
+    - **Context:** cr-08 Audit & Restore Test Coverage Post-Deletion (Step 4)
+    - **Action:**
+        1. Determine and configure a minimum coverage threshold in CI (e.g., using `go tool cover` or other tools).
+        2. Ensure CI build fails if coverage drops below this threshold.
+    - **Done‑when:**
+        1. CI configuration updated; build fails if coverage is below threshold.
+    - **Verification:**
+        1. Check CI configuration file; observe CI run output enforcing coverage.
+    - **Depends‑on:** [T022]
+
+---
 
 ### Clarifications & Assumptions
-- *(No clarifications needed based on the provided plan)*
-```
+- [ ] **Issue:** No specific minimum test coverage threshold defined in plan (cr-08).
+    - **Context:** cr-08, Step 4 requires enforcing a minimum threshold.
+    - **Blocking?:** no (Assume a reasonable default like 80% for T023, adjust later if needed).
+- [ ] **Issue:** Confirm target package name for provider registry relocation (cr-06).
+    - **Context:** cr-06 suggests `internal/registry` or `internal/providers/registry`.
+    - **Blocking?:** no (Proceeding with `internal/registry` as per T014, easily changed if incorrect).

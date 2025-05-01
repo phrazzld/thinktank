@@ -115,3 +115,20 @@
 
 - [ ] **T45: Restore Integration Tests**
   Update and re-enable the disabled integration tests to verify end-to-end functionality across all providers.
+
+## Code Review Improvements
+
+- [ ] **T46: Centralize Test Mocks**
+  Refactor `internal/integration/multi_provider_test.go:122-141` to use shared mocks from `internal/testutil` instead of local mock definitions (`mockConfigLoader`, `mockProvider`) to reduce duplication.
+
+- [ ] **T47: Evaluate BufferLogger Implementation**
+  Review `internal/logutil/buffer_logger.go` to determine if standard library `log/slog` with `bytes.Buffer` could meet testing needs instead of a custom implementation, potentially reducing maintenance overhead.
+
+- [ ] **T48: Remove Error Re-exports**
+  Refactor tests currently relying on error re-exports in `cmd/thinktank/api.go:13-19` to import directly from `internal/llm` and remove the unnecessary `var (...)` block.
+
+- [ ] **T49: Standardize Test File Naming**
+  Consider renaming secret tests from `internal/providers/*/provider_secrets_test.go` to the more standard Go pattern `<provider>_secrets_test.go` (e.g., `gemini_secrets_test.go`).
+
+- [ ] **T50: Remove Unnecessary Type Alias**
+  Remove the alias `type APIService = interfaces.APIService` in `cmd/thinktank/api.go:22` and update internal usages to directly use `interfaces.APIService`.

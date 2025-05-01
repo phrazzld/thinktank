@@ -159,15 +159,9 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	if effectiveApiKey == "" {
 		s.logger.Error("Empty API key for provider '%s' - this will cause authentication failures", modelDef.Provider)
 	} else {
-		// Log a prefix of the API key for easier debugging while maintaining security
-		keyPrefix := ""
-		if len(effectiveApiKey) >= 5 {
-			keyPrefix = effectiveApiKey[:5]
-		} else if len(effectiveApiKey) > 0 {
-			keyPrefix = effectiveApiKey[:]
-		}
-		s.logger.Debug("Using API key for provider '%s' (length: %d, starts with: %s)",
-			modelDef.Provider, len(effectiveApiKey), keyPrefix)
+		// Log API key metadata only (NEVER log any portion of the key itself)
+		s.logger.Debug("Using API key for provider '%s' (length: %d, source: via environment variable)",
+			modelDef.Provider, len(effectiveApiKey))
 	}
 
 	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelDef.APIModelID, effectiveEndpoint)
