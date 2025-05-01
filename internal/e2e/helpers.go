@@ -30,7 +30,7 @@ func CreateStandardArgsWithPaths(instructionsFile, outputDir, sourcePath string)
 	return []string{
 		"--instructions", instructionsFile,
 		"--output-dir", outputDir,
-		"--model", "test-model",
+		"--model", "gemini-2.5-pro-preview-03-25",
 		sourcePath,
 	}
 }

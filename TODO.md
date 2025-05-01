@@ -90,7 +90,7 @@
         3. Tests run as part of `go test ./...` and pass.
         4. CI runs these tests.
     - **Depends‑on:** none # Best done after core refactors, but not strictly blocked
-- [ ] **T009 · Bugfix · P0: investigate and fix e2e test suite failure**
+- [x] **T009 · Bugfix · P0: investigate and fix e2e test suite failure**
     - **Context:** PLAN.md / cr-01 Investigate & Fix E2E Test Suite Failure
     - **Action:**
         1. Execute `./internal/e2e/run_e2e_tests.sh` locally against the branch incorporating fixes from T001, T003, T004 to reproduce the failure.

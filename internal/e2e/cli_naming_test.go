@@ -46,7 +46,7 @@ func TestDirectoryNamingDefault(t *testing.T) {
 	flags := env.DefaultFlags
 	flags.Instructions = instructionsFile
 	flags.OutputDir = "" // Explicitly set to empty to test default naming
-	flags.ModelNames = []string{"test-model"}
+	flags.Model = []string{"gemini-2.5-pro-preview-03-25"}
 
 	// Run the command
 	stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{filepath.Join(env.TempDir, "src")})
@@ -84,8 +84,8 @@ func TestDirectoryNamingDefault(t *testing.T) {
 
 	// Verify the directory contains expected output files
 	// Typically there should be at least one output file named after the model
-	modelOutputFile := filepath.Join(outputDir, "test-model.md")
-	alternateOutputFile := filepath.Join(outputDir, "gemini-test-model.md")
+	modelOutputFile := filepath.Join(outputDir, "gemini-2.5-pro-preview-03-25.md")
+	alternateOutputFile := filepath.Join(outputDir, "o4-mini.md")
 
 	if _, err := os.Stat(modelOutputFile); os.IsNotExist(err) {
 		// Try the alternate file name
@@ -116,7 +116,7 @@ func TestDirectoryNamingExplicit(t *testing.T) {
 	flags := env.DefaultFlags
 	flags.Instructions = instructionsFile
 	flags.OutputDir = explicitOutputDir
-	flags.ModelNames = []string{"test-model"}
+	flags.Model = []string{"gemini-2.5-pro-preview-03-25"}
 
 	// Run the command
 	stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{filepath.Join(env.TempDir, "src")})
@@ -134,8 +134,8 @@ func TestDirectoryNamingExplicit(t *testing.T) {
 	}
 
 	// Verify output files were created in the explicit directory
-	modelOutputFile := filepath.Join(explicitOutputDir, "test-model.md")
-	alternateOutputFile := filepath.Join(explicitOutputDir, "gemini-test-model.md")
+	modelOutputFile := filepath.Join(explicitOutputDir, "gemini-2.5-pro-preview-03-25.md")
+	alternateOutputFile := filepath.Join(explicitOutputDir, "o4-mini.md")
 
 	if _, err := os.Stat(modelOutputFile); os.IsNotExist(err) {
 		// Try the alternate file name

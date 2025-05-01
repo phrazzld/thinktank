@@ -46,6 +46,7 @@ type testFlags struct {
 	Instructions   string
 	OutputDir      string
 	ModelNames     []string
+	Model          []string
 	APIKey         string
 	Include        string
 	Exclude        string
@@ -128,7 +129,8 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	env.DefaultFlags = testFlags{
 		Instructions:  "", // Will be set by specific tests
 		OutputDir:     filepath.Join(tempDir, "output"),
-		ModelNames:    []string{"gemini-test-model"}, // Match model name used in mock server
+		ModelNames:    []string{"gemini-2.5-pro-preview-03-25"}, // Use model from registry
+		Model:         []string{"gemini-2.5-pro-preview-03-25"}, // Use model from registry
 		APIKey:        "test-api-key",
 		Include:       "",
 		Exclude:       ".git,node_modules",
@@ -174,7 +176,7 @@ func (e *TestEnv) startMockServer() {
 	})
 
 	// Handle content generation requests
-	handler.HandleFunc("/v1/models/gemini-test-model:generateContent", func(w http.ResponseWriter, r *http.Request) {
+	handler.HandleFunc("/v1/models/gemini-2.5-pro-preview-03-25:generateContent", func(w http.ResponseWriter, r *http.Request) {
 		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -228,7 +230,7 @@ func (e *TestEnv) startMockServer() {
 	})
 
 	// Handle token counting requests
-	handler.HandleFunc("/v1/models/gemini-test-model:countTokens", func(w http.ResponseWriter, r *http.Request) {
+	handler.HandleFunc("/v1/models/gemini-2.5-pro-preview-03-25:countTokens", func(w http.ResponseWriter, r *http.Request) {
 		count, err := e.MockConfig.HandleTokenCount(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -318,7 +320,7 @@ func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr s
 		fmt.Sprintf("GEMINI_API_URL=%s", e.MockServer.URL),
 
 		// Hard-code the model name to match mock server path
-		fmt.Sprintf("GEMINI_MODEL_NAME=%s", "gemini-test-model"),
+		fmt.Sprintf("GEMINI_MODEL_NAME=%s", "gemini-2.5-pro-preview-03-25"),
 
 		// Force env var source
 		"GEMINI_API_KEY_SOURCE=env",
@@ -372,8 +374,15 @@ func (e *TestEnv) RunWithFlags(flags testFlags, additionalArgs []string) (stdout
 		args = append(args, "--output-dir", flags.OutputDir)
 	}
 
-	for _, model := range flags.ModelNames {
-		args = append(args, "--model", model)
+	// Use the new Model field if it's set, otherwise fall back to ModelNames
+	if len(flags.Model) > 0 {
+		for _, model := range flags.Model {
+			args = append(args, "--model", model)
+		}
+	} else {
+		for _, model := range flags.ModelNames {
+			args = append(args, "--model", model)
+		}
 	}
 
 	if flags.Include != "" {
