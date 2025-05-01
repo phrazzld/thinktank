@@ -106,7 +106,7 @@
     - **Depends‑on:** [T001, T003, T004] # Core refactors likely impact E2E
 
 ## Code Standards
-- [ ] **T010 · Chore · P2: add justifications for remaining //nolint:unused directives**
+- [x] **T010 · Chore · P2: add justifications for remaining //nolint:unused directives**
     - **Context:** PLAN.md / cr-07 Add Justifications for Remaining `//nolint:unused`
     - **Action:**
         1. Search codebase for `//nolint:unused`.

@@ -10,7 +10,7 @@ import (
 
 // Helper function to convert to a pointer
 //
-//nolint:unused
+//nolint:unused // Needed for test helpers that use generics for type conversion
 func toPtr[T any](v T) *T {
 	return &v
 }
