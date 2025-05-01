@@ -78,7 +78,7 @@
         3. All secret detection tests pass.
         4. CI runs these tests.
     - **Depends‑on:** none # Best done after core refactors, but not strictly blocked
-- [ ] **T008 · Test · P1: restore essential provider/adapter boundary tests**
+- [x] **T008 · Test · P1: restore essential provider/adapter boundary tests**
     - **Context:** PLAN.md / cr-05 Restore Essential Provider/Adapter Boundary Tests
     - **Action:**
         1. Identify key interfaces/adapters (`APIService`, `FileWriter`, `Provider`, etc.) needing contract verification.
