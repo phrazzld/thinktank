@@ -41,7 +41,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--model` | Model to use (repeatable) | `gemini-2.5-pro-exp-03-25` |
+| `--model` | Model to use (repeatable) | `gemini-2.5-pro-preview-03-25` |
 | `--synthesis-model` | Model to synthesize results from multiple models | None |
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
