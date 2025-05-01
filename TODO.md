@@ -56,7 +56,7 @@
     - **Depends‑on:** none
 
 ## Backend - Testing & CI
-- [ ] **T004 · Test · P1: refactor or delete tests broken by stub removal**
+- [x] **T004 · Test · P1: refactor or delete tests broken by stub removal**
     - **Context:** PLAN.md / cr-04 Remove Test Stubs from Production Code / Step 2
     - **Action:**
         1. Identify specific `*_test.go` files that fail to compile or run after completing T002.

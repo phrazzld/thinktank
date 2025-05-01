@@ -87,10 +87,20 @@ func (m *MockAPIServiceForAdapter) GetModelTokenLimits(modelName string) (contex
 	return 0, 0, errors.New("GetModelTokenLimits not implemented")
 }
 
+// TestTokenResult represents a token count result structure for testing only
+// This replaces the removed production TokenResult
+type TestTokenResult struct {
+	TokenCount   int32
+	InputLimit   int32
+	ExceedsLimit bool
+	LimitError   string
+	Percentage   float64
+}
+
 // MockTokenManagerForAdapter is a testing mock for the TokenManager interface, specifically for adapter tests
 type MockTokenManagerForAdapter struct {
 	CheckTokenLimitFunc       func(ctx context.Context, prompt string) error
-	GetTokenInfoFunc          func(ctx context.Context, prompt string) (*TokenResult, error)
+	GetTokenInfoFunc          func(ctx context.Context, prompt string) (*TestTokenResult, error)
 	PromptForConfirmationFunc func(tokenCount int32, threshold int) bool
 }
 
@@ -101,7 +111,7 @@ func (m *MockTokenManagerForAdapter) CheckTokenLimit(ctx context.Context, prompt
 	return errors.New("CheckTokenLimit not implemented")
 }
 
-func (m *MockTokenManagerForAdapter) GetTokenInfo(ctx context.Context, prompt string) (*TokenResult, error) {
+func (m *MockTokenManagerForAdapter) GetTokenInfo(ctx context.Context, prompt string) (*TestTokenResult, error) {
 	if m.GetTokenInfoFunc != nil {
 		return m.GetTokenInfoFunc(ctx, prompt)
 	}

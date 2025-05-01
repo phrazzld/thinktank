@@ -176,7 +176,6 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 // Note: ProviderType enum was removed as part of T003 - Remove Legacy Provider Detection Logic
 
-
 // The remaining methods are carried over from the existing APIService implementation
 // since they don't depend on the provider initialization logic
 

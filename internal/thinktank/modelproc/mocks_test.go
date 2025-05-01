@@ -6,7 +6,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/registry"
-	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
 // Mock implementations
@@ -83,34 +82,8 @@ func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, m
 	return 0, 0, nil
 }
 
-type mockTokenManager struct {
-	checkTokenLimitFunc       func(ctx context.Context, prompt string) error
-	getTokenInfoFunc          func(ctx context.Context, prompt string) (*modelproc.TokenResult, error)
-	promptForConfirmationFunc func(tokenCount int32, threshold int) bool
-	getTokenInfoCalled        bool
-}
-
-func (m *mockTokenManager) CheckTokenLimit(ctx context.Context, prompt string) error {
-	if m.checkTokenLimitFunc != nil {
-		return m.checkTokenLimitFunc(ctx, prompt)
-	}
-	return nil
-}
-
-func (m *mockTokenManager) GetTokenInfo(ctx context.Context, prompt string) (*modelproc.TokenResult, error) {
-	m.getTokenInfoCalled = true
-	if m.getTokenInfoFunc != nil {
-		return m.getTokenInfoFunc(ctx, prompt)
-	}
-	return &modelproc.TokenResult{TokenCount: 100, InputLimit: 1000, ExceedsLimit: false}, nil
-}
-
-func (m *mockTokenManager) PromptForConfirmation(tokenCount int32, threshold int) bool {
-	if m.promptForConfirmationFunc != nil {
-		return m.promptForConfirmationFunc(tokenCount, threshold)
-	}
-	return true
-}
+// Note: TokenManager implementation and related code has been removed
+// as token management is no longer part of the production code
 
 type mockFileWriter struct {
 	writeFileFunc  func(path string, content string) error
