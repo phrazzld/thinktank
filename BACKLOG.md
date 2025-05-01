@@ -1,5 +1,7 @@
 # BACKLOG
 
+- improve quality of synthesis prompt and output
+
 ## Top Priorities
 
 - [ ] **T25: Develop workflow engine**

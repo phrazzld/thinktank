@@ -14,7 +14,7 @@
     - **Depends‑on:** none
 
 ## CR-04: Secret Detection Tests
-- [ ] **T002 · Test · P0: audit secret detection test coverage gaps**
+- [x] **T002 · Test · P0: audit secret detection test coverage gaps**
     - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Steps 1-2)
     - **Action:**
         1. Review `internal/providers/*/provider_secrets_test.go` for Gemini, OpenAI, OpenRouter.
