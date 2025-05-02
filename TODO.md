@@ -137,7 +137,7 @@
         1. Directory `internal/registry` exists.
     - **Depends‑on:** none
     - **Note:** This package already exists with appropriate Go files in place. Verified that the existing registry package is the correct target for the provider registry relocation in T015.
-- [ ] **T015 · Refactor · P2: move provider registry types/implementation to `internal/registry`**
+- [x] **T015 · Refactor · P2: move provider registry types/implementation to `internal/registry`**
     - **Context:** cr-06 Relocate Provider Registry/Types for Modularity (Steps 2-3)
     - **Action:**
         1. Move contents of `internal/thinktank/api_provider_types.go` to the new `internal/registry` package.
