@@ -118,10 +118,10 @@ jobs:
         run: go test -v -race -short -parallel 4 ./internal/integration/...
         timeout-minutes: 5
 
-      # Run E2E tests with parallel execution
-      - name: Run E2E tests with parallel execution
-        run: ./internal/e2e/run_e2e_tests.sh --verbose --short
-        timeout-minutes: 8
+      # Run E2E tests with parallel execution (removing --short flag for full test coverage)
+      - name: Run E2E tests with full coverage
+        run: ./internal/e2e/run_e2e_tests.sh --verbose
+        timeout-minutes: 15
 
       # Run other tests with race detection
       - name: Run other tests with race detection

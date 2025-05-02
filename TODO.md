@@ -50,7 +50,7 @@
     - **Done‑when:**
         1. `./internal/e2e/run_e2e_tests.sh` passes reliably locally.
     - **Depends‑on:** none
-- [ ] **T006 · Chore · P0: enforce e2e test success in ci**
+- [x] **T006 · Chore · P0: enforce e2e test success in ci**
     - **Context:** cr-03 Fix & Enforce E2E Test Suite in CI (Steps 3-4)
     - **Action:**
         1. Add job/step to CI pipeline to execute `./internal/e2e/run_e2e_tests.sh`.
