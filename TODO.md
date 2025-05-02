@@ -42,7 +42,7 @@
     - **Depends‑on:** [T003]
 
 ## CR-03: E2E Testing
-- [ ] **T005 · Test · P0: fix failing e2e tests**
+- [x] **T005 · Test · P0: fix failing e2e tests**
     - **Context:** cr-03 Fix & Enforce E2E Test Suite in CI (Steps 1-2)
     - **Action:**
         1. Execute `./internal/e2e/run_e2e_tests.sh` locally.

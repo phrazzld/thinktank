@@ -153,12 +153,13 @@ func (e *TestEnv) Cleanup() {
 	}
 }
 
-// startMockServer starts a mock HTTP server for the Gemini API
+// startMockServer starts a mock HTTP server for all supported API providers (Gemini, OpenAI, OpenRouter)
 func (e *TestEnv) startMockServer() {
 	handler := http.NewServeMux()
 
-	// Handler for direct API client access to bypass the complex Google client
-	// Use a pattern that matches what the Gemini client expects
+	// ---- GEMINI API MOCKS ----
+
+	// Handler for Gemini model info
 	handler.HandleFunc("/v1/models/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Return a valid model info response
@@ -175,34 +176,52 @@ func (e *TestEnv) startMockServer() {
 		}
 	})
 
-	// Handle content generation requests
-	handler.HandleFunc("/v1/models/gemini-2.5-pro-preview-03-25:generateContent", func(w http.ResponseWriter, r *http.Request) {
-		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]interface{}{
-					"code":    400,
-					"message": err.Error(),
-					"status":  "INVALID_ARGUMENT",
-				},
-			})
-			return
-		}
+	// Handle Gemini content generation requests - respond to all model variants
+	modelPaths := []string{
+		"/v1/models/gemini-2.5-pro-preview-03-25:generateContent",
+		"/v1/models/gemini-2.5-flash-preview-04-17:generateContent",
+		"/v1/models/gemini-pro:generateContent",
+		"/v1/models/gemini-1.5-pro:generateContent",
+	}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"candidates": []map[string]interface{}{
-				{
-					"content": map[string]interface{}{
-						"parts": []map[string]interface{}{
+	for _, path := range modelPaths {
+		localPath := path // Create local variable to avoid closure issues
+		handler.HandleFunc(localPath, func(w http.ResponseWriter, r *http.Request) {
+			content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    400,
+						"message": err.Error(),
+						"status":  "INVALID_ARGUMENT",
+					},
+				})
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+				"candidates": []map[string]interface{}{
+					{
+						"content": map[string]interface{}{
+							"parts": []map[string]interface{}{
+								{
+									"text": content,
+								},
+							},
+							"role": "model",
+						},
+						"finishReason": finishReason,
+						"safetyRatings": []map[string]interface{}{
 							{
-								"text": content,
+								"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
+								"probability": "NEGLIGIBLE",
 							},
 						},
-						"role": "model",
 					},
-					"finishReason": finishReason,
+				},
+				"promptFeedback": map[string]interface{}{
 					"safetyRatings": []map[string]interface{}{
 						{
 							"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
@@ -210,35 +229,62 @@ func (e *TestEnv) startMockServer() {
 						},
 					},
 				},
-			},
-			"promptFeedback": map[string]interface{}{
-				"safetyRatings": []map[string]interface{}{
-					{
-						"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
-						"probability": "NEGLIGIBLE",
-					},
+				"usageMetadata": map[string]interface{}{
+					"promptTokenCount":     tokens / 2,
+					"candidatesTokenCount": tokens / 2,
+					"totalTokenCount":      tokens,
 				},
-			},
-			"usageMetadata": map[string]interface{}{
-				"promptTokenCount":     tokens / 2,
-				"candidatesTokenCount": tokens / 2,
-				"totalTokenCount":      tokens,
-			},
-		}); err != nil {
-			e.t.Logf("Failed to encode generate content response: %v", err)
-		}
-	})
+			}); err != nil {
+				e.t.Logf("Failed to encode generate content response: %v", err)
+			}
+		})
+	}
 
-	// Handle token counting requests
-	handler.HandleFunc("/v1/models/gemini-2.5-pro-preview-03-25:countTokens", func(w http.ResponseWriter, r *http.Request) {
-		count, err := e.MockConfig.HandleTokenCount(r)
+	// Handle Gemini token counting requests - respond to all model variants
+	tokenCountPaths := []string{
+		"/v1/models/gemini-2.5-pro-preview-03-25:countTokens",
+		"/v1/models/gemini-2.5-flash-preview-04-17:countTokens",
+		"/v1/models/gemini-pro:countTokens",
+		"/v1/models/gemini-1.5-pro:countTokens",
+	}
+
+	for _, path := range tokenCountPaths {
+		localPath := path // Create local variable to avoid closure issues
+		handler.HandleFunc(localPath, func(w http.ResponseWriter, r *http.Request) {
+			count, err := e.MockConfig.HandleTokenCount(r)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    400,
+						"message": err.Error(),
+						"status":  "INVALID_ARGUMENT",
+					},
+				})
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+				"totalTokens": count,
+			}); err != nil {
+				e.t.Logf("Failed to encode count tokens response: %v", err)
+			}
+		})
+	}
+
+	// ---- OPENAI API MOCKS ----
+
+	// Handler for OpenAI completions
+	handler.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
+		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": map[string]interface{}{
-					"code":    400,
 					"message": err.Error(),
-					"status":  "INVALID_ARGUMENT",
+					"type":    "invalid_request_error",
+					"code":    "invalid_argument",
 				},
 			})
 			return
@@ -246,9 +292,92 @@ func (e *TestEnv) startMockServer() {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"totalTokens": count,
+			"id":      "chatcmpl-mock-id",
+			"object":  "chat.completion",
+			"created": 1679410928,
+			"model":   "gpt-4",
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": content,
+					},
+					"finish_reason": strings.ToLower(finishReason),
+				},
+			},
+			"usage": map[string]interface{}{
+				"prompt_tokens":     tokens / 2,
+				"completion_tokens": tokens / 2,
+				"total_tokens":      tokens,
+			},
 		}); err != nil {
-			e.t.Logf("Failed to encode count tokens response: %v", err)
+			e.t.Logf("Failed to encode OpenAI response: %v", err)
+		}
+	})
+
+	// OpenAI models list endpoint
+	handler.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":       "gpt-4.1",
+					"object":   "model",
+					"created":  1677610602,
+					"owned_by": "openai",
+				},
+				{
+					"id":       "o4-mini",
+					"object":   "model",
+					"created":  1677610602,
+					"owned_by": "openai",
+				},
+			},
+		}); err != nil {
+			e.t.Logf("Failed to encode OpenAI models response: %v", err)
+		}
+	})
+
+	// ---- OPENROUTER API MOCKS ----
+
+	// Simplified OpenRouter completions endpoint
+	handler.HandleFunc("/api/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
+		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{
+					"message": err.Error(),
+					"type":    "invalid_request_error",
+				},
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":      "chatcmpl-openrouter-mock-id",
+			"object":  "chat.completion",
+			"created": 1679410928,
+			"model":   "openrouter/meta-llama/llama-4-scout",
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": content,
+					},
+					"finish_reason": strings.ToLower(finishReason),
+				},
+			},
+			"usage": map[string]interface{}{
+				"prompt_tokens":     tokens / 2,
+				"completion_tokens": tokens / 2,
+				"total_tokens":      tokens,
+			},
+		}); err != nil {
+			e.t.Logf("Failed to encode OpenRouter response: %v", err)
 		}
 	})
 
@@ -313,17 +442,25 @@ func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr s
 
 	// Set up environment variables with mock server URL and API key
 	cmd.Env = append(os.Environ(),
-		// Always set a valid API key value
-		fmt.Sprintf("GEMINI_API_KEY=%s", "test-api-key"),
+		// Always set a valid API key value for all providers
+		"GEMINI_API_KEY=test-api-key",
+		"OPENAI_API_KEY=test-api-key",
+		"OPENROUTER_API_KEY=test-api-key",
 
-		// Set the mock server URL as the API endpoint
+		// Set the mock server URL as the API endpoint for all providers
 		fmt.Sprintf("GEMINI_API_URL=%s", e.MockServer.URL),
+		fmt.Sprintf("OPENAI_API_URL=%s", e.MockServer.URL),
+		fmt.Sprintf("OPENROUTER_API_URL=%s", e.MockServer.URL),
 
 		// Hard-code the model name to match mock server path
-		fmt.Sprintf("GEMINI_MODEL_NAME=%s", "gemini-2.5-pro-preview-03-25"),
+		"GEMINI_MODEL_NAME=gemini-2.5-pro-preview-03-25",
+		"OPENAI_MODEL_NAME=o4-mini",
+		"OPENROUTER_MODEL_NAME=openrouter/meta-llama/llama-4-scout",
 
-		// Force env var source
+		// Force env var source for all providers
 		"GEMINI_API_KEY_SOURCE=env",
+		"OPENAI_API_KEY_SOURCE=env",
+		"OPENROUTER_API_KEY_SOURCE=env",
 
 		// Debug mode for detailed logging
 		"THINKTANK_DEBUG=true",
