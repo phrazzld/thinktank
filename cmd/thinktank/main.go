@@ -74,7 +74,7 @@ func Main() {
 	}
 
 	// Initialize APIService using Registry
-	apiService := thinktank.NewRegistryAPIService(registryManager, logger)
+	apiService := thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
 
 	// Execute the core application logic
 	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService)

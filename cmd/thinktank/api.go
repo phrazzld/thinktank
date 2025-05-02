@@ -25,5 +25,5 @@ type APIService = interfaces.APIService
 // It uses the registry-based implementation for better flexibility
 func NewAPIService(logger logutil.LoggerInterface) APIService {
 	registryManager := registry.GetGlobalManager(logger)
-	return thinktank.NewRegistryAPIService(registryManager, logger)
+	return thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
 }

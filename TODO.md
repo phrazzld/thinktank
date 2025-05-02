@@ -109,7 +109,7 @@
     - **Done‑when:**
         1. Function signature updated; code compiles (ignoring call site errors).
     - **Depends‑on:** none
-- [ ] **T012 · Refactor · P1: update call sites for `newregistryapiservice` constructor injection**
+- [x] **T012 · Refactor · P1: update call sites for `newregistryapiservice` constructor injection**
     - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Steps 2, 4)
     - **Action:**
         1. Update production call site (e.g., `main.go`) to pass `*registry.Registry`.

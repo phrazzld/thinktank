@@ -22,14 +22,15 @@ func TestAPIKeyIsolation(t *testing.T) {
 
 	// Create a new registry API service
 	registryManager := registry.NewManager(testLogger)
+	registryInstance := registryManager.GetRegistry()
 
 	// Initialize the registry with test models and providers
-	initializeTestRegistry(t, registryManager.GetRegistry())
+	initializeTestRegistry(t, registryInstance)
 
 	// Register provider implementations
-	registerTestProviders(t, registryManager.GetRegistry())
+	registerTestProviders(t, registryInstance)
 
-	apiService := thinktank.NewRegistryAPIService(registryManager, testLogger)
+	apiService := thinktank.NewRegistryAPIService(registryInstance, testLogger)
 
 	// Save the original environment variables so we can restore them
 	originalGeminiKey := os.Getenv("GEMINI_API_KEY")
