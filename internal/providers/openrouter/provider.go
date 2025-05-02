@@ -13,7 +13,8 @@ import (
 )
 
 // Helper function to get minimum of two integers
-func min(a, b int) int {
+// Currently used by internal methods
+func min(a, b int) int { //nolint:unused
 	if a < b {
 		return a
 	}
@@ -49,7 +50,7 @@ func (p *OpenRouterProvider) CreateClient(
 	// Initialize API key from provided argument or environment variable
 	effectiveAPIKey := apiKey
 	if effectiveAPIKey != "" {
-		p.logger.Debug("Using provided API key (length: %d, starts with: %s)", len(effectiveAPIKey), effectiveAPIKey[:min(5, len(effectiveAPIKey))])
+		p.logger.Debug("Using provided API key (length: %d)", len(effectiveAPIKey))
 	} else {
 		// Fall back to the OPENROUTER_API_KEY environment variable
 		effectiveAPIKey = os.Getenv("OPENROUTER_API_KEY")
@@ -57,7 +58,7 @@ func (p *OpenRouterProvider) CreateClient(
 		if effectiveAPIKey == "" {
 			return nil, fmt.Errorf("no OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set")
 		}
-		p.logger.Debug("Using API key from OPENROUTER_API_KEY environment variable (starts with: %s)", effectiveAPIKey[:min(5, len(effectiveAPIKey))])
+		p.logger.Debug("Using API key from OPENROUTER_API_KEY environment variable")
 	}
 
 	// Validate the API key format

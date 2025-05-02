@@ -76,3 +76,5 @@ test_output_*.md
 
 # Development symlinks
 docs/prompts
+
+**/.claude/settings.local.json
