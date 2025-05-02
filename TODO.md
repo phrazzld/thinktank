@@ -78,7 +78,7 @@
     - **Done‑when:**
         1. Script exists and correctly fails if default models mismatch.
     - **Depends‑on:** [T007]
-- [ ] **T009 · Chore · P1: integrate `check-defaults.sh` into mandatory ci checks**
+- [x] **T009 · Chore · P1: integrate `check-defaults.sh` into mandatory ci checks**
     - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 3)
     - **Action:**
         1. Add step to CI workflow to execute `scripts/ci/check-defaults.sh`.

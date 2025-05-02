@@ -80,6 +80,11 @@ jobs:
       - name: Run pre-commit checks
         run: pre-commit run --all-files
 
+      # Verify default model consistency
+      - name: Check default model consistency
+        run: ./scripts/ci/check-defaults.sh --verbose
+        timeout-minutes: 1
+
   # Test job for running Go tests
   test:
     name: Test
