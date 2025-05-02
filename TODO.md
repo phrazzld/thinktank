@@ -145,7 +145,7 @@
     - **Done‑when:**
         1. Provider registry code resides in `internal/registry` with correct package declaration.
     - **Depends‑on:** [T014]
-- [ ] **T016 · Refactor · P2: update imports and verify no circular dependencies for registry move**
+- [x] **T016 · Refactor · P2: update imports and verify no circular dependencies for registry move**
     - **Context:** cr-06 Relocate Provider Registry/Types for Modularity (Steps 4-5)
     - **Action:**
         1. Update all import paths referencing the moved items to point to `internal/registry`.
@@ -155,6 +155,7 @@
     - **Verification:**
         1. Run build and static analysis checks for cycles.
     - **Depends‑on:** [T015]
+    - **Note:** Discovered that the types in api_provider_types.go were not actively used in the codebase, so we were able to safely remove the original file without breaking any functionality.
 
 ## CR-07: Documentation Consolidation
 - [ ] **T017 · Chore · P2: consolidate actionable tasks into `todo.md`**
