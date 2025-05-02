@@ -62,7 +62,7 @@
     - **Depends‑on:** [T005]
 
 ## CR-02: Default Model Consistency
-- [ ] **T007 · Chore · P1: align default model name in `readme.md` and `config.go`**
+- [x] **T007 · Chore · P1: align default model name in `readme.md` and `config.go`**
     - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 1)
     - **Action:**
         1. Verify default model name (`gemini-2.5-pro-preview-03-25`) is identical in `README.md` and `internal/config/config.go`.
