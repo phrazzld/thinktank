@@ -90,7 +90,7 @@
     - **Depends‑on:** [T008]
 
 ## CR-09: Code Quality (`nolint:unused`)
-- [ ] **T010 · Refactor · P2: remove or justify `nolint:unused` directives**
+- [x] **T010 · Refactor · P2: remove or justify `nolint:unused` directives**
     - **Context:** cr-09 Remove/Justify all `nolint:unused`
     - **Action:**
         1. Search project for `//nolint:unused`.

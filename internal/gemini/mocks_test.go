@@ -1,8 +1,8 @@
 // internal/gemini/mocks_test.go
 // Common mock implementations for testing gemini package
 //
-// NOTE: This file contains some test helpers that are annotated with //nolint:unused // Preserved for future test expansion to maintain interface compatibility.
-// These are kept for future test expansion and represent a complete implementation of
+// NOTE: This file contains some test helpers that are annotated with //nolint:unused.
+// Reason: These are maintained for future test expansion and represent a complete implementation of
 // mock interfaces that might be needed for more comprehensive testing in the future.
 // Please do not remove these annotated functions without checking whether they might be
 // needed for upcoming test scenarios.
@@ -49,7 +49,9 @@ func (m *mockHTTPTransport) RoundTrip(req *http.Request) (*http.Response, error)
 
 // newMockHTTPClient creates a new HTTP client with a mock transport
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func newMockHTTPClient(resp *http.Response, err error) *http.Client {
 	return &http.Client{
 		Transport: &mockHTTPTransport{
@@ -80,7 +82,9 @@ func getMockTransport(client *http.Client) *mockHTTPTransport {
 
 // createSuccessResponse creates a mock HTTP success response with the given body
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func createSuccessResponse(body interface{}) *http.Response {
 	jsonBody, _ := json.Marshal(body)
 	return &http.Response{
@@ -92,7 +96,9 @@ func createSuccessResponse(body interface{}) *http.Response {
 
 // createErrorResponse creates a mock HTTP error response
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func createErrorResponse(statusCode int, errorMessage string) *http.Response {
 	return &http.Response{
 		StatusCode: statusCode,
@@ -103,7 +109,9 @@ func createErrorResponse(statusCode int, errorMessage string) *http.Response {
 
 // createNetworkErrorClient creates a mock client that simulates network errors
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func createNetworkErrorClient(errorMessage string) *http.Client {
 	return &http.Client{
 		Transport: &mockHTTPTransport{
@@ -115,7 +123,9 @@ func createNetworkErrorClient(errorMessage string) *http.Client {
 // createRequestErrorClient creates a mock client that captures the request but fails with a specific error
 // Kept for future test expansion
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility // Kept for future expansion of HTTP error testing
+// Reason: Preserved for future test expansion to maintain interface compatibility (HTTP error testing)
+//
+//nolint:unused
 func createRequestErrorClient(errorMessage string, inspectFunc func(*http.Request)) *http.Client {
 	return &http.Client{
 		Transport: &mockHTTPTransport{
@@ -127,7 +137,9 @@ func createRequestErrorClient(errorMessage string, inspectFunc func(*http.Reques
 
 // sequenceTransport is a custom transport that returns responses in sequence
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 type sequenceTransport struct {
 	responses      []*http.Response
 	errors         []error
@@ -136,7 +148,9 @@ type sequenceTransport struct {
 	inspectRequest func(*http.Request)
 }
 
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (t *sequenceTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.lastRequest = req
 	if t.inspectRequest != nil {
@@ -164,7 +178,9 @@ func (t *sequenceTransport) RoundTrip(req *http.Request) (*http.Response, error)
 
 // createResponseSequenceClient creates a client that returns responses in sequence
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func createResponseSequenceClient(responses []*http.Response, errors []error) *http.Client {
 	transport := &sequenceTransport{
 		responses: responses,
@@ -181,7 +197,9 @@ func createResponseSequenceClient(responses []*http.Response, errors []error) *h
 // urlPatternTransport is a custom transport that maps URLs to specific responses
 // Kept for future test scenarios requiring URL-specific responses
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 type urlPatternTransport struct {
 	urlToStatus    map[string]int
 	urlToBody      map[string]string
@@ -189,7 +207,9 @@ type urlPatternTransport struct {
 	inspectRequest func(*http.Request)
 }
 
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (t *urlPatternTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	t.lastRequest = req
 	if t.inspectRequest != nil {
@@ -225,7 +245,9 @@ func (t *urlPatternTransport) RoundTrip(req *http.Request) (*http.Response, erro
 // createStatusCodeMap creates a client that maps URLs to specific status codes
 // Kept for future test expansion
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func createStatusCodeMap(urlToStatus map[string]int, urlToBody map[string]string) *http.Client {
 	transport := &urlPatternTransport{
 		urlToStatus: urlToStatus,
@@ -238,7 +260,9 @@ func createStatusCodeMap(urlToStatus map[string]int, urlToBody map[string]string
 // mockGenerativeModel is a test implementation of the genai model
 // Kept for future test scenarios requiring direct model mocking
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 type mockGenerativeModel struct {
 	generateResp *genai.GenerateContentResponse
 	generateErr  error
@@ -251,7 +275,9 @@ type mockGenerativeModel struct {
 
 // GenerateContent implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) GenerateContent(ctx context.Context, parts ...genai.Part) (*genai.GenerateContentResponse, error) {
 	// Capture the prompt for inspection
 	if len(parts) > 0 {
@@ -265,7 +291,9 @@ func (m *mockGenerativeModel) GenerateContent(ctx context.Context, parts ...gena
 
 // CountTokens implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) CountTokens(ctx context.Context, parts ...genai.Part) (*genai.CountTokensResponse, error) {
 	// Capture the prompt for inspection
 	if len(parts) > 0 {
@@ -279,27 +307,37 @@ func (m *mockGenerativeModel) CountTokens(ctx context.Context, parts ...genai.Pa
 
 // SetTemperature implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) SetTemperature(t float32) { /* No-op for testing */ }
 
 // SetTopP implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) SetTopP(p float32) { /* No-op for testing */ }
 
 // SetTopK implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) SetTopK(k int32) { /* No-op for testing */ }
 
 // SetMaxOutputTokens implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) SetMaxOutputTokens(tokens int32) { /* No-op for testing */ }
 
 // Temperature implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) Temperature() *float32 {
 	t := float32(0.7)
 	return &t
@@ -307,7 +345,9 @@ func (m *mockGenerativeModel) Temperature() *float32 {
 
 // TopP implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) TopP() *float32 {
 	p := float32(0.95)
 	return &p
@@ -315,7 +355,9 @@ func (m *mockGenerativeModel) TopP() *float32 {
 
 // TopK implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) TopK() *int32 {
 	k := int32(40)
 	return &k
@@ -323,7 +365,9 @@ func (m *mockGenerativeModel) TopK() *int32 {
 
 // MaxOutputTokens implements the GenerativeModel interface for testing
 //
-//nolint:unused // Preserved for future test expansion to maintain interface compatibility
+// Reason: Preserved for future test expansion to maintain interface compatibility
+//
+//nolint:unused
 func (m *mockGenerativeModel) MaxOutputTokens() *int32 {
 	tokens := int32(2048)
 	return &tokens
