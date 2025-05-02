@@ -102,7 +102,7 @@
     - **Depends‑on:** none
 
 ## CR-05: Refactor Testability Helper (Constructor Injection)
-- [ ] **T011 · Refactor · P1: modify `newregistryapiservice` signature for constructor injection**
+- [x] **T011 · Refactor · P1: modify `newregistryapiservice` signature for constructor injection**
     - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Step 1)
     - **Action:**
         1. Change `NewRegistryAPIService` signature in `internal/thinktank/registry_api.go` to accept `*registry.Registry`.

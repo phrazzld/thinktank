@@ -38,15 +38,10 @@ func (s *RegistryAPIServiceForTesting) SetRegistry(reg *registry.Registry) {
 // NewRegistryAPIService creates a new Registry-based API service
 // This implementation uses the registry to look up model and provider information,
 // providing a more flexible and configurable approach than the legacy APIService.
-func NewRegistryAPIService(registryManager *registry.Manager, logger logutil.LoggerInterface) interfaces.APIService {
-	service := &registryAPIService{
-		registry: registryManager.GetRegistry(),
+func NewRegistryAPIService(registry *registry.Registry, logger logutil.LoggerInterface) interfaces.APIService {
+	return &registryAPIService{
+		registry: registry,
 		logger:   logger,
-	}
-
-	// When testing, return the testable version that allows registry injection
-	return &RegistryAPIServiceForTesting{
-		registryAPIService: service,
 	}
 }
 
