@@ -117,7 +117,7 @@
     - **Done‑when:**
         1. All production and test call sites updated; code compiles and tests pass.
     - **Depends‑on:** [T011]
-- [ ] **T013 · Refactor · P1: remove `registryapiservicefortesting` struct and `setregistry` method**
+- [x] **T013 · Refactor · P1: remove `registryapiservicefortesting` struct and `setregistry` method**
     - **Context:** cr-05 Refactor Testability Helper via Constructor Injection (Step 3)
     - **Action:**
         1. Delete `RegistryAPIServiceForTesting` struct.

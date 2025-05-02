@@ -25,16 +25,6 @@ type registryAPIService struct {
 	logger   logutil.LoggerInterface
 }
 
-// RegistryAPIServiceForTesting exposes methods for testing the registryAPIService
-type RegistryAPIServiceForTesting struct {
-	*registryAPIService
-}
-
-// SetRegistry sets the registry for testing
-func (s *RegistryAPIServiceForTesting) SetRegistry(reg *registry.Registry) {
-	s.registry = reg
-}
-
 // NewRegistryAPIService creates a new Registry-based API service
 // This implementation uses the registry to look up model and provider information,
 // providing a more flexible and configurable approach than the legacy APIService.
