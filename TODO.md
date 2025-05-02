@@ -70,7 +70,7 @@
     - **Done‑when:**
         1. The default model name is identical in both files.
     - **Depends‑on:** none
-- [ ] **T008 · Feature · P1: create ci script (`check-defaults.sh`) to compare default models**
+- [x] **T008 · Feature · P1: create ci script (`check-defaults.sh`) to compare default models**
     - **Context:** cr-02 Ensure Consistent Default Model (+ CI Check) (Step 2)
     - **Action:**
         1. Create `scripts/ci/check-defaults.sh` to extract default model from `README.md` and `internal/config/config.go`.
