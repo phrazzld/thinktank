@@ -22,7 +22,7 @@
     - **Done‑when:**
         1. Audit document/comment outlining coverage gaps for each provider is complete.
     - **Depends‑on:** none
-- [ ] **T003 · Test · P0: implement secret detection tests for coverage gaps**
+- [x] **T003 · Test · P0: implement secret detection tests for coverage gaps**
     - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Steps 3-4)
     - **Action:**
         1. Write new test cases for identified gaps (from T002) using `logutil.WithSecretDetection`.
@@ -30,7 +30,7 @@
     - **Done‑when:**
         1. New test cases covering identified gaps are implemented and pass locally.
     - **Depends‑on:** [T002]
-- [ ] **T004 · Chore · P0: ensure secret detection tests are mandatory in ci**
+- [x] **T004 · Chore · P0: ensure secret detection tests are mandatory in ci**
     - **Context:** cr-04 Audit & Enhance Secret Detection Test Coverage (Step 5)
     - **Action:**
         1. Verify CI config includes `internal/providers/...` tests.

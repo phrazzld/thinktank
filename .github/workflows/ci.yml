@@ -128,6 +128,11 @@ jobs:
         run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/thinktank/internal/integration" | grep -v "github.com/phrazzld/thinktank/internal/e2e")
         timeout-minutes: 8
 
+      # Verify secret detection tests are running and passing
+      - name: Verify secret detection tests
+        run: ./scripts/ci/verify-secret-tests.sh
+        timeout-minutes: 2
+
       # Generate coverage report with short flag to skip long-running tests
       - name: Generate coverage report
         run: |
