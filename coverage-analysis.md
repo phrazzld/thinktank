@@ -1,88 +1,97 @@
-# Code Coverage Analysis
+# Test Coverage Analysis
 
-## Summary
+## Overview
+This document presents a detailed analysis of test coverage across critical packages in the thinktank codebase, focusing on identifying coverage gaps after recent refactoring work.
 
-After running the full test suite with coverage analysis, the overall code coverage is currently at **68.1%**. This is below the target of 80% set in the test plan.
+## Overall Coverage Metrics
+- **Total codebase coverage: 64.3%** (against threshold of 55%)
+- All packages individually meet the 55% threshold according to package-specific checks
 
-## Package Coverage Breakdown
+## Critical Package Analysis
 
-| Package | Coverage | Status |
-|---------|----------|--------|
-| github.com/phrazzld/thinktank/internal/integration | 36.3% | ❌ Well below target |
-| github.com/phrazzld/thinktank/internal/architect | 60.4% | ❌ Below target |
-| github.com/phrazzld/thinktank/internal/architect/modelproc | 64.2% | ❌ Below target |
-| github.com/phrazzld/thinktank/internal/logutil | 66.7% | ❌ Below target |
-| github.com/phrazzld/thinktank/internal/fileutil | 69.1% | ❌ Below target |
-| github.com/phrazzld/thinktank/cmd/architect | 75.6% | ❌ Below target |
-| github.com/phrazzld/thinktank/internal/auditlog | 80.6% | ✅ Meets target |
-| github.com/phrazzld/thinktank/internal/gemini | 80.3% | ✅ Meets target |
-| github.com/phrazzld/thinktank/internal/ratelimit | 82.4% | ✅ Meets target |
-| github.com/phrazzld/thinktank/internal/architect/orchestrator | 93.5% | ✅ Exceeds target |
-| github.com/phrazzld/thinktank/internal/architect/prompt | 100.0% | ✅ Fully covered |
-| github.com/phrazzld/thinktank/internal/config | 100.0% | ✅ Fully covered |
-| github.com/phrazzld/thinktank/internal/runutil | 100.0% | ✅ Fully covered |
+### 1. `internal/thinktank` - 18.3% Coverage
+This package has by far the lowest coverage and requires immediate attention.
 
-## Key Areas Needing Improvement
+#### Key Gaps:
+- **Adapter Layer**: Zero coverage on all adapter methods in `adapters.go`
+  - `InitLLMClient` (0%)
+  - `ProcessLLMResponse` (0%)
+  - `GetErrorDetails` (0%)
+  - All model parameter and definition methods (0%)
 
-### 1. Integration Package (36.3%)
-- Most test helper functions in `test_helpers.go` are not covered
-- Configuration helpers and verification methods are completely uncovered
-- Test runner methods for error cases need coverage
+- **Registry API**: Recent refactoring on `registry_api.go` has left major gaps:
+  - `NewRegistryAPIService` (0%) - This was recently modified for constructor injection
+  - All core methods including `InitLLMClient`, `GetModelParameters`, `ProcessLLMResponse` (all 0%)
+  - Error handling methods (`IsEmptyResponseError`, `IsSafetyBlockedError`, `GetErrorDetails`) (all 0%)
 
-### 2. Architect Package (60.4%)
-- API service methods (`api.go`) have 0% coverage
-- Error handling in API service lacks tests
-- File writing in `filewriter.go` has only 50% coverage
+- **Context Handling**: `context.go` has 0% coverage on key methods:
+  - `GatherContext` (0%)
+  - `DisplayDryRunInfo` (0%)
 
-### 3. ModelProc Package (64.2%)
-- `CheckTokenLimit` function has 0% coverage
-- `PromptForConfirmation` at 50% coverage
-- `GetTokenInfo` at 51.4% coverage
-- `Process` method at 70.7% coverage
+- **Orchestration**: `orchestrator.go` has no coverage:
+  - `NewOrchestrator` (0%)
 
-### 4. LogUtil Package (66.7%)
-- Standard logger adapter methods have 0% coverage
-- Several logger methods (Warn, Error, Fatal, etc.) are not covered
+#### High-Priority Testing Targets:
+1. `registry_api.go` - Recently refactored code needs immediate test coverage
+2. `adapters.go` - Core adapter interfaces have zero coverage
+3. `context.go` - Context gathering logic is untested
 
-### 5. FileUtil Package (69.1%)
-- Mock logger functions have 0% coverage (though these may not need test coverage as they are test helpers)
+### 2. `internal/providers` - 86.2% Overall Coverage
 
-### 6. Cmd/Architect Package (75.6%)
-- `ParseFlags` function has 0% coverage
-- `Main` function has 0% coverage (though this is common as it's difficult to test)
-- Test helper methods have 0% coverage
+#### Key Gaps:
+- **OpenRouter Provider**:
+  - `min` helper function (0%) in `provider.go`
+  - Error handling in `client.go` and `errors.go` has some weak spots (~70%)
+  - `SanitizeURL` and `GetBaseURLLogInfo` both at 66.7%
 
-## Specific Low-Coverage Functions
+- **OpenAI Provider**: Generally good coverage, minor gaps:
+  - `CreateClient` (89.5%)
+  - `GenerateContent` (95.5%)
 
-The following functions have particularly low coverage and should be prioritized for additional tests:
+#### Medium-Priority Testing Targets:
+1. OpenRouter error handling paths
+2. OpenRouter URL sanitization logic
 
-1. `gemini_client.go:GenerateContent` (8.7%)
-2. `thinktank/app.go:setupOutputDirectory` (46.2%)
-3. `thinktank/filewriter.go:SaveToFile` (50.0%)
-4. `thinktank/modelproc/processor.go:PromptForConfirmation` (50.0%)
-5. `thinktank/modelproc/processor.go:GetTokenInfo` (51.4%)
-6. `thinktank/token.go:GetTokenInfo` (51.4%)
+### 3. `internal/registry` - 80.9% Coverage
 
-## Test Failures
+#### Key Gaps:
+- **Provider Registry**: New code added in `provider_registry.go` has no coverage:
+  - `NewProviderRegistry` (0%)
+  - `RegisterProvider` (0%)
+  - `GetProvider` (0%)
 
-During testing, a failure was observed in the orchestrator package tests:
+- **Manager**:
+  - `SetGlobalManagerForTesting` (0%)
+  - `Initialize` (43.5%)
+  - `installDefaultConfig` (46.2%)
 
-```
-panic: runtime error: invalid memory address or nil pointer dereference
-[signal SIGSEGV: segmentation violation code=0x2 addr=0x40 pc=0x104aaba7c]
+#### High-Priority Testing Targets:
+1. `provider_registry.go` - Recently added code needs immediate test coverage
+2. Manager initialization and configuration logic
 
-goroutine 15 [running]:
-github.com/phrazzld/thinktank/internal/architect/modelproc.(*tokenManager).GetTokenInfo
-```
+### 4. `internal/llm` - 87.6% Coverage
 
-This suggests there may be a bug in the modelproc tokenManager where it's trying to access a nil pointer.
+#### Key Gaps:
+- **Error Handling**:
+  - `Error` and `Category` methods in `errors.go` (0%)
+  - `CreateStandardErrorWithMessage` (48.1%)
 
-## Recommendations
+#### Low-Priority Testing Targets:
+1. Error message formatting and categorization
 
-1. Start with adding tests for the integration package, which has the lowest coverage
-2. Fix the nil pointer dereference in the orchestrator/modelproc tests
-3. Add tests for key API service methods in the architect package
-4. Improve coverage of core functionality like GenerateContent
-5. Address the low-coverage functions identified above
+## Recommendations for T022
 
-Achieving 80% coverage will require significant additions to the test suite across multiple packages.
+### High Priority
+1. Write tests for `internal/thinktank/registry_api.go` focusing on the recently refactored constructor injection
+2. Create tests for `internal/registry/provider_registry.go` to cover the new provider registry implementation
+3. Add tests for adapter methods in `internal/thinktank/adapters.go` which have 0% coverage
+
+### Medium Priority
+1. Add tests for error handling in `internal/providers/openrouter`
+2. Improve coverage of manager initialization in `internal/registry/manager.go`
+
+### Low Priority
+1. Add tests for error handling classes in `internal/llm/errors.go`
+
+## Conclusion
+The most critical gap is in the `internal/thinktank` package where coverage is extremely low (18.3%). Recent refactoring work in `registry_api.go` and `provider_registry.go` has left significant functionality untested. These areas should be the primary focus for the next phase of test implementation.

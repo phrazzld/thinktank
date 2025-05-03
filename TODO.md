@@ -157,41 +157,8 @@
     - **Depends‑on:** [T015]
     - **Note:** Discovered that the types in api_provider_types.go were not actively used in the codebase, so we were able to safely remove the original file without breaking any functionality.
 
-## CR-07: Documentation Consolidation
-- [ ] **T017 · Chore · P2: consolidate actionable tasks into `todo.md`**
-    - **Context:** cr-07 Consolidate Documentation Sprawl (Steps 1-2)
-    - **Action:**
-        1. Review `PLAN.md`, `T009-plan.md`, `TODO-*.md` files.
-        2. Merge all actionable, non-duplicate tasks into this `TODO.md` file.
-    - **Done‑when:**
-        1. `TODO.md` contains all current/near-term actionable tasks from source files.
-    - **Depends‑on:** none
-- [ ] **T018 · Chore · P2: delete redundant plan and task files**
-    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 3)
-    - **Action:**
-        1. Delete `T009-plan.md` and all `TODO-*.md` files.
-    - **Done‑when:**
-        1. Redundant files are removed from the repository.
-    - **Depends‑on:** [T017]
-- [ ] **T019 · Chore · P2: refactor `plan.md` into high-level strategy document**
-    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 4)
-    - **Action:**
-        1. Edit `PLAN.md` (or `REMEDIATION_PLAN.md`) to remove task lists and markdown code blocks.
-        2. Refocus content as a concise strategy/design overview.
-    - **Done‑when:**
-        1. `PLAN.md`/`REMEDIATION_PLAN.md` is refocused as a strategy doc.
-    - **Depends‑on:** [T017]
-- [ ] **T020 · Chore · P2: clarify `backlog.md` purpose and remove duplicates**
-    - **Context:** cr-07 Consolidate Documentation Sprawl (Step 5)
-    - **Action:**
-        1. Remove tasks from `BACKLOG.md` that are now in `TODO.md`.
-        2. Add a clarifying header note to `BACKLOG.md` (e.g., "Future ideas/non-sprint items").
-    - **Done‑when:**
-        1. `BACKLOG.md` has no duplicates from `TODO.md` and purpose is clarified.
-    - **Depends‑on:** [T017]
-
 ## CR-08: Test Coverage
-- [ ] **T021 · Test · P1: analyze test coverage for critical packages post-refactor**
+- [x] **T021 · Test · P1: analyze test coverage for critical packages post-refactor**
     - **Context:** cr-08 Audit & Restore Test Coverage Post-Deletion (Steps 1-2)
     - **Action:**
         1. Run `go test ./... -coverprofile=coverage.out` focusing on `internal/thinktank`, `internal/providers`, `internal/registry`, `internal/llm`.
@@ -199,6 +166,7 @@
     - **Done‑when:**
         1. Coverage analysis complete; list of specific gaps documented.
     - **Depends‑on:** [T013, T016]
+    - **Note:** Completed coverage analysis in coverage-analysis.md. Critical findings: internal/thinktank at 18.3% coverage requires immediate attention. Newly added provider_registry.go has 0% coverage. Recently refactored registry_api.go needs tests.
 - [ ] **T022 · Test · P1: implement tests to address identified coverage gaps**
     - **Context:** cr-08 Audit & Restore Test Coverage Post-Deletion (Step 3)
     - **Action:**
@@ -217,13 +185,3 @@
     - **Verification:**
         1. Check CI configuration file; observe CI run output enforcing coverage.
     - **Depends‑on:** [T022]
-
----
-
-### Clarifications & Assumptions
-- [ ] **Issue:** No specific minimum test coverage threshold defined in plan (cr-08).
-    - **Context:** cr-08, Step 4 requires enforcing a minimum threshold.
-    - **Blocking?:** no (Assume a reasonable default like 80% for T023, adjust later if needed).
-- [ ] **Issue:** Confirm target package name for provider registry relocation (cr-06).
-    - **Context:** cr-06 suggests `internal/registry` or `internal/providers/registry`.
-    - **Blocking?:** no (Proceeding with `internal/registry` as per T014, easily changed if incorrect).
