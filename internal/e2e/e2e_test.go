@@ -611,14 +611,18 @@ func findOrBuildBinary() (string, error) {
 	fmt.Println("Thinktank binary not found, building from source...")
 	buildOutput := filepath.Join(projectRoot, binaryName)
 
-	// Build command targeting the main package - specify target platform to match runner OS
+	// Build command targeting the main package - explicitly set to the host OS/arch
+	fmt.Printf("Building binary for %s/%s\n", runtime.GOOS, runtime.GOARCH)
+
 	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
 
 	// Set appropriate environment variables to ensure binary is built for the current OS
+	// This is critical for CI environments where the test might attempt to run with an incompatible binary
 	cmd.Env = append(os.Environ(),
 		"GOOS="+runtime.GOOS,
 		"GOARCH="+runtime.GOARCH,
+		"CGO_ENABLED=0", // Disable CGO for better cross-platform compatibility
 	)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -671,15 +675,45 @@ func SimulateUserInput(input string) io.Reader {
 	return strings.NewReader(input)
 }
 
+// isRunningInGitHubActions returns true if running in GitHub Actions
+func isRunningInGitHubActions() bool {
+	return os.Getenv("GITHUB_ACTIONS") == "true"
+}
+
 // TestMain runs once before all tests in the package.
 // It finds or builds the thinktank binary needed for the tests.
 func TestMain(m *testing.M) {
-	// Find or build the binary only once for all tests
-	var err error
-	thinktankBinaryPath, err = findOrBuildBinary()
-	if err != nil {
-		// Use log.Fatalf for cleaner exit on failure during setup
-		log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
+	// Check if running in GitHub Actions
+	if isRunningInGitHubActions() {
+		fmt.Println("Running in GitHub Actions environment")
+
+		// In GitHub Actions, we expect the binary to be pre-built and symlinked by the workflow
+		thinktankBinary := "thinktank"
+		if runtime.GOOS == "windows" {
+			thinktankBinary += ".exe"
+		}
+
+		// Get the absolute path to the existing binary
+		path, err := filepath.Abs(thinktankBinary)
+		if err != nil {
+			log.Fatalf("FATAL: Failed to get absolute path for thinktank in GitHub Actions: %v", err)
+		}
+
+		thinktankBinaryPath = path
+		fmt.Printf("Using pre-built binary at: %s\n", thinktankBinaryPath)
+
+		// Verify the binary exists and is executable
+		if _, err := os.Stat(thinktankBinaryPath); err != nil {
+			log.Fatalf("FATAL: Thinktank binary not found at %s: %v", thinktankBinaryPath, err)
+		}
+	} else {
+		// For local development, find or build the binary
+		var err error
+		thinktankBinaryPath, err = findOrBuildBinary()
+		if err != nil {
+			// Use log.Fatalf for cleaner exit on failure during setup
+			log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
+		}
 	}
 
 	// Run all tests in the package

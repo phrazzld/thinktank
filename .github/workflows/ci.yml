@@ -126,9 +126,18 @@ jobs:
       # Build a CI-specific binary for E2E tests to avoid cross-platform issues
       - name: Build E2E test binary
         run: |
-          # Build a binary specifically for CI E2E tests
-          go build -o thinktank-e2e ./cmd/thinktank
+          # Determine current platform
+          export GOOS=linux
+          export GOARCH=amd64
+
+          # Build a binary specifically for CI E2E tests with explicit target platform
+          echo "Building binary for $GOOS/$GOARCH..."
+          GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -o thinktank-e2e ./cmd/thinktank
           chmod +x thinktank-e2e
+
+          # Check binary details
+          file thinktank-e2e
+
           # Verify binary works
           ./thinktank-e2e --version || echo "Binary built but doesn't have --version flag, continuing..."
         timeout-minutes: 2
