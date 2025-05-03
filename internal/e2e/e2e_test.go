@@ -688,18 +688,18 @@ func TestMain(m *testing.M) {
 		fmt.Println("Running in GitHub Actions environment")
 
 		// In GitHub Actions, we expect the binary to be pre-built and symlinked by the workflow
-		thinktankBinary := "thinktank"
+		// The binary should be in the project root, not in the current directory
+		projectRoot, err := filepath.Abs("../../") // Go up from internal/e2e to the project root
+		if err != nil {
+			log.Fatalf("FATAL: Failed to get project root path: %v", err)
+		}
+
+		thinktankBinary := filepath.Join(projectRoot, "thinktank")
 		if runtime.GOOS == "windows" {
 			thinktankBinary += ".exe"
 		}
 
-		// Get the absolute path to the existing binary
-		path, err := filepath.Abs(thinktankBinary)
-		if err != nil {
-			log.Fatalf("FATAL: Failed to get absolute path for thinktank in GitHub Actions: %v", err)
-		}
-
-		thinktankBinaryPath = path
+		thinktankBinaryPath = thinktankBinary
 		fmt.Printf("Using pre-built binary at: %s\n", thinktankBinaryPath)
 
 		// Verify the binary exists and is executable
