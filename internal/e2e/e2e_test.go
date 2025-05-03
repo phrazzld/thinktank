@@ -623,6 +623,11 @@ func findOrBuildBinary() (string, error) {
 			err, projectRoot, stdout.String(), stderr.String())
 	}
 
+	// Ensure the binary has executable permissions
+	if err := os.Chmod(buildOutput, 0755); err != nil {
+		return "", fmt.Errorf("failed to set executable permissions on binary: %v", err)
+	}
+
 	// Verify the binary was built
 	if _, err := os.Stat(buildOutput); err != nil {
 		return "", fmt.Errorf("failed to find built binary at %s after build attempt: %v", buildOutput, err)

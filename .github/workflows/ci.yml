@@ -125,7 +125,10 @@ jobs:
 
       # Run E2E tests with parallel execution (removing --short flag for full test coverage)
       - name: Run E2E tests with full coverage
-        run: ./internal/e2e/run_e2e_tests.sh --verbose
+        run: |
+          # Ensure thinktank binary has executable permissions if it exists
+          chmod +x thinktank 2>/dev/null || true
+          ./internal/e2e/run_e2e_tests.sh --verbose
         timeout-minutes: 15
 
       # Run other tests with race detection
@@ -155,8 +158,8 @@ jobs:
 
           echo ""
           # Display detailed per-package coverage
-          ./scripts/check-package-coverage.sh 55 || true # Don't fail here, the next step does enforcement
-                                                         # NOTE: Temporarily reduced from 90% to 55%
+          ./scripts/check-package-coverage.sh 75 || true # Don't fail here, the next step does enforcement
+                                                         # NOTE: Increased from 55%, target is 90%
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact
@@ -167,10 +170,16 @@ jobs:
           retention-days: 14
 
       # Check coverage threshold
-      - name: Check coverage threshold
+      - name: Check overall coverage threshold
         run: |
-          # Use dedicated script for checking coverage
-          ./scripts/check-coverage.sh 55  # NOTE: Temporarily reduced from 90% to 55%
+          # Use dedicated script for checking coverage with increased threshold
+          ./scripts/check-coverage.sh 75  # Increased from 55%, target is 90%
+
+      # Check package-specific coverage thresholds
+      - name: Check package-specific coverage thresholds
+        run: |
+          # This script enforces package-specific thresholds for critical packages
+          ./scripts/ci/check-package-specific-coverage.sh
 
   # Build job for building Go binary
   build:

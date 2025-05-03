@@ -4,8 +4,8 @@ set -e
 # check-package-coverage.sh - Report test coverage for each package and highlight those below threshold
 # Usage: scripts/check-package-coverage.sh [threshold_percentage]
 
-# Default threshold is 55% (temporarily reduced from 90%)
-THRESHOLD=${1:-55}
+# Default threshold is 75% (increased from 55%, target is 90%)
+THRESHOLD=${1:-75}
 FAILED=0
 
 # Determine the module path
