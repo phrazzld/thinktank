@@ -123,11 +123,22 @@ jobs:
         run: go test -v -race -short -parallel 4 ./internal/integration/...
         timeout-minutes: 5
 
+      # Build a CI-specific binary for E2E tests to avoid cross-platform issues
+      - name: Build E2E test binary
+        run: |
+          # Build a binary specifically for CI E2E tests
+          go build -o thinktank-e2e ./cmd/thinktank
+          chmod +x thinktank-e2e
+          # Verify binary works
+          ./thinktank-e2e --version || echo "Binary built but doesn't have --version flag, continuing..."
+        timeout-minutes: 2
+
       # Run E2E tests with parallel execution (removing --short flag for full test coverage)
       - name: Run E2E tests with full coverage
         run: |
-          # Ensure thinktank binary has executable permissions if it exists
-          chmod +x thinktank 2>/dev/null || true
+          # Create a symlink so the tests find the binary at the expected location
+          ln -sf $(pwd)/thinktank-e2e $(pwd)/thinktank
+          chmod +x thinktank
           ./internal/e2e/run_e2e_tests.sh --verbose
         timeout-minutes: 15
 

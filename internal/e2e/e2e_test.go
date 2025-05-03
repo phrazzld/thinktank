@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -610,9 +611,15 @@ func findOrBuildBinary() (string, error) {
 	fmt.Println("Thinktank binary not found, building from source...")
 	buildOutput := filepath.Join(projectRoot, binaryName)
 
-	// Build command targeting the main package
+	// Build command targeting the main package - specify target platform to match runner OS
 	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
+
+	// Set appropriate environment variables to ensure binary is built for the current OS
+	cmd.Env = append(os.Environ(),
+		"GOOS="+runtime.GOOS,
+		"GOARCH="+runtime.GOARCH,
+	)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
