@@ -134,3 +134,6 @@
 
 - [ ] **T50: Remove Unnecessary Type Alias**
   Remove the alias `type APIService = interfaces.APIService` in `cmd/thinktank/api.go:22` and update internal usages to directly use `interfaces.APIService`.
+
+- [ ] **T51: Improve Registry API Testability**
+  Refactor `internal/thinktank/registry_api.go` to use interfaces instead of concrete types for dependencies, apply dependency injection pattern consistently, and add interface abstractions to make the code more testable without requiring extensive type assertions in tests. This will enhance long-term maintainability and enable more robust testing.

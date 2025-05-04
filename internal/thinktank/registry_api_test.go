@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
@@ -153,20 +154,89 @@ func setupTest(t *testing.T) (*registryAPIService, *MockRegistryAPI, *testutil.M
 
 // TestNewRegistryAPIService tests the constructor function
 func TestNewRegistryAPIService(t *testing.T) {
-	logger := testutil.NewMockLogger()
-	mockRegistry := &MockRegistryAPI{}
-
-	service := NewRegistryAPIService(mockRegistry, logger)
-
-	if service == nil {
-		t.Fatal("NewRegistryAPIService returned nil")
+	// Test cases to cover different scenarios
+	testCases := []struct {
+		name          string
+		registry      interface{}
+		logger        logutil.LoggerInterface
+		expectSuccess bool
+		expectedType  interface{}
+		checkFields   bool
+	}{
+		{
+			name:          "valid registry and logger",
+			registry:      &MockRegistryAPI{},
+			logger:        testutil.NewMockLogger(),
+			expectSuccess: true,
+			expectedType:  &registryAPIService{},
+			checkFields:   true,
+		},
+		{
+			name:          "nil registry",
+			registry:      nil,
+			logger:        testutil.NewMockLogger(),
+			expectSuccess: true, // The constructor doesn't validate inputs
+			expectedType:  &registryAPIService{},
+			checkFields:   true,
+		},
+		{
+			name:          "non-registry type",
+			registry:      "not a registry",
+			logger:        testutil.NewMockLogger(),
+			expectSuccess: true, // The constructor accepts any interface{}
+			expectedType:  &registryAPIService{},
+			checkFields:   true,
+		},
 	}
 
-	// Check that the service is of the correct type
-	_, ok := service.(*registryAPIService)
-	if !ok {
-		t.Errorf("NewRegistryAPIService did not return a registryAPIService, got %T", service)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Call the constructor
+			service := NewRegistryAPIService(tc.registry, tc.logger)
+
+			// Check if service was created successfully
+			if tc.expectSuccess {
+				if service == nil {
+					t.Fatal("NewRegistryAPIService returned nil, expected a valid service")
+				}
+
+				// Check that the service is of the correct type
+				serviceImpl, ok := service.(*registryAPIService)
+				if !ok {
+					t.Fatalf("NewRegistryAPIService did not return a registryAPIService, got %T", service)
+				}
+
+				// Check fields only if specified
+				if tc.checkFields {
+					// Check that registry field was set correctly
+					if serviceImpl.registry != tc.registry {
+						t.Errorf("Expected registry field to be %v, got %v", tc.registry, serviceImpl.registry)
+					}
+
+					// Check that logger field was set correctly
+					if serviceImpl.logger != tc.logger {
+						t.Errorf("Expected logger field to be %v, got %v", tc.logger, serviceImpl.logger)
+					}
+				}
+			} else {
+				if service != nil {
+					t.Errorf("Expected NewRegistryAPIService to return nil, got %v", service)
+				}
+			}
+		})
 	}
+
+	// Test that the service implements the APIService interface
+	t.Run("implements APIService interface", func(t *testing.T) {
+		logger := testutil.NewMockLogger()
+		mockRegistry := &MockRegistryAPI{}
+		service := NewRegistryAPIService(mockRegistry, logger)
+
+		// Simple check that service is not nil (interface checking done at compile time)
+		if service == nil {
+			t.Fatal("Service should not be nil")
+		}
+	})
 }
 
 // TestProcessLLMResponse tests the ProcessLLMResponse method
