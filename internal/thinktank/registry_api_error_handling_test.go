@@ -3,6 +3,7 @@ package thinktank
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -18,6 +19,7 @@ func TestProcessLLMResponse(t *testing.T) {
 		expectedContent string
 		expectError     bool
 		expectedError   error
+		errorSubstring  string // To verify specific error message content
 	}{
 		{
 			name:            "nil result",
@@ -25,9 +27,19 @@ func TestProcessLLMResponse(t *testing.T) {
 			expectedContent: "",
 			expectError:     true,
 			expectedError:   llm.ErrEmptyResponse,
+			errorSubstring:  "result is nil",
 		},
 		{
-			name: "empty content",
+			name: "empty content with no details",
+			result: &llm.ProviderResult{
+				Content: "",
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrEmptyResponse,
+		},
+		{
+			name: "empty content with finish reason",
 			result: &llm.ProviderResult{
 				Content:      "",
 				FinishReason: "stop",
@@ -35,9 +47,21 @@ func TestProcessLLMResponse(t *testing.T) {
 			expectedContent: "",
 			expectError:     true,
 			expectedError:   llm.ErrEmptyResponse,
+			errorSubstring:  "Finish Reason: stop",
 		},
 		{
-			name: "safety blocked",
+			name: "empty content with finish reason length",
+			result: &llm.ProviderResult{
+				Content:      "",
+				FinishReason: "length",
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrEmptyResponse,
+			errorSubstring:  "Finish Reason: length",
+		},
+		{
+			name: "empty content with single safety block",
 			result: &llm.ProviderResult{
 				Content: "",
 				SafetyInfo: []llm.Safety{
@@ -50,11 +74,77 @@ func TestProcessLLMResponse(t *testing.T) {
 			expectedContent: "",
 			expectError:     true,
 			expectedError:   llm.ErrSafetyBlocked,
+			errorSubstring:  "Blocked by Safety Category: harmful_content",
+		},
+		{
+			name: "empty content with multiple safety blocks",
+			result: &llm.ProviderResult{
+				Content: "",
+				SafetyInfo: []llm.Safety{
+					{
+						Category: "violence",
+						Blocked:  true,
+					},
+					{
+						Category: "hate_speech",
+						Blocked:  true,
+					},
+					{
+						Category: "not_blocked_category",
+						Blocked:  false,
+					},
+				},
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrSafetyBlocked,
+			errorSubstring:  "Safety Blocking:",
+		},
+		{
+			name: "empty content with finish reason and safety blocks",
+			result: &llm.ProviderResult{
+				Content:      "",
+				FinishReason: "safety",
+				SafetyInfo: []llm.Safety{
+					{
+						Category: "unsafe_content",
+						Blocked:  true,
+					},
+				},
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrSafetyBlocked,
+			errorSubstring:  "Finish Reason: safety",
+		},
+		{
+			name: "non-blocking safety info",
+			result: &llm.ProviderResult{
+				Content: "",
+				SafetyInfo: []llm.Safety{
+					{
+						Category: "flagged_but_not_blocked",
+						Blocked:  false,
+					},
+				},
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrEmptyResponse,
 		},
 		{
 			name: "whitespace only content",
 			result: &llm.ProviderResult{
 				Content: "   \n   ",
+			},
+			expectedContent: "",
+			expectError:     true,
+			expectedError:   llm.ErrWhitespaceContent,
+		},
+		{
+			name: "whitespace with tabs and newlines",
+			result: &llm.ProviderResult{
+				Content: "\t\n \t\r\n",
 			},
 			expectedContent: "",
 			expectError:     true,
@@ -68,6 +158,20 @@ func TestProcessLLMResponse(t *testing.T) {
 			expectedContent: "This is a valid response",
 			expectError:     false,
 		},
+		{
+			name: "valid content with safety info (not blocked)",
+			result: &llm.ProviderResult{
+				Content: "This is a valid response with safety info",
+				SafetyInfo: []llm.Safety{
+					{
+						Category: "flagged_but_not_blocked",
+						Blocked:  false,
+					},
+				},
+			},
+			expectedContent: "This is a valid response with safety info",
+			expectError:     false,
+		},
 	}
 
 	for _, tc := range testCases {
@@ -79,14 +183,22 @@ func TestProcessLLMResponse(t *testing.T) {
 					t.Fatal("Expected error, got nil")
 				}
 
+				// Check that error is of expected type
 				if !errors.Is(err, tc.expectedError) {
 					t.Errorf("Expected error to be '%v', got '%v'", tc.expectedError, err)
+				}
+
+				// If an error substring is specified, check it's in the error message
+				if tc.errorSubstring != "" && !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error message to contain '%s', got '%s'",
+						tc.errorSubstring, err.Error())
 				}
 			} else {
 				if err != nil {
 					t.Fatalf("Expected no error, got %v", err)
 				}
 
+				// Verify the content matches expected
 				if content != tc.expectedContent {
 					t.Errorf("Expected content to be '%s', got '%s'", tc.expectedContent, content)
 				}
