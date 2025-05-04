@@ -58,15 +58,11 @@ func Main() {
 	// Initialize and load the Registry
 	registryManager := registry.GetGlobalManager(logger)
 	if err := registryManager.Initialize(); err != nil {
-		logger.Warn("Failed to initialize registry: %v. Falling back to legacy provider detection.", err)
-	} else {
-		logger.Info("Registry initialized successfully")
-
-		// Set the registry manager getter for token management
-		thinktank.SetRegistryManagerGetter(func() interface{} {
-			return registryManager
-		})
+		logger.Error("Failed to initialize registry: %v", err)
+		os.Exit(1)
 	}
+
+	logger.Info("Registry initialized successfully")
 
 	// Validate inputs before proceeding
 	if err := ValidateInputs(config, logger); err != nil {

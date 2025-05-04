@@ -16,9 +16,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
-// Note: min helper function was removed as part of T003 and T006 - Remove Dead Code
-// Go 1.21+ provides built-in min/max functions
-
 // registryAPIService implements the APIService interface using the Registry
 type registryAPIService struct {
 	registry *registry.Registry
@@ -168,8 +165,6 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	return client, nil
 }
 
-// Note: ProviderType enum was removed as part of T003 - Remove Legacy Provider Detection Logic
-
 // The remaining methods are carried over from the existing APIService implementation
 // since they don't depend on the provider initialization logic
 
@@ -312,8 +307,7 @@ func (s *registryAPIService) GetModelDefinition(modelName string) (*registry.Mod
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model
-// Note: This method is kept for backward compatibility but now returns default values
-// Token handling has been removed as part of T036C
+// This method now returns default values instead of actual model token limits
 func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	// Look up the model in the registry to verify it exists
 	_, err = s.registry.GetModel(modelName)
