@@ -339,25 +339,101 @@ func TestErrorClassificationMethods(t *testing.T) {
 			err      error
 			expected bool
 		}{
+			// Common error cases
 			{
 				name:     "nil error",
 				err:      nil,
 				expected: false,
 			},
 			{
-				name:     "safety blocked error",
+				name:     "unrelated error",
+				err:      errors.New("some other error"),
+				expected: false,
+			},
+
+			// Specific error types
+			{
+				name:     "safety blocked error sentinel",
 				err:      llm.ErrSafetyBlocked,
 				expected: true,
 			},
 			{
-				name:     "message contains safety",
+				name:     "wrapped safety blocked error",
+				err:      fmt.Errorf("API call failed: %w", llm.ErrSafetyBlocked),
+				expected: true,
+			},
+			{
+				name:     "double wrapped safety blocked error",
+				err:      fmt.Errorf("outer error: %w", fmt.Errorf("inner error: %w", llm.ErrSafetyBlocked)),
+				expected: true,
+			},
+
+			// Common safety-related phrases
+			{
+				name:     "message contains 'safety'",
 				err:      errors.New("content blocked by safety filters"),
 				expected: true,
 			},
 			{
-				name:     "unrelated error",
-				err:      errors.New("some other error"),
+				name:     "message contains 'content policy'",
+				err:      errors.New("response rejected due to content policy violation"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'content filter'",
+				err:      errors.New("request failed because of content filter"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'content_filter'",
+				err:      errors.New("error: content_filter triggered"),
+				expected: true,
+			},
+
+			// Case sensitivity testing
+			{
+				name:     "case insensitive - SAFETY",
+				err:      errors.New("CONTENT BLOCKED BY SAFETY FILTERS"),
+				expected: true,
+			},
+			{
+				name:     "case insensitive - Mixed Case",
+				err:      errors.New("Content Policy Violation"),
+				expected: true,
+			},
+
+			// Provider-specific moderation terminology
+			{
+				name:     "message contains 'moderation'",
+				err:      errors.New("failed moderation check"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'blocked'",
+				err:      errors.New("content was blocked"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'filtered'",
+				err:      errors.New("response was filtered"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'harm_category'",
+				err:      errors.New("harm_category: HARASSMENT"),
+				expected: true,
+			},
+
+			// Words that don't contain any of the key phrases
+			{
+				name:     "error without any safety-related terms",
+				err:      errors.New("this error has no matches"),
 				expected: false,
+			},
+			{
+				name:     "partial term match with different meaning",
+				err:      errors.New("this request is unfiltered"),
+				expected: true, // Will match "filtered" as a substring
 			},
 		}
 
