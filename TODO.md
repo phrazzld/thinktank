@@ -5,7 +5,8 @@
 - [x] Implement test for NewRegistryAPIService constructor
 - [x] Implement test for InitLLMClient, verifying API key resolution
 - [x] Implement test for GetModelParameters, covering request parameter creation
-- [ ] Implement test for ValidateModelParameter, including validation edge cases
+- [x] Implement test for ValidateModelParameter, including validation edge cases
+  - ✓ Refactored test files to address file size limit
 - [ ] Implement test for GetModelDefinition, verifying definition retrieval logic
 - [ ] Implement test for GetModelTokenLimits, testing standard and custom token limits
 - [ ] Implement test for ProcessLLMResponse, testing response transformation
