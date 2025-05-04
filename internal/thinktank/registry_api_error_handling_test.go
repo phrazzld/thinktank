@@ -3,6 +3,7 @@ package thinktank
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -218,29 +219,105 @@ func TestErrorClassificationMethods(t *testing.T) {
 			err      error
 			expected bool
 		}{
+			// Common error cases
 			{
 				name:     "nil error",
 				err:      nil,
 				expected: false,
 			},
 			{
-				name:     "empty response error",
+				name:     "unrelated error",
+				err:      errors.New("some other error"),
+				expected: false,
+			},
+
+			// Specific error types
+			{
+				name:     "empty response error sentinel",
 				err:      llm.ErrEmptyResponse,
 				expected: true,
 			},
 			{
-				name:     "whitespace content error",
+				name:     "whitespace content error sentinel",
 				err:      llm.ErrWhitespaceContent,
 				expected: true,
 			},
 			{
-				name:     "message contains empty response",
+				name:     "wrapped empty response error",
+				err:      fmt.Errorf("API call failed: %w", llm.ErrEmptyResponse),
+				expected: true,
+			},
+			{
+				name:     "wrapped whitespace content error",
+				err:      fmt.Errorf("API call failed: %w", llm.ErrWhitespaceContent),
+				expected: true,
+			},
+			{
+				name:     "double wrapped empty response error",
+				err:      fmt.Errorf("outer error: %w", fmt.Errorf("inner error: %w", llm.ErrEmptyResponse)),
+				expected: true,
+			},
+
+			// Common empty response phrases
+			{
+				name:     "message contains 'empty response'",
 				err:      errors.New("received empty response from API"),
 				expected: true,
 			},
 			{
-				name:     "unrelated error",
-				err:      errors.New("some other error"),
+				name:     "message contains 'empty content'",
+				err:      errors.New("API returned empty content"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'empty output'",
+				err:      errors.New("model generated empty output"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'empty result'",
+				err:      errors.New("got empty result from LLM API"),
+				expected: true,
+			},
+
+			// Case sensitivity testing
+			{
+				name:     "case insensitive - EMPTY RESPONSE",
+				err:      errors.New("RECEIVED EMPTY RESPONSE FROM API"),
+				expected: true,
+			},
+			{
+				name:     "case insensitive - Mixed Case",
+				err:      errors.New("API Returned Empty Content"),
+				expected: true,
+			},
+
+			// Provider-specific patterns
+			{
+				name:     "message contains 'zero candidates'",
+				err:      errors.New("model returned zero candidates"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'empty candidates'",
+				err:      errors.New("response contained empty candidates"),
+				expected: true,
+			},
+			{
+				name:     "message contains 'no output'",
+				err:      errors.New("model generated no output"),
+				expected: true,
+			},
+
+			// Partial matches (should not match)
+			{
+				name:     "partial match - not at word boundary",
+				err:      errors.New("someemptyresponse text"),
+				expected: false,
+			},
+			{
+				name:     "error about non-empty content",
+				err:      errors.New("content is not empty but invalid"),
 				expected: false,
 			},
 		}
