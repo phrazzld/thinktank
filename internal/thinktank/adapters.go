@@ -47,12 +47,15 @@ func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
 
 // GetModelParameters delegates to the underlying APIService implementation
 func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Now we'll just use the type assertion approach below directly
+
 	// Check if the underlying implementation supports this method
 	if apiService, ok := a.APIService.(interface {
 		GetModelParameters(string) (map[string]interface{}, error)
 	}); ok {
 		return apiService.GetModelParameters(modelName)
 	}
+
 	// Return empty map for implementations that don't support this method
 	return make(map[string]interface{}), nil
 }
@@ -65,6 +68,7 @@ func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.Mode
 	}); ok {
 		return apiService.GetModelDefinition(modelName)
 	}
+
 	// Return error for implementations that don't support this method
 	return nil, fmt.Errorf("model definition not available")
 }
@@ -79,6 +83,7 @@ func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow
 	}
 
 	// We'll skip logging during tests to avoid noise
+	// If the implementation doesn't support this method, determine limits based on model name
 
 	// Convert model name to lowercase for case-insensitive matching
 	modelNameLower := strings.ToLower(modelName)
@@ -131,6 +136,7 @@ func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, 
 	}); ok {
 		return apiService.ValidateModelParameter(modelName, paramName, value)
 	}
+
 	// Return true if the underlying implementation doesn't support this method
 	return true, nil
 }

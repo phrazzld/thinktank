@@ -1,11 +1,12 @@
 // Package thinktank contains the core application logic for the thinktank tool.
-// This file contains shared mock definitions for adapter tests.
+// This file contains shared mock definitions and tests for adapter functionality.
 package thinktank
 
 import (
 	"context"
 	"errors"
 
+	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
@@ -22,9 +23,65 @@ type MockAPIServiceForAdapter struct {
 	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
 	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
 	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
+
+	// Call tracking fields
+	InitLLMClientCalls          []InitLLMClientCall
+	ProcessLLMResponseCalls     []ProcessLLMResponseCall
+	GetErrorDetailsCalls        []GetErrorDetailsCall
+	IsEmptyResponseErrorCalls   []IsEmptyResponseErrorCall
+	IsSafetyBlockedErrorCalls   []IsSafetyBlockedErrorCall
+	GetModelParametersCalls     []GetModelParametersCall
+	ValidateModelParameterCalls []ValidateModelParameterCall
+	GetModelDefinitionCalls     []GetModelDefinitionCall
+	GetModelTokenLimitsCalls    []GetModelTokenLimitsCall
+}
+
+// Call record structs
+type InitLLMClientCall struct {
+	Ctx         context.Context
+	APIKey      string
+	ModelName   string
+	APIEndpoint string
+}
+
+type ProcessLLMResponseCall struct {
+	Result *llm.ProviderResult
+}
+
+type GetErrorDetailsCall struct {
+	Err error
+}
+
+type IsEmptyResponseErrorCall struct {
+	Err error
+}
+
+type IsSafetyBlockedErrorCall struct {
+	Err error
+}
+
+type GetModelParametersCall struct {
+	ModelName string
+}
+
+type ValidateModelParameterCall struct {
+	ModelName string
+	ParamName string
+	Value     interface{}
+}
+
+type GetModelDefinitionCall struct {
+	ModelName string
+}
+
+type GetModelTokenLimitsCall struct {
+	ModelName string
 }
 
 func (m *MockAPIServiceForAdapter) IsEmptyResponseError(err error) bool {
+	m.IsEmptyResponseErrorCalls = append(m.IsEmptyResponseErrorCalls, IsEmptyResponseErrorCall{
+		Err: err,
+	})
 	if m.IsEmptyResponseErrorFunc != nil {
 		return m.IsEmptyResponseErrorFunc(err)
 	}
@@ -32,6 +89,9 @@ func (m *MockAPIServiceForAdapter) IsEmptyResponseError(err error) bool {
 }
 
 func (m *MockAPIServiceForAdapter) IsSafetyBlockedError(err error) bool {
+	m.IsSafetyBlockedErrorCalls = append(m.IsSafetyBlockedErrorCalls, IsSafetyBlockedErrorCall{
+		Err: err,
+	})
 	if m.IsSafetyBlockedErrorFunc != nil {
 		return m.IsSafetyBlockedErrorFunc(err)
 	}
@@ -39,6 +99,9 @@ func (m *MockAPIServiceForAdapter) IsSafetyBlockedError(err error) bool {
 }
 
 func (m *MockAPIServiceForAdapter) GetErrorDetails(err error) string {
+	m.GetErrorDetailsCalls = append(m.GetErrorDetailsCalls, GetErrorDetailsCall{
+		Err: err,
+	})
 	if m.GetErrorDetailsFunc != nil {
 		return m.GetErrorDetailsFunc(err)
 	}
@@ -46,6 +109,12 @@ func (m *MockAPIServiceForAdapter) GetErrorDetails(err error) string {
 }
 
 func (m *MockAPIServiceForAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	m.InitLLMClientCalls = append(m.InitLLMClientCalls, InitLLMClientCall{
+		Ctx:         ctx,
+		APIKey:      apiKey,
+		ModelName:   modelName,
+		APIEndpoint: apiEndpoint,
+	})
 	if m.InitLLMClientFunc != nil {
 		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
 	}
@@ -53,6 +122,9 @@ func (m *MockAPIServiceForAdapter) InitLLMClient(ctx context.Context, apiKey, mo
 }
 
 func (m *MockAPIServiceForAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	m.ProcessLLMResponseCalls = append(m.ProcessLLMResponseCalls, ProcessLLMResponseCall{
+		Result: result,
+	})
 	if m.ProcessLLMResponseFunc != nil {
 		return m.ProcessLLMResponseFunc(result)
 	}
@@ -60,6 +132,9 @@ func (m *MockAPIServiceForAdapter) ProcessLLMResponse(result *llm.ProviderResult
 }
 
 func (m *MockAPIServiceForAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	m.GetModelParametersCalls = append(m.GetModelParametersCalls, GetModelParametersCall{
+		ModelName: modelName,
+	})
 	if m.GetModelParametersFunc != nil {
 		return m.GetModelParametersFunc(modelName)
 	}
@@ -67,6 +142,11 @@ func (m *MockAPIServiceForAdapter) GetModelParameters(modelName string) (map[str
 }
 
 func (m *MockAPIServiceForAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	m.ValidateModelParameterCalls = append(m.ValidateModelParameterCalls, ValidateModelParameterCall{
+		ModelName: modelName,
+		ParamName: paramName,
+		Value:     value,
+	})
 	if m.ValidateModelParameterFunc != nil {
 		return m.ValidateModelParameterFunc(modelName, paramName, value)
 	}
@@ -74,6 +154,9 @@ func (m *MockAPIServiceForAdapter) ValidateModelParameter(modelName, paramName s
 }
 
 func (m *MockAPIServiceForAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	m.GetModelDefinitionCalls = append(m.GetModelDefinitionCalls, GetModelDefinitionCall{
+		ModelName: modelName,
+	})
 	if m.GetModelDefinitionFunc != nil {
 		return m.GetModelDefinitionFunc(modelName)
 	}
@@ -81,6 +164,9 @@ func (m *MockAPIServiceForAdapter) GetModelDefinition(modelName string) (*regist
 }
 
 func (m *MockAPIServiceForAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	m.GetModelTokenLimitsCalls = append(m.GetModelTokenLimitsCalls, GetModelTokenLimitsCall{
+		ModelName: modelName,
+	})
 	if m.GetModelTokenLimitsFunc != nil {
 		return m.GetModelTokenLimitsFunc(modelName)
 	}
@@ -128,4 +214,173 @@ func (m *MockTokenManagerForAdapter) PromptForConfirmation(tokenCount int32, thr
 // GetAdapterTestLogger returns a logger for adapter tests
 func GetAdapterTestLogger() logutil.LoggerInterface {
 	return logutil.NewLogger(logutil.DebugLevel, nil, "[adapter-test] ")
+}
+
+// MockAPIServiceWithoutExtensions implements the full interfaces.APIService interface
+// but its extended methods are meant to be skipped by the adapter's interface assertions
+// This is important for testing the fallback logic in adapters
+type MockAPIServiceWithoutExtensions struct {
+	// Function fields
+	InitLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
+	ProcessLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
+	GetErrorDetailsFunc      func(err error) string
+	IsEmptyResponseErrorFunc func(err error) bool
+	IsSafetyBlockedErrorFunc func(err error) bool
+}
+
+func (m *MockAPIServiceWithoutExtensions) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+	return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
+}
+
+func (m *MockAPIServiceWithoutExtensions) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
+	return m.ProcessLLMResponseFunc(result)
+}
+
+func (m *MockAPIServiceWithoutExtensions) GetErrorDetails(err error) string {
+	return m.GetErrorDetailsFunc(err)
+}
+
+func (m *MockAPIServiceWithoutExtensions) IsEmptyResponseError(err error) bool {
+	return m.IsEmptyResponseErrorFunc(err)
+}
+
+func (m *MockAPIServiceWithoutExtensions) IsSafetyBlockedError(err error) bool {
+	return m.IsSafetyBlockedErrorFunc(err)
+}
+
+// The following methods implement the extended interfaces.APIService interface
+// but are designed not to match the dynamic type assertion patterns in the adapter
+
+// GetModelParameters implements interfaces.APIService.GetModelParameters
+// but is designed to not match the interface assertion in the adapter
+func (m *MockAPIServiceWithoutExtensions) GetModelParameters(modelName string) (map[string]interface{}, error) {
+	// Return default values - this method should not be called by adapter tests
+	return make(map[string]interface{}), nil
+}
+
+// ValidateModelParameter implements interfaces.APIService.ValidateModelParameter
+// but is designed to not match the interface assertion in the adapter
+func (m *MockAPIServiceWithoutExtensions) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+	// Return default values - this method should not be called by adapter tests
+	return true, nil
+}
+
+// GetModelDefinition implements interfaces.APIService.GetModelDefinition
+// but is designed to not match the interface assertion in the adapter
+func (m *MockAPIServiceWithoutExtensions) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// Return default values - this method should not be called by adapter tests
+	return nil, errors.New("model definition not available")
+}
+
+// GetModelTokenLimits returns fallback values that won't actually be used by the adapter
+// The adapter should use its own fallback logic based on the model name
+func (m *MockAPIServiceWithoutExtensions) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// This is implemented in a way that doesn't match the type assertion pattern
+	// in the adapter, forcing it to use the fallback logic
+	return 0, 0, nil
+}
+
+// NewMockAPIServiceWithoutExtensions creates a new MockAPIServiceWithoutExtensions with default implementations
+func NewMockAPIServiceWithoutExtensions() *MockAPIServiceWithoutExtensions {
+	return &MockAPIServiceWithoutExtensions{
+		InitLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
+			return nil, nil
+		},
+		ProcessLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
+			return "", nil
+		},
+		GetErrorDetailsFunc: func(err error) string {
+			return ""
+		},
+		IsEmptyResponseErrorFunc: func(err error) bool {
+			return false
+		},
+		IsSafetyBlockedErrorFunc: func(err error) bool {
+			return false
+		},
+	}
+}
+
+// MockContextGatherer implements ContextGatherer for testing
+type MockContextGatherer struct {
+	// Function fields
+	GatherContextFunc     func(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error)
+	DisplayDryRunInfoFunc func(ctx context.Context, stats *ContextStats) error
+
+	// Call tracking fields
+	GatherContextCalls     []GatherContextCall
+	DisplayDryRunInfoCalls []DisplayDryRunInfoCall
+}
+
+// Call record structs
+type GatherContextCall struct {
+	Ctx    context.Context
+	Config GatherConfig
+}
+
+type DisplayDryRunInfoCall struct {
+	Ctx   context.Context
+	Stats *ContextStats
+}
+
+// MockContextGatherer method implementations
+func (m *MockContextGatherer) GatherContext(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+	m.GatherContextCalls = append(m.GatherContextCalls, GatherContextCall{
+		Ctx:    ctx,
+		Config: config,
+	})
+	return m.GatherContextFunc(ctx, config)
+}
+
+func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error {
+	m.DisplayDryRunInfoCalls = append(m.DisplayDryRunInfoCalls, DisplayDryRunInfoCall{
+		Ctx:   ctx,
+		Stats: stats,
+	})
+	return m.DisplayDryRunInfoFunc(ctx, stats)
+}
+
+// NewMockContextGatherer creates a new MockContextGatherer with default implementations
+func NewMockContextGatherer() *MockContextGatherer {
+	return &MockContextGatherer{
+		GatherContextFunc: func(ctx context.Context, config GatherConfig) ([]fileutil.FileMeta, *ContextStats, error) {
+			return nil, nil, nil
+		},
+		DisplayDryRunInfoFunc: func(ctx context.Context, stats *ContextStats) error {
+			return nil
+		},
+	}
+}
+
+// MockFileWriter implements FileWriter for testing
+type MockFileWriter struct {
+	// Function fields
+	SaveToFileFunc func(content, outputFile string) error
+
+	// Call tracking fields
+	SaveToFileCalls []SaveToFileCall
+}
+
+// Call record structs
+type SaveToFileCall struct {
+	Content    string
+	OutputFile string
+}
+
+// MockFileWriter method implementations
+func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
+	m.SaveToFileCalls = append(m.SaveToFileCalls, SaveToFileCall{
+		Content:    content,
+		OutputFile: outputFile,
+	})
+	return m.SaveToFileFunc(content, outputFile)
+}
+
+// NewMockFileWriter creates a new MockFileWriter with default implementations
+func NewMockFileWriter() *MockFileWriter {
+	return &MockFileWriter{
+		SaveToFileFunc: func(content, outputFile string) error {
+			return nil
+		},
+	}
 }

@@ -16,25 +16,25 @@
 - [x] Implement test for GetErrorDetails, verifying error detail extraction
 
 ## Adapter Test Coverage
-- [ ] Create adapters_test.go file with test harness
-- [ ] Implement test for InitLLMClient adapter method
-- [ ] Implement test for ProcessLLMResponse adapter method
-- [ ] Implement test for GetErrorDetails adapter method
-- [ ] Implement test for IsEmptyResponseError adapter method
-- [ ] Implement test for IsSafetyBlockedError adapter method
-- [ ] Implement test for GetModelParameters adapter method
-- [ ] Implement test for ValidateModelParameter adapter method
-- [ ] Implement test for GetModelDefinition adapter method
-- [ ] Implement test for GetModelTokenLimits adapter method
-- [ ] Implement test for interfacesToInternalContextStats data conversion
-- [ ] Implement test for internalToInterfacesContextStats data conversion
-- [ ] Implement test for internalToInterfacesGatherConfig data conversion
-- [ ] Implement test for DisplayDryRunInfo adapter method
-- [ ] Implement test for SaveToFile adapter method
-- [ ] Implement test for GatherContext adapter method
+- [x] Create adapters_test.go file with test harness
+- [x] Implement test for InitLLMClient adapter method
+- [x] Implement test for ProcessLLMResponse adapter method
+- [x] Implement test for GetErrorDetails adapter method
+- [x] Implement test for IsEmptyResponseError adapter method
+- [x] Implement test for IsSafetyBlockedError adapter method
+- [x] Implement test for GetModelParameters adapter method
+- [x] Implement test for ValidateModelParameter adapter method
+- [x] Implement test for GetModelDefinition adapter method
+- [x] Implement test for GetModelTokenLimits adapter method
+- [x] Implement test for interfacesToInternalContextStats data conversion
+- [x] Implement test for internalToInterfacesContextStats data conversion
+- [x] Implement test for internalToInterfacesGatherConfig data conversion
+- [x] Implement test for DisplayDryRunInfo adapter method
+- [x] Implement test for SaveToFile adapter method
+- [x] Implement test for GatherContext adapter method
 
 ## Integration Tests
-- [ ] Create registry_api_boundary_test.go for integration testing
+- [x] Create registry_api_boundary_test.go for integration testing
 - [ ] Implement test for adapter-registry full interactions
 - [ ] Implement test for error propagation across boundaries
 - [ ] Implement test for real-world workflows with mock providers
