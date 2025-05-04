@@ -12,7 +12,7 @@
 - [x] Implement test for ProcessLLMResponse, testing response transformation
 - [x] Implement test for IsEmptyResponseError, covering error classification
 - [x] Implement test for IsSafetyBlockedError, testing safety error detection
-- [ ] Implement test for getEnvVarNameForProvider, covering provider-specific envvar patterns
+- [x] Implement test for getEnvVarNameForProvider, covering provider-specific envvar patterns
 - [ ] Implement test for GetErrorDetails, verifying error detail extraction
 
 ## Adapter Test Coverage
