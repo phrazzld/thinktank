@@ -4,6 +4,8 @@ package thinktank
 import (
 	"context"
 	"errors"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -43,9 +45,6 @@ func (m *MockAPIConfigLoader) Load() (*registry.ModelsConfig, error) {
 	}
 	return m.config, nil
 }
-
-// Placeholder for future use when testing API key resolution
-// var originalConfigLoader func() registry.ConfigLoaderInterface
 
 // CreateClient implements the Provider interface
 func (m MockProviderAPI) CreateClient(ctx context.Context, apiKey, modelID, apiEndpoint string) (llm.LLMClient, error) {
@@ -456,6 +455,150 @@ func TestGetModelParameters(t *testing.T) {
 
 		if len(params) != 0 {
 			t.Errorf("Expected empty parameter map, got %v", params)
+		}
+	})
+}
+
+// TestInitLLMClient tests the InitLLMClient method
+func TestInitLLMClient(t *testing.T) {
+	// Store and restore environment variables
+	origEnv := make(map[string]string)
+	restoreEnv := func() {
+		for name, value := range origEnv {
+			if value != "" {
+				if err := os.Setenv(name, value); err != nil {
+					t.Logf("Warning: failed to restore env var %s: %v", name, err)
+				}
+			} else {
+				if err := os.Unsetenv(name); err != nil {
+					t.Logf("Warning: failed to unset env var %s: %v", name, err)
+				}
+			}
+		}
+	}
+
+	// Save environment variables we'll modify
+	envVarsToSave := []string{"TEST_PROVIDER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"}
+	for _, name := range envVarsToSave {
+		origEnv[name], _ = os.LookupEnv(name)
+	}
+
+	// We'll restore environment variables at the end
+	defer restoreEnv()
+
+	// Create a done context we can cancel to test cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	t.Run("basic validation", func(t *testing.T) {
+		service, _, _ := setupTest(t)
+
+		// Test empty model name
+		_, err := service.InitLLMClient(ctx, "test-api-key", "", "")
+		if err == nil {
+			t.Error("Expected error for empty model name, got nil")
+		}
+
+		// Test cancelled context
+		cancelledCtx, cancel := context.WithCancel(context.Background())
+		cancel() // Cancel immediately
+		_, err = service.InitLLMClient(cancelledCtx, "test-api-key", "test-model", "")
+		if err == nil {
+			t.Error("Expected error for cancelled context, got nil")
+		}
+		if !strings.Contains(err.Error(), "context") {
+			t.Errorf("Expected context error, got: %v", err)
+		}
+	})
+
+	t.Run("test error model", func(t *testing.T) {
+		service, _, _ := setupTest(t)
+
+		// Test the special error model
+		_, err := service.InitLLMClient(ctx, "test-api-key", "error-model", "")
+		if err == nil {
+			t.Error("Expected error for error-model, got nil")
+		}
+		if err.Error() != "test model error" {
+			t.Errorf("Expected 'test model error', got: %v", err)
+		}
+	})
+
+	t.Run("model lookup failure", func(t *testing.T) {
+		service, mockRegistry, _ := setupTest(t)
+
+		// Set error for GetModel
+		mockRegistry.getModelErr = errors.New("model lookup failed")
+
+		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
+		if err == nil {
+			t.Error("Expected error for model lookup failure, got nil")
+		}
+		if !errors.Is(err, llm.ErrModelNotFound) {
+			t.Errorf("Expected ErrModelNotFound, got: %v", err)
+		}
+	})
+
+	t.Run("provider lookup failure", func(t *testing.T) {
+		service, mockRegistry, _ := setupTest(t)
+
+		// Set error for GetProvider
+		mockRegistry.getProviderErr = errors.New("provider lookup failed")
+
+		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
+		if err == nil {
+			t.Error("Expected error for provider lookup failure, got nil")
+		}
+		if !errors.Is(err, llm.ErrClientInitialization) {
+			t.Errorf("Expected ErrClientInitialization, got: %v", err)
+		}
+	})
+
+	t.Run("provider implementation lookup failure", func(t *testing.T) {
+		service, mockRegistry, _ := setupTest(t)
+
+		// Set error for GetProviderImplementation
+		mockRegistry.getProviderImplErr = errors.New("provider implementation lookup failed")
+
+		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
+		if err == nil {
+			t.Error("Expected error for provider implementation lookup failure, got nil")
+		}
+		if !errors.Is(err, llm.ErrClientInitialization) {
+			t.Errorf("Expected ErrClientInitialization, got: %v", err)
+		}
+	})
+
+	t.Run("client creation failure", func(t *testing.T) {
+		service, mockRegistry, _ := setupTest(t)
+
+		// Update the provider implementation to return an error
+		providerImpl := mockRegistry.implementations["test-provider"]
+		providerImpl.createClientErr = errors.New("client creation failed")
+		mockRegistry.implementations["test-provider"] = providerImpl
+
+		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
+		if err == nil {
+			t.Error("Expected error for client creation failure, got nil")
+		}
+		if !errors.Is(err, llm.ErrClientInitialization) {
+			t.Errorf("Expected ErrClientInitialization, got: %v", err)
+		}
+	})
+
+	t.Run("custom endpoint is logged", func(t *testing.T) {
+		service, _, logger := setupTest(t)
+
+		// Test with a custom endpoint (we don't care if it ultimately fails due to API key)
+		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "https://custom-endpoint.example.com")
+		// We expect this to fail due to API key issues, but we don't care about that for this test
+		if err == nil {
+			t.Log("Unexpectedly succeeded with no API key configured")
+		}
+
+		// Check that the custom endpoint was logged
+		if !logger.ContainsMessage("Using custom API endpoint: https://custom-endpoint.example.com") {
+			t.Error("Expected log message about custom endpoint, not found")
 		}
 	})
 }

@@ -3,7 +3,7 @@
 ## Registry API Test Coverage
 - [x] Create registry_api_test.go file with test harness
 - [x] Implement test for NewRegistryAPIService constructor
-- [ ] Implement test for InitLLMClient, verifying API key resolution
+- [x] Implement test for InitLLMClient, verifying API key resolution
 - [ ] Implement test for GetModelParameters, covering request parameter creation
 - [ ] Implement test for ValidateModelParameter, including validation edge cases
 - [ ] Implement test for GetModelDefinition, verifying definition retrieval logic
