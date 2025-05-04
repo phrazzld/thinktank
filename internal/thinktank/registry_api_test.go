@@ -415,48 +415,190 @@ func TestErrorClassificationMethods(t *testing.T) {
 
 // TestGetModelParameters tests the GetModelParameters method
 func TestGetModelParameters(t *testing.T) {
-	service, mockRegistry, _ := setupTest(t)
+	// Define test cases
+	testCases := []struct {
+		name            string
+		modelName       string
+		modelDefinition *registry.ModelDefinition
+		getModelErr     error
+		registryImpl    interface{}
+		expectedParams  map[string]interface{}
+		expectError     bool
+		errorSubstring  string
+	}{
+		{
+			name:         "existing model with parameters",
+			modelName:    "test-model",
+			getModelErr:  nil,
+			registryImpl: nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{
+				"temperature": 0.7,
+				"max_tokens":  1024,
+				"model_type":  "default",
+			},
+			expectError: false,
+		},
+		{
+			name:           "non-existent model",
+			modelName:      "non-existent-model",
+			getModelErr:    errors.New("model not found"),
+			registryImpl:   nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{},
+			expectError:    false,
+		},
+		{
+			name:           "registry does not implement GetModel",
+			modelName:      "test-model",
+			getModelErr:    nil,
+			registryImpl:   "not a registry", // String instead of proper mock registry
+			expectError:    true,
+			errorSubstring: "does not implement GetModel method",
+		},
+		{
+			name:      "model with no parameters",
+			modelName: "empty-model",
+			modelDefinition: &registry.ModelDefinition{
+				Name:       "empty-model",
+				Provider:   "test-provider",
+				APIModelID: "empty-model-id",
+				Parameters: map[string]registry.ParameterDefinition{},
+			},
+			registryImpl:   nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{},
+			expectError:    false,
+		},
+		{
+			name:      "model with parameters but no defaults",
+			modelName: "no-defaults-model",
+			modelDefinition: &registry.ModelDefinition{
+				Name:       "no-defaults-model",
+				Provider:   "test-provider",
+				APIModelID: "no-defaults-model-id",
+				Parameters: map[string]registry.ParameterDefinition{
+					"param1": {
+						Type: "float",
+						// No default value
+					},
+					"param2": {
+						Type: "int",
+						// No default value
+					},
+				},
+			},
+			registryImpl:   nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{},
+			expectError:    false,
+		},
+		{
+			name:      "model with mixed parameters (with and without defaults)",
+			modelName: "mixed-defaults-model",
+			modelDefinition: &registry.ModelDefinition{
+				Name:       "mixed-defaults-model",
+				Provider:   "test-provider",
+				APIModelID: "mixed-defaults-model-id",
+				Parameters: map[string]registry.ParameterDefinition{
+					"with_default": {
+						Type:    "float",
+						Default: 0.5,
+					},
+					"without_default": {
+						Type: "int",
+						// No default value
+					},
+					"string_param": {
+						Type:    "string",
+						Default: "default-value",
+					},
+				},
+			},
+			registryImpl: nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{
+				"with_default": 0.5,
+				"string_param": "default-value",
+			},
+			expectError: false,
+		},
+		{
+			name:      "model with nil default value",
+			modelName: "nil-default-model",
+			modelDefinition: &registry.ModelDefinition{
+				Name:       "nil-default-model",
+				Provider:   "test-provider",
+				APIModelID: "nil-default-model-id",
+				Parameters: map[string]registry.ParameterDefinition{
+					"nil_default": {
+						Type:    "string",
+						Default: nil,
+					},
+				},
+			},
+			registryImpl:   nil, // Use the default mock registry
+			expectedParams: map[string]interface{}{},
+			expectError:    false,
+		},
+	}
 
-	t.Run("existing model", func(t *testing.T) {
-		params, err := service.GetModelParameters("test-model")
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup test environment
+			var service *registryAPIService
+			var mockRegistry *MockRegistryAPI
 
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
+			if tc.registryImpl == nil {
+				service, mockRegistry, _ = setupTest(t)
 
-		// Check that the parameters were correctly retrieved
-		if len(params) != 3 {
-			t.Errorf("Expected 3 parameters, got %d", len(params))
-		}
+				// Add custom model definition if provided
+				if tc.modelDefinition != nil {
+					mockRegistry.models[tc.modelName] = tc.modelDefinition
+				}
 
-		// Check specific parameter values
-		if temp, ok := params["temperature"]; !ok || temp != 0.7 {
-			t.Errorf("Expected temperature parameter to be 0.7, got %v", temp)
-		}
+				// Set get model error if provided
+				mockRegistry.getModelErr = tc.getModelErr
+			} else {
+				// Use the provided registry implementation
+				logger := testutil.NewMockLogger()
+				service = &registryAPIService{
+					registry: tc.registryImpl,
+					logger:   logger,
+				}
+			}
 
-		if maxTokens, ok := params["max_tokens"]; !ok || maxTokens != 1024 {
-			t.Errorf("Expected max_tokens parameter to be 1024, got %v", maxTokens)
-		}
+			// Call the method being tested
+			params, err := service.GetModelParameters(tc.modelName)
 
-		if modelType, ok := params["model_type"]; !ok || modelType != "default" {
-			t.Errorf("Expected model_type parameter to be 'default', got %v", modelType)
-		}
-	})
+			// Verify expected error behavior
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Expected error containing '%s', got nil", tc.errorSubstring)
+				}
+				if !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error containing '%s', got '%v'", tc.errorSubstring, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error, got %v", err)
+				}
 
-	t.Run("non-existent model", func(t *testing.T) {
-		mockRegistry.getModelErr = errors.New("model not found")
+				// Verify the parameters map
+				if len(params) != len(tc.expectedParams) {
+					t.Errorf("Expected %d parameters, got %d", len(tc.expectedParams), len(params))
+				}
 
-		params, err := service.GetModelParameters("non-existent-model")
+				// Check each expected parameter
+				for key, expectedValue := range tc.expectedParams {
+					actualValue, ok := params[key]
+					if !ok {
+						t.Errorf("Expected parameter '%s' not found in result", key)
+						continue
+					}
 
-		// Service should return an empty map rather than error for missing models
-		if err != nil {
-			t.Fatalf("Expected no error, got %v", err)
-		}
-
-		if len(params) != 0 {
-			t.Errorf("Expected empty parameter map, got %v", params)
-		}
-	})
+					if actualValue != expectedValue {
+						t.Errorf("Parameter '%s': expected '%v', got '%v'", key, expectedValue, actualValue)
+					}
+				}
+			}
+		})
+	}
 }
 
 // TestInitLLMClient tests the InitLLMClient method
