@@ -13,7 +13,7 @@
 - [x] Implement test for IsEmptyResponseError, covering error classification
 - [x] Implement test for IsSafetyBlockedError, testing safety error detection
 - [x] Implement test for getEnvVarNameForProvider, covering provider-specific envvar patterns
-- [ ] Implement test for GetErrorDetails, verifying error detail extraction
+- [x] Implement test for GetErrorDetails, verifying error detail extraction
 
 ## Adapter Test Coverage
 - [ ] Create adapters_test.go file with test harness
