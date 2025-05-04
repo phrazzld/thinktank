@@ -576,8 +576,210 @@ func TestInitLLMClient(t *testing.T) {
 
 // TestValidateModelParameter moved to registry_api_validation_test.go
 
+// TestGetModelDefinition tests the GetModelDefinition method
+func TestGetModelDefinition(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		name           string
+		modelName      string
+		modelDef       *registry.ModelDefinition
+		getModelErr    error
+		registryImpl   interface{}
+		expectSuccess  bool
+		expectError    bool
+		errorSubstring string
+		wrapsWith      error // Expected error to be wrapped with
+	}{
+		{
+			name:          "existing model",
+			modelName:     "test-model",
+			expectSuccess: true,
+			expectError:   false,
+		},
+		{
+			name:           "model not found",
+			modelName:      "non-existent-model",
+			getModelErr:    errors.New("model not found"),
+			expectSuccess:  false,
+			expectError:    true,
+			errorSubstring: "non-existent-model",
+			wrapsWith:      llm.ErrModelNotFound,
+		},
+		{
+			name:           "empty model name",
+			modelName:      "",                            // Empty model name should still attempt lookup
+			getModelErr:    errors.New("model not found"), // Registry returns this error for empty name
+			expectSuccess:  false,
+			expectError:    true,
+			errorSubstring: "", // Don't check specific error message
+			wrapsWith:      llm.ErrModelNotFound,
+		},
+		{
+			name:           "registry does not implement GetModel",
+			modelName:      "test-model",
+			registryImpl:   "not a registry", // String instead of proper mock registry
+			expectSuccess:  false,
+			expectError:    true,
+			errorSubstring: "does not implement GetModel method",
+		},
+		{
+			name:      "custom model definition",
+			modelName: "custom-model",
+			modelDef: &registry.ModelDefinition{
+				Name:       "custom-model",
+				Provider:   "custom-provider",
+				APIModelID: "custom-model-id",
+				Parameters: map[string]registry.ParameterDefinition{
+					"custom_param": {
+						Type:    "string",
+						Default: "custom-value",
+						EnumValues: []string{
+							"custom-value",
+							"other-value",
+						},
+					},
+					"numeric_param": {
+						Type:    "float",
+						Default: 0.5,
+						Min:     0.0,
+						Max:     1.0,
+					},
+				},
+			},
+			expectSuccess: true,
+			expectError:   false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup test environment
+			var service *registryAPIService
+			var mockRegistry *MockRegistryAPI
+
+			if tc.registryImpl == nil {
+				service, mockRegistry, _ = setupTest(t)
+
+				// Add custom model definition if provided
+				if tc.modelDef != nil {
+					mockRegistry.models[tc.modelName] = tc.modelDef
+				}
+
+				// Set get model error if provided
+				mockRegistry.getModelErr = tc.getModelErr
+			} else {
+				// Use the provided registry implementation
+				logger := testutil.NewMockLogger()
+				service = &registryAPIService{
+					registry: tc.registryImpl,
+					logger:   logger,
+				}
+			}
+
+			// Call the method being tested
+			modelDef, err := service.GetModelDefinition(tc.modelName)
+
+			// Verify expected error behavior
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for case '%s', got nil", tc.name)
+				}
+
+				// Verify error message contains expected substring
+				if tc.errorSubstring != "" && !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error to contain '%s', got: %v", tc.errorSubstring, err)
+				}
+
+				// Verify error wrapping if expected
+				if tc.wrapsWith != nil && !errors.Is(err, tc.wrapsWith) {
+					t.Errorf("Expected error to be wrapped with '%v', got: %v", tc.wrapsWith, err)
+				}
+			} else if tc.expectSuccess {
+				if err != nil {
+					t.Fatalf("Expected no error, got: %v", err)
+				}
+
+				// Verify model definition is not nil
+				if modelDef == nil {
+					t.Fatalf("Expected non-nil model definition, got nil")
+				}
+
+				// Determine expected model definition
+				var expectedDef *registry.ModelDefinition
+				if tc.modelDef != nil {
+					expectedDef = tc.modelDef
+				} else {
+					expectedDef = mockRegistry.models[tc.modelName]
+				}
+
+				// Verify model definition fields
+				if modelDef.Name != expectedDef.Name {
+					t.Errorf("Expected Name '%s', got '%s'", expectedDef.Name, modelDef.Name)
+				}
+
+				if modelDef.Provider != expectedDef.Provider {
+					t.Errorf("Expected Provider '%s', got '%s'", expectedDef.Provider, modelDef.Provider)
+				}
+
+				if modelDef.APIModelID != expectedDef.APIModelID {
+					t.Errorf("Expected APIModelID '%s', got '%s'", expectedDef.APIModelID, modelDef.APIModelID)
+				}
+
+				// Verify parameters if expected model has them
+				if len(expectedDef.Parameters) > 0 {
+					if len(modelDef.Parameters) != len(expectedDef.Parameters) {
+						t.Errorf("Expected %d parameters, got %d", len(expectedDef.Parameters), len(modelDef.Parameters))
+					}
+
+					// Check each parameter
+					for paramName, expectedParam := range expectedDef.Parameters {
+						actualParam, ok := modelDef.Parameters[paramName]
+						if !ok {
+							t.Errorf("Expected parameter '%s' not found in result", paramName)
+							continue
+						}
+
+						// Verify parameter type
+						if actualParam.Type != expectedParam.Type {
+							t.Errorf("Parameter '%s': expected type '%s', got '%s'", paramName, expectedParam.Type, actualParam.Type)
+						}
+
+						// Verify default value if exists
+						if expectedParam.Default != nil {
+							if actualParam.Default != expectedParam.Default {
+								t.Errorf("Parameter '%s': expected default '%v', got '%v'", paramName, expectedParam.Default, actualParam.Default)
+							}
+						}
+
+						// Verify min/max for numeric parameters
+						if expectedParam.Min != nil && actualParam.Min != expectedParam.Min {
+							t.Errorf("Parameter '%s': expected min '%v', got '%v'", paramName, expectedParam.Min, actualParam.Min)
+						}
+
+						if expectedParam.Max != nil && actualParam.Max != expectedParam.Max {
+							t.Errorf("Parameter '%s': expected max '%v', got '%v'", paramName, expectedParam.Max, actualParam.Max)
+						}
+
+						// Verify enum values for string parameters
+						if len(expectedParam.EnumValues) > 0 {
+							if len(actualParam.EnumValues) != len(expectedParam.EnumValues) {
+								t.Errorf("Parameter '%s': expected %d enum values, got %d", paramName, len(expectedParam.EnumValues), len(actualParam.EnumValues))
+							} else {
+								for i, enumVal := range expectedParam.EnumValues {
+									if i < len(actualParam.EnumValues) && actualParam.EnumValues[i] != enumVal {
+										t.Errorf("Parameter '%s': expected enum value at index %d to be '%s', got '%s'", paramName, i, enumVal, actualParam.EnumValues[i])
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 // Additional test functions would follow for remaining methods:
-// - TestGetModelDefinition
 // - TestGetModelTokenLimits
 // - TestGetEnvVarNameForProvider
 // - TestGetErrorDetails
