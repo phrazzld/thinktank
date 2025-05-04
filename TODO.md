@@ -8,7 +8,7 @@
 - [x] Implement test for ValidateModelParameter, including validation edge cases
   - ✓ Refactored test files to address file size limit
 - [x] Implement test for GetModelDefinition, verifying definition retrieval logic
-- [ ] Implement test for GetModelTokenLimits, testing standard and custom token limits
+- [x] Implement test for GetModelTokenLimits, testing standard and custom token limits
 - [ ] Implement test for ProcessLLMResponse, testing response transformation
 - [ ] Implement test for IsEmptyResponseError, covering error classification
 - [ ] Implement test for IsSafetyBlockedError, testing safety error detection

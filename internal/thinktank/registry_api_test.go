@@ -779,7 +779,132 @@ func TestGetModelDefinition(t *testing.T) {
 	}
 }
 
+// TestGetModelTokenLimits tests the GetModelTokenLimits method
+func TestGetModelTokenLimits(t *testing.T) {
+	// Define test cases
+	testCases := []struct {
+		name                  string
+		modelName             string
+		modelDef              *registry.ModelDefinition
+		getModelErr           error
+		registryImpl          interface{}
+		expectedContextWindow int32
+		expectedMaxTokens     int32
+		expectError           bool
+		errorSubstring        string
+		wrapsWith             error // Expected error to be wrapped with
+	}{
+		{
+			name:                  "existing model",
+			modelName:             "test-model",
+			expectedContextWindow: 8192,
+			expectedMaxTokens:     2048,
+			expectError:           false,
+		},
+		{
+			name:           "model not found",
+			modelName:      "non-existent-model",
+			getModelErr:    errors.New("model not found"),
+			expectError:    true,
+			errorSubstring: "non-existent-model",
+			wrapsWith:      llm.ErrModelNotFound,
+		},
+		{
+			name:           "empty model name",
+			modelName:      "",
+			getModelErr:    errors.New("model not found"), // Registry returns this error for empty name
+			expectError:    true,
+			errorSubstring: "", // Don't check specific error message
+			wrapsWith:      llm.ErrModelNotFound,
+		},
+		{
+			name:           "registry does not implement GetModel",
+			modelName:      "test-model",
+			registryImpl:   "not a registry", // String instead of proper mock registry
+			expectError:    true,
+			errorSubstring: "does not implement GetModel method",
+		},
+		{
+			name:      "custom model definition",
+			modelName: "custom-model",
+			modelDef: &registry.ModelDefinition{
+				Name:       "custom-model",
+				Provider:   "custom-provider",
+				APIModelID: "custom-model-id",
+				Parameters: map[string]registry.ParameterDefinition{
+					"custom_param": {
+						Type:    "string",
+						Default: "custom-value",
+					},
+				},
+			},
+			expectedContextWindow: 8192, // Should still return default values
+			expectedMaxTokens:     2048, // Should still return default values
+			expectError:           false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Setup test environment
+			var service *registryAPIService
+			var mockRegistry *MockRegistryAPI
+
+			if tc.registryImpl == nil {
+				service, mockRegistry, _ = setupTest(t)
+
+				// Add custom model definition if provided
+				if tc.modelDef != nil {
+					mockRegistry.models[tc.modelName] = tc.modelDef
+				}
+
+				// Set get model error if provided
+				mockRegistry.getModelErr = tc.getModelErr
+			} else {
+				// Use the provided registry implementation
+				logger := testutil.NewMockLogger()
+				service = &registryAPIService{
+					registry: tc.registryImpl,
+					logger:   logger,
+				}
+			}
+
+			// Call the method being tested
+			contextWindow, maxTokens, err := service.GetModelTokenLimits(tc.modelName)
+
+			// Verify expected error behavior
+			if tc.expectError {
+				if err == nil {
+					t.Fatalf("Expected error for case '%s', got nil", tc.name)
+				}
+
+				// Verify error message contains expected substring
+				if tc.errorSubstring != "" && !strings.Contains(err.Error(), tc.errorSubstring) {
+					t.Errorf("Expected error to contain '%s', got: %v", tc.errorSubstring, err)
+				}
+
+				// Verify error wrapping if expected
+				if tc.wrapsWith != nil && !errors.Is(err, tc.wrapsWith) {
+					t.Errorf("Expected error to be wrapped with '%v', got: %v", tc.wrapsWith, err)
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Expected no error, got: %v", err)
+				}
+
+				// Verify return values
+				if contextWindow != tc.expectedContextWindow {
+					t.Errorf("Expected contextWindow=%d, got %d", tc.expectedContextWindow, contextWindow)
+				}
+
+				if maxTokens != tc.expectedMaxTokens {
+					t.Errorf("Expected maxTokens=%d, got %d", tc.expectedMaxTokens, maxTokens)
+				}
+			}
+		})
+	}
+}
+
 // Additional test functions would follow for remaining methods:
-// - TestGetModelTokenLimits
 // - TestGetEnvVarNameForProvider
 // - TestGetErrorDetails
