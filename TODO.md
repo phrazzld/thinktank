@@ -47,7 +47,7 @@
 
 ## Coverage Validation
 - [x] Update coverage scripts to properly report registry API coverage
-- [ ] Create pre-submission coverage check script
+- [x] Create pre-submission coverage check script
 - [ ] Document coverage expectations in README.md
 
 ## Optional Temporary Measures
