@@ -40,7 +40,7 @@
 - [x] Implement test for real-world workflows with mock providers
 
 ## Test Infrastructure
-- [ ] Create mock implementation of Registry interface for testing
+- [x] Create mock implementation of Registry interface for testing
 - [ ] Create test fixtures for model definitions and responses
 - [ ] Update test helpers to support registry API testing
 - [ ] Create shared test scenarios that can be used across test files
