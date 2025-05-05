@@ -1,6 +1,6 @@
 # BACKLOG
 
-- improve quality of synthesis prompt and output
+- improve quality of synthesis prompt and output. investigate issues with ouput truncation
 
 ## Top Priorities
 

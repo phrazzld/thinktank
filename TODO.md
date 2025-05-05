@@ -51,6 +51,6 @@
 - [x] Document coverage expectations in README.md
 
 ## Optional Temporary Measures
-- [ ] Temporarily lower coverage threshold to 64% in CI config
+- [x] Temporarily lower coverage threshold to 64% in CI config
 - [ ] Add .nocover comments to adapter methods that are pure wrappers
 - [ ] Configure coverage exclusion patterns for test helpers
