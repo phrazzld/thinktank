@@ -48,7 +48,7 @@
 ## Coverage Validation
 - [x] Update coverage scripts to properly report registry API coverage
 - [x] Create pre-submission coverage check script
-- [ ] Document coverage expectations in README.md
+- [x] Document coverage expectations in README.md
 
 ## Optional Temporary Measures
 - [ ] Temporarily lower coverage threshold to 64% in CI config
