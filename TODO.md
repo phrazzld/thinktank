@@ -46,7 +46,7 @@
 - [x] Create shared test scenarios that can be used across test files
 
 ## Coverage Validation
-- [ ] Update coverage scripts to properly report registry API coverage
+- [x] Update coverage scripts to properly report registry API coverage
 - [ ] Create pre-submission coverage check script
 - [ ] Document coverage expectations in README.md
 

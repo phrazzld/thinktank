@@ -2,10 +2,11 @@
 set -e
 
 # check-coverage.sh - Verify that test coverage meets or exceeds the threshold
-# Usage: scripts/check-coverage.sh [threshold_percentage]
+# Usage: scripts/check-coverage.sh [threshold_percentage] [show_registry_api]
 
 # Default threshold is 75% (increased from 55%, target is 90%)
 THRESHOLD=${1:-75}
+SHOW_REGISTRY_API=${2:-"false"}
 
 # Determine the module path
 MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
@@ -24,8 +25,34 @@ if [ ! -f coverage.out ]; then
 fi
 
 # Extract the total coverage percentage
-COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+COVERAGE=$(go tool cover -func=coverage.out | grep "total:" | grep -v "_total:" | awk '{print $3}' | tr -d '%')
 echo "Total code coverage: $COVERAGE%"
+
+# Show registry API coverage if requested
+if [ "$SHOW_REGISTRY_API" = "true" ]; then
+  echo -e "\n📊 Registry API Coverage:"
+  echo "======================================================="
+  go tool cover -func=coverage.out | grep "registry_api.go" | awk '{
+    printf "  %-60s %6s\n", $1, $3
+  }'
+  echo "======================================================="
+
+  # Calculate average registry API coverage
+  REGISTRY_API_COVERAGE=$(go tool cover -func=coverage.out | grep "registry_api.go" | awk '
+    BEGIN { total=0; count=0; }
+    {
+      coverage=$3;
+      gsub(/%/, "", coverage);
+      total += coverage;
+      count++;
+    }
+    END {
+      if (count > 0) printf "%.1f", total/count;
+      else print "0";
+    }
+  ')
+  echo "Average Registry API coverage: ${REGISTRY_API_COVERAGE}%"
+fi
 
 # Compare with threshold using awk for proper float comparison
 PASS=$(awk -v coverage="$COVERAGE" -v threshold="$THRESHOLD" 'BEGIN { print (coverage >= threshold) }')
@@ -38,11 +65,12 @@ else
 
   # Show packages with coverage below threshold for easier debugging
   echo -e "\nPackages below the $THRESHOLD% threshold:"
-  go tool cover -func=coverage.out | grep -v "total:" | awk -v threshold="$THRESHOLD" '{
+  go tool cover -func=coverage.out | grep "total:" | grep -v "^total:" | awk -v threshold="$THRESHOLD" '{
+    package=$1;
     coverage=$3;
     gsub(/%/, "", coverage);
     if (coverage < threshold) {
-      printf "  ❌ %-60s %6s\n", $1, $3
+      printf "  ❌ %-60s %6s\n", package, coverage "%";
     }
   }'
 

@@ -2,10 +2,11 @@
 set -e
 
 # check-package-coverage.sh - Report test coverage for each package and highlight those below threshold
-# Usage: scripts/check-package-coverage.sh [threshold_percentage]
+# Usage: scripts/check-package-coverage.sh [threshold_percentage] [show_registry_api]
 
 # Default threshold is 75% (increased from 55%, target is 90%)
 THRESHOLD=${1:-75}
+SHOW_REGISTRY_API=${2:-"false"}
 FAILED=0
 
 # Determine the module path
@@ -29,19 +30,16 @@ echo "📊 Package Coverage Report (Threshold: ${THRESHOLD}%)"
 echo "======================================================="
 
 # Process and print the results by package
-go tool cover -func=coverage.out | grep -v "^total:" | awk -v threshold="$THRESHOLD" '{
+go tool cover -func=coverage.out | grep "total:" | grep -v "^total:" | awk -v threshold="$THRESHOLD" '{
   package=$1;
   coverage=$3;
   gsub(/%/, "", coverage);
 
-  # Only process package total lines
-  if ($2 == "total:") {
-    if (coverage < threshold) {
-      printf "❌ %-60s %6s%% (below threshold)\n", package, coverage;
-      failed += 1;
-    } else {
-      printf "✅ %-60s %6s%%\n", package, coverage;
-    }
+  if (coverage < threshold) {
+    printf "❌ %-60s %6s%% (below threshold)\n", package, coverage;
+    failed += 1;
+  } else {
+    printf "✅ %-60s %6s%%\n", package, coverage;
   }
 }
 END {
@@ -53,6 +51,46 @@ END {
     printf "Result: All packages meet or exceed %s%% threshold\n", threshold;
   }
 }'
+
+# Show registry API coverage if requested
+if [ "$SHOW_REGISTRY_API" = "true" ]; then
+  echo -e "\n📊 Registry API File Coverage:"
+  echo "======================================================="
+  go tool cover -func=coverage.out | grep "registry_api.*\.go" | awk '{
+    fn=$2;
+    coverage=$3;
+    file=$1;
+    gsub(".*/", "", file);
+    printf "  %-30s %-30s %6s\n", file, fn, coverage;
+  }'
+  echo "======================================================="
+
+  # Calculate average registry API coverage
+  REGISTRY_API_COVERAGE=$(go tool cover -func=coverage.out | grep "registry_api.*\.go" | awk '
+    BEGIN { total=0; count=0; }
+    {
+      coverage=$3;
+      gsub(/%/, "", coverage);
+      total += coverage;
+      count++;
+    }
+    END {
+      if (count > 0) printf "%.1f", total/count;
+      else print "0";
+    }
+  ')
+  echo "Average Registry API coverage: ${REGISTRY_API_COVERAGE}%"
+
+  # Show registry adapters coverage
+  echo -e "\n📊 Adapter File Coverage:"
+  echo "======================================================="
+  go tool cover -func=coverage.out | grep "/adapters\.go" | awk '{
+    fn=$2;
+    coverage=$3;
+    printf "  %-30s %6s\n", fn, coverage;
+  }'
+  echo "======================================================="
+fi
 
 # Check if any package is below threshold
 if [ $? -ne 0 ]; then
