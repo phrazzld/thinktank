@@ -35,9 +35,9 @@
 
 ## Integration Tests
 - [x] Create registry_api_boundary_test.go for integration testing
-- [ ] Implement test for adapter-registry full interactions
-- [ ] Implement test for error propagation across boundaries
-- [ ] Implement test for real-world workflows with mock providers
+- [x] Implement test for adapter-registry full interactions
+- [x] Implement test for error propagation across boundaries
+- [x] Implement test for real-world workflows with mock providers
 
 ## Test Infrastructure
 - [ ] Create mock implementation of Registry interface for testing

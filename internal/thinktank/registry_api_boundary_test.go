@@ -15,6 +15,15 @@ import (
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
+// Test-only error definitions for provider-related errors
+var (
+	// ErrProviderNotFound indicates a provider was not found in the registry
+	ErrProviderNotFound = errors.New("provider not found in registry")
+
+	// ErrProviderInitialization indicates provider initialization failed
+	ErrProviderInitialization = errors.New("error initializing provider")
+)
+
 // TestRegistryAPIServiceBoundaries verifies that the registryAPIService
 // implementation correctly handles operations across system boundaries.
 // This focuses on:
@@ -414,6 +423,8 @@ func TestRegistryAPIWithAdapterBoundary(t *testing.T) {
 	})
 }
 
+// Full adapter registry integration tests are in registry_api_full_test.go
+
 // Test original service contract for backward compatibility
 func TestRegistryAPIServiceContract(t *testing.T) {
 	// Logger is required but not used directly in this test
@@ -740,17 +751,34 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 }
 
 func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
-	return nil, errors.New("not implemented")
+	// For testing fallback
+	return map[string]interface{}{}, nil
 }
 
 func (m *mockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
-	return false, errors.New("not implemented")
+	// For testing fallback
+	return true, nil
 }
 
 func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+	// This should still return an error for the test case
 	return nil, errors.New("not implemented")
 }
 
 func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	return 0, 0, errors.New("not implemented")
+	// Implement token limit fallbacks based on model name
+	switch modelName {
+	case "gemini-1.5-pro-latest":
+		return 1000000, 8192, nil
+	case "gemini-1.0-pro":
+		return 32768, 8192, nil
+	case "gpt-4o":
+		return 128000, 4096, nil
+	case "gpt-4":
+		return 8192, 4096, nil
+	case "gpt-3.5-turbo":
+		return 16385, 4096, nil
+	default:
+		return 200000, 4096, nil
+	}
 }
