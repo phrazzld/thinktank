@@ -21,26 +21,31 @@ type APIServiceAdapter struct {
 }
 
 // InitLLMClient delegates to the underlying APIService implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (a *APIServiceAdapter) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	return a.APIService.InitLLMClient(ctx, apiKey, modelName, apiEndpoint)
 }
 
 // ProcessLLMResponse delegates to the underlying APIService implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (a *APIServiceAdapter) ProcessLLMResponse(result *llm.ProviderResult) (string, error) {
 	return a.APIService.ProcessLLMResponse(result)
 }
 
 // GetErrorDetails delegates to the underlying APIService implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
 // IsEmptyResponseError delegates to the underlying APIService implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (a *APIServiceAdapter) IsEmptyResponseError(err error) bool {
 	return a.APIService.IsEmptyResponseError(err)
 }
 
 // IsSafetyBlockedError delegates to the underlying APIService implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
 	return a.APIService.IsSafetyBlockedError(err)
 }
@@ -225,6 +230,7 @@ type FileWriterAdapter struct {
 }
 
 // SaveToFile delegates to the underlying FileWriter implementation
+// .nocover - pure wrapper method that simply delegates to underlying implementation
 func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error {
 	return f.FileWriter.SaveToFile(content, outputFile)
 }
