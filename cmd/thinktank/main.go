@@ -3,6 +3,7 @@ package thinktank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -76,6 +77,18 @@ func Main() {
 	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService)
 	if err != nil {
 		logger.Error("Application failed: %v", err)
+
+		// Check if we're in tolerant mode (partial success is considered ok)
+		if config.PartialSuccessOk {
+			// Import the orchestrator errors package to check for partial failure
+			if errors.Is(err, thinktank.ErrPartialSuccess) {
+				logger.Info("Exiting with success code despite partial failure (--partial-success-ok is enabled)")
+				// Exit with success when some models succeed in tolerant mode
+				return
+			}
+		}
+
+		// Otherwise, or if it's not a partial failure, exit with error code
 		os.Exit(1)
 	}
 }

@@ -239,6 +239,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	// confirm-tokens flag removed as part of T032E - token management refactoring
 	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
+	partialSuccessOkFlag := flagSet.Bool("partial-success-ok", false, "Return exit code 0 if any model succeeds, even if others fail.")
 
 	// Rate limiting flags
 	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, // Use hardcoded default for backward compatibility with tests
@@ -273,7 +274,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --model model1 --model model2 ./  Generate plans for multiple models\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --synthesis-model model3 ./       Synthesize outputs from multiple models\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --timeout 5m ./                  Run with 5-minute timeout\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                     Show files without generating plan\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --dry-run ./                                                     Show files without generating plan\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --instructions instructions.txt --partial-success-ok ./          Return success if any model succeeds\n\n", os.Args[0])
 
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flagSet.PrintDefaults()
@@ -305,6 +307,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	cfg.ExcludeNames = *excludeNamesFlag
 	cfg.Format = *formatFlag
 	cfg.DryRun = *dryRunFlag
+	cfg.PartialSuccessOk = *partialSuccessOkFlag
 	// ConfirmTokens field assignment removed as part of T032E - token management refactoring
 	cfg.Paths = flagSet.Args()
 

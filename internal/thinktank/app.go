@@ -3,10 +3,12 @@ package thinktank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -166,7 +168,36 @@ func Execute(
 		logger,
 	)
 
-	return orch.Run(ctx, instructions)
+	// Run the orchestrator and handle error conversion
+	err = orch.Run(ctx, instructions)
+
+	// Convert orchestrator errors to thinktank package errors if needed
+	if err != nil {
+		err = wrapOrchestratorErrors(err)
+	}
+
+	return err
+}
+
+// wrapOrchestratorErrors converts orchestrator-specific errors to thinktank package errors.
+// This ensures that the caller of the Execute function (usually main.go) can check for
+// specific error types without needing to import the orchestrator package directly.
+func wrapOrchestratorErrors(err error) error {
+	// Import the orchestrator errors package to check for partial failure
+	if errors.Is(err, ErrPartialSuccess) {
+		// Already wrapped, return as is
+		return err
+	}
+
+	// Check if this error contains "some models failed" which indicates partial processing failure
+	// This avoids direct dependency on orchestrator.ErrPartialProcessingFailure
+	if err != nil && strings.Contains(err.Error(), "some models failed during processing") {
+		// Wrap with the thinktank ErrPartialSuccess while preserving the original error
+		return fmt.Errorf("%w: %v", ErrPartialSuccess, err)
+	}
+
+	// Return the original error for other error types
+	return err
 }
 
 // Note: RunInternal has been removed as part of the refactoring.
