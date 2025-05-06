@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -32,14 +33,6 @@ const (
 	mockFinishReason        = "STOP"
 )
 
-// mockGeminiResponse is currently unused but kept for potential future use
-// TODO: Consider removing if not needed in future iterations
-// type mockGeminiResponse struct {
-//    Content      string `json:"content"`
-//    TokenCount   int    `json:"tokenCount"`
-//    FinishReason string `json:"finishReason"`
-// }
-
 // mockGeminiError represents the structure of a Gemini API error response
 type mockGeminiError struct {
 	Error struct {
@@ -54,6 +47,7 @@ type testFlags struct {
 	Instructions   string
 	OutputDir      string
 	ModelNames     []string
+	Model          []string
 	APIKey         string
 	Include        string
 	Exclude        string
@@ -136,7 +130,8 @@ func NewTestEnv(t *testing.T) *TestEnv {
 	env.DefaultFlags = testFlags{
 		Instructions:  "", // Will be set by specific tests
 		OutputDir:     filepath.Join(tempDir, "output"),
-		ModelNames:    []string{"gemini-test-model"}, // Match model name used in mock server
+		ModelNames:    []string{"gemini-2.5-pro-preview-03-25"}, // Use model from registry
+		Model:         []string{"gemini-2.5-pro-preview-03-25"}, // Use model from registry
 		APIKey:        "test-api-key",
 		Include:       "",
 		Exclude:       ".git,node_modules",
@@ -159,12 +154,13 @@ func (e *TestEnv) Cleanup() {
 	}
 }
 
-// startMockServer starts a mock HTTP server for the Gemini API
+// startMockServer starts a mock HTTP server for all supported API providers (Gemini, OpenAI, OpenRouter)
 func (e *TestEnv) startMockServer() {
 	handler := http.NewServeMux()
 
-	// Handler for direct API client access to bypass the complex Google client
-	// Use a pattern that matches what the Gemini client expects
+	// ---- GEMINI API MOCKS ----
+
+	// Handler for Gemini model info
 	handler.HandleFunc("/v1/models/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		// Return a valid model info response
@@ -181,34 +177,52 @@ func (e *TestEnv) startMockServer() {
 		}
 	})
 
-	// Handle content generation requests
-	handler.HandleFunc("/v1/models/gemini-test-model:generateContent", func(w http.ResponseWriter, r *http.Request) {
-		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"error": map[string]interface{}{
-					"code":    400,
-					"message": err.Error(),
-					"status":  "INVALID_ARGUMENT",
-				},
-			})
-			return
-		}
+	// Handle Gemini content generation requests - respond to all model variants
+	modelPaths := []string{
+		"/v1/models/gemini-2.5-pro-preview-03-25:generateContent",
+		"/v1/models/gemini-2.5-flash-preview-04-17:generateContent",
+		"/v1/models/gemini-pro:generateContent",
+		"/v1/models/gemini-1.5-pro:generateContent",
+	}
 
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"candidates": []map[string]interface{}{
-				{
-					"content": map[string]interface{}{
-						"parts": []map[string]interface{}{
+	for _, path := range modelPaths {
+		localPath := path // Create local variable to avoid closure issues
+		handler.HandleFunc(localPath, func(w http.ResponseWriter, r *http.Request) {
+			content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    400,
+						"message": err.Error(),
+						"status":  "INVALID_ARGUMENT",
+					},
+				})
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+				"candidates": []map[string]interface{}{
+					{
+						"content": map[string]interface{}{
+							"parts": []map[string]interface{}{
+								{
+									"text": content,
+								},
+							},
+							"role": "model",
+						},
+						"finishReason": finishReason,
+						"safetyRatings": []map[string]interface{}{
 							{
-								"text": content,
+								"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
+								"probability": "NEGLIGIBLE",
 							},
 						},
-						"role": "model",
 					},
-					"finishReason": finishReason,
+				},
+				"promptFeedback": map[string]interface{}{
 					"safetyRatings": []map[string]interface{}{
 						{
 							"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
@@ -216,35 +230,62 @@ func (e *TestEnv) startMockServer() {
 						},
 					},
 				},
-			},
-			"promptFeedback": map[string]interface{}{
-				"safetyRatings": []map[string]interface{}{
-					{
-						"category":    "HARM_CATEGORY_DANGEROUS_CONTENT",
-						"probability": "NEGLIGIBLE",
-					},
+				"usageMetadata": map[string]interface{}{
+					"promptTokenCount":     tokens / 2,
+					"candidatesTokenCount": tokens / 2,
+					"totalTokenCount":      tokens,
 				},
-			},
-			"usageMetadata": map[string]interface{}{
-				"promptTokenCount":     tokens / 2,
-				"candidatesTokenCount": tokens / 2,
-				"totalTokenCount":      tokens,
-			},
-		}); err != nil {
-			e.t.Logf("Failed to encode generate content response: %v", err)
-		}
-	})
+			}); err != nil {
+				e.t.Logf("Failed to encode generate content response: %v", err)
+			}
+		})
+	}
 
-	// Handle token counting requests
-	handler.HandleFunc("/v1/models/gemini-test-model:countTokens", func(w http.ResponseWriter, r *http.Request) {
-		count, err := e.MockConfig.HandleTokenCount(r)
+	// Handle Gemini token counting requests - respond to all model variants
+	tokenCountPaths := []string{
+		"/v1/models/gemini-2.5-pro-preview-03-25:countTokens",
+		"/v1/models/gemini-2.5-flash-preview-04-17:countTokens",
+		"/v1/models/gemini-pro:countTokens",
+		"/v1/models/gemini-1.5-pro:countTokens",
+	}
+
+	for _, path := range tokenCountPaths {
+		localPath := path // Create local variable to avoid closure issues
+		handler.HandleFunc(localPath, func(w http.ResponseWriter, r *http.Request) {
+			count, err := e.MockConfig.HandleTokenCount(r)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    400,
+						"message": err.Error(),
+						"status":  "INVALID_ARGUMENT",
+					},
+				})
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			if err := json.NewEncoder(w).Encode(map[string]interface{}{
+				"totalTokens": count,
+			}); err != nil {
+				e.t.Logf("Failed to encode count tokens response: %v", err)
+			}
+		})
+	}
+
+	// ---- OPENAI API MOCKS ----
+
+	// Handler for OpenAI completions
+	handler.HandleFunc("/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
+		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]interface{}{
 				"error": map[string]interface{}{
-					"code":    400,
 					"message": err.Error(),
-					"status":  "INVALID_ARGUMENT",
+					"type":    "invalid_request_error",
+					"code":    "invalid_argument",
 				},
 			})
 			return
@@ -252,9 +293,92 @@ func (e *TestEnv) startMockServer() {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(map[string]interface{}{
-			"totalTokens": count,
+			"id":      "chatcmpl-mock-id",
+			"object":  "chat.completion",
+			"created": 1679410928,
+			"model":   "gpt-4",
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": content,
+					},
+					"finish_reason": strings.ToLower(finishReason),
+				},
+			},
+			"usage": map[string]interface{}{
+				"prompt_tokens":     tokens / 2,
+				"completion_tokens": tokens / 2,
+				"total_tokens":      tokens,
+			},
 		}); err != nil {
-			e.t.Logf("Failed to encode count tokens response: %v", err)
+			e.t.Logf("Failed to encode OpenAI response: %v", err)
+		}
+	})
+
+	// OpenAI models list endpoint
+	handler.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"data": []map[string]interface{}{
+				{
+					"id":       "gpt-4.1",
+					"object":   "model",
+					"created":  1677610602,
+					"owned_by": "openai",
+				},
+				{
+					"id":       "o4-mini",
+					"object":   "model",
+					"created":  1677610602,
+					"owned_by": "openai",
+				},
+			},
+		}); err != nil {
+			e.t.Logf("Failed to encode OpenAI models response: %v", err)
+		}
+	})
+
+	// ---- OPENROUTER API MOCKS ----
+
+	// Simplified OpenRouter completions endpoint
+	handler.HandleFunc("/api/v1/chat/completions", func(w http.ResponseWriter, r *http.Request) {
+		content, tokens, finishReason, err := e.MockConfig.HandleGeneration(r)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": map[string]interface{}{
+					"message": err.Error(),
+					"type":    "invalid_request_error",
+				},
+			})
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
+			"id":      "chatcmpl-openrouter-mock-id",
+			"object":  "chat.completion",
+			"created": 1679410928,
+			"model":   "openrouter/meta-llama/llama-4-scout",
+			"choices": []map[string]interface{}{
+				{
+					"index": 0,
+					"message": map[string]interface{}{
+						"role":    "assistant",
+						"content": content,
+					},
+					"finish_reason": strings.ToLower(finishReason),
+				},
+			},
+			"usage": map[string]interface{}{
+				"prompt_tokens":     tokens / 2,
+				"completion_tokens": tokens / 2,
+				"total_tokens":      tokens,
+			},
+		}); err != nil {
+			e.t.Logf("Failed to encode OpenRouter response: %v", err)
 		}
 	})
 
@@ -298,9 +422,21 @@ func (e *TestEnv) CreateTestDirectory(relativePath string) string {
 	return fullPath
 }
 
+// shouldSkipBinaryExecution returns true if we should skip actual binary execution
+// This is useful in CI environments where binary execution may fail due to format issues
+func shouldSkipBinaryExecution() bool {
+	return os.Getenv("SKIP_BINARY_EXECUTION") == "true"
+}
+
 // RunThinktank runs the thinktank binary with the provided arguments
 func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr string, exitCode int, err error) {
 	e.t.Helper()
+
+	// Check if we should skip binary execution (for CI environments)
+	if shouldSkipBinaryExecution() {
+		e.t.Skip("Skipping binary execution test due to SKIP_BINARY_EXECUTION=true")
+		return "", "", 0, nil
+	}
 
 	// Create buffers for stdout and stderr
 	stdoutBuf := &bytes.Buffer{}
@@ -319,17 +455,25 @@ func (e *TestEnv) RunThinktank(args []string, stdin io.Reader) (stdout, stderr s
 
 	// Set up environment variables with mock server URL and API key
 	cmd.Env = append(os.Environ(),
-		// Always set a valid API key value
-		fmt.Sprintf("GEMINI_API_KEY=%s", "test-api-key"),
+		// Always set a valid API key value for all providers
+		"GEMINI_API_KEY=test-api-key",
+		"OPENAI_API_KEY=test-api-key",
+		"OPENROUTER_API_KEY=test-api-key",
 
-		// Set the mock server URL as the API endpoint
+		// Set the mock server URL as the API endpoint for all providers
 		fmt.Sprintf("GEMINI_API_URL=%s", e.MockServer.URL),
+		fmt.Sprintf("OPENAI_API_URL=%s", e.MockServer.URL),
+		fmt.Sprintf("OPENROUTER_API_URL=%s", e.MockServer.URL),
 
 		// Hard-code the model name to match mock server path
-		fmt.Sprintf("GEMINI_MODEL_NAME=%s", "gemini-test-model"),
+		"GEMINI_MODEL_NAME=gemini-2.5-pro-preview-03-25",
+		"OPENAI_MODEL_NAME=o4-mini",
+		"OPENROUTER_MODEL_NAME=openrouter/meta-llama/llama-4-scout",
 
-		// Force env var source
+		// Force env var source for all providers
 		"GEMINI_API_KEY_SOURCE=env",
+		"OPENAI_API_KEY_SOURCE=env",
+		"OPENROUTER_API_KEY_SOURCE=env",
 
 		// Debug mode for detailed logging
 		"THINKTANK_DEBUG=true",
@@ -380,8 +524,15 @@ func (e *TestEnv) RunWithFlags(flags testFlags, additionalArgs []string) (stdout
 		args = append(args, "--output-dir", flags.OutputDir)
 	}
 
-	for _, model := range flags.ModelNames {
-		args = append(args, "--model", model)
+	// Use the new Model field if it's set, otherwise fall back to ModelNames
+	if len(flags.Model) > 0 {
+		for _, model := range flags.Model {
+			args = append(args, "--model", model)
+		}
+	} else {
+		for _, model := range flags.ModelNames {
+			args = append(args, "--model", model)
+		}
 	}
 
 	if flags.Include != "" {
@@ -472,9 +623,19 @@ func findOrBuildBinary() (string, error) {
 	fmt.Println("Thinktank binary not found, building from source...")
 	buildOutput := filepath.Join(projectRoot, binaryName)
 
-	// Build command targeting the main package
+	// Build command targeting the main package - explicitly set to the host OS/arch
+	fmt.Printf("Building binary for %s/%s\n", runtime.GOOS, runtime.GOARCH)
+
 	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
+
+	// Set appropriate environment variables to ensure binary is built for the current OS
+	// This is critical for CI environments where the test might attempt to run with an incompatible binary
+	cmd.Env = append(os.Environ(),
+		"GOOS="+runtime.GOOS,
+		"GOARCH="+runtime.GOARCH,
+		"CGO_ENABLED=0", // Disable CGO for better cross-platform compatibility
+	)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
 	cmd.Stdout = stdout
@@ -483,6 +644,11 @@ func findOrBuildBinary() (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("failed to build thinktank binary: %v\nBuild Directory: %s\nStdout: %s\nStderr: %s",
 			err, projectRoot, stdout.String(), stderr.String())
+	}
+
+	// Ensure the binary has executable permissions
+	if err := os.Chmod(buildOutput, 0755); err != nil {
+		return "", fmt.Errorf("failed to set executable permissions on binary: %v", err)
 	}
 
 	// Verify the binary was built
@@ -521,15 +687,45 @@ func SimulateUserInput(input string) io.Reader {
 	return strings.NewReader(input)
 }
 
+// isRunningInGitHubActions returns true if running in GitHub Actions
+func isRunningInGitHubActions() bool {
+	return os.Getenv("GITHUB_ACTIONS") == "true"
+}
+
 // TestMain runs once before all tests in the package.
 // It finds or builds the thinktank binary needed for the tests.
 func TestMain(m *testing.M) {
-	// Find or build the binary only once for all tests
-	var err error
-	thinktankBinaryPath, err = findOrBuildBinary()
-	if err != nil {
-		// Use log.Fatalf for cleaner exit on failure during setup
-		log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
+	// Check if running in GitHub Actions
+	if isRunningInGitHubActions() {
+		fmt.Println("Running in GitHub Actions environment")
+
+		// In GitHub Actions, we expect the binary to be pre-built and symlinked by the workflow
+		// The binary should be in the project root, not in the current directory
+		projectRoot, err := filepath.Abs("../../") // Go up from internal/e2e to the project root
+		if err != nil {
+			log.Fatalf("FATAL: Failed to get project root path: %v", err)
+		}
+
+		thinktankBinary := filepath.Join(projectRoot, "thinktank")
+		if runtime.GOOS == "windows" {
+			thinktankBinary += ".exe"
+		}
+
+		thinktankBinaryPath = thinktankBinary
+		fmt.Printf("Using pre-built binary at: %s\n", thinktankBinaryPath)
+
+		// Verify the binary exists and is executable
+		if _, err := os.Stat(thinktankBinaryPath); err != nil {
+			log.Fatalf("FATAL: Thinktank binary not found at %s: %v", thinktankBinaryPath, err)
+		}
+	} else {
+		// For local development, find or build the binary
+		var err error
+		thinktankBinaryPath, err = findOrBuildBinary()
+		if err != nil {
+			// Use log.Fatalf for cleaner exit on failure during setup
+			log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
+		}
 	}
 
 	// Run all tests in the package

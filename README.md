@@ -41,7 +41,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--model` | Model to use (repeatable) | `gemini-2.5-pro-exp-03-25` |
+| `--model` | Model to use (repeatable) | `gemini-2.5-pro-preview-03-25` |
 | `--synthesis-model` | Model to synthesize results from multiple models | None |
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
@@ -121,9 +121,56 @@ This naming convention ensures that each run has a unique, sortable, and identif
 - **No Files Processed**: Check paths and filters with `--dry-run`
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
 
+## Development & Contributing
+
+### Code Coverage Requirements
+
+The project maintains high test coverage standards to ensure reliability and maintainability:
+
+- **Target Coverage**: 90% overall code coverage
+- **Minimum Threshold**: 75% overall and per-package (enforced in CI)
+- **Registry API**: Special focus on complete coverage for registry API components
+
+#### Coverage Tools
+
+Several scripts are available to check and validate test coverage:
+
+| Script | Description | Usage |
+|--------|-------------|-------|
+| `check-coverage.sh` | Checks overall coverage against threshold | `./scripts/check-coverage.sh [threshold]` |
+| `check-package-coverage.sh` | Validates per-package coverage | `./scripts/check-package-coverage.sh [threshold]` |
+| `check-registry-coverage.sh` | Reports coverage for registry API components | `./scripts/check-registry-coverage.sh [threshold]` |
+| `pre-submit-coverage.sh` | Comprehensive pre-submission check | `./scripts/pre-submit-coverage.sh [options]` |
+
+#### Pre-Submission Coverage Validation
+
+Before submitting code, run the pre-submission coverage check script to ensure your changes maintain or improve coverage:
+
+```bash
+# Basic coverage check with default threshold (75%)
+./scripts/pre-submit-coverage.sh
+
+# With custom threshold and verbose output
+./scripts/pre-submit-coverage.sh --threshold 80 --verbose
+
+# Including registry API specific checks
+./scripts/pre-submit-coverage.sh --registry --verbose
+```
+
+See `./scripts/pre-submit-coverage.sh --help` for additional options.
+
+### Testing Practices
+
+- Write tests before implementing features (TDD approach)
+- Focus on integration tests that verify workflows across components
+- Mock only true external dependencies, not internal collaborators
+- Maintain high coverage, particularly for critical components
+- Run the full test suite before submitting changes
+
 ## Learn More
 
 - [OpenRouter Integration](docs/openrouter-integration.md)
+- [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
 - Detailed configuration options: `thinktank --help`
 
 ## License

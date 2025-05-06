@@ -89,16 +89,21 @@ echo "Running: $TEST_CMD"
 echo "API Key: ${API_KEY:0:3}...${API_KEY: -3}"
 echo
 
-# Run the tests
-cd "$PROJECT_ROOT" && eval "$TEST_CMD"
-
-# Get the exit code
+# Run the tests and capture the output
+TEST_OUTPUT=$(cd "$PROJECT_ROOT" && eval "$TEST_CMD")
 EXIT_CODE=$?
+
+# Print the test output
+echo "$TEST_OUTPUT"
 
 # Print footer
 echo
 if [ $EXIT_CODE -eq 0 ]; then
-  echo "=== E2E Tests Passed Successfully ==="
+  if [[ "$(echo "$TEST_OUTPUT" | grep -c "SKIP:")" -gt 0 ]]; then
+    echo "=== E2E Tests Passed Successfully (some tests were skipped) ==="
+  else
+    echo "=== E2E Tests Passed Successfully ==="
+  fi
 else
   echo "=== E2E Tests Failed with Exit Code $EXIT_CODE ==="
 fi

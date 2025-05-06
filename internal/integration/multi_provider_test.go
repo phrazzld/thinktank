@@ -3,10 +3,12 @@ package integration
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
@@ -20,7 +22,15 @@ func TestAPIKeyIsolation(t *testing.T) {
 
 	// Create a new registry API service
 	registryManager := registry.NewManager(testLogger)
-	apiService := thinktank.NewRegistryAPIService(registryManager, testLogger)
+	registryInstance := registryManager.GetRegistry()
+
+	// Initialize the registry with test models and providers
+	initializeTestRegistry(t, registryInstance)
+
+	// Register provider implementations
+	registerTestProviders(t, registryInstance)
+
+	apiService := thinktank.NewRegistryAPIService(registryInstance, testLogger)
 
 	// Save the original environment variables so we can restore them
 	originalGeminiKey := os.Getenv("GEMINI_API_KEY")
@@ -155,6 +165,115 @@ func TestAPIKeyIsolation(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Initialize registry with test models and providers
+func initializeTestRegistry(t *testing.T, reg *registry.Registry) {
+	// Create a models config with API key sources
+	modelConfig := registry.ModelsConfig{
+		APIKeySources: map[string]string{
+			"gemini":     "GEMINI_API_KEY",
+			"openai":     "OPENAI_API_KEY",
+			"openrouter": "OPENROUTER_API_KEY",
+		},
+		Providers: []registry.ProviderDefinition{
+			{
+				Name:    "gemini",
+				BaseURL: "",
+			},
+			{
+				Name:    "openai",
+				BaseURL: "",
+			},
+			{
+				Name:    "openrouter",
+				BaseURL: "",
+			},
+		},
+		Models: []registry.ModelDefinition{
+			{
+				Name:       "gemini-pro",
+				Provider:   "gemini",
+				APIModelID: "gemini-pro",
+				Parameters: map[string]registry.ParameterDefinition{
+					"temperature": {
+						Type:    "float",
+						Default: 0.7,
+						Min:     0.0,
+						Max:     1.0,
+					},
+					"max_tokens": {
+						Type:    "int",
+						Default: 1024,
+						Min:     1,
+						Max:     8192,
+					},
+				},
+			},
+			{
+				Name:       "gpt-3.5-turbo",
+				Provider:   "openai",
+				APIModelID: "gpt-3.5-turbo",
+				Parameters: map[string]registry.ParameterDefinition{
+					"temperature": {
+						Type:    "float",
+						Default: 0.7,
+						Min:     0.0,
+						Max:     1.0,
+					},
+					"max_tokens": {
+						Type:    "int",
+						Default: 1024,
+						Min:     1,
+						Max:     4096,
+					},
+				},
+			},
+		},
+	}
+
+	// Create a mock loader that returns our test config
+	mockLoader := &mockConfigLoader{config: &modelConfig}
+
+	// Load the config into the registry
+	err := reg.LoadConfig(mockLoader)
+	if err != nil {
+		t.Fatalf("Failed to load test config: %v", err)
+	}
+}
+
+// Register test provider implementations with the registry
+func registerTestProviders(t *testing.T, reg *registry.Registry) {
+	// Register mock provider implementations
+	if err := reg.RegisterProviderImplementation("gemini", &mockProvider{providerName: "gemini"}); err != nil {
+		t.Fatalf("Failed to register Gemini provider: %v", err)
+	}
+	if err := reg.RegisterProviderImplementation("openai", &mockProvider{providerName: "openai"}); err != nil {
+		t.Fatalf("Failed to register OpenAI provider: %v", err)
+	}
+	if err := reg.RegisterProviderImplementation("openrouter", &mockProvider{providerName: "openrouter"}); err != nil {
+		t.Fatalf("Failed to register OpenRouter provider: %v", err)
+	}
+}
+
+// mockConfigLoader is a mock implementation of registry.ConfigLoaderInterface
+type mockConfigLoader struct {
+	config *registry.ModelsConfig
+}
+
+func (m *mockConfigLoader) Load() (*registry.ModelsConfig, error) {
+	return m.config, nil
+}
+
+// mockProvider is a mock implementation of providers.Provider
+type mockProvider struct {
+	providerName string
+}
+
+func (m *mockProvider) CreateClient(ctx context.Context, apiKey, modelId, apiEndpoint string) (llm.LLMClient, error) {
+	// Return an error to simulate client creation failure
+	// The test doesn't need the actual client, it just verifies the API key usage
+	return nil, fmt.Errorf("mock provider %s error: key=%s", m.providerName, apiKey)
 }
 
 // Helper to set or unset an environment variable

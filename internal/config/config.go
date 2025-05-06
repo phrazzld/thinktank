@@ -17,7 +17,7 @@ import (
 const (
 	// Default values
 	DefaultOutputFile      = "PLAN.md"
-	DefaultModel           = "gemini-2.5-pro-exp-03-25"
+	DefaultModel           = "gemini-2.5-pro-preview-03-25"
 	APIKeyEnvVar           = "GEMINI_API_KEY"
 	APIEndpointEnvVar      = "GEMINI_API_URL"
 	OpenAIAPIKeyEnvVar     = "OPENAI_API_KEY"

@@ -9,6 +9,7 @@ import (
 )
 
 // Helper function to convert to a pointer
+// Reason: Needed for test helpers that use generics for type conversion
 //
 //nolint:unused
 func toPtr[T any](v T) *T {

@@ -7,7 +7,6 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -104,16 +103,6 @@ func Execute(
 
 	// 4. Use the injected APIService
 
-	// Optional registry manager access function for token counting
-	// This allows us to use registry information without a direct import
-	// which would create circular dependencies
-	registryMutex.Lock()
-	registryManagerGetter = func() interface{} {
-		// This function will be set by main.go after initializing the registry
-		return nil
-	}
-	registryMutex.Unlock()
-
 	// Create a reference client for token counting in context gathering
 	// Pass empty string instead of cliConfig.APIKey to force environment variable lookup
 	// This ensures each provider uses its own API key from the appropriate environment variable
@@ -195,32 +184,6 @@ type Orchestrator interface {
 }
 
 // Note: The llmToGeminiAdapter has been removed as ContextGatherer now uses llm.LLMClient directly
-
-// registryManagerGetter is a function that returns the registry manager.
-// This is set by main.go after initializing the registry to avoid circular dependencies.
-var (
-	registryManagerGetter func() interface{}
-	registryMutex         sync.Mutex
-)
-
-// GetGlobalRegistryManager returns the global registry manager if available
-func GetGlobalRegistryManager() interface{} {
-	registryMutex.Lock()
-	defer registryMutex.Unlock()
-
-	if registryManagerGetter != nil {
-		return registryManagerGetter()
-	}
-	return nil
-}
-
-// SetRegistryManagerGetter sets the function that returns the registry manager
-func SetRegistryManagerGetter(getter func() interface{}) {
-	registryMutex.Lock()
-	defer registryMutex.Unlock()
-
-	registryManagerGetter = getter
-}
 
 // orchestratorConstructor is the function used to create an Orchestrator.
 // This can be overridden in tests to return a mock orchestrator.

@@ -50,9 +50,9 @@ CONSULTANT-PLAN.md
 BUG.md
 BUGFIXPLAN.md
 TASK-PROMPT.md
-thinktank_output/
 diff.md
 CODE_REVIEW.md
+thinktank_*/
 
 # Profiling data
 profile_data/
@@ -76,3 +76,5 @@ test_output_*.md
 
 # Development symlinks
 docs/prompts
+
+**/.claude/settings.local.json
