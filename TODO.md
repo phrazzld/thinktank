@@ -53,4 +53,4 @@
 ## Optional Temporary Measures
 - [x] Temporarily lower coverage threshold to 64% in CI config
 - [x] Add .nocover comments to adapter methods that are pure wrappers
-- [ ] Configure coverage exclusion patterns for test helpers
+- [x] Configure coverage exclusion patterns for test helpers

@@ -54,9 +54,28 @@ MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
 # Function to generate coverage data for tests
 generate_coverage() {
   echo "Generating coverage data..."
-  # Skip integration and e2e tests as they're slow and have different coverage characteristics
-  PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/")
-  go test -short -coverprofile=coverage.out -covermode=atomic $PACKAGES
+  # Skip packages and files that shouldn't be included in coverage metrics:
+  # - integration and e2e tests (slow and have different coverage characteristics)
+  # - disabled code
+  # - test helper packages and files (testutil, mock implementations, test utilities)
+  PACKAGES=$(go list ./... | \
+    grep -v "${MODULE_PATH}/internal/integration" | \
+    grep -v "${MODULE_PATH}/internal/e2e" | \
+    grep -v "/disabled/" | \
+    grep -v "${MODULE_PATH}/internal/testutil")
+
+  # Run tests and generate coverage profile
+  go test -short -coverprofile=coverage.out.tmp -covermode=atomic $PACKAGES
+
+  # Process coverage file to exclude test helper files by pattern
+  cat coverage.out.tmp | \
+    grep -v "_test_helpers\.go:" | \
+    grep -v "_test_utils\.go:" | \
+    grep -v "mock_.*\.go:" | \
+    grep -v "/mocks\.go:" > coverage.out
+
+  # Cleanup temporary file
+  rm coverage.out.tmp
 }
 
 # Always generate fresh coverage for pre-submission
@@ -124,6 +143,20 @@ if [ "$VERBOSE" = true ]; then
   echo -e "\n📋 Detailed Coverage Information:"
   echo "======================================================="
 
+  echo -e "\n📋 Coverage Exclusion Patterns:"
+  echo "======================================================="
+  echo "  ✓ Excluded packages:"
+  echo "    - ${MODULE_PATH}/internal/integration"
+  echo "    - ${MODULE_PATH}/internal/e2e"
+  echo "    - ${MODULE_PATH}/internal/testutil"
+  echo "    - Any packages with \"/disabled/\""
+  echo "  ✓ Excluded files by pattern:"
+  echo "    - *_test_helpers.go"
+  echo "    - *_test_utils.go"
+  echo "    - mock_*.go"
+  echo "    - */mocks.go"
+  echo "======================================================="
+
   # Show overall coverage breakdown
   echo -e "\n📊 Overall Coverage Breakdown:"
   echo "======================================================="
@@ -133,8 +166,13 @@ if [ "$VERBOSE" = true ]; then
   # Show package coverage breakdown - use direct command output
   echo -e "\n📊 Package Coverage Breakdown:"
   echo "======================================================="
-  # Run test command again with coverage flag
-  go test -short ./... -cover | grep -v "no test files" | grep -v "no statements" | sort -k5
+  # Run test command again with coverage flag, excluding test helpers
+  FILTERED_PACKAGES=$(go list ./... | \
+    grep -v "${MODULE_PATH}/internal/integration" | \
+    grep -v "${MODULE_PATH}/internal/e2e" | \
+    grep -v "/disabled/" | \
+    grep -v "${MODULE_PATH}/internal/testutil")
+  go test -short $FILTERED_PACKAGES -cover | grep -v "no test files" | grep -v "no statements" | sort -k5
 
   # Show registry API coverage if requested
   if [ "$CHECK_REGISTRY" = true ]; then
