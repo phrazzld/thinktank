@@ -137,3 +137,17 @@
 
 - [ ] **T51: Improve Registry API Testability**
   Refactor `internal/thinktank/registry_api.go` to use interfaces instead of concrete types for dependencies, apply dependency injection pattern consistently, and add interface abstractions to make the code more testable without requiring extensive type assertions in tests. This will enhance long-term maintainability and enable more robust testing.
+
+## E2E Testing Improvements
+
+- [ ] **T52: Restore Full E2E Testing in CI**
+  Address the `SKIP_BINARY_EXECUTION=true` workaround and implement a robust solution for running true end-to-end validation of the compiled binary in CI. Options include Dockerized tests or building for the target platform in CI.
+
+- [ ] **T53: Improve Coverage for registry_api.go and adapters.go**
+  Implement the remaining tests outlined in `TODO.md` to bring coverage for `registry_api.go` and `adapters.go` up to standard.
+
+- [ ] **T54: Restore CI Coverage Threshold**
+  Restore the CI coverage threshold to 75% (or higher) once test coverage is sufficient.
+
+- [ ] **T55: Clarify Token Handling Changes**
+  Document whether the removal of application-level token handling was purely dead code removal or a functional change, and ensure implications are documented if the latter.
