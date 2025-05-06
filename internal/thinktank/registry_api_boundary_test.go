@@ -11,6 +11,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/providers"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
@@ -609,7 +610,7 @@ func (m *BoundaryMockRegistry) GetProvider(name string) (*registry.ProviderDefin
 }
 
 // GetProviderImplementation implements registry.Registry
-func (m *BoundaryMockRegistry) GetProviderImplementation(name string) (interface{}, error) {
+func (m *BoundaryMockRegistry) GetProviderImplementation(name string) (providers.Provider, error) {
 	// Record the call
 	m.methodCalls["GetProviderImplementation"] = append(m.methodCalls["GetProviderImplementation"], BoundaryMethodCall{
 		Method: "GetProviderImplementation",
@@ -624,7 +625,12 @@ func (m *BoundaryMockRegistry) GetProviderImplementation(name string) (interface
 	if !ok {
 		return nil, errors.New("provider implementation not found")
 	}
-	return impl, nil
+	// We need to cast the impl to providers.Provider
+	providerImpl, ok := impl.(providers.Provider)
+	if !ok {
+		return nil, fmt.Errorf("implementation for '%s' does not implement providers.Provider", name)
+	}
+	return providerImpl, nil
 }
 
 // GetMethodCalls returns the method calls for a specific method
@@ -643,12 +649,12 @@ func (m *BoundaryMockRegistry) ClearMethodCalls() {
 	m.callSequence = nil
 }
 
-// ProviderImplementation is an interface for the mock provider
+// ProviderImplementation is now deprecated, use providers.Provider instead
 type ProviderImplementation interface {
 	CreateClient(ctx context.Context, apiKey, modelID, apiEndpoint string) (llm.LLMClient, error)
 }
 
-// BoundaryMockProvider implements a provider for boundary testing
+// BoundaryMockProvider implements providers.Provider for boundary testing
 type BoundaryMockProvider struct {
 	CreateClientResult llm.LLMClient
 	CreateClientError  error

@@ -10,6 +10,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/providers"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
@@ -24,7 +25,7 @@ type MockRegistryAPI struct {
 	getProviderImplErr error
 }
 
-// MockProviderAPI implements a provider for testing
+// MockProviderAPI implements providers.Provider for testing
 type MockProviderAPI struct {
 	createClientErr error
 	client          llm.LLMClient
@@ -79,7 +80,7 @@ func (m *MockRegistryAPI) GetProvider(name string) (*registry.ProviderDefinition
 }
 
 // GetProviderImplementation implements the registry.Registry method
-func (m *MockRegistryAPI) GetProviderImplementation(name string) (interface{}, error) {
+func (m *MockRegistryAPI) GetProviderImplementation(name string) (providers.Provider, error) {
 	if m.getProviderImplErr != nil {
 		return nil, m.getProviderImplErr
 	}

@@ -12,6 +12,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/openai"
+	"github.com/phrazzld/thinktank/internal/providers"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -94,7 +95,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// Get the provider implementation from the registry
 	regProviderImplGetter, ok := s.registry.(interface {
-		GetProviderImplementation(name string) (interface{}, error)
+		GetProviderImplementation(name string) (providers.Provider, error)
 	})
 	if !ok {
 		return nil, fmt.Errorf("registry does not implement GetProviderImplementation method")
@@ -168,16 +169,9 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 			modelDef.Provider, len(effectiveApiKey))
 	}
 
-	// Cast the provider implementation to an interface with CreateClient method
-	providerInterface, ok := providerImpl.(interface {
-		CreateClient(ctx context.Context, apiKey, modelID, apiEndpoint string) (llm.LLMClient, error)
-	})
-	if !ok {
-		return nil, fmt.Errorf("%w: provider implementation for '%s' does not implement CreateClient method",
-			llm.ErrClientInitialization, modelDef.Provider)
-	}
-
-	client, err := providerInterface.CreateClient(ctx, effectiveApiKey, modelDef.APIModelID, effectiveEndpoint)
+	// Since we're now using the providers.Provider type directly, we no longer need to do
+	// a type assertion to get the CreateClient method - it's already part of the interface
+	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelDef.APIModelID, effectiveEndpoint)
 	if err != nil {
 		// Check if it's already an API error with enhanced details from Gemini
 		if apiErr, ok := gemini.IsAPIError(err); ok {
