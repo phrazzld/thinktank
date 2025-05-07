@@ -436,7 +436,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Cleanup Tasks Related to T028 Build Issues
 
-- [ ] **T032 · Cleanup · P0: Remove refactored duplicate files**
+- [x] **T032 · Cleanup · P0: Remove refactored duplicate files**
     - **Context:** Build and test errors from unintentional file duplication
     - **Action:**
         1. Remove all *_refactored* files to prevent duplicate declarations
@@ -476,6 +476,18 @@ These tasks address the usability issue where thinktank appears to error out des
     - **Verification:**
         1. Verify tests for different error handling scenarios
     - **Depends‑on:** [T032, T033]
+
+- [ ] **T035 · Fix · P2: Fix flaky TestGenerateTimestampedRunNameUniqueness test**
+    - **Context:** The test occasionally fails due to non-deterministic random number generation
+    - **Action:**
+        1. Review the implementation of `generateTimestampedRunName` in `app.go`
+        2. Fix the randomness mechanism to ensure uniqueness
+        3. Update the test to be more robust against timing issues
+    - **Done‑when:**
+        1. The test passes consistently across multiple runs
+    - **Verification:**
+        1. Run the test multiple times to verify consistency
+    - **Depends‑on:** none
 
 ## Clarifications & Assumptions
 
