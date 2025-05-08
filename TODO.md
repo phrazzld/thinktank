@@ -6,7 +6,7 @@ This document contains the detailed task breakdown for implementing the "Enhance
 
 These tasks address the usability issue where thinktank appears to error out despite successfully generating output.
 
-- [~] **T025 · Investigation · P1: Analyze current logging implementation in thinktank/thinktank-wrapper**
+- [x] **T025 · Investigation · P1: Analyze current logging implementation in thinktank/thinktank-wrapper**
     - **Context:** Solution 2 - Log Stream Separation
     - **Action:**
         1. Examine source code to identify how logging is currently implemented
@@ -20,7 +20,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Validate understanding by tracing some sample log messages through the code
     - **Depends‑on:** none
 
-- [ ] **T026 · Feature · P1: Implement proper log stream separation**
+- [x] **T026 · Feature · P1: Implement proper log stream separation**
     - **Context:** Solution 2 - Log Stream Separation
     - **Action:**
         1. Modify logging configuration to route INFO/DEBUG logs to STDOUT
