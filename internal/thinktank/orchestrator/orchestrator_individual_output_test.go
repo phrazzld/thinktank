@@ -12,6 +12,7 @@ import (
 
 // MockOutputWriter allows controlling output writer behavior for testing
 type MockOutputWriter struct {
+	// Embedded fields from BaseMockOutputWriter
 	savedCount           int
 	saveError            error
 	capturedModelOutputs map[string]string
@@ -19,15 +20,23 @@ type MockOutputWriter struct {
 }
 
 // SaveIndividualOutputs is a mock implementation that returns configured results
-func (m *MockOutputWriter) SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, error) {
+func (m *MockOutputWriter) SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, map[string]string, error) {
 	m.capturedModelOutputs = modelOutputs
 	m.capturedOutputDir = outputDir
-	return m.savedCount, m.saveError
+
+	// Create mock file paths map - one path per model
+	filePaths := make(map[string]string)
+	for modelName := range modelOutputs {
+		filePaths[modelName] = outputDir + "/" + modelName + ".md"
+	}
+
+	return m.savedCount, filePaths, m.saveError
 }
 
 // SaveSynthesisOutput is a mock implementation (not used in these tests)
-func (m *MockOutputWriter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) error {
-	return nil
+func (m *MockOutputWriter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) (string, error) {
+	outputPath := outputDir + "/" + modelName + "-synthesis.md"
+	return outputPath, nil
 }
 
 // MockLoggerWithOutputRecorder records log calls for verification
@@ -128,7 +137,7 @@ func TestRunIndividualOutputFlow(t *testing.T) {
 			}
 
 			// Call the method under test
-			err := orch.runIndividualOutputFlow(context.Background(), tt.modelOutputs)
+			_, err := orch.runIndividualOutputFlow(context.Background(), tt.modelOutputs)
 
 			// Verify error behavior
 			if (err != nil) != tt.expectError {

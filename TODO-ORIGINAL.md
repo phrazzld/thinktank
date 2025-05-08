@@ -6,7 +6,7 @@ This document contains the detailed task breakdown for implementing the "Enhance
 
 These tasks address the usability issue where thinktank appears to error out despite successfully generating output.
 
-- [x] **T025 · Investigation · P1: Analyze current logging implementation in thinktank/thinktank-wrapper**
+- [~] **T025 · Investigation · P1: Analyze current logging implementation in thinktank/thinktank-wrapper**
     - **Context:** Solution 2 - Log Stream Separation
     - **Action:**
         1. Examine source code to identify how logging is currently implemented
@@ -20,7 +20,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Validate understanding by tracing some sample log messages through the code
     - **Depends‑on:** none
 
-- [x] **T026 · Feature · P1: Implement proper log stream separation**
+- [ ] **T026 · Feature · P1: Implement proper log stream separation**
     - **Context:** Solution 2 - Log Stream Separation
     - **Action:**
         1. Modify logging configuration to route INFO/DEBUG logs to STDOUT
@@ -36,7 +36,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Test with Claude's Bash tool to confirm error reporting is accurate
     - **Depends‑on:** [T025]
 
-- [x] **T027 · Feature · P1: Add tolerant mode flag to thinktank-wrapper**
+- [ ] **T027 · Feature · P1: Add tolerant mode flag to thinktank-wrapper**
     - **Context:** Solution 4 - Tolerant Mode
     - **Action:**
         1. Add `--partial-success-ok` flag to CLI argument parsing
@@ -52,7 +52,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Test parsing with and without flag
     - **Depends‑on:** none
 
-- [x] **T028 · Feature · P1: Modify exit code logic based on tolerant mode**
+- [ ] **T028 · Feature · P1: Modify exit code logic based on tolerant mode**
     - **Context:** Solution 4 - Tolerant Mode
     - **Action:**
         1. Identify where exit code is determined in thinktank-wrapper
@@ -67,7 +67,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Verify exit codes match expected behavior
     - **Depends‑on:** [T027]
 
-- [x] **T029 · Feature · P2: Implement improved results summary output**
+- [ ] **T029 · Feature · P2: Implement improved results summary output**
     - **Context:** Solution 4 - Improved Summary
     - **Action:**
         1. Create code to track individual model successes/failures
@@ -92,15 +92,12 @@ These tasks address the usability issue where thinktank appears to error out des
         3. Implement tests for exit code determination logic
         4. Create tests for summary generation
         5. Test integration of all components
-        6. Fix package import issues with orchestrator dependencies
     - **Done‑when:**
         1. Test coverage for new features is >90%
-        2. All tests pass without import errors or build failures
-        3. Test infrastructure properly handles module dependencies
+        2. Tests pass for all new functionality
     - **Verification:**
         1. Review test coverage report
         2. Manual verification of key scenarios
-        3. Verify build runs cleanly without vendor directory issues
     - **Depends‑on:** [T026, T028, T029]
 
 - [ ] **T031 · Docs · P2: Update documentation for output handling improvements**
@@ -396,7 +393,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Security & Cleanup
 
-- [x] **T022 · Feature · P1: Implement error detail sanitization in logutil**
+- [ ] **T022 · Feature · P1: Implement error detail sanitization in logutil**
     - **Context:** Phase 5, Step 9 from PLAN.md (Implement Sanitization)
     - **Action:**
         1. In `internal/logutil`, create logic to sanitize sensitive information (e.g., API keys, secrets) from error messages or details before they are logged.
@@ -433,61 +430,6 @@ These tasks address the usability issue where thinktank appears to error out des
     - **Verification:**
         1. Review documentation for clarity, accuracy, and completeness.
     - **Depends‑on:** [T006, T011, T022, T023]
-
-## Cleanup Tasks Related to T028 Build Issues
-
-- [x] **T032 · Cleanup · P0: Remove refactored duplicate files**
-    - **Context:** Build and test errors from unintentional file duplication
-    - **Action:**
-        1. Remove all *_refactored* files to prevent duplicate declarations
-        2. Ensure proper merging of any needed changes from refactored files
-        3. Fix issues with circular imports between packages
-    - **Done‑when:**
-        1. Build succeeds without duplicate declaration errors
-        2. All tests pass without import errors
-    - **Verification:**
-        1. Run complete test suite
-        2. Confirm clean build
-    - **Depends‑on:** none
-
-- [ ] **T033 · Refactor · P1: Fix import paths and package structure**
-    - **Context:** Package organization and vendor issues
-    - **Action:**
-        1. Resolve issues with import paths for internal packages
-        2. Ensure vendor directory is properly configured
-        3. Fix circular dependencies if present
-        4. Review dependency management approach (vendor vs. go modules)
-    - **Done‑when:**
-        1. All imports resolve correctly
-        2. No vendor-related errors in build process
-    - **Verification:**
-        1. Run clean build with -mod=vendor
-    - **Depends‑on:** [T032]
-
-- [ ] **T034 · Refactor · P1: Update tests for error handling improvements**
-    - **Context:** Missing or incompatible tests for new error handling features
-    - **Action:**
-        1. Create comprehensive tests for all error handling components
-        2. Ensure tests work properly with both string-based and type-based error detection
-        3. Verify exit code handling across different error scenarios
-    - **Done‑when:**
-        1. Complete test coverage for error handling features
-        2. All tests pass consistently
-    - **Verification:**
-        1. Verify tests for different error handling scenarios
-    - **Depends‑on:** [T032, T033]
-
-- [x] **T035 · Fix · P2: Fix flaky TestGenerateTimestampedRunNameUniqueness test**
-    - **Context:** The test occasionally fails due to non-deterministic random number generation
-    - **Action:**
-        1. Review the implementation of `generateTimestampedRunName` in `app.go`
-        2. Fix the randomness mechanism to ensure uniqueness
-        3. Update the test to be more robust against timing issues
-    - **Done‑when:**
-        1. The test passes consistently across multiple runs
-    - **Verification:**
-        1. Run the test multiple times to verify consistency
-    - **Depends‑on:** none
 
 ## Clarifications & Assumptions
 

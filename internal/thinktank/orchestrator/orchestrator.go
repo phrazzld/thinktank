@@ -37,6 +37,7 @@ type Orchestrator struct {
 	logger           logutil.LoggerInterface
 	synthesisService SynthesisService
 	outputWriter     OutputWriter
+	summaryWriter    SummaryWriter
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -54,6 +55,9 @@ func NewOrchestrator(
 	// Create the output writer
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
 
+	// Create the summary writer
+	summaryWriter := NewSummaryWriter(logger)
+
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService
 	if config.SynthesisModel != "" {
@@ -70,6 +74,7 @@ func NewOrchestrator(
 		logger:           logger,
 		synthesisService: synthesisService,
 		outputWriter:     outputWriter,
+		summaryWriter:    summaryWriter,
 	}
 }
 
@@ -83,7 +88,8 @@ func NewOrchestrator(
 // 4. Build the complete prompt
 // 5. Process models concurrently with error handling
 // 6. Save outputs (either individually or via synthesis)
-// 7. Handle and report any errors
+// 7. Generate and display execution summary
+// 8. Handle and report any errors
 //
 // Each step is delegated to a specialized helper method, making the workflow
 // clear and maintainable.
@@ -118,9 +124,13 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// Step 5: Save outputs (via synthesis or individually)
-	fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
+	outputInfo, fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
 
-	// Step 6: Final error processing and return
+	// Step 6: Generate and display the execution summary
+	summary := o.generateResultsSummary(modelOutputs, outputInfo, processingErr)
+	o.summaryWriter.DisplaySummary(ctx, summary)
+
+	// Step 7: Final error processing and return
 	return o.handleProcessingOutcome(ctx, processingErr, fileSaveErr, contextLogger)
 }
 
@@ -173,8 +183,8 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 
 // runIndividualOutputFlow handles the saving of individual model outputs when no synthesis model is specified.
 // It saves each model's output to a separate file in the output directory.
-// Returns an error if any of the outputs fail to save.
-func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) error {
+// Returns a map of model names to output file paths, and an error if any of the outputs fail to save.
+func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) (map[string]string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
@@ -183,21 +193,21 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
 	// Use the OutputWriter to save individual model outputs
-	savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
+	savedCount, filePaths, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
 			savedCount, len(modelOutputs)-savedCount)
-		return err
+		return filePaths, err
 	}
 
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
-	return nil
+	return filePaths, nil
 }
 
 // runSynthesisFlow handles the synthesis of multiple model outputs using the specified synthesis model.
 // It synthesizes the results and saves the output to a file.
-// Returns an error if synthesis fails or if the output cannot be saved.
-func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+// Returns the path to the synthesis file, and an error if synthesis fails or if the output cannot be saved.
+func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) (string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
@@ -208,7 +218,7 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	// Only proceed with synthesis if we have model outputs to synthesize
 	if len(modelOutputs) == 0 {
 		contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
-		return nil
+		return "", nil
 	}
 
 	// Attempt to synthesize results using the SynthesisService
@@ -217,7 +227,7 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	if err != nil {
 		// Process the error with specialized handling
 		contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
-		return err
+		return "", err
 	}
 
 	// Log synthesis success
@@ -225,13 +235,14 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
 
 	// Save the synthesis output using the OutputWriter
-	if err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir); err != nil {
+	outputPath, err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir)
+	if err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-		return err
+		return "", err
 	}
 
-	contextLogger.InfoContext(ctx, "Successfully saved synthesis output")
-	return nil
+	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputPath)
+	return outputPath, nil
 }
 
 // handleDryRun displays context statistics without performing API calls.
@@ -570,16 +581,69 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 	return modelOutputs, returnErr, nil
 }
 
+// generateResultsSummary creates a ResultsSummary object containing information about
+// the processing results, including model successes, failures, and output file paths.
+func (o *Orchestrator) generateResultsSummary(
+	modelOutputs map[string]string,
+	outputInfo *OutputInfo,
+	processingErr error,
+) *ResultsSummary {
+	summary := &ResultsSummary{
+		TotalModels:      len(o.config.ModelNames),
+		SuccessfulModels: len(modelOutputs),
+	}
+
+	// Add successful model names
+	for modelName := range modelOutputs {
+		summary.SuccessfulNames = append(summary.SuccessfulNames, modelName)
+	}
+
+	// Add synthesis path if available
+	if outputInfo.SynthesisFilePath != "" {
+		summary.SynthesisPath = outputInfo.SynthesisFilePath
+	}
+
+	// Add individual output paths if available
+	for _, path := range outputInfo.IndividualFilePaths {
+		summary.OutputPaths = append(summary.OutputPaths, path)
+	}
+
+	// Determine failed models (those in config.ModelNames but not in modelOutputs)
+	successMap := make(map[string]bool)
+	for modelName := range modelOutputs {
+		successMap[modelName] = true
+	}
+
+	for _, modelName := range o.config.ModelNames {
+		if !successMap[modelName] {
+			summary.FailedModels = append(summary.FailedModels, modelName)
+		}
+	}
+
+	return summary
+}
+
 // handleOutputFlow decides whether to use synthesis or individual output flow
 // based on configuration and handles the saving of outputs accordingly.
-func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+// Returns an OutputInfo struct containing the paths to generated files, and any error from the output handling.
+func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string, modelOutputs map[string]string) (*OutputInfo, error) {
+	outputInfo := NewOutputInfo()
+
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
-		return o.runIndividualOutputFlow(ctx, modelOutputs)
+		filePaths, err := o.runIndividualOutputFlow(ctx, modelOutputs)
+		if filePaths != nil {
+			outputInfo.IndividualFilePaths = filePaths
+		}
+		return outputInfo, err
 	}
 
 	// Synthesis model specified - process all outputs with synthesis model
-	return o.runSynthesisFlow(ctx, instructions, modelOutputs)
+	synthesisPath, err := o.runSynthesisFlow(ctx, instructions, modelOutputs)
+	if synthesisPath != "" {
+		outputInfo.SynthesisFilePath = synthesisPath
+	}
+	return outputInfo, err
 }
 
 // handleProcessingOutcome combines and reports any errors from model processing and file saving.

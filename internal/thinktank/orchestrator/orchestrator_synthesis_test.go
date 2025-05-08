@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
@@ -35,12 +36,13 @@ type MockSynthesisOutputWriter struct {
 }
 
 // SaveSynthesisOutput is a mock implementation that captures parameters and returns configured error
-func (m *MockSynthesisOutputWriter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) error {
+func (m *MockSynthesisOutputWriter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) (string, error) {
 	m.capturedContent = content
 	m.capturedSynthesisModel = modelName
 	m.capturedOutputDir = outputDir
 	m.saveSynthesisCalled = true
-	return m.saveSynthesisError
+	outputPath := outputDir + "/" + modelName + "-synthesis.md"
+	return outputPath, m.saveSynthesisError
 }
 
 // MockLoggerWithSynthesisRecorder records log calls for verification
@@ -180,7 +182,7 @@ func TestRunSynthesisFlow(t *testing.T) {
 			}
 
 			// Call the method under test
-			err := orch.runSynthesisFlow(context.Background(), tt.instructions, tt.modelOutputs)
+			_, err := orch.runSynthesisFlow(context.Background(), tt.instructions, tt.modelOutputs)
 
 			// Verify error behavior
 			if (err != nil) != tt.expectError {
@@ -243,7 +245,7 @@ func TestRunSynthesisFlow(t *testing.T) {
 			// Check success logs
 			successLogCount := 0
 			for _, msg := range mockLogger.infoMessages {
-				if msg == "Successfully saved synthesis output" {
+				if strings.Contains(msg, "Successfully saved synthesis output") {
 					successLogCount++
 				}
 			}
