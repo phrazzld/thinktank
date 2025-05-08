@@ -103,7 +103,7 @@ These tasks address the usability issue where thinktank appears to error out des
         3. Verify build runs cleanly without vendor directory issues
     - **Depends‑on:** [T026, T028, T029]
 
-- [ ] **T031 · Docs · P2: Update documentation for output handling improvements**
+- [x] **T031 · Docs · P2: Update documentation for output handling improvements**
     - **Context:** User Documentation for Solutions 2 & 4
     - **Action:**
         1. Update CLI help text for new flag

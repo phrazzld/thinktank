@@ -99,6 +99,38 @@ The output depends entirely on your instructions, but common use cases include:
 
 Output files are saved in the specified directory (or auto-generated directory) with one file per model. If a synthesis model is specified, an additional file containing the synthesized output will be created with the naming format `<synthesis-model-name>-synthesis.md`.
 
+### Summary Output Format
+
+At the end of each run, thinktank displays a formatted summary of the execution results:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ Thinktank Execution Summary                                    │
+├────────────────────────────────────────────────────────────────┤
+│ Status: SUCCESS                                                │
+├────────────────────────────────────────────────────────────────┤
+│ Models: 3 total, 3 successful, 0 failed                        │
+├────────────────────────────────────────────────────────────────┤
+│ Synthesis file: path/to/output/synthesis-file.md               │
+├────────────────────────────────────────────────────────────────┤
+│ Successful models: 3 models (model1, model2, model3)           │
+└────────────────────────────────────────────────────────────────┘
+```
+
+The summary includes:
+- **Status**: Overall execution status (SUCCESS, PARTIAL SUCCESS, or FAILED)
+- **Models**: Count of total, successful, and failed models
+- **Synthesis file**: Path to the synthesis output file (if a synthesis model was used)
+- **Successful models**: List of models that completed successfully
+- **Failed models**: List of models that failed (shown only if failures occurred)
+- **Output files**: Individual output file paths (shown when no synthesis model is used)
+
+The summary is color-coded in terminal output:
+- Green for success indicators
+- Yellow for partial success
+- Red for failure indicators
+- Blue for file paths
+
 ### Output Directory Naming
 
 When no `--output-dir` is specified, thinktank automatically generates a timestamped directory name using the format:
@@ -126,9 +158,11 @@ By default, thinktank returns:
 - **0 (success)**: All models completed successfully
 - **1 (failure)**: One or more models failed
 
-When using `--partial-success-ok`:
-- **0 (success)**: At least one model succeeded (even if others failed)
+When using `--partial-success-ok` (tolerant mode):
+- **0 (success)**: At least one model succeeded and generated usable output (even if others failed)
 - **1 (failure)**: All models failed or other critical error occurred
+
+This tolerant mode is particularly useful when using multiple models for redundancy, allowing the process to succeed if at least one model delivers a valid result.
 
 ### Common Issues
 
@@ -137,6 +171,7 @@ When using `--partial-success-ok`:
 - **No Files Processed**: Check paths and filters with `--dry-run`
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
 - **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
+- **Color Output Issues**: Summary output uses ANSI color codes for terminal display, which may not be suitable for all environments. Redirect to a file for plain text output.
 
 ## Development & Contributing
 
