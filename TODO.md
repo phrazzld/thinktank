@@ -132,7 +132,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Code review confirms struct fields and method signatures.
     - **Depends‑on:** none
 
-- [ ] **T002 · Feature · P0: Define ErrorCategory enum**
+- [x] **T002 · Feature · P0: Define ErrorCategory enum**
     - **Context:** Phase 1, Step 1 from PLAN.md (Define Canonical Errors)
     - **Action:**
         1. In `internal/llm/errors.go`, define `ErrorCategory` enum with values: `Unknown`, `Auth`, `RateLimit`, `InvalidRequest`, `NotFound`, `Server`, `Network`, `Cancelled`, `InputLimit`, `ContentFiltered`, `InsufficientCredits`.
@@ -142,7 +142,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Code review confirms enum values.
     - **Depends‑on:** none
 
-- [ ] **T003 · Feature · P0: Define CategorizedError interface and implement on LLMError**
+- [x] **T003 · Feature · P0: Define CategorizedError interface and implement on LLMError**
     - **Context:** Phase 1, Step 1 from PLAN.md (Define Canonical Errors)
     - **Action:**
         1. In `internal/llm/errors.go`, define `CategorizedError` interface: `{ error; Category() ErrorCategory }`.
@@ -154,7 +154,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Ensure an `*LLMError` can be assigned to a `CategorizedError` variable.
     - **Depends‑on:** [T001, T002]
 
-- [ ] **T004 · Feature · P1: Implement llm.Wrap helper function**
+- [x] **T004 · Feature · P1: Implement llm.Wrap helper function**
     - **Context:** Phase 1, Step 1 from PLAN.md (Define Canonical Errors)
     - **Action:**
         1. In `internal/llm/errors.go`, implement `Wrap(originalErr error, provider string, message string, category ErrorCategory, details ...string) error`.
@@ -166,7 +166,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Unit tests verify field population and error wrapping.
     - **Depends‑on:** [T001, T002]
 
-- [ ] **T005 · Feature · P1: Implement llm.IsCategory helper function**
+- [x] **T005 · Feature · P1: Implement llm.IsCategory helper function**
     - **Context:** Phase 1, Step 1 from PLAN.md (Define Canonical Errors)
     - **Action:**
         1. In `internal/llm/errors.go`, implement `IsCategory(err error, category ErrorCategory) bool`.
