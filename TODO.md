@@ -450,7 +450,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Confirm clean build
     - **Depends‑on:** none
 
-- [ ] **T033 · Refactor · P1: Fix import paths and package structure**
+- [x] **T033 · Refactor · P1: Fix import paths and package structure**
     - **Context:** Package organization and vendor issues
     - **Action:**
         1. Resolve issues with import paths for internal packages
