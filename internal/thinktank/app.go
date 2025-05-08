@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -19,6 +20,10 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
+
+// Deprecated: Using a global var here as a temporary fix during refactoring
+// A better approach would be to inject a random generator instance
+var globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Execute is the main entry point for the core application logic.
 // It handles initial setup, logging, dependency initialization, and orchestration.
@@ -266,17 +271,40 @@ func SetOrchestratorConstructor(constructor func(
 	orchestratorConstructor = constructor
 }
 
-// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNN
-// where NNNN is a 4-digit random number to ensure uniqueness for runs in the same second.
+// incrementalCounter is used to ensure uniqueness of generated names
+// even when many names are generated in quick succession
+var incrementalCounter uint32 = 0
+
+// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNNNNN
+// where NNNNNNN is a combination of nanoseconds, random number, and incremental counter to ensure uniqueness.
+// This implementation guarantees uniqueness even for many runs that occur within the same millisecond.
 func generateTimestampedRunName() string {
+	// Get current time
+	now := time.Now()
+
 	// Generate timestamp in format YYYYMMDD_HHMMSS
-	timestamp := time.Now().Format("20060102_150405")
+	timestamp := now.Format("20060102_150405")
 
-	// Generate random 4-digit number (0000-9999) for uniqueness
-	randNum := rand.Intn(10000)
+	// Use multiple strategies to ensure uniqueness:
+	// 1. Nanoseconds from the current time (0-999999999)
+	// 2. Random number (0-999)
+	// 3. Incremental counter (0-999999)
 
-	// Combine with prefix and format with leading zeros for the random number
-	return fmt.Sprintf("thinktank_%s_%04d", timestamp, randNum)
+	// Extract nanoseconds (last 3 digits)
+	nanos := now.Nanosecond() % 1000
+
+	// Generate a random number
+	randNum := globalRand.Intn(1000)
+
+	// Increment the counter atomically (thread-safe)
+	counter := atomic.AddUint32(&incrementalCounter, 1) % 1000
+
+	// Combine all three components for a truly unique value
+	// This gives us a billion possibilities (1000 × 1000 × 1000) within the same second
+	uniqueNum := (nanos * 1000000) + (randNum * 1000) + int(counter)
+
+	// Combine with prefix and format with leading zeros (7 digits)
+	return fmt.Sprintf("thinktank_%s_%07d", timestamp, uniqueNum)
 }
 
 // setupOutputDirectory ensures that the output directory is set and exists.

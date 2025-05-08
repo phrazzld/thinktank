@@ -6,17 +6,16 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 // TestGenerateTimestampedRunNameFormat verifies that the generateTimestampedRunName function
-// produces names in the expected format: thinktank_YYYYMMDD_HHMMSS_NNNN
+// produces names in the expected format: thinktank_YYYYMMDD_HHMMSS_NNNNNNN
 func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 	// Generate a name
 	name := generateTimestampedRunName()
 
 	// Define the expected regex pattern
-	pattern := `^thinktank_\d{8}_\d{6}_\d{4}$`
+	pattern := `^thinktank_\d{8}_\d{6}_\d{7}$`
 	re := regexp.MustCompile(pattern)
 
 	// Verify the name matches the expected pattern
@@ -35,9 +34,9 @@ func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 		t.Fatalf("Generated name %q does not have 4 parts separated by underscores", name)
 	}
 
-	dateStr := parts[1] // YYYYMMDD
-	timeStr := parts[2] // HHMMSS
-	randStr := parts[3] // NNNN
+	dateStr := parts[1]   // YYYYMMDD
+	timeStr := parts[2]   // HHMMSS
+	uniqueStr := parts[3] // NNNNNNN
 
 	// Verify the date part
 	year, err := strconv.Atoi(dateStr[:4])
@@ -71,27 +70,23 @@ func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 		t.Errorf("Second component %q of time %q is invalid", timeStr[4:6], timeStr)
 	}
 
-	// Verify the random component
-	randNum, err := strconv.Atoi(randStr)
-	if err != nil || randNum < 0 || randNum > 9999 {
-		t.Errorf("Random component %q is not a valid 4-digit number", randStr)
+	// Verify the uniqueness component
+	uniqueNum, err := strconv.Atoi(uniqueStr)
+	if err != nil || uniqueNum < 0 || uniqueNum > 9999999 {
+		t.Errorf("Uniqueness component %q is not a valid 7-digit number", uniqueStr)
 	}
 
-	// Verify the random number is formatted with leading zeros if needed
-	if len(randStr) != 4 {
-		t.Errorf("Random component %q does not have exactly 4 digits", randStr)
+	// Verify the uniqueness component is formatted with exactly 7 digits (with leading zeros if needed)
+	if len(uniqueStr) != 7 {
+		t.Errorf("Uniqueness component %q does not have exactly 7 digits", uniqueStr)
 	}
 }
 
 // TestGenerateTimestampedRunNameUniqueness verifies that consecutive calls
 // to generateTimestampedRunName produce different results
 func TestGenerateTimestampedRunNameUniqueness(t *testing.T) {
-	// Temporarily skip this test as it's flaky
-	// A proper fix is tracked in task T035
-	t.Skip("Skipping test due to flakiness - see task T035 for proper fix")
-
 	// Generate multiple run names
-	runs := 10
+	runs := 100 // Increase from 10 to 100 for more thorough testing
 	generatedNames := make(map[string]bool, runs)
 
 	for i := 0; i < runs; i++ {
@@ -99,13 +94,16 @@ func TestGenerateTimestampedRunNameUniqueness(t *testing.T) {
 
 		// Check that we're not getting duplicate names
 		if generatedNames[name] {
-			t.Errorf("Name %q was generated more than once", name)
+			t.Errorf("Name %q was generated more than once (iteration %d)", name, i)
+			// Log all generated names to help diagnose the issue
+			t.Logf("All generated names so far: %v", generatedNames)
 		}
 
 		generatedNames[name] = true
 
-		// Add a small delay to ensure different timestamps if the loop runs very quickly
-		time.Sleep(1 * time.Millisecond)
+		// No need for a sleep delay anymore since our implementation now combines
+		// nanoseconds, random numbers, and an incremental counter to ensure uniqueness
+		// even within the same millisecond
 	}
 
 	// Verify we got unique names

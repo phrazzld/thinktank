@@ -396,7 +396,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Security & Cleanup
 
-- [ ] **T022 · Feature · P1: Implement error detail sanitization in logutil**
+- [x] **T022 · Feature · P1: Implement error detail sanitization in logutil**
     - **Context:** Phase 5, Step 9 from PLAN.md (Implement Sanitization)
     - **Action:**
         1. In `internal/logutil`, create logic to sanitize sensitive information (e.g., API keys, secrets) from error messages or details before they are logged.
@@ -477,7 +477,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Verify tests for different error handling scenarios
     - **Depends‑on:** [T032, T033]
 
-- [ ] **T035 · Fix · P2: Fix flaky TestGenerateTimestampedRunNameUniqueness test**
+- [x] **T035 · Fix · P2: Fix flaky TestGenerateTimestampedRunNameUniqueness test**
     - **Context:** The test occasionally fails due to non-deterministic random number generation
     - **Action:**
         1. Review the implementation of `generateTimestampedRunName` in `app.go`
