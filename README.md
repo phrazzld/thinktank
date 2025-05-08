@@ -46,6 +46,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
 | `--dry-run` | Preview without API calls | `false` |
+| `--partial-success-ok` | Return success code if any model succeeds | `false` |
 | `--log-level` | Logging level (debug,info,warn,error) | `info` |
 
 ## Models Setup
@@ -71,6 +72,9 @@ thinktank --instructions questions.txt --output-dir answers ./src
 
 # Using synthesis to combine multiple model outputs
 thinktank --instructions complex-task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
+
+# Allow partial success (return success code even if some models fail)
+thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
 ```
 
 ### Synthesis Feature
@@ -114,12 +118,25 @@ Examples:
 
 This naming convention ensures that each run has a unique, sortable, and identifiable output directory.
 
-## Troubleshooting
+## Error Handling and Troubleshooting
+
+### Exit Codes
+
+By default, thinktank returns:
+- **0 (success)**: All models completed successfully
+- **1 (failure)**: One or more models failed
+
+When using `--partial-success-ok`:
+- **0 (success)**: At least one model succeeded (even if others failed)
+- **1 (failure)**: All models failed or other critical error occurred
+
+### Common Issues
 
 - **Context Length Errors**: Reduce scope with `--include` or use a model with larger context
 - **API Key Issues**: Ensure correct environment variables are set for each provider
 - **No Files Processed**: Check paths and filters with `--dry-run`
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
+- **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
 
 ## Development & Contributing
 

@@ -36,7 +36,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Test with Claude's Bash tool to confirm error reporting is accurate
     - **Depends‑on:** [T025]
 
-- [ ] **T027 · Feature · P1: Add tolerant mode flag to thinktank-wrapper**
+- [x] **T027 · Feature · P1: Add tolerant mode flag to thinktank-wrapper**
     - **Context:** Solution 4 - Tolerant Mode
     - **Action:**
         1. Add `--partial-success-ok` flag to CLI argument parsing
