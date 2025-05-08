@@ -119,7 +119,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Core LLM Error Handling (`internal/llm`)
 
-- [ ] **T001 · Feature · P0: Define canonical LLMError struct**
+- [x] **T001 · Feature · P0: Define canonical LLMError struct**
     - **Context:** Phase 1, Step 1 from PLAN.md (Define Canonical Errors)
     - **Action:**
         1. Create `internal/llm/errors.go`.
