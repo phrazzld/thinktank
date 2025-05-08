@@ -464,6 +464,21 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Run clean build with -mod=vendor
     - **Depends‑on:** [T032]
 
+- [x] **T036 · Fix · P1: Fix synthesis model response truncation**
+    - **Context:** Synthesis models frequently truncate responses when combining outputs from multiple models
+    - **Action:**
+        1. Identify where token limits are enforced in the codebase
+        2. Update the GetModelTokenLimits method to use actual values from model definition
+        3. Add the ContextWindow and MaxOutputTokens fields to ModelDefinition struct
+        4. Set very high default values for models without explicit limits
+    - **Done‑when:**
+        1. The synthesis prompt can handle much larger inputs and outputs
+        2. Truncation issues are resolved for large synthesis operations
+    - **Verification:**
+        1. Run synthesis tests with multiple model outputs
+        2. Verify models use their configured token limits from models.yaml
+    - **Depends‑on:** none
+
 - [ ] **T034 · Refactor · P1: Update tests for error handling improvements**
     - **Context:** Missing or incompatible tests for new error handling features
     - **Action:**

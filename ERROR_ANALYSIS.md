@@ -1,6 +1,47 @@
 # Error Analysis and Resolution Plan
 
-## Issues Discovered
+## Synthesis Model Truncation Issue (Resolved)
+
+### Problem
+Frequent truncation of responses when using synthesis models to combine outputs from multiple models.
+
+### Root Cause Analysis
+1. **Hardcoded Token Limits**
+   - Token limits were hardcoded in `registry_api.go` with values too low for synthesis models
+   - `GetModelTokenLimits` method returned fixed values (8192 for context window, 2048 for max output tokens)
+   - These limits were insufficient for synthesis models that need to process multiple large outputs
+
+2. **Missing Token Configuration Usage**
+   - The `models.yaml` configuration file defined proper token limits for models (up to 1M context window)
+   - However, the code wasn't using these configured values
+
+3. **Lack of Adaptive Handling**
+   - No mechanism to handle large combined prompts that might exceed context limits
+   - All model outputs were concatenated without checking total size
+
+### Solution Implemented
+1. **Use Model-Specific Token Limits**
+   - Updated `GetModelTokenLimits` to use the actual values from model configuration
+   - Added `ContextWindow` and `MaxOutputTokens` fields to the `ModelDefinition` struct
+   - For models without explicit limits, set very high default values:
+     - 1,000,000 tokens for context window
+     - 65,000 tokens for max output tokens
+
+2. **Added Comprehensive Tests**
+   - Created `TestGetModelTokenLimits_UsesConfigValues` to verify correct handling
+   - Updated existing tests to expect new behavior
+
+### Expected Benefits
+1. Synthesis models will now have appropriate token limits based on configuration
+2. Truncation issues should be resolved by using the proper context window sizes
+3. Future models with different limits can be easily accommodated through configuration changes
+
+### Further Recommendations
+1. Consider implementing adaptive truncation for very large inputs
+2. Add logging of token usage to help diagnose future issues
+3. Consider token counting at synthesis time to provide warnings when approaching limits
+
+## Initial Build Issues (T032/T033)
 
 After implementing T028 (adding tolerant mode flag and exit code logic), we encountered several build and test errors. This document outlines these issues and proposes a resolution plan.
 

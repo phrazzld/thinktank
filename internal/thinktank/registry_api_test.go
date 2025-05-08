@@ -796,10 +796,30 @@ func TestGetModelTokenLimits(t *testing.T) {
 		wrapsWith             error // Expected error to be wrapped with
 	}{
 		{
-			name:                  "existing model",
-			modelName:             "test-model",
-			expectedContextWindow: 8192,
-			expectedMaxTokens:     2048,
+			name:      "existing model with token limits",
+			modelName: "model-with-limits",
+			modelDef: &registry.ModelDefinition{
+				Name:            "model-with-limits",
+				Provider:        "test-provider",
+				APIModelID:      "model-id",
+				ContextWindow:   50000,
+				MaxOutputTokens: 10000,
+			},
+			expectedContextWindow: 50000,
+			expectedMaxTokens:     10000,
+			expectError:           false,
+		},
+		{
+			name:      "existing model without token limits",
+			modelName: "model-without-limits",
+			modelDef: &registry.ModelDefinition{
+				Name:       "model-without-limits",
+				Provider:   "test-provider",
+				APIModelID: "model-id",
+				// No token limits specified
+			},
+			expectedContextWindow: 1000000, // Should use high default
+			expectedMaxTokens:     65000,   // Should use high default
 			expectError:           false,
 		},
 		{
@@ -826,21 +846,23 @@ func TestGetModelTokenLimits(t *testing.T) {
 			errorSubstring: "does not implement GetModel method",
 		},
 		{
-			name:      "custom model definition",
-			modelName: "custom-model",
+			name:      "synthesis model with very large limits",
+			modelName: "synthesis-model",
 			modelDef: &registry.ModelDefinition{
-				Name:       "custom-model",
-				Provider:   "custom-provider",
-				APIModelID: "custom-model-id",
+				Name:            "synthesis-model",
+				Provider:        "test-provider",
+				APIModelID:      "synthesis-model-id",
+				ContextWindow:   1000000, // 1M context window
+				MaxOutputTokens: 200000,  // 200K output tokens
 				Parameters: map[string]registry.ParameterDefinition{
-					"custom_param": {
-						Type:    "string",
-						Default: "custom-value",
+					"temperature": {
+						Type:    "float",
+						Default: 0.7,
 					},
 				},
 			},
-			expectedContextWindow: 8192, // Should still return default values
-			expectedMaxTokens:     2048, // Should still return default values
+			expectedContextWindow: 1000000,
+			expectedMaxTokens:     200000,
 			expectError:           false,
 		},
 	}
