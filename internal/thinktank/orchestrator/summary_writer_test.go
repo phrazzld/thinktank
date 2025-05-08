@@ -37,6 +37,45 @@ func stripAnsiColors(s string) string {
 	return ansiRegex.ReplaceAllString(s, "")
 }
 
+// TestStripAnsiColors tests the utility function that removes ANSI color codes
+func TestStripAnsiColors(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "No color codes",
+			input:    "Plain text with no colors",
+			expected: "Plain text with no colors",
+		},
+		{
+			name:     "Simple color code",
+			input:    "\033[31mRed text\033[0m",
+			expected: "Red text",
+		},
+		{
+			name:     "Multiple color codes",
+			input:    "\033[32mGreen\033[0m and \033[31mRed\033[0m",
+			expected: "Green and Red",
+		},
+		{
+			name:     "Complex formatting",
+			input:    "\033[1;36mBold Cyan\033[0m and \033[3;33;41mItalic Yellow on Red\033[0m",
+			expected: "Bold Cyan and Italic Yellow on Red",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := stripAnsiColors(tc.input)
+			if result != tc.expected {
+				t.Errorf("Expected '%s', got '%s'", tc.expected, result)
+			}
+		})
+	}
+}
+
 func TestGenerateSummary(t *testing.T) {
 	logger := NewSimpleTestLogger()
 	summaryWriter := NewSummaryWriter(logger)
