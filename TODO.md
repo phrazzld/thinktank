@@ -242,7 +242,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Test logging with a context containing a correlation ID and verify its presence in the output.
     - **Depends‑on:** [T008, T009]
 
-- [ ] **T011 · Test · P1: Add unit tests for logutil logger and correlation ID**
+- [x] **T011 · Test · P1: Add unit tests for logutil logger and correlation ID**
     - **Context:** Phase 1, Steps 2 & 3 from PLAN.md; Testing Strategy
     - **Action:**
         1. Create `internal/logutil/logger_test.go` and `context_test.go`.

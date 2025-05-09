@@ -197,3 +197,125 @@ func TestStreamSeparationFromLogLevel(t *testing.T) {
 		t.Error("Error message not found in stderr")
 	}
 }
+
+func TestStreamSeparation_CorrelationIDPropagation(t *testing.T) {
+	var stdoutBuf, stderrBuf bytes.Buffer
+	logger := NewSlogLoggerWithStreamSeparation(&stdoutBuf, &stderrBuf, slog.LevelDebug)
+
+	// Create a context with correlation ID
+	correlationID := "propagated-correlation-id"
+	ctx := WithCorrelationID(context.Background(), correlationID)
+
+	// Create a derived logger with the context
+	ctxLogger := logger.WithContext(ctx)
+
+	// Test context-aware methods with both the original context and nil/TODO context
+	ctxLogger.InfoContext(ctx, "explicit context log")
+	ctxLogger.InfoContext(context.TODO(), "implicit context log")
+	ctxLogger.ErrorContext(ctx, "explicit context error log")
+	ctxLogger.ErrorContext(context.TODO(), "implicit context error log")
+
+	stdoutOutput := stdoutBuf.String()
+	stderrOutput := stderrBuf.String()
+
+	// Parse JSON logs for detailed checking
+	stdoutLines := strings.Split(strings.TrimSpace(stdoutOutput), "\n")
+	stderrLines := strings.Split(strings.TrimSpace(stderrOutput), "\n")
+
+	// Check info logs in stdout
+	for i, line := range stdoutLines {
+		var logEntry map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			t.Fatalf("Failed to parse JSON log entry %d from stdout: %v", i, err)
+		}
+
+		// Check for correlation ID in each log
+		id, ok := logEntry["correlation_id"].(string)
+		if !ok {
+			t.Errorf("Log %d in stdout missing correlation_id", i)
+			continue
+		}
+
+		if id != correlationID {
+			t.Errorf("Log %d in stdout has wrong correlation_id: got %s, want %s", i, id, correlationID)
+		}
+	}
+
+	// Check error logs in stderr
+	for i, line := range stderrLines {
+		var logEntry map[string]interface{}
+		if err := json.Unmarshal([]byte(line), &logEntry); err != nil {
+			t.Fatalf("Failed to parse JSON log entry %d from stderr: %v", i, err)
+		}
+
+		// Check for correlation ID in each log
+		id, ok := logEntry["correlation_id"].(string)
+		if !ok {
+			t.Errorf("Log %d in stderr missing correlation_id", i)
+			continue
+		}
+
+		if id != correlationID {
+			t.Errorf("Log %d in stderr has wrong correlation_id: got %s, want %s", i, id, correlationID)
+		}
+	}
+}
+
+func TestStreamSeparation_ContextFallbacks(t *testing.T) {
+	var stdoutBuf, stderrBuf bytes.Buffer
+	logger := NewSlogLoggerWithStreamSeparation(&stdoutBuf, &stderrBuf, slog.LevelDebug)
+
+	// Test different context scenarios
+	ctx1 := WithCorrelationID(context.Background(), "id-1")
+	ctx2 := WithCorrelationID(context.Background(), "id-2")
+
+	// Create a logger with ctx1
+	ctxLogger := logger.WithContext(ctx1)
+
+	// Use explicit ctx2 (should override logger's ctx1)
+	ctxLogger.InfoContext(ctx2, "should use id-2")
+
+	// Use empty context (should fall back to logger's ctx1)
+	ctxLogger.InfoContext(context.TODO(), "should use id-1")
+
+	// Use empty context (should fall back to logger's ctx1)
+	ctxLogger.InfoContext(context.Background(), "should also use id-1")
+
+	stdoutOutput := stdoutBuf.String()
+	stdoutLines := strings.Split(strings.TrimSpace(stdoutOutput), "\n")
+
+	// Check each log line
+	if len(stdoutLines) != 3 {
+		t.Fatalf("Expected 3 log lines, got %d", len(stdoutLines))
+	}
+
+	// Parse and check the first log (should have id-2)
+	var log1 map[string]interface{}
+	if err := json.Unmarshal([]byte(stdoutLines[0]), &log1); err != nil {
+		t.Fatalf("Failed to parse first log: %v", err)
+	}
+
+	if id, ok := log1["correlation_id"].(string); !ok || id != "id-2" {
+		t.Errorf("First log should have correlation_id 'id-2', got: %v", log1["correlation_id"])
+	}
+
+	// Parse and check the second log (should have id-1)
+	var log2 map[string]interface{}
+	if err := json.Unmarshal([]byte(stdoutLines[1]), &log2); err != nil {
+		t.Fatalf("Failed to parse second log: %v", err)
+	}
+
+	if id, ok := log2["correlation_id"].(string); !ok || id != "id-1" {
+		t.Errorf("Second log should have correlation_id 'id-1', got: %v", log2["correlation_id"])
+	}
+
+	// Parse and check the third log (should have id-1)
+	var log3 map[string]interface{}
+	if err := json.Unmarshal([]byte(stdoutLines[2]), &log3); err != nil {
+		t.Fatalf("Failed to parse third log: %v", err)
+	}
+
+	if id, ok := log3["correlation_id"].(string); !ok || id != "id-1" {
+		t.Errorf("Third log should have correlation_id 'id-1', got: %v", log3["correlation_id"])
+	}
+}
