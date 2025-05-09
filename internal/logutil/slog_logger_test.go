@@ -122,6 +122,61 @@ func TestSlogLogger_FormatWithArgs(t *testing.T) {
 	}
 }
 
+func TestSlogLogger_StructuredLogging(t *testing.T) {
+	// Use a direct slog.Logger for testing structured logging
+	var buf bytes.Buffer
+	handler := slog.NewJSONHandler(&buf, nil)
+	slogLogger := slog.New(handler)
+
+	// Log with structured fields
+	slogLogger.Info("structured message",
+		"user_id", "user123",
+		"items_count", 42,
+		"verified", true,
+		"metadata.source", "api",
+		"metadata.version", "v1.2.3",
+	)
+
+	output := buf.String()
+
+	// Verify fields are present
+	if !strings.Contains(output, `"user_id":"user123"`) {
+		t.Error("user_id field not found in output")
+	}
+	if !strings.Contains(output, `"items_count":42`) {
+		t.Error("items_count field not found in output")
+	}
+	if !strings.Contains(output, `"verified":true`) {
+		t.Error("verified field not found in output")
+	}
+	if !strings.Contains(output, `"metadata.source":"api"`) {
+		t.Error("metadata.source field not found in output")
+	}
+}
+
+func TestSlogLogger_CorrelationIDInContext(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewSlogLogger(&buf, slog.LevelDebug)
+
+	// Create context with correlation ID
+	ctx := WithCustomCorrelationID(context.Background(), "test-correlation-id")
+
+	// Log a simple message with context
+	logger.InfoContext(ctx, "test message with correlation id")
+
+	output := buf.String()
+
+	// Verify correlation ID appears in the output
+	if !strings.Contains(output, `"correlation_id":"test-correlation-id"`) {
+		t.Error("Correlation ID not found in output")
+	}
+
+	// Verify message appears in the output
+	if !strings.Contains(output, `"msg":"test message with correlation id"`) {
+		t.Error("Message not found in output")
+	}
+}
+
 func TestConvertLogLevelToSlog(t *testing.T) {
 	testCases := []struct {
 		level       LogLevel
@@ -162,5 +217,84 @@ func TestNewSlogLoggerFromLogLevel(t *testing.T) {
 	// Info message should appear in output
 	if !strings.Contains(output, `"msg":"info message"`) {
 		t.Error("Info message not found in output")
+	}
+}
+
+func TestSlogLoggerWithStreamSeparation(t *testing.T) {
+	// Create buffers for info and error logs
+	var infoBuf, errorBuf bytes.Buffer
+	logger := NewSlogLoggerWithStreamSeparation(&infoBuf, &errorBuf, slog.LevelDebug)
+
+	// Log messages at different levels
+	logger.Debug("debug message")
+	logger.Info("info message")
+	logger.Warn("warn message")
+	logger.Error("error message")
+
+	infoOutput := infoBuf.String()
+	errorOutput := errorBuf.String()
+
+	// Info buffer should contain DEBUG and INFO messages
+	if !strings.Contains(infoOutput, `"level":"DEBUG"`) {
+		t.Error("Debug level not found in info output")
+	}
+	if !strings.Contains(infoOutput, `"level":"INFO"`) {
+		t.Error("Info level not found in info output")
+	}
+	if !strings.Contains(infoOutput, `"msg":"debug message"`) {
+		t.Error("Debug message not found in info output")
+	}
+	if !strings.Contains(infoOutput, `"msg":"info message"`) {
+		t.Error("Info message not found in info output")
+	}
+
+	// Info buffer should NOT contain WARN and ERROR messages
+	if strings.Contains(infoOutput, `"level":"WARN"`) {
+		t.Error("Warn level found in info output but should be in error output")
+	}
+	if strings.Contains(infoOutput, `"level":"ERROR"`) {
+		t.Error("Error level found in info output but should be in error output")
+	}
+
+	// Error buffer should contain WARN and ERROR messages
+	if !strings.Contains(errorOutput, `"level":"WARN"`) {
+		t.Error("Warn level not found in error output")
+	}
+	if !strings.Contains(errorOutput, `"level":"ERROR"`) {
+		t.Error("Error level not found in error output")
+	}
+	if !strings.Contains(errorOutput, `"msg":"warn message"`) {
+		t.Error("Warn message not found in error output")
+	}
+	if !strings.Contains(errorOutput, `"msg":"error message"`) {
+		t.Error("Error message not found in error output")
+	}
+
+	// Error buffer should NOT contain DEBUG and INFO messages
+	if strings.Contains(errorOutput, `"level":"DEBUG"`) {
+		t.Error("Debug level found in error output but should be in info output")
+	}
+	if strings.Contains(errorOutput, `"level":"INFO"`) {
+		t.Error("Info level found in error output but should be in info output")
+	}
+}
+
+func TestEnableStreamSeparation_Basic(t *testing.T) {
+	// Create a standard logger without stream separation
+	var buf bytes.Buffer
+	logger := NewSlogLogger(&buf, slog.LevelDebug)
+
+	// Convert to stream-separated logger
+	streamLogger := EnableStreamSeparation(logger)
+
+	// Verify it was converted
+	if !streamLogger.streamSplit {
+		t.Error("Logger should have streamSplit=true after EnableStreamSeparation")
+	}
+
+	// Verify a logger that's already stream-separated stays as is
+	sameLogger := EnableStreamSeparation(streamLogger)
+	if sameLogger != streamLogger {
+		t.Error("EnableStreamSeparation should return same logger if already stream-separated")
 	}
 }

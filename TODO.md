@@ -205,7 +205,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Code review confirms interface method signatures.
     - **Depends‑on:** none
 
-- [ ] **T008 · Feature · P1: Implement slog-based JSON logger**
+- [x] **T008 · Feature · P1: Implement slog-based JSON logger**
     - **Context:** Phase 1, Step 2 from PLAN.md (Setup slog Logging)
     - **Action:**
         1. In `internal/logutil`, implement a struct (e.g., `SlogLogger`) that satisfies `LoggerInterface`.

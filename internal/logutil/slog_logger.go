@@ -189,104 +189,180 @@ func (s *SlogLogger) Fatal(format string, args ...interface{}) {
 }
 
 // DebugContext logs a message at DEBUG level with correlation ID from context
-func (s *SlogLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	correlationID := GetCorrelationID(ctx)
+// and optional key-value pairs for structured logging
+func (s *SlogLogger) DebugContext(ctx context.Context, msg string, args ...interface{}) {
+	// Handle structured logging differently than format string
+	var message string
+	var kvPairs []interface{}
 
-	if s.streamSplit {
-		if correlationID != "" {
-			s.infoLogger.DebugContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.infoLogger.DebugContext(ctx, message)
-		}
+	// Check if first argument is a slog.Attr, which indicates structured logging
+	isStructured := len(args) > 0 && isAttr(args[0])
+
+	if isStructured {
+		// For structured logging, use message as is and pass all args as key-value pairs
+		message = msg
+		kvPairs = args
 	} else {
-		if correlationID != "" {
-			s.logger.DebugContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.logger.DebugContext(ctx, message)
-		}
+		// For format string, format the message
+		message = fmt.Sprintf(msg, args...)
+	}
+
+	// Add correlation ID if present
+	correlationID := GetCorrelationID(ctx)
+	if correlationID != "" {
+		kvPairs = append(kvPairs, slog.String("correlation_id", correlationID))
+	}
+
+	// Log with appropriate logger based on stream separation
+	if s.streamSplit {
+		s.infoLogger.DebugContext(ctx, message, kvPairs...)
+	} else {
+		s.logger.DebugContext(ctx, message, kvPairs...)
 	}
 }
 
 // InfoContext logs a message at INFO level with correlation ID from context
-func (s *SlogLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	correlationID := GetCorrelationID(ctx)
+// and optional key-value pairs for structured logging
+func (s *SlogLogger) InfoContext(ctx context.Context, msg string, args ...interface{}) {
+	// Handle structured logging differently than format string
+	var message string
+	var kvPairs []interface{}
 
-	if s.streamSplit {
-		if correlationID != "" {
-			s.infoLogger.InfoContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.infoLogger.InfoContext(ctx, message)
-		}
+	// Check if first argument is a slog.Attr, which indicates structured logging
+	isStructured := len(args) > 0 && isAttr(args[0])
+
+	if isStructured {
+		// For structured logging, use message as is and pass all args as key-value pairs
+		message = msg
+		kvPairs = args
 	} else {
-		if correlationID != "" {
-			s.logger.InfoContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.logger.InfoContext(ctx, message)
-		}
+		// For format string, format the message
+		message = fmt.Sprintf(msg, args...)
+	}
+
+	// Add correlation ID if present
+	correlationID := GetCorrelationID(ctx)
+	if correlationID != "" {
+		kvPairs = append(kvPairs, slog.String("correlation_id", correlationID))
+	}
+
+	// Log with appropriate logger based on stream separation
+	if s.streamSplit {
+		s.infoLogger.InfoContext(ctx, message, kvPairs...)
+	} else {
+		s.logger.InfoContext(ctx, message, kvPairs...)
 	}
 }
 
 // WarnContext logs a message at WARN level with correlation ID from context
-func (s *SlogLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	correlationID := GetCorrelationID(ctx)
+// and optional key-value pairs for structured logging
+func (s *SlogLogger) WarnContext(ctx context.Context, msg string, args ...interface{}) {
+	// Handle structured logging differently than format string
+	var message string
+	var kvPairs []interface{}
 
-	if s.streamSplit {
-		if correlationID != "" {
-			s.errorLogger.WarnContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.errorLogger.WarnContext(ctx, message)
-		}
+	// Check if first argument is a slog.Attr, which indicates structured logging
+	isStructured := len(args) > 0 && isAttr(args[0])
+
+	if isStructured {
+		// For structured logging, use message as is and pass all args as key-value pairs
+		message = msg
+		kvPairs = args
 	} else {
-		if correlationID != "" {
-			s.logger.WarnContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.logger.WarnContext(ctx, message)
-		}
+		// For format string, format the message
+		message = fmt.Sprintf(msg, args...)
+	}
+
+	// Add correlation ID if present
+	correlationID := GetCorrelationID(ctx)
+	if correlationID != "" {
+		kvPairs = append(kvPairs, slog.String("correlation_id", correlationID))
+	}
+
+	// Log with appropriate logger based on stream separation
+	if s.streamSplit {
+		s.errorLogger.WarnContext(ctx, message, kvPairs...)
+	} else {
+		s.logger.WarnContext(ctx, message, kvPairs...)
 	}
 }
 
 // ErrorContext logs a message at ERROR level with correlation ID from context
-func (s *SlogLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	correlationID := GetCorrelationID(ctx)
+// and optional key-value pairs for structured logging
+func (s *SlogLogger) ErrorContext(ctx context.Context, msg string, args ...interface{}) {
+	// Handle structured logging differently than format string
+	var message string
+	var kvPairs []interface{}
 
-	if s.streamSplit {
-		if correlationID != "" {
-			s.errorLogger.ErrorContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.errorLogger.ErrorContext(ctx, message)
-		}
+	// Check if first argument is a slog.Attr, which indicates structured logging
+	isStructured := len(args) > 0 && isAttr(args[0])
+
+	if isStructured {
+		// For structured logging, use message as is and pass all args as key-value pairs
+		message = msg
+		kvPairs = args
 	} else {
-		if correlationID != "" {
-			s.logger.ErrorContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.logger.ErrorContext(ctx, message)
-		}
+		// For format string, format the message
+		message = fmt.Sprintf(msg, args...)
+	}
+
+	// Add correlation ID if present
+	correlationID := GetCorrelationID(ctx)
+	if correlationID != "" {
+		kvPairs = append(kvPairs, slog.String("correlation_id", correlationID))
+	}
+
+	// Log with appropriate logger based on stream separation
+	if s.streamSplit {
+		s.errorLogger.ErrorContext(ctx, message, kvPairs...)
+	} else {
+		s.logger.ErrorContext(ctx, message, kvPairs...)
 	}
 }
 
-// FatalContext logs a message at ERROR level with correlation ID from context and then exits
-func (s *SlogLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	correlationID := GetCorrelationID(ctx)
+// FatalContext logs a message at ERROR level with correlation ID from context
+// and optional key-value pairs for structured logging, then exits
+func (s *SlogLogger) FatalContext(ctx context.Context, msg string, args ...interface{}) {
+	// Handle structured logging differently than format string
+	var message string
+	var kvPairs []interface{}
 
-	if s.streamSplit {
-		if correlationID != "" {
-			s.errorLogger.ErrorContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.errorLogger.ErrorContext(ctx, message)
-		}
+	// Check if first argument is a slog.Attr, which indicates structured logging
+	isStructured := len(args) > 0 && isAttr(args[0])
+
+	if isStructured {
+		// For structured logging, use message as is and pass all args as key-value pairs
+		message = msg
+		kvPairs = args
 	} else {
-		if correlationID != "" {
-			s.logger.ErrorContext(ctx, message, slog.String("correlation_id", correlationID))
-		} else {
-			s.logger.ErrorContext(ctx, message)
-		}
+		// For format string, format the message
+		message = fmt.Sprintf(msg, args...)
+	}
+
+	// Add correlation ID if present
+	correlationID := GetCorrelationID(ctx)
+	if correlationID != "" {
+		kvPairs = append(kvPairs, slog.String("correlation_id", correlationID))
+	}
+
+	// Log with appropriate logger based on stream separation
+	if s.streamSplit {
+		s.errorLogger.ErrorContext(ctx, message, kvPairs...)
+	} else {
+		s.logger.ErrorContext(ctx, message, kvPairs...)
 	}
 	osExit(1)
+}
+
+// isAttr checks if the interface is a slog.Attr or can be used as a structured logging attribute
+func isAttr(arg interface{}) bool {
+	switch arg.(type) {
+	case slog.Attr, *slog.Attr, slog.Value:
+		return true
+	default:
+		// Check if it's a slog helper function result like slog.String()
+		return fmt.Sprintf("%T", arg) == "slog.Attr"
+	}
 }
 
 // Println implements the standard logger interface, logs at INFO level
