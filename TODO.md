@@ -178,7 +178,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Unit tests verify behavior with direct and wrapped `LLMError` instances.
     - **Depends‑on:** [T003]
 
-- [ ] **T006 · Test · P1: Add unit tests for llm error types and helpers**
+- [x] **T006 · Test · P1: Add unit tests for llm error types and helpers**
     - **Context:** Phase 1, Step 1 from PLAN.md; Testing Strategy
     - **Action:**
         1. Create `internal/llm/errors_test.go`.
