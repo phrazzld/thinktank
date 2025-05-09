@@ -230,7 +230,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Unit tests verify setting and getting correlation IDs.
     - **Depends‑on:** none
 
-- [ ] **T010 · Refactor · P1: Update slog logger to include correlation ID**
+- [x] **T010 · Refactor · P1: Update slog logger to include correlation ID**
     - **Context:** Phase 1, Step 3 from PLAN.md (Implement Correlation ID)
     - **Action:**
         1. Modify the `SlogLogger` implementation.

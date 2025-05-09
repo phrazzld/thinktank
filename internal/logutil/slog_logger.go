@@ -139,58 +139,42 @@ func (s *SlogLogger) WithContext(ctx context.Context) LoggerInterface {
 
 // Debug logs a message at DEBUG level
 func (s *SlogLogger) Debug(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	if s.streamSplit {
-		s.infoLogger.Debug(message)
-	} else {
-		s.logger.Debug(message)
-	}
+	// Use DebugContext with the logger's context to ensure correlation ID is included
+	s.DebugContext(s.ctx, format, args...)
 }
 
 // Info logs a message at INFO level
 func (s *SlogLogger) Info(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	if s.streamSplit {
-		s.infoLogger.Info(message)
-	} else {
-		s.logger.Info(message)
-	}
+	// Use InfoContext with the logger's context to ensure correlation ID is included
+	s.InfoContext(s.ctx, format, args...)
 }
 
 // Warn logs a message at WARN level
 func (s *SlogLogger) Warn(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	if s.streamSplit {
-		s.errorLogger.Warn(message)
-	} else {
-		s.logger.Warn(message)
-	}
+	// Use WarnContext with the logger's context to ensure correlation ID is included
+	s.WarnContext(s.ctx, format, args...)
 }
 
 // Error logs a message at ERROR level
 func (s *SlogLogger) Error(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	if s.streamSplit {
-		s.errorLogger.Error(message)
-	} else {
-		s.logger.Error(message)
-	}
+	// Use ErrorContext with the logger's context to ensure correlation ID is included
+	s.ErrorContext(s.ctx, format, args...)
 }
 
 // Fatal logs a message at ERROR level and then exits
 func (s *SlogLogger) Fatal(format string, args ...interface{}) {
-	message := fmt.Sprintf(format, args...)
-	if s.streamSplit {
-		s.errorLogger.Error(message)
-	} else {
-		s.logger.Error(message)
-	}
-	osExit(1)
+	// Use FatalContext with the logger's context to ensure correlation ID is included
+	s.FatalContext(s.ctx, format, args...)
 }
 
 // DebugContext logs a message at DEBUG level with correlation ID from context
 // and optional key-value pairs for structured logging
 func (s *SlogLogger) DebugContext(ctx context.Context, msg string, args ...interface{}) {
+	// If empty context is provided, use the logger's internal context
+	if ctx == context.TODO() || ctx == context.Background() || ctx == nil {
+		ctx = s.ctx
+	}
+
 	// Handle structured logging differently than format string
 	var message string
 	var kvPairs []interface{}
@@ -224,6 +208,11 @@ func (s *SlogLogger) DebugContext(ctx context.Context, msg string, args ...inter
 // InfoContext logs a message at INFO level with correlation ID from context
 // and optional key-value pairs for structured logging
 func (s *SlogLogger) InfoContext(ctx context.Context, msg string, args ...interface{}) {
+	// If empty context is provided, use the logger's internal context
+	if ctx == context.TODO() || ctx == context.Background() || ctx == nil {
+		ctx = s.ctx
+	}
+
 	// Handle structured logging differently than format string
 	var message string
 	var kvPairs []interface{}
@@ -257,6 +246,11 @@ func (s *SlogLogger) InfoContext(ctx context.Context, msg string, args ...interf
 // WarnContext logs a message at WARN level with correlation ID from context
 // and optional key-value pairs for structured logging
 func (s *SlogLogger) WarnContext(ctx context.Context, msg string, args ...interface{}) {
+	// If empty context is provided, use the logger's internal context
+	if ctx == context.TODO() || ctx == context.Background() || ctx == nil {
+		ctx = s.ctx
+	}
+
 	// Handle structured logging differently than format string
 	var message string
 	var kvPairs []interface{}
@@ -290,6 +284,11 @@ func (s *SlogLogger) WarnContext(ctx context.Context, msg string, args ...interf
 // ErrorContext logs a message at ERROR level with correlation ID from context
 // and optional key-value pairs for structured logging
 func (s *SlogLogger) ErrorContext(ctx context.Context, msg string, args ...interface{}) {
+	// If empty context is provided, use the logger's internal context
+	if ctx == context.TODO() || ctx == context.Background() || ctx == nil {
+		ctx = s.ctx
+	}
+
 	// Handle structured logging differently than format string
 	var message string
 	var kvPairs []interface{}
@@ -323,6 +322,11 @@ func (s *SlogLogger) ErrorContext(ctx context.Context, msg string, args ...inter
 // FatalContext logs a message at ERROR level with correlation ID from context
 // and optional key-value pairs for structured logging, then exits
 func (s *SlogLogger) FatalContext(ctx context.Context, msg string, args ...interface{}) {
+	// If empty context is provided, use the logger's internal context
+	if ctx == context.TODO() || ctx == context.Background() || ctx == nil {
+		ctx = s.ctx
+	}
+
 	// Handle structured logging differently than format string
 	var message string
 	var kvPairs []interface{}
@@ -368,21 +372,14 @@ func isAttr(arg interface{}) bool {
 // Println implements the standard logger interface, logs at INFO level
 func (s *SlogLogger) Println(v ...interface{}) {
 	message := fmt.Sprintln(v...)
-	if s.streamSplit {
-		s.infoLogger.Info(message)
-	} else {
-		s.logger.Info(message)
-	}
+	// Use InfoContext with the logger's context to ensure correlation ID is included
+	s.InfoContext(s.ctx, message)
 }
 
 // Printf implements the standard logger interface, logs at INFO level
 func (s *SlogLogger) Printf(format string, v ...interface{}) {
-	message := fmt.Sprintf(format, v...)
-	if s.streamSplit {
-		s.infoLogger.Info(message)
-	} else {
-		s.logger.Info(message)
-	}
+	// Use InfoContext with the logger's context to ensure correlation ID is included
+	s.InfoContext(s.ctx, format, v...)
 }
 
 // ConvertLogLevelToSlog converts our LogLevel to slog.Level
