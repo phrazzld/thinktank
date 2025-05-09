@@ -194,7 +194,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Core Logging Framework (`internal/logutil`)
 
-- [ ] **T007 · Feature · P0: Define LoggerInterface with context-aware methods**
+- [x] **T007 · Feature · P0: Define LoggerInterface with context-aware methods**
     - **Context:** Phase 1, Step 2 from PLAN.md (Setup slog Logging)
     - **Action:**
         1. Create `internal/logutil/logger.go`.

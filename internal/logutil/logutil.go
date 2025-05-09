@@ -1,4 +1,17 @@
-// internal/logutil/logutil.go
+// Package logutil provides unified logging functionality with support for
+// structured logging, contextual information, and correlation IDs.
+//
+// The package provides a LoggerInterface that abstracts over different logging
+// implementations. This interface supports:
+// - Context-aware logging methods to propagate correlation IDs
+// - Structured logging with key-value pairs
+// - Multiple log levels (Debug, Info, Warn, Error, Fatal)
+// - Stream separation for different log levels
+//
+// Key components:
+// - LoggerInterface: The primary interface that all loggers implement
+// - Logger: A basic logger implementation with correlation ID support
+// - SlogLogger: An implementation using Go's log/slog package for structured logging
 package logutil
 
 import (
@@ -54,25 +67,29 @@ func GetCorrelationID(ctx context.Context) string {
 	return id
 }
 
-// LoggerInterface defines the common logging interface
-// This allows both our structured Logger and the standard log.Logger
-// to be used interchangeably
+// LoggerInterface defines a comprehensive logging interface with context-awareness
+// that can be implemented by different logger backends (e.g., slog, zerolog, etc.)
 type LoggerInterface interface {
-	// Standard logging methods
-	Println(v ...interface{})
-	Printf(format string, v ...interface{})
+	// Context-aware logging methods with structured key-value pairs
+	// The args parameter supports alternating key-value pairs that will be included
+	// in the structured log output. For example:
+	//   logger.InfoContext(ctx, "user logged in", "user_id", 123, "ip", "192.168.1.1")
+	DebugContext(ctx context.Context, msg string, args ...any)
+	InfoContext(ctx context.Context, msg string, args ...any)
+	WarnContext(ctx context.Context, msg string, args ...any)
+	ErrorContext(ctx context.Context, msg string, args ...any)
+	FatalContext(ctx context.Context, msg string, args ...any)
+
+	// Standard logging methods (prefer context-aware methods when possible)
 	Debug(format string, v ...interface{})
 	Info(format string, v ...interface{})
 	Warn(format string, v ...interface{})
 	Error(format string, v ...interface{})
 	Fatal(format string, v ...interface{})
 
-	// Context-aware logging methods
-	DebugContext(ctx context.Context, format string, v ...interface{})
-	InfoContext(ctx context.Context, format string, v ...interface{})
-	WarnContext(ctx context.Context, format string, v ...interface{})
-	ErrorContext(ctx context.Context, format string, v ...interface{})
-	FatalContext(ctx context.Context, format string, v ...interface{})
+	// Legacy compatibility methods (use Info/InfoContext instead when possible)
+	Println(v ...interface{})
+	Printf(format string, v ...interface{})
 
 	// WithContext returns a logger with context information attached
 	WithContext(ctx context.Context) LoggerInterface
