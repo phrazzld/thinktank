@@ -218,7 +218,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Manually inspect sample log output for correct JSON structure and fields (timestamp, level, msg).
     - **Depends‑on:** [T007]
 
-- [ ] **T009 · Feature · P1: Implement correlation ID context helpers**
+- [x] **T009 · Feature · P1: Implement correlation ID context helpers**
     - **Context:** Phase 1, Step 3 from PLAN.md (Implement Correlation ID)
     - **Action:**
         1. In `internal/logutil/context.go` (or similar), add `WithCorrelationID(ctx context.Context, id string) context.Context`. If `id` is empty, generate a new UUID.

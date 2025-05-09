@@ -407,13 +407,38 @@ func TestCorrelationIDFunctions(t *testing.T) {
 		t.Errorf("WithCorrelationID should have preserved existing ID %q, got %q", id, newID)
 	}
 
-	// Test WithCustomCorrelationID sets custom ID
+	// Test WithCorrelationID with empty ID parameter preserves existing ID
+	emptyIDCtx := WithCorrelationID(ctxWithID, "")
+	emptyID := GetCorrelationID(emptyIDCtx)
+
+	if emptyID != id {
+		t.Errorf("WithCorrelationID with empty ID should have preserved existing ID %q, got %q", id, emptyID)
+	}
+
+	// Test WithCorrelationID with custom ID parameter sets the ID
 	customID := "custom-test-id-123"
-	customCtx := WithCustomCorrelationID(ctx, customID)
+	customCtx := WithCorrelationID(ctx, customID)
 	resultID := GetCorrelationID(customCtx)
 
 	if resultID != customID {
-		t.Errorf("WithCustomCorrelationID should have set ID to %q, got %q", customID, resultID)
+		t.Errorf("WithCorrelationID with custom ID should have set ID to %q, got %q", customID, resultID)
+	}
+
+	// Test WithCorrelationID with custom ID parameter overrides existing ID
+	overrideCtx := WithCorrelationID(ctxWithID, "override-id")
+	overrideID := GetCorrelationID(overrideCtx)
+
+	if overrideID != "override-id" {
+		t.Errorf("WithCorrelationID with custom ID should have overridden existing ID, got %q", overrideID)
+	}
+
+	// Test WithCustomCorrelationID sets custom ID
+	customID2 := "custom-test-id-456"
+	customCtx2 := WithCustomCorrelationID(ctx, customID2)
+	resultID2 := GetCorrelationID(customCtx2)
+
+	if resultID2 != customID2 {
+		t.Errorf("WithCustomCorrelationID should have set ID to %q, got %q", customID2, resultID2)
 	}
 
 	// Test GetCorrelationID with nil context (using context.TODO() instead of nil)
@@ -423,7 +448,7 @@ func TestCorrelationIDFunctions(t *testing.T) {
 	}
 
 	// Test GetCorrelationID with context that has no correlation ID
-	emptyID := GetCorrelationID(context.Background())
+	emptyID = GetCorrelationID(context.Background())
 	if emptyID != "" {
 		t.Errorf("GetCorrelationID with empty context should return empty string, got %q", emptyID)
 	}

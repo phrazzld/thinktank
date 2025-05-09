@@ -35,22 +35,46 @@ type ContextKey string
 // CorrelationIDKey is the context key for correlation ID
 const CorrelationIDKey ContextKey = "correlation_id"
 
-// WithCorrelationID adds correlation ID to the context
-// If an ID already exists in the context, it is preserved
-func WithCorrelationID(ctx context.Context) context.Context {
-	// Check if correlation ID already exists
-	if id := GetCorrelationID(ctx); id != "" {
-		return ctx
+// WithCorrelationID adds a correlation ID to the context.
+// If an ID already exists in the context, it is preserved.
+// If no correlation ID is present, a new UUID is generated.
+//
+// This function has been enhanced to accept an optional ID parameter.
+// When called with no parameters, it behaves like the original WithCorrelationID.
+// When called with an ID parameter, it behaves like WithCustomCorrelationID.
+//
+// Usage:
+//
+//	// Generate and add a new correlation ID (preserves any existing ID)
+//	ctx = logutil.WithCorrelationID(ctx)
+//
+//	// Set a specific correlation ID (replaces any existing ID)
+//	ctx = logutil.WithCorrelationID(ctx, "custom-id-123")
+func WithCorrelationID(ctx context.Context, id ...string) context.Context {
+	// Check if correlation ID already exists and if we're using the no-args version
+	// or the empty string version - in both cases, preserve existing ID
+	if existingID := GetCorrelationID(ctx); existingID != "" {
+		if len(id) == 0 || (len(id) > 0 && id[0] == "") {
+			// Preserve existing ID
+			return ctx
+		}
 	}
 
-	// Generate a new correlation ID and add to context
-	id := uuid.New().String()
-	return context.WithValue(ctx, CorrelationIDKey, id)
+	// If a custom ID is provided and it's not empty, use it
+	if len(id) > 0 && id[0] != "" {
+		return context.WithValue(ctx, CorrelationIDKey, id[0])
+	}
+
+	// Otherwise generate a new ID
+	newID := uuid.New().String()
+	return context.WithValue(ctx, CorrelationIDKey, newID)
 }
 
-// WithCustomCorrelationID adds a custom correlation ID to the context
+// WithCustomCorrelationID adds a custom correlation ID to the context.
+// This is maintained for backward compatibility, but new code should use
+// WithCorrelationID(ctx, id) instead.
 func WithCustomCorrelationID(ctx context.Context, id string) context.Context {
-	return context.WithValue(ctx, CorrelationIDKey, id)
+	return WithCorrelationID(ctx, id)
 }
 
 // GetCorrelationID retrieves correlation ID from context, or returns
