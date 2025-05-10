@@ -17,10 +17,10 @@ import (
 // Use BoundaryAPIService from boundary_test_adapter.go instead
 type MockAPIService struct {
 	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
-	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
-	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
-	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
-	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	GetModelParametersFunc     func(ctx context.Context, modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc    func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 	ProcessLLMResponseFunc     func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc   func(err error) bool
 	IsSafetyBlockedErrorFunc   func(err error) bool
@@ -34,30 +34,30 @@ func (m *MockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, a
 	return nil, nil
 }
 
-func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	if m.GetModelParametersFunc != nil {
-		return m.GetModelParametersFunc(modelName)
+		return m.GetModelParametersFunc(ctx, modelName)
 	}
 	return map[string]interface{}{}, nil
 }
 
-func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	if m.ValidateModelParameterFunc != nil {
-		return m.ValidateModelParameterFunc(modelName, paramName, value)
+		return m.ValidateModelParameterFunc(ctx, modelName, paramName, value)
 	}
 	return true, nil
 }
 
-func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	if m.GetModelDefinitionFunc != nil {
-		return m.GetModelDefinitionFunc(modelName)
+		return m.GetModelDefinitionFunc(ctx, modelName)
 	}
 	return nil, nil
 }
 
-func (m *MockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *MockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	if m.GetModelTokenLimitsFunc != nil {
-		return m.GetModelTokenLimitsFunc(modelName)
+		return m.GetModelTokenLimitsFunc(ctx, modelName)
 	}
 	return 0, 0, nil
 }

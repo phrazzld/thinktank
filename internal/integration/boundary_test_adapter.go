@@ -308,7 +308,7 @@ func (s *BoundaryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 }
 
 // GetModelParameters retrieves parameter values for a given model
-func (s *BoundaryAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (s *BoundaryAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	// Return default parameters
 	return map[string]interface{}{
 		"temperature": 0.7,
@@ -317,7 +317,7 @@ func (s *BoundaryAPIService) GetModelParameters(modelName string) (map[string]in
 }
 
 // ValidateModelParameter validates a parameter value against its constraints
-func (s *BoundaryAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (s *BoundaryAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	// Basic validation
 	switch paramName {
 	case "temperature":
@@ -337,7 +337,7 @@ func (s *BoundaryAPIService) ValidateModelParameter(modelName, paramName string,
 }
 
 // GetModelDefinition retrieves the model definition
-func (s *BoundaryAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (s *BoundaryAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	// Create a basic model definition
 	return &registry.ModelDefinition{
 		Name:     modelName,
@@ -360,7 +360,7 @@ func getProviderFromModelName(modelName string) string {
 }
 
 // GetModelTokenLimits retrieves token limits for a given model
-func (s *BoundaryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (s *BoundaryAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	// Return reasonable defaults based on model
 	modelLower := strings.ToLower(modelName)
 	if strings.Contains(modelLower, "gpt-4") {

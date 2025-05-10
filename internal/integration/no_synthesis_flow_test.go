@@ -89,7 +89,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 				},
 			}, nil
 		},
-		GetModelParametersFunc: func(modelName string) (map[string]interface{}, error) {
+		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
 	}
