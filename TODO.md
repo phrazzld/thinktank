@@ -338,6 +338,37 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Trigger audit events and verify the log output format and content.
     - **Depends‑on:** [T007, T009]
 
+- [ ] **T038 · Fix · P1: Update mock AuditLogger implementations for context-aware interface**
+    - **Context:** Follow-up to T017 to fix failing builds and tests
+    - **Action:**
+        1. Update MockLogger in internal/testutil/mocklogger.go to implement context-aware AuditLogger interface
+        2. Update BoundaryAuditLogger in internal/integration/boundary_test_adapter.go
+        3. Update all other mock implementations of AuditLogger in test files
+        4. Add tests for context handling in mock loggers
+    - **Done‑when:**
+        1. All mock AuditLogger implementations correctly implement the context-aware interface
+        2. All tests pass with the updated interfaces
+    - **Verification:**
+        1. Run the full test suite
+        2. Verify mock loggers properly handle correlation IDs
+    - **Depends‑on:** [T017]
+
+- [ ] **T039 · Fix · P1: Update application code for context-aware AuditLogger interface**
+    - **Context:** Follow-up to T017 to update calling code
+    - **Action:**
+        1. Update internal/thinktank/app.go to pass context to AuditLogger methods
+        2. Update internal/thinktank/modelproc/processor.go to use context with AuditLogger
+        3. Add context parameter to all functions that use AuditLogger if not already present
+        4. Update all other direct callers of AuditLogger.Log and AuditLogger.LogOp methods
+    - **Done‑when:**
+        1. All calls to AuditLogger methods correctly pass context
+        2. Application builds without errors
+        3. All tests pass with the updated code
+    - **Verification:**
+        1. Run the full test suite
+        2. Verify correlation IDs are properly propagated through the application
+    - **Depends‑on:** [T017, T038]
+
 - [ ] **T018 · Test · P2: Add/update integration tests for core thinktank components**
     - **Context:** Phase 3, Step 5 from PLAN.md; Testing Strategy
     - **Action:**
