@@ -312,7 +312,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Test error propagation from modelproc, ensuring errors are `LLMError` or wrap one.
     - **Depends‑on:** [T004, T007, T009, T012]
 
-- [ ] **T016 · Refactor · P1: Update thinktank/orchestrator for context, logging, and error aggregation**
+- [x] **T016 · Refactor · P1: Update thinktank/orchestrator for context, logging, and error aggregation** ✅
     - **Context:** Phase 3, Step 5 from PLAN.md (Refactor Core Components)
     - **Action:**
         1. Modify method signatures in `internal/thinktank/orchestrator` to accept `context.Context`.

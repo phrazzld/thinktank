@@ -114,7 +114,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// Step 3: Build the complete prompt
-	stitchedPrompt := o.buildPrompt(instructions, contextFiles)
+	stitchedPrompt := o.buildPrompt(ctx, instructions, contextFiles)
 
 	// Step 4: Process all models and handle errors
 	modelOutputs, processingErr, criticalErr := o.processModelsWithErrorHandling(ctx, stitchedPrompt, contextLogger)
@@ -147,7 +147,10 @@ func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.Fil
 
 	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed during project context gathering: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
+		return nil, nil, WrapOrchestratorError(
+			ErrModelProcessingCancelled,
+			fmt.Sprintf("failed during project context gathering: %v", err),
+		)
 	}
 
 	return contextFiles, contextStats, nil
@@ -248,17 +251,20 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 func (o *Orchestrator) handleDryRun(ctx context.Context, stats *interfaces.ContextStats) error {
 	err := o.contextGatherer.DisplayDryRunInfo(ctx, stats)
 	if err != nil {
-		o.logger.Error("Error displaying dry run information: %v", err)
-		return fmt.Errorf("error displaying dry run information: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
+		o.logger.ErrorContext(ctx, "Error displaying dry run information: %v", err)
+		return WrapOrchestratorError(
+			ErrModelProcessingCancelled,
+			fmt.Sprintf("error displaying dry run information: %v", err),
+		)
 	}
 	return nil
 }
 
 // buildPrompt creates the complete prompt by combining instructions with context files.
-func (o *Orchestrator) buildPrompt(instructions string, contextFiles []fileutil.FileMeta) string {
+func (o *Orchestrator) buildPrompt(ctx context.Context, instructions string, contextFiles []fileutil.FileMeta) string {
 	stitchedPrompt := prompt.StitchPrompt(instructions, contextFiles)
-	o.logger.Info("Prompt constructed successfully")
-	o.logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
+	o.logger.InfoContext(ctx, "Prompt constructed successfully")
+	o.logger.DebugContext(ctx, "Stitched prompt length: %d characters", len(stitchedPrompt))
 	return stitchedPrompt
 }
 
@@ -368,7 +374,9 @@ func (o *Orchestrator) processModelWithRateLimit(
 	acquireStart := time.Now()
 	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
 		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
-		result.err = fmt.Errorf("model %s rate limit: %w", modelName, err)
+		result.err = llm.Wrap(err, "orchestrator",
+			fmt.Sprintf("failed to acquire rate limiter for model %s", modelName),
+			llm.CategoryRateLimit)
 		resultChan <- result
 		return
 	}
@@ -395,7 +403,16 @@ func (o *Orchestrator) processModelWithRateLimit(
 	content, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
-		result.err = fmt.Errorf("model %s: %w", modelName, err)
+		// The error from processor.Process is already an LLMError, but we'll add our own context
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			result.err = llm.Wrap(err, "orchestrator",
+				fmt.Sprintf("model %s processing failed", modelName),
+				catErr.Category())
+		} else {
+			result.err = llm.Wrap(err, "orchestrator",
+				fmt.Sprintf("model %s processing failed", modelName),
+				llm.CategoryInvalidRequest)
+		}
 		resultChan <- result
 		return
 	}
@@ -615,6 +632,27 @@ func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string
 
 	// Synthesis model specified - process all outputs with synthesis model
 	synthesisPath, err := o.runSynthesisFlow(ctx, instructions, modelOutputs)
+
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+
+	if err != nil {
+		// If synthesis fails, fall back to saving individual outputs
+		contextLogger.WarnContext(ctx, "Synthesis failed, falling back to saving individual outputs: %v", err)
+		filePaths, fallbackErr := o.runIndividualOutputFlow(ctx, modelOutputs)
+		if filePaths != nil {
+			outputInfo.IndividualFilePaths = filePaths
+		}
+
+		// If the fallback also failed, log it
+		if fallbackErr != nil {
+			contextLogger.ErrorContext(ctx, "Fallback to individual outputs also failed: %v", fallbackErr)
+		}
+
+		// Still return the synthesis error, but now we've saved individual files as fallback
+		return outputInfo, err
+	}
+
 	if synthesisPath != "" {
 		outputInfo.SynthesisFilePath = synthesisPath
 	}
@@ -623,39 +661,117 @@ func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string
 
 // handleProcessingOutcome combines and reports any errors from model processing and file saving.
 // It formats and logs appropriate error messages based on the types of errors encountered.
+// It also categorizes errors using the llm.ErrorCategory system for consistent handling.
 func (o *Orchestrator) handleProcessingOutcome(ctx context.Context, processingErr, fileSaveErr error, contextLogger logutil.LoggerInterface) error {
 	if processingErr != nil && fileSaveErr != nil {
 		// Combine model and file save errors
-		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
+		// Detect the categories of both errors
+		procCategory := llm.CategoryUnknown
+		if catErr, ok := llm.IsCategorizedError(processingErr); ok {
+			procCategory = catErr.Category()
+		}
+
+		// Default file errors to server category
+		fileCategory := llm.CategoryServer
+		if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+			fileCategory = catErr.Category()
+		}
+
+		// Use the more severe category for the combined error
+		category := procCategory
+		if fileCategory == llm.CategoryAuth ||
+			fileCategory == llm.CategoryInsufficientCredits ||
+			fileCategory == llm.CategoryRateLimit {
+			category = fileCategory
+		}
+
+		// Create a combined error message
+		msg := fmt.Sprintf("model processing errors and file save errors occurred: %v; additionally: %v",
 			processingErr, fileSaveErr)
+		err := llm.Wrap(processingErr, "orchestrator", msg, category)
+
 		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
 
 		// Log the completion outcome with audit logger
 		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "combined_errors"},
+			map[string]interface{}{
+				"error_type":     "combined_errors",
+				"error_category": category.String(),
+			},
 			nil, err)
 
 		return err
 	} else if fileSaveErr != nil {
 		// Only file save errors occurred
-		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErr)
+		// Check if this is a synthesis model error that needs to be handled specially
+		if strings.Contains(fileSaveErr.Error(), "synthesis model") {
+			// For synthesis model errors, preserve the original error message for better debugging
+			var wrappedErr error
+			if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					fileSaveErr.Error(), catErr.Category())
+			} else {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					fileSaveErr.Error(), llm.CategoryInvalidRequest)
+			}
 
-		// Log the completion outcome with audit logger
-		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "file_save_errors"},
-			nil, fileSaveErr)
+			contextLogger.ErrorContext(ctx, "Completed with synthesis error: %v", wrappedErr)
 
-		return fileSaveErr
+			// Log the completion outcome with audit logger
+			o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+				map[string]interface{}{
+					"error_type":     "synthesis_model_errors",
+					"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+				},
+				nil, wrappedErr)
+
+			return wrappedErr
+		} else {
+			// File system errors are usually server-side issues
+			var wrappedErr error
+			if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					"file save operation failed", catErr.Category())
+			} else {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					"file save operation failed", llm.CategoryServer)
+			}
+
+			contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", wrappedErr)
+
+			// Log the completion outcome with audit logger
+			o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+				map[string]interface{}{
+					"error_type":     "file_save_errors",
+					"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+				},
+				nil, wrappedErr)
+
+			return wrappedErr
+		}
 	} else if processingErr != nil {
-		// Only model errors
-		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", processingErr)
+		// Only model errors - these should already be LLMError types
+		// from the processor, but we'll ensure consistency
+		var wrappedErr error
+		if catErr, ok := llm.IsCategorizedError(processingErr); ok {
+			wrappedErr = llm.Wrap(processingErr, "orchestrator",
+				"model processing errors occurred", catErr.Category())
+		} else {
+			wrappedErr = llm.Wrap(processingErr, "orchestrator",
+				"model processing errors occurred", llm.CategoryInvalidRequest)
+		}
+
+		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", wrappedErr)
 
 		// Log the completion outcome with audit logger
 		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "model_processing_errors"},
-			nil, processingErr)
+			map[string]interface{}{
+				"error_type":     "model_processing_errors",
+				"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+			},
+			nil, wrappedErr)
 
-		return processingErr
+		return wrappedErr
 	} else {
 		// No errors
 		contextLogger.InfoContext(ctx, "Processing completed successfully")

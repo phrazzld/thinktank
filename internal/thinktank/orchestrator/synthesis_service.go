@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/prompt"
@@ -67,7 +68,8 @@ func NewSynthesisService(
 //
 // Returns:
 //   - A string containing the synthesized result
-//   - An error if any step of the synthesis process fails
+//   - An error if any step of the synthesis process fails. Errors will include the
+//     name of the synthesis model in the error message for easier debugging.
 func (s *DefaultSynthesisService) SynthesizeResults(
 	ctx context.Context,
 	originalInstructions string,
@@ -129,7 +131,10 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Failed to get parameters for synthesis model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to get model parameters for synthesis model: %w", fmt.Errorf("%w: %v", ErrInvalidSynthesisModel, err))
+		return "", WrapOrchestratorError(
+			ErrInvalidSynthesisModel,
+			fmt.Sprintf("failed to get model parameters for synthesis model '%s': %v", s.modelName, err),
+		)
 	}
 
 	// Log successful parameter retrieval
@@ -165,7 +170,10 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Failed to initialize client for synthesis model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to initialize synthesis model client: %w", fmt.Errorf("%w: %v", ErrInvalidSynthesisModel, err))
+		return "", WrapOrchestratorError(
+			ErrInvalidSynthesisModel,
+			fmt.Sprintf("failed to initialize synthesis model client: %v: invalid synthesis model '%s' specified", err, s.modelName),
+		)
 	}
 
 	// Log successful client initialization
@@ -322,7 +330,10 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			Message: fmt.Sprintf("Synthesis process failed with model %s", s.modelName),
 		})
 
-		return "", fmt.Errorf("failed to process synthesis model response: %w", fmt.Errorf("%w: %v", ErrSynthesisFailed, err))
+		return "", WrapOrchestratorError(
+			ErrSynthesisFailed,
+			fmt.Sprintf("failed to process synthesis model response: %v", err),
+		)
 	}
 
 	// Log successful response processing
@@ -383,7 +394,7 @@ func (s *DefaultSynthesisService) handleSynthesisError(ctx context.Context, err 
 		contextLogger.ErrorContext(ctx, "Synthesis error occurred: %v", err)
 	} else {
 		// Fallback to regular logging if context doesn't have correlation ID
-		s.logger.Error("Synthesis error occurred: %v", err)
+		s.logger.ErrorContext(ctx, "Synthesis error occurred: %v", err)
 	}
 
 	var errMsg string
@@ -427,9 +438,31 @@ func (s *DefaultSynthesisService) handleSynthesisError(ctx context.Context, err 
 		errMsg += "\n\nTip: If this error persists, try using a different synthesis model or check the model's documentation for limitations."
 	}
 
-	// Return a new error with the formatted message
-	// Use errors package for consistency with other error handling in this file
-	return fmt.Errorf("%w: %s", ErrSynthesisFailed, errMsg)
+	// Return a new error with the formatted message using proper categorization
+	// Determine error category based on the error message
+	var category llm.ErrorCategory
+
+	switch {
+	case strings.Contains(err.Error(), "rate limit"):
+		category = llm.CategoryRateLimit
+	case strings.Contains(err.Error(), "safety") || strings.Contains(err.Error(), "content filter") || s.apiService.IsSafetyBlockedError(err):
+		category = llm.CategoryContentFiltered
+	case strings.Contains(err.Error(), "connect") || strings.Contains(err.Error(), "timeout") || strings.Contains(err.Error(), "deadline"):
+		category = llm.CategoryNetwork
+	case strings.Contains(err.Error(), "auth") || strings.Contains(err.Error(), "key") || strings.Contains(err.Error(), "credential"):
+		category = llm.CategoryAuth
+	case s.apiService.IsEmptyResponseError(err):
+		category = llm.CategoryServer
+	default:
+		// If error already has a category, use it
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			category = catErr.Category()
+		} else {
+			category = llm.CategoryServer
+		}
+	}
+
+	return llm.Wrap(ErrSynthesisFailed, "orchestrator", errMsg, category)
 }
 
 // logAuditEvent writes an audit log entry and logs any errors that occur.
@@ -443,6 +476,8 @@ func (s *DefaultSynthesisService) logAuditEvent(entry auditlog.AuditEntry) {
 	}
 
 	if logErr := s.auditLogger.LogOp(entry.Operation, entry.Status, entry.Inputs, entry.Outputs, err); logErr != nil {
+		// We don't have ctx here, so we use the regular logging method
+		// This is acceptable for a secondary error that occurs during audit logging
 		s.logger.Warn("Failed to write audit log: %v", logErr)
 	}
 }

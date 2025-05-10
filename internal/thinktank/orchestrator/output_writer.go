@@ -117,8 +117,11 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 		contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
 			savedCount, errorCount)
 
-		// Create a descriptive error for the file save failures
-		return savedCount, outputPaths, fmt.Errorf("%w: %d/%d files failed to save", ErrOutputFileSaveFailed, errorCount, totalCount)
+		// Create a descriptive error for the file save failures using proper categorization
+		return savedCount, outputPaths, WrapOrchestratorError(
+			ErrOutputFileSaveFailed,
+			fmt.Sprintf("%d/%d files failed to save", errorCount, totalCount),
+		)
 	}
 
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
@@ -148,7 +151,10 @@ func (w *DefaultOutputWriter) SaveSynthesisOutput(
 	contextLogger.DebugContext(ctx, "Saving synthesis output to %s", outputFilePath)
 	if err := w.fileWriter.SaveToFile(content, outputFilePath); err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-		return "", fmt.Errorf("%w: failed to save synthesis output to %s: %v", ErrOutputFileSaveFailed, outputFilePath, err)
+		return "", WrapOrchestratorError(
+			ErrOutputFileSaveFailed,
+			fmt.Sprintf("failed to save synthesis output to %s: %v", outputFilePath, err),
+		)
 	}
 
 	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputFilePath)
