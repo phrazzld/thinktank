@@ -286,7 +286,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Core Component Refactoring (`internal/thinktank/*`, `internal/auditlog`)
 
-- [x] **T014 · Refactor · P1: Update thinktank/registry for context, logging, and LLMError**
+- [x] **T014 · Refactor · P1: Update thinktank/registry for context, logging, and LLMError** ✅
     - **Context:** Phase 3, Step 5 from PLAN.md (Refactor Core Components)
     - **Action:**
         1. Modify method signatures in `internal/thinktank/registry` to accept `context.Context` as the first argument.
@@ -349,6 +349,19 @@ These tasks address the usability issue where thinktank appears to error out des
     - **Verification:**
         1. Manually inspect logs from test runs for consistency.
     - **Depends‑on:** [T014, T015, T016]
+
+- [ ] **T037 · Fix · P1: Update integration tests for context-based registry interface**
+    - **Context:** Follow-up to T014 to fix failing integration tests
+    - **Action:**
+        1. Update all integration test mocks to match new registry interface with context
+        2. Fix BuildaryAPIService in internal/integration/boundary_test_adapter.go
+        3. Fix MockAPIService in invalid_synthesis_model_test.go and other test files
+        4. Update calls to reg.LoadConfig and reg.RegisterProviderImplementation with context
+    - **Done‑when:**
+        1. All integration tests pass with the updated registry interface
+    - **Verification:** 
+        1. Run the full test suite including integration tests
+    - **Depends‑on:** [T014]
 
 ## Input/Output & Top-Level Application (`internal/io`, `cmd/thinktank`)
 
