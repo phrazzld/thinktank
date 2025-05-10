@@ -109,7 +109,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 
 	// Get model parameters
 	contextLogger.DebugContext(ctx, "Getting model parameters for synthesis model: %s", s.modelName)
-	modelParams, err := s.apiService.GetModelParameters(s.modelName)
+	modelParams, err := s.apiService.GetModelParameters(ctx, s.modelName)
 	if err != nil {
 		duration := time.Since(startTime).Milliseconds()
 		durationMs := duration

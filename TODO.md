@@ -259,7 +259,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Provider Error Handling (`internal/providers/*`)
 
-- [ ] **T012 · Refactor · P1: Implement FormatAPIError in provider packages**
+- [x] **T012 · Refactor · P1: Implement FormatAPIError in provider packages**
     - **Context:** Phase 2, Step 4 from PLAN.md (Refactor Provider Error Handling)
     - **Action:**
         1. For each provider package in `internal/providers/*`, create/update `errors.go`.
@@ -272,7 +272,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Code review confirms consistent usage across providers.
     - **Depends‑on:** [T004]
 
-- [ ] **T013 · Test · P1: Add unit tests for provider error translation**
+- [x] **T013 · Test · P1: Add unit tests for provider error translation**
     - **Context:** Phase 2, Step 4 from PLAN.md; Testing Strategy
     - **Action:**
         1. For each provider, add tests in `errors_test.go` or `client_test.go`.
@@ -286,7 +286,7 @@ These tasks address the usability issue where thinktank appears to error out des
 
 ## Core Component Refactoring (`internal/thinktank/*`, `internal/auditlog`)
 
-- [ ] **T014 · Refactor · P1: Update thinktank/registry for context, logging, and LLMError**
+- [x] **T014 · Refactor · P1: Update thinktank/registry for context, logging, and LLMError**
     - **Context:** Phase 3, Step 5 from PLAN.md (Refactor Core Components)
     - **Action:**
         1. Modify method signatures in `internal/thinktank/registry` to accept `context.Context` as the first argument.

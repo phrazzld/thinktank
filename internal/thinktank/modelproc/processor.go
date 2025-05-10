@@ -23,13 +23,13 @@ type APIService interface {
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 
 	// GetModelParameters retrieves parameter values from the registry for a given model
-	GetModelParameters(modelName string) (map[string]interface{}, error)
+	GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error)
 
 	// GetModelDefinition retrieves the full model definition from the registry
-	GetModelDefinition(modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
 
 	// GetModelTokenLimits retrieves token limits from the registry for a given model
-	GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content
 	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
@@ -128,7 +128,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	}
 
 	// Get model parameters from the APIService
-	params, err := p.apiService.GetModelParameters(modelName)
+	params, err := p.apiService.GetModelParameters(ctx, modelName)
 	if err != nil {
 		p.logger.Debug("Failed to get model parameters for %s: %v. Using defaults.", modelName, err)
 		// Continue with empty parameters if there's an error

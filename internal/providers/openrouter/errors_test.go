@@ -3,6 +3,8 @@ package openrouter
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -163,7 +165,7 @@ func TestIsOpenRouterError(t *testing.T) {
 	}
 }
 
-func TestFormatAPIError(t *testing.T) {
+func TestFormatAPIErrorFromResponse(t *testing.T) {
 	tests := []struct {
 		name         string
 		err          error
@@ -259,12 +261,12 @@ func TestFormatAPIError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if tt.err == nil {
-				result := FormatAPIError(nil, tt.statusCode, tt.responseBody)
+				result := FormatAPIErrorFromResponse(nil, tt.statusCode, tt.responseBody)
 				assert.Nil(t, result)
 				return
 			}
 
-			result := FormatAPIError(tt.err, tt.statusCode, tt.responseBody)
+			result := FormatAPIErrorFromResponse(tt.err, tt.statusCode, tt.responseBody)
 
 			require.NotNil(t, result, "FormatAPIError returned nil")
 			assert.Equal(t, tt.wantProvider, result.Provider)
@@ -277,6 +279,196 @@ func TestFormatAPIError(t *testing.T) {
 			// Verify suggestions are provided
 			if tt.name != "Error with existing LLMError" { // Skip this check for existing LLMError
 				assert.NotEmpty(t, result.Suggestion, "Error suggestion should not be empty")
+			}
+		})
+	}
+}
+
+func TestFormatAPIError(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		providerName  string
+		wantCategory  llm.ErrorCategory
+		wantProvider  string
+		wantMsgPrefix string
+		checkUnwrap   bool
+	}{
+		{
+			name:          "nil error",
+			err:           nil,
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "",
+			wantMsgPrefix: "",
+		},
+		{
+			name:          "standard error",
+			err:           errors.New("some error"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "network error",
+			err:           errors.New("connection timeout"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryNetwork,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "auth error",
+			err:           errors.New("authorization failed"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "rate limit error",
+			err:           errors.New("rate limit exceeded"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryRateLimit,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "custom provider name",
+			err:           errors.New("some error"),
+			providerName:  "custom-provider",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "custom-provider",
+			wantMsgPrefix: "Error from custom-provider provider",
+			checkUnwrap:   true,
+		},
+		{
+			name: "existing LLMError from same provider",
+			err: &llm.LLMError{
+				Provider:      "openrouter",
+				Message:       "Existing error",
+				ErrorCategory: llm.CategoryAuth,
+			},
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Existing error",
+		},
+		{
+			name: "existing LLMError from different provider",
+			err: &llm.LLMError{
+				Provider:      "openai",
+				Message:       "Error from openai",
+				ErrorCategory: llm.CategoryAuth,
+			},
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openai",
+		},
+		{
+			name:          "insufficient credits error from message",
+			err:           errors.New("billing quota exceeded"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryInsufficientCredits,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "content filtered error from message",
+			err:           errors.New("content filtered by safety settings"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryContentFiltered,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "input limit error from message",
+			err:           errors.New("token limit exceeded"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryInputLimit,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "cancelled error from message",
+			err:           errors.New("request cancelled"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryCancelled,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "not found error from message",
+			err:           errors.New("model not found"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryNotFound,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "invalid request error from message",
+			err:           errors.New("invalid request parameters"),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryInvalidRequest,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "wrapped error",
+			err:           fmt.Errorf("outer error: %w", errors.New("inner rate limit exceeded")),
+			providerName:  "openrouter",
+			wantCategory:  llm.CategoryRateLimit,
+			wantProvider:  "openrouter",
+			wantMsgPrefix: "Error from openrouter provider",
+			checkUnwrap:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatAPIError(tt.err, tt.providerName)
+
+			if tt.err == nil {
+				assert.Nil(t, result)
+				return
+			}
+
+			assert.NotNil(t, result)
+
+			var llmErr *llm.LLMError
+			if errors.As(result, &llmErr) {
+				assert.Equal(t, tt.wantProvider, llmErr.Provider)
+				assert.Equal(t, tt.wantCategory, llmErr.Category())
+
+				if tt.wantMsgPrefix != "" {
+					assert.True(t, strings.HasPrefix(llmErr.Message, tt.wantMsgPrefix),
+						"Expected message to start with %q, got %q", tt.wantMsgPrefix, llmErr.Message)
+				}
+
+				// Check for proper error wrapping
+				if tt.checkUnwrap {
+					unwrapped := errors.Unwrap(result)
+					assert.NotNil(t, unwrapped, "Expected error to be wrapped")
+					assert.Equal(t, tt.err.Error(), unwrapped.Error(), "Original error should be preserved when unwrapped")
+				}
+
+				// FormatAPIError uses llm.Wrap which doesn't set suggestions
+				// Suggestion fields are only populated by CreateStandardErrorWithMessage
+				// and similar functions, not by FormatAPIError
+			} else {
+				t.Fatalf("Expected result to be of type *llm.LLMError")
 			}
 		})
 	}

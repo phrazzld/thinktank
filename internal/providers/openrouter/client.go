@@ -322,8 +322,8 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 
 	// Handle non-200 status codes
 	if resp.StatusCode != http.StatusOK {
-		// Create a categorized API error using the FormatAPIError function
-		apiErr := FormatAPIError(
+		// Create a categorized API error using the FormatAPIErrorFromResponse function
+		apiErr := FormatAPIErrorFromResponse(
 			fmt.Errorf("OpenRouter API returned non-200 status code: %d", resp.StatusCode),
 			resp.StatusCode,
 			body,

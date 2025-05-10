@@ -30,6 +30,9 @@ var (
 
 	// ErrModelNotFound indicates a model definition was not found in registry
 	ErrModelNotFound = errors.New("model definition not found in registry")
+
+	// ErrProviderNotFound indicates a provider was not found in registry
+	ErrProviderNotFound = errors.New("provider not found in registry")
 )
 
 // ErrorCategory represents different categories of errors that can occur when using LLM APIs
@@ -392,6 +395,21 @@ func GetErrorCategoryFromMessage(errMsg string) ErrorCategory {
 		strings.Contains(lowerMsg, "cancelled") ||
 		strings.Contains(lowerMsg, "deadline exceeded") {
 		return CategoryCancelled
+	}
+
+	// Check for not found errors
+	if strings.Contains(lowerMsg, "not found") ||
+		strings.Contains(lowerMsg, "unknown model") ||
+		strings.Contains(lowerMsg, "no such model") {
+		return CategoryNotFound
+	}
+
+	// Check for invalid request errors
+	if strings.Contains(lowerMsg, "invalid request") ||
+		strings.Contains(lowerMsg, "invalid parameter") ||
+		strings.Contains(lowerMsg, "invalid parameters") ||
+		strings.Contains(lowerMsg, "bad request") {
+		return CategoryInvalidRequest
 	}
 
 	return CategoryUnknown

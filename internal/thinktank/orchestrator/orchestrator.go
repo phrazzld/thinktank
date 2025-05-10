@@ -6,7 +6,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -449,50 +448,26 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 
 // GetModelParameters retrieves parameter values from the registry for a given model.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelParameters(string) (map[string]interface{}, error)
-	}); ok {
-		return apiService.GetModelParameters(modelName)
-	}
-	// Return empty parameters if the underlying implementation doesn't support this method
-	return make(map[string]interface{}), nil
+func (a *APIServiceAdapter) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
+	return a.APIService.GetModelParameters(ctx, modelName)
 }
 
 // GetModelDefinition retrieves the full model definition from the registry.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelDefinition(string) (*registry.ModelDefinition, error)
-	}); ok {
-		return apiService.GetModelDefinition(modelName)
-	}
-	// Return nil with error if the underlying implementation doesn't support this method
-	return nil, errors.New("GetModelDefinition not supported by the underlying APIService implementation")
+func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+	return a.APIService.GetModelDefinition(ctx, modelName)
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelTokenLimits(string) (int32, int32, error)
-	}); ok {
-		return apiService.GetModelTokenLimits(modelName)
-	}
-	// Return zero values with error if the underlying implementation doesn't support this method
-	return 0, 0, errors.New("GetModelTokenLimits not supported by the underlying APIService implementation")
+func (a *APIServiceAdapter) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	return a.APIService.GetModelTokenLimits(ctx, modelName)
 }
 
 // ValidateModelParameter validates a parameter value against its constraints.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
-	if apiService, ok := a.APIService.(interface {
-		ValidateModelParameter(string, string, interface{}) (bool, error)
-	}); ok {
-		return apiService.ValidateModelParameter(modelName, paramName, value)
-	}
-	// Return true if the underlying implementation doesn't support this method
-	return true, nil
+func (a *APIServiceAdapter) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
+	return a.APIService.ValidateModelParameter(ctx, modelName, paramName, value)
 }
 
 // aggregateErrors combines multiple errors into a single error with context.

@@ -230,19 +230,19 @@ func (m *MockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string,
 	return m.processedContent, nil
 }
 
-func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 
-func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	return true, nil
 }
 
-func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *MockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *MockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	return 8192, 8192, nil
 }
 

@@ -138,22 +138,22 @@ func (m *MockAPIService) GetErrorDetails(err error) string {
 }
 
 // GetModelParameters is a mock implementation
-func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	return map[string]interface{}{}, nil
 }
 
 // GetModelDefinition is a mock implementation
-func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	return &registry.ModelDefinition{}, nil
 }
 
 // GetModelTokenLimits is a mock implementation
-func (m *MockAPIService) GetModelTokenLimits(modelName string) (int32, int32, error) {
+func (m *MockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (int32, int32, error) {
 	return 8000, 1000, nil
 }
 
 // ValidateModelParameter is a mock implementation
-func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	return true, nil
 }
 

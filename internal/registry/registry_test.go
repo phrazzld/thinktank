@@ -144,7 +144,8 @@ func TestLoadConfig(t *testing.T) {
 			}
 
 			// Call method under test
-			err := registry.LoadConfig(mockLoader)
+			ctx := context.Background()
+			err := registry.LoadConfig(ctx, mockLoader)
 
 			// Check results
 			if tc.wantErr {
@@ -219,7 +220,8 @@ func TestGetModel(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Call method under test
-			model, err := registry.GetModel(tc.modelName)
+			ctx := context.Background()
+			model, err := registry.GetModel(ctx, tc.modelName)
 
 			// Check results
 			if tc.wantErr {
@@ -276,7 +278,8 @@ func TestGetProvider(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Call method under test
-			provider, err := registry.GetProvider(tc.providerName)
+			ctx := context.Background()
+			provider, err := registry.GetProvider(ctx, tc.providerName)
 
 			// Check results
 			if tc.wantErr {
@@ -336,7 +339,8 @@ func TestRegisterProviderImplementation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Call method under test
-			err := registry.RegisterProviderImplementation(tc.providerName, tc.impl)
+			ctx := context.Background()
+			err := registry.RegisterProviderImplementation(ctx, tc.providerName, tc.impl)
 
 			// Check results
 			if tc.wantErr {
@@ -394,7 +398,8 @@ func TestGetProviderImplementation(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			// Call method under test
-			impl, err := registry.GetProviderImplementation(tc.providerName)
+			ctx := context.Background()
+			impl, err := registry.GetProviderImplementation(ctx, tc.providerName)
 
 			// Check results
 			if tc.wantErr {
@@ -568,22 +573,26 @@ func TestConcurrentAccess(t *testing.T) {
 	for i := 0; i < n; i++ {
 		go func() {
 			defer wg.Done()
-			_, _ = registry.GetModel("model1")
+			ctx := context.Background()
+			_, _ = registry.GetModel(ctx, "model1")
 		}()
 
 		go func() {
 			defer wg.Done()
-			_, _ = registry.GetProvider("provider1")
+			ctx := context.Background()
+			_, _ = registry.GetProvider(ctx, "provider1")
 		}()
 
 		go func() {
 			defer wg.Done()
-			_ = registry.RegisterProviderImplementation("provider1", mockProvider)
+			ctx := context.Background()
+			_ = registry.RegisterProviderImplementation(ctx, "provider1", mockProvider)
 		}()
 
 		go func() {
 			defer wg.Done()
-			_, _ = registry.GetProviderImplementation("provider1")
+			ctx := context.Background()
+			_, _ = registry.GetProviderImplementation(ctx, "provider1")
 		}()
 	}
 

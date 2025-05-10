@@ -107,8 +107,9 @@ func IsSafetyFilter(errorMessage string) bool {
 		strings.Contains(lowerMsg, "content policy")
 }
 
-// FormatAPIError creates a standardized LLMError from a Gemini API error
-func FormatAPIError(err error, statusCode int, responseBody []byte) *llm.LLMError {
+// FormatAPIErrorFromResponse creates a standardized LLMError from a Gemini API error
+// and detailed response information
+func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) *llm.LLMError {
 	if err == nil {
 		return nil
 	}
@@ -167,6 +168,35 @@ func FormatAPIError(err error, statusCode int, responseBody []byte) *llm.LLMErro
 	}
 
 	return llmError
+}
+
+// FormatAPIError implements the standard provider error handling interface.
+// It creates a standardized LLMError from any error, wrapping it with
+// provider-specific context.
+func FormatAPIError(rawError error, providerName string) error {
+	if rawError == nil {
+		return nil
+	}
+
+	// Check if it's already an LLMError
+	var llmErr *llm.LLMError
+	if errors.As(rawError, &llmErr) {
+		// If it's already a properly formatted LLMError from this provider, just return it
+		if llmErr.Provider == providerName {
+			return llmErr
+		}
+		// Otherwise, wrap it with this provider's name
+		return llm.Wrap(rawError, providerName, llmErr.Message, llmErr.ErrorCategory)
+	}
+
+	// Determine error category from message
+	category := llm.GetErrorCategoryFromMessage(rawError.Error())
+
+	// Create error message
+	message := fmt.Sprintf("Error from %s provider: %v", providerName, rawError)
+
+	// Return wrapped error
+	return llm.Wrap(rawError, providerName, message, category)
 }
 
 // CreateAPIError creates a new LLMError with Gemini-specific settings

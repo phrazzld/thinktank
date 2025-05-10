@@ -1,6 +1,7 @@
 package thinktank
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -36,8 +37,11 @@ func TestGetModelTokenLimits_UsesConfigValues(t *testing.T) {
 	logger := testutil.NewMockLogger()
 	service := NewRegistryAPIService(mockRegistry, logger)
 
+	// Create a context for tests
+	ctx := context.Background()
+
 	// Test 1: Model with explicit limits should use those limits
-	contextWindow, maxOutputTokens, err := service.GetModelTokenLimits("test-huge-model")
+	contextWindow, maxOutputTokens, err := service.GetModelTokenLimits(ctx, "test-huge-model")
 	if err != nil {
 		t.Fatalf("Unexpected error getting token limits: %v", err)
 	}
@@ -51,7 +55,7 @@ func TestGetModelTokenLimits_UsesConfigValues(t *testing.T) {
 	}
 
 	// Test 2: Model with no limits should use high default values
-	contextWindow, maxOutputTokens, err = service.GetModelTokenLimits("test-model-no-limits")
+	contextWindow, maxOutputTokens, err = service.GetModelTokenLimits(ctx, "test-model-no-limits")
 	if err != nil {
 		t.Fatalf("Unexpected error getting token limits: %v", err)
 	}
@@ -71,7 +75,7 @@ type MockRegistry struct {
 	Models map[string]*registry.ModelDefinition
 }
 
-func (m *MockRegistry) GetModel(name string) (*registry.ModelDefinition, error) {
+func (m *MockRegistry) GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error) {
 	model, ok := m.Models[name]
 	if !ok {
 		return nil, errors.New("model not found")
@@ -79,14 +83,14 @@ func (m *MockRegistry) GetModel(name string) (*registry.ModelDefinition, error) 
 	return model, nil
 }
 
-func (m *MockRegistry) GetProvider(name string) (*registry.ProviderDefinition, error) {
+func (m *MockRegistry) GetProvider(ctx context.Context, name string) (*registry.ProviderDefinition, error) {
 	// Not used in these tests
 	return &registry.ProviderDefinition{
 		Name: name,
 	}, nil
 }
 
-func (m *MockRegistry) GetProviderImplementation(name string) (interface{}, error) {
+func (m *MockRegistry) GetProviderImplementation(ctx context.Context, name string) (interface{}, error) {
 	// Not used in these tests
 	return nil, nil
 }
