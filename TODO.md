@@ -325,7 +325,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Test orchestrator workflows with simulated component failures, check logs and error handling.
     - **Depends‑on:** [T005, T007, T009, T015]
 
-- [ ] **T017 · Refactor · P1: Update auditlog for LoggerInterface and correlation ID**
+- [x] **T017 · Refactor · P1: Update auditlog for LoggerInterface and correlation ID**
     - **Context:** Phase 3, Step 6 from PLAN.md (Refactor Audit Logging)
     - **Action:**
         1. Refactor `internal/auditlog.AuditLogger` (or equivalent) to use `LoggerInterface` for its underlying logging.

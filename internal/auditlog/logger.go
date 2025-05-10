@@ -2,6 +2,7 @@
 package auditlog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -20,18 +21,29 @@ type AuditLogger interface {
 	// The entry contains information about operations, status, and relevant metadata.
 	// Returns an error if the logging operation fails.
 	// NOTE: Prefer using the LogOp method instead of this method directly.
-	Log(entry AuditEntry) error
+	Log(ctx context.Context, entry AuditEntry) error
 
 	// LogOp is a helper method for logging operations with minimal parameters.
 	// It creates an AuditEntry with the given operation, status, and optional data,
 	// sets a timestamp, and logs it. The method returns any error from logging.
 	// This is the recommended way to log audit events to ensure consistency.
-	LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
 
 	// Close releases any resources used by the logger (e.g., open file handles).
 	// Should be called when the logger is no longer needed.
 	// Returns an error if the closing operation fails.
 	Close() error
+
+	// The following methods are provided for backward compatibility.
+	// New code should use the context-aware methods above.
+
+	// LogLegacy is the non-context version of Log for backward compatibility.
+	// This method will be deprecated in the future.
+	LogLegacy(entry AuditEntry) error
+
+	// LogOpLegacy is the non-context version of LogOp for backward compatibility.
+	// This method will be deprecated in the future.
+	LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
 }
 
 // FileAuditLogger implements AuditLogger by writing JSON Lines to a file.
@@ -45,12 +57,15 @@ type FileAuditLogger struct {
 // If the file doesn't exist, it will be created. If it does exist, logs will be appended.
 // The provided internal logger is used to log any errors that occur during audit logging operations.
 func NewFileAuditLogger(filePath string, internalLogger logutil.LoggerInterface) (*FileAuditLogger, error) {
+	// Create a context with a correlation ID for initialization logs
+	ctx := logutil.WithCorrelationID(context.Background())
+
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
-		internalLogger.Error("Failed to open audit log file '%s': %v", filePath, err)
+		internalLogger.ErrorContext(ctx, "Failed to open audit log file '%s': %v", filePath, err)
 		return nil, fmt.Errorf("failed to open audit log file %s: %w", filePath, err)
 	}
-	internalLogger.Info("Audit logging enabled to file: %s", filePath)
+	internalLogger.InfoContext(ctx, "Audit logging enabled to file: %s", filePath)
 	return &FileAuditLogger{
 		file:   file,
 		logger: internalLogger,
@@ -59,7 +74,16 @@ func NewFileAuditLogger(filePath string, internalLogger logutil.LoggerInterface)
 
 // Log records a single audit entry by marshaling it to JSON and writing it to the log file.
 // It sets the entry timestamp if not already set and ensures thread safety with a mutex lock.
-func (l *FileAuditLogger) Log(entry AuditEntry) error {
+// The context is used to extract correlation ID and for context-aware logging.
+func (l *FileAuditLogger) Log(ctx context.Context, entry AuditEntry) error {
+	// Use default context if nil is provided for backward compatibility
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Get a context-aware logger
+	contextLogger := l.logger.WithContext(ctx)
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -68,30 +92,71 @@ func (l *FileAuditLogger) Log(entry AuditEntry) error {
 		entry.Timestamp = time.Now().UTC()
 	}
 
+	// Add correlation ID from context if not already present in inputs
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
+
 	// Marshal entry to JSON
 	jsonData, err := json.Marshal(entry)
 	if err != nil {
-		l.logger.Error("Failed to marshal audit entry to JSON: %v, Entry: %+v", err, entry)
+		contextLogger.ErrorContext(ctx, "Failed to marshal audit entry to JSON: %v, Entry: %+v", err, entry)
 		return fmt.Errorf("failed to marshal audit entry: %w", err)
 	}
 
 	// Write JSON line to file
 	if _, err := l.file.Write(append(jsonData, '\n')); err != nil {
-		l.logger.Error("Failed to write audit entry to file '%s': %v", l.file.Name(), err)
+		contextLogger.ErrorContext(ctx, "Failed to write audit entry to file '%s': %v", l.file.Name(), err)
 		return fmt.Errorf("failed to write audit entry: %w", err)
 	}
 	return nil
 }
 
+// LogLegacy is the non-context version of Log for backward compatibility.
+// It calls Log with a background context.
+func (l *FileAuditLogger) LogLegacy(entry AuditEntry) error {
+	return l.Log(context.Background(), entry)
+}
+
 // LogOp implements the AuditLogger interface's LogOp method.
 // It creates an AuditEntry with the provided parameters and logs it.
-func (l *FileAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// The context is used to extract correlation ID and for context-aware logging.
+func (l *FileAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Use default context if nil is provided for backward compatibility
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	if inputs != nil {
+		for k, v := range inputs {
+			inputsCopy[k] = v
+		}
+	}
+
+	// Add correlation ID from context if not already present in inputs
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" && inputsCopy != nil {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Create a new entry with current timestamp
 	entry := AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 	}
 
@@ -125,22 +190,31 @@ func (l *FileAuditLogger) LogOp(operation, status string, inputs map[string]inte
 		}
 	}
 
-	// Log the entry
-	return l.Log(entry)
+	// Log the entry with context
+	return l.Log(ctx, entry)
+}
+
+// LogOpLegacy is the non-context version of LogOp for backward compatibility.
+// It calls LogOp with a background context.
+func (l *FileAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return l.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close properly closes the log file.
 // It ensures thread safety with a mutex lock and prevents double-closing.
 func (l *FileAuditLogger) Close() error {
+	// Create a context with a correlation ID for close logs
+	ctx := logutil.WithCorrelationID(context.Background())
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
 	if l.file != nil {
-		l.logger.Info("Closing audit log file: %s", l.file.Name())
+		l.logger.InfoContext(ctx, "Closing audit log file: %s", l.file.Name())
 		err := l.file.Close()
 		l.file = nil // Prevent double close
 		if err != nil {
-			l.logger.Error("Error closing audit log file: %v", err)
+			l.logger.ErrorContext(ctx, "Error closing audit log file: %v", err)
 			return err
 		}
 	}
@@ -158,13 +232,23 @@ func NewNoOpAuditLogger() *NoOpAuditLogger {
 
 // Log implements the AuditLogger interface but performs no action.
 // It always returns nil (no error).
-func (l *NoOpAuditLogger) Log(entry AuditEntry) error {
+func (l *NoOpAuditLogger) Log(ctx context.Context, entry AuditEntry) error {
+	return nil // Do nothing
+}
+
+// LogLegacy implements the backward compatibility method.
+func (l *NoOpAuditLogger) LogLegacy(entry AuditEntry) error {
 	return nil // Do nothing
 }
 
 // LogOp implements the AuditLogger interface's LogOp method but performs no action.
 // It always returns nil (no error).
-func (l *NoOpAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+func (l *NoOpAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return nil // Do nothing
+}
+
+// LogOpLegacy implements the backward compatibility method.
+func (l *NoOpAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	return nil // Do nothing
 }
 

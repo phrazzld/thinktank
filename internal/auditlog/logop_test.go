@@ -1,6 +1,7 @@
 package auditlog
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -114,7 +115,9 @@ func TestFileAuditLogger_LogOp(t *testing.T) {
 			}
 
 			// Execute LogOp with the test case parameters
-			err = logger.LogOp(tc.operation, tc.status, tc.inputs, tc.outputs, tc.err)
+			// Use a background context for the test
+			ctx := context.Background()
+			err = logger.LogOp(ctx, tc.operation, tc.status, tc.inputs, tc.outputs, tc.err)
 			if err != nil {
 				t.Fatalf("Failed to log operation: %v", err)
 			}
@@ -252,7 +255,9 @@ func TestNoOpAuditLogger_LogOp(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// NoOpAuditLogger should never return an error
-			err := logger.LogOp(tc.operation, tc.status, tc.inputs, tc.outputs, tc.err)
+			// Use a background context for the test
+			ctx := context.Background()
+			err := logger.LogOp(ctx, tc.operation, tc.status, tc.inputs, tc.outputs, tc.err)
 			if err != nil {
 				t.Errorf("NoOpAuditLogger.LogOp returned error: %v", err)
 			}

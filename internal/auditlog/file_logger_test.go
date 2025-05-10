@@ -197,6 +197,9 @@ func TestFileAuditLogger_Log(t *testing.T) {
 		}
 	}()
 
+	// Create a context for testing
+	ctx := context.Background()
+
 	// Test logging with complete audit entry
 	entry := AuditEntry{
 		Operation: "TestOperation",
@@ -212,8 +215,8 @@ func TestFileAuditLogger_Log(t *testing.T) {
 		},
 	}
 
-	// Log the entry
-	err = logger.Log(entry)
+	// Log the entry with context
+	err = logger.Log(ctx, entry)
 	if err != nil {
 		t.Fatalf("Failed to log audit entry: %v", err)
 	}
@@ -273,7 +276,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 		Status:    "Minimal",
 	}
 
-	err = logger.Log(minimalEntry)
+	err = logger.Log(ctx, minimalEntry)
 	if err != nil {
 		t.Fatalf("Failed to log minimal audit entry: %v", err)
 	}
@@ -318,7 +321,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 		},
 	}
 
-	err = logger.Log(errorEntry)
+	err = logger.Log(ctx, errorEntry)
 	if err != nil {
 		t.Fatalf("Failed to log error audit entry: %v", err)
 	}
@@ -431,7 +434,7 @@ func TestFileAuditLogger_Concurrency(t *testing.T) {
 						"entry":     j,
 					},
 				}
-				err := logger.Log(entry)
+				err := logger.Log(context.Background(), entry)
 				if err != nil {
 					t.Errorf("Failed to log entry in goroutine %d: %v", id, err)
 				}

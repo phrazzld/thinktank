@@ -1,6 +1,7 @@
 package auditlog
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -38,7 +39,8 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}()
 
 	// Try to log the entry with unmarshalable content
-	err = logger.Log(badEntry)
+	ctx := context.Background()
+	err = logger.Log(ctx, badEntry)
 	if err == nil {
 		t.Error("Expected error when logging entry with channel, got nil")
 	}
@@ -146,7 +148,7 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Log the entry
-	logErr := logger.Log(noTimestampEntry)
+	logErr := logger.Log(context.Background(), noTimestampEntry)
 	if logErr != nil {
 		t.Fatalf("Failed to log entry without timestamp: %v", logErr)
 	}
@@ -185,7 +187,7 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Log the entry
-	timeLogErr := logger.Log(timestampEntry)
+	timeLogErr := logger.Log(context.Background(), timestampEntry)
 	if timeLogErr != nil {
 		t.Fatalf("Failed to log entry with preset timestamp: %v", timeLogErr)
 	}
