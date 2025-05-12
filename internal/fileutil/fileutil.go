@@ -3,6 +3,7 @@ package fileutil
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"os"
 	"os/exec"
@@ -245,8 +246,20 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 	})
 }
 
-// GatherProjectContext walks paths and gathers files into a slice of FileMeta.
-func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, error) {
+// GatherProjectContextWithContext walks paths and gathers files into a slice of FileMeta.
+// This version accepts a context.Context parameter for logging and correlation ID.
+func GatherProjectContextWithContext(ctx context.Context, paths []string, config *Config) ([]FileMeta, int, error) {
+	// If context is nil, create a background context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Extract correlation ID from context for logging, if available
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		config.Logger.DebugContext(ctx, "Starting GatherProjectContext with correlation ID: %s", correlationID)
+	}
+
 	var files []FileMeta
 
 	config.processedFiles = 0
@@ -294,6 +307,13 @@ func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, erro
 	}
 
 	return files, config.processedFiles, nil
+}
+
+// GatherProjectContext is a backward-compatible version that doesn't require a context.
+// It creates a background context and calls the context-aware version.
+func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, error) {
+	ctx := context.Background()
+	return GatherProjectContextWithContext(ctx, paths, config)
 }
 
 // CalculateStatistics calculates basic string stats.

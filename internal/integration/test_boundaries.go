@@ -42,17 +42,32 @@ type FilesystemIO interface {
 	// ReadFile reads the entire file at the specified path
 	ReadFile(path string) ([]byte, error)
 
+	// ReadFileWithContext reads the entire file at the specified path with context
+	ReadFileWithContext(ctx context.Context, path string) ([]byte, error)
+
 	// WriteFile writes data to the file at the specified path
 	WriteFile(path string, data []byte, perm int) error
+
+	// WriteFileWithContext writes data to the file at the specified path with context
+	WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error
 
 	// MkdirAll creates a directory named path, along with any necessary parents
 	MkdirAll(path string, perm int) error
 
+	// MkdirAllWithContext creates a directory named path, along with any necessary parents with context
+	MkdirAllWithContext(ctx context.Context, path string, perm int) error
+
 	// RemoveAll removes path and any children it contains
 	RemoveAll(path string) error
 
+	// RemoveAllWithContext removes path and any children it contains with context
+	RemoveAllWithContext(ctx context.Context, path string) error
+
 	// Stat returns a FileInfo describing the named file
 	Stat(path string) (bool, error)
+
+	// StatWithContext returns a FileInfo describing the named file with context
+	StatWithContext(ctx context.Context, path string) (bool, error)
 }
 
 // MockFilesystemIO implements FilesystemIO for testing
@@ -60,17 +75,32 @@ type MockFilesystemIO struct {
 	// ReadFileFunc allows customizing the behavior of ReadFile in tests
 	ReadFileFunc func(path string) ([]byte, error)
 
+	// ReadFileWithContextFunc allows customizing the behavior of ReadFileWithContext in tests
+	ReadFileWithContextFunc func(ctx context.Context, path string) ([]byte, error)
+
 	// WriteFileFunc allows customizing the behavior of WriteFile in tests
 	WriteFileFunc func(path string, data []byte, perm int) error
+
+	// WriteFileWithContextFunc allows customizing the behavior of WriteFileWithContext in tests
+	WriteFileWithContextFunc func(ctx context.Context, path string, data []byte, perm int) error
 
 	// MkdirAllFunc allows customizing the behavior of MkdirAll in tests
 	MkdirAllFunc func(path string, perm int) error
 
+	// MkdirAllWithContextFunc allows customizing the behavior of MkdirAllWithContext in tests
+	MkdirAllWithContextFunc func(ctx context.Context, path string, perm int) error
+
 	// RemoveAllFunc allows customizing the behavior of RemoveAll in tests
 	RemoveAllFunc func(path string) error
 
+	// RemoveAllWithContextFunc allows customizing the behavior of RemoveAllWithContext in tests
+	RemoveAllWithContextFunc func(ctx context.Context, path string) error
+
 	// StatFunc allows customizing the behavior of Stat in tests
 	StatFunc func(path string) (bool, error)
+
+	// StatWithContextFunc allows customizing the behavior of StatWithContext in tests
+	StatWithContextFunc func(ctx context.Context, path string) (bool, error)
 
 	// FileContents stores file contents for in-memory simulation
 	FileContents map[string][]byte
@@ -103,6 +133,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		return nil, &mockFileError{msg: "file not found: " + path}
 	}
 
+	// Default implementation of ReadFileWithContext (calls the non-context version)
+	m.ReadFileWithContextFunc = func(ctx context.Context, path string) ([]byte, error) {
+		return m.ReadFileFunc(path)
+	}
+
 	// Default implementation of WriteFile
 	m.WriteFileFunc = func(path string, data []byte, perm int) error {
 		// Normalize path
@@ -119,6 +154,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		return nil
 	}
 
+	// Default implementation of WriteFileWithContext (calls the non-context version)
+	m.WriteFileWithContextFunc = func(ctx context.Context, path string, data []byte, perm int) error {
+		return m.WriteFileFunc(path, data, perm)
+	}
+
 	// Default implementation of MkdirAll
 	m.MkdirAllFunc = func(path string, perm int) error {
 		// Normalize path
@@ -127,6 +167,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Mark directory as created
 		m.CreatedDirs[path] = true
 		return nil
+	}
+
+	// Default implementation of MkdirAllWithContext (calls the non-context version)
+	m.MkdirAllWithContextFunc = func(ctx context.Context, path string, perm int) error {
+		return m.MkdirAllFunc(path, perm)
 	}
 
 	// Default implementation of RemoveAll
@@ -147,6 +192,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		return nil
 	}
 
+	// Default implementation of RemoveAllWithContext (calls the non-context version)
+	m.RemoveAllWithContextFunc = func(ctx context.Context, path string) error {
+		return m.RemoveAllFunc(path)
+	}
+
 	// Default implementation of Stat
 	m.StatFunc = func(path string) (bool, error) {
 		// Normalize path
@@ -165,6 +215,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		return false, &mockFileError{msg: "file or directory not found: " + path}
 	}
 
+	// Default implementation of StatWithContext (calls the non-context version)
+	m.StatWithContextFunc = func(ctx context.Context, path string) (bool, error) {
+		return m.StatFunc(path)
+	}
+
 	return m
 }
 
@@ -175,11 +230,25 @@ func (m *MockFilesystemIO) ReadFile(path string) ([]byte, error) {
 	return m.ReadFileFunc(path)
 }
 
+// ReadFileWithContext implements the FilesystemIO interface
+func (m *MockFilesystemIO) ReadFileWithContext(ctx context.Context, path string) ([]byte, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.ReadFileWithContextFunc(ctx, path)
+}
+
 // WriteFile implements the FilesystemIO interface
 func (m *MockFilesystemIO) WriteFile(path string, data []byte, perm int) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	return m.WriteFileFunc(path, data, perm)
+}
+
+// WriteFileWithContext implements the FilesystemIO interface
+func (m *MockFilesystemIO) WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.WriteFileWithContextFunc(ctx, path, data, perm)
 }
 
 // MkdirAll implements the FilesystemIO interface
@@ -189,6 +258,13 @@ func (m *MockFilesystemIO) MkdirAll(path string, perm int) error {
 	return m.MkdirAllFunc(path, perm)
 }
 
+// MkdirAllWithContext implements the FilesystemIO interface
+func (m *MockFilesystemIO) MkdirAllWithContext(ctx context.Context, path string, perm int) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.MkdirAllWithContextFunc(ctx, path, perm)
+}
+
 // RemoveAll implements the FilesystemIO interface
 func (m *MockFilesystemIO) RemoveAll(path string) error {
 	m.mutex.Lock()
@@ -196,11 +272,25 @@ func (m *MockFilesystemIO) RemoveAll(path string) error {
 	return m.RemoveAllFunc(path)
 }
 
+// RemoveAllWithContext implements the FilesystemIO interface
+func (m *MockFilesystemIO) RemoveAllWithContext(ctx context.Context, path string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.RemoveAllWithContextFunc(ctx, path)
+}
+
 // Stat implements the FilesystemIO interface
 func (m *MockFilesystemIO) Stat(path string) (bool, error) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	return m.StatFunc(path)
+}
+
+// StatWithContext implements the FilesystemIO interface
+func (m *MockFilesystemIO) StatWithContext(ctx context.Context, path string) (bool, error) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	return m.StatWithContextFunc(ctx, path)
 }
 
 // mockFileError is a simple error type for filesystem operations

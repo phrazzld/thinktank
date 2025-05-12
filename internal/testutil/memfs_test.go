@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"context"
 	"testing"
 )
 
@@ -332,7 +333,7 @@ func TestMemFSFilesystemIOImplementation(t *testing.T) {
 	// We do this indirectly since we can't import the integration package here
 	var fs interface{} = NewMemFS()
 
-	// Check if the essential methods exist
+	// Check if the essential non-context methods exist
 	_, readFileOk := fs.(interface {
 		ReadFile(path string) ([]byte, error)
 	})
@@ -347,6 +348,24 @@ func TestMemFSFilesystemIOImplementation(t *testing.T) {
 		Stat(path string) (bool, error)
 	})
 
+	// Check if the essential context-aware methods exist
+	_, readFileWithContextOk := fs.(interface {
+		ReadFileWithContext(ctx context.Context, path string) ([]byte, error)
+	})
+	_, writeFileWithContextOk := fs.(interface {
+		WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error
+	})
+	_, mkdirAllWithContextOk := fs.(interface {
+		MkdirAllWithContext(ctx context.Context, path string, perm int) error
+	})
+	_, removeAllWithContextOk := fs.(interface {
+		RemoveAllWithContext(ctx context.Context, path string) error
+	})
+	_, statWithContextOk := fs.(interface {
+		StatWithContext(ctx context.Context, path string) (bool, error)
+	})
+
+	// Check non-context methods
 	if !readFileOk {
 		t.Fatal("MemFS does not implement ReadFile method")
 	}
@@ -361,6 +380,88 @@ func TestMemFSFilesystemIOImplementation(t *testing.T) {
 	}
 	if !statOk {
 		t.Fatal("MemFS does not implement Stat method")
+	}
+
+	// Check context-aware methods
+	if !readFileWithContextOk {
+		t.Fatal("MemFS does not implement ReadFileWithContext method")
+	}
+	if !writeFileWithContextOk {
+		t.Fatal("MemFS does not implement WriteFileWithContext method")
+	}
+	if !mkdirAllWithContextOk {
+		t.Fatal("MemFS does not implement MkdirAllWithContext method")
+	}
+	if !removeAllWithContextOk {
+		t.Fatal("MemFS does not implement RemoveAllWithContext method")
+	}
+	if !statWithContextOk {
+		t.Fatal("MemFS does not implement StatWithContext method")
+	}
+}
+
+// TestMemFSContextOperations tests the context-aware file operations with MemFS
+func TestMemFSContextOperations(t *testing.T) {
+	fs := NewMemFS()
+	ctx := context.Background()
+
+	// Test context-aware directory creation
+	err := fs.MkdirAllWithContext(ctx, "ctx-test/dir1", 0750)
+	if err != nil {
+		t.Fatalf("MkdirAllWithContext failed: %v", err)
+	}
+
+	// Verify directory exists using context-aware method
+	exists, err := fs.StatWithContext(ctx, "ctx-test/dir1")
+	if err != nil {
+		t.Fatalf("StatWithContext failed: %v", err)
+	}
+	if !exists {
+		t.Fatal("Directory should exist")
+	}
+
+	// Test context-aware file writing
+	testData := []byte("Hello, context world!")
+	err = fs.WriteFileWithContext(ctx, "ctx-test/dir1/file1.txt", testData, 0640)
+	if err != nil {
+		t.Fatalf("WriteFileWithContext failed: %v", err)
+	}
+
+	// Test context-aware file reading
+	data, err := fs.ReadFileWithContext(ctx, "ctx-test/dir1/file1.txt")
+	if err != nil {
+		t.Fatalf("ReadFileWithContext failed: %v", err)
+	}
+	if string(data) != "Hello, context world!" {
+		t.Fatalf("Expected 'Hello, context world!', got '%s'", string(data))
+	}
+
+	// Test context-aware error case: reading non-existent file
+	_, err = fs.ReadFileWithContext(ctx, "ctx-test/dir1/nonexistent.txt")
+	if err == nil {
+		t.Fatal("Expected error when reading non-existent file with context, got nil")
+	}
+
+	// Test context cancellation
+	// Note: we're not actually using the canceled context yet
+	_, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel the context immediately
+
+	// The MemFS implementation should check for context cancellation
+	// but since it's in-memory and operations are fast, we may need
+	// to add explicit context checks to make this test meaningful.
+	// For now, we're just ensuring the methods exist and work with a valid context.
+
+	// Test context-aware removal
+	err = fs.RemoveAllWithContext(ctx, "ctx-test/dir1")
+	if err != nil {
+		t.Fatalf("RemoveAllWithContext failed: %v", err)
+	}
+
+	// Verify directory is gone using context-aware method
+	exists, _ = fs.StatWithContext(ctx, "ctx-test/dir1")
+	if exists {
+		t.Fatal("Directory should not exist after RemoveAllWithContext")
 	}
 }
 
