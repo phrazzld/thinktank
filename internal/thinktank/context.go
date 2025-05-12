@@ -73,23 +73,23 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 		"exclude_names": config.ExcludeNames,
 		"format":        config.Format,
 	}
-	if logErr := cg.auditLogger.LogOp("GatherContext", "InProgress", inputs, nil, nil); logErr != nil {
-		cg.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := cg.auditLogger.LogOp(ctx, "GatherContext", "InProgress", inputs, nil, nil); logErr != nil {
+		cg.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// Log appropriate message based on mode
 	if cg.dryRun {
-		cg.logger.Info("Dry run mode: gathering files that would be included in context...")
-		cg.logger.Debug("Processing files with include filters: %v", config.Include)
-		cg.logger.Debug("Processing files with exclude filters: %v", config.Exclude)
-		cg.logger.Debug("Processing files with exclude names: %v", config.ExcludeNames)
-		cg.logger.Debug("Paths being processed: %v", config.Paths)
+		cg.logger.InfoContext(ctx, "Dry run mode: gathering files that would be included in context...")
+		cg.logger.DebugContext(ctx, "Processing files with include filters: %v", config.Include)
+		cg.logger.DebugContext(ctx, "Processing files with exclude filters: %v", config.Exclude)
+		cg.logger.DebugContext(ctx, "Processing files with exclude names: %v", config.ExcludeNames)
+		cg.logger.DebugContext(ctx, "Paths being processed: %v", config.Paths)
 	} else {
-		cg.logger.Info("Gathering project context from %d paths...", len(config.Paths))
-		cg.logger.Debug("Include filters: %v", config.Include)
-		cg.logger.Debug("Exclude filters: %v", config.Exclude)
-		cg.logger.Debug("Exclude names: %v", config.ExcludeNames)
-		cg.logger.Debug("Paths being processed: %v", config.Paths)
+		cg.logger.InfoContext(ctx, "Gathering project context from %d paths...", len(config.Paths))
+		cg.logger.DebugContext(ctx, "Include filters: %v", config.Include)
+		cg.logger.DebugContext(ctx, "Exclude filters: %v", config.Exclude)
+		cg.logger.DebugContext(ctx, "Exclude names: %v", config.ExcludeNames)
+		cg.logger.DebugContext(ctx, "Paths being processed: %v", config.Paths)
 	}
 
 	// Setup file processing configuration
@@ -115,7 +115,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 	gatherDurationMs := time.Since(gatherStartTime).Milliseconds()
 
 	if err != nil {
-		cg.logger.Error("Failed during project context gathering: %v", err)
+		cg.logger.ErrorContext(ctx, "Failed during project context gathering: %v", err)
 
 		// Log the failure of context gathering to audit log
 		inputs := map[string]interface{}{
@@ -125,8 +125,8 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 			"exclude_names": config.ExcludeNames,
 			"duration_ms":   gatherDurationMs,
 		}
-		if logErr := cg.auditLogger.LogOp("GatherContext", "Failure", inputs, nil, err); logErr != nil {
-			cg.logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := cg.auditLogger.LogOp(ctx, "GatherContext", "Failure", inputs, nil, err); logErr != nil {
+			cg.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
 		return nil, nil, fmt.Errorf("failed during project context gathering: %w", err)
@@ -137,7 +137,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 
 	// Log warning if no files were processed
 	if processedFilesCount == 0 {
-		cg.logger.Warn("No files were processed for context. Check paths and filters.")
+		cg.logger.WarnContext(ctx, "No files were processed for context. Check paths and filters.")
 		return contextFiles, stats, nil
 	}
 
@@ -150,7 +150,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 	projectContext := combinedContent.String()
 
 	// Calculate basic statistics
-	cg.logger.Info("Calculating statistics for %d processed files...", stats.ProcessedFilesCount)
+	cg.logger.InfoContext(ctx, "Calculating statistics for %d processed files...", stats.ProcessedFilesCount)
 	startTime := time.Now()
 
 	// Calculate character and line counts directly
@@ -160,7 +160,7 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 	// Token counting code removed as part of T032F - token handling refactoring
 
 	duration := time.Since(startTime)
-	cg.logger.Debug("Statistics calculation completed in %v", duration)
+	cg.logger.DebugContext(ctx, "Statistics calculation completed in %v", duration)
 
 	// Store statistics in the stats struct
 	stats.CharCount = charCount
@@ -169,12 +169,12 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 
 	// Handle output based on mode
 	if processedFilesCount > 0 {
-		cg.logger.Info("Context gathered: %d files, %d lines, %d chars",
+		cg.logger.InfoContext(ctx, "Context gathered: %d files, %d lines, %d chars",
 			processedFilesCount, lineCount, charCount)
 
 		// Additional detailed debug information if needed
 		if config.LogLevel == logutil.DebugLevel && !cg.dryRun {
-			cg.logger.Debug("Context details: files=%d, lines=%d, chars=%d",
+			cg.logger.DebugContext(ctx, "Context details: files=%d, lines=%d, chars=%d",
 				processedFilesCount, lineCount, charCount)
 		}
 	}
@@ -187,8 +187,8 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 		// token_count field removed as part of T032F - token handling refactoring
 		"files_count": len(contextFiles),
 	}
-	if logErr := cg.auditLogger.LogOp("GatherContext", "Success", inputs, outputs, nil); logErr != nil {
-		cg.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := cg.auditLogger.LogOp(ctx, "GatherContext", "Success", inputs, outputs, nil); logErr != nil {
+		cg.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	return contextFiles, stats, nil
@@ -196,24 +196,24 @@ func (cg *contextGatherer) GatherContext(ctx context.Context, config GatherConfi
 
 // DisplayDryRunInfo shows detailed information for dry run mode
 func (cg *contextGatherer) DisplayDryRunInfo(ctx context.Context, stats *ContextStats) error {
-	cg.logger.Info("Files that would be included in context:")
+	cg.logger.InfoContext(ctx, "Files that would be included in context:")
 	if stats.ProcessedFilesCount == 0 {
-		cg.logger.Info("  No files matched the current filters.")
+		cg.logger.InfoContext(ctx, "  No files matched the current filters.")
 	} else {
 		for i, file := range stats.ProcessedFiles {
-			cg.logger.Info("  %d. %s", i+1, file)
+			cg.logger.InfoContext(ctx, "  %d. %s", i+1, file)
 		}
 	}
 
-	cg.logger.Info("Context statistics:")
-	cg.logger.Info("  Files: %d", stats.ProcessedFilesCount)
-	cg.logger.Info("  Lines: %d", stats.LineCount)
-	cg.logger.Info("  Characters: %d", stats.CharCount)
+	cg.logger.InfoContext(ctx, "Context statistics:")
+	cg.logger.InfoContext(ctx, "  Files: %d", stats.ProcessedFilesCount)
+	cg.logger.InfoContext(ctx, "  Lines: %d", stats.LineCount)
+	cg.logger.InfoContext(ctx, "  Characters: %d", stats.CharCount)
 
 	// Token counting and limit comparison code removed as part of T032F - token handling refactoring
 
-	cg.logger.Info("Dry run completed successfully.")
-	cg.logger.Info("To generate content, run without the --dry-run flag.")
+	cg.logger.InfoContext(ctx, "Dry run completed successfully.")
+	cg.logger.InfoContext(ctx, "To generate content, run without the --dry-run flag.")
 
 	return nil
 }

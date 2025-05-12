@@ -338,7 +338,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Trigger audit events and verify the log output format and content.
     - **Depends‑on:** [T007, T009]
 
-- [ ] **T038 · Fix · P1: Update mock AuditLogger implementations for context-aware interface**
+- [~] **T038 · Fix · P1: Update mock AuditLogger implementations for context-aware interface**
     - **Context:** Follow-up to T017 to fix failing builds and tests
     - **Action:**
         1. Update MockLogger in internal/testutil/mocklogger.go to implement context-aware AuditLogger interface
@@ -353,7 +353,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Verify mock loggers properly handle correlation IDs
     - **Depends‑on:** [T017]
 
-- [ ] **T039 · Fix · P1: Update application code for context-aware AuditLogger interface**
+- [x] **T039 · Fix · P1: Update application code for context-aware AuditLogger interface**
     - **Context:** Follow-up to T017 to update calling code
     - **Action:**
         1. Update internal/thinktank/app.go to pass context to AuditLogger methods
@@ -369,7 +369,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Verify correlation IDs are properly propagated through the application
     - **Depends‑on:** [T017, T038]
 
-- [ ] **T018 · Test · P2: Add/update integration tests for core thinktank components**
+- [~] **T018 · Test · P2: Add/update integration tests for core thinktank components**
     - **Context:** Phase 3, Step 5 from PLAN.md; Testing Strategy
     - **Action:**
         1. Review and update existing integration tests for `registry`, `modelproc`, and `orchestrator`.

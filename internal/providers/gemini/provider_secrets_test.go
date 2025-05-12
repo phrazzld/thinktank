@@ -15,7 +15,7 @@ func TestGeminiProviderSecretHandling(t *testing.T) {
 	testAPIKey := "AIzaSyTESTKEY1234567890abcdefghijklmnopq"
 
 	// Create a logger with secret detection
-	testLogger := logutil.NewBufferLogger()
+	testLogger := logutil.NewBufferLogger(logutil.DebugLevel)
 	secretLogger := logutil.WithSecretDetection(testLogger)
 	// Don't panic on detection, just record for the test
 	secretLogger.SetFailOnSecretDetect(false)

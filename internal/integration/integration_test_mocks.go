@@ -4,10 +4,12 @@ package integration
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -124,42 +126,84 @@ func (m *MockFileWriter) SaveToFile(content, filePath string) error {
 // This will be removed in favor of boundary-based mocks
 // Use BoundaryAuditLogger from boundary_test_adapter.go instead
 type MockAuditLogger struct {
-	LogFunc   func(entry auditlog.AuditEntry) error
-	LogOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
-	CloseFunc func() error
+	LogFunc         func(ctx context.Context, entry auditlog.AuditEntry) error
+	LogLegacyFunc   func(entry auditlog.AuditEntry) error
+	LogOpFunc       func(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	LogOpLegacyFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	CloseFunc       func() error
 }
 
-// Log implements the audit logger interface
-func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
+// Log implements the audit logger interface with context
+func (m *MockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	if m.LogFunc != nil {
-		return m.LogFunc(entry)
+		return m.LogFunc(ctx, entry)
+	}
+
+	// Default implementation: Add correlation ID from context
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
 	}
 	return nil
 }
 
-// LogOp implements the audit logger interface
-func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (m *MockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	if m.LogLegacyFunc != nil {
+		return m.LogLegacyFunc(entry)
+	}
+	return m.Log(context.Background(), entry)
+}
+
+// LogOp implements the audit logger interface with context
+func (m *MockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	if m.LogOpFunc != nil {
-		return m.LogOpFunc(operation, status, inputs, outputs, err)
+		return m.LogOpFunc(ctx, operation, status, inputs, outputs, err)
 	}
-	// Create an AuditEntry from the parameters and pass to Log if LogFunc is defined
-	if m.LogFunc != nil {
-		entry := auditlog.AuditEntry{
-			Operation: operation,
-			Status:    status,
-			Inputs:    inputs,
-			Outputs:   outputs,
-			Message:   fmt.Sprintf("%s - %s", operation, status),
-		}
-		if err != nil {
-			entry.Error = &auditlog.ErrorInfo{
-				Message: err.Error(),
-				Type:    "GeneralError",
-			}
-		}
-		return m.LogFunc(entry)
+
+	// Default implementation: Add correlation ID and call Log
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
 	}
-	return nil
+
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
+	entry := auditlog.AuditEntry{
+		Timestamp: time.Now().UTC(),
+		Operation: operation,
+		Status:    status,
+		Inputs:    inputsCopy,
+		Outputs:   outputs,
+		Message:   fmt.Sprintf("%s - %s", operation, status),
+	}
+
+	if err != nil {
+		entry.Error = &auditlog.ErrorInfo{
+			Message: err.Error(),
+			Type:    "GeneralError",
+		}
+	}
+
+	return m.Log(ctx, entry)
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (m *MockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.LogOpLegacyFunc != nil {
+		return m.LogOpLegacyFunc(operation, status, inputs, outputs, err)
+	}
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close implements the audit logger interface

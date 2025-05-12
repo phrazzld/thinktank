@@ -45,13 +45,13 @@ func Execute(
 		}
 
 		// Log execution end with appropriate status and any error
-		if logErr := auditLogger.LogOp("ExecuteEnd", status, nil, nil, err); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := auditLogger.LogOp(ctx, "ExecuteEnd", status, nil, nil, err); logErr != nil {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 	}()
 
 	// 1. Set up the output directory
-	if err := setupOutputDirectory(cliConfig, logger); err != nil {
+	if err := setupOutputDirectory(ctx, cliConfig, logger); err != nil {
 		return err
 	}
 
@@ -72,28 +72,28 @@ func Execute(
 		"log_level": cliConfig.LogLevel,
 	}
 
-	if logErr := auditLogger.LogOp("ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := auditLogger.LogOp(ctx, "ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
+		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// 3. Read instructions from file
 	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
 	if err != nil {
-		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+		logger.ErrorContext(ctx, "Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
 
 		// Log the failure to read the instructions file to the audit log
 		inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
-		if logErr := auditLogger.LogOp("ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := auditLogger.LogOp(ctx, "ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
 		return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 	}
 	instructions := string(instructionsContent)
-	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
+	logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
 
 	// Log the successful reading of the instructions file to the audit log
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
+	if logErr := auditLogger.Log(ctx, auditlog.AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: "ReadInstructions",
 		Status:    "Success",
@@ -105,7 +105,7 @@ func Execute(
 		},
 		Message: "Successfully read instructions file",
 	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
+		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// 4. Use the injected APIService
@@ -120,7 +120,7 @@ func Execute(
 			category := catErr.Category()
 
 			// Log with category information
-			logger.Error("Failed to initialize reference client for context gathering: %v (category: %s)",
+			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v (category: %s)",
 				err, category.String())
 
 			// Use error category to give more specific error messages
@@ -140,7 +140,7 @@ func Execute(
 			}
 		} else {
 			// If not a categorized error, use the standard error handling
-			logger.Error("Failed to initialize reference client for context gathering: %v", err)
+			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v", err)
 			return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 		}
 	}
@@ -310,7 +310,7 @@ func generateTimestampedRunName() string {
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.
 // Note: The logger passed to this function should already have context attached.
-func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
+func setupOutputDirectory(ctx context.Context, cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
 	if cliConfig.OutputDir == "" {
 		// Generate a unique timestamped run name
 		runName := generateTimestampedRunName()
@@ -318,21 +318,21 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 		// Get the current working directory
 		cwd, err := os.Getwd()
 		if err != nil {
-			logger.Error("Error getting current working directory: %v", err)
+			logger.ErrorContext(ctx, "Error getting current working directory: %v", err)
 			return fmt.Errorf("%w: error getting current working directory: %v", ErrContextGatheringFailed, err)
 		}
 
 		// Set the output directory to the run name in the current working directory
 		cliConfig.OutputDir = filepath.Join(cwd, runName)
-		logger.Info("Generated output directory: %s", cliConfig.OutputDir)
+		logger.InfoContext(ctx, "Generated output directory: %s", cliConfig.OutputDir)
 	}
 
 	// Ensure the output directory exists
 	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
-		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
+		logger.ErrorContext(ctx, "Error creating output directory %s: %v", cliConfig.OutputDir, err)
 		return fmt.Errorf("%w: error creating output directory %s: %v", ErrInvalidOutputDir, cliConfig.OutputDir, err)
 	}
 
-	logger.Info("Using output directory: %s", cliConfig.OutputDir)
+	logger.InfoContext(ctx, "Using output directory: %s", cliConfig.OutputDir)
 	return nil
 }

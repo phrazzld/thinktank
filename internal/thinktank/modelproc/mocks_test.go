@@ -138,23 +138,41 @@ func (m *mockLLMClient) Close() error {
 }
 
 type mockAuditLogger struct {
-	logFunc   func(entry auditlog.AuditEntry) error
-	logOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
-	closeFunc func() error
+	logFunc         func(ctx context.Context, entry auditlog.AuditEntry) error
+	logLegacyFunc   func(entry auditlog.AuditEntry) error
+	logOpFunc       func(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	logOpLegacyFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	closeFunc       func() error
 }
 
-func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
+func (m *mockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	if m.logFunc != nil {
-		return m.logFunc(entry)
+		return m.logFunc(ctx, entry)
+	}
+
+	// A simple default implementation
+	return nil
+}
+
+func (m *mockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	if m.logLegacyFunc != nil {
+		return m.logLegacyFunc(entry)
+	}
+	return m.Log(context.Background(), entry)
+}
+
+func (m *mockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.logOpFunc != nil {
+		return m.logOpFunc(ctx, operation, status, inputs, outputs, err)
 	}
 	return nil
 }
 
-func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
-	if m.logOpFunc != nil {
-		return m.logOpFunc(operation, status, inputs, outputs, err)
+func (m *mockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.logOpLegacyFunc != nil {
+		return m.logOpLegacyFunc(operation, status, inputs, outputs, err)
 	}
-	return nil
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 func (m *mockAuditLogger) Close() error {

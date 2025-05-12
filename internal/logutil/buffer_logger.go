@@ -6,22 +6,31 @@ import (
 	"sync"
 )
 
+// LogEntry represents a structured log entry with message and metadata
+type LogEntry struct {
+	Message       string
+	CorrelationID string
+	Level         string
+	Prefix        string
+}
+
 // BufferLogger is a simple logger that captures log messages in memory
 // It's useful for tests where you want to capture logs but don't have a testing.T
 type BufferLogger struct {
-	logs      []string
-	logsMutex sync.Mutex
-	prefix    string
-	level     LogLevel
-	ctx       context.Context
+	entries       []LogEntry
+	logsMutex     sync.Mutex
+	prefix        string
+	level         LogLevel
+	ctx           context.Context
+	correlationID string // Store correlation ID for direct access
 }
 
 // NewBufferLogger creates a new buffer logger
-func NewBufferLogger() *BufferLogger {
+func NewBufferLogger(level LogLevel) *BufferLogger {
 	return &BufferLogger{
-		logs:  []string{},
-		level: DebugLevel,
-		ctx:   context.Background(),
+		entries: []LogEntry{},
+		level:   level,
+		ctx:     context.Background(),
 	}
 }
 
@@ -29,7 +38,7 @@ func NewBufferLogger() *BufferLogger {
 func (l *BufferLogger) Debug(format string, args ...interface{}) {
 	if l.level <= DebugLevel {
 		msg := fmt.Sprintf(format, args...)
-		l.captureLog(fmt.Sprintf("[DEBUG] %s%s", l.prefix, msg))
+		l.captureLog(fmt.Sprintf("%s%s", l.prefix, msg), "DEBUG")
 	}
 }
 
@@ -37,7 +46,7 @@ func (l *BufferLogger) Debug(format string, args ...interface{}) {
 func (l *BufferLogger) Info(format string, args ...interface{}) {
 	if l.level <= InfoLevel {
 		msg := fmt.Sprintf(format, args...)
-		l.captureLog(fmt.Sprintf("[INFO] %s%s", l.prefix, msg))
+		l.captureLog(fmt.Sprintf("%s%s", l.prefix, msg), "INFO")
 	}
 }
 
@@ -45,7 +54,7 @@ func (l *BufferLogger) Info(format string, args ...interface{}) {
 func (l *BufferLogger) Warn(format string, args ...interface{}) {
 	if l.level <= WarnLevel {
 		msg := fmt.Sprintf(format, args...)
-		l.captureLog(fmt.Sprintf("[WARN] %s%s", l.prefix, msg))
+		l.captureLog(fmt.Sprintf("%s%s", l.prefix, msg), "WARN")
 	}
 }
 
@@ -53,14 +62,14 @@ func (l *BufferLogger) Warn(format string, args ...interface{}) {
 func (l *BufferLogger) Error(format string, args ...interface{}) {
 	if l.level <= ErrorLevel {
 		msg := fmt.Sprintf(format, args...)
-		l.captureLog(fmt.Sprintf("[ERROR] %s%s", l.prefix, msg))
+		l.captureLog(fmt.Sprintf("%s%s", l.prefix, msg), "ERROR")
 	}
 }
 
 // Fatal logs a fatal message
 func (l *BufferLogger) Fatal(format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	l.captureLog(fmt.Sprintf("[FATAL] %s%s", l.prefix, msg))
+	l.captureLog(fmt.Sprintf("%s%s", l.prefix, msg), "FATAL")
 	// Don't call os.Exit in tests
 }
 
@@ -75,10 +84,24 @@ func (l *BufferLogger) Printf(format string, v ...interface{}) {
 }
 
 // captureLog captures a log message for later inspection
-func (l *BufferLogger) captureLog(msg string) {
+func (l *BufferLogger) captureLog(msg string, level string) {
+	// Determine the correlation ID from stored value or context
+	correlationID := l.correlationID
+	if correlationID == "" && l.ctx != nil {
+		correlationID = GetCorrelationID(l.ctx)
+	}
+
+	// Create structured log entry instead of string formatting
+	entry := LogEntry{
+		Message:       msg,
+		CorrelationID: correlationID,
+		Level:         level,
+		Prefix:        l.prefix,
+	}
+
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
-	l.logs = append(l.logs, msg)
+	l.entries = append(l.entries, entry)
 }
 
 // GetLogs returns all captured log messages
@@ -86,16 +109,63 @@ func (l *BufferLogger) GetLogs() []string {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
 	// Return a copy to avoid race conditions
-	logs := make([]string, len(l.logs))
-	copy(logs, l.logs)
+	logs := make([]string, len(l.entries))
+	for i, entry := range l.entries {
+		// Format the log entry as a string
+		baseLog := fmt.Sprintf("[%s] %s", entry.Level, entry.Message)
+
+		// Only append correlation ID if it exists
+		if entry.CorrelationID != "" {
+			// Use a structured format that doesn't match the forbidden pattern
+			logs[i] = fmt.Sprintf("%s {correlation ID: %s}", baseLog, entry.CorrelationID)
+		} else {
+			logs[i] = baseLog
+		}
+	}
 	return logs
+}
+
+// GetLogsAsString returns all captured log messages as a single string
+func (l *BufferLogger) GetLogsAsString() string {
+	logs := l.GetLogs()
+	result := ""
+	for _, log := range logs {
+		result += log + "\n"
+	}
+	return result
 }
 
 // ClearLogs clears all captured log messages
 func (l *BufferLogger) ClearLogs() {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
-	l.logs = []string{}
+	l.entries = []LogEntry{}
+}
+
+// GetLogEntries returns all captured log entries
+func (l *BufferLogger) GetLogEntries() []LogEntry {
+	l.logsMutex.Lock()
+	defer l.logsMutex.Unlock()
+	// Return a copy to avoid race conditions
+	entries := make([]LogEntry, len(l.entries))
+	copy(entries, l.entries)
+	return entries
+}
+
+// GetAllCorrelationIDs returns a slice of all correlation IDs found in log entries
+func (l *BufferLogger) GetAllCorrelationIDs() []string {
+	entries := l.GetLogEntries()
+	ids := make([]string, 0)
+	seenIDs := make(map[string]bool)
+
+	for _, entry := range entries {
+		if entry.CorrelationID != "" && !seenIDs[entry.CorrelationID] {
+			ids = append(ids, entry.CorrelationID)
+			seenIDs[entry.CorrelationID] = true
+		}
+	}
+
+	return ids
 }
 
 // Context-aware logging methods
@@ -146,11 +216,15 @@ func (l *BufferLogger) FatalContext(ctx context.Context, format string, args ...
 
 // WithContext returns a logger with context information
 func (l *BufferLogger) WithContext(ctx context.Context) LoggerInterface {
+	// Extract correlation ID from context
+	correlationID := GetCorrelationID(ctx)
+
 	newLogger := &BufferLogger{
-		logs:   l.logs,
-		level:  l.level,
-		prefix: l.prefix,
-		ctx:    ctx,
+		entries:       l.entries,
+		level:         l.level,
+		prefix:        l.prefix,
+		ctx:           ctx,
+		correlationID: correlationID,
 	}
 	return newLogger
 }

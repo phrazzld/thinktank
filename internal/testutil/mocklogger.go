@@ -33,11 +33,12 @@ type MockLogger struct {
 
 // LogOpCall represents a single call to the LogOp method
 type LogOpCall struct {
-	Operation string
-	Status    string
-	Inputs    map[string]interface{}
-	Outputs   map[string]interface{}
-	Error     error
+	Operation     string
+	Status        string
+	Inputs        map[string]interface{}
+	Outputs       map[string]interface{}
+	Error         error
+	CorrelationID string // Track correlation ID from context
 }
 
 // NewMockLogger creates a new mock logger for testing
@@ -263,8 +264,8 @@ func (m *MockLogger) SetVerbose(verbose bool) {
 // auditlog.AuditLogger implementation
 //
 
-// Log implements the AuditLogger.Log method
-func (m *MockLogger) Log(entry auditlog.AuditEntry) error {
+// Log implements the AuditLogger.Log method with context
+func (m *MockLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -278,23 +279,44 @@ func (m *MockLogger) Log(entry auditlog.AuditEntry) error {
 		entry.Timestamp = time.Now().UTC()
 	}
 
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
+
 	// Record the entry
 	m.auditEntries = append(m.auditEntries, entry)
 	return nil
 }
 
-// LogOp implements the AuditLogger.LogOp method
-func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (m *MockLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return m.Log(context.Background(), entry)
+}
+
+// LogOp implements the AuditLogger.LogOp method with context
+func (m *MockLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	// Extract correlation ID from context
+	ctxCorrelationID := logutil.GetCorrelationID(ctx)
+
 	// Record the call
 	m.logOpCalls = append(m.logOpCalls, LogOpCall{
-		Operation: operation,
-		Status:    status,
-		Inputs:    inputs,
-		Outputs:   outputs,
-		Error:     err,
+		Operation:     operation,
+		Status:        status,
+		Inputs:        inputs,
+		Outputs:       outputs,
+		Error:         err,
+		CorrelationID: ctxCorrelationID,
 	})
 
 	// If error is configured, return it
@@ -302,12 +324,27 @@ func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface
 		return m.logError
 	}
 
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Create and record the entry
 	entry := auditlog.AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 	}
 
@@ -335,6 +372,11 @@ func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface
 
 	m.auditEntries = append(m.auditEntries, entry)
 	return nil
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (m *MockLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close implements the AuditLogger.Close method

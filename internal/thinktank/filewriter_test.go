@@ -2,6 +2,7 @@
 package thinktank_test
 
 import (
+	"context"
 	"os"
 	"strings"
 	"testing"
@@ -17,12 +18,16 @@ type mockAuditLogger struct {
 	entries []auditlog.AuditEntry
 }
 
-func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
+func (m *mockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	m.entries = append(m.entries, entry)
 	return nil
 }
 
-func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+func (m *mockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return m.Log(context.Background(), entry)
+}
+
+func (m *mockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	// Create an AuditEntry from the parameters
 	entry := auditlog.AuditEntry{
 		Operation: operation,
@@ -32,6 +37,10 @@ func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]inte
 	}
 	m.entries = append(m.entries, entry)
 	return nil
+}
+
+func (m *mockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 func (m *mockAuditLogger) Close() error {

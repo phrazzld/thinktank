@@ -513,28 +513,60 @@ func NewBoundaryAuditLogger(filesystem FilesystemIO, logger logutil.LoggerInterf
 	}
 }
 
-// Log writes an audit entry to the log
-func (a *BoundaryAuditLogger) Log(entry auditlog.AuditEntry) error {
+// Log writes an audit entry to the log with context
+func (a *BoundaryAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	// Lock the mutex to prevent concurrent access to entries
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
 
 	// Add entry to in-memory log
 	a.entries = append(a.entries, entry)
 
 	// In a real implementation, we would write to a file
 	// For testing, we just log it
-	a.logger.Debug("Audit log: %s - %s", entry.Operation, entry.Status)
+	a.logger.DebugContext(ctx, "Audit log: %s - %s", entry.Operation, entry.Status)
 	return nil
 }
 
-// LogOp logs an operation with the given status
-func (a *BoundaryAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (a *BoundaryAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return a.Log(context.Background(), entry)
+}
+
+// LogOp logs an operation with the given status with context
+func (a *BoundaryAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Create audit entry
 	entry := auditlog.AuditEntry{
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 		Message:   fmt.Sprintf("%s - %s", operation, status),
 	}
@@ -548,7 +580,12 @@ func (a *BoundaryAuditLogger) LogOp(operation, status string, inputs map[string]
 	}
 
 	// Log the entry
-	return a.Log(entry)
+	return a.Log(ctx, entry)
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (a *BoundaryAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return a.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close closes the audit logger

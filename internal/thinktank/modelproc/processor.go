@@ -123,7 +123,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		"model_name":    modelName,
 		"prompt_length": len(stitchedPrompt),
 	}
-	if logErr := p.auditLogger.LogOp("GenerateContent", "InProgress", inputs, nil, nil); logErr != nil {
+	if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "InProgress", inputs, nil, nil); logErr != nil {
 		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
@@ -160,7 +160,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		inputs["duration_ms"] = generateDurationMs
 
 		// Log the content generation failure
-		if logErr := p.auditLogger.LogOp("GenerateContent", "Failure", inputs, nil, err); logErr != nil {
+		if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "Failure", inputs, nil, err); logErr != nil {
 			p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
@@ -173,7 +173,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		"finish_reason":      result.FinishReason,
 		"has_safety_ratings": len(result.SafetyInfo) > 0,
 	}
-	if logErr := p.auditLogger.LogOp("GenerateContent", "Success", inputs, outputs, nil); logErr != nil {
+	if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "Success", inputs, outputs, nil); logErr != nil {
 		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
@@ -267,7 +267,7 @@ func (p *ModelProcessor) saveOutputToFile(ctx context.Context, outputFilePath, c
 		"output_path":    outputFilePath,
 		"content_length": len(content),
 	}
-	if logErr := p.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
+	if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
 		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
@@ -283,7 +283,7 @@ func (p *ModelProcessor) saveOutputToFile(ctx context.Context, outputFilePath, c
 		p.logger.ErrorContext(ctx, "Error saving output to file %s: %v", outputFilePath, err)
 
 		inputs["duration_ms"] = saveDurationMs
-		if logErr := p.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+		if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
@@ -295,7 +295,7 @@ func (p *ModelProcessor) saveOutputToFile(ctx context.Context, outputFilePath, c
 	outputs := map[string]interface{}{
 		"content_length": len(content),
 	}
-	if logErr := p.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
+	if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 

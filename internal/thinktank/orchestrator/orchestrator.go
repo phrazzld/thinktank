@@ -838,8 +838,8 @@ func (o *Orchestrator) logAuditEvent(
 		inputs["correlation_id"] = correlationID
 	}
 
-	// Log using the audit logger's LogOp method
-	if logErr := o.auditLogger.LogOp(op, status, inputs, outputs, err); logErr != nil {
+	// Log using the audit logger's LogOp method with context
+	if logErr := o.auditLogger.LogOp(ctx, op, status, inputs, outputs, err); logErr != nil {
 		// Log any errors that occur during audit logging using the regular logger
 		o.logger.WarnContext(ctx, "Failed to write audit log: %v", logErr)
 	}

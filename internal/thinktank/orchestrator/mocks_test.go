@@ -53,11 +53,12 @@ func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 
 // LogCall represents a single call to LogOp
 type LogCall struct {
-	Operation string
-	Status    string
-	Inputs    map[string]interface{}
-	Outputs   map[string]interface{}
-	Error     error
+	Operation     string
+	Status        string
+	Inputs        map[string]interface{}
+	Outputs       map[string]interface{}
+	Error         error
+	CorrelationID string // Track correlation ID from context
 }
 
 // MockAuditLogger provides a mock implementation for testing
@@ -75,27 +76,68 @@ func NewMockAuditLogger() *MockAuditLogger {
 	}
 }
 
-// Log is a mock implementation
-func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
+// Log is a mock implementation with context
+func (m *MockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
+	// Extract correlation ID for testing
+	correlationID := logutil.GetCorrelationID(ctx)
+
+	// Add correlation ID to entry inputs if needed
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
+
 	return m.LogError
 }
 
-// LogOp is a mock implementation
-func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (m *MockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return m.Log(context.Background(), entry)
+}
+
+// LogOp is a mock implementation with context
+func (m *MockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	// Lock the mutex to prevent concurrent access to LogCalls
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	// Extract correlation ID for testing
+	correlationID := logutil.GetCorrelationID(ctx)
+
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID to inputs if needed
+	if correlationID != "" {
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Record the call parameters
 	m.LogCalls = append(m.LogCalls, LogCall{
-		Operation: operation,
-		Status:    status,
-		Inputs:    inputs,
-		Outputs:   outputs,
-		Error:     err,
+		Operation:     operation,
+		Status:        status,
+		Inputs:        inputsCopy,
+		Outputs:       outputs,
+		Error:         err,
+		CorrelationID: correlationID,
 	})
+
 	// Return configured error (nil by default)
 	return m.LogError
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (m *MockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close is a mock implementation

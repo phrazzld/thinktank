@@ -38,23 +38,55 @@ func NewMockAuditLogger() *MockAuditLogger {
 	}
 }
 
-func (m *MockAuditLogger) Log(entry auditlog.AuditEntry) error {
+func (m *MockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
+
 	m.entries = append(m.entries, entry)
 	return m.logErr
 }
 
-func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+func (m *MockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return m.Log(context.Background(), entry)
+}
+
+func (m *MockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
 
 	// Create an AuditEntry from the parameters
 	entry := auditlog.AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 		Message:   fmt.Sprintf("%s - %s", operation, status),
 	}
@@ -69,6 +101,10 @@ func (m *MockAuditLogger) LogOp(operation, status string, inputs map[string]inte
 
 	m.entries = append(m.entries, entry)
 	return m.logErr
+}
+
+func (m *MockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 func (m *MockAuditLogger) Close() error {

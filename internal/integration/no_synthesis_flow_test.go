@@ -122,7 +122,10 @@ func TestNoSynthesisFlow(t *testing.T) {
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
-		LogFunc: func(entry auditlog.AuditEntry) error {
+		LogFunc: func(ctx context.Context, entry auditlog.AuditEntry) error {
+			return nil
+		},
+		LogLegacyFunc: func(entry auditlog.AuditEntry) error {
 			return nil
 		},
 		CloseFunc: func() error {

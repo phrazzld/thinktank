@@ -71,8 +71,10 @@ func TestMockLoggerLogging(t *testing.T) {
 func TestMockLoggerAuditLogging(t *testing.T) {
 	mockLogger := NewMockLogger()
 
-	// Test LogOp
+	// Test LogOp with context
+	ctx := context.Background()
 	err := mockLogger.LogOp(
+		ctx,
 		"TestOperation",
 		"Success",
 		map[string]interface{}{"input1": "value1"},
@@ -113,14 +115,14 @@ func TestMockLoggerAuditLogging(t *testing.T) {
 	testErr := errors.New("test audit log error")
 	mockLogger.SetLogError(testErr)
 
-	err = mockLogger.LogOp("ErrorOperation", "Failure", nil, nil, nil)
+	err = mockLogger.LogOp(ctx, "ErrorOperation", "Failure", nil, nil, nil)
 	if err != testErr {
 		t.Errorf("Expected error '%v', got '%v'", testErr, err)
 	}
 
 	// Clear error and verify error is gone
 	mockLogger.ClearLogError()
-	err = mockLogger.LogOp("AnotherOperation", "Success", nil, nil, nil)
+	err = mockLogger.LogOp(ctx, "AnotherOperation", "Success", nil, nil, nil)
 	if err != nil {
 		t.Errorf("Expected no error after clearing, got: %v", err)
 	}
@@ -133,7 +135,7 @@ func TestMockLoggerAuditLogging(t *testing.T) {
 		Message:   "Test direct entry",
 	}
 
-	err = mockLogger.Log(entry)
+	err = mockLogger.Log(ctx, entry)
 	if err != nil {
 		t.Errorf("Expected no error from Log, got: %v", err)
 	}

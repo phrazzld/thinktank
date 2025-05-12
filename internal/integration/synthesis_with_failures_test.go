@@ -210,7 +210,13 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
-		LogFunc: func(entry auditlog.AuditEntry) error {
+		LogFunc: func(ctx context.Context, entry auditlog.AuditEntry) error {
+			auditMutex.Lock()
+			auditEntries = append(auditEntries, entry)
+			auditMutex.Unlock()
+			return nil
+		},
+		LogLegacyFunc: func(entry auditlog.AuditEntry) error {
 			auditMutex.Lock()
 			auditEntries = append(auditEntries, entry)
 			auditMutex.Unlock()

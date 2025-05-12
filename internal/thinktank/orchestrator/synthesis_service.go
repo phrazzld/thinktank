@@ -81,7 +81,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	contextLogger := s.logger.WithContext(ctx)
 
 	// Log synthesis process start with audit logger
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation: "SynthesisStart",
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
@@ -99,7 +99,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	contextLogger.DebugContext(ctx, "Synthesis prompt built, length: %d characters", len(synthesisPrompt))
 
 	// Log prompt building completed
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation: "SynthesisPromptCreated",
 		Status:    "Success",
 		Inputs: map[string]interface{}{
@@ -117,7 +117,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		durationMs := duration
 
 		// Log error with audit logger
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisModelParameters",
 			Status:     "Failure",
 			DurationMs: &durationMs,
@@ -138,7 +138,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	}
 
 	// Log successful parameter retrieval
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation: "SynthesisModelParameters",
 		Status:    "Success",
 		Inputs: map[string]interface{}{
@@ -156,7 +156,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		durationMs := duration
 
 		// Log error with audit logger
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisClientInit",
 			Status:     "Failure",
 			DurationMs: &durationMs,
@@ -177,7 +177,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	}
 
 	// Log successful client initialization
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation: "SynthesisClientInit",
 		Status:    "Success",
 		Inputs: map[string]interface{}{
@@ -191,7 +191,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			contextLogger.WarnContext(ctx, "Error closing synthesis model client: %v", closeErr)
 
 			// Log client close error
-			s.logAuditEvent(auditlog.AuditEntry{
+			s.logAuditEvent(ctx, auditlog.AuditEntry{
 				Operation: "SynthesisClientClose",
 				Status:    "Failure",
 				Inputs: map[string]interface{}{
@@ -205,7 +205,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 			})
 		} else {
 			// Log successful client close
-			s.logAuditEvent(auditlog.AuditEntry{
+			s.logAuditEvent(ctx, auditlog.AuditEntry{
 				Operation: "SynthesisClientClose",
 				Status:    "Success",
 				Inputs: map[string]interface{}{
@@ -218,7 +218,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 
 	// Log API call start
 	apiCallStartTime := time.Now()
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation: "SynthesisAPICall",
 		Status:    "InProgress",
 		Inputs: map[string]interface{}{
@@ -240,7 +240,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		durationMs := duration
 
 		// Log API call failure
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisAPICall",
 			Status:     "Failure",
 			DurationMs: &apiCallDurationMs,
@@ -256,7 +256,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		})
 
 		// Log overall synthesis failure
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisEnd",
 			Status:     "Failure",
 			DurationMs: &durationMs,
@@ -274,7 +274,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	}
 
 	// Log successful API call
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation:  "SynthesisAPICall",
 		Status:     "Success",
 		DurationMs: &apiCallDurationMs,
@@ -301,7 +301,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		durationMs := duration
 
 		// Log response processing failure
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisResponseProcessing",
 			Status:     "Failure",
 			DurationMs: &responseDurationMs,
@@ -316,7 +316,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		})
 
 		// Log overall synthesis failure
-		s.logAuditEvent(auditlog.AuditEntry{
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
 			Operation:  "SynthesisEnd",
 			Status:     "Failure",
 			DurationMs: &durationMs,
@@ -337,7 +337,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	}
 
 	// Log successful response processing
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation:  "SynthesisResponseProcessing",
 		Status:     "Success",
 		DurationMs: &responseDurationMs,
@@ -354,7 +354,7 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 	duration := time.Since(startTime).Milliseconds()
 	durationMs := duration
 
-	s.logAuditEvent(auditlog.AuditEntry{
+	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation:  "SynthesisEnd",
 		Status:     "Success",
 		DurationMs: &durationMs,
@@ -468,17 +468,17 @@ func (s *DefaultSynthesisService) handleSynthesisError(ctx context.Context, err 
 // logAuditEvent writes an audit log entry and logs any errors that occur.
 // This helper ensures proper error handling for all audit log operations.
 // It converts an AuditEntry to LogOp parameters for consistent logging.
-func (s *DefaultSynthesisService) logAuditEvent(entry auditlog.AuditEntry) {
+// This now requires a context parameter to follow the context-aware logging pattern.
+func (s *DefaultSynthesisService) logAuditEvent(ctx context.Context, entry auditlog.AuditEntry) {
 	// Create an error from entry.Error if present
 	var err error
 	if entry.Error != nil {
 		err = fmt.Errorf("%s: %s", entry.Error.Type, entry.Error.Message)
 	}
 
-	if logErr := s.auditLogger.LogOp(entry.Operation, entry.Status, entry.Inputs, entry.Outputs, err); logErr != nil {
-		// We don't have ctx here, so we use the regular logging method
-		// This is acceptable for a secondary error that occurs during audit logging
-		s.logger.Warn("Failed to write audit log: %v", logErr)
+	if logErr := s.auditLogger.LogOp(ctx, entry.Operation, entry.Status, entry.Inputs, entry.Outputs, err); logErr != nil {
+		// Use context-aware logging
+		s.logger.WarnContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 }
 

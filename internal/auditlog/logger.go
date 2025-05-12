@@ -136,15 +136,13 @@ func (l *FileAuditLogger) LogOp(ctx context.Context, operation, status string, i
 
 	// Make a copy of inputs to avoid modifying the original map
 	inputsCopy := make(map[string]interface{})
-	if inputs != nil {
-		for k, v := range inputs {
-			inputsCopy[k] = v
-		}
+	for k, v := range inputs {
+		inputsCopy[k] = v
 	}
 
 	// Add correlation ID from context if not already present in inputs
 	correlationID := logutil.GetCorrelationID(ctx)
-	if correlationID != "" && inputsCopy != nil {
+	if correlationID != "" {
 		// Only add if not already present
 		if _, exists := inputsCopy["correlation_id"]; !exists {
 			inputsCopy["correlation_id"] = correlationID
