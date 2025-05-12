@@ -338,7 +338,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Trigger audit events and verify the log output format and content.
     - **Depends‑on:** [T007, T009]
 
-- [~] **T038 · Fix · P1: Update mock AuditLogger implementations for context-aware interface**
+- [x] **T038 · Fix · P1: Update mock AuditLogger implementations for context-aware interface**
     - **Context:** Follow-up to T017 to fix failing builds and tests
     - **Action:**
         1. Update MockLogger in internal/testutil/mocklogger.go to implement context-aware AuditLogger interface

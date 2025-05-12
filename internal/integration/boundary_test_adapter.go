@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
@@ -519,6 +520,16 @@ func (a *BoundaryAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Ensure timestamp is set
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now().UTC()
+	}
+
 	// Add correlation ID from context if not already present
 	correlationID := logutil.GetCorrelationID(ctx)
 	if correlationID != "" {
@@ -547,6 +558,11 @@ func (a *BoundaryAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
 
 // LogOp logs an operation with the given status with context
 func (a *BoundaryAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	// Make a copy of inputs to avoid modifying the original map
 	inputsCopy := make(map[string]interface{})
 	for k, v := range inputs {
@@ -564,6 +580,7 @@ func (a *BoundaryAuditLogger) LogOp(ctx context.Context, operation, status strin
 
 	// Create audit entry
 	entry := auditlog.AuditEntry{
+		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
 		Inputs:    inputsCopy,
