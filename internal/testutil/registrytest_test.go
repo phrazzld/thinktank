@@ -44,7 +44,8 @@ func TestSetupStandardRegistry(t *testing.T) {
 	setup.SetupStandardRegistry()
 
 	// Verify that model was added
-	model, err := setup.Registry.GetModel(setup.ModelName)
+	ctx := context.Background()
+	model, err := setup.Registry.GetModel(ctx, setup.ModelName)
 	if err != nil {
 		t.Errorf("Expected model %s to be added, but got error: %v", setup.ModelName, err)
 	}
@@ -55,7 +56,7 @@ func TestSetupStandardRegistry(t *testing.T) {
 	}
 
 	// Verify that provider was added
-	provider, err := setup.Registry.GetProvider(setup.ProviderName)
+	provider, err := setup.Registry.GetProvider(ctx, setup.ProviderName)
 	if err != nil {
 		t.Errorf("Expected provider %s to be added, but got error: %v", setup.ProviderName, err)
 	}
@@ -64,7 +65,7 @@ func TestSetupStandardRegistry(t *testing.T) {
 	}
 
 	// Verify that provider implementation was added
-	impl, err := setup.Registry.GetProviderImplementation(setup.ProviderName)
+	impl, err := setup.Registry.GetProviderImplementation(ctx, setup.ProviderName)
 	if err != nil {
 		t.Errorf("Expected provider implementation for %s to be added, but got error: %v", setup.ProviderName, err)
 	}

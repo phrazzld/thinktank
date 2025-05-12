@@ -102,7 +102,8 @@ func TestMockRegistryCallInterception(t *testing.T) {
 	registry.SetGetModelError(expectedErr)
 
 	// Call the method
-	_, err := registry.GetModel("test-model")
+	ctx := context.Background()
+	_, err := registry.GetModel(ctx, "test-model")
 
 	// Verify error is returned
 	if err != expectedErr {
@@ -113,8 +114,8 @@ func TestMockRegistryCallInterception(t *testing.T) {
 	calls := registry.GetMethodCalls("GetModel")
 	if len(calls) != 1 {
 		t.Errorf("Expected 1 call to GetModel, got %d", len(calls))
-	} else if calls[0].Args[0] != "test-model" {
-		t.Errorf("Expected arg 'test-model', got %v", calls[0].Args[0])
+	} else if calls[0].Args[1] != "test-model" { // Arg 0 is context, arg 1 is model name
+		t.Errorf("Expected arg 'test-model', got %v", calls[0].Args[1])
 	}
 }
 
@@ -127,7 +128,8 @@ func TestMockRegistryGetProviderImplementation(t *testing.T) {
 	expectedErr := errors.New("implementation not found")
 	registry.SetGetProviderImplementationError(expectedErr)
 
-	_, err := registry.GetProviderImplementation("test-provider")
+	ctx := context.Background()
+	_, err := registry.GetProviderImplementation(ctx, "test-provider")
 	if err != expectedErr {
 		t.Errorf("Expected error %v, got %v", expectedErr, err)
 	}
@@ -135,11 +137,13 @@ func TestMockRegistryGetProviderImplementation(t *testing.T) {
 	// Set up custom implementation
 	provider := &mockTestProvider{}
 	registry.AddProvider(testProviderDefinition{Name: "test-provider"})
-	registry.AddProviderImplementation("test-provider", provider)
+	ctx2 := context.Background()
+	registry.AddProviderImplementation(ctx2, "test-provider", provider)
 	registry.SetGetProviderImplementationError(nil) // Clear error
 
 	// Get implementation
-	impl, err := registry.GetProviderImplementation("test-provider")
+	ctx3 := context.Background()
+	impl, err := registry.GetProviderImplementation(ctx3, "test-provider")
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

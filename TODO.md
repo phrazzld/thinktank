@@ -369,7 +369,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Verify correlation IDs are properly propagated through the application
     - **Depends‑on:** [T017, T038]
 
-- [~] **T018 · Test · P2: Add/update integration tests for core thinktank components**
+- [x] **T018 · Test · P2: Add/update integration tests for core thinktank components**
     - **Context:** Phase 3, Step 5 from PLAN.md; Testing Strategy
     - **Action:**
         1. Review and update existing integration tests for `registry`, `modelproc`, and `orchestrator`.
@@ -381,7 +381,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Manually inspect logs from test runs for consistency.
     - **Depends‑on:** [T014, T015, T016]
 
-- [ ] **T037 · Fix · P1: Update integration tests for context-based registry interface**
+- [x] **T037 · Fix · P1: Update integration tests for context-based registry interface**
     - **Context:** Follow-up to T014 to fix failing integration tests
     - **Action:**
         1. Update all integration test mocks to match new registry interface with context
