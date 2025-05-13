@@ -275,8 +275,8 @@ func SetOrchestratorConstructor(constructor func(
 // even when many names are generated in quick succession
 var incrementalCounter uint32 = 0
 
-// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNNNNN
-// where NNNNNNN is a combination of nanoseconds, random number, and incremental counter to ensure uniqueness.
+// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN
+// where NNNNNNNNN is a combination of nanoseconds, random number, and incremental counter to ensure uniqueness.
 // This implementation guarantees uniqueness even for many runs that occur within the same millisecond.
 func generateTimestampedRunName() string {
 	// Get current time
@@ -303,8 +303,8 @@ func generateTimestampedRunName() string {
 	// This gives us a billion possibilities (1000 × 1000 × 1000) within the same second
 	uniqueNum := (nanos * 1000000) + (randNum * 1000) + int(counter)
 
-	// Combine with prefix and format with leading zeros (7 digits)
-	return fmt.Sprintf("thinktank_%s_%07d", timestamp, uniqueNum)
+	// Combine with prefix and format with leading zeros (9 digits)
+	return fmt.Sprintf("thinktank_%s_%09d", timestamp, uniqueNum)
 }
 
 // setupOutputDirectory ensures that the output directory is set and exists.

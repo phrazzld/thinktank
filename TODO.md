@@ -548,6 +548,24 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Run the test multiple times to verify consistency
     - **Depends‑on:** none
 
+## CI Fix for Test Pattern Issues
+
+- [x] **T040 · Fix · P0: Update TestGenerateTimestampedRunNameFormat to match new format**
+    - **Context:** CI is failing because TestGenerateTimestampedRunNameFormat expects 7 digits in uniqueness component but implementation now uses 9 digits
+    - **Action:**
+        1. Update the regex pattern to expect 9 digits instead of 7: `^thinktank_\d{8}_\d{6}_\d{9}$`
+        2. Update validation check for uniqueness value to expect values up to 999999999
+        3. Adjust the digit count check to verify exactly 9 digits
+        4. Ensure the implementation and test are consistent
+    - **Done‑when:**
+        1. The test passes consistently
+        2. CI passes on the PR
+    - **Verification:**
+        1. Run the test multiple times locally
+        2. Verify that `TestGenerateTimestampedRunNameUniqueness` also passes
+        3. Run a quick stress test to confirm uniqueness guarantees
+    - **Depends‑on:** none
+
 ## Clarifications & Assumptions
 
 - [ ] **Issue:** Confirm specific list of provider packages in `internal/providers/*` requiring `FormatAPIError` implementation.

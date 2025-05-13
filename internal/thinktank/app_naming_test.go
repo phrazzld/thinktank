@@ -9,13 +9,13 @@ import (
 )
 
 // TestGenerateTimestampedRunNameFormat verifies that the generateTimestampedRunName function
-// produces names in the expected format: thinktank_YYYYMMDD_HHMMSS_NNNNNNN
+// produces names in the expected format: thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN
 func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 	// Generate a name
 	name := generateTimestampedRunName()
 
 	// Define the expected regex pattern
-	pattern := `^thinktank_\d{8}_\d{6}_\d{7}$`
+	pattern := `^thinktank_\d{8}_\d{6}_\d{9}$`
 	re := regexp.MustCompile(pattern)
 
 	// Verify the name matches the expected pattern
@@ -36,7 +36,7 @@ func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 
 	dateStr := parts[1]   // YYYYMMDD
 	timeStr := parts[2]   // HHMMSS
-	uniqueStr := parts[3] // NNNNNNN
+	uniqueStr := parts[3] // NNNNNNNNN
 
 	// Verify the date part
 	year, err := strconv.Atoi(dateStr[:4])
@@ -72,13 +72,13 @@ func TestGenerateTimestampedRunNameFormat(t *testing.T) {
 
 	// Verify the uniqueness component
 	uniqueNum, err := strconv.Atoi(uniqueStr)
-	if err != nil || uniqueNum < 0 || uniqueNum > 9999999 {
-		t.Errorf("Uniqueness component %q is not a valid 7-digit number", uniqueStr)
+	if err != nil || uniqueNum < 0 || uniqueNum > 999999999 {
+		t.Errorf("Uniqueness component %q is not a valid 9-digit number", uniqueStr)
 	}
 
-	// Verify the uniqueness component is formatted with exactly 7 digits (with leading zeros if needed)
-	if len(uniqueStr) != 7 {
-		t.Errorf("Uniqueness component %q does not have exactly 7 digits", uniqueStr)
+	// Verify the uniqueness component is formatted with exactly 9 digits (with leading zeros if needed)
+	if len(uniqueStr) != 9 {
+		t.Errorf("Uniqueness component %q does not have exactly 9 digits", uniqueStr)
 	}
 }
 
