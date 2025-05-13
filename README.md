@@ -223,6 +223,7 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 - [OpenRouter Integration](docs/openrouter-integration.md)
 - [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
+- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md)
 - Detailed configuration options: `thinktank --help`
 
 ## License

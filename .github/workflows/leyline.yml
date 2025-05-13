@@ -1,0 +1,9 @@
+name: Leyline Sync
+on:
+  pull_request:
+  push:
+jobs:
+  docs:
+    uses: phrazzld/leyline/.github/workflows/vendor.yml@master
+    with:
+      ref: master

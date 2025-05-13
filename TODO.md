@@ -467,7 +467,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Full test suite passes.
     - **Depends‑on:** [T006, T011, T013, T014, T015, T016, T017, T019, T020, T021, T022]
 
-- [ ] **T024 · Chore · P2: Update documentation for error and logging standards**
+- [x] **T024 · Chore · P2: Update documentation for error and logging standards**
     - **Context:** Phase 5, Step 11 from PLAN.md (Update Documentation)
     - **Action:**
         1. Update `DEVELOPMENT_PHILOSOPHY.md` (or similar) with new error handling patterns (using `LLMError`, `Wrap`, `IsCategory`).
