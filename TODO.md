@@ -424,7 +424,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Run the application and observe the first logs to ensure correlation ID is present.
     - **Depends‑on:** [T010, T017]
 
-- [~] **T021 · Feature · P1: Implement top-level error handling in cmd/thinktank**
+- [x] **T021 · Feature · P1: Implement top-level error handling in cmd/thinktank**
     - **Context:** Phase 4, Step 8 from PLAN.md (Refactor Top-Level Error Handling)
     - **Action:**
         1. In `cmd/thinktank/main.go`, implement a central error handling mechanism for errors bubbling up to the main function.
