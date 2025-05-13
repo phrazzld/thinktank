@@ -7,3 +7,4 @@ jobs:
     uses: phrazzld/leyline/.github/workflows/vendor.yml@master
     with:
       ref: master
+      categories: go
