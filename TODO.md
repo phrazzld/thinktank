@@ -410,7 +410,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Simulate I/O errors and check log output and error wrapping.
     - **Depends‑on:** [T007, T009]
 
-- [ ] **T020 · Refactor · P1: Setup initial context and logger in cmd/thinktank**
+- [x] **T020 · Refactor · P1: Setup initial context and logger in cmd/thinktank**
     - **Context:** Phase 1, Step 3 & Phase 4, Step 8 from PLAN.md
     - **Action:**
         1. In `cmd/thinktank/main.go`, create the root `context.Context`.
