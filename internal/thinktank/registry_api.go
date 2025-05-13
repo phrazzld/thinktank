@@ -147,7 +147,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// STEP 1: First try to get the key from environment variable based on provider
 	// This is the recommended and preferred method for providing API keys
-	configLoader := registry.NewConfigLoader()
+	configLoader := registry.NewConfigLoader(s.logger)
 	modelConfig, err := configLoader.Load()
 	if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
 		if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {

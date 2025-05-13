@@ -453,7 +453,7 @@ These tasks address the usability issue where thinktank appears to error out des
         1. Write unit tests that attempt to log errors/messages containing fake secrets and verify they are masked in the output.
     - **Depends‑on:** [T008]
 
-- [~] **T023 · Chore · P2: Audit codebase and remove legacy logging/error handling**
+- [x] **T023 · Chore · P2: Audit codebase and remove legacy logging/error handling**
     - **Context:** Phase 5, Step 10 from PLAN.md (Perform Codebase Audit)
     - **Action:**
         1. Search the entire codebase for old logging patterns (e.g., `fmt.Println`, `log.Printf`, direct `log` package usage for application logging).

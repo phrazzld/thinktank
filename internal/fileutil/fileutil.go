@@ -4,7 +4,6 @@ package fileutil
 import (
 	"bytes"
 	"context"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,8 +41,8 @@ func NewConfig(verbose bool, include, exclude, excludeNames, format string, logg
 	gitAvailable := gitErr == nil
 
 	if logger == nil {
-		stdLogger := log.New(os.Stderr, "[fileutil] ", log.LstdFlags)
-		logger = logutil.NewStdLoggerAdapter(stdLogger)
+		// Use the slog-based logger instead of the standard library logger
+		logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 	}
 
 	cfg := &Config{

@@ -83,7 +83,7 @@ func (m *Manager) Initialize() error {
 
 	// Load configuration
 	ctx := context.Background()
-	configLoader := NewConfigLoader()
+	configLoader := NewConfigLoader(m.logger)
 	if err := m.registry.LoadConfig(ctx, configLoader); err != nil {
 		// Check if the error is due to missing config file
 		if os.IsNotExist(err) {
