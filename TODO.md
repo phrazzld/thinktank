@@ -523,7 +523,7 @@ These tasks address the usability issue where thinktank appears to error out des
         2. Verify models use their configured token limits from models.yaml
     - **Depends‑on:** none
 
-- [ ] **T034 · Refactor · P1: Update tests for error handling improvements**
+- [x] **T034 · Refactor · P1: Update tests for error handling improvements**
     - **Context:** Missing or incompatible tests for new error handling features
     - **Action:**
         1. Create comprehensive tests for all error handling components
