@@ -89,7 +89,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 				},
 			}, nil
 		},
-		GetModelParametersFunc: func(modelName string) (map[string]interface{}, error) {
+		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
 	}
@@ -122,7 +122,10 @@ func TestNoSynthesisFlow(t *testing.T) {
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
-		LogFunc: func(entry auditlog.AuditEntry) error {
+		LogFunc: func(ctx context.Context, entry auditlog.AuditEntry) error {
+			return nil
+		},
+		LogLegacyFunc: func(entry auditlog.AuditEntry) error {
 			return nil
 		},
 		CloseFunc: func() error {

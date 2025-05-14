@@ -6,6 +6,7 @@
 package thinktank
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,13 +47,15 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 // and generates appropriate audit log entries for the operation's start and completion.
 // The method handles errors gracefully and ensures they are properly logged.
 func (fw *fileWriter) SaveToFile(content, outputFile string) error {
+	// Create a background context since this interface doesn't accept context
+	ctx := context.Background()
 	// Log the start of output saving
 	saveStartTime := time.Now()
 	inputs := map[string]interface{}{
 		"output_path":    outputFile,
 		"content_length": len(content),
 	}
-	if logErr := fw.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
+	if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 
@@ -66,7 +69,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 			// Log failure to save output
 			saveDurationMs := time.Since(saveStartTime).Milliseconds()
 			inputs["duration_ms"] = saveDurationMs
-			if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+			if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 				fw.logger.Error("Failed to write audit log: %v", logErr)
 			}
 
@@ -83,7 +86,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 		// Log failure to save output
 		saveDurationMs := time.Since(saveStartTime).Milliseconds()
 		inputs["duration_ms"] = saveDurationMs
-		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+		if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -102,7 +105,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 
 		// Log failure to save output
 		inputs["duration_ms"] = saveDurationMs
-		if logErr := fw.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+		if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
 			fw.logger.Error("Failed to write audit log: %v", logErr)
 		}
 
@@ -114,7 +117,7 @@ func (fw *fileWriter) SaveToFile(content, outputFile string) error {
 	outputs := map[string]interface{}{
 		"content_length": len(content),
 	}
-	if logErr := fw.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
+	if logErr := fw.auditLogger.LogOp(ctx, "SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
 		fw.logger.Error("Failed to write audit log: %v", logErr)
 	}
 

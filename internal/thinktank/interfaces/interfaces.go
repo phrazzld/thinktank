@@ -30,39 +30,43 @@ type APIService interface {
 	// GetModelParameters retrieves parameter values from the registry for a given model
 	// It returns a map of parameter name to parameter value, applying defaults from the model definition
 	// Parameters:
+	//   - ctx: The context for the operation
 	//   - modelName: The name of the model to get parameters for
 	// Returns:
 	//   - A map of parameter name to parameter value
 	//   - An error if retrieval fails
-	GetModelParameters(modelName string) (map[string]interface{}, error)
+	GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error)
 
 	// ValidateModelParameter validates a parameter value against its constraints
 	// It checks type validation and constraint validation (min/max for numeric, enum values for string)
 	// Parameters:
+	//   - ctx: The context for the operation
 	//   - modelName: The name of the model the parameter belongs to
 	//   - paramName: The name of the parameter to validate
 	//   - value: The value to validate
 	// Returns:
 	//   - true if the parameter is valid, false otherwise
 	//   - An error with details about why validation failed
-	ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error)
+	ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
 
 	// GetModelDefinition retrieves the full model definition from the registry
 	// Parameters:
+	//   - ctx: The context for the operation
 	//   - modelName: The name of the model to get the definition for
 	// Returns:
 	//   - The model definition
 	//   - An error if retrieval fails
-	GetModelDefinition(modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
 
 	// GetModelTokenLimits retrieves token limits from the registry for a given model
 	// Parameters:
+	//   - ctx: The context for the operation
 	//   - modelName: The name of the model to get token limits for
 	// Returns:
 	//   - contextWindow: The maximum number of tokens the model can accept as input
 	//   - maxOutputTokens: The maximum number of tokens the model can generate as output
 	//   - An error if retrieval fails
-	GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content
 	// Parameters:

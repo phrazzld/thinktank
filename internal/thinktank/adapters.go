@@ -3,8 +3,6 @@ package thinktank
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -51,99 +49,24 @@ func (a *APIServiceAdapter) IsSafetyBlockedError(err error) bool {
 }
 
 // GetModelParameters delegates to the underlying APIService implementation
-func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
-	// Now we'll just use the type assertion approach below directly
-
-	// Check if the underlying implementation supports this method
-	if apiService, ok := a.APIService.(interface {
-		GetModelParameters(string) (map[string]interface{}, error)
-	}); ok {
-		return apiService.GetModelParameters(modelName)
-	}
-
-	// Return empty map for implementations that don't support this method
-	return make(map[string]interface{}), nil
+func (a *APIServiceAdapter) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
+	return a.APIService.GetModelParameters(ctx, modelName)
 }
 
 // GetModelDefinition delegates to the underlying APIService implementation
-func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
-	// Check if the underlying implementation supports this method
-	if apiService, ok := a.APIService.(interface {
-		GetModelDefinition(string) (*registry.ModelDefinition, error)
-	}); ok {
-		return apiService.GetModelDefinition(modelName)
-	}
-
-	// Return error for implementations that don't support this method
-	return nil, fmt.Errorf("model definition not available")
+func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+	return a.APIService.GetModelDefinition(ctx, modelName)
 }
 
 // GetModelTokenLimits delegates to the underlying APIService implementation
-func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	// Check if the underlying implementation supports this method
-	if apiService, ok := a.APIService.(interface {
-		GetModelTokenLimits(string) (int32, int32, error)
-	}); ok {
-		return apiService.GetModelTokenLimits(modelName)
-	}
-
-	// We'll skip logging during tests to avoid noise
-	// If the implementation doesn't support this method, determine limits based on model name
-
-	// Convert model name to lowercase for case-insensitive matching
-	modelNameLower := strings.ToLower(modelName)
-
-	// Try to determine token limits based on model name
-	// Use hardcoded values for well-known models
-	switch {
-	// Gemini models
-	case strings.HasPrefix(modelNameLower, "gemini-1.5-pro"):
-		return 1000000, 8192, nil
-	case strings.HasPrefix(modelNameLower, "gemini-1.5-flash"):
-		return 1000000, 8192, nil
-	case strings.HasPrefix(modelNameLower, "gemini-1.0-pro"):
-		return 32768, 8192, nil
-	case strings.HasPrefix(modelNameLower, "gemini-1.0-ultra"):
-		return 32768, 8192, nil
-
-	// OpenAI models - Claude 3 / GPT-4 1M Token models
-	case strings.HasPrefix(modelNameLower, "gpt-4.1"),
-		strings.HasPrefix(modelNameLower, "o4-mini"),
-		strings.HasPrefix(modelNameLower, "o4-"):
-		return 1000000, 32768, nil
-
-	// OpenAI models - GPT-4 Turbo and GPT-4o models (128k)
-	case strings.HasPrefix(modelNameLower, "gpt-4o"),
-		strings.HasPrefix(modelNameLower, "gpt-4-turbo"):
-		return 128000, 4096, nil
-
-	// OpenAI models - GPT-4 (8k)
-	case strings.HasPrefix(modelNameLower, "gpt-4"):
-		return 8192, 4096, nil
-
-	// OpenAI models - GPT-3.5 Turbo
-	case strings.HasPrefix(modelNameLower, "gpt-3.5-turbo"):
-		return 16385, 4096, nil
-
-	// Default fallback
-	default:
-		// Use a more generous default for unknown models
-		// This matches the default in openai_client.go
-		return 200000, 4096, nil
-	}
+func (a *APIServiceAdapter) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	return a.APIService.GetModelTokenLimits(ctx, modelName)
 }
 
 // ValidateModelParameter validates a parameter value against its constraints.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
-	if apiService, ok := a.APIService.(interface {
-		ValidateModelParameter(string, string, interface{}) (bool, error)
-	}); ok {
-		return apiService.ValidateModelParameter(modelName, paramName, value)
-	}
-
-	// Return true if the underlying implementation doesn't support this method
-	return true, nil
+func (a *APIServiceAdapter) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
+	return a.APIService.ValidateModelParameter(ctx, modelName, paramName, value)
 }
 
 // Note: TokenManagerAdapter was removed as part of T032A

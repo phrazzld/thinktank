@@ -98,7 +98,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 			return nil, errors.New("unexpected model")
 		},
-		GetModelDefinitionFunc: func(modelName string) (*registry.ModelDefinition, error) {
+		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 			// Return error for invalid synthesis model
 			if modelName == invalidSynthesisModel {
 				return nil, fmt.Errorf("model '%s' not found in registry", modelName)
@@ -110,7 +110,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 				Provider: "test-provider",
 			}, nil
 		},
-		GetModelParametersFunc: func(modelName string) (map[string]interface{}, error) {
+		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
 		ProcessLLMResponseFunc: func(result *llm.ProviderResult) (string, error) {
@@ -151,7 +151,10 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
-		LogFunc: func(entry auditlog.AuditEntry) error {
+		LogFunc: func(ctx context.Context, entry auditlog.AuditEntry) error {
+			return nil
+		},
+		LogLegacyFunc: func(entry auditlog.AuditEntry) error {
 			return nil
 		},
 		CloseFunc: func() error {

@@ -124,7 +124,8 @@ type CliConfig struct {
 	// Token management field removed as part of T032E
 
 	// Logging
-	LogLevel logutil.LogLevel
+	LogLevel  logutil.LogLevel
+	SplitLogs bool // Whether to split logs by level (INFO/DEBUG to stdout, WARN/ERROR to stderr)
 
 	// Rate limiting configuration
 	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
@@ -136,6 +137,13 @@ type CliConfig struct {
 	// Permission configuration
 	DirPermissions  os.FileMode // Directory permissions
 	FilePermissions os.FileMode // File permissions
+
+	// Error handling configuration
+	// PartialSuccessOk determines whether to consider a run successful when some, but not all,
+	// models succeed. When true, the application exits with code 0 if at least one model succeeds
+	// and a synthesis file was generated (if synthesis is enabled). When false (default), any model
+	// failure results in a non-zero exit code.
+	PartialSuccessOk bool
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -154,6 +162,7 @@ func NewDefaultCliConfig() *CliConfig {
 		Timeout:                    DefaultTimeout,
 		DirPermissions:             DefaultDirPermissions,
 		FilePermissions:            DefaultFilePermissions,
+		PartialSuccessOk:           false, // Default to strict error handling
 	}
 }
 

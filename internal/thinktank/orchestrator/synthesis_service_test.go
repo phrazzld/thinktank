@@ -31,7 +31,7 @@ type MockSynthesisAPIService struct {
 }
 
 // GetModelParameters overrides the mock implementation
-func (m *MockSynthesisAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockSynthesisAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	m.capturedModelName = modelName
 	if m.ModelParamsError != nil {
 		return nil, m.ModelParamsError

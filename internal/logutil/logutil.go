@@ -1,4 +1,17 @@
-// internal/logutil/logutil.go
+// Package logutil provides unified logging functionality with support for
+// structured logging, contextual information, and correlation IDs.
+//
+// The package provides a LoggerInterface that abstracts over different logging
+// implementations. This interface supports:
+// - Context-aware logging methods to propagate correlation IDs
+// - Structured logging with key-value pairs
+// - Multiple log levels (Debug, Info, Warn, Error, Fatal)
+// - Stream separation for different log levels
+//
+// Key components:
+// - LoggerInterface: The primary interface that all loggers implement
+// - Logger: A basic logger implementation with correlation ID support
+// - SlogLogger: An implementation using Go's log/slog package for structured logging
 package logutil
 
 import (
@@ -22,22 +35,46 @@ type ContextKey string
 // CorrelationIDKey is the context key for correlation ID
 const CorrelationIDKey ContextKey = "correlation_id"
 
-// WithCorrelationID adds correlation ID to the context
-// If an ID already exists in the context, it is preserved
-func WithCorrelationID(ctx context.Context) context.Context {
-	// Check if correlation ID already exists
-	if id := GetCorrelationID(ctx); id != "" {
-		return ctx
+// WithCorrelationID adds a correlation ID to the context.
+// If an ID already exists in the context, it is preserved.
+// If no correlation ID is present, a new UUID is generated.
+//
+// This function has been enhanced to accept an optional ID parameter.
+// When called with no parameters, it behaves like the original WithCorrelationID.
+// When called with an ID parameter, it behaves like WithCustomCorrelationID.
+//
+// Usage:
+//
+//	// Generate and add a new correlation ID (preserves any existing ID)
+//	ctx = logutil.WithCorrelationID(ctx)
+//
+//	// Set a specific correlation ID (replaces any existing ID)
+//	ctx = logutil.WithCorrelationID(ctx, "custom-id-123")
+func WithCorrelationID(ctx context.Context, id ...string) context.Context {
+	// Check if correlation ID already exists and if we're using the no-args version
+	// or the empty string version - in both cases, preserve existing ID
+	if existingID := GetCorrelationID(ctx); existingID != "" {
+		if len(id) == 0 || (len(id) > 0 && id[0] == "") {
+			// Preserve existing ID
+			return ctx
+		}
 	}
 
-	// Generate a new correlation ID and add to context
-	id := uuid.New().String()
-	return context.WithValue(ctx, CorrelationIDKey, id)
+	// If a custom ID is provided and it's not empty, use it
+	if len(id) > 0 && id[0] != "" {
+		return context.WithValue(ctx, CorrelationIDKey, id[0])
+	}
+
+	// Otherwise generate a new ID
+	newID := uuid.New().String()
+	return context.WithValue(ctx, CorrelationIDKey, newID)
 }
 
-// WithCustomCorrelationID adds a custom correlation ID to the context
+// WithCustomCorrelationID adds a custom correlation ID to the context.
+// This is maintained for backward compatibility, but new code should use
+// WithCorrelationID(ctx, id) instead.
 func WithCustomCorrelationID(ctx context.Context, id string) context.Context {
-	return context.WithValue(ctx, CorrelationIDKey, id)
+	return WithCorrelationID(ctx, id)
 }
 
 // GetCorrelationID retrieves correlation ID from context, or returns
@@ -54,25 +91,29 @@ func GetCorrelationID(ctx context.Context) string {
 	return id
 }
 
-// LoggerInterface defines the common logging interface
-// This allows both our structured Logger and the standard log.Logger
-// to be used interchangeably
+// LoggerInterface defines a comprehensive logging interface with context-awareness
+// that can be implemented by different logger backends (e.g., slog, zerolog, etc.)
 type LoggerInterface interface {
-	// Standard logging methods
-	Println(v ...interface{})
-	Printf(format string, v ...interface{})
+	// Context-aware logging methods with structured key-value pairs
+	// The args parameter supports alternating key-value pairs that will be included
+	// in the structured log output. For example:
+	//   logger.InfoContext(ctx, "user logged in", "user_id", 123, "ip", "192.168.1.1")
+	DebugContext(ctx context.Context, msg string, args ...any)
+	InfoContext(ctx context.Context, msg string, args ...any)
+	WarnContext(ctx context.Context, msg string, args ...any)
+	ErrorContext(ctx context.Context, msg string, args ...any)
+	FatalContext(ctx context.Context, msg string, args ...any)
+
+	// Standard logging methods (prefer context-aware methods when possible)
 	Debug(format string, v ...interface{})
 	Info(format string, v ...interface{})
 	Warn(format string, v ...interface{})
 	Error(format string, v ...interface{})
 	Fatal(format string, v ...interface{})
 
-	// Context-aware logging methods
-	DebugContext(ctx context.Context, format string, v ...interface{})
-	InfoContext(ctx context.Context, format string, v ...interface{})
-	WarnContext(ctx context.Context, format string, v ...interface{})
-	ErrorContext(ctx context.Context, format string, v ...interface{})
-	FatalContext(ctx context.Context, format string, v ...interface{})
+	// Legacy compatibility methods (use Info/InfoContext instead when possible)
+	Println(v ...interface{})
+	Printf(format string, v ...interface{})
 
 	// WithContext returns a logger with context information attached
 	WithContext(ctx context.Context) LoggerInterface

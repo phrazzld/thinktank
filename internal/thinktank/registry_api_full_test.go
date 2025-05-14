@@ -120,19 +120,19 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 		modelName := "standard-model"
 
 		// Get model parameters through adapter
-		params, err := adapter.GetModelParameters(modelName)
+		params, err := adapter.GetModelParameters(ctx, modelName)
 		if err != nil {
 			t.Fatalf("Failed to get model parameters: %v", err)
 		}
 
 		// Validate parameters
-		isValid, err := adapter.ValidateModelParameter(modelName, "temperature", 0.8)
+		isValid, err := adapter.ValidateModelParameter(ctx, modelName, "temperature", 0.8)
 		if err != nil || !isValid {
 			t.Errorf("Failed to validate parameter: %v", err)
 		}
 
 		// Get model token limits
-		contextWindow, maxOutputTokens, err := adapter.GetModelTokenLimits(modelName)
+		contextWindow, maxOutputTokens, err := adapter.GetModelTokenLimits(ctx, modelName)
 		if err != nil {
 			t.Errorf("Failed to get token limits: %v", err)
 		}
@@ -251,6 +251,8 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 
 	// 2. Test error handling across multiple adapter methods
 	t.Run("ComprehensiveErrorHandling", func(t *testing.T) {
+		// Create context for tests
+		ctx := context.Background()
 		// Set up a fresh registry with configurable errors
 		errorRegistry := &BoundaryMockRegistry{
 			models: map[string]*registry.ModelDefinition{
@@ -293,7 +295,7 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 					errorRegistry.getModelErr = fmt.Errorf("model lookup error: %w", llm.ErrModelNotFound)
 				},
 				operation: func() error {
-					_, err := errorAdapter.GetModelDefinition("nonexistent-model")
+					_, err := errorAdapter.GetModelDefinition(ctx, "nonexistent-model")
 					return err
 				},
 				errorCheck: func(err error) bool {
@@ -306,7 +308,7 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 					errorRegistry.getModelErr = fmt.Errorf("special model error")
 				},
 				operation: func() error {
-					_, err := errorAdapter.GetModelDefinition("error-model")
+					_, err := errorAdapter.GetModelDefinition(ctx, "error-model")
 					return err
 				},
 				errorCheck: func(err error) bool {
@@ -399,7 +401,8 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 		}
 
 		// Test GetModelParameters fallback (returns empty map, no error)
-		params, err := minimalAdapter.GetModelParameters("any-model")
+		ctx := context.Background()
+		params, err := minimalAdapter.GetModelParameters(ctx, "any-model")
 		if err != nil {
 			t.Errorf("Expected no error from GetModelParameters fallback, got: %v", err)
 		}
@@ -408,7 +411,7 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 		}
 
 		// Test ValidateModelParameter fallback (returns true, no error)
-		valid, err := minimalAdapter.ValidateModelParameter("any-model", "any-param", "any-value")
+		valid, err := minimalAdapter.ValidateModelParameter(ctx, "any-model", "any-param", "any-value")
 		if err != nil {
 			t.Errorf("Expected no error from ValidateModelParameter fallback, got: %v", err)
 		}
@@ -417,7 +420,7 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 		}
 
 		// Test GetModelDefinition fallback (returns error)
-		_, err = minimalAdapter.GetModelDefinition("any-model")
+		_, err = minimalAdapter.GetModelDefinition(ctx, "any-model")
 		if err == nil {
 			t.Errorf("Expected error from GetModelDefinition fallback")
 		}
@@ -437,7 +440,7 @@ func TestFullAdapterRegistryInteraction(t *testing.T) {
 		}
 
 		for _, tc := range tokenTests {
-			contextWindow, maxTokens, err := minimalAdapter.GetModelTokenLimits(tc.modelName)
+			contextWindow, maxTokens, err := minimalAdapter.GetModelTokenLimits(ctx, tc.modelName)
 
 			if err != nil {
 				t.Errorf("Expected no error for model %s, got: %v", tc.modelName, err)

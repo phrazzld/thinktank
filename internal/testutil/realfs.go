@@ -2,6 +2,7 @@
 package testutil
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"sort"
@@ -18,26 +19,72 @@ func NewRealFS() *RealFS {
 
 // ReadFile reads the entire file at the specified path
 func (fs *RealFS) ReadFile(path string) ([]byte, error) {
+	return fs.ReadFileWithContext(context.Background(), path)
+}
+
+// ReadFileWithContext reads the entire file at the specified path with context
+func (fs *RealFS) ReadFileWithContext(ctx context.Context, path string) ([]byte, error) {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	return os.ReadFile(path)
 }
 
 // WriteFile writes data to the file at the specified path
 func (fs *RealFS) WriteFile(path string, data []byte, perm int) error {
+	return fs.WriteFileWithContext(context.Background(), path, data, perm)
+}
+
+// WriteFileWithContext writes data to the file at the specified path with context
+func (fs *RealFS) WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.WriteFile(path, data, os.FileMode(perm))
 }
 
 // MkdirAll creates a directory named path, along with any necessary parents
 func (fs *RealFS) MkdirAll(path string, perm int) error {
+	return fs.MkdirAllWithContext(context.Background(), path, perm)
+}
+
+// MkdirAllWithContext creates a directory named path, along with any necessary parents with context
+func (fs *RealFS) MkdirAllWithContext(ctx context.Context, path string, perm int) error {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.MkdirAll(path, os.FileMode(perm))
 }
 
 // RemoveAll removes path and any children it contains
 func (fs *RealFS) RemoveAll(path string) error {
+	return fs.RemoveAllWithContext(context.Background(), path)
+}
+
+// RemoveAllWithContext removes path and any children it contains with context
+func (fs *RealFS) RemoveAllWithContext(ctx context.Context, path string) error {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.RemoveAll(path)
 }
 
 // Stat returns a FileInfo describing the named file
 func (fs *RealFS) Stat(path string) (bool, error) {
+	return fs.StatWithContext(context.Background(), path)
+}
+
+// StatWithContext returns a FileInfo describing the named file with context
+func (fs *RealFS) StatWithContext(ctx context.Context, path string) (bool, error) {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
+
 	_, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {

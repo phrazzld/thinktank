@@ -2,10 +2,11 @@
 package thinktank
 
 import (
-	"errors"
+	"context"
 	"strings"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
@@ -41,7 +42,7 @@ func TestValidateModelParameter(t *testing.T) {
 			modelName:      "non-existent-model",
 			paramName:      "temperature",
 			value:          0.7,
-			getModelErr:    errors.New("model not found"),
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound),
 			expectValid:    false,
 			expectError:    true,
 			errorSubstring: "model 'non-existent-model' not found",
@@ -336,8 +337,11 @@ func TestValidateModelParameter(t *testing.T) {
 				}
 			}
 
+			// Create context for tests
+			ctx := context.Background()
+
 			// Call the method being tested
-			valid, err := service.ValidateModelParameter(tc.modelName, tc.paramName, tc.value)
+			valid, err := service.ValidateModelParameter(ctx, tc.modelName, tc.paramName, tc.value)
 
 			// Verify expected valid flag
 			if valid != tc.expectValid {

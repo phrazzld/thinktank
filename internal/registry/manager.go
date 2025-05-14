@@ -4,6 +4,7 @@
 package registry
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -81,8 +82,9 @@ func (m *Manager) Initialize() error {
 	m.logger.Info("Initializing registry")
 
 	// Load configuration
-	configLoader := NewConfigLoader()
-	if err := m.registry.LoadConfig(configLoader); err != nil {
+	ctx := context.Background()
+	configLoader := NewConfigLoader(m.logger)
+	if err := m.registry.LoadConfig(ctx, configLoader); err != nil {
 		// Check if the error is due to missing config file
 		if os.IsNotExist(err) {
 			m.logger.Warn("Configuration file not found. Attempting to install default configuration.")
@@ -93,7 +95,7 @@ func (m *Manager) Initialize() error {
 			}
 
 			// Try loading again after installation
-			if err := m.registry.LoadConfig(configLoader); err != nil {
+			if err := m.registry.LoadConfig(ctx, configLoader); err != nil {
 				return fmt.Errorf("failed to load configuration after installation: %w\nThe configuration was installed but could not be loaded - please check file permissions and format", err)
 			}
 
@@ -122,23 +124,25 @@ func (m *Manager) GetRegistry() *Registry {
 
 // registerProviders registers the provider implementations with the registry.
 func (m *Manager) registerProviders() error {
+	ctx := context.Background()
+
 	// Register Gemini provider implementation
 	geminiProvider := gemini.NewProvider(m.logger)
-	if err := m.registry.RegisterProviderImplementation("gemini", geminiProvider); err != nil {
+	if err := m.registry.RegisterProviderImplementation(ctx, "gemini", geminiProvider); err != nil {
 		return fmt.Errorf("failed to register Gemini provider: %w", err)
 	}
 	m.logger.Debug("Registered Gemini provider implementation")
 
 	// Register OpenAI provider implementation
 	openaiProvider := openai.NewProvider(m.logger)
-	if err := m.registry.RegisterProviderImplementation("openai", openaiProvider); err != nil {
+	if err := m.registry.RegisterProviderImplementation(ctx, "openai", openaiProvider); err != nil {
 		return fmt.Errorf("failed to register OpenAI provider: %w", err)
 	}
 	m.logger.Debug("Registered OpenAI provider implementation")
 
 	// Register OpenRouter provider implementation
 	openrouterProvider := openrouter.NewProvider(m.logger)
-	if err := m.registry.RegisterProviderImplementation("openrouter", openrouterProvider); err != nil {
+	if err := m.registry.RegisterProviderImplementation(ctx, "openrouter", openrouterProvider); err != nil {
 		return fmt.Errorf("failed to register OpenRouter provider: %w", err)
 	}
 	m.logger.Debug("Registered OpenRouter provider implementation")
@@ -215,9 +219,10 @@ func (m *Manager) GetProviderForModel(modelName string) (string, error) {
 		return "", errors.New("registry not initialized, call Initialize() first")
 	}
 
+	ctx := context.Background()
 	m.logger.Debug("Looking up provider for model '%s'", modelName)
 
-	model, err := m.registry.GetModel(modelName)
+	model, err := m.registry.GetModel(ctx, modelName)
 	if err != nil {
 		m.logger.Warn("Failed to determine provider for model '%s': %v", modelName, err)
 		return "", fmt.Errorf("failed to determine provider for model '%s': %w", modelName, err)
@@ -235,9 +240,10 @@ func (m *Manager) IsModelSupported(modelName string) bool {
 		return false
 	}
 
+	ctx := context.Background()
 	m.logger.Debug("Checking if model '%s' is supported", modelName)
 
-	_, err := m.registry.GetModel(modelName)
+	_, err := m.registry.GetModel(ctx, modelName)
 	supported := err == nil
 
 	if supported {
@@ -256,9 +262,10 @@ func (m *Manager) GetModelInfo(modelName string) (*ModelDefinition, error) {
 		return nil, errors.New("registry not initialized, call Initialize() first")
 	}
 
+	ctx := context.Background()
 	m.logger.Debug("Getting model info for '%s'", modelName)
 
-	return m.registry.GetModel(modelName)
+	return m.registry.GetModel(ctx, modelName)
 }
 
 // GetAllModels returns a list of all model names registered in the registry.
@@ -268,7 +275,8 @@ func (m *Manager) GetAllModels() []string {
 		return []string{}
 	}
 
-	return m.registry.GetAllModelNames()
+	ctx := context.Background()
+	return m.registry.GetAllModelNames(ctx)
 }
 
 // GetModelsForProvider returns a list of model names for a specific provider.
@@ -278,5 +286,6 @@ func (m *Manager) GetModelsForProvider(providerName string) []string {
 		return []string{}
 	}
 
-	return m.registry.GetModelNamesByProvider(providerName)
+	ctx := context.Background()
+	return m.registry.GetModelNamesByProvider(ctx, providerName)
 }

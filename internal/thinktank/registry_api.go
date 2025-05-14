@@ -49,7 +49,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// Log custom endpoint if provided (used for API endpoint override)
 	if apiEndpoint != "" {
-		s.logger.Debug("Using custom API endpoint: %s", apiEndpoint)
+		s.logger.DebugContext(ctx, "Using custom API endpoint: %s", apiEndpoint)
 	}
 
 	// Special case for testing with error-model
@@ -59,32 +59,47 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// Look up the model in the registry
 	regImpl, ok := s.registry.(interface {
-		GetModel(name string) (*registry.ModelDefinition, error)
+		GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error)
 	})
 	if !ok {
-		return nil, fmt.Errorf("registry does not implement GetModel method")
+		return nil, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetModel method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	modelDef, err := regImpl.GetModel(modelName)
+	modelDef, err := regImpl.GetModel(ctx, modelName)
 	if err != nil {
-		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		// Do not use fallback strategy; return a specific error instead
-		return nil, fmt.Errorf("%w: model '%s' not found in registry: %v", llm.ErrModelNotFound, modelName, err)
+		s.logger.DebugContext(ctx, "Model '%s' not found in registry: %v", modelName, err)
+		// The GetModel method now returns a proper LLMError, so we can just pass it through
+		return nil, err
 	}
 
 	// Get the provider info from the registry
 	regProviderImpl, ok := s.registry.(interface {
-		GetProvider(name string) (*registry.ProviderDefinition, error)
+		GetProvider(ctx context.Context, name string) (*registry.ProviderDefinition, error)
 	})
 	if !ok {
-		return nil, fmt.Errorf("registry does not implement GetProvider method")
+		return nil, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetProvider method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	providerDef, err := regProviderImpl.GetProvider(modelDef.Provider)
+	providerDef, err := regProviderImpl.GetProvider(ctx, modelDef.Provider)
 	if err != nil {
-		s.logger.Debug("Provider '%s' not found in registry: %v", modelDef.Provider, err)
-		return nil, fmt.Errorf("%w: provider for model '%s' not found: %v",
-			llm.ErrClientInitialization, modelName, err)
+		s.logger.DebugContext(ctx, "Provider '%s' not found in registry: %v", modelDef.Provider, err)
+		// The error is already properly formatted as an LLMError
+		return nil, llm.Wrap(
+			llm.ErrClientInitialization,
+			"",
+			fmt.Sprintf("provider for model '%s' not found: %v", modelName, err),
+			llm.CategoryInvalidRequest,
+		)
 	}
 
 	// Determine which API endpoint to use
@@ -95,17 +110,22 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// Get the provider implementation from the registry
 	regProviderImplGetter, ok := s.registry.(interface {
-		GetProviderImplementation(name string) (providers.Provider, error)
+		GetProviderImplementation(ctx context.Context, name string) (providers.Provider, error)
 	})
 	if !ok {
-		return nil, fmt.Errorf("registry does not implement GetProviderImplementation method")
+		return nil, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetProviderImplementation method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	providerImpl, err := regProviderImplGetter.GetProviderImplementation(modelDef.Provider)
+	providerImpl, err := regProviderImplGetter.GetProviderImplementation(ctx, modelDef.Provider)
 	if err != nil {
-		s.logger.Debug("Provider implementation '%s' not found: %v", modelDef.Provider, err)
-		return nil, fmt.Errorf("%w: provider implementation for '%s' not registered",
-			llm.ErrClientInitialization, modelDef.Provider)
+		s.logger.DebugContext(ctx, "Provider implementation '%s' not found: %v", modelDef.Provider, err)
+		// The error is already properly formatted as an LLMError
+		return nil, err
 	}
 
 	// API Key Resolution Logic
@@ -127,14 +147,14 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// STEP 1: First try to get the key from environment variable based on provider
 	// This is the recommended and preferred method for providing API keys
-	configLoader := registry.NewConfigLoader()
+	configLoader := registry.NewConfigLoader(s.logger)
 	modelConfig, err := configLoader.Load()
 	if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
 		if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {
 			envApiKey := os.Getenv(envVar)
 			if envApiKey != "" {
 				effectiveApiKey = envApiKey
-				s.logger.Debug("Using API key from environment variable %s for provider '%s'",
+				s.logger.DebugContext(ctx, "Using API key from environment variable %s for provider '%s'",
 					envVar, modelDef.Provider)
 			}
 		}
@@ -144,7 +164,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// This is discouraged for production use but supported for testing/development
 	if effectiveApiKey == "" && apiKey != "" {
 		effectiveApiKey = apiKey
-		s.logger.Debug("Environment variable not set or empty, using provided API key for provider '%s'",
+		s.logger.DebugContext(ctx, "Environment variable not set or empty, using provided API key for provider '%s'",
 			modelDef.Provider)
 	}
 
@@ -157,15 +177,15 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	}
 
 	// Create the client using the provider implementation
-	s.logger.Debug("Creating LLM client for model '%s' using provider '%s'",
+	s.logger.DebugContext(ctx, "Creating LLM client for model '%s' using provider '%s'",
 		modelName, modelDef.Provider)
 
 	// Verify the API key is non-empty before passing it to the provider
 	if effectiveApiKey == "" {
-		s.logger.Error("Empty API key for provider '%s' - this will cause authentication failures", modelDef.Provider)
+		s.logger.ErrorContext(ctx, "Empty API key for provider '%s' - this will cause authentication failures", modelDef.Provider)
 	} else {
 		// Log API key metadata only (NEVER log any portion of the key itself)
-		s.logger.Debug("Using API key for provider '%s' (length: %d, source: via environment variable)",
+		s.logger.DebugContext(ctx, "Using API key for provider '%s' (length: %d, source: via environment variable)",
 			modelDef.Provider, len(effectiveApiKey))
 	}
 
@@ -195,18 +215,23 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 // GetModelParameters retrieves parameter values from the registry for a given model
 // It returns a map of parameter name to parameter value, applying defaults from the model definition
-func (s *registryAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (s *registryAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	// Look up the model in the registry
 	regImpl, ok := s.registry.(interface {
-		GetModel(name string) (*registry.ModelDefinition, error)
+		GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error)
 	})
 	if !ok {
-		return make(map[string]interface{}), fmt.Errorf("registry does not implement GetModel method")
+		return make(map[string]interface{}), llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetModel method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	modelDef, err := regImpl.GetModel(modelName)
+	modelDef, err := regImpl.GetModel(ctx, modelName)
 	if err != nil {
-		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		s.logger.DebugContext(ctx, "Model '%s' not found in registry: %v", modelName, err)
 		// Return an empty map if model not found
 		return make(map[string]interface{}), nil
 	}
@@ -227,27 +252,37 @@ func (s *registryAPIService) GetModelParameters(modelName string) (map[string]in
 
 // ValidateModelParameter validates a parameter value against its constraints
 // It returns true if the parameter is valid, false otherwise
-func (s *registryAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (s *registryAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	// Look up the model in the registry
 	regImpl, ok := s.registry.(interface {
-		GetModel(name string) (*registry.ModelDefinition, error)
+		GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error)
 	})
 	if !ok {
-		return false, fmt.Errorf("registry does not implement GetModel method")
+		return false, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetModel method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	modelDef, err := regImpl.GetModel(modelName)
+	modelDef, err := regImpl.GetModel(ctx, modelName)
 	if err != nil {
-		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
+		s.logger.DebugContext(ctx, "Model '%s' not found in registry: %v", modelName, err)
 		// Can't validate if model is not found
-		return false, fmt.Errorf("model '%s' not found: %v", modelName, err)
+		return false, err // The GetModel method now returns a properly wrapped error
 	}
 
 	// Look up the parameter definition
 	paramDef, ok := modelDef.Parameters[paramName]
 	if !ok {
-		s.logger.Debug("Parameter '%s' not found for model '%s'", paramName, modelName)
-		return false, fmt.Errorf("parameter '%s' not defined for model '%s'", paramName, modelName)
+		s.logger.DebugContext(ctx, "Parameter '%s' not found for model '%s'", paramName, modelName)
+		return false, llm.Wrap(
+			fmt.Errorf("parameter not defined"),
+			"",
+			fmt.Sprintf("parameter '%s' not defined for model '%s'", paramName, modelName),
+			llm.CategoryInvalidRequest,
+		)
 	}
 
 	// Type check and constraints validation
@@ -334,44 +369,77 @@ func (s *registryAPIService) ValidateModelParameter(modelName, paramName string,
 }
 
 // GetModelDefinition retrieves the full model definition from the registry
-func (s *registryAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (s *registryAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	// Look up the model in the registry
 	regImpl, ok := s.registry.(interface {
-		GetModel(name string) (*registry.ModelDefinition, error)
+		GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error)
 	})
 	if !ok {
-		return nil, fmt.Errorf("registry does not implement GetModel method")
+		return nil, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetModel method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	modelDef, err := regImpl.GetModel(modelName)
+	modelDef, err := regImpl.GetModel(ctx, modelName)
 	if err != nil {
-		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		return nil, fmt.Errorf("%w: %s", llm.ErrModelNotFound, modelName)
+		s.logger.DebugContext(ctx, "Model '%s' not found in registry: %v", modelName, err)
+		return nil, err // GetModel already returns a properly wrapped error with llm.CategoryNotFound
 	}
 
 	return modelDef, nil
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model
-// This method now returns default values instead of actual model token limits
-func (s *registryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+// This method now returns the actual model token limits when available,
+// and very high default values when not specified (to prevent truncation issues)
+func (s *registryAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	// Look up the model in the registry to verify it exists
 	regImpl, ok := s.registry.(interface {
-		GetModel(name string) (*registry.ModelDefinition, error)
+		GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error)
 	})
 	if !ok {
-		return 0, 0, fmt.Errorf("registry does not implement GetModel method")
+		return 0, 0, llm.Wrap(
+			fmt.Errorf("registry interface mismatch"),
+			"",
+			"registry does not implement GetModel method",
+			llm.CategoryInvalidRequest,
+		)
 	}
 
-	_, err = regImpl.GetModel(modelName)
+	modelDef, err := regImpl.GetModel(ctx, modelName)
 	if err != nil {
-		s.logger.Debug("Model '%s' not found in registry: %v", modelName, err)
-		return 0, 0, fmt.Errorf("%w: %s", llm.ErrModelNotFound, modelName)
+		s.logger.DebugContext(ctx, "Model '%s' not found in registry: %v", modelName, err)
+		return 0, 0, err // GetModel already returns a properly wrapped error
 	}
 
-	// Return default values instead of actual model values
-	// Token handling is now the responsibility of each provider
-	return 8192, 2048, nil
+	// Use actual values from model definition when available
+	if modelDef.ContextWindow > 0 {
+		contextWindow = modelDef.ContextWindow
+	} else {
+		// Use a very high default for context window (1 million tokens)
+		// This is especially important for synthesis models that need to process multiple outputs
+		contextWindow = 1000000
+		s.logger.DebugContext(ctx, "Model '%s' has no explicit context window defined, using high default: %d",
+			modelName, contextWindow)
+	}
+
+	if modelDef.MaxOutputTokens > 0 {
+		maxOutputTokens = modelDef.MaxOutputTokens
+	} else {
+		// Use a very high default for max output tokens (65,000 tokens)
+		// This is especially important for synthesis models that generate large outputs
+		maxOutputTokens = 65000
+		s.logger.DebugContext(ctx, "Model '%s' has no explicit max output tokens defined, using high default: %d",
+			modelName, maxOutputTokens)
+	}
+
+	s.logger.DebugContext(ctx, "Using token limits for model '%s': context window=%d, max output tokens=%d",
+		modelName, contextWindow, maxOutputTokens)
+
+	return contextWindow, maxOutputTokens, nil
 }
 
 // ProcessLLMResponse processes a provider-agnostic API response and extracts content

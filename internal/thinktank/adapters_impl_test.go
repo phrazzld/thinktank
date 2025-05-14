@@ -214,12 +214,13 @@ func TestAPIServiceAdapter_GetModelParameters_WithImplementation(t *testing.T) {
 	// Set up expected return values
 	expectedParams := map[string]interface{}{"temperature": 0.7}
 	expectedErr := errors.New("test error")
-	mock.GetModelParametersFunc = func(modelName string) (map[string]interface{}, error) {
+	mock.GetModelParametersFunc = func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 		return expectedParams, expectedErr
 	}
 
 	// Call the adapter method
-	params, err := adapter.GetModelParameters("test-model")
+	ctx := context.Background()
+	params, err := adapter.GetModelParameters(ctx, "test-model")
 
 	// Verify that the adapter delegated the call correctly
 	if !reflect.DeepEqual(params, expectedParams) {
@@ -248,7 +249,8 @@ func TestAPIServiceAdapter_GetModelParameters_WithoutImplementation(t *testing.T
 	}
 
 	// Call the adapter method with adapter that uses interface assertion for extension methods
-	params, err := adapter.GetModelParameters("test-model")
+	ctx := context.Background()
+	params, err := adapter.GetModelParameters(ctx, "test-model")
 
 	// Verify that the adapter returned the fallback values
 	if len(params) != 0 {
@@ -266,12 +268,13 @@ func TestAPIServiceAdapter_ValidateModelParameter_WithImplementation(t *testing.
 	// Set up expected return values
 	expectedResult := true
 	expectedErr := errors.New("test error")
-	mock.ValidateModelParameterFunc = func(modelName, paramName string, value interface{}) (bool, error) {
+	mock.ValidateModelParameterFunc = func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 		return expectedResult, expectedErr
 	}
 
 	// Call the adapter method
-	result, err := adapter.ValidateModelParameter("test-model", "test-param", 0.7)
+	ctx := context.Background()
+	result, err := adapter.ValidateModelParameter(ctx, "test-model", "test-param", 0.7)
 
 	// Verify that the adapter delegated the call correctly
 	if result != expectedResult {
@@ -301,7 +304,8 @@ func TestAPIServiceAdapter_ValidateModelParameter_WithoutImplementation(t *testi
 	}
 
 	// Call the adapter method with adapter that uses interface assertion for extension methods
-	result, err := adapter.ValidateModelParameter("test-model", "test-param", 0.7)
+	ctx := context.Background()
+	result, err := adapter.ValidateModelParameter(ctx, "test-model", "test-param", 0.7)
 
 	// Verify that the adapter returned the fallback values
 	if !result {
@@ -319,12 +323,13 @@ func TestAPIServiceAdapter_GetModelDefinition_WithImplementation(t *testing.T) {
 	// Set up expected return values
 	expectedDef := &registry.ModelDefinition{Name: "test-model"}
 	expectedErr := errors.New("test error")
-	mock.GetModelDefinitionFunc = func(modelName string) (*registry.ModelDefinition, error) {
+	mock.GetModelDefinitionFunc = func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 		return expectedDef, expectedErr
 	}
 
 	// Call the adapter method
-	def, err := adapter.GetModelDefinition("test-model")
+	ctx := context.Background()
+	def, err := adapter.GetModelDefinition(ctx, "test-model")
 
 	// Verify that the adapter delegated the call correctly
 	if def != expectedDef {
@@ -353,7 +358,8 @@ func TestAPIServiceAdapter_GetModelDefinition_WithoutImplementation(t *testing.T
 	}
 
 	// Call the adapter method with adapter that uses interface assertion for extension methods
-	def, err := adapter.GetModelDefinition("test-model")
+	ctx := context.Background()
+	def, err := adapter.GetModelDefinition(ctx, "test-model")
 
 	// Verify that the adapter returned the fallback values
 	if def != nil {
@@ -372,12 +378,13 @@ func TestAPIServiceAdapter_GetModelTokenLimits_WithImplementation(t *testing.T) 
 	expectedContextWindow := int32(8192)
 	expectedMaxTokens := int32(2048)
 	expectedErr := errors.New("test error")
-	mock.GetModelTokenLimitsFunc = func(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	mock.GetModelTokenLimitsFunc = func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 		return expectedContextWindow, expectedMaxTokens, expectedErr
 	}
 
 	// Call the adapter method
-	contextWindow, maxTokens, err := adapter.GetModelTokenLimits("test-model")
+	ctx := context.Background()
+	contextWindow, maxTokens, err := adapter.GetModelTokenLimits(ctx, "test-model")
 
 	// Verify that the adapter delegated the call correctly
 	if contextWindow != expectedContextWindow {

@@ -160,10 +160,10 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 				}, nil
 			}
 		},
-		GetModelParametersFunc: func(modelName string) (map[string]interface{}, error) {
+		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
-		GetModelDefinitionFunc: func(modelName string) (*registry.ModelDefinition, error) {
+		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 			return &registry.ModelDefinition{
 				Name:     modelName,
 				Provider: "test-provider",
@@ -210,7 +210,13 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 
 	// Create audit logger
 	auditLogger := &MockAuditLogger{
-		LogFunc: func(entry auditlog.AuditEntry) error {
+		LogFunc: func(ctx context.Context, entry auditlog.AuditEntry) error {
+			auditMutex.Lock()
+			auditEntries = append(auditEntries, entry)
+			auditMutex.Unlock()
+			return nil
+		},
+		LogLegacyFunc: func(entry auditlog.AuditEntry) error {
 			auditMutex.Lock()
 			auditEntries = append(auditEntries, entry)
 			auditMutex.Unlock()

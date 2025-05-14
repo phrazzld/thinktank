@@ -4,6 +4,7 @@ package thinktank
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -56,37 +57,37 @@ func (m MockProviderAPI) CreateClient(ctx context.Context, apiKey, modelID, apiE
 }
 
 // GetModel implements the registry.Registry method
-func (m *MockRegistryAPI) GetModel(name string) (*registry.ModelDefinition, error) {
+func (m *MockRegistryAPI) GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error) {
 	if m.getModelErr != nil {
 		return nil, m.getModelErr
 	}
 	model, ok := m.models[name]
 	if !ok {
-		return nil, errors.New("model not found")
+		return nil, llm.Wrap(llm.ErrModelNotFound, "", fmt.Sprintf("model '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	return model, nil
 }
 
 // GetProvider implements the registry.Registry method
-func (m *MockRegistryAPI) GetProvider(name string) (*registry.ProviderDefinition, error) {
+func (m *MockRegistryAPI) GetProvider(ctx context.Context, name string) (*registry.ProviderDefinition, error) {
 	if m.getProviderErr != nil {
 		return nil, m.getProviderErr
 	}
 	provider, ok := m.providers[name]
 	if !ok {
-		return nil, errors.New("provider not found")
+		return nil, llm.Wrap(llm.ErrProviderNotFound, "", fmt.Sprintf("provider '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	return provider, nil
 }
 
 // GetProviderImplementation implements the registry.Registry method
-func (m *MockRegistryAPI) GetProviderImplementation(name string) (providers.Provider, error) {
+func (m *MockRegistryAPI) GetProviderImplementation(ctx context.Context, name string) (providers.Provider, error) {
 	if m.getProviderImplErr != nil {
 		return nil, m.getProviderImplErr
 	}
 	impl, ok := m.implementations[name]
 	if !ok {
-		return nil, errors.New("provider implementation not found")
+		return nil, llm.Wrap(llm.ErrProviderNotFound, "", fmt.Sprintf("provider implementation '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	return impl, nil
 }
@@ -271,7 +272,7 @@ func TestGetModelParameters(t *testing.T) {
 		{
 			name:           "non-existent model",
 			modelName:      "non-existent-model",
-			getModelErr:    errors.New("model not found"),
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound),
 			registryImpl:   nil, // Use the default mock registry
 			expectedParams: map[string]interface{}{},
 			expectError:    false,
@@ -394,7 +395,8 @@ func TestGetModelParameters(t *testing.T) {
 			}
 
 			// Call the method being tested
-			params, err := service.GetModelParameters(tc.modelName)
+			ctx := context.Background()
+			params, err := service.GetModelParameters(ctx, tc.modelName)
 
 			// Verify expected error behavior
 			if tc.expectError {
@@ -500,7 +502,7 @@ func TestInitLLMClient(t *testing.T) {
 		service, mockRegistry, _ := setupTest(t)
 
 		// Set error for GetModel
-		mockRegistry.getModelErr = errors.New("model lookup failed")
+		mockRegistry.getModelErr = llm.Wrap(llm.ErrModelNotFound, "", "model lookup failed", llm.CategoryNotFound)
 
 		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
 		if err == nil {
@@ -515,7 +517,7 @@ func TestInitLLMClient(t *testing.T) {
 		service, mockRegistry, _ := setupTest(t)
 
 		// Set error for GetProvider
-		mockRegistry.getProviderErr = errors.New("provider lookup failed")
+		mockRegistry.getProviderErr = llm.Wrap(llm.ErrProviderNotFound, "", "provider for model 'test-model' not found: provider lookup failed", llm.CategoryNotFound)
 
 		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
 		if err == nil {
@@ -530,7 +532,7 @@ func TestInitLLMClient(t *testing.T) {
 		service, mockRegistry, _ := setupTest(t)
 
 		// Set error for GetProviderImplementation
-		mockRegistry.getProviderImplErr = errors.New("provider implementation lookup failed")
+		mockRegistry.getProviderImplErr = llm.Wrap(llm.ErrClientInitialization, "", "provider implementation lookup failed", llm.CategoryInvalidRequest)
 
 		_, err := service.InitLLMClient(ctx, "test-api-key", "test-model", "")
 		if err == nil {
@@ -600,7 +602,7 @@ func TestGetModelDefinition(t *testing.T) {
 		{
 			name:           "model not found",
 			modelName:      "non-existent-model",
-			getModelErr:    errors.New("model not found"),
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound),
 			expectSuccess:  false,
 			expectError:    true,
 			errorSubstring: "non-existent-model",
@@ -608,8 +610,8 @@ func TestGetModelDefinition(t *testing.T) {
 		},
 		{
 			name:           "empty model name",
-			modelName:      "",                            // Empty model name should still attempt lookup
-			getModelErr:    errors.New("model not found"), // Registry returns this error for empty name
+			modelName:      "",                                                                                                           // Empty model name should still attempt lookup
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound), // Registry returns this error for empty name
 			expectSuccess:  false,
 			expectError:    true,
 			errorSubstring: "", // Don't check specific error message
@@ -678,7 +680,8 @@ func TestGetModelDefinition(t *testing.T) {
 			}
 
 			// Call the method being tested
-			modelDef, err := service.GetModelDefinition(tc.modelName)
+			ctx := context.Background()
+			modelDef, err := service.GetModelDefinition(ctx, tc.modelName)
 
 			// Verify expected error behavior
 			if tc.expectError {
@@ -796,16 +799,36 @@ func TestGetModelTokenLimits(t *testing.T) {
 		wrapsWith             error // Expected error to be wrapped with
 	}{
 		{
-			name:                  "existing model",
-			modelName:             "test-model",
-			expectedContextWindow: 8192,
-			expectedMaxTokens:     2048,
+			name:      "existing model with token limits",
+			modelName: "model-with-limits",
+			modelDef: &registry.ModelDefinition{
+				Name:            "model-with-limits",
+				Provider:        "test-provider",
+				APIModelID:      "model-id",
+				ContextWindow:   50000,
+				MaxOutputTokens: 10000,
+			},
+			expectedContextWindow: 50000,
+			expectedMaxTokens:     10000,
+			expectError:           false,
+		},
+		{
+			name:      "existing model without token limits",
+			modelName: "model-without-limits",
+			modelDef: &registry.ModelDefinition{
+				Name:       "model-without-limits",
+				Provider:   "test-provider",
+				APIModelID: "model-id",
+				// No token limits specified
+			},
+			expectedContextWindow: 1000000, // Should use high default
+			expectedMaxTokens:     65000,   // Should use high default
 			expectError:           false,
 		},
 		{
 			name:           "model not found",
 			modelName:      "non-existent-model",
-			getModelErr:    errors.New("model not found"),
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound),
 			expectError:    true,
 			errorSubstring: "non-existent-model",
 			wrapsWith:      llm.ErrModelNotFound,
@@ -813,7 +836,7 @@ func TestGetModelTokenLimits(t *testing.T) {
 		{
 			name:           "empty model name",
 			modelName:      "",
-			getModelErr:    errors.New("model not found"), // Registry returns this error for empty name
+			getModelErr:    llm.Wrap(llm.ErrModelNotFound, "", "model 'non-existent-model' not found in registry", llm.CategoryNotFound), // Registry returns this error for empty name
 			expectError:    true,
 			errorSubstring: "", // Don't check specific error message
 			wrapsWith:      llm.ErrModelNotFound,
@@ -826,21 +849,23 @@ func TestGetModelTokenLimits(t *testing.T) {
 			errorSubstring: "does not implement GetModel method",
 		},
 		{
-			name:      "custom model definition",
-			modelName: "custom-model",
+			name:      "synthesis model with very large limits",
+			modelName: "synthesis-model",
 			modelDef: &registry.ModelDefinition{
-				Name:       "custom-model",
-				Provider:   "custom-provider",
-				APIModelID: "custom-model-id",
+				Name:            "synthesis-model",
+				Provider:        "test-provider",
+				APIModelID:      "synthesis-model-id",
+				ContextWindow:   1000000, // 1M context window
+				MaxOutputTokens: 200000,  // 200K output tokens
 				Parameters: map[string]registry.ParameterDefinition{
-					"custom_param": {
-						Type:    "string",
-						Default: "custom-value",
+					"temperature": {
+						Type:    "float",
+						Default: 0.7,
 					},
 				},
 			},
-			expectedContextWindow: 8192, // Should still return default values
-			expectedMaxTokens:     2048, // Should still return default values
+			expectedContextWindow: 1000000,
+			expectedMaxTokens:     200000,
 			expectError:           false,
 		},
 	}
@@ -871,7 +896,8 @@ func TestGetModelTokenLimits(t *testing.T) {
 			}
 
 			// Call the method being tested
-			contextWindow, maxTokens, err := service.GetModelTokenLimits(tc.modelName)
+			ctx := context.Background()
+			contextWindow, maxTokens, err := service.GetModelTokenLimits(ctx, tc.modelName)
 
 			// Verify expected error behavior
 			if tc.expectError {

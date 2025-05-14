@@ -3,10 +3,13 @@ package thinktank
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -17,6 +20,10 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
+
+// Deprecated: Using a global var here as a temporary fix during refactoring
+// A better approach would be to inject a random generator instance
+var globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Execute is the main entry point for the core application logic.
 // It handles initial setup, logging, dependency initialization, and orchestration.
@@ -38,13 +45,13 @@ func Execute(
 		}
 
 		// Log execution end with appropriate status and any error
-		if logErr := auditLogger.LogOp("ExecuteEnd", status, nil, nil, err); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := auditLogger.LogOp(ctx, "ExecuteEnd", status, nil, nil, err); logErr != nil {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 	}()
 
 	// 1. Set up the output directory
-	if err := setupOutputDirectory(cliConfig, logger); err != nil {
+	if err := setupOutputDirectory(ctx, cliConfig, logger); err != nil {
 		return err
 	}
 
@@ -65,28 +72,28 @@ func Execute(
 		"log_level": cliConfig.LogLevel,
 	}
 
-	if logErr := auditLogger.LogOp("ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := auditLogger.LogOp(ctx, "ExecuteStart", "InProgress", inputs, nil, nil); logErr != nil {
+		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// 3. Read instructions from file
 	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
 	if err != nil {
-		logger.Error("Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+		logger.ErrorContext(ctx, "Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
 
 		// Log the failure to read the instructions file to the audit log
 		inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
-		if logErr := auditLogger.LogOp("ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
-			logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := auditLogger.LogOp(ctx, "ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
 		return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 	}
 	instructions := string(instructionsContent)
-	logger.Info("Successfully read instructions from %s", cliConfig.InstructionsFile)
+	logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
 
 	// Log the successful reading of the instructions file to the audit log
-	if logErr := auditLogger.Log(auditlog.AuditEntry{
+	if logErr := auditLogger.Log(ctx, auditlog.AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: "ReadInstructions",
 		Status:    "Success",
@@ -98,7 +105,7 @@ func Execute(
 		},
 		Message: "Successfully read instructions file",
 	}); logErr != nil {
-		logger.Error("Failed to write audit log: %v", logErr)
+		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// 4. Use the injected APIService
@@ -113,7 +120,7 @@ func Execute(
 			category := catErr.Category()
 
 			// Log with category information
-			logger.Error("Failed to initialize reference client for context gathering: %v (category: %s)",
+			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v (category: %s)",
 				err, category.String())
 
 			// Use error category to give more specific error messages
@@ -133,7 +140,7 @@ func Execute(
 			}
 		} else {
 			// If not a categorized error, use the standard error handling
-			logger.Error("Failed to initialize reference client for context gathering: %v", err)
+			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v", err)
 			return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 		}
 	}
@@ -166,7 +173,36 @@ func Execute(
 		logger,
 	)
 
-	return orch.Run(ctx, instructions)
+	// Run the orchestrator and handle error conversion
+	err = orch.Run(ctx, instructions)
+
+	// Convert orchestrator errors to thinktank package errors if needed
+	if err != nil {
+		err = wrapOrchestratorErrors(err)
+	}
+
+	return err
+}
+
+// wrapOrchestratorErrors converts orchestrator-specific errors to thinktank package errors.
+// This ensures that the caller of the Execute function (usually main.go) can check for
+// specific error types without needing to import the orchestrator package directly.
+func wrapOrchestratorErrors(err error) error {
+	// Import the orchestrator errors package to check for partial failure
+	if errors.Is(err, ErrPartialSuccess) {
+		// Already wrapped, return as is
+		return err
+	}
+
+	// Check if this error contains "some models failed" which indicates partial processing failure
+	// This avoids direct dependency on orchestrator.ErrPartialProcessingFailure
+	if err != nil && strings.Contains(err.Error(), "some models failed during processing") {
+		// Wrap with the thinktank ErrPartialSuccess while preserving the original error
+		return fmt.Errorf("%w: %v", ErrPartialSuccess, err)
+	}
+
+	// Return the original error for other error types
+	return err
 }
 
 // Note: RunInternal has been removed as part of the refactoring.
@@ -235,23 +271,46 @@ func SetOrchestratorConstructor(constructor func(
 	orchestratorConstructor = constructor
 }
 
-// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNN
-// where NNNN is a 4-digit random number to ensure uniqueness for runs in the same second.
+// incrementalCounter is used to ensure uniqueness of generated names
+// even when many names are generated in quick succession
+var incrementalCounter uint32 = 0
+
+// generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN
+// where NNNNNNNNN is a combination of nanoseconds, random number, and incremental counter to ensure uniqueness.
+// This implementation guarantees uniqueness even for many runs that occur within the same millisecond.
 func generateTimestampedRunName() string {
+	// Get current time
+	now := time.Now()
+
 	// Generate timestamp in format YYYYMMDD_HHMMSS
-	timestamp := time.Now().Format("20060102_150405")
+	timestamp := now.Format("20060102_150405")
 
-	// Generate random 4-digit number (0000-9999) for uniqueness
-	randNum := rand.Intn(10000)
+	// Use multiple strategies to ensure uniqueness:
+	// 1. Nanoseconds from the current time (0-999999999)
+	// 2. Random number (0-999)
+	// 3. Incremental counter (0-999999)
 
-	// Combine with prefix and format with leading zeros for the random number
-	return fmt.Sprintf("thinktank_%s_%04d", timestamp, randNum)
+	// Extract nanoseconds (last 3 digits)
+	nanos := now.Nanosecond() % 1000
+
+	// Generate a random number
+	randNum := globalRand.Intn(1000)
+
+	// Increment the counter atomically (thread-safe)
+	counter := atomic.AddUint32(&incrementalCounter, 1) % 1000
+
+	// Combine all three components for a truly unique value
+	// This gives us a billion possibilities (1000 × 1000 × 1000) within the same second
+	uniqueNum := (nanos * 1000000) + (randNum * 1000) + int(counter)
+
+	// Combine with prefix and format with leading zeros (9 digits)
+	return fmt.Sprintf("thinktank_%s_%09d", timestamp, uniqueNum)
 }
 
 // setupOutputDirectory ensures that the output directory is set and exists.
 // If outputDir in cliConfig is empty, it generates a unique directory name.
 // Note: The logger passed to this function should already have context attached.
-func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
+func setupOutputDirectory(ctx context.Context, cliConfig *config.CliConfig, logger logutil.LoggerInterface) error {
 	if cliConfig.OutputDir == "" {
 		// Generate a unique timestamped run name
 		runName := generateTimestampedRunName()
@@ -259,21 +318,21 @@ func setupOutputDirectory(cliConfig *config.CliConfig, logger logutil.LoggerInte
 		// Get the current working directory
 		cwd, err := os.Getwd()
 		if err != nil {
-			logger.Error("Error getting current working directory: %v", err)
+			logger.ErrorContext(ctx, "Error getting current working directory: %v", err)
 			return fmt.Errorf("%w: error getting current working directory: %v", ErrContextGatheringFailed, err)
 		}
 
 		// Set the output directory to the run name in the current working directory
 		cliConfig.OutputDir = filepath.Join(cwd, runName)
-		logger.Info("Generated output directory: %s", cliConfig.OutputDir)
+		logger.InfoContext(ctx, "Generated output directory: %s", cliConfig.OutputDir)
 	}
 
 	// Ensure the output directory exists
 	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
-		logger.Error("Error creating output directory %s: %v", cliConfig.OutputDir, err)
+		logger.ErrorContext(ctx, "Error creating output directory %s: %v", cliConfig.OutputDir, err)
 		return fmt.Errorf("%w: error creating output directory %s: %v", ErrInvalidOutputDir, cliConfig.OutputDir, err)
 	}
 
-	logger.Info("Using output directory: %s", cliConfig.OutputDir)
+	logger.InfoContext(ctx, "Using output directory: %s", cliConfig.OutputDir)
 	return nil
 }

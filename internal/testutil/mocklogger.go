@@ -25,19 +25,32 @@ type MockLogger struct {
 	logLevel    logutil.LogLevel
 	verboseMode bool
 
+	// Enhanced logging with correlation IDs
+	logEntries []LogEntry
+
 	// Audit logging support
 	auditEntries []auditlog.AuditEntry
 	logOpCalls   []LogOpCall
 	logError     error // For simulating errors in audit logging
 }
 
+// LogEntry represents a structured log entry with message and context metadata
+type LogEntry struct {
+	Message       string
+	CorrelationID string
+	Level         string
+	Prefix        string
+	Timestamp     time.Time
+}
+
 // LogOpCall represents a single call to the LogOp method
 type LogOpCall struct {
-	Operation string
-	Status    string
-	Inputs    map[string]interface{}
-	Outputs   map[string]interface{}
-	Error     error
+	Operation     string
+	Status        string
+	Inputs        map[string]interface{}
+	Outputs       map[string]interface{}
+	Error         error
+	CorrelationID string // Track correlation ID from context
 }
 
 // NewMockLogger creates a new mock logger for testing
@@ -51,6 +64,7 @@ func NewMockLogger() *MockLogger {
 		fatalMsgs:    make([]string, 0),
 		logLevel:     logutil.DebugLevel, // Default to debug for tests
 		verboseMode:  true,
+		logEntries:   make([]LogEntry, 0),
 		auditEntries: make([]auditlog.AuditEntry, 0),
 		logOpCalls:   make([]LogOpCall, 0),
 		logError:     nil,
@@ -153,17 +167,28 @@ func (m *MockLogger) Fatal(format string, args ...interface{}) {
 func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.DebugLevel {
 		msg := fmt.Sprintf(format, args...)
-		// We get the correlation ID but don't format it directly in the message
-		// to avoid linter warnings about manual correlation_id= formatting
-		_ = logutil.GetCorrelationID(ctx)
 
-		// Just store the message for testing purposes
-		recordedMsg := msg
+		// Use background context if nil is provided
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		// Extract correlation ID from context
+		correlationID := logutil.GetCorrelationID(ctx)
+
+		// Create structured log entry
+		entry := LogEntry{
+			Message:       msg,
+			CorrelationID: correlationID,
+			Level:         "debug",
+			Timestamp:     time.Now().UTC(),
+		}
 
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, recordedMsg)
-		m.debugMsgs = append(m.debugMsgs, recordedMsg)
+		m.messages = append(m.messages, msg)
+		m.debugMsgs = append(m.debugMsgs, msg)
+		m.logEntries = append(m.logEntries, entry)
 	}
 }
 
@@ -171,17 +196,28 @@ func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...in
 func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.InfoLevel {
 		msg := fmt.Sprintf(format, args...)
-		// We get the correlation ID but don't format it directly in the message
-		// to avoid linter warnings about manual correlation_id= formatting
-		_ = logutil.GetCorrelationID(ctx)
 
-		// Just store the message for testing purposes
-		recordedMsg := msg
+		// Use background context if nil is provided
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		// Extract correlation ID from context
+		correlationID := logutil.GetCorrelationID(ctx)
+
+		// Create structured log entry
+		entry := LogEntry{
+			Message:       msg,
+			CorrelationID: correlationID,
+			Level:         "info",
+			Timestamp:     time.Now().UTC(),
+		}
 
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, recordedMsg)
-		m.infoMsgs = append(m.infoMsgs, recordedMsg)
+		m.messages = append(m.messages, msg)
+		m.infoMsgs = append(m.infoMsgs, msg)
+		m.logEntries = append(m.logEntries, entry)
 	}
 }
 
@@ -189,17 +225,28 @@ func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...int
 func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.WarnLevel {
 		msg := fmt.Sprintf(format, args...)
-		// We get the correlation ID but don't format it directly in the message
-		// to avoid linter warnings about manual correlation_id= formatting
-		_ = logutil.GetCorrelationID(ctx)
 
-		// Just store the message for testing purposes
-		recordedMsg := msg
+		// Use background context if nil is provided
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		// Extract correlation ID from context
+		correlationID := logutil.GetCorrelationID(ctx)
+
+		// Create structured log entry
+		entry := LogEntry{
+			Message:       msg,
+			CorrelationID: correlationID,
+			Level:         "warn",
+			Timestamp:     time.Now().UTC(),
+		}
 
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, recordedMsg)
-		m.warnMsgs = append(m.warnMsgs, recordedMsg)
+		m.messages = append(m.messages, msg)
+		m.warnMsgs = append(m.warnMsgs, msg)
+		m.logEntries = append(m.logEntries, entry)
 	}
 }
 
@@ -207,34 +254,56 @@ func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...int
 func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
 	if m.logLevel <= logutil.ErrorLevel {
 		msg := fmt.Sprintf(format, args...)
-		// We get the correlation ID but don't format it directly in the message
-		// to avoid linter warnings about manual correlation_id= formatting
-		_ = logutil.GetCorrelationID(ctx)
 
-		// Just store the message for testing purposes
-		recordedMsg := msg
+		// Use background context if nil is provided
+		if ctx == nil {
+			ctx = context.Background()
+		}
+
+		// Extract correlation ID from context
+		correlationID := logutil.GetCorrelationID(ctx)
+
+		// Create structured log entry
+		entry := LogEntry{
+			Message:       msg,
+			CorrelationID: correlationID,
+			Level:         "error",
+			Timestamp:     time.Now().UTC(),
+		}
 
 		m.mutex.Lock()
 		defer m.mutex.Unlock()
-		m.messages = append(m.messages, recordedMsg)
-		m.errorMsgs = append(m.errorMsgs, recordedMsg)
+		m.messages = append(m.messages, msg)
+		m.errorMsgs = append(m.errorMsgs, msg)
+		m.logEntries = append(m.logEntries, entry)
 	}
 }
 
 // FatalContext logs a formatted message at fatal level with context
 func (m *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
 	msg := fmt.Sprintf(format, args...)
-	// We get the correlation ID but don't format it directly in the message
-	// to avoid linter warnings about manual correlation_id= formatting
-	_ = logutil.GetCorrelationID(ctx)
 
-	// Just store the message for testing purposes
-	recordedMsg := msg
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Extract correlation ID from context
+	correlationID := logutil.GetCorrelationID(ctx)
+
+	// Create structured log entry
+	entry := LogEntry{
+		Message:       msg,
+		CorrelationID: correlationID,
+		Level:         "fatal",
+		Timestamp:     time.Now().UTC(),
+	}
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-	m.messages = append(m.messages, recordedMsg)
-	m.fatalMsgs = append(m.fatalMsgs, recordedMsg)
+	m.messages = append(m.messages, msg)
+	m.fatalMsgs = append(m.fatalMsgs, msg)
+	m.logEntries = append(m.logEntries, entry)
 	// Note: We don't exit in tests
 }
 
@@ -263,10 +332,15 @@ func (m *MockLogger) SetVerbose(verbose bool) {
 // auditlog.AuditLogger implementation
 //
 
-// Log implements the AuditLogger.Log method
-func (m *MockLogger) Log(entry auditlog.AuditEntry) error {
+// Log implements the AuditLogger.Log method with context
+func (m *MockLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
+
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
 
 	// If error is configured, return it
 	if m.logError != nil {
@@ -278,23 +352,59 @@ func (m *MockLogger) Log(entry auditlog.AuditEntry) error {
 		entry.Timestamp = time.Now().UTC()
 	}
 
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
+
+	// Create a log entry for this audit entry
+	logEntry := LogEntry{
+		Message:       entry.Message,
+		CorrelationID: correlationID,
+		Level:         "audit",
+		Timestamp:     entry.Timestamp,
+		Prefix:        fmt.Sprintf("%s:%s", entry.Operation, entry.Status),
+	}
+	m.logEntries = append(m.logEntries, logEntry)
+
 	// Record the entry
 	m.auditEntries = append(m.auditEntries, entry)
 	return nil
 }
 
-// LogOp implements the AuditLogger.LogOp method
-func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (m *MockLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return m.Log(context.Background(), entry)
+}
+
+// LogOp implements the AuditLogger.LogOp method with context
+func (m *MockLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Extract correlation ID from context
+	correlationID := logutil.GetCorrelationID(ctx)
+
 	// Record the call
 	m.logOpCalls = append(m.logOpCalls, LogOpCall{
-		Operation: operation,
-		Status:    status,
-		Inputs:    inputs,
-		Outputs:   outputs,
-		Error:     err,
+		Operation:     operation,
+		Status:        status,
+		Inputs:        inputs,
+		Outputs:       outputs,
+		Error:         err,
+		CorrelationID: correlationID,
 	})
 
 	// If error is configured, return it
@@ -302,12 +412,26 @@ func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface
 		return m.logError
 	}
 
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID from context if not already present
+	if correlationID != "" {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Create and record the entry
 	entry := auditlog.AuditEntry{
 		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 	}
 
@@ -333,8 +457,23 @@ func (m *MockLogger) LogOp(operation, status string, inputs map[string]interface
 		}
 	}
 
+	// Create a log entry for this audit operation
+	logEntry := LogEntry{
+		Message:       message,
+		CorrelationID: correlationID,
+		Level:         "audit",
+		Timestamp:     entry.Timestamp,
+		Prefix:        fmt.Sprintf("%s:%s", operation, status),
+	}
+	m.logEntries = append(m.logEntries, logEntry)
+
 	m.auditEntries = append(m.auditEntries, entry)
 	return nil
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (m *MockLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close implements the AuditLogger.Close method
@@ -437,6 +576,7 @@ func (m *MockLogger) ClearMessages() {
 	m.warnMsgs = make([]string, 0)
 	m.errorMsgs = make([]string, 0)
 	m.fatalMsgs = make([]string, 0)
+	m.logEntries = make([]LogEntry, 0)
 }
 
 // ContainsMessage checks if a message was logged (substring match)
@@ -449,6 +589,90 @@ func (m *MockLogger) ContainsMessage(substr string) bool {
 		}
 	}
 	return false
+}
+
+// GetLogEntries returns all log entries
+func (m *MockLogger) GetLogEntries() []LogEntry {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	result := make([]LogEntry, len(m.logEntries))
+	copy(result, m.logEntries)
+	return result
+}
+
+// GetLogEntriesByCorrelationID returns log entries with the specified correlation ID
+func (m *MockLogger) GetLogEntriesByCorrelationID(correlationID string) []LogEntry {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	var result []LogEntry
+	for _, entry := range m.logEntries {
+		if entry.CorrelationID == correlationID {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+// GetAuditEntriesByCorrelationID returns audit entries with the specified correlation ID
+func (m *MockLogger) GetAuditEntriesByCorrelationID(correlationID string) []auditlog.AuditEntry {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	var result []auditlog.AuditEntry
+	for _, entry := range m.auditEntries {
+		if entry.Inputs != nil {
+			if id, ok := entry.Inputs["correlation_id"]; ok && id == correlationID {
+				result = append(result, entry)
+			}
+		}
+	}
+	return result
+}
+
+// GetLogOpCallsByCorrelationID returns LogOp calls with the specified correlation ID
+func (m *MockLogger) GetLogOpCallsByCorrelationID(correlationID string) []LogOpCall {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	var result []LogOpCall
+	for _, call := range m.logOpCalls {
+		if call.CorrelationID == correlationID {
+			result = append(result, call)
+		}
+	}
+	return result
+}
+
+// GetAllCorrelationIDs returns all unique correlation IDs in log entries
+func (m *MockLogger) GetAllCorrelationIDs() []string {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// Use map to track unique correlation IDs
+	idMap := make(map[string]bool)
+
+	// Add IDs from log entries
+	for _, entry := range m.logEntries {
+		if entry.CorrelationID != "" {
+			idMap[entry.CorrelationID] = true
+		}
+	}
+
+	// Add IDs from LogOp calls
+	for _, call := range m.logOpCalls {
+		if call.CorrelationID != "" {
+			idMap[call.CorrelationID] = true
+		}
+	}
+
+	// Convert map keys to slice
+	var result []string
+	for id := range idMap {
+		result = append(result, id)
+	}
+
+	return result
 }
 
 // Compile-time checks to ensure interface implementation

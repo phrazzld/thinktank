@@ -100,7 +100,7 @@ func TestDefaultOutputWriter_SaveIndividualOutputs(t *testing.T) {
 
 			// Call the method under test
 			ctx := context.Background()
-			count, err := writer.SaveIndividualOutputs(ctx, tt.modelOutputs, tt.outputDir)
+			count, _, err := writer.SaveIndividualOutputs(ctx, tt.modelOutputs, tt.outputDir)
 
 			// Verify the results
 			if tt.expectedError && err == nil {
@@ -197,7 +197,7 @@ func TestDefaultOutputWriter_SaveSynthesisOutput(t *testing.T) {
 
 			// Call the method under test
 			ctx := context.Background()
-			err := writer.SaveSynthesisOutput(ctx, tt.content, tt.modelName, tt.outputDir)
+			_, err := writer.SaveSynthesisOutput(ctx, tt.content, tt.modelName, tt.outputDir)
 
 			// Verify the results
 			if tt.expectedError && err == nil {

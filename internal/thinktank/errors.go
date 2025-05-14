@@ -28,4 +28,8 @@ var (
 
 	// ErrContextGatheringFailed is returned when context gathering fails.
 	ErrContextGatheringFailed = errors.New("context gathering failed")
+
+	// ErrPartialSuccess is returned when some models succeed but others fail.
+	// This error is used to determine exit code behavior when the --partial-success-ok flag is enabled.
+	ErrPartialSuccess = errors.New("partial success: some models succeeded, others failed")
 )

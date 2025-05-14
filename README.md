@@ -46,6 +46,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
 | `--dry-run` | Preview without API calls | `false` |
+| `--partial-success-ok` | Return success code if any model succeeds | `false` |
 | `--log-level` | Logging level (debug,info,warn,error) | `info` |
 
 ## Models Setup
@@ -71,6 +72,9 @@ thinktank --instructions questions.txt --output-dir answers ./src
 
 # Using synthesis to combine multiple model outputs
 thinktank --instructions complex-task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
+
+# Allow partial success (return success code even if some models fail)
+thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
 ```
 
 ### Synthesis Feature
@@ -95,6 +99,38 @@ The output depends entirely on your instructions, but common use cases include:
 
 Output files are saved in the specified directory (or auto-generated directory) with one file per model. If a synthesis model is specified, an additional file containing the synthesized output will be created with the naming format `<synthesis-model-name>-synthesis.md`.
 
+### Summary Output Format
+
+At the end of each run, thinktank displays a formatted summary of the execution results:
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ Thinktank Execution Summary                                    │
+├────────────────────────────────────────────────────────────────┤
+│ Status: SUCCESS                                                │
+├────────────────────────────────────────────────────────────────┤
+│ Models: 3 total, 3 successful, 0 failed                        │
+├────────────────────────────────────────────────────────────────┤
+│ Synthesis file: path/to/output/synthesis-file.md               │
+├────────────────────────────────────────────────────────────────┤
+│ Successful models: 3 models (model1, model2, model3)           │
+└────────────────────────────────────────────────────────────────┘
+```
+
+The summary includes:
+- **Status**: Overall execution status (SUCCESS, PARTIAL SUCCESS, or FAILED)
+- **Models**: Count of total, successful, and failed models
+- **Synthesis file**: Path to the synthesis output file (if a synthesis model was used)
+- **Successful models**: List of models that completed successfully
+- **Failed models**: List of models that failed (shown only if failures occurred)
+- **Output files**: Individual output file paths (shown when no synthesis model is used)
+
+The summary is color-coded in terminal output:
+- Green for success indicators
+- Yellow for partial success
+- Red for failure indicators
+- Blue for file paths
+
 ### Output Directory Naming
 
 When no `--output-dir` is specified, thinktank automatically generates a timestamped directory name using the format:
@@ -114,12 +150,28 @@ Examples:
 
 This naming convention ensures that each run has a unique, sortable, and identifiable output directory.
 
-## Troubleshooting
+## Error Handling and Troubleshooting
+
+### Exit Codes
+
+By default, thinktank returns:
+- **0 (success)**: All models completed successfully
+- **1 (failure)**: One or more models failed
+
+When using `--partial-success-ok` (tolerant mode):
+- **0 (success)**: At least one model succeeded and generated usable output (even if others failed)
+- **1 (failure)**: All models failed or other critical error occurred
+
+This tolerant mode is particularly useful when using multiple models for redundancy, allowing the process to succeed if at least one model delivers a valid result.
+
+### Common Issues
 
 - **Context Length Errors**: Reduce scope with `--include` or use a model with larger context
 - **API Key Issues**: Ensure correct environment variables are set for each provider
 - **No Files Processed**: Check paths and filters with `--dry-run`
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
+- **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
+- **Color Output Issues**: Summary output uses ANSI color codes for terminal display, which may not be suitable for all environments. Redirect to a file for plain text output.
 
 ## Development & Contributing
 
@@ -171,6 +223,7 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 - [OpenRouter Integration](docs/openrouter-integration.md)
 - [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
+- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md)
 - Detailed configuration options: `thinktank --help`
 
 ## License

@@ -1,6 +1,7 @@
 package auditlog
 
 import (
+	"context"
 	"fmt"
 	"testing"
 )
@@ -49,7 +50,9 @@ func TestNoOpAuditLogger_Log(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// NoOpAuditLogger should never return an error
-			err := logger.Log(tc.entry)
+			// Use a background context for the test
+			ctx := context.Background()
+			err := logger.Log(ctx, tc.entry)
 			if err != nil {
 				t.Errorf("NoOpAuditLogger.Log returned error: %v", err)
 			}
@@ -72,7 +75,8 @@ func TestNoOpAuditLogger_Close(t *testing.T) {
 	}
 
 	// Should be able to log after close
-	err = logger.Log(AuditEntry{
+	ctx := context.Background()
+	err = logger.Log(ctx, AuditEntry{
 		Operation: "AfterClose",
 		Status:    "Test",
 	})
@@ -88,15 +92,16 @@ func TestNoOpAuditLogger_Close(t *testing.T) {
 
 	// Test behavior consistency
 	// After closing, logging and other operations should still work
+	ctxForTests := context.Background()
 	noopTests := []func() error{
 		func() error {
-			return logger.Log(AuditEntry{Operation: "Test1", Status: "Test"})
+			return logger.Log(ctxForTests, AuditEntry{Operation: "Test1", Status: "Test"})
 		},
 		func() error {
-			return logger.LogOp("Test2", "Test", nil, nil, nil)
+			return logger.LogOp(ctxForTests, "Test2", "Test", nil, nil, nil)
 		},
 		func() error {
-			return logger.LogOp("Test3", "Test", nil, nil, fmt.Errorf("test error"))
+			return logger.LogOp(ctxForTests, "Test3", "Test", nil, nil, fmt.Errorf("test error"))
 		},
 		func() error {
 			return logger.Close()

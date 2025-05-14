@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -134,7 +135,9 @@ func parseAndValidateYAML(data []byte) (*ModelsConfig, error) {
 	}
 
 	// Create a config loader to validate the config
-	loader := &ConfigLoader{}
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
 	if err := loader.validate(&config); err != nil {
 		return nil, err
 	}

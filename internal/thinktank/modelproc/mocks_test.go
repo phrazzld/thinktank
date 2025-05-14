@@ -15,9 +15,9 @@ type mockAPIService struct {
 	getErrorDetailsFunc      func(err error) string
 	initLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	processLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
-	getModelParametersFunc   func(modelName string) (map[string]interface{}, error)
-	getModelDefinitionFunc   func(modelName string) (*registry.ModelDefinition, error)
-	getModelTokenLimitsFunc  func(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	getModelParametersFunc   func(ctx context.Context, modelName string) (map[string]interface{}, error)
+	getModelDefinitionFunc   func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	getModelTokenLimitsFunc  func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 }
 
 func (m *mockAPIService) IsEmptyResponseError(err error) bool {
@@ -58,28 +58,34 @@ func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string,
 }
 
 // Implement the new registry methods
-func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *mockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	if m.getModelParametersFunc != nil {
-		return m.getModelParametersFunc(modelName)
+		return m.getModelParametersFunc(ctx, modelName)
 	}
 	// Default implementation returns empty map
 	return make(map[string]interface{}), nil
 }
 
-func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	if m.getModelDefinitionFunc != nil {
-		return m.getModelDefinitionFunc(modelName)
+		return m.getModelDefinitionFunc(ctx, modelName)
 	}
 	// Default implementation returns nil and error
 	return nil, nil
 }
 
-func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *mockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	if m.getModelTokenLimitsFunc != nil {
-		return m.getModelTokenLimitsFunc(modelName)
+		return m.getModelTokenLimitsFunc(ctx, modelName)
 	}
 	// Default implementation returns zeros with no error
 	return 0, 0, nil
+}
+
+// ValidateModelParameter validates a parameter value against its constraints
+func (m *mockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
+	// Default implementation returns true with no error
+	return true, nil
 }
 
 // Note: TokenManager implementation and related code has been removed
@@ -132,23 +138,41 @@ func (m *mockLLMClient) Close() error {
 }
 
 type mockAuditLogger struct {
-	logFunc   func(entry auditlog.AuditEntry) error
-	logOpFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
-	closeFunc func() error
+	logFunc         func(ctx context.Context, entry auditlog.AuditEntry) error
+	logLegacyFunc   func(entry auditlog.AuditEntry) error
+	logOpFunc       func(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	logOpLegacyFunc func(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error
+	closeFunc       func() error
 }
 
-func (m *mockAuditLogger) Log(entry auditlog.AuditEntry) error {
+func (m *mockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	if m.logFunc != nil {
-		return m.logFunc(entry)
+		return m.logFunc(ctx, entry)
+	}
+
+	// A simple default implementation
+	return nil
+}
+
+func (m *mockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	if m.logLegacyFunc != nil {
+		return m.logLegacyFunc(entry)
+	}
+	return m.Log(context.Background(), entry)
+}
+
+func (m *mockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.logOpFunc != nil {
+		return m.logOpFunc(ctx, operation, status, inputs, outputs, err)
 	}
 	return nil
 }
 
-func (m *mockAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
-	if m.logOpFunc != nil {
-		return m.logOpFunc(operation, status, inputs, outputs, err)
+func (m *mockAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	if m.logOpLegacyFunc != nil {
+		return m.logOpLegacyFunc(operation, status, inputs, outputs, err)
 	}
-	return nil
+	return m.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 func (m *mockAuditLogger) Close() error {

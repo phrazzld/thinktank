@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/openai"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +57,7 @@ func TestIsOpenAIError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			llmErr, isOpenAIErr := openai.IsOpenAIError(tt.err)
+			llmErr, isOpenAIErr := IsOpenAIError(tt.err)
 			assert.Equal(t, tt.wantIsError, isOpenAIErr)
 
 			if tt.wantIsError {
@@ -71,7 +70,7 @@ func TestIsOpenAIError(t *testing.T) {
 	}
 }
 
-func TestFormatAPIError(t *testing.T) {
+func TestFormatAPIErrorFromResponse(t *testing.T) {
 	tests := []struct {
 		name                string
 		err                 error
@@ -210,7 +209,8 @@ func TestFormatAPIError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := openai.FormatAPIError(tt.err, tt.statusCode)
+			// Pass nil as the response body for the test
+			result := FormatAPIErrorFromResponse(tt.err, tt.statusCode, nil)
 
 			if tt.err == nil {
 				assert.Nil(t, result)
@@ -229,6 +229,196 @@ func TestFormatAPIError(t *testing.T) {
 			// Check that suggestions are present for known error categories
 			if tt.wantCategory != llm.CategoryUnknown && !tt.skipSuggestionCheck {
 				assert.NotEmpty(t, result.Suggestion, "Expected non-empty suggestion for %s error", tt.wantCategory)
+			}
+		})
+	}
+}
+
+func TestFormatAPIError(t *testing.T) {
+	tests := []struct {
+		name          string
+		err           error
+		providerName  string
+		wantCategory  llm.ErrorCategory
+		wantProvider  string
+		wantMsgPrefix string
+		checkUnwrap   bool
+	}{
+		{
+			name:          "nil error",
+			err:           nil,
+			providerName:  "openai",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "",
+			wantMsgPrefix: "",
+		},
+		{
+			name:          "standard error",
+			err:           fmt.Errorf("some error"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "network error",
+			err:           fmt.Errorf("connection timeout"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryNetwork,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "auth error",
+			err:           fmt.Errorf("authentication failed"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "rate limit error",
+			err:           fmt.Errorf("rate limit exceeded"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryRateLimit,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name: "existing LLMError from same provider",
+			err: &llm.LLMError{
+				Provider:      "openai",
+				Message:       "Existing error",
+				ErrorCategory: llm.CategoryAuth,
+			},
+			providerName:  "openai",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Existing error",
+		},
+		{
+			name: "existing LLMError from different provider",
+			err: &llm.LLMError{
+				Provider:      "gemini",
+				Message:       "Error from gemini",
+				ErrorCategory: llm.CategoryAuth,
+			},
+			providerName:  "openai",
+			wantCategory:  llm.CategoryAuth,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from gemini",
+		},
+		{
+			name:          "insufficient credits error from message",
+			err:           fmt.Errorf("billing quota exceeded"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryInsufficientCredits,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "content filtered error from message",
+			err:           fmt.Errorf("content_filter triggered"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryContentFiltered,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "input limit error from message",
+			err:           fmt.Errorf("token limit exceeded"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryInputLimit,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "cancelled error from message",
+			err:           fmt.Errorf("request cancelled"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryCancelled,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "not found error from message",
+			err:           fmt.Errorf("model not found"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryNotFound,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "invalid request error from message",
+			err:           fmt.Errorf("invalid request parameters"),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryInvalidRequest,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "wrapped error",
+			err:           fmt.Errorf("outer error: %w", fmt.Errorf("inner rate limit exceeded")),
+			providerName:  "openai",
+			wantCategory:  llm.CategoryRateLimit,
+			wantProvider:  "openai",
+			wantMsgPrefix: "Error from openai provider",
+			checkUnwrap:   true,
+		},
+		{
+			name:          "error with custom provider name",
+			err:           fmt.Errorf("some error"),
+			providerName:  "custom-provider",
+			wantCategory:  llm.CategoryUnknown,
+			wantProvider:  "custom-provider",
+			wantMsgPrefix: "Error from custom-provider provider",
+			checkUnwrap:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatAPIError(tt.err, tt.providerName)
+
+			if tt.err == nil {
+				assert.Nil(t, result)
+				return
+			}
+
+			assert.NotNil(t, result)
+
+			var llmErr *llm.LLMError
+			if errors.As(result, &llmErr) {
+				assert.Equal(t, tt.wantProvider, llmErr.Provider)
+				assert.Equal(t, tt.wantCategory, llmErr.Category())
+
+				if tt.wantMsgPrefix != "" {
+					assert.True(t, strings.HasPrefix(llmErr.Message, tt.wantMsgPrefix),
+						"Expected message to start with %q, got %q", tt.wantMsgPrefix, llmErr.Message)
+				}
+
+				// Check for proper error wrapping
+				if tt.checkUnwrap {
+					unwrapped := errors.Unwrap(result)
+					assert.NotNil(t, unwrapped, "Expected error to be wrapped")
+					assert.Equal(t, tt.err.Error(), unwrapped.Error(), "Original error should be preserved when unwrapped")
+				}
+
+				// FormatAPIError uses llm.Wrap which doesn't set suggestions
+				// Suggestion fields are only populated by CreateStandardErrorWithMessage
+				// and similar functions, not by FormatAPIError
+			} else {
+				t.Fatalf("Expected result to be of type *llm.LLMError")
 			}
 		})
 	}
@@ -306,7 +496,7 @@ func TestCreateAPIError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := openai.CreateAPIError(tt.category, tt.errMsg, tt.originalErr, tt.details)
+			result := CreateAPIError(tt.category, tt.errMsg, tt.originalErr, tt.details)
 
 			assert.NotNil(t, result)
 			assert.Equal(t, tt.wantProvider, result.Provider)
@@ -323,113 +513,6 @@ func TestCreateAPIError(t *testing.T) {
 
 			// Verify original error is preserved
 			assert.Equal(t, tt.originalErr, result.Original)
-		})
-	}
-}
-
-func TestMockAPIErrorResponse(t *testing.T) {
-	tests := []struct {
-		name                string
-		errorType           int
-		statusCode          int
-		message             string
-		details             string
-		wantCategory        llm.ErrorCategory
-		wantProvider        string
-		wantMsg             string
-		wantDetails         string
-		wantStatusCode      int
-		skipSuggestionCheck bool
-	}{
-		{
-			name:           "auth error",
-			errorType:      1, // ErrorTypeAuth
-			statusCode:     401,
-			message:        "Invalid authentication",
-			details:        "API key expired",
-			wantCategory:   llm.CategoryAuth,
-			wantProvider:   "openai",
-			wantMsg:        "Invalid authentication",
-			wantDetails:    "API key expired",
-			wantStatusCode: 401,
-		},
-		{
-			name:           "rate limit error",
-			errorType:      2, // ErrorTypeRateLimit
-			statusCode:     429,
-			message:        "Too many requests",
-			details:        "Retry-After: 30",
-			wantCategory:   llm.CategoryRateLimit,
-			wantProvider:   "openai",
-			wantMsg:        "Too many requests",
-			wantDetails:    "Retry-After: 30",
-			wantStatusCode: 429,
-		},
-		{
-			name:           "invalid request error",
-			errorType:      3, // ErrorTypeInvalidRequest
-			statusCode:     400,
-			message:        "Invalid request parameters",
-			details:        "Bad temperature",
-			wantCategory:   llm.CategoryInvalidRequest,
-			wantProvider:   "openai",
-			wantMsg:        "Invalid request parameters",
-			wantDetails:    "Bad temperature",
-			wantStatusCode: 400,
-		},
-		{
-			name:           "not found error",
-			errorType:      4, // ErrorTypeNotFound
-			statusCode:     404,
-			message:        "Model not found",
-			details:        "gpt-9 does not exist",
-			wantCategory:   llm.CategoryNotFound,
-			wantProvider:   "openai",
-			wantMsg:        "Model not found",
-			wantDetails:    "gpt-9 does not exist",
-			wantStatusCode: 404,
-		},
-		{
-			name:           "server error",
-			errorType:      5, // ErrorTypeServer
-			statusCode:     500,
-			message:        "Internal server error",
-			details:        "Service unavailable",
-			wantCategory:   llm.CategoryServer,
-			wantProvider:   "openai",
-			wantMsg:        "Internal server error",
-			wantDetails:    "Service unavailable",
-			wantStatusCode: 500,
-		},
-		{
-			name:           "unknown error type",
-			errorType:      999, // Unknown type
-			statusCode:     418, // I'm a teapot
-			message:        "Teapot error",
-			details:        "Cannot brew coffee",
-			wantCategory:   llm.CategoryUnknown,
-			wantProvider:   "openai",
-			wantMsg:        "Teapot error",
-			wantDetails:    "Cannot brew coffee",
-			wantStatusCode: 418,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := openai.MockAPIErrorResponse(tt.errorType, tt.statusCode, tt.message, tt.details)
-
-			assert.NotNil(t, result)
-			assert.Equal(t, tt.wantProvider, result.Provider)
-			assert.Equal(t, tt.wantCategory, result.Category())
-			assert.Equal(t, tt.wantDetails, result.Details)
-			assert.Equal(t, tt.wantMsg, result.Message)
-			assert.Equal(t, tt.wantStatusCode, result.StatusCode)
-
-			// Check that suggestions are present for known error categories
-			if tt.wantCategory != llm.CategoryUnknown && !tt.skipSuggestionCheck {
-				assert.NotEmpty(t, result.Suggestion, "Expected non-empty suggestion for %s error", tt.wantCategory)
-			}
 		})
 	}
 }

@@ -236,7 +236,7 @@ func initializeTestRegistry(t *testing.T, reg *registry.Registry) {
 	mockLoader := &mockConfigLoader{config: &modelConfig}
 
 	// Load the config into the registry
-	err := reg.LoadConfig(mockLoader)
+	err := reg.LoadConfig(context.Background(), mockLoader)
 	if err != nil {
 		t.Fatalf("Failed to load test config: %v", err)
 	}
@@ -245,13 +245,13 @@ func initializeTestRegistry(t *testing.T, reg *registry.Registry) {
 // Register test provider implementations with the registry
 func registerTestProviders(t *testing.T, reg *registry.Registry) {
 	// Register mock provider implementations
-	if err := reg.RegisterProviderImplementation("gemini", &mockProvider{providerName: "gemini"}); err != nil {
+	if err := reg.RegisterProviderImplementation(context.Background(), "gemini", &mockProvider{providerName: "gemini"}); err != nil {
 		t.Fatalf("Failed to register Gemini provider: %v", err)
 	}
-	if err := reg.RegisterProviderImplementation("openai", &mockProvider{providerName: "openai"}); err != nil {
+	if err := reg.RegisterProviderImplementation(context.Background(), "openai", &mockProvider{providerName: "openai"}); err != nil {
 		t.Fatalf("Failed to register OpenAI provider: %v", err)
 	}
-	if err := reg.RegisterProviderImplementation("openrouter", &mockProvider{providerName: "openrouter"}); err != nil {
+	if err := reg.RegisterProviderImplementation(context.Background(), "openrouter", &mockProvider{providerName: "openrouter"}); err != nil {
 		t.Fatalf("Failed to register OpenRouter provider: %v", err)
 	}
 }

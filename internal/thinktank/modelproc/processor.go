@@ -23,13 +23,13 @@ type APIService interface {
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 
 	// GetModelParameters retrieves parameter values from the registry for a given model
-	GetModelParameters(modelName string) (map[string]interface{}, error)
+	GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error)
 
 	// GetModelDefinition retrieves the full model definition from the registry
-	GetModelDefinition(modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
 
 	// GetModelTokenLimits retrieves token limits from the registry for a given model
-	GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content
 	ProcessLLMResponse(result *llm.ProviderResult) (string, error)
@@ -90,15 +90,15 @@ func NewProcessor(
 //   - The generated content as a string, which can be used for synthesis
 //   - Any error encountered during processing
 func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitchedPrompt string) (string, error) {
-	p.logger.Info("Processing model: %s", modelName)
+	p.logger.InfoContext(ctx, "Processing model: %s", modelName)
 
 	// 1. Initialize model-specific LLM client
 	llmClient, err := p.apiService.InitLLMClient(ctx, p.config.APIKey, modelName, p.config.APIEndpoint)
 	if err != nil {
 		// Use the APIService interface for consistent error detail extraction
 		errorDetails := p.apiService.GetErrorDetails(err)
-		p.logger.Error("Error creating LLM client for model %s: %s", modelName, errorDetails)
-		return "", fmt.Errorf("%w: failed to initialize API client for model %s: %v", ErrModelInitializationFailed, modelName, err)
+		p.logger.ErrorContext(ctx, "Error creating LLM client for model %s: %s", modelName, errorDetails)
+		return "", llm.Wrap(ErrModelInitializationFailed, "", fmt.Sprintf("failed to initialize API client for model %s: %v", modelName, err), llm.CategoryInvalidRequest)
 	}
 
 	// BUGFIX: Ensure llmClient is not nil before attempting to close it
@@ -115,7 +115,7 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	// We now rely on provider APIs to enforce their own token limits
 
 	// 3. Generate content with this model
-	p.logger.Info("Generating output with model %s...", modelName)
+	p.logger.InfoContext(ctx, "Generating output with model %s...", modelName)
 
 	// Log the start of content generation
 	generateStartTime := time.Now()
@@ -123,23 +123,23 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		"model_name":    modelName,
 		"prompt_length": len(stitchedPrompt),
 	}
-	if logErr := p.auditLogger.LogOp("GenerateContent", "InProgress", inputs, nil, nil); logErr != nil {
-		p.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "InProgress", inputs, nil, nil); logErr != nil {
+		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// Get model parameters from the APIService
-	params, err := p.apiService.GetModelParameters(modelName)
+	params, err := p.apiService.GetModelParameters(ctx, modelName)
 	if err != nil {
-		p.logger.Debug("Failed to get model parameters for %s: %v. Using defaults.", modelName, err)
+		p.logger.DebugContext(ctx, "Failed to get model parameters for %s: %v. Using defaults.", modelName, err)
 		// Continue with empty parameters if there's an error
 		params = make(map[string]interface{})
 	}
 
 	// Log parameters being used (at debug level)
 	if len(params) > 0 {
-		p.logger.Debug("Using model parameters for %s:", modelName)
+		p.logger.DebugContext(ctx, "Using model parameters for %s:", modelName)
 		for k, v := range params {
-			p.logger.Debug("  %s: %v", k, v)
+			p.logger.DebugContext(ctx, "  %s: %v", k, v)
 		}
 	}
 
@@ -150,21 +150,21 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	generateDurationMs := time.Since(generateStartTime).Milliseconds()
 
 	if err != nil {
-		p.logger.Error("Generation failed for model %s", modelName)
+		p.logger.ErrorContext(ctx, "Generation failed for model %s", modelName)
 
 		// Get detailed error information using APIService
 		errorDetails := p.apiService.GetErrorDetails(err)
-		p.logger.Error("Error generating content with model %s: %s", modelName, errorDetails)
+		p.logger.ErrorContext(ctx, "Error generating content with model %s: %s", modelName, errorDetails)
 
 		// Add generation duration to inputs for logging
 		inputs["duration_ms"] = generateDurationMs
 
 		// Log the content generation failure
-		if logErr := p.auditLogger.LogOp("GenerateContent", "Failure", inputs, nil, err); logErr != nil {
-			p.logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "Failure", inputs, nil, err); logErr != nil {
+			p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
-		return "", fmt.Errorf("%w: output generation failed for model %s: %v", ErrModelProcessingFailed, modelName, err)
+		return "", llm.Wrap(ErrModelProcessingFailed, "", fmt.Sprintf("output generation failed for model %s: %v", modelName, err), llm.CategoryInvalidRequest)
 	}
 
 	// Log successful content generation
@@ -173,8 +173,8 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 		"finish_reason":      result.FinishReason,
 		"has_safety_ratings": len(result.SafetyInfo) > 0,
 	}
-	if logErr := p.auditLogger.LogOp("GenerateContent", "Success", inputs, outputs, nil); logErr != nil {
-		p.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := p.auditLogger.LogOp(ctx, "GenerateContent", "Success", inputs, outputs, nil); logErr != nil {
+		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// 4. Process API response
@@ -185,41 +185,42 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 
 		// Provide specific error messages based on error type
 		if p.apiService.IsEmptyResponseError(err) {
-			p.logger.Error("Received empty or invalid response from API for model %s", modelName)
-			p.logger.Error("Error details: %s", errorDetails)
-			return "", fmt.Errorf("%w: failed to process API response for model %s due to empty content: %v", ErrEmptyModelResponse, modelName, err)
+			p.logger.ErrorContext(ctx, "Received empty or invalid response from API for model %s", modelName)
+			p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+			return "", llm.Wrap(ErrEmptyModelResponse, "", fmt.Sprintf("failed to process API response for model %s due to empty content: %v", modelName, err), llm.CategoryInvalidRequest)
 		} else if p.apiService.IsSafetyBlockedError(err) {
-			p.logger.Error("Content was blocked by safety filters for model %s", modelName)
-			p.logger.Error("Error details: %s", errorDetails)
-			return "", fmt.Errorf("%w: failed to process API response for model %s due to safety restrictions: %v", ErrContentFiltered, modelName, err)
+			p.logger.ErrorContext(ctx, "Content was blocked by safety filters for model %s", modelName)
+			p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+			return "", llm.Wrap(ErrContentFiltered, "", fmt.Sprintf("failed to process API response for model %s due to safety restrictions: %v", modelName, err), llm.CategoryContentFiltered)
 		} else if catErr, isCat := llm.IsCategorizedError(err); isCat {
 			// Use the new error categorization for more specific messages
 			switch catErr.Category() {
 			case llm.CategoryContentFiltered:
-				p.logger.Error("Content was filtered by safety settings for model %s", modelName)
-				p.logger.Error("Error details: %s", errorDetails)
-				return "", fmt.Errorf("%w: failed to process API response for model %s due to content filtering: %v", ErrContentFiltered, modelName, err)
+				p.logger.ErrorContext(ctx, "Content was filtered by safety settings for model %s", modelName)
+				p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+				return "", llm.Wrap(ErrContentFiltered, "", fmt.Sprintf("failed to process API response for model %s due to content filtering: %v", modelName, err), llm.CategoryContentFiltered)
 			case llm.CategoryRateLimit:
-				p.logger.Error("Rate limit exceeded while processing response for model %s", modelName)
-				p.logger.Error("Error details: %s", errorDetails)
-				return "", fmt.Errorf("%w: failed to process API response for model %s due to rate limiting: %v", ErrModelRateLimited, modelName, err)
+				p.logger.ErrorContext(ctx, "Rate limit exceeded while processing response for model %s", modelName)
+				p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+				return "", llm.Wrap(ErrModelRateLimited, "", fmt.Sprintf("failed to process API response for model %s due to rate limiting: %v", modelName, err), llm.CategoryRateLimit)
 			case llm.CategoryInputLimit:
-				p.logger.Error("Input limit exceeded during response processing for model %s", modelName)
-				p.logger.Error("Error details: %s", errorDetails)
-				return "", fmt.Errorf("%w: failed to process API response for model %s due to input limits: %v", ErrModelTokenLimitExceeded, modelName, err)
+				p.logger.ErrorContext(ctx, "Input limit exceeded during response processing for model %s", modelName)
+				p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+				return "", llm.Wrap(ErrModelTokenLimitExceeded, "", fmt.Sprintf("failed to process API response for model %s due to input limits: %v", modelName, err), llm.CategoryInputLimit)
 			default:
 				// Other categorized errors
-				p.logger.Error("Error processing response for model %s (%s category)", modelName, catErr.Category())
-				p.logger.Error("Error details: %s", errorDetails)
-				return "", fmt.Errorf("%w: failed to process API response for model %s (%s error): %v", ErrInvalidModelResponse, modelName, catErr.Category(), err)
+				p.logger.ErrorContext(ctx, "Error processing response for model %s (%s category)", modelName, catErr.Category())
+				p.logger.ErrorContext(ctx, "Error details: %s", errorDetails)
+				return "", llm.Wrap(ErrInvalidModelResponse, "", fmt.Sprintf("failed to process API response for model %s (%s error): %v", modelName, catErr.Category(), err), catErr.Category())
 			}
 		} else {
 			// Generic API error handling
-			return "", fmt.Errorf("%w: failed to process API response for model %s: %v", ErrInvalidModelResponse, modelName, err)
+			p.logger.ErrorContext(ctx, "Error processing API response for model %s", modelName)
+			return "", llm.Wrap(ErrInvalidModelResponse, "", fmt.Sprintf("failed to process API response for model %s: %v", modelName, err), llm.CategoryInvalidRequest)
 		}
 	}
 	contentLength := len(generatedOutput)
-	p.logger.Info("Output generated successfully with model %s (content length: %d characters)",
+	p.logger.InfoContext(ctx, "Output generated successfully with model %s (content length: %d characters)",
 		modelName, contentLength)
 
 	// 5. Sanitize model name for use in filename
@@ -229,11 +230,11 @@ func (p *ModelProcessor) Process(ctx context.Context, modelName string, stitched
 	outputFilePath := filepath.Join(p.config.OutputDir, sanitizedModelName+".md")
 
 	// 7. Save the output to file
-	if err := p.saveOutputToFile(outputFilePath, generatedOutput); err != nil {
-		return "", fmt.Errorf("%w: failed to save output for model %s: %v", ErrOutputWriteFailed, modelName, err)
+	if err := p.saveOutputToFile(ctx, outputFilePath, generatedOutput); err != nil {
+		return "", llm.Wrap(ErrOutputWriteFailed, "", fmt.Sprintf("failed to save output for model %s: %v", modelName, err), llm.CategoryInvalidRequest)
 	}
 
-	p.logger.Info("Successfully processed model: %s", modelName)
+	p.logger.InfoContext(ctx, "Successfully processed model: %s", modelName)
 	return generatedOutput, nil
 }
 
@@ -259,19 +260,19 @@ func SanitizeFilename(filename string) string {
 
 // saveOutputToFile is a helper method that saves the generated output to a file
 // and includes audit logging around the file writing operation.
-func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error {
+func (p *ModelProcessor) saveOutputToFile(ctx context.Context, outputFilePath, content string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
 	inputs := map[string]interface{}{
 		"output_path":    outputFilePath,
 		"content_length": len(content),
 	}
-	if logErr := p.auditLogger.LogOp("SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
-		p.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "InProgress", inputs, nil, nil); logErr != nil {
+		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
 	// Save output file
-	p.logger.Info("Writing output to %s...", outputFilePath)
+	p.logger.InfoContext(ctx, "Writing output to %s...", outputFilePath)
 	err := p.fileWriter.SaveToFile(content, outputFilePath)
 
 	// Calculate duration in milliseconds
@@ -279,14 +280,14 @@ func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error 
 
 	if err != nil {
 		// Log failure to save output
-		p.logger.Error("Error saving output to file %s: %v", outputFilePath, err)
+		p.logger.ErrorContext(ctx, "Error saving output to file %s: %v", outputFilePath, err)
 
 		inputs["duration_ms"] = saveDurationMs
-		if logErr := p.auditLogger.LogOp("SaveOutput", "Failure", inputs, nil, err); logErr != nil {
-			p.logger.Error("Failed to write audit log: %v", logErr)
+		if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "Failure", inputs, nil, err); logErr != nil {
+			p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 		}
 
-		return fmt.Errorf("%w: error saving output to file %s: %v", ErrOutputWriteFailed, outputFilePath, err)
+		return llm.Wrap(ErrOutputWriteFailed, "", fmt.Sprintf("error saving output to file %s: %v", outputFilePath, err), llm.CategoryServer)
 	}
 
 	// Log successful saving of output
@@ -294,10 +295,10 @@ func (p *ModelProcessor) saveOutputToFile(outputFilePath, content string) error 
 	outputs := map[string]interface{}{
 		"content_length": len(content),
 	}
-	if logErr := p.auditLogger.LogOp("SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
-		p.logger.Error("Failed to write audit log: %v", logErr)
+	if logErr := p.auditLogger.LogOp(ctx, "SaveOutput", "Success", inputs, outputs, nil); logErr != nil {
+		p.logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
-	p.logger.Info("Output successfully generated and saved to %s", outputFilePath)
+	p.logger.InfoContext(ctx, "Output successfully generated and saved to %s", outputFilePath)
 	return nil
 }

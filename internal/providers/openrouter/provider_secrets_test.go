@@ -16,7 +16,7 @@ func TestOpenRouterProviderSecretHandling(t *testing.T) {
 	testAPIKey := "sk-or-test-1234567890abcdefghijklmnopqrstuvwxyz1234567890"
 
 	// Create a logger with secret detection
-	testLogger := logutil.NewBufferLogger()
+	testLogger := logutil.NewBufferLogger(logutil.DebugLevel)
 	secretLogger := logutil.WithSecretDetection(testLogger)
 	// Don't panic on detection, just record for the test
 	secretLogger.SetFailOnSecretDetect(false)
@@ -86,7 +86,7 @@ func TestOpenRouterProviderSecretHandling(t *testing.T) {
 		secretLogger.ClearDetectedSecrets()
 
 		// Create a buffered logger to capture logs
-		bufferLogger := logutil.NewBufferLogger()
+		bufferLogger := logutil.NewBufferLogger(logutil.DebugLevel)
 
 		// Create a secret-detecting logger that wraps the buffer logger
 		logger := logutil.WithSecretDetection(bufferLogger)

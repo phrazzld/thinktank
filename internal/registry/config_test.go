@@ -5,11 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // TestGetConfigPath tests the GetConfigPath function
 func TestGetConfigPath(t *testing.T) {
-	loader := NewConfigLoader()
+	loader := NewConfigLoader(nil)
 
 	path, err := loader.GetConfigPath()
 	if err != nil {
@@ -33,7 +35,9 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	tmpPath := filepath.Join(os.TempDir(), "non-existent-file.yaml")
 
 	// Create a custom loader with an overridden GetConfigPath method
-	loader := &ConfigLoader{}
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
 
 	// Mock the GetConfigPath method
 	origGetConfigPath := loader.GetConfigPath
@@ -77,7 +81,9 @@ func TestLoadInvalidYAML(t *testing.T) {
 	}
 
 	// Create a custom loader with an overridden GetConfigPath method
-	loader := &ConfigLoader{}
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
 
 	// Mock the GetConfigPath method
 	origGetConfigPath := loader.GetConfigPath
@@ -99,7 +105,7 @@ func TestLoadInvalidYAML(t *testing.T) {
 
 // TestValidateConfig tests the validate function with various invalid configs
 func TestValidateConfig(t *testing.T) {
-	loader := NewConfigLoader()
+	loader := NewConfigLoader(nil)
 
 	// Test with empty config
 	emptyConfig := &ModelsConfig{}
@@ -233,7 +239,9 @@ models:
 	}
 
 	// Create a custom loader with an overridden GetConfigPath method
-	loader := &ConfigLoader{}
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
 
 	// Mock the GetConfigPath method
 	origGetConfigPath := loader.GetConfigPath

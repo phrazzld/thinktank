@@ -14,26 +14,71 @@ type RealFilesystemIO struct{}
 
 // ReadFile implements the FilesystemIO interface
 func (r *RealFilesystemIO) ReadFile(path string) ([]byte, error) {
+	return r.ReadFileWithContext(context.Background(), path)
+}
+
+// ReadFileWithContext implements the FilesystemIO interface
+func (r *RealFilesystemIO) ReadFileWithContext(ctx context.Context, path string) ([]byte, error) {
+	// Check if context is canceled
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
 	return os.ReadFile(path)
 }
 
 // WriteFile implements the FilesystemIO interface
 func (r *RealFilesystemIO) WriteFile(path string, data []byte, perm int) error {
+	return r.WriteFileWithContext(context.Background(), path, data, perm)
+}
+
+// WriteFileWithContext implements the FilesystemIO interface
+func (r *RealFilesystemIO) WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error {
+	// Check if context is canceled
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.WriteFile(path, data, os.FileMode(perm))
 }
 
 // MkdirAll implements the FilesystemIO interface
 func (r *RealFilesystemIO) MkdirAll(path string, perm int) error {
+	return r.MkdirAllWithContext(context.Background(), path, perm)
+}
+
+// MkdirAllWithContext implements the FilesystemIO interface
+func (r *RealFilesystemIO) MkdirAllWithContext(ctx context.Context, path string, perm int) error {
+	// Check if context is canceled
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.MkdirAll(path, os.FileMode(perm))
 }
 
 // RemoveAll implements the FilesystemIO interface
 func (r *RealFilesystemIO) RemoveAll(path string) error {
+	return r.RemoveAllWithContext(context.Background(), path)
+}
+
+// RemoveAllWithContext implements the FilesystemIO interface
+func (r *RealFilesystemIO) RemoveAllWithContext(ctx context.Context, path string) error {
+	// Check if context is canceled
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
 	return os.RemoveAll(path)
 }
 
 // Stat implements the FilesystemIO interface
 func (r *RealFilesystemIO) Stat(path string) (bool, error) {
+	return r.StatWithContext(context.Background(), path)
+}
+
+// StatWithContext implements the FilesystemIO interface
+func (r *RealFilesystemIO) StatWithContext(ctx context.Context, path string) (bool, error) {
+	// Check if context is canceled
+	if ctx.Err() != nil {
+		return false, ctx.Err()
+	}
 	_, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {

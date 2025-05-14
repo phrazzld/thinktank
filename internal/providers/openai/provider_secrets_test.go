@@ -15,7 +15,7 @@ func TestOpenAIProviderSecretHandling(t *testing.T) {
 	testAPIKey := "sk-test1234567890abcdefghijklmnopqrstuvwxyz1234567890"
 
 	// Create a logger with secret detection
-	testLogger := logutil.NewBufferLogger()
+	testLogger := logutil.NewBufferLogger(logutil.DebugLevel)
 	secretLogger := logutil.WithSecretDetection(testLogger)
 	// Don't panic on detection, just record for the test
 	secretLogger.SetFailOnSecretDetect(false)

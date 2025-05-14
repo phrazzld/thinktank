@@ -232,7 +232,7 @@ func TestRegistryAPIServiceBoundaries(t *testing.T) {
 		// Test case 3: Non-existent model error translation
 		t.Run("NonExistentModel", func(t *testing.T) {
 			// Call method with a non-existent model
-			_, modelErr := service.GetModelDefinition("non-existent-model")
+			_, modelErr := service.GetModelDefinition(ctx, "non-existent-model")
 			if modelErr == nil {
 				t.Fatal("Expected error from GetModelDefinition with non-existent model")
 			}
@@ -280,10 +280,13 @@ func TestRegistryAPIServiceBoundaries(t *testing.T) {
 		// Create a service with the test registry
 		testService := NewRegistryAPIService(testRegistry, testutil.NewMockLogger())
 
+		// Create context for tests
+		ctx := context.Background()
+
 		// 1. Test GetModelParameters
 		t.Run("GetModelParameters", func(t *testing.T) {
 			// Call the method
-			params, err := testService.GetModelParameters("test-model")
+			params, err := testService.GetModelParameters(ctx, "test-model")
 			if err != nil {
 				t.Errorf("GetModelParameters failed: %v", err)
 			}
@@ -386,11 +389,14 @@ func TestRegistryAPIWithAdapterBoundary(t *testing.T) {
 	}
 
 	t.Run("AdapterDelegation", func(t *testing.T) {
+		// Create context for tests
+		ctx := context.Background()
+
 		// Clear previous calls
 		mockRegistry.ClearMethodCalls()
 
 		// Call through the adapter
-		_, err := adapter.GetModelDefinition("test-model")
+		_, err := adapter.GetModelDefinition(ctx, "test-model")
 		if err != nil {
 			t.Errorf("GetModelDefinition through adapter failed: %v", err)
 		}
@@ -403,11 +409,14 @@ func TestRegistryAPIWithAdapterBoundary(t *testing.T) {
 	})
 
 	t.Run("AdapterErrorPropagation", func(t *testing.T) {
+		// Create context for tests
+		ctx := context.Background()
+
 		// Set up error case
 		mockRegistry.getModelErr = fmt.Errorf("registry error: %w", llm.ErrModelNotFound)
 
 		// Call through the adapter
-		_, err := adapter.GetModelDefinition("error-model")
+		_, err := adapter.GetModelDefinition(ctx, "error-model")
 
 		// Verify error propagation
 		if err == nil {
@@ -572,7 +581,7 @@ type BoundaryMockRegistry struct {
 }
 
 // GetModel implements registry.Registry
-func (m *BoundaryMockRegistry) GetModel(name string) (*registry.ModelDefinition, error) {
+func (m *BoundaryMockRegistry) GetModel(ctx context.Context, name string) (*registry.ModelDefinition, error) {
 	// Record the call
 	m.methodCalls["GetModel"] = append(m.methodCalls["GetModel"], BoundaryMethodCall{
 		Method: "GetModel",
@@ -585,13 +594,13 @@ func (m *BoundaryMockRegistry) GetModel(name string) (*registry.ModelDefinition,
 	}
 	model, ok := m.models[name]
 	if !ok {
-		return nil, errors.New("model not found")
+		return nil, llm.Wrap(llm.ErrModelNotFound, "", fmt.Sprintf("model '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	return model, nil
 }
 
 // GetProvider implements registry.Registry
-func (m *BoundaryMockRegistry) GetProvider(name string) (*registry.ProviderDefinition, error) {
+func (m *BoundaryMockRegistry) GetProvider(ctx context.Context, name string) (*registry.ProviderDefinition, error) {
 	// Record the call
 	m.methodCalls["GetProvider"] = append(m.methodCalls["GetProvider"], BoundaryMethodCall{
 		Method: "GetProvider",
@@ -604,13 +613,13 @@ func (m *BoundaryMockRegistry) GetProvider(name string) (*registry.ProviderDefin
 	}
 	provider, ok := m.providers[name]
 	if !ok {
-		return nil, errors.New("provider not found")
+		return nil, llm.Wrap(llm.ErrProviderNotFound, "", fmt.Sprintf("provider '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	return provider, nil
 }
 
 // GetProviderImplementation implements registry.Registry
-func (m *BoundaryMockRegistry) GetProviderImplementation(name string) (providers.Provider, error) {
+func (m *BoundaryMockRegistry) GetProviderImplementation(ctx context.Context, name string) (providers.Provider, error) {
 	// Record the call
 	m.methodCalls["GetProviderImplementation"] = append(m.methodCalls["GetProviderImplementation"], BoundaryMethodCall{
 		Method: "GetProviderImplementation",
@@ -623,12 +632,12 @@ func (m *BoundaryMockRegistry) GetProviderImplementation(name string) (providers
 	}
 	impl, ok := m.implementations[name]
 	if !ok {
-		return nil, errors.New("provider implementation not found")
+		return nil, llm.Wrap(llm.ErrProviderNotFound, "", fmt.Sprintf("provider implementation '%s' not found in registry", name), llm.CategoryNotFound)
 	}
 	// We need to cast the impl to providers.Provider
 	providerImpl, ok := impl.(providers.Provider)
 	if !ok {
-		return nil, fmt.Errorf("implementation for '%s' does not implement providers.Provider", name)
+		return nil, llm.Wrap(llm.ErrClientInitialization, "", fmt.Sprintf("implementation for '%s' does not implement providers.Provider", name), llm.CategoryInvalidRequest)
 	}
 	return providerImpl, nil
 }
@@ -756,22 +765,22 @@ func (m *mockAPIService) GetErrorDetails(err error) string {
 	return "not implemented"
 }
 
-func (m *mockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *mockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	// For testing fallback
 	return map[string]interface{}{}, nil
 }
 
-func (m *mockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *mockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	// For testing fallback
 	return true, nil
 }
 
-func (m *mockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	// This should still return an error for the test case
 	return nil, errors.New("not implemented")
 }
 
-func (m *mockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *mockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	// Implement token limit fallbacks based on model name
 	switch modelName {
 	case "gemini-1.5-pro-latest":

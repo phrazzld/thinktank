@@ -247,8 +247,9 @@ func RunCommonModelTests(t testing.TB, registry *MockRegistry) {
 
 	// Test getting standard models
 	standardModels := []string{"test-model"}
+	ctx := context.Background()
 	for _, modelName := range standardModels {
-		model, err := registry.GetModel(modelName)
+		model, err := registry.GetModel(ctx, modelName)
 		if err != nil {
 			t.Errorf("Failed to get model %s: %v", modelName, err)
 			continue
@@ -263,7 +264,7 @@ func RunCommonModelTests(t testing.TB, registry *MockRegistry) {
 	}
 
 	// Test non-existent model
-	_, err := registry.GetModel("non-existent-model")
+	_, err := registry.GetModel(ctx, "non-existent-model")
 	if err == nil {
 		t.Error("Expected error when getting non-existent model, but got nil")
 	}
@@ -275,8 +276,9 @@ func RunCommonProviderTests(t testing.TB, registry *MockRegistry) {
 
 	// Test getting standard providers
 	standardProviders := []string{"test-provider"}
+	ctx := context.Background()
 	for _, providerName := range standardProviders {
-		provider, err := registry.GetProvider(providerName)
+		provider, err := registry.GetProvider(ctx, providerName)
 		if err != nil {
 			t.Errorf("Failed to get provider %s: %v", providerName, err)
 			continue
@@ -291,7 +293,7 @@ func RunCommonProviderTests(t testing.TB, registry *MockRegistry) {
 	}
 
 	// Test non-existent provider
-	_, err := registry.GetProvider("non-existent-provider")
+	_, err := registry.GetProvider(ctx, "non-existent-provider")
 	if err == nil {
 		t.Error("Expected error when getting non-existent provider, but got nil")
 	}

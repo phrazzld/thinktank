@@ -4,10 +4,12 @@
 package registry
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,14 +25,23 @@ type ConfigLoader struct {
 	// GetConfigPath is a function that returns the path to the models.yaml configuration file
 	// It can be replaced in tests to return a test file path
 	GetConfigPath func() (string, error)
+	// Logger is used for logging
+	Logger logutil.LoggerInterface
 }
 
 // Compile-time check to ensure ConfigLoader implements ConfigLoaderInterface
 var _ ConfigLoaderInterface = (*ConfigLoader)(nil)
 
 // NewConfigLoader creates a new ConfigLoader
-func NewConfigLoader() *ConfigLoader {
-	loader := &ConfigLoader{}
+func NewConfigLoader(logger logutil.LoggerInterface) *ConfigLoader {
+	// If no logger is provided, create a default one
+	if logger == nil {
+		logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
+	}
+
+	loader := &ConfigLoader{
+		Logger: logger,
+	}
 
 	// Set the default implementation of GetConfigPath
 	loader.GetConfigPath = func() (string, error) {
@@ -50,13 +61,16 @@ func NewConfigLoader() *ConfigLoader {
 
 // Load reads and parses the models.yaml configuration file
 func (c *ConfigLoader) Load() (*ModelsConfig, error) {
+	// Create a background context for logging
+	ctx := context.Background()
+
 	configPath, err := c.GetConfigPath()
 	if err != nil {
 		return nil, fmt.Errorf("failed to determine configuration path: %w", err)
 	}
 
 	// Log the configuration file path being used
-	fmt.Printf("Loading model configuration from: %s\n", configPath)
+	c.Logger.InfoContext(ctx, "Loading model configuration from: %s", configPath)
 
 	// Read the configuration file
 	data, err := os.ReadFile(configPath)
@@ -71,7 +85,7 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 	}
 
 	// Log configuration file size
-	fmt.Printf("Read configuration file (%d bytes)\n", len(data))
+	c.Logger.InfoContext(ctx, "Read configuration file (%d bytes)", len(data))
 
 	// Parse the YAML
 	var config ModelsConfig
@@ -81,7 +95,7 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 	}
 
 	// Log successful parsing
-	fmt.Printf("Successfully parsed YAML configuration\n")
+	c.Logger.InfoContext(ctx, "Successfully parsed YAML configuration")
 
 	// Validate the configuration
 	if err := c.validate(&config); err != nil {
@@ -89,7 +103,7 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 	}
 
 	// Log validation success
-	fmt.Printf("Configuration validated successfully: %d providers, %d models defined\n",
+	c.Logger.InfoContext(ctx, "Configuration validated successfully: %d providers, %d models defined",
 		len(config.Providers), len(config.Models))
 
 	return &config, nil
@@ -97,20 +111,23 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 
 // validate performs comprehensive validation of the configuration
 func (c *ConfigLoader) validate(config *ModelsConfig) error {
+	// Create a background context for logging
+	ctx := context.Background()
+
 	// Check API key sources
 	if len(config.APIKeySources) == 0 {
 		return fmt.Errorf("configuration must include api_key_sources")
 	}
-	fmt.Printf("Validated API key sources: %d sources defined\n", len(config.APIKeySources))
+	c.Logger.InfoContext(ctx, "Validated API key sources: %d sources defined", len(config.APIKeySources))
 
 	// Display found API key sources for debugging
 	for provider, envVar := range config.APIKeySources {
 		// Check if the environment variable exists (without revealing its value)
 		_, exists := os.LookupEnv(envVar)
 		if exists {
-			fmt.Printf("✓ API key for provider '%s' found in environment variable %s\n", provider, envVar)
+			c.Logger.InfoContext(ctx, "✓ API key for provider '%s' found in environment variable %s", provider, envVar)
 		} else {
-			fmt.Printf("⚠ API key for provider '%s' not found in environment variable %s\n", provider, envVar)
+			c.Logger.WarnContext(ctx, "⚠ API key for provider '%s' not found in environment variable %s", provider, envVar)
 		}
 	}
 
@@ -118,7 +135,7 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 	if len(config.Providers) == 0 {
 		return fmt.Errorf("configuration must include at least one provider")
 	}
-	fmt.Printf("Validating %d providers...\n", len(config.Providers))
+	c.Logger.InfoContext(ctx, "Validating %d providers...", len(config.Providers))
 
 	// Check for provider name uniqueness
 	providerNames := make(map[string]bool)
@@ -133,9 +150,9 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 
 		// Log provider details
 		if provider.BaseURL != "" {
-			fmt.Printf("Provider '%s' configured with custom base URL: %s\n", provider.Name, provider.BaseURL)
+			c.Logger.InfoContext(ctx, "Provider '%s' configured with custom base URL: %s", provider.Name, provider.BaseURL)
 		} else {
-			fmt.Printf("Provider '%s' configured with default base URL\n", provider.Name)
+			c.Logger.InfoContext(ctx, "Provider '%s' configured with default base URL", provider.Name)
 		}
 	}
 
@@ -143,7 +160,7 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 	if len(config.Models) == 0 {
 		return fmt.Errorf("configuration must include at least one model")
 	}
-	fmt.Printf("Validating %d models...\n", len(config.Models))
+	c.Logger.InfoContext(ctx, "Validating %d models...", len(config.Models))
 
 	// Check for model name uniqueness
 	modelNames := make(map[string]bool)
@@ -181,18 +198,18 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 
 		// Parameter validation
 		if len(model.Parameters) == 0 {
-			fmt.Printf("⚠ Warning: Model '%s' has no parameters defined\n", model.Name)
+			c.Logger.WarnContext(ctx, "⚠ Warning: Model '%s' has no parameters defined", model.Name)
 		} else {
 			// Log parameters with invalid/suspicious values
 			for paramName, paramDef := range model.Parameters {
 				// Validate parameter type
 				if paramDef.Type == "" {
-					fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' is missing type\n", paramName, model.Name)
+					c.Logger.WarnContext(ctx, "⚠ Warning: Parameter '%s' for model '%s' is missing type", paramName, model.Name)
 				}
 
 				// Check for default value presence
 				if paramDef.Default == nil {
-					fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' has no default value\n", paramName, model.Name)
+					c.Logger.WarnContext(ctx, "⚠ Warning: Parameter '%s' for model '%s' has no default value", paramName, model.Name)
 				}
 
 				// Check numeric constraints for consistency
@@ -202,7 +219,7 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 					minFloat, minOk := paramDef.Min.(float64)
 					maxFloat, maxOk := paramDef.Max.(float64)
 					if minOk && maxOk && minFloat > maxFloat {
-						fmt.Printf("⚠ Warning: Parameter '%s' for model '%s' has min (%v) > max (%v)\n",
+						c.Logger.WarnContext(ctx, "⚠ Warning: Parameter '%s' for model '%s' has min (%v) > max (%v)",
 							paramName, model.Name, paramDef.Min, paramDef.Max)
 					}
 				}
@@ -210,7 +227,7 @@ func (c *ConfigLoader) validate(config *ModelsConfig) error {
 		}
 
 		// Log successful model validation
-		fmt.Printf("✓ Validated model '%s' (provider: '%s')\n",
+		c.Logger.InfoContext(ctx, "✓ Validated model '%s' (provider: '%s')",
 			model.Name, model.Provider)
 	}
 

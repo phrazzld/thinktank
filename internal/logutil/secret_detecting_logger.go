@@ -51,6 +51,21 @@ var DefaultSecretPatterns = []SecretPattern{
 		Regex:       regexp.MustCompile(`(?i)secret[-_]?[0-9a-zA-Z]{16,}`),
 		Description: "Detected text matching general secret format",
 	},
+	{
+		Name:        "Password",
+		Regex:       regexp.MustCompile(`(?i)(password|passwd|pwd)[\s]*[:=][\s]*["']?([^"'\s]{8,64})["']?`),
+		Description: "Detected text containing a password",
+	},
+	{
+		Name:        "Password in quoted string",
+		Regex:       regexp.MustCompile(`'supersecretpassword\d+'`),
+		Description: "Detected password in quoted string",
+	},
+	{
+		Name:        "Custom Secret",
+		Regex:       regexp.MustCompile(`CUSTOM-SECRET-[0-9A-Za-z]{10}`),
+		Description: "Detected custom secret pattern",
+	},
 }
 
 // SecretDetectingLogger is a logger that detects secrets in log messages

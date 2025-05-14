@@ -18,11 +18,12 @@ import (
 // OutputWriter handles writing model outputs to files
 type OutputWriter interface {
 	// SaveIndividualOutputs saves individual model outputs to separate files
-	// It returns the number of files successfully saved and any errors encountered
-	SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, error)
+	// It returns the number of files successfully saved, map of model name to file paths, and any errors encountered
+	SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, map[string]string, error)
 
 	// SaveSynthesisOutput saves the synthesis result to a file
-	SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) error
+	// It returns the path to the saved synthesis file and any error encountered
+	SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) (string, error)
 }
 
 // DefaultOutputWriter implements the OutputWriter interface
@@ -30,6 +31,30 @@ type DefaultOutputWriter struct {
 	fileWriter  interfaces.FileWriter
 	auditLogger auditlog.AuditLogger
 	logger      logutil.LoggerInterface
+}
+
+// LegacyOutputWriter is used for backward compatibility with tests
+// This interface matches the old interface signature before T029
+type LegacyOutputWriter interface {
+	SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, error)
+	SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) error
+}
+
+// LegacyOutputWriterAdapter adapts the new OutputWriter to the old interface
+type LegacyOutputWriterAdapter struct {
+	outputWriter OutputWriter
+}
+
+// SaveIndividualOutputs adapts the new method to the old signature
+func (a *LegacyOutputWriterAdapter) SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, error) {
+	count, _, err := a.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, outputDir)
+	return count, err
+}
+
+// SaveSynthesisOutput adapts the new method to the old signature
+func (a *LegacyOutputWriterAdapter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) error {
+	_, err := a.outputWriter.SaveSynthesisOutput(ctx, content, modelName, outputDir)
+	return err
 }
 
 // NewOutputWriter creates a new OutputWriter instance with the specified dependencies
@@ -48,12 +73,12 @@ func NewOutputWriter(
 // SaveIndividualOutputs saves individual model outputs to separate files
 // It iterates through the modelOutputs map, sanitizes the model names for use in filenames,
 // and saves each output to a separate file. It tracks both successful saves and failures,
-// returning a count of successful saves and an error if any failures occurred.
+// returning a count of successful saves, a map of model names to file paths, and any errors that occurred.
 func (w *DefaultOutputWriter) SaveIndividualOutputs(
 	ctx context.Context,
 	modelOutputs map[string]string,
 	outputDir string,
-) (int, error) {
+) (int, map[string]string, error) {
 	// Get logger with context
 	contextLogger := w.logger.WithContext(ctx)
 
@@ -61,6 +86,7 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 	totalCount := len(modelOutputs)
 	savedCount := 0
 	errorCount := 0
+	outputPaths := make(map[string]string)
 
 	// Log start of output saving
 	contextLogger.InfoContext(ctx, "Saving individual model outputs")
@@ -81,6 +107,7 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 			errorCount++
 		} else {
 			savedCount++
+			outputPaths[modelName] = outputFilePath
 			contextLogger.InfoContext(ctx, "Successfully saved output for model %s", modelName)
 		}
 	}
@@ -90,23 +117,27 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 		contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
 			savedCount, errorCount)
 
-		// Create a descriptive error for the file save failures
-		return savedCount, fmt.Errorf("%w: %d/%d files failed to save", ErrOutputFileSaveFailed, errorCount, totalCount)
+		// Create a descriptive error for the file save failures using proper categorization
+		return savedCount, outputPaths, WrapOrchestratorError(
+			ErrOutputFileSaveFailed,
+			fmt.Sprintf("%d/%d files failed to save", errorCount, totalCount),
+		)
 	}
 
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
-	return savedCount, nil
+	return savedCount, outputPaths, nil
 }
 
 // SaveSynthesisOutput saves the synthesis result to a file
 // It sanitizes the model name for use in the filename, constructs the output path with
-// a -synthesis suffix, and saves the content to that file. It returns an error if the save fails.
+// a -synthesis suffix, and saves the content to that file. It returns the path to the saved
+// file and an error if the save fails.
 func (w *DefaultOutputWriter) SaveSynthesisOutput(
 	ctx context.Context,
 	content string,
 	modelName string,
 	outputDir string,
-) error {
+) (string, error) {
 	// Get logger with context
 	contextLogger := w.logger.WithContext(ctx)
 
@@ -120,9 +151,12 @@ func (w *DefaultOutputWriter) SaveSynthesisOutput(
 	contextLogger.DebugContext(ctx, "Saving synthesis output to %s", outputFilePath)
 	if err := w.fileWriter.SaveToFile(content, outputFilePath); err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-		return fmt.Errorf("%w: failed to save synthesis output to %s: %v", ErrOutputFileSaveFailed, outputFilePath, err)
+		return "", WrapOrchestratorError(
+			ErrOutputFileSaveFailed,
+			fmt.Sprintf("failed to save synthesis output to %s: %v", outputFilePath, err),
+		)
 	}
 
 	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputFilePath)
-	return nil
+	return outputFilePath, nil
 }

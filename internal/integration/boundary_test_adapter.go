@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
@@ -308,7 +309,7 @@ func (s *BoundaryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 }
 
 // GetModelParameters retrieves parameter values for a given model
-func (s *BoundaryAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (s *BoundaryAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	// Return default parameters
 	return map[string]interface{}{
 		"temperature": 0.7,
@@ -317,7 +318,7 @@ func (s *BoundaryAPIService) GetModelParameters(modelName string) (map[string]in
 }
 
 // ValidateModelParameter validates a parameter value against its constraints
-func (s *BoundaryAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (s *BoundaryAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	// Basic validation
 	switch paramName {
 	case "temperature":
@@ -337,7 +338,7 @@ func (s *BoundaryAPIService) ValidateModelParameter(modelName, paramName string,
 }
 
 // GetModelDefinition retrieves the model definition
-func (s *BoundaryAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (s *BoundaryAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	// Create a basic model definition
 	return &registry.ModelDefinition{
 		Name:     modelName,
@@ -360,7 +361,7 @@ func getProviderFromModelName(modelName string) string {
 }
 
 // GetModelTokenLimits retrieves token limits for a given model
-func (s *BoundaryAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (s *BoundaryAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	// Return reasonable defaults based on model
 	modelLower := strings.ToLower(modelName)
 	if strings.Contains(modelLower, "gpt-4") {
@@ -513,28 +514,76 @@ func NewBoundaryAuditLogger(filesystem FilesystemIO, logger logutil.LoggerInterf
 	}
 }
 
-// Log writes an audit entry to the log
-func (a *BoundaryAuditLogger) Log(entry auditlog.AuditEntry) error {
+// Log writes an audit entry to the log with context
+func (a *BoundaryAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
 	// Lock the mutex to prevent concurrent access to entries
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
+
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Ensure timestamp is set
+	if entry.Timestamp.IsZero() {
+		entry.Timestamp = time.Now().UTC()
+	}
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		if entry.Inputs == nil {
+			entry.Inputs = make(map[string]interface{})
+		}
+		// Only add if not already present
+		if _, exists := entry.Inputs["correlation_id"]; !exists {
+			entry.Inputs["correlation_id"] = correlationID
+		}
+	}
 
 	// Add entry to in-memory log
 	a.entries = append(a.entries, entry)
 
 	// In a real implementation, we would write to a file
 	// For testing, we just log it
-	a.logger.Debug("Audit log: %s - %s", entry.Operation, entry.Status)
+	a.logger.DebugContext(ctx, "Audit log: %s - %s", entry.Operation, entry.Status)
 	return nil
 }
 
-// LogOp logs an operation with the given status
-func (a *BoundaryAuditLogger) LogOp(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+// LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
+func (a *BoundaryAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
+	return a.Log(context.Background(), entry)
+}
+
+// LogOp logs an operation with the given status with context
+func (a *BoundaryAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	// Use background context if nil is provided
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	// Make a copy of inputs to avoid modifying the original map
+	inputsCopy := make(map[string]interface{})
+	for k, v := range inputs {
+		inputsCopy[k] = v
+	}
+
+	// Add correlation ID from context if not already present
+	correlationID := logutil.GetCorrelationID(ctx)
+	if correlationID != "" {
+		// Only add if not already present
+		if _, exists := inputsCopy["correlation_id"]; !exists {
+			inputsCopy["correlation_id"] = correlationID
+		}
+	}
+
 	// Create audit entry
 	entry := auditlog.AuditEntry{
+		Timestamp: time.Now().UTC(),
 		Operation: operation,
 		Status:    status,
-		Inputs:    inputs,
+		Inputs:    inputsCopy,
 		Outputs:   outputs,
 		Message:   fmt.Sprintf("%s - %s", operation, status),
 	}
@@ -548,7 +597,12 @@ func (a *BoundaryAuditLogger) LogOp(operation, status string, inputs map[string]
 	}
 
 	// Log the entry
-	return a.Log(entry)
+	return a.Log(ctx, entry)
+}
+
+// LogOpLegacy implements the backward-compatible AuditLogger.LogOpLegacy method
+func (a *BoundaryAuditLogger) LogOpLegacy(operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	return a.LogOp(context.Background(), operation, status, inputs, outputs, err)
 }
 
 // Close closes the audit logger

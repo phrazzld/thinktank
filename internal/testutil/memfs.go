@@ -3,6 +3,7 @@ package testutil
 
 import (
 	"bytes"
+	"context"
 	"io/fs"
 	"path/filepath"
 	"sort"
@@ -51,6 +52,11 @@ func NewMemFS() *MemFS {
 
 // ReadFile reads the entire file at the specified path
 func (m *MemFS) ReadFile(path string) ([]byte, error) {
+	return m.ReadFileWithContext(context.Background(), path)
+}
+
+// ReadFileWithContext reads the entire file at the specified path with context
+func (m *MemFS) ReadFileWithContext(ctx context.Context, path string) ([]byte, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 
@@ -71,6 +77,11 @@ func (m *MemFS) ReadFile(path string) ([]byte, error) {
 
 // WriteFile writes data to the file at the specified path
 func (m *MemFS) WriteFile(path string, data []byte, perm int) error {
+	return m.WriteFileWithContext(context.Background(), path, data, perm)
+}
+
+// WriteFileWithContext writes data to the file at the specified path with context
+func (m *MemFS) WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -97,6 +108,11 @@ func (m *MemFS) WriteFile(path string, data []byte, perm int) error {
 
 // MkdirAll creates a directory named path, along with any necessary parents
 func (m *MemFS) MkdirAll(path string, perm int) error {
+	return m.MkdirAllWithContext(context.Background(), path, perm)
+}
+
+// MkdirAllWithContext creates a directory named path, along with any necessary parents with context
+func (m *MemFS) MkdirAllWithContext(ctx context.Context, path string, perm int) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -143,6 +159,11 @@ func (m *MemFS) MkdirAll(path string, perm int) error {
 
 // RemoveAll removes path and any children it contains
 func (m *MemFS) RemoveAll(path string) error {
+	return m.RemoveAllWithContext(context.Background(), path)
+}
+
+// RemoveAllWithContext removes path and any children it contains with context
+func (m *MemFS) RemoveAllWithContext(ctx context.Context, path string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -170,6 +191,11 @@ func (m *MemFS) RemoveAll(path string) error {
 
 // Stat returns a FileInfo describing the named file
 func (m *MemFS) Stat(path string) (bool, error) {
+	return m.StatWithContext(context.Background(), path)
+}
+
+// StatWithContext returns a FileInfo describing the named file with context
+func (m *MemFS) StatWithContext(ctx context.Context, path string) (bool, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
 

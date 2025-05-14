@@ -1,6 +1,7 @@
 package registry_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/logutil"
@@ -31,7 +32,8 @@ func TestRegistryLoggingNoSecrets(t *testing.T) {
 	reg := regManager.GetRegistry()
 
 	// Look up a model (shouldn't log any secrets)
-	_, _ = reg.GetModel("gpt-4")
+	ctx := context.Background()
+	_, _ = reg.GetModel(ctx, "gpt-4")
 	// We don't care if model exists, just checking no secrets logged
 
 	// If no secrets were detected, the test passes

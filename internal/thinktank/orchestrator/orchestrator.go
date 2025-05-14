@@ -6,7 +6,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -37,6 +36,7 @@ type Orchestrator struct {
 	logger           logutil.LoggerInterface
 	synthesisService SynthesisService
 	outputWriter     OutputWriter
+	summaryWriter    SummaryWriter
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -54,6 +54,9 @@ func NewOrchestrator(
 	// Create the output writer
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
 
+	// Create the summary writer
+	summaryWriter := NewSummaryWriter(logger)
+
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService
 	if config.SynthesisModel != "" {
@@ -70,6 +73,7 @@ func NewOrchestrator(
 		logger:           logger,
 		synthesisService: synthesisService,
 		outputWriter:     outputWriter,
+		summaryWriter:    summaryWriter,
 	}
 }
 
@@ -83,7 +87,8 @@ func NewOrchestrator(
 // 4. Build the complete prompt
 // 5. Process models concurrently with error handling
 // 6. Save outputs (either individually or via synthesis)
-// 7. Handle and report any errors
+// 7. Generate and display execution summary
+// 8. Handle and report any errors
 //
 // Each step is delegated to a specialized helper method, making the workflow
 // clear and maintainable.
@@ -109,7 +114,7 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// Step 3: Build the complete prompt
-	stitchedPrompt := o.buildPrompt(instructions, contextFiles)
+	stitchedPrompt := o.buildPrompt(ctx, instructions, contextFiles)
 
 	// Step 4: Process all models and handle errors
 	modelOutputs, processingErr, criticalErr := o.processModelsWithErrorHandling(ctx, stitchedPrompt, contextLogger)
@@ -118,9 +123,13 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	}
 
 	// Step 5: Save outputs (via synthesis or individually)
-	fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
+	outputInfo, fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
 
-	// Step 6: Final error processing and return
+	// Step 6: Generate and display the execution summary
+	summary := o.generateResultsSummary(modelOutputs, outputInfo, processingErr)
+	o.summaryWriter.DisplaySummary(ctx, summary)
+
+	// Step 7: Final error processing and return
 	return o.handleProcessingOutcome(ctx, processingErr, fileSaveErr, contextLogger)
 }
 
@@ -138,7 +147,10 @@ func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.Fil
 
 	contextFiles, contextStats, err := o.contextGatherer.GatherContext(ctx, gatherConfig)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed during project context gathering: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
+		return nil, nil, WrapOrchestratorError(
+			ErrModelProcessingCancelled,
+			fmt.Sprintf("failed during project context gathering: %v", err),
+		)
 	}
 
 	return contextFiles, contextStats, nil
@@ -173,8 +185,8 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 
 // runIndividualOutputFlow handles the saving of individual model outputs when no synthesis model is specified.
 // It saves each model's output to a separate file in the output directory.
-// Returns an error if any of the outputs fail to save.
-func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) error {
+// Returns a map of model names to output file paths, and an error if any of the outputs fail to save.
+func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) (map[string]string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
@@ -183,21 +195,21 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
 	// Use the OutputWriter to save individual model outputs
-	savedCount, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
+	savedCount, filePaths, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Completed with errors: %d files saved successfully, %d files failed",
 			savedCount, len(modelOutputs)-savedCount)
-		return err
+		return filePaths, err
 	}
 
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
-	return nil
+	return filePaths, nil
 }
 
 // runSynthesisFlow handles the synthesis of multiple model outputs using the specified synthesis model.
 // It synthesizes the results and saves the output to a file.
-// Returns an error if synthesis fails or if the output cannot be saved.
-func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+// Returns the path to the synthesis file, and an error if synthesis fails or if the output cannot be saved.
+func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) (string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
@@ -208,7 +220,7 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	// Only proceed with synthesis if we have model outputs to synthesize
 	if len(modelOutputs) == 0 {
 		contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
-		return nil
+		return "", nil
 	}
 
 	// Attempt to synthesize results using the SynthesisService
@@ -217,7 +229,7 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	if err != nil {
 		// Process the error with specialized handling
 		contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
-		return err
+		return "", err
 	}
 
 	// Log synthesis success
@@ -225,30 +237,34 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
 
 	// Save the synthesis output using the OutputWriter
-	if err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir); err != nil {
+	outputPath, err := o.outputWriter.SaveSynthesisOutput(ctx, synthesisContent, o.config.SynthesisModel, o.config.OutputDir)
+	if err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
-		return err
+		return "", err
 	}
 
-	contextLogger.InfoContext(ctx, "Successfully saved synthesis output")
-	return nil
+	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputPath)
+	return outputPath, nil
 }
 
 // handleDryRun displays context statistics without performing API calls.
 func (o *Orchestrator) handleDryRun(ctx context.Context, stats *interfaces.ContextStats) error {
 	err := o.contextGatherer.DisplayDryRunInfo(ctx, stats)
 	if err != nil {
-		o.logger.Error("Error displaying dry run information: %v", err)
-		return fmt.Errorf("error displaying dry run information: %w", fmt.Errorf("%w: %v", ErrModelProcessingCancelled, err))
+		o.logger.ErrorContext(ctx, "Error displaying dry run information: %v", err)
+		return WrapOrchestratorError(
+			ErrModelProcessingCancelled,
+			fmt.Sprintf("error displaying dry run information: %v", err),
+		)
 	}
 	return nil
 }
 
 // buildPrompt creates the complete prompt by combining instructions with context files.
-func (o *Orchestrator) buildPrompt(instructions string, contextFiles []fileutil.FileMeta) string {
+func (o *Orchestrator) buildPrompt(ctx context.Context, instructions string, contextFiles []fileutil.FileMeta) string {
 	stitchedPrompt := prompt.StitchPrompt(instructions, contextFiles)
-	o.logger.Info("Prompt constructed successfully")
-	o.logger.Debug("Stitched prompt length: %d characters", len(stitchedPrompt))
+	o.logger.InfoContext(ctx, "Prompt constructed successfully")
+	o.logger.DebugContext(ctx, "Stitched prompt length: %d characters", len(stitchedPrompt))
 	return stitchedPrompt
 }
 
@@ -358,7 +374,9 @@ func (o *Orchestrator) processModelWithRateLimit(
 	acquireStart := time.Now()
 	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
 		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
-		result.err = fmt.Errorf("model %s rate limit: %w", modelName, err)
+		result.err = llm.Wrap(err, "orchestrator",
+			fmt.Sprintf("failed to acquire rate limiter for model %s", modelName),
+			llm.CategoryRateLimit)
 		resultChan <- result
 		return
 	}
@@ -385,7 +403,16 @@ func (o *Orchestrator) processModelWithRateLimit(
 	content, err := processor.Process(ctx, modelName, stitchedPrompt)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
-		result.err = fmt.Errorf("model %s: %w", modelName, err)
+		// The error from processor.Process is already an LLMError, but we'll add our own context
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			result.err = llm.Wrap(err, "orchestrator",
+				fmt.Sprintf("model %s processing failed", modelName),
+				catErr.Category())
+		} else {
+			result.err = llm.Wrap(err, "orchestrator",
+				fmt.Sprintf("model %s processing failed", modelName),
+				llm.CategoryInvalidRequest)
+		}
 		resultChan <- result
 		return
 	}
@@ -438,50 +465,26 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 
 // GetModelParameters retrieves parameter values from the registry for a given model.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelParameters(string) (map[string]interface{}, error)
-	}); ok {
-		return apiService.GetModelParameters(modelName)
-	}
-	// Return empty parameters if the underlying implementation doesn't support this method
-	return make(map[string]interface{}), nil
+func (a *APIServiceAdapter) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
+	return a.APIService.GetModelParameters(ctx, modelName)
 }
 
 // GetModelDefinition retrieves the full model definition from the registry.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelDefinition(string) (*registry.ModelDefinition, error)
-	}); ok {
-		return apiService.GetModelDefinition(modelName)
-	}
-	// Return nil with error if the underlying implementation doesn't support this method
-	return nil, errors.New("GetModelDefinition not supported by the underlying APIService implementation")
+func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+	return a.APIService.GetModelDefinition(ctx, modelName)
 }
 
 // GetModelTokenLimits retrieves token limits from the registry for a given model.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	if apiService, ok := a.APIService.(interface {
-		GetModelTokenLimits(string) (int32, int32, error)
-	}); ok {
-		return apiService.GetModelTokenLimits(modelName)
-	}
-	// Return zero values with error if the underlying implementation doesn't support this method
-	return 0, 0, errors.New("GetModelTokenLimits not supported by the underlying APIService implementation")
+func (a *APIServiceAdapter) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	return a.APIService.GetModelTokenLimits(ctx, modelName)
 }
 
 // ValidateModelParameter validates a parameter value against its constraints.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
-	if apiService, ok := a.APIService.(interface {
-		ValidateModelParameter(string, string, interface{}) (bool, error)
-	}); ok {
-		return apiService.ValidateModelParameter(modelName, paramName, value)
-	}
-	// Return true if the underlying implementation doesn't support this method
-	return true, nil
+func (a *APIServiceAdapter) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
+	return a.APIService.ValidateModelParameter(ctx, modelName, paramName, value)
 }
 
 // aggregateErrors combines multiple errors into a single error with context.
@@ -570,53 +573,205 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 	return modelOutputs, returnErr, nil
 }
 
+// generateResultsSummary creates a ResultsSummary object containing information about
+// the processing results, including model successes, failures, and output file paths.
+func (o *Orchestrator) generateResultsSummary(
+	modelOutputs map[string]string,
+	outputInfo *OutputInfo,
+	processingErr error,
+) *ResultsSummary {
+	summary := &ResultsSummary{
+		TotalModels:      len(o.config.ModelNames),
+		SuccessfulModels: len(modelOutputs),
+	}
+
+	// Add successful model names
+	for modelName := range modelOutputs {
+		summary.SuccessfulNames = append(summary.SuccessfulNames, modelName)
+	}
+
+	// Add synthesis path if available
+	if outputInfo.SynthesisFilePath != "" {
+		summary.SynthesisPath = outputInfo.SynthesisFilePath
+	}
+
+	// Add individual output paths if available
+	for _, path := range outputInfo.IndividualFilePaths {
+		summary.OutputPaths = append(summary.OutputPaths, path)
+	}
+
+	// Determine failed models (those in config.ModelNames but not in modelOutputs)
+	successMap := make(map[string]bool)
+	for modelName := range modelOutputs {
+		successMap[modelName] = true
+	}
+
+	for _, modelName := range o.config.ModelNames {
+		if !successMap[modelName] {
+			summary.FailedModels = append(summary.FailedModels, modelName)
+		}
+	}
+
+	return summary
+}
+
 // handleOutputFlow decides whether to use synthesis or individual output flow
 // based on configuration and handles the saving of outputs accordingly.
-func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string, modelOutputs map[string]string) error {
+// Returns an OutputInfo struct containing the paths to generated files, and any error from the output handling.
+func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string, modelOutputs map[string]string) (*OutputInfo, error) {
+	outputInfo := NewOutputInfo()
+
 	if o.config.SynthesisModel == "" {
 		// No synthesis model specified - save individual model outputs
-		return o.runIndividualOutputFlow(ctx, modelOutputs)
+		filePaths, err := o.runIndividualOutputFlow(ctx, modelOutputs)
+		if filePaths != nil {
+			outputInfo.IndividualFilePaths = filePaths
+		}
+		return outputInfo, err
 	}
 
 	// Synthesis model specified - process all outputs with synthesis model
-	return o.runSynthesisFlow(ctx, instructions, modelOutputs)
+	synthesisPath, err := o.runSynthesisFlow(ctx, instructions, modelOutputs)
+
+	// Get logger with context
+	contextLogger := o.logger.WithContext(ctx)
+
+	if err != nil {
+		// If synthesis fails, fall back to saving individual outputs
+		contextLogger.WarnContext(ctx, "Synthesis failed, falling back to saving individual outputs: %v", err)
+		filePaths, fallbackErr := o.runIndividualOutputFlow(ctx, modelOutputs)
+		if filePaths != nil {
+			outputInfo.IndividualFilePaths = filePaths
+		}
+
+		// If the fallback also failed, log it
+		if fallbackErr != nil {
+			contextLogger.ErrorContext(ctx, "Fallback to individual outputs also failed: %v", fallbackErr)
+		}
+
+		// Still return the synthesis error, but now we've saved individual files as fallback
+		return outputInfo, err
+	}
+
+	if synthesisPath != "" {
+		outputInfo.SynthesisFilePath = synthesisPath
+	}
+	return outputInfo, err
 }
 
 // handleProcessingOutcome combines and reports any errors from model processing and file saving.
 // It formats and logs appropriate error messages based on the types of errors encountered.
+// It also categorizes errors using the llm.ErrorCategory system for consistent handling.
 func (o *Orchestrator) handleProcessingOutcome(ctx context.Context, processingErr, fileSaveErr error, contextLogger logutil.LoggerInterface) error {
 	if processingErr != nil && fileSaveErr != nil {
 		// Combine model and file save errors
-		err := fmt.Errorf("model processing errors and file save errors occurred: %w; additionally: %v",
+		// Detect the categories of both errors
+		procCategory := llm.CategoryUnknown
+		if catErr, ok := llm.IsCategorizedError(processingErr); ok {
+			procCategory = catErr.Category()
+		}
+
+		// Default file errors to server category
+		fileCategory := llm.CategoryServer
+		if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+			fileCategory = catErr.Category()
+		}
+
+		// Use the more severe category for the combined error
+		category := procCategory
+		if fileCategory == llm.CategoryAuth ||
+			fileCategory == llm.CategoryInsufficientCredits ||
+			fileCategory == llm.CategoryRateLimit {
+			category = fileCategory
+		}
+
+		// Create a combined error message
+		msg := fmt.Sprintf("model processing errors and file save errors occurred: %v; additionally: %v",
 			processingErr, fileSaveErr)
+		err := llm.Wrap(processingErr, "orchestrator", msg, category)
+
 		contextLogger.ErrorContext(ctx, "Completed with both model and file errors: %v", err)
 
 		// Log the completion outcome with audit logger
 		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "combined_errors"},
+			map[string]interface{}{
+				"error_type":     "combined_errors",
+				"error_category": category.String(),
+			},
 			nil, err)
 
 		return err
 	} else if fileSaveErr != nil {
 		// Only file save errors occurred
-		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", fileSaveErr)
+		// Check if this is a synthesis model error that needs to be handled specially
+		if strings.Contains(fileSaveErr.Error(), "synthesis model") {
+			// For synthesis model errors, preserve the original error message for better debugging
+			var wrappedErr error
+			if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					fileSaveErr.Error(), catErr.Category())
+			} else {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					fileSaveErr.Error(), llm.CategoryInvalidRequest)
+			}
 
-		// Log the completion outcome with audit logger
-		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "file_save_errors"},
-			nil, fileSaveErr)
+			contextLogger.ErrorContext(ctx, "Completed with synthesis error: %v", wrappedErr)
 
-		return fileSaveErr
+			// Log the completion outcome with audit logger
+			o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+				map[string]interface{}{
+					"error_type":     "synthesis_model_errors",
+					"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+				},
+				nil, wrappedErr)
+
+			return wrappedErr
+		} else {
+			// File system errors are usually server-side issues
+			var wrappedErr error
+			if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					"file save operation failed", catErr.Category())
+			} else {
+				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+					"file save operation failed", llm.CategoryServer)
+			}
+
+			contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", wrappedErr)
+
+			// Log the completion outcome with audit logger
+			o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+				map[string]interface{}{
+					"error_type":     "file_save_errors",
+					"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+				},
+				nil, wrappedErr)
+
+			return wrappedErr
+		}
 	} else if processingErr != nil {
-		// Only model errors
-		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", processingErr)
+		// Only model errors - these should already be LLMError types
+		// from the processor, but we'll ensure consistency
+		var wrappedErr error
+		if catErr, ok := llm.IsCategorizedError(processingErr); ok {
+			wrappedErr = llm.Wrap(processingErr, "orchestrator",
+				"model processing errors occurred", catErr.Category())
+		} else {
+			wrappedErr = llm.Wrap(processingErr, "orchestrator",
+				"model processing errors occurred", llm.CategoryInvalidRequest)
+		}
+
+		contextLogger.ErrorContext(ctx, "Completed with model errors: %v", wrappedErr)
 
 		// Log the completion outcome with audit logger
 		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-			map[string]interface{}{"error_type": "model_processing_errors"},
-			nil, processingErr)
+			map[string]interface{}{
+				"error_type":     "model_processing_errors",
+				"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+			},
+			nil, wrappedErr)
 
-		return processingErr
+		return wrappedErr
 	} else {
 		// No errors
 		contextLogger.InfoContext(ctx, "Processing completed successfully")
@@ -683,8 +838,8 @@ func (o *Orchestrator) logAuditEvent(
 		inputs["correlation_id"] = correlationID
 	}
 
-	// Log using the audit logger's LogOp method
-	if logErr := o.auditLogger.LogOp(op, status, inputs, outputs, err); logErr != nil {
+	// Log using the audit logger's LogOp method with context
+	if logErr := o.auditLogger.LogOp(ctx, op, status, inputs, outputs, err); logErr != nil {
 		// Log any errors that occur during audit logging using the regular logger
 		o.logger.WarnContext(ctx, "Failed to write audit log: %v", logErr)
 	}

@@ -19,10 +19,10 @@ type MockAPIServiceForAdapter struct {
 	IsEmptyResponseErrorFunc   func(err error) bool
 	IsSafetyBlockedErrorFunc   func(err error) bool
 	GetErrorDetailsFunc        func(err error) string
-	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
-	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
-	GetModelDefinitionFunc     func(modelName string) (*registry.ModelDefinition, error)
-	GetModelTokenLimitsFunc    func(modelName string) (contextWindow, maxOutputTokens int32, err error)
+	GetModelParametersFunc     func(ctx context.Context, modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	GetModelTokenLimitsFunc    func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// Call tracking fields
 	InitLLMClientCalls          []InitLLMClientCall
@@ -61,20 +61,24 @@ type IsSafetyBlockedErrorCall struct {
 }
 
 type GetModelParametersCall struct {
+	Ctx       context.Context
 	ModelName string
 }
 
 type ValidateModelParameterCall struct {
+	Ctx       context.Context
 	ModelName string
 	ParamName string
 	Value     interface{}
 }
 
 type GetModelDefinitionCall struct {
+	Ctx       context.Context
 	ModelName string
 }
 
 type GetModelTokenLimitsCall struct {
+	Ctx       context.Context
 	ModelName string
 }
 
@@ -131,44 +135,48 @@ func (m *MockAPIServiceForAdapter) ProcessLLMResponse(result *llm.ProviderResult
 	return "", errors.New("ProcessLLMResponse not implemented")
 }
 
-func (m *MockAPIServiceForAdapter) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIServiceForAdapter) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	m.GetModelParametersCalls = append(m.GetModelParametersCalls, GetModelParametersCall{
+		Ctx:       ctx,
 		ModelName: modelName,
 	})
 	if m.GetModelParametersFunc != nil {
-		return m.GetModelParametersFunc(modelName)
+		return m.GetModelParametersFunc(ctx, modelName)
 	}
 	return make(map[string]interface{}), nil
 }
 
-func (m *MockAPIServiceForAdapter) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIServiceForAdapter) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	m.ValidateModelParameterCalls = append(m.ValidateModelParameterCalls, ValidateModelParameterCall{
+		Ctx:       ctx,
 		ModelName: modelName,
 		ParamName: paramName,
 		Value:     value,
 	})
 	if m.ValidateModelParameterFunc != nil {
-		return m.ValidateModelParameterFunc(modelName, paramName, value)
+		return m.ValidateModelParameterFunc(ctx, modelName, paramName, value)
 	}
 	return true, nil
 }
 
-func (m *MockAPIServiceForAdapter) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIServiceForAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	m.GetModelDefinitionCalls = append(m.GetModelDefinitionCalls, GetModelDefinitionCall{
+		Ctx:       ctx,
 		ModelName: modelName,
 	})
 	if m.GetModelDefinitionFunc != nil {
-		return m.GetModelDefinitionFunc(modelName)
+		return m.GetModelDefinitionFunc(ctx, modelName)
 	}
 	return nil, errors.New("GetModelDefinition not implemented")
 }
 
-func (m *MockAPIServiceForAdapter) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *MockAPIServiceForAdapter) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	m.GetModelTokenLimitsCalls = append(m.GetModelTokenLimitsCalls, GetModelTokenLimitsCall{
+		Ctx:       ctx,
 		ModelName: modelName,
 	})
 	if m.GetModelTokenLimitsFunc != nil {
-		return m.GetModelTokenLimitsFunc(modelName)
+		return m.GetModelTokenLimitsFunc(ctx, modelName)
 	}
 	return 0, 0, errors.New("GetModelTokenLimits not implemented")
 }
@@ -249,34 +257,28 @@ func (m *MockAPIServiceWithoutExtensions) IsSafetyBlockedError(err error) bool {
 }
 
 // The following methods implement the extended interfaces.APIService interface
-// but are designed not to match the dynamic type assertion patterns in the adapter
 
 // GetModelParameters implements interfaces.APIService.GetModelParameters
-// but is designed to not match the interface assertion in the adapter
-func (m *MockAPIServiceWithoutExtensions) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIServiceWithoutExtensions) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	// Return default values - this method should not be called by adapter tests
 	return make(map[string]interface{}), nil
 }
 
 // ValidateModelParameter implements interfaces.APIService.ValidateModelParameter
-// but is designed to not match the interface assertion in the adapter
-func (m *MockAPIServiceWithoutExtensions) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIServiceWithoutExtensions) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	// Return default values - this method should not be called by adapter tests
 	return true, nil
 }
 
 // GetModelDefinition implements interfaces.APIService.GetModelDefinition
-// but is designed to not match the interface assertion in the adapter
-func (m *MockAPIServiceWithoutExtensions) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIServiceWithoutExtensions) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
 	// Return default values - this method should not be called by adapter tests
 	return nil, errors.New("model definition not available")
 }
 
 // GetModelTokenLimits returns fallback values that won't actually be used by the adapter
-// The adapter should use its own fallback logic based on the model name
-func (m *MockAPIServiceWithoutExtensions) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
-	// This is implemented in a way that doesn't match the type assertion pattern
-	// in the adapter, forcing it to use the fallback logic
+func (m *MockAPIServiceWithoutExtensions) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
+	// Return default values
 	return 0, 0, nil
 }
 

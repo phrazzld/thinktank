@@ -5,6 +5,9 @@
   - **Rationale**: Critical for reliability, debugging, and operational excellence. Adheres to Development Philosophy on Consistent Error Handling (§8), Logging Strategy (§10), and Go Appendix §8 (Error Handling), §11 (Logging). Ensures separation of concerns, rich self-describing errors, structured JSON logs, context propagation, and sanitized error details.
   - **Expected Outcome**: All errors are rich, self-describing types (e.g., `llm.LLMError`). Consistent structured JSON logging via `log/slog` with mandatory context fields (correlation_id, model, phase). Sanitized error details in logs. Improved user-facing error messages. Custom loggers replaced.
   - **Dependencies**: None.
+
+- fix persistent synthesis file truncation
+
 ## High Priority
 
 ### Core Features & Value Delivery

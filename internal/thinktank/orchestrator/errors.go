@@ -6,6 +6,8 @@ package orchestrator
 
 import (
 	"errors"
+
+	"github.com/phrazzld/thinktank/internal/llm"
 )
 
 // Sentinel errors for synthesis and model processing failures.
@@ -35,3 +37,46 @@ var (
 	// ErrModelProcessingCancelled is returned when model processing is cancelled by context.
 	ErrModelProcessingCancelled = errors.New("model processing cancelled")
 )
+
+// CategorizeOrchestratorError maps orchestrator errors to standard LLM error categories.
+// This function is used to provide consistent error categorization across the application.
+func CategorizeOrchestratorError(err error) llm.ErrorCategory {
+	switch {
+	case errors.Is(err, ErrInvalidSynthesisModel):
+		return llm.CategoryInvalidRequest
+	case errors.Is(err, ErrNoValidModels):
+		return llm.CategoryInvalidRequest
+	case errors.Is(err, ErrPartialProcessingFailure):
+		// This is a partial failure, so we treat it as a server error
+		// since some models may have failed due to server issues
+		return llm.CategoryServer
+	case errors.Is(err, ErrAllProcessingFailed):
+		// This could be due to various reasons, default to server error
+		return llm.CategoryServer
+	case errors.Is(err, ErrSynthesisFailed):
+		// Synthesis failures could be due to invalid inputs or server issues
+		return llm.CategoryServer
+	case errors.Is(err, ErrOutputFileSaveFailed):
+		// File system errors are considered server-side issues
+		return llm.CategoryServer
+	case errors.Is(err, ErrModelProcessingCancelled):
+		return llm.CategoryCancelled
+	default:
+		// If we can't identify the error, we check if it's already a LLMError
+		if catErr, ok := llm.IsCategorizedError(err); ok {
+			return catErr.Category()
+		}
+		return llm.CategoryUnknown
+	}
+}
+
+// WrapOrchestratorError wraps an error with orchestrator-specific context.
+// It uses llm.Wrap to ensure proper error categorization.
+func WrapOrchestratorError(err error, message string) error {
+	if err == nil {
+		return nil
+	}
+
+	category := CategorizeOrchestratorError(err)
+	return llm.Wrap(err, "orchestrator", message, category)
+}
