@@ -23,7 +23,7 @@
         1. Run `make tools` in a fresh shell; all tools become available in `$GOPATH/bin` or `$PATH`.
     - **Depends‑on:** [T001]
 
-- [ ] **T003 · Feature · P2: document local tooling setup in README.md and/or CONTRIBUTING.md**
+- [x] **T003 · Feature · P2: document local tooling setup in README.md and/or CONTRIBUTING.md**
     - **Context:** PLAN.md "Tool Installation & Pinning", "Documentation Updates"
     - **Action:**
         1. Add clear instructions for running `make tools` and setting up Go toolchain.

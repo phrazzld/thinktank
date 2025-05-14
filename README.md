@@ -175,6 +175,46 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ## Development & Contributing
 
+### Development Setup
+
+To set up your development environment for thinktank:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/phrazzld/thinktank.git
+   cd thinktank
+   ```
+
+2. **Verify Go installation**:
+   - Ensure you have Go 1.21 or later installed (as specified in `go.mod`)
+   - Check your Go version: `go version`
+
+3. **Install required development tools**:
+   ```bash
+   # Install all required tools in one command
+   make tools
+   ```
+   This will install the following tools from our `tools.go`:
+   - golangci-lint: Code linting
+   - govulncheck: Security vulnerability scanning
+   - svu: Semantic versioning utilities
+   - git-chglog: Changelog generation
+
+4. **Verify tools installation**:
+   - Ensure `$GOPATH/bin` is in your PATH
+   - Test tool availability: `golangci-lint --version`
+
+5. **Additional development commands**:
+   ```bash
+   make help       # Display available Make targets
+   make build      # Build the project
+   make test       # Run all tests
+   make lint       # Run linters
+   make fmt        # Format code
+   ```
+
+For more detailed setup instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Code Coverage Requirements
 
 The project maintains high test coverage standards to ensure reliability and maintainability:
