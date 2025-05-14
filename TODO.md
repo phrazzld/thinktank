@@ -12,7 +12,7 @@
         1. Run `go install` on each tool import path and verify installation.
     - **Depends‑on:** none
 
-- [ ] **T002 · Feature · P1: add Makefile target for Go tool installation**
+- [x] **T002 · Feature · P1: add Makefile target for Go tool installation**
     - **Context:** PLAN.md "Tool Installation & Pinning"
     - **Action:**
         1. Create (or update) `Makefile` with `tools` target that runs `go install` for each tool from `tools.go`.
