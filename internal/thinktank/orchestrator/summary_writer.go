@@ -49,72 +49,70 @@ func NewSummaryWriter(logger logutil.LoggerInterface) SummaryWriter {
 	}
 }
 
-// GenerateSummary creates a human-readable summary string with optional color coding
+// GenerateSummary creates a human-readable summary string with emoji prefixes and color coding
 func (w *DefaultSummaryWriter) GenerateSummary(summary *ResultsSummary) string {
 	var sb strings.Builder
 
 	// Determine result status
 	var statusText string
 	var statusColor string
+	var statusEmoji string
 	failedCount := len(summary.FailedModels)
 
 	if summary.SuccessfulModels == 0 {
 		statusText = "FAILED"
 		statusColor = colorRed
+		statusEmoji = "🔴"
 	} else if failedCount > 0 {
 		statusText = "PARTIAL SUCCESS"
 		statusColor = colorYellow
+		statusEmoji = "🟡"
 	} else {
 		statusText = "SUCCESS"
 		statusColor = colorGreen
+		statusEmoji = "🟢"
 	}
 
 	// Build header with status
 	sb.WriteString("\n")
-	sb.WriteString("┌────────────────────────────────────────────────────────────────┐\n")
-	sb.WriteString("│ Thinktank Execution Summary                                    │\n")
-	sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-	sb.WriteString(fmt.Sprintf("│ Status: %s%s%s", statusColor, statusText, colorReset))
-	sb.WriteString(strings.Repeat(" ", 52-len(statusText)))
-	sb.WriteString("│\n")
+	sb.WriteString("✨ THINKTANK EXECUTION SUMMARY ✨\n\n")
+
+	// Add status
+	sb.WriteString(fmt.Sprintf("%s Status: %s%s%s\n", statusEmoji, statusColor, statusText, colorReset))
 
 	// Add processing statistics
-	sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-	sb.WriteString(fmt.Sprintf("│ Models: %d total, ", summary.TotalModels))
-	sb.WriteString(fmt.Sprintf("%s%d successful%s, ", colorGreen, summary.SuccessfulModels, colorReset))
-	sb.WriteString(fmt.Sprintf("%s%d failed%s", colorRed, failedCount, colorReset))
-	sb.WriteString(strings.Repeat(" ", 28-digitCount(summary.SuccessfulModels)-digitCount(failedCount)))
-	sb.WriteString("│\n")
+	sb.WriteString(fmt.Sprintf("🔢 Models: %d total, %s%d successful%s, %s%d failed%s\n",
+		summary.TotalModels,
+		colorGreen, summary.SuccessfulModels, colorReset,
+		colorRed, failedCount, colorReset))
 
 	// Add synthesis file path if available
 	if summary.SynthesisPath != "" {
-		sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-		sb.WriteString(fmt.Sprintf("│ %sSynthesis file:%s %-43s │\n", colorBlue, colorReset, truncatePath(summary.SynthesisPath, 43)))
+		sb.WriteString(fmt.Sprintf("📄 Synthesis file: %s%s%s\n",
+			colorBlue, truncatePath(summary.SynthesisPath, 60), colorReset))
 	}
 
 	// Add successful models if any
 	if summary.SuccessfulModels > 0 {
-		sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-		sb.WriteString(fmt.Sprintf("│ %sSuccessful models:%s %-40s │\n", colorGreen, colorReset, truncateList(summary.SuccessfulNames, 40)))
+		sb.WriteString(fmt.Sprintf("🚀 Successful models: %s%s%s\n",
+			colorGreen, truncateList(summary.SuccessfulNames, 60), colorReset))
 
 		// List individual output paths if no synthesis and multiple successful models
 		if summary.SynthesisPath == "" && len(summary.OutputPaths) > 0 {
-			sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-			sb.WriteString(fmt.Sprintf("│ %sOutput files:%s                                                │\n", colorBlue, colorReset))
+			sb.WriteString("📂 Output files:\n")
 			for _, path := range summary.OutputPaths {
-				sb.WriteString(fmt.Sprintf("│   %s │\n", truncatePath(path, 58)))
+				sb.WriteString(fmt.Sprintf("  - %s%s%s\n", colorBlue, truncatePath(path, 70), colorReset))
 			}
 		}
 	}
 
 	// Add failed models if any
 	if failedCount > 0 {
-		sb.WriteString("├────────────────────────────────────────────────────────────────┤\n")
-		sb.WriteString(fmt.Sprintf("│ %sFailed models:%s %-43s │\n", colorRed, colorReset, truncateList(summary.FailedModels, 43)))
+		sb.WriteString(fmt.Sprintf("❌ Failed models: %s%s%s\n",
+			colorRed, truncateList(summary.FailedModels, 60), colorReset))
 	}
 
-	// Close the box
-	sb.WriteString("└────────────────────────────────────────────────────────────────┘\n")
+	sb.WriteString("\n")
 
 	return sb.String()
 }
@@ -204,18 +202,4 @@ func truncateList(items []string, maxLen int) string {
 	}
 
 	return fmt.Sprintf("%s (%s)", text, strings.Join(names, ", "))
-}
-
-// digitCount returns the number of digits in an integer
-func digitCount(n int) int {
-	if n == 0 {
-		return 1
-	}
-
-	count := 0
-	for n > 0 {
-		count++
-		n /= 10
-	}
-	return count
 }
