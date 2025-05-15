@@ -49,7 +49,7 @@
         2. Attempt a commit to verify the hook is triggered.
     - **Depends‑on:** [T002]
 
-- [ ] **T005 · Feature · P0: verify pre-commit hook installation**
+- [x] **T005 · Feature · P0: verify pre-commit hook installation**
     - **Context:** "Commit Message Enforcement"
     - **Action:**
         1. Ensure pre-commit is properly installed and configured in the project.
