@@ -154,6 +154,10 @@ github.com/ckaznocha/intrange v0.3.0 h1:VqnxtK32pxgkhJgYQEeOArVidIPg+ahLP7WBOXZd
 github.com/ckaznocha/intrange v0.3.0/go.mod h1:+I/o2d2A1FBHgGELbGxzIcyd3/9l9DuwjM8FsbSS3Lo=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
+github.com/conventionalcommit/commitlint v0.10.1 h1:WTPBiFRvae1+5LVEhOPHBe2Hbb1UXLVf7FK5qiPv4EI=
+github.com/conventionalcommit/commitlint v0.10.1/go.mod h1:oJlFI7nE5Z6YHYwzXQ2nK+Waa58c2cscDZezxSNUkjA=
+github.com/conventionalcommit/parser v0.7.1 h1:oAzcrEqyyGnzCeNOBqGx2qnxISxneUuBiu320chjzMU=
+github.com/conventionalcommit/parser v0.7.1/go.mod h1:k3teTA7nWpRrk7sjAihpAXm+1QLu1OscGrxclMHgEyc=
 github.com/coreos/go-semver v0.3.1 h1:yi21YpKnrx1gt5R+la8n5WgS0kCrsPp33dmEyHReZr4=
 github.com/coreos/go-semver v0.3.1/go.mod h1:irMmmIw/7yzSRPWryHsK7EYSg09caPQL03VsM8rvUec=
 github.com/cpuguy83/go-md2man/v2 v2.0.6 h1:XJtiaUW6dEEqVuZiMTn1ldk455QWwEIsMIJlo5vtkx0=

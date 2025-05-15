@@ -46,6 +46,12 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: conventional-commit-check
+        name: Check Conventional Commit compliance
+        entry: commitlint --edit
+        language: system
+        stages: [commit-msg]  # Run during the commit-msg stage
+        pass_filenames: false  # Don't pass filenames to the hook
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh

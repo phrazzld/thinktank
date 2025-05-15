@@ -35,7 +35,7 @@
     - **Depends‑on:** [T002]
 
 ## Commit Message Enforcement & Hooks
-- [ ] **T004 · Feature · P0: add go-conventionalcommits to pre-commit hooks**
+- [x] **T004 · Feature · P0: add go-conventionalcommits to pre-commit hooks**
     - **Context:** "Commit Message Enforcement"
     - **Action:**
         1. Update the project's `.pre-commit-config.yaml` file to add a local hook for the commit-msg stage.

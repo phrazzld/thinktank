@@ -19,6 +19,9 @@ import (
 
 	// git-chglog for changelog generation (mentioned in TODO.md)
 	_ "github.com/git-chglog/git-chglog/cmd/git-chglog"
+
+	// commitlint for validating conventional commit messages
+	_ "github.com/conventionalcommit/commitlint"
 )
 
 // This file ensures tool dependencies are tracked in go.mod.

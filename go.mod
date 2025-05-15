@@ -6,6 +6,7 @@ toolchain go1.23.7
 
 require (
 	github.com/caarlos0/svu v1.12.0
+	github.com/conventionalcommit/commitlint v0.10.1
 	github.com/git-chglog/git-chglog v0.15.4
 	github.com/golangci/golangci-lint v1.64.8
 	github.com/google/generative-ai-go v0.19.0
@@ -67,6 +68,7 @@ require (
 	github.com/charithe/durationcheck v0.0.10 // indirect
 	github.com/chavacava/garif v0.1.0 // indirect
 	github.com/ckaznocha/intrange v0.3.0 // indirect
+	github.com/conventionalcommit/parser v0.7.1 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
 	github.com/curioswitch/go-reassign v0.3.0 // indirect
