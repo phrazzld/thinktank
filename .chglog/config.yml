@@ -1,0 +1,37 @@
+bin: git
+style: github
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/phrazzld/thinktank
+options:
+  commits:
+    sort_by: Scope
+  commit_groups:
+    title_maps:
+      feat: Features
+      fix: Bug Fixes
+      perf: Performance Improvements
+      refactor: Code Refactoring
+      docs: Documentation
+      style: Styles
+      test: Tests
+      build: Build System
+      ci: Continuous Integration
+      chore: Chores
+      revert: Reverts
+    # Sort order of groups
+    # sort_by: Type
+  header:
+    pattern: "^(\\w+)(?:\\((\\w+)\\))?\\!?: (.+)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+  issues:
+    # regex for matching issue references (GitHub style)
+    prefix:
+      - "#"
+  notes:
+    keywords:
+      - BREAKING CHANGE
+      - BREAKING CHANGES

@@ -87,7 +87,7 @@
     - **Depends‑on:** [T002]
 
 ## Changelog Generation
-- [ ] **T008 · Feature · P1: create .chglog/config.yml with commit type mapping**
+- [x] **T008 · Feature · P1: create .chglog/config.yml with commit type mapping**
     - **Context:** PLAN.md "Changelog Generation (git-chglog)"
     - **Action:**
         1. Create `.chglog/config.yml` specifying commit types, filters, and section mappings per project conventions.
