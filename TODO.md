@@ -130,7 +130,7 @@
     - **Depends‑on:** [T010]
 
 ## CI/CD Pipeline Integration
-- [ ] **T012 · Feature · P0: implement .github/workflows/release.yml for CI/CD**
+- [x] **T012 · Feature · P0: implement .github/workflows/release.yml for CI/CD**
     - **Context:** PLAN.md "CI/CD Pipeline Integration"
     - **Action:**
         1. Create `release.yml` workflow with jobs for lint/test/build and release, per plan.
