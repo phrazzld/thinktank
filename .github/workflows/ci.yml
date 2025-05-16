@@ -313,4 +313,46 @@ jobs:
           name: test-profiles
           path: |
             *.prof
-          retention-days: 7
+
+  # Version calculation job for semantic versioning
+  version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      # Checkout repository with full history for proper version calculation
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history needed for svu to calculate version
+
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Install svu for semantic version calculation
+      - name: Install svu
+        run: go install github.com/caarlos0/svu@latest
+
+      # Calculate next semantic version
+      - name: Calculate next version
+        id: version
+        run: |
+          # Calculate the next version based on conventional commits
+          NEXT_VERSION=$(svu next)
+          echo "Next version: $NEXT_VERSION"
+          # Export as environment variable
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+          # Export as job output
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      # Log version information
+      - name: Log version info
+        run: |
+          echo "Current version: $(svu current)"
+          echo "Next version: ${{ env.NEXT_VERSION }}"
+          echo "Version output: ${{ steps.version.outputs.version }}"

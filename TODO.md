@@ -75,7 +75,7 @@
     - **Depends‑on:** [T005]
 
 ## Semantic Versioning (svu) Integration
-- [ ] **T007 · Feature · P1: integrate svu for version calculation in CI**
+- [x] **T007 · Feature · P1: integrate svu for version calculation in CI**
     - **Context:** PLAN.md "Semantic Version Utility (svu) Integration"
     - **Action:**
         1. Ensure `svu` is installed and available in CI.
