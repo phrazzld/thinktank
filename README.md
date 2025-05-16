@@ -268,6 +268,100 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 - Maintain high coverage, particularly for critical components
 - Run the full test suite before submitting changes
 
+### Commit Conventions
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages. This enables automatic semantic versioning and changelog generation.
+
+#### Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Examples
+
+```bash
+# Features
+feat: add support for custom output directories
+feat(api): implement new authentication endpoint
+feat!: change API response format (breaking change)
+
+# Bug fixes
+fix: resolve memory leak in file parsing
+fix(cli): correct handling of empty input files
+
+# Documentation
+docs: update README with new examples
+docs(api): add OpenAPI specifications
+
+# Refactoring
+refactor: simplify error handling logic
+refactor(registry): restructure provider interface
+
+# Testing
+test: add integration tests for synthesis feature
+test(e2e): cover edge cases in CLI parsing
+
+# Build/CI
+build: upgrade Go version to 1.22
+ci: add coverage reporting to workflow
+```
+
+#### Requirements
+
+- Use present tense, imperative mood: "add feature" not "added feature"
+- Don't capitalize the first letter after type
+- No period at the end of the subject line
+- Use `!` after type for breaking changes
+- Reference issues/PRs in the footer when applicable
+
+### Release Process
+
+Our release process is fully automated using semantic versioning based on commit messages.
+
+#### How It Works
+
+1. **Commit messages** following Conventional Commits trigger automatic version calculation
+2. **On push to `master`**: CI runs tests, builds, and creates snapshot releases
+3. **On version tag push** (e.g., `v1.2.3`): CI creates a full release with:
+   - Multi-platform binaries (darwin/linux/windows)
+   - Automatically generated changelog
+   - GitHub release with artifacts
+
+#### Tools Used
+
+- **svu**: Calculates the next semantic version based on commit history
+- **git-chglog**: Generates changelog from Conventional Commits
+- **goreleaser**: Builds binaries and creates GitHub releases
+
+#### Creating a Release
+
+Releases are created automatically when a semantic version tag is pushed:
+
+```bash
+# The CI will automatically determine the next version based on commits since last tag
+# But you can manually create a release by tagging:
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The CI pipeline will:
+1. Validate all commit messages
+2. Run tests and linting
+3. Build binaries for all platforms
+4. Generate changelog from commits
+5. Create GitHub release with artifacts
+
+#### Version Bumping
+
+- `fix:` commits trigger a patch version bump (1.0.x)
+- `feat:` commits trigger a minor version bump (1.x.0)
+- Breaking changes (`feat!:` or `fix!:`) trigger a major version bump (x.0.0)
+
 ## Learn More
 
 - [OpenRouter Integration](docs/openrouter-integration.md)

@@ -162,7 +162,7 @@
     - **Depends‑on:** [T012]
 
 ## Documentation & Communication
-- [ ] **T015 · Feature · P2: update README.md with commit conventions and release process**
+- [x] **T015 · Feature · P2: update README.md with commit conventions and release process**
     - **Context:** PLAN.md "Documentation Updates"
     - **Action:**
         1. Add clear section on Conventional Commits, with examples, and outline automated release process.
