@@ -22,6 +22,15 @@ thinktank --instructions task.txt ./my-project
 thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
 ```
 
+## Development Setup
+
+When contributing to Thinktank, please note that we use:
+- **Conventional Commits** for all commit messages to enable semantic versioning
+- **Pre-commit hooks** for code quality and commit message validation
+- **Development tools** managed via `tools.go` and installable with `make tools`
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions and commit message examples.
+
 ## Key Features
 
 - **Multiple LLM Providers**: Supports Gemini, OpenAI, and OpenRouter models

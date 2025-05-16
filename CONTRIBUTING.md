@@ -102,6 +102,80 @@ We follow strict coding standards in this project, as detailed in our [Developme
 - Document the "why" (rationale), not just the "how" (mechanics)
 - Maintain high test coverage
 
+## Pre-commit Hooks and Commit Message Standards
+
+This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages.
+
+### Setting Up Pre-commit Hooks
+
+1. **Install pre-commit** (if not already installed):
+   ```bash
+   # Using pip
+   pip install pre-commit
+   
+   # Or using Homebrew on macOS
+   brew install pre-commit
+   ```
+
+2. **Install the pre-commit hooks**:
+   ```bash
+   # Install all hooks
+   pre-commit install
+   
+   # Install commit message hook specifically
+   pre-commit install --hook-type commit-msg
+   ```
+
+### Commit Message Format
+
+All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated semantic versioning and changelog generation.
+
+**Format:** `<type>[optional scope]: <description>`
+
+**Line length limits:**
+- Header (first line): Maximum 72 characters
+- Body lines: Maximum 100 characters  
+- Footer lines: Maximum 100 characters
+
+**Examples of valid commit messages:**
+```
+feat: add new file processing module
+fix(parser): handle null input correctly
+docs: update API documentation
+refactor!: rename core service interfaces (breaking change)
+test(integration): add coverage for edge cases
+chore: update dependencies
+```
+
+**Examples of invalid commit messages:**
+```
+Update code            # Missing type prefix
+Fixed bug             # Incorrect format, missing type
+feat Add new feature  # Missing colon after type
+FEAT: add feature     # Type should be lowercase
+```
+
+**Common commit types:**
+- `feat`: A new feature
+- `fix`: A bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring without changing functionality
+- `test`: Adding or modifying tests
+- `chore`: Maintenance tasks (updating dependencies, build scripts, etc.)
+
+### Custom Git Hooks Path
+
+This project uses a custom Git hooks path at `.commitlint/hooks` for commit message validation. This is configured automatically via the project's Git configuration. If you need to reset this configuration:
+
+```bash
+# View the current hooks path
+git config core.hooksPath
+
+# Reset to the project's custom hooks path if needed
+git config core.hooksPath .commitlint/hooks
+```
+
 ## Testing Requirements
 
 Testing is a core component of our development process:

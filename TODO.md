@@ -61,7 +61,7 @@
         1. Run `pre-commit info` to confirm all hooks are correctly installed.
     - **Depends‑on:** [T004]
 
-- [ ] **T006 · Feature · P2: document pre-commit setup in developer documentation**
+- [x] **T006 · Feature · P2: document pre-commit setup in developer documentation**
     - **Context:** "Documentation Updates"
     - **Action:**
         1. Update `README.md` and/or `CONTRIBUTING.md` to explain the pre-commit hook setup.
