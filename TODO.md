@@ -151,7 +151,7 @@
         1. CI logs show dry-run/snapshot release output.
     - **Depends‑on:** [T012]
 
-- [ ] **T014 · Feature · P1: ensure CI fails on invalid commit messages**
+- [x] **T014 · Feature · P1: ensure CI fails on invalid commit messages**
     - **Context:** PLAN.md "Error & Edge-Case Strategy", "CI/CD Pipeline Integration"
     - **Action:**
         1. Add CI step to validate all commit messages in the push using `go-conventionalcommits`.

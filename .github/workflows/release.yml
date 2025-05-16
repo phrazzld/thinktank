@@ -22,6 +22,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required to get full history for commit validation
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -29,6 +31,74 @@ jobs:
           go-version: 'stable'
           cache: true
           cache-dependency-path: go.sum
+
+      - name: Install go-conventionalcommits
+        run: |
+          go install \
+            github.com/leodido/go-conventionalcommits/cmd/go-conventionalcommits@latest
+
+      - name: Validate Commit Messages
+        run: |
+          echo "Validating commit messages..."
+
+          # For pull requests, validate all commits in the PR
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Checking commits in pull request..."
+            # Get all commits in the PR
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+            COMMITS=$(git rev-list ${BASE_SHA}..${HEAD_SHA})
+
+          # For push events, validate commits in the push
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "Checking commits in push..."
+            # For tags, check commits since last tag
+            if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+              # Get previous tag
+              PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ \
+                2>/dev/null || echo "")
+              if [[ -n "$PREV_TAG" ]]; then
+                COMMITS=$(git rev-list ${PREV_TAG}..HEAD)
+              else
+                # If no previous tag, check all commits
+                COMMITS=$(git rev-list HEAD)
+              fi
+            else
+              # For master pushes, check commits in the current push
+              BEFORE="${{ github.event.before }}"
+              AFTER="${{ github.event.after }}"
+              COMMITS=$(git rev-list ${BEFORE}..${AFTER})
+            fi
+          fi
+
+          # Validate each commit
+          INVALID_COMMITS=()
+          for commit in $COMMITS; do
+            MSG=$(git log -1 --format=%s $commit)
+            echo "Checking commit: $commit - $MSG"
+
+            # Write commit message to temp file
+            echo "$MSG" > commit_msg.txt
+
+            # Validate the commit message
+            if ! go-conventionalcommits validate --msg-file commit_msg.txt; then
+              INVALID_COMMITS+=("$commit: $MSG")
+            fi
+
+            rm -f commit_msg.txt
+          done
+
+          # Report results
+          if [ ${#INVALID_COMMITS[@]} -gt 0 ]; then
+            echo "❌ Found ${#INVALID_COMMITS[@]} invalid commit message(s):"
+            printf '%s\n' "${INVALID_COMMITS[@]}"
+            echo ""
+            echo "Commit messages must follow Conventional Commits."
+            echo "See: https://www.conventionalcommits.org/"
+            exit 1
+          else
+            echo "✅ All commit messages are valid"
+          fi
 
       - name: Verify dependencies
         run: go mod verify
