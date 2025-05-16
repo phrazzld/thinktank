@@ -182,7 +182,7 @@
         1. Review document for clarity and policy coverage.
     - **Depends‑on:** none
 
-- [ ] **T017 · Feature · P2: document automated changelog generation and manual first entry**
+- [x] **T017 · Feature · P2: document automated changelog generation and manual first entry**
     - **Context:** PLAN.md "Documentation Updates"
     - **Action:**
         1. Add note in README.md or CHANGELOG.md header about changelog being auto-generated.
