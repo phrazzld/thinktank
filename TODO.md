@@ -141,7 +141,7 @@
         1. Test workflow on PR and `main` branch; verify builds, versioning, changelog, and (in dry run) release steps.
     - **Depends‑on:** [T002], [T007], [T009], [T011], [T010]
 
-- [ ] **T013 · Feature · P1: add goreleaser release --snapshot to PR/main CI runs**
+- [x] **T013 · Feature · P1: add goreleaser release --snapshot to PR/main CI runs**
     - **Context:** PLAN.md "Testing Strategy", "CI/CD Pipeline Integration"
     - **Action:**
         1. Update CI workflow to run `goreleaser release --snapshot` on PRs and non-tag main pushes for pipeline validation.

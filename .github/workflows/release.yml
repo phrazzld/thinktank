@@ -4,12 +4,12 @@ name: CI and Release
 'on':
   push:
     branches:
-      - main
+      - master
     tags:
       - 'v*'  # Matches tags like v1.0.0, v0.1.0-alpha
   pull_request:
     branches:
-      - main
+      - master
 
 permissions:
   contents: write  # Required for goreleaser to create releases
@@ -69,10 +69,12 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: ci_checks
-    # Only run on direct pushes to main or v* tags, not on PRs
+    # Run on PRs, direct pushes to master, or v* tags
     if: |
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'push' &&
+       (github.ref == 'refs/heads/master' ||
+        startsWith(github.ref, 'refs/tags/v')))
     steps:
       - name: Checkout full history
         uses: actions/checkout@v4
@@ -95,10 +97,14 @@ jobs:
       - name: Determine Version
         id: version
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            # For main branch, calculate next potential version
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # For PRs, calculate next potential version
             VERSION=$(svu next)
-            echo "Determined next version for main: $VERSION"
+            echo "Determined next version for PR: $VERSION"
+          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            # For master branch, calculate next potential version
+            VERSION=$(svu next)
+            echo "Determined next version for master: $VERSION"
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
             # For tag pushes, use the tag name as the version
             VERSION=${GITHUB_REF_NAME}
@@ -127,12 +133,16 @@ jobs:
           cat RELEASE_NOTES.md
           echo "======================="
 
-      - name: Run Goreleaser (Snapshot for main, Release for tags)
+      - name: Run Goreleaser (Snapshot for PR/master, Release for tags)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "Running Goreleaser in snapshot mode..."
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Running Goreleaser in snapshot mode for PR..."
+            goreleaser release --snapshot --clean \
+              --release-notes RELEASE_NOTES.md
+          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            echo "Running Goreleaser in snapshot mode for master..."
             goreleaser release --snapshot --clean \
               --release-notes RELEASE_NOTES.md
           elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
@@ -144,7 +154,9 @@ jobs:
               --release-notes RELEASE_NOTES.md
           fi
       - name: Upload Artifacts (snapshot only)
-        if: github.ref == 'refs/heads/main'
+        if: |
+          github.event_name == 'pull_request' ||
+          github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@v4
         with:
           name: thinktank-snapshot-${{ steps.version.outputs.VERSION }}
