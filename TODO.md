@@ -205,7 +205,7 @@
     - **Depends‑on:** none
 
 ## Testing & Edge-Case Verification
-- [ ] **T019 · Test · P1: verify pre-commit hook blocks non-conventional commits locally**
+- [x] **T019 · Test · P1: verify pre-commit hook blocks non-conventional commits locally**
     - **Context:** PLAN.md "Testing Strategy"
     - **Action:**
         1. Attempt valid and invalid commits; observe blocking behavior.
