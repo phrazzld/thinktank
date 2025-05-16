@@ -97,7 +97,7 @@
         1. Run `git-chglog` locally and verify grouping/sections in output.
     - **Depends‑on:** none
 
-- [ ] **T009 · Feature · P1: create .chglog/CHANGELOG.tpl.md template**
+- [x] **T009 · Feature · P1: create .chglog/CHANGELOG.tpl.md template**
     - **Context:** PLAN.md "Changelog Generation (git-chglog)"
     - **Action:**
         1. Add a markdown template to `.chglog/CHANGELOG.tpl.md` for changelog formatting.
