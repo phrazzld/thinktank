@@ -1,1 +1,2 @@
 This is a test file to verify commit message validation.
+Testing valid commit formats.
