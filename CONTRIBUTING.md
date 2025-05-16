@@ -104,7 +104,7 @@ We follow strict coding standards in this project, as detailed in our [Developme
 
 ## Pre-commit Hooks and Commit Message Standards
 
-This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages.
+This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages. **All commits must follow these standards - bypassing validation is strictly forbidden.**
 
 ### Setting Up Pre-commit Hooks
 
@@ -126,9 +126,18 @@ This project uses pre-commit hooks to ensure code quality and enforce Convention
    pre-commit install --hook-type commit-msg
    ```
 
+3. **Install go-conventionalcommits** for commit message validation:
+   ```bash
+   # This tool is used by both pre-commit hooks and CI
+   go install github.com/leodido/go-conventionalcommits/cmd/go-conventionalcommits@latest
+   
+   # Verify installation
+   go-conventionalcommits --help
+   ```
+
 ### Commit Message Format
 
-All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated semantic versioning and changelog generation.
+All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated semantic versioning and changelog generation. **Non-compliant commits will be rejected by both local hooks and CI.**
 
 **Format:** `<type>[optional scope]: <description>`
 
@@ -156,13 +165,15 @@ FEAT: add feature     # Type should be lowercase
 ```
 
 **Common commit types:**
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes (formatting, missing semicolons, etc.)
-- `refactor`: Code refactoring without changing functionality
-- `test`: Adding or modifying tests
-- `chore`: Maintenance tasks (updating dependencies, build scripts, etc.)
+- `feat`: A new feature (triggers minor version bump)
+- `fix`: A bug fix (triggers patch version bump)
+- `docs`: Documentation changes (no version bump)
+- `style`: Code style changes (formatting, missing semicolons, etc.) (no version bump)
+- `refactor`: Code refactoring without changing functionality (no version bump)
+- `test`: Adding or modifying tests (no version bump)
+- `chore`: Maintenance tasks (updating dependencies, build scripts, etc.) (no version bump)
+
+**Breaking changes:** Add `!` after the type (e.g., `feat!:` or `refactor!:`) or include a `BREAKING CHANGE:` footer to trigger a major version bump.
 
 ### Custom Git Hooks Path
 
@@ -175,6 +186,62 @@ git config core.hooksPath
 # Reset to the project's custom hooks path if needed
 git config core.hooksPath .commitlint/hooks
 ```
+
+### Commit Message Validation Tools
+
+To validate commit messages locally before committing:
+
+```bash
+# Validate a commit message file
+go-conventionalcommits validate --msg-file <file>
+
+# Example: validate the last commit
+git log -1 --pretty=%B > last-commit.txt
+go-conventionalcommits validate --msg-file last-commit.txt
+```
+
+### Enforcement Policies
+
+**Important:** The following policies are strictly enforced:
+
+1. **No bypassing of pre-commit hooks**: Using `--no-verify` is forbidden and considered a violation of project standards
+2. **CI validation is mandatory**: All commits pushed to the repository will be validated by CI workflows
+3. **Conventional Commits are required**: Non-compliant commits will block the automated release process
+4. **All commits must pass validation**: Every commit in a PR or push must be individually compliant
+
+### Troubleshooting Common Issues
+
+**Issue: Commit rejected due to invalid format**
+- Solution: Ensure your commit follows the pattern `<type>[optional scope]: <description>`
+- Check that the type is lowercase and from the allowed list
+- Include a colon and space after the type/scope
+
+**Issue: Line length exceeded**
+- Solution: Keep the first line under 72 characters
+- Use the commit body (second paragraph) for additional details
+
+**Issue: go-conventionalcommits not found**
+- Solution: Install the tool with `go install github.com/leodido/go-conventionalcommits/cmd/go-conventionalcommits@latest`
+- Ensure `$GOPATH/bin` is in your PATH
+
+**Issue: Breaking change not detected**
+- Solution: Use `!` after the type (e.g., `feat!:`) or include `BREAKING CHANGE:` in the footer
+
+### Automated Release Process
+
+Our project uses automated semantic versioning based on commit messages:
+
+1. `feat` commits trigger minor version bumps (1.x.0 → 1.y.0)
+2. `fix` commits trigger patch version bumps (1.2.x → 1.2.y)
+3. Breaking changes (`feat!` or `BREAKING CHANGE:`) trigger major version bumps (x.y.z → x+1.0.0)
+4. Other commit types (`docs`, `test`, `chore`, etc.) don't affect versioning
+
+The CI/CD pipeline automatically:
+- Calculates the next version using `svu` based on commit history
+- Generates changelogs with `git-chglog`
+- Creates releases with `goreleaser`
+
+This automation depends entirely on proper commit message formatting, which is why enforcement is mandatory.
 
 ## Testing Requirements
 

@@ -172,7 +172,7 @@
         1. Review for clarity and completeness.
     - **Depends‑on:** none
 
-- [ ] **T016 · Feature · P2: update CONTRIBUTING.md with commit message and tooling policy**
+- [x] **T016 · Feature · P2: update CONTRIBUTING.md with commit message and tooling policy**
     - **Context:** PLAN.md "Documentation Updates"
     - **Action:**
         1. Document enforced commit format, tooling install steps, and policy on hook/CI bypass.
