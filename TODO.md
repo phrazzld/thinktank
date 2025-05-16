@@ -194,7 +194,7 @@
     - **Depends‑on:** [T009]
 
 ## Initial Tagging & Migration
-- [ ] **T018 · Feature · P0: perform initial semantic version tag if needed**
+- [x] **T018 · Feature · P0: perform initial semantic version tag if needed**
     - **Context:** PLAN.md "Initial Tagging & Migration"
     - **Action:**
         1. If no semantic tags exist, decide initial version and create/tag in git (e.g., `v1.0.0`).
