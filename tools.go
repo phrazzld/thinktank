@@ -22,6 +22,9 @@ import (
 
 	// commitlint for validating conventional commit messages
 	_ "github.com/conventionalcommit/commitlint"
+
+	// goreleaser for automated releases
+	_ "github.com/goreleaser/goreleaser"
 )
 
 // This file ensures tool dependencies are tracked in go.mod.

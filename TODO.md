@@ -108,7 +108,7 @@
     - **Depends‑on:** [T008]
 
 ## Release Automation (Goreleaser)
-- [ ] **T010 · Feature · P0: create .goreleaser.yml for build and release**
+- [x] **T010 · Feature · P0: create .goreleaser.yml for build and release**
     - **Context:** PLAN.md "Release Automation (Goreleaser)"
     - **Action:**
         1. Write `.goreleaser.yml` configuring builds, changelog integration, and GitHub release process.
