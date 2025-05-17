@@ -245,7 +245,7 @@
         1. Review CI logs and artifacts; confirm no real releases occur.
     - **Depends‑on:** [T013]
 
-- [~] **T023 · Test · P2: verify error handling for missing or invalid commit messages in CI**
+- [x] **T023 · Test · P2: verify error handling for missing or invalid commit messages in CI**
     - **Context:** PLAN.md "Testing Strategy", "Error & Edge-Case Strategy"
     - **Action:**
         1. Push history with an invalid commit message and observe CI failure.
