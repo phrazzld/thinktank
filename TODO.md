@@ -215,7 +215,7 @@
         1. Test multiple commit scenarios.
     - **Depends‑on:** [T005]
 
-- [ ] **T020 · Test · P1: verify svu version calculation for major/minor/patch/prerelease**
+- [x] **T020 · Test · P1: verify svu version calculation for major/minor/patch/prerelease**
     - **Context:** PLAN.md "Testing Strategy"
     - **Action:**
         1. Craft commit histories with various commit types and run `svu next`.
