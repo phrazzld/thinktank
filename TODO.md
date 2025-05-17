@@ -235,7 +235,7 @@
         1. Manual review of generated markdown.
     - **Depends‑on:** [T009]
 
-- [ ] **T022 · Test · P1: verify full release pipeline (CI) in dry-run mode**
+- [~] **T022 · Test · P1: verify full release pipeline (CI) in dry-run mode**
     - **Context:** PLAN.md "Testing Strategy", "E2E (Release Process)"
     - **Action:**
         1. Run workflow for PRs and main pushes with `goreleaser --snapshot`, ensuring all steps pass and outputs are correct.
@@ -245,7 +245,7 @@
         1. Review CI logs and artifacts; confirm no real releases occur.
     - **Depends‑on:** [T013]
 
-- [ ] **T023 · Test · P2: verify error handling for missing or invalid commit messages in CI**
+- [~] **T023 · Test · P2: verify error handling for missing or invalid commit messages in CI**
     - **Context:** PLAN.md "Testing Strategy", "Error & Edge-Case Strategy"
     - **Action:**
         1. Push history with an invalid commit message and observe CI failure.

@@ -202,7 +202,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			result := prompt.StitchSynthesisPrompt(tc.originalInstructions, tc.modelOutputs)
-			
+
 			// Apply all checks
 			for _, check := range tc.checks {
 				check(t, result)

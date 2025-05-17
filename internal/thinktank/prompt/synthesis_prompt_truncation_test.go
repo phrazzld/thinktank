@@ -40,49 +40,49 @@ func TestStitchSynthesisPromptTruncation(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Generate instructions of the specified length
 			instructions := strings.Repeat("x", tt.instructionsLength)
-			
+
 			modelOutputs := map[string]string{
 				"model1": "Output from model 1",
 			}
-			
+
 			// Generate synthesis prompt
 			result := prompt.StitchSynthesisPrompt(instructions, modelOutputs)
-			
+
 			// Check if truncation occurred as expected
 			if tt.expectedTruncation {
 				// Should contain truncation notice
 				if !strings.Contains(result, "[Note: Original instructions truncated") {
 					t.Error("Expected truncation notice but didn't find it")
 				}
-				
+
 				// Should contain the exact character counts
 				if !strings.Contains(result, "to 50000 characters]") {
 					t.Error("Expected truncation notice to mention 50000 characters")
 				}
-				
+
 				// The actual content should be truncated to 50k characters
 				// Find the content between the context tags
 				startTag := "<original_task_context>"
 				endTag := "</original_task_context>"
 				startIdx := strings.Index(result, startTag)
 				endIdx := strings.Index(result, endTag)
-				
+
 				if startIdx == -1 || endIdx == -1 {
 					t.Fatal("Could not find context tags")
 				}
-				
-				contextContent := result[startIdx+len(startTag):endIdx]
-				
+
+				contextContent := result[startIdx+len(startTag) : endIdx]
+
 				// Find where the actual content starts after the header
 				contentStartIdx := strings.Index(contextContent, ":\n")
 				if contentStartIdx == -1 {
 					t.Fatal("Could not find start of content")
 				}
 				contentStartIdx += 2 // Skip past ":\n"
-				
+
 				// Find where truncation note starts (if any)
 				truncNoteIdx := strings.Index(contextContent, "\n\n[Note:")
-				
+
 				var actualInstructions string
 				if truncNoteIdx != -1 && truncNoteIdx > contentStartIdx {
 					actualInstructions = contextContent[contentStartIdx:truncNoteIdx]
@@ -94,10 +94,10 @@ func TestStitchSynthesisPromptTruncation(t *testing.T) {
 					}
 					actualInstructions = contextContent[contentStartIdx:endOfContent]
 				}
-				
+
 				// Trim any trailing whitespace that might have been added
 				actualInstructions = strings.TrimSpace(actualInstructions)
-				
+
 				if len(actualInstructions) != 50000 {
 					t.Errorf("Expected truncated instructions to be 50000 characters, got %d", len(actualInstructions))
 					t.Logf("Context content: %q", contextContent)
@@ -107,13 +107,13 @@ func TestStitchSynthesisPromptTruncation(t *testing.T) {
 				if strings.Contains(result, "[Note: Original instructions truncated") {
 					t.Error("Didn't expect truncation notice but found it")
 				}
-				
+
 				// The full instructions should be present
 				if !strings.Contains(result, instructions) {
 					t.Error("Expected full instructions to be present in the output")
 				}
 			}
-			
+
 			// Basic structure checks
 			if !strings.Contains(result, "<synthesis_instructions>") {
 				t.Error("Synthesis prompt missing synthesis_instructions section")
@@ -132,18 +132,18 @@ func TestStitchSynthesisPromptTruncation(t *testing.T) {
 func TestStitchSynthesisPromptBoundaryCase(t *testing.T) {
 	// Create instructions that are exactly 50k characters
 	instructions := strings.Repeat("a", 50000)
-	
+
 	modelOutputs := map[string]string{
 		"model1": "Test output",
 	}
-	
+
 	result := prompt.StitchSynthesisPrompt(instructions, modelOutputs)
-	
+
 	// Should not be truncated
 	if strings.Contains(result, "[Note: Original instructions truncated") {
 		t.Error("Instructions of exactly 50k characters should not be truncated")
 	}
-	
+
 	// Full instructions should be present
 	if !strings.Contains(result, instructions) {
 		t.Error("Full instructions should be present for 50k character input")

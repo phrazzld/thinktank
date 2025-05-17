@@ -78,7 +78,7 @@ func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]
 	// Include original instructions as context (truncated if necessary)
 	builder.WriteString("<original_task_context>\n")
 	builder.WriteString("The original task given to the models was:\n")
-	
+
 	// Truncate original instructions to 50k characters if needed
 	const maxContextLength = 50000
 	if len(originalInstructions) > maxContextLength {
@@ -91,7 +91,7 @@ func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]
 	} else {
 		builder.WriteString(originalInstructions)
 	}
-	
+
 	builder.WriteString("\n</original_task_context>\n\n")
 
 	// Format model outputs section with model names as attributes
