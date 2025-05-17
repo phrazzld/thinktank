@@ -181,6 +181,11 @@ This tolerant mode is particularly useful when using multiple models for redunda
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
 - **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
 - **Color Output Issues**: Summary output uses ANSI color codes for terminal display, which may not be suitable for all environments. Redirect to a file for plain text output.
+- **Synthesis Output Truncation**: If synthesis outputs are being cut off:
+  - Try using a model with higher output limits (e.g., `--synthesis-model gpt-4.1` which has 200k output tokens)
+  - Use fewer primary models to reduce the combined output size
+  - Check the synthesis output file for a warning message about truncation
+  - Consider using OpenRouter models which often have higher token limits
 
 ## Development & Contributing
 

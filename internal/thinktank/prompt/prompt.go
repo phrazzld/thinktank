@@ -47,25 +47,52 @@ func StitchPrompt(instructions string, contextFiles []fileutil.FileMeta) string 
 	return sb.String()
 }
 
-// StitchSynthesisPrompt combines original instructions and multiple model outputs
-// into a single prompt for a synthesis model. Each model output is clearly labeled
-// with the model name for reference.
+// StitchSynthesisPrompt creates a specialized prompt for the synthesis model that focuses
+// on the synthesis task itself, not the original user instructions.
 //
 // This function creates a structured prompt with XML-like tags that:
-// 1. Includes the original instructions in an <instructions> section
-// 2. Wraps all model outputs in a <model_outputs> section
-// 3. Labels each model output with its source model name via <model_result model="name"> tags
-// 4. Adds synthesis instructions that guide the model on how to combine the outputs
+// 1. Provides clear synthesis-specific instructions
+// 2. Includes original user task as context (not primary instructions)
+// 3. Wraps all model outputs in a <model_outputs> section
+// 4. Labels each model output with its source model name via <model_result model="name"> tags
 //
-// The structured format ensures the synthesis model can clearly distinguish between
-// different model outputs and understand its task of combining them into a unified response.
+// The structured format ensures the synthesis model understands its specific role:
+// to create a comprehensive synthesis of the model outputs, not to solve the original problem.
 func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]string) string {
 	var builder strings.Builder
 
-	// Format original instructions with clear delimiters
-	builder.WriteString("<instructions>\n")
-	builder.WriteString(originalInstructions)
-	builder.WriteString("\n</instructions>\n\n")
+	// Primary synthesis instructions - these are the actual instructions for the synthesis model
+	builder.WriteString("<synthesis_instructions>\n")
+	builder.WriteString("You are a synthesis model. Your task is to create a comprehensive, unified response by combining the outputs from multiple AI models.\n\n")
+	builder.WriteString("Requirements:\n")
+	builder.WriteString("1. Analyze all model outputs provided below\n")
+	builder.WriteString("2. Identify common themes, insights, and recommendations across models\n")
+	builder.WriteString("3. Reconcile any contradictions or differences between model outputs\n")
+	builder.WriteString("4. Create a single, cohesive response that incorporates the best elements from each model\n")
+	builder.WriteString("5. Preserve important details while eliminating redundancy\n")
+	builder.WriteString("6. Structure the synthesis in a clear, logical manner\n")
+	builder.WriteString("7. If models disagree on key points, present multiple perspectives with analysis\n")
+	builder.WriteString("8. Focus on delivering a complete, actionable response to the original task\n")
+	builder.WriteString("\n</synthesis_instructions>\n\n")
+
+	// Include original instructions as context (truncated if necessary)
+	builder.WriteString("<original_task_context>\n")
+	builder.WriteString("The original task given to the models was:\n")
+	
+	// Truncate original instructions to 50k characters if needed
+	const maxContextLength = 50000
+	if len(originalInstructions) > maxContextLength {
+		builder.WriteString(originalInstructions[:maxContextLength])
+		builder.WriteString("\n\n[Note: Original instructions truncated from ")
+		builder.WriteString(fmt.Sprintf("%d", len(originalInstructions)))
+		builder.WriteString(" to ")
+		builder.WriteString(fmt.Sprintf("%d", maxContextLength))
+		builder.WriteString(" characters]")
+	} else {
+		builder.WriteString(originalInstructions)
+	}
+	
+	builder.WriteString("\n</original_task_context>\n\n")
 
 	// Format model outputs section with model names as attributes
 	builder.WriteString("<model_outputs>\n")
@@ -76,10 +103,8 @@ func StitchSynthesisPrompt(originalInstructions string, modelOutputs map[string]
 	}
 	builder.WriteString("</model_outputs>\n\n")
 
-	// Add synthesis instructions
-	builder.WriteString("Please synthesize these outputs into a single, comprehensive response that addresses " +
-		"the original instructions. Your synthesis should incorporate the strongest insights and information " +
-		"from each model's output, resolving any contradictions and presenting a cohesive, well-structured result.")
+	// Final synthesis directive
+	builder.WriteString("Based on the above model outputs, create your comprehensive synthesis that addresses the original task effectively.")
 
 	return builder.String()
 }

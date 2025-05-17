@@ -490,6 +490,11 @@ func (s *registryAPIService) ProcessLLMResponse(result *llm.ProviderResult) (str
 		return "", llm.ErrWhitespaceContent
 	}
 
+	// Check for truncation and log warning
+	if result.Truncated {
+		fmt.Fprintf(os.Stderr, "WARNING: Model output was truncated due to token limits\n")
+	}
+
 	return result.Content, nil
 }
 

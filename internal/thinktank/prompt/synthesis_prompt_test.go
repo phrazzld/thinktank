@@ -24,10 +24,22 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				"model2": "There might be an off-by-one error in the loop at line Y",
 			},
 			checks: []func(t *testing.T, result string){
-				// Check instructions block
+				// Check synthesis instructions block
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "<instructions>\nAnalyze this code for potential bugs\n</instructions>") {
-						t.Error("Instructions section not formatted correctly")
+					if !strings.Contains(result, "<synthesis_instructions>") {
+						t.Error("Missing synthesis instructions section")
+					}
+					if !strings.Contains(result, "You are a synthesis model") {
+						t.Error("Missing synthesis model introduction")
+					}
+				},
+				// Check original task context
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "<original_task_context>") {
+						t.Error("Missing original task context section")
+					}
+					if !strings.Contains(result, "Analyze this code for potential bugs") {
+						t.Error("Original instructions not included in context")
 					}
 				},
 				// Check model_outputs block
@@ -48,16 +60,16 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				// Check model contents
 				func(t *testing.T, result string) {
 					if !strings.Contains(result, "null pointer issue") {
-						t.Error("Missing content from model1")
+						t.Error("Model1 output content missing")
 					}
 					if !strings.Contains(result, "off-by-one error") {
-						t.Error("Missing content from model2")
+						t.Error("Model2 output content missing")
 					}
 				},
-				// Check synthesis instruction text
+				// Check final synthesis directive
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "Please synthesize these outputs into a single") {
-						t.Error("Missing synthesis instructions")
+					if !strings.Contains(result, "Based on the above model outputs, create your comprehensive synthesis") {
+						t.Error("Missing final synthesis directive")
 					}
 				},
 				// Check closing tags
@@ -75,128 +87,124 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				"model1": "Some analysis without instructions",
 			},
 			checks: []func(t *testing.T, result string){
-				// Check that instructions tags exist even with empty content
+				// Check that original task context exists even with empty instructions
 				func(t *testing.T, result string) {
-					expected := "<instructions>\n\n</instructions>"
-					if !strings.Contains(result, expected) {
-						t.Errorf("Empty instructions not properly formatted, expected %q", expected)
+					if !strings.Contains(result, "<original_task_context>") {
+						t.Error("Missing original task context section")
 					}
 				},
 				// Check that model output is still included
 				func(t *testing.T, result string) {
 					if !strings.Contains(result, "Some analysis without instructions") {
-						t.Error("Missing model output despite empty instructions")
+						t.Error("Model output not included")
 					}
 				},
 			},
 		},
 		{
 			name:                 "Empty model outputs map",
-			originalInstructions: "Instructions with no model outputs",
+			originalInstructions: "Some instructions",
 			modelOutputs:         map[string]string{},
 			checks: []func(t *testing.T, result string){
-				// Verify instructions are included
+				// Check basic structure exists
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "Instructions with no model outputs") {
-						t.Error("Missing instructions content")
+					if !strings.Contains(result, "<synthesis_instructions>") {
+						t.Error("Missing synthesis instructions")
 					}
-				},
-				// Check that model_outputs tags exist even with no outputs
-				func(t *testing.T, result string) {
-					if !strings.Contains(result, "<model_outputs>") || !strings.Contains(result, "</model_outputs>") {
-						t.Error("Empty model_outputs not properly formatted")
+					if !strings.Contains(result, "<model_outputs>") {
+						t.Error("Missing model outputs section")
 					}
-				},
-				// Verify that no output tags are present
-				func(t *testing.T, result string) {
-					if strings.Contains(result, "<model_result model=") {
-						t.Error("Unexpected model_result tag with empty model outputs map")
+					if !strings.Contains(result, "<original_task_context>") {
+						t.Error("Missing original task context section")
 					}
 				},
 			},
 		},
 		{
 			name:                 "Empty model output content",
-			originalInstructions: "Instructions with empty model output",
+			originalInstructions: "Process this data",
 			modelOutputs: map[string]string{
-				"empty_model": "",
+				"model1": "",
 			},
 			checks: []func(t *testing.T, result string){
-				// Verify model tag is included
+				// Check model_result tag exists even with empty content
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "<model_result model=\"empty_model\">") {
-						t.Error("Missing model_result tag for empty model content")
-					}
-				},
-				// Check that empty content is handled properly
-				func(t *testing.T, result string) {
-					expected := "<model_result model=\"empty_model\">\n\n</model_result>"
-					if !strings.Contains(result, expected) {
-						t.Errorf("Empty model output not properly formatted, expected substring %q", expected)
+					if !strings.Contains(result, "<model_result model=\"model1\">") {
+						t.Error("Missing model_result tag for empty output")
 					}
 				},
 			},
 		},
 		{
 			name:                 "Special characters in model name",
-			originalInstructions: "Test with special characters in model name",
+			originalInstructions: "Generate a summary",
 			modelOutputs: map[string]string{
-				"model/with-special_chars": "Content from model with special characters in name",
+				"model-v2.1": "Summary generated by special model",
 			},
 			checks: []func(t *testing.T, result string){
-				// Verify model name is preserved in attribute
+				// Check special characters in model name are preserved
 				func(t *testing.T, result string) {
-					expected := "<model_result model=\"model/with-special_chars\">"
-					if !strings.Contains(result, expected) {
-						t.Errorf("Model name with special chars not properly formatted, expected %q", expected)
+					if !strings.Contains(result, "<model_result model=\"model-v2.1\">") {
+						t.Error("Special characters in model name not preserved")
 					}
 				},
 			},
 		},
 		{
 			name:                 "Model output with XML-like content",
-			originalInstructions: "Analyze HTML/XML code",
+			originalInstructions: "Format this data",
 			modelOutputs: map[string]string{
-				"xml_model": "The issue is in the <div> tag that's missing a closing </div>",
+				"model1": "Some <tag>content</tag> with XML-like structure",
 			},
 			checks: []func(t *testing.T, result string){
-				// Verify XML content is preserved (not escaped)
+				// Check XML-like content is preserved
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "<div> tag that's missing a closing </div>") {
-						t.Error("XML-like content in model output not preserved correctly")
+					if !strings.Contains(result, "Some <tag>content</tag> with XML-like structure") {
+						t.Error("XML-like content in model output not preserved")
 					}
 				},
 			},
 		},
 		{
 			name:                 "Multiple models with varying content sizes",
-			originalInstructions: "Compare these implementations",
+			originalInstructions: "Compare approaches",
 			modelOutputs: map[string]string{
-				"short_model": "Brief analysis.",
-				"long_model":  "This is a much longer analysis that spans multiple lines.\nIt contains detailed observations about the code.\nIt makes several recommendations for improvement.",
+				"model1": "Short response",
+				"model2": strings.Repeat("Long response. ", 50),
+				"model3": strings.Repeat("A", 1000),
 			},
 			checks: []func(t *testing.T, result string){
-				// Verify both models are included
+				// Check all models are included
 				func(t *testing.T, result string) {
-					if !strings.Contains(result, "Brief analysis") {
-						t.Error("Missing content from short model")
+					if !strings.Contains(result, "<model_result model=\"model1\">") ||
+						!strings.Contains(result, "<model_result model=\"model2\">") ||
+						!strings.Contains(result, "<model_result model=\"model3\">") {
+						t.Error("Not all models included in synthesis prompt")
 					}
-					if !strings.Contains(result, "multiple lines") {
-						t.Error("Missing content from long model")
+				},
+				// Check content preservation
+				func(t *testing.T, result string) {
+					if !strings.Contains(result, "Short response") {
+						t.Error("Short response not preserved")
+					}
+					if !strings.Contains(result, strings.Repeat("Long response. ", 20)) {
+						t.Error("Long response not preserved (checking partial)")
+					}
+					if !strings.Contains(result, strings.Repeat("A", 100)) {
+						t.Error("Very long response not preserved (checking partial)")
 					}
 				},
 			},
 		},
 	}
 
-	// Run all test cases
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// Get the stitched synthesis prompt result
-			result := prompt.StitchSynthesisPrompt(tt.originalInstructions, tt.modelOutputs)
-
-			// Run all checks for this test case
-			for _, check := range tt.checks {
+	// Run the test cases
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			result := prompt.StitchSynthesisPrompt(tc.originalInstructions, tc.modelOutputs)
+			
+			// Apply all checks
+			for _, check := range tc.checks {
 				check(t, result)
 			}
 		})

@@ -336,6 +336,24 @@ func (s *DefaultSynthesisService) SynthesizeResults(
 		)
 	}
 
+	// Check for truncation in the raw result
+	if result != nil && result.Truncated {
+		contextLogger.WarnContext(ctx, "Synthesis output was truncated due to token limits for model %s", s.modelName)
+		
+		// Add user-facing warning
+		synthesisOutput += "\n\n⚠️ Note: This synthesis output was truncated due to model token limits. Consider using a model with higher output limits (like gpt-4.1 with 200k output tokens) or reducing the size of individual model outputs."
+		
+		// Add audit log entry for truncation
+		s.logAuditEvent(ctx, auditlog.AuditEntry{
+			Operation: "SynthesisTruncation",
+			Status:    "Warning",
+			Inputs: map[string]interface{}{
+				"synthesis_model": s.modelName,
+			},
+			Message: fmt.Sprintf("Synthesis output truncated for model %s", s.modelName),
+		})
+	}
+
 	// Log successful response processing
 	s.logAuditEvent(ctx, auditlog.AuditEntry{
 		Operation:  "SynthesisResponseProcessing",
