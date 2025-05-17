@@ -225,7 +225,7 @@
         1. Table of inputs/outputs for test cases.
     - **Depends‑on:** [T007]
 
-- [ ] **T021 · Test · P1: verify git-chglog changelog output for all commit types**
+- [x] **T021 · Test · P1: verify git-chglog changelog output for all commit types**
     - **Context:** PLAN.md "Testing Strategy"
     - **Action:**
         1. Generate changelog for sample history covering all configured types.
