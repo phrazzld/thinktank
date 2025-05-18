@@ -256,7 +256,7 @@
     - **Depends‑on:** [T014]
 
 ## Security & Permissions
-- [ ] **T024 · Feature · P0: configure GITHUB_TOKEN with correct permissions in CI**
+- [x] **T024 · Feature · P0: configure GITHUB_TOKEN with correct permissions in CI**
     - **Context:** PLAN.md "Security & Config"
     - **Action:**
         1. Ensure workflow uses `GITHUB_TOKEN` with `contents: write` (and `packages: write` if needed) and does not expose in logs.
