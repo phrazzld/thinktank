@@ -112,7 +112,7 @@ This project uses pre-commit hooks to ensure code quality and enforce Convention
    ```bash
    # Using pip
    pip install pre-commit
-   
+
    # Or using Homebrew on macOS
    brew install pre-commit
    ```
@@ -121,19 +121,16 @@ This project uses pre-commit hooks to ensure code quality and enforce Convention
    ```bash
    # Install all hooks
    pre-commit install
-   
+
    # Install commit message hook specifically
    pre-commit install --hook-type commit-msg
    ```
 
-3. **Install go-conventionalcommits** for commit message validation:
-   ```bash
-   # This tool is used by both pre-commit hooks and CI
-   go install github.com/leodido/go-conventionalcommits/cmd/go-conventionalcommits@latest
-   
-   # Verify installation
-   go-conventionalcommits --help
-   ```
+3. **Note on go-conventionalcommits**:
+
+   The project references `github.com/leodido/go-conventionalcommits` v0.12.0 in the tools.go file, but this is a Go library, not a command-line tool. It's used programmatically within the codebase for parsing conventional commit messages. No manual installation is required as it's managed through Go modules.
+
+   For commit message validation, this project uses different tools in pre-commit hooks and CI.
 
 ### Commit Message Format
 
@@ -143,7 +140,7 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 
 **Line length limits:**
 - Header (first line): Maximum 72 characters
-- Body lines: Maximum 100 characters  
+- Body lines: Maximum 100 characters
 - Footer lines: Maximum 100 characters
 
 **Examples of valid commit messages:**
@@ -189,16 +186,7 @@ git config core.hooksPath .commitlint/hooks
 
 ### Commit Message Validation Tools
 
-To validate commit messages locally before committing:
-
-```bash
-# Validate a commit message file
-go-conventionalcommits validate --msg-file <file>
-
-# Example: validate the last commit
-git log -1 --pretty=%B > last-commit.txt
-go-conventionalcommits validate --msg-file last-commit.txt
-```
+This project uses pre-commit hooks with `commitlint` for local commit message validation. The hooks are automatically run when you commit.
 
 ### Enforcement Policies
 
@@ -220,9 +208,9 @@ go-conventionalcommits validate --msg-file last-commit.txt
 - Solution: Keep the first line under 72 characters
 - Use the commit body (second paragraph) for additional details
 
-**Issue: go-conventionalcommits not found**
-- Solution: Install the tool with `go install github.com/leodido/go-conventionalcommits/cmd/go-conventionalcommits@latest`
-- Ensure `$GOPATH/bin` is in your PATH
+**Issue: Commit message validation failure**
+- Solution: Ensure your pre-commit hooks are properly installed with `pre-commit install --hook-type commit-msg`
+- Check that your commit message follows the Conventional Commits format
 
 **Issue: Breaking change not detected**
 - Solution: Use `!` after the type (e.g., `feat!:`) or include `BREAKING CHANGE:` in the footer

@@ -301,7 +301,7 @@
         1. Execute the `Makefile` target locally and verify the installed tool version
     - **Depends‑on:** none
 
-- [ ] **T028 · Chore · P1: update contributing.md for go-conventionalcommits installation**
+- [x] **T028 · Chore · P1: update contributing.md for go-conventionalcommits installation**
     - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
     - **Action:**
         1. Update `CONTRIBUTING.md` to instruct users to install `go-conventionalcommits` from `github.com/leodido/go-conventionalcommits` at version `v0.12.0`
