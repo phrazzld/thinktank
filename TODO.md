@@ -344,3 +344,120 @@
     - **Verification:**
         1. Check the CI dashboard/logs for green status on all jobs
     - **Depends‑on:** [T028, T030]
+
+## CI Resolution
+
+- [x] **T032 · Bugfix · P0: remove `go-conventionalcommits` installation from `release.yml`**
+    - **Context:** CI Resolution Plan - Phase 1: Remove Invalid Tool Installation; Implementation Steps - Step 1 (Remove `Install go-conventionalcommits` step)
+    - **Action:**
+        1. Edit `.github/workflows/release.yml`.
+        2. Remove the entire `Install go-conventionalcommits` step, including the `go install github.com/leodido/go-conventionalcommits@v0.12.0` command.
+    - **Done‑when:**
+        1. The `Install go-conventionalcommits` step is completely removed from `.github/workflows/release.yml`.
+        2. The CI pipeline no longer attempts to `go install` `go-conventionalcommits`.
+    - **Depends‑on:** none
+
+- [x] **T033 · Bugfix · P0: fix missing eof newline in `docs/ci-resolution-status.md`**
+    - **Context:** CI Resolution Plan - Phase 2: Fix Formatting Issues; Root Cause Analysis - Issue 2
+    - **Action:**
+        1. Run `pre-commit run --all-files` locally to fix formatting issues, specifically ensuring `docs/ci-resolution-status.md` has an end-of-file newline.
+        2. Commit the formatting fixes.
+    - **Done‑when:**
+        1. `docs/ci-resolution-status.md` has a trailing newline.
+        2. `pre-commit run --all-files` passes locally for `docs/ci-resolution-status.md` without making changes.
+        3. The `Lint and Format` CI job passes.
+    - **Depends‑on:** none
+
+- [ ] **T034 · Feature · P1: implement `commitlint-github-action` for commit validation in `release.yml`**
+    - **Context:** CI Resolution Plan - Phase 1 (Recommended Option B) & Phase 3; Implementation Steps - Step 1 (Replace validation step)
+    - **Action:**
+        1. Edit `.github/workflows/release.yml`.
+        2. Replace the existing `Validate Commit Messages` step (that previously used `go-conventionalcommits validate`) with the `wagoid/commitlint-github-action@v5` configuration.
+        3. Ensure the new step includes `if: github.event_name == 'pull_request'` and `with: configFile: .commitlintrc.yml`.
+    - **Done‑when:**
+        1. The `Validate Commit Messages` step in `.github/workflows/release.yml` uses `wagoid/commitlint-github-action@v5`.
+        2. Commit message validation is performed by the new GitHub Action on pull requests.
+    - **Verification:**
+        1. Push a commit with an invalid message to a PR; verify the CI step fails.
+        2. Push a commit with a valid message to a PR; verify the CI step passes.
+    - **Depends‑on:** [T035]
+
+- [ ] **T035 · Feature · P1: create and configure `.commitlintrc.yml` for conventional commits**
+    - **Context:** CI Resolution Plan - Phase 3: Implement Proper Commit Validation - Action 2
+    - **Action:**
+        1. Create a new file named `.commitlintrc.yml` in the repository root.
+        2. Populate `.commitlintrc.yml` with a standard configuration that enforces conventional commit message standards (e.g., extending `@commitlint/config-conventional`).
+    - **Done‑when:**
+        1. `.commitlintrc.yml` exists in the repository root.
+        2. The file contains a valid YAML configuration for `commitlint`.
+    - **Verification:**
+        1. Run `npx commitlint --edit` against a sample commit message locally to test the configuration.
+    - **Depends‑on:** none
+
+- [ ] **T036 · Test · P1: verify all CI checks pass on feature branch after fixes**
+    - **Context:** CI Resolution Plan - Phase 4: Verify Resolution
+    - **Action:**
+        1. Ensure changes from T032, T033, T034, and T035 are pushed to the designated feature branch.
+        2. Monitor the CI execution for this branch/PR on GitHub.
+    - **Done‑when:**
+        1. All CI workflows (including linting, testing, build, formatting, and commit message validation) complete successfully.
+        2. All checks are green on the GitHub PR.
+    - **Verification:**
+        1. Review the GitHub Actions logs for the feature branch to confirm no errors related to the resolved issues.
+    - **Depends‑on:** [T032, T033, T034]
+
+## Prevention Measures
+
+- [ ] **T037 · Chore · P2: document pre-commit hook requirement and setup in `CONTRIBUTING.md`**
+    - **Context:** CI Resolution Plan - Prevention Measures: 1. Enforce Pre-commit Hooks
+    - **Action:**
+        1. Update `CONTRIBUTING.md` to add a section explaining the requirement to use pre-commit hooks.
+        2. Include clear, step-by-step instructions for developers to install `pre-commit` and set up the project's hooks locally (e.g., `pre-commit install`).
+    - **Done‑when:**
+        1. `CONTRIBUTING.md` contains a clear section on mandatory pre-commit hook usage and setup.
+    - **Depends‑on:** none
+
+- [ ] **T038 · Chore · P3: create script to verify local pre-commit hook installation**
+    - **Context:** CI Resolution Plan - Prevention Measures: 1. Enforce Pre-commit Hooks
+    - **Action:**
+        1. Develop a simple shell script (e.g., `scripts/verify-hooks.sh`) that checks if pre-commit hooks are installed in the local `.git/hooks` directory.
+        2. If not installed, the script should prompt the user with instructions or a reference to `CONTRIBUTING.md`.
+    - **Done‑when:**
+        1. The verification script is created and executable.
+        2. The script correctly identifies if hooks are installed and provides guidance if they are not.
+    - **Verification:**
+        1. Run the script in a fresh clone without hooks installed to check its output.
+        2. Run the script after installing hooks to confirm it reports correctly.
+    - **Depends‑on:** [T037]
+
+- [ ] **T039 · Chore · P2: configure mandatory reviews for CI workflow changes**
+    - **Context:** CI Resolution Plan - Prevention Measures: 2. CI Configuration Reviews
+    - **Action:**
+        1. Configure repository settings (e.g., via GitHub branch protection rules and/or `CODEOWNERS` file).
+        2. Ensure that changes to files within `.github/workflows/` require at least one review and approval from a designated team member or group before merging.
+    - **Done‑when:**
+        1. Pull requests modifying files in `.github/workflows/` are blocked from merging without the required approvals.
+    - **Verification:**
+        1. Create a test PR with a change to a workflow file and attempt to merge without approval to confirm the restriction.
+    - **Depends‑on:** none
+
+- [ ] **T040 · Chore · P2: update developer documentation on Go tool installation (library vs. CLI)**
+    - **Context:** CI Resolution Plan - Prevention Measures: 3. Tool Documentation
+    - **Action:**
+        1. Add a section to the project's developer documentation (e.g., a new `docs/development/tooling.md` or an existing relevant guide).
+        2. Clearly explain the difference between installing Go libraries (typically not `go install` unless they have a `main` package) and Go CLI tools (which use `go install`).
+        3. Provide examples of correct installation commands for both types.
+    - **Done‑when:**
+        1. Developer documentation accurately distinguishes between Go library and CLI tool installation methods.
+        2. Examples of correct usage are provided.
+    - **Depends‑on:** none
+
+- [ ] **T041 · Chore · P3: create CI troubleshooting guide**
+    - **Context:** CI Resolution Plan - Prevention Measures: 4. Developer Education
+    - **Action:**
+        1. Create a new document (e.g., `docs/ci-troubleshooting.md`).
+        2. Populate it with common CI failure scenarios encountered in the project (including the `go install` issue and formatting violations) and their diagnostic/resolution steps.
+    - **Done‑when:**
+        1. A CI troubleshooting guide exists.
+        2. The guide covers the issues addressed in this plan and provides actionable advice.
+    - **Depends‑on:** none
