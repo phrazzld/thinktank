@@ -382,7 +382,7 @@
         2. Push a commit with a valid message to a PR; verify the CI step passes.
     - **Depends‑on:** [T035]
 
-- [ ] **T035 · Feature · P1: create and configure `.commitlintrc.yml` for conventional commits**
+- [x] **T035 · Feature · P1: create and configure `.commitlintrc.yml` for conventional commits**
     - **Context:** CI Resolution Plan - Phase 3: Implement Proper Commit Validation - Action 2
     - **Action:**
         1. Create a new file named `.commitlintrc.yml` in the repository root.

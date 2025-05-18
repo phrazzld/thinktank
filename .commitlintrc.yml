@@ -1,31 +1,13 @@
----
-# .commitlintrc.yml
-rules:
-  # Enforces body starts with blank line when body exists
-  body-leading-blank: [2, always]
-  # Enforces line length to be no more than 100 characters
-  body-max-line-length: [2, always, 100]
-  # Enforces commit message has a footer
-  footer-leading-blank: [2, always]
-  # Enforces line length to be no more than 100 characters
-  footer-max-line-length: [2, always, 100]
-  # Enforces header length to be no more than 72 characters
-  header-max-length: [2, always, 72]
-  # Enforces use of conventional commit types
-  # See: https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional
-  type-enum:
-    - 2
-    - always
-    - [build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test]
-  # Enforces scope
-  scope-case: [2, always, [camel-case, kebab-case, lower-case, snake-case]]
-  # Enforces subject is not empty
-  subject-empty: [2, never]
-  # Enforces subject is in lower case at the beginning
-  subject-case: [2, never, [upper-case, pascal-case, sentence-case, start-case]]
-  # Enforces subject does not have a period at the end
-  subject-full-stop: [2, never, '.']
-  # Enforces type is not empty
-  type-empty: [2, never]
-  # Enforces type case to be lower-case
-  type-case: [2, always, lower-case]
+# Commitlint configuration for enforcing conventional commit messages
+# This configuration extends the standard conventional commit rules
+# For more information: https://commitlint.js.org
+
+extends:
+  - '@commitlint/config-conventional'
+
+# The config-conventional preset includes rules for:
+# - Type: feat, fix, docs, style, refactor, test, chore, perf, ci, build, revert
+# - Scope: optional, lowercase
+# - Subject: lowercase, no period, no blank
+# - Body: optional
+# - Footer: optional
