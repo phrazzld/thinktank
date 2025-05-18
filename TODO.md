@@ -394,7 +394,7 @@
         1. Run `npx commitlint --edit` against a sample commit message locally to test the configuration.
     - **Depends‑on:** none
 
-- [ ] **T036 · Test · P1: verify all CI checks pass on feature branch after fixes**
+- [x] **T036 · Test · P1: verify all CI checks pass on feature branch after fixes**
     - **Context:** CI Resolution Plan - Phase 4: Verify Resolution
     - **Action:**
         1. Ensure changes from T032, T033, T034, and T035 are pushed to the designated feature branch.
