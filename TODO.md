@@ -279,7 +279,7 @@
         1. Trigger the CI pipeline and observe the tool installation logs for successful execution
     - **Depends‑on:** none
 
-- [ ] **T026 · Chore · P1: update go-conventionalcommits in tools.go**
+- [x] **T026 · Chore · P1: update go-conventionalcommits in tools.go**
     - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
     - **Action:**
         1. If `tools.go` exists, update its reference to `go-conventionalcommits` to use the path `github.com/leodido/go-conventionalcommits` and version `v0.12.0`

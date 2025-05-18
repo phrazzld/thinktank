@@ -23,6 +23,9 @@ import (
 	// commitlint for validating conventional commit messages
 	_ "github.com/conventionalcommit/commitlint"
 
+	// go-conventionalcommits for validating commit messages in pre-commit hooks
+	_ "github.com/leodido/go-conventionalcommits"
+
 	// goreleaser for automated releases
 	_ "github.com/goreleaser/goreleaser"
 )
@@ -38,9 +41,9 @@ import (
 // go install golang.org/x/vuln/cmd/govulncheck@latest
 // go install github.com/caarlos0/svu@latest
 // go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+// go install github.com/leodido/go-conventionalcommits@v0.12.0
 //
 // Note: Some tools mentioned in the codebase are either:
 // 1. Not Go packages (pre-commit-golang)
 // 2. Private repositories (phaedrus-dev/glance)
-// 3. Repositories that couldn't be found (commitdev/go-conventionalcommits)
 // These should be installed through alternative means like pip, brew, or directly from their repositories.

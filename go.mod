@@ -12,6 +12,7 @@ require (
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0
 	github.com/goreleaser/goreleaser v1.26.2
+	github.com/leodido/go-conventionalcommits v0.12.0
 	github.com/openai/openai-go v0.1.0-beta.10
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/time v0.11.0
