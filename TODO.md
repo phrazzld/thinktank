@@ -291,7 +291,7 @@
         1. Inspect `tools.go` (if present) and `go.mod` for the correct entries
     - **Depends‑on:** none
 
-- [ ] **T027 · Chore · P1: update go-conventionalcommits installation in makefile**
+- [x] **T027 · Chore · P1: update go-conventionalcommits installation in makefile**
     - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
     - **Action:**
         1. Update `Makefile` tool installation targets for `go-conventionalcommits` to use the path `github.com/leodido/go-conventionalcommits` and pin to version `v0.12.0`

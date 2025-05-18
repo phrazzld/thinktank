@@ -29,7 +29,13 @@ help:
 # Install required Go tools from tools.go
 tools:
 	@echo "Installing development tools..."
-	@grep -E "_ \".*\"" tools.go | sed -E 's/.*_ "(.*)"$$/\1/' | xargs -I{} go install {}@latest
+	@grep -E "_ \".*\"" tools.go | sed -E 's/.*_ "(.*)"$$/\1/' | while read pkg; do \
+		if [ "$$pkg" = "github.com/leodido/go-conventionalcommits" ]; then \
+			echo "Note: $$pkg is a library, not a CLI tool, skipping go install"; \
+		else \
+			go install $$pkg@latest; \
+		fi \
+	done
 	@echo "Tools installed successfully."
 	@echo "Note: Ensure $(shell go env GOPATH)/bin is in your PATH to use these tools."
 
