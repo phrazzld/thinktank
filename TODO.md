@@ -417,7 +417,7 @@
         1. `CONTRIBUTING.md` contains a clear section on mandatory pre-commit hook usage and setup.
     - **Depends‑on:** none
 
-- [ ] **T038 · Chore · P3: create script to verify local pre-commit hook installation**
+- [x] **T038 · Chore · P3: create script to verify local pre-commit hook installation**
     - **Context:** CI Resolution Plan - Prevention Measures: 1. Enforce Pre-commit Hooks
     - **Action:**
         1. Develop a simple shell script (e.g., `scripts/verify-hooks.sh`) that checks if pre-commit hooks are installed in the local `.git/hooks` directory.
