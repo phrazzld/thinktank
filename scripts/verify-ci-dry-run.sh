@@ -30,11 +30,11 @@ check_goreleaser_artifacts() {
 test_snapshot_locally() {
     echo "Testing goreleaser snapshot locally:"
     echo "Note: This requires goreleaser to be installed"
-    
+
     if command -v goreleaser &> /dev/null; then
         echo "Running goreleaser check..."
         goreleaser check || echo "Goreleaser check failed"
-        
+
         echo
         echo "Running goreleaser snapshot (dry-run)..."
         # Don't actually run this - just show the command
@@ -51,19 +51,19 @@ check_workflow() {
     echo "Verifying workflow configuration:"
     if [ -f ".github/workflows/release.yml" ]; then
         echo "✅ Release workflow found"
-        
+
         # Check for snapshot configuration
         if grep -q "goreleaser release --snapshot" .github/workflows/release.yml; then
             echo "✅ Snapshot mode configured for PR/master"
         else
             echo "❌ Snapshot mode not found"
         fi
-        
+
         # Check for proper conditions
         if grep -q "github.event_name == 'pull_request'" .github/workflows/release.yml; then
             echo "✅ PR trigger configured"
         fi
-        
+
         if grep -q "github.ref == 'refs/heads/master'" .github/workflows/release.yml; then
             echo "✅ Master branch trigger configured"
         fi
@@ -79,7 +79,7 @@ main() {
     check_recent_tags
     check_goreleaser_artifacts
     test_snapshot_locally
-    
+
     echo "Verification Complete!"
     echo "===================="
     echo

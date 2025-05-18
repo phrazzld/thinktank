@@ -8,7 +8,7 @@ January 14, 2025
 
 ## Test Methodology
 
-1. Created a test file `test-ci-validation.md` 
+1. Created a test file `test-ci-validation.md`
 2. Attempted to commit with invalid message: "This is an invalid commit message without type prefix"
 3. Pre-commit hook correctly blocked the commit locally
 4. Bypassed pre-commit hook using `--no-verify` flag
