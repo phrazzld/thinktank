@@ -267,22 +267,27 @@
     - **Depends‑on:** [T012]
 
 ## Open Questions / Clarifications
-- [ ] **Issue: clarify initial semantic version for migration**
+- [x] **Issue: clarify initial semantic version for migration**
     - **Context:** PLAN.md "Open Questions" #1
     - **Blocking?:** yes
+    - **Resolution:** v1.0.0 tag created in T018
 
 - [ ] **Issue: define prerelease workflow for alpha/beta/rc builds**
     - **Context:** PLAN.md "Open Questions" #2
     - **Blocking?:** no
+    - **Note:** CI already supports prerelease tags (v*-alpha, v*-beta, etc.), just needs documentation
 
 - [ ] **Issue: document hotfix process for older released versions**
     - **Context:** PLAN.md "Open Questions" #3
     - **Blocking?:** no
+    - **Note:** Would involve branch from old tag, cherry-pick fixes, create patch release
 
-- [ ] **Issue: finalize who/what commits CHANGELOG.md updates**
+- [x] **Issue: finalize who/what commits CHANGELOG.md updates**
     - **Context:** PLAN.md "Open Questions" #4
     - **Blocking?:** yes
+    - **Resolution:** Automated via git-chglog in CI, no manual edits
 
-- [ ] **Issue: review sufficiency of make tools / tools.go approach for all developer environments**
+- [x] **Issue: review sufficiency of make tools / tools.go approach for all developer environments**
     - **Context:** PLAN.md "Open Questions" #5
     - **Blocking?:** no
+    - **Resolution:** Current setup is sufficient and well-documented
