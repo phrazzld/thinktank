@@ -368,7 +368,7 @@
         3. The `Lint and Format` CI job passes.
     - **Depends‑on:** none
 
-- [ ] **T034 · Feature · P1: implement `commitlint-github-action` for commit validation in `release.yml`**
+- [x] **T034 · Feature · P1: implement `commitlint-github-action` for commit validation in `release.yml`**
     - **Context:** CI Resolution Plan - Phase 1 (Recommended Option B) & Phase 3; Implementation Steps - Step 1 (Replace validation step)
     - **Action:**
         1. Edit `.github/workflows/release.yml`.
