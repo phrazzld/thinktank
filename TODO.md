@@ -322,7 +322,7 @@
         1. Manually inspect the pre-commit configuration file
     - **Depends‑on:** none
 
-- [~] **T030 · Bugfix · P1: apply and commit formatting fixes using pre-commit**
+- [x] **T030 · Bugfix · P1: apply and commit formatting fixes using pre-commit**
     - **Context:** CI failure - Formatting Violations
     - **Action:**
         1. Run `pre-commit run --all-files` locally to fix all formatting issues (trailing whitespace, missing end-of-file newlines)
@@ -334,7 +334,7 @@
         1. Re-run `pre-commit run --all-files` locally to confirm no violations remain
     - **Depends‑on:** [T025, T026, T027, T029]
 
-- [ ] **T031 · Test · P0: verify all ci checks pass**
+- [x] **T031 · Test · P0: verify all ci checks pass**
     - **Context:** CI Resolution - Final verification
     - **Action:**
         1. Ensure all preceding fixes (T025-T030) are pushed to the relevant branch
