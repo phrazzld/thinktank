@@ -235,7 +235,7 @@
         1. Manual review of generated markdown.
     - **Depends‑on:** [T009]
 
-- [~] **T022 · Test · P1: verify full release pipeline (CI) in dry-run mode**
+- [x] **T022 · Test · P1: verify full release pipeline (CI) in dry-run mode**
     - **Context:** PLAN.md "Testing Strategy", "E2E (Release Process)"
     - **Action:**
         1. Run workflow for PRs and main pushes with `goreleaser --snapshot`, ensuring all steps pass and outputs are correct.
