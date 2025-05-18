@@ -311,7 +311,7 @@
         1. Review the updated `CONTRIBUTING.md` for clarity and correctness
     - **Depends‑on:** [T025, T026, T027]
 
-- [ ] **T029 · Refactor · P1: ensure pre-commit configuration covers all file types**
+- [x] **T029 · Refactor · P1: ensure pre-commit configuration covers all file types**
     - **Context:** CI failure - Formatting Violations
     - **Action:**
         1. Review `.pre-commit-config.yaml` to ensure hooks for trailing whitespace and end-of-file newlines cover all relevant file types (e.g., `.md`, `.sh`, `.yml`, Go files)
