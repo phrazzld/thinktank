@@ -441,7 +441,7 @@
         1. Create a test PR with a change to a workflow file and attempt to merge without approval to confirm the restriction.
     - **Depends‑on:** none
 
-- [ ] **T040 · Chore · P2: update developer documentation on Go tool installation (library vs. CLI)**
+- [x] **T040 · Chore · P2: update developer documentation on Go tool installation (library vs. CLI)**
     - **Context:** CI Resolution Plan - Prevention Measures: 3. Tool Documentation
     - **Action:**
         1. Add a section to the project's developer documentation (e.g., a new `docs/development/tooling.md` or an existing relevant guide).

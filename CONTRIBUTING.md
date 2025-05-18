@@ -132,6 +132,8 @@ This project uses pre-commit hooks to ensure code quality and enforce Convention
 
    For commit message validation, this project uses different tools in pre-commit hooks and CI.
 
+   For more information about Go libraries vs CLI tools, see our [Go Tool Installation Guide](docs/development/tooling.md).
+
 ### Commit Message Format
 
 All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated semantic versioning and changelog generation. **Non-compliant commits will be rejected by both local hooks and CI.**
