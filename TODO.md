@@ -408,7 +408,7 @@
 
 ## Prevention Measures
 
-- [ ] **T037 · Chore · P2: document pre-commit hook requirement and setup in `CONTRIBUTING.md`**
+- [x] **T037 · Chore · P2: document pre-commit hook requirement and setup in `CONTRIBUTING.md`**
     - **Context:** CI Resolution Plan - Prevention Measures: 1. Enforce Pre-commit Hooks
     - **Action:**
         1. Update `CONTRIBUTING.md` to add a section explaining the requirement to use pre-commit hooks.
