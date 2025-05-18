@@ -291,3 +291,82 @@
     - **Context:** PLAN.md "Open Questions" #5
     - **Blocking?:** no
     - **Resolution:** Current setup is sufficient and well-documented
+
+## CI Resolution Tasks
+
+- [ ] **T025 · Bugfix · P0: update go-conventionalcommits installation in ci workflow**
+    - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
+    - **Action:**
+        1. In `.github/workflows/release.yml`, update the `go-conventionalcommits` installation command to use the path `github.com/leodido/go-conventionalcommits`
+        2. Pin the tool version to `v0.12.0` instead of using `@latest`
+    - **Done‑when:**
+        1. The CI workflow step for installing `go-conventionalcommits` completes successfully using version `v0.12.0`
+    - **Verification:**
+        1. Trigger the CI pipeline and observe the tool installation logs for successful execution
+    - **Depends‑on:** none
+
+- [ ] **T026 · Chore · P1: update go-conventionalcommits in tools.go**
+    - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
+    - **Action:**
+        1. If `tools.go` exists, update its reference to `go-conventionalcommits` to use the path `github.com/leodido/go-conventionalcommits` and version `v0.12.0`
+        2. Run `go mod tidy` to reflect changes in `go.mod` and `go.sum`
+    - **Done‑when:**
+        1. `tools.go` (if present) is updated with the correct path and pinned version
+        2. `go mod tidy` completes without errors related to `go-conventionalcommits`
+    - **Verification:**
+        1. Inspect `tools.go` (if present) and `go.mod` for the correct entries
+    - **Depends‑on:** none
+
+- [ ] **T027 · Chore · P1: update go-conventionalcommits installation in makefile**
+    - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
+    - **Action:**
+        1. Update `Makefile` tool installation targets for `go-conventionalcommits` to use the path `github.com/leodido/go-conventionalcommits` and pin to version `v0.12.0`
+    - **Done‑when:**
+        1. Running the relevant `Makefile` target installs `go-conventionalcommits` version `v0.12.0` successfully
+    - **Verification:**
+        1. Execute the `Makefile` target locally and verify the installed tool version
+    - **Depends‑on:** none
+
+- [ ] **T028 · Chore · P1: update contributing.md for go-conventionalcommits installation**
+    - **Context:** CI failure - Go Tool Installation Failure (BLOCKING)
+    - **Action:**
+        1. Update `CONTRIBUTING.md` to instruct users to install `go-conventionalcommits` from `github.com/leodido/go-conventionalcommits` at version `v0.12.0`
+    - **Done‑when:**
+        1. `CONTRIBUTING.md` accurately reflects the correct installation path and pinned version
+    - **Verification:**
+        1. Review the updated `CONTRIBUTING.md` for clarity and correctness
+    - **Depends‑on:** [T025, T026, T027]
+
+- [ ] **T029 · Refactor · P1: ensure pre-commit configuration covers all file types**
+    - **Context:** CI failure - Formatting Violations
+    - **Action:**
+        1. Review `.pre-commit-config.yaml` to ensure hooks for trailing whitespace and end-of-file newlines cover all relevant file types (e.g., `.md`, `.sh`, `.yml`, Go files)
+        2. Add or adjust hook configurations if necessary
+    - **Done‑when:**
+        1. `.pre-commit-config.yaml` is confirmed or updated to provide comprehensive file type coverage for formatting
+    - **Verification:**
+        1. Manually inspect the pre-commit configuration file
+    - **Depends‑on:** none
+
+- [ ] **T030 · Bugfix · P1: apply and commit formatting fixes using pre-commit**
+    - **Context:** CI failure - Formatting Violations
+    - **Action:**
+        1. Run `pre-commit run --all-files` locally to fix all formatting issues (trailing whitespace, missing end-of-file newlines)
+        2. Commit the changes applied by the pre-commit hooks
+    - **Done‑when:**
+        1. `pre-commit run --all-files` reports no further changes needed
+        2. All formatting violations are fixed and the changes are committed
+    - **Verification:**
+        1. Re-run `pre-commit run --all-files` locally to confirm no violations remain
+    - **Depends‑on:** [T025, T026, T027, T029]
+
+- [ ] **T031 · Test · P0: verify all ci checks pass**
+    - **Context:** CI Resolution - Final verification
+    - **Action:**
+        1. Ensure all preceding fixes (T025-T030) are pushed to the relevant branch
+        2. Trigger and monitor the CI pipeline
+    - **Done‑when:**
+        1. The CI pipeline completes successfully, with all checks (tool installation, formatting, linting, tests, build) passing
+    - **Verification:**
+        1. Check the CI dashboard/logs for green status on all jobs
+    - **Depends‑on:** [T028, T030]
