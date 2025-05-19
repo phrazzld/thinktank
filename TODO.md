@@ -465,7 +465,7 @@
 ## CI Resolution Tasks (PR #24)
 
 ### Immediate Fixes
-- [ ] **T042 · Bugfix · P0: add missing trailing newline to docs/ci-troubleshooting.md**
+- [x] **T042 · Bugfix · P0: add missing trailing newline to docs/ci-troubleshooting.md**
     - **Context:** CI Resolution Plan > Resolution Steps > Priority 1: Fix Formatting Violation
     - **Action:**
         1. Add a trailing newline character to the end of the `docs/ci-troubleshooting.md` file.
