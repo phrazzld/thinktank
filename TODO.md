@@ -497,7 +497,7 @@
         3. Test that commits without hooks are rejected by CI
     - **Depends‑on:** none
 
-- [ ] **T043 · Chore · P1: remove leyline docs sync workflow**
+- [x] **T043 · Chore · P1: remove leyline docs sync workflow**
     - **Context:** Leyline project is still in development - we'll add this workflow back later
     - **Action:**
         1. Delete the `.github/workflows/leyline.yml` file
