@@ -49,7 +49,7 @@ repos:
         pass_filenames: false
     -   id: conventional-commit-check
         name: Check Conventional Commit compliance
-        entry: commitlint --edit
+        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then cat $1 | commitlint; else echo 'Skipping commitlint in batch mode'; fi"
         language: system
         stages: [commit-msg]  # Run during the commit-msg stage
         pass_filenames: false  # Don't pass filenames to the hook

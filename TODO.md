@@ -479,7 +479,7 @@
         1. Observe that the CI pipeline for PR #24 passes the formatting checks after the push.
     - **Depends‑on:** none
 
-- [ ] **T042a · Chore · P0: ensure git hooks are mandatory and auto-installed**
+- [x] **T042a · Chore · P0: ensure git hooks are mandatory and auto-installed**
     - **Context:** Missing EOF newlines should never reach CI - hooks exist but weren't installed/run locally
     - **Action:**
         1. Verify `.pre-commit-config.yaml` has `end-of-file-fixer` hook (already present)

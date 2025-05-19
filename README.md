@@ -22,12 +22,29 @@ thinktank --instructions task.txt ./my-project
 thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
 ```
 
-## Development Setup
+## Development Setup (MANDATORY for Contributors)
 
-When contributing to Thinktank, please note that we use:
-- **Conventional Commits** for all commit messages to enable semantic versioning
-- **Pre-commit hooks** for code quality and commit message validation
-- **Development tools** managed via `tools.go` and installable with `make tools`
+When contributing to Thinktank, please follow this setup process:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/phrazzld/thinktank.git
+cd thinktank
+
+# 2. Install development tools AND git hooks (REQUIRED)
+make tools
+
+# This automatically installs:
+# - All development tools from tools.go
+# - Pre-commit hooks for code formatting (EOF newlines, trailing spaces, etc.)
+# - Commit message validation for Conventional Commits
+# - Post-commit hooks for documentation updates
+```
+
+**Important Requirements:**
+- **Pre-commit hooks are MANDATORY** - They ensure code quality and prevent CI failures
+- **Conventional Commits are REQUIRED** - All commits must follow the specification
+- **No bypassing hooks** - Using `--no-verify` is strictly forbidden
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions and commit message examples.
 

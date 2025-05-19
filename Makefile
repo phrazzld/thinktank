@@ -8,7 +8,7 @@ SHELL := /bin/bash
 BINARY_NAME := thinktank
 GO_FILES := $(shell find . -name "*.go" -not -path "./vendor/*")
 
-.PHONY: help tools build test lint fmt clean vendor coverage cover-report
+.PHONY: help tools hooks build test lint fmt clean vendor coverage cover-report
 
 # Display help information about available targets
 help:
@@ -16,7 +16,8 @@ help:
 	@echo "=================="
 	@echo "Available targets:"
 	@echo "  help       - Display this help message"
-	@echo "  tools      - Install required development tools"
+	@echo "  tools      - Install required development tools and git hooks"
+	@echo "  hooks      - Install pre-commit hooks"
 	@echo "  build      - Build the project"
 	@echo "  test       - Run tests"
 	@echo "  lint       - Run linters"
@@ -26,8 +27,26 @@ help:
 	@echo "  coverage   - Run tests with coverage"
 	@echo "  cover-report - Generate HTML coverage report"
 
+# Install pre-commit hooks
+hooks:
+	@echo "Installing pre-commit hooks..."
+	@if ! command -v pre-commit &> /dev/null; then \
+		echo "Error: pre-commit is not installed. Install it with: pip install pre-commit"; \
+		exit 1; \
+	fi
+	@# Handle custom hooks path if set
+	@if git config core.hooksPath > /dev/null 2>&1; then \
+		echo "Removing custom hooks path to allow pre-commit installation..."; \
+		git config --unset-all core.hooksPath; \
+	fi
+	@pre-commit install --install-hooks
+	@pre-commit install --hook-type commit-msg
+	@pre-commit install --hook-type post-commit
+	@echo "Pre-commit hooks installed successfully."
+	@echo "All code formatting will be automatically checked and fixed on commit."
+
 # Install required Go tools from tools.go
-tools:
+tools: hooks
 	@echo "Installing development tools..."
 	@grep -E "_ \".*\"" tools.go | sed -E 's/.*_ "(.*)"$$/\1/' | while read pkg; do \
 		if [ "$$pkg" = "github.com/leodido/go-conventionalcommits" ]; then \

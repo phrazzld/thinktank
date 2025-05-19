@@ -105,17 +105,30 @@ else
 fi
 
 # Install git hooks
-print_header "Installing Git hooks"
+print_header "Installing Git hooks (MANDATORY)"
 if command -v pre-commit >/dev/null 2>&1; then
+    echo "Git hooks are MANDATORY for this project. Installing all required hooks..."
+
     # Install pre-commit hooks
     echo "Installing pre-commit hooks..."
-    pre-commit install
+    pre-commit install --install-hooks
 
     if [ $? -eq 0 ]; then
         print_success "Pre-commit hooks installed successfully"
     else
         print_error "Failed to install pre-commit hooks"
-        echo "Please try running 'pre-commit install' manually"
+        echo "Please try running 'pre-commit install --install-hooks' manually"
+    fi
+
+    # Install commit-msg hooks for conventional commit validation
+    echo "Installing commit-msg hooks..."
+    pre-commit install --hook-type commit-msg
+
+    if [ $? -eq 0 ]; then
+        print_success "Commit-msg hooks installed successfully"
+    else
+        print_error "Failed to install commit-msg hooks"
+        echo "Please try running 'pre-commit install --hook-type commit-msg' manually"
     fi
 
     # Install post-commit hooks
@@ -130,11 +143,13 @@ if command -v pre-commit >/dev/null 2>&1; then
     fi
 
     # Verify hook installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
-        print_success "Git hooks verified in .git/hooks/"
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ]; then
+        print_success "All Git hooks verified in .git/hooks/"
+        print_success "Code formatting and commit message validation are now active"
     else
-        print_warning "Hook files not found in .git/hooks/ directory"
+        print_warning "Some hook files not found in .git/hooks/ directory"
         echo "There may be an issue with your git configuration"
+        echo "Expected hooks: pre-commit, commit-msg, post-commit"
     fi
 
     # If glance is not installed, warn about post-commit hook potentially failing
@@ -223,16 +238,19 @@ reinstall_hooks() {
     pre-commit clean
 
     echo "Installing pre-commit hooks..."
-    pre-commit install
+    pre-commit install --install-hooks
+
+    echo "Installing commit-msg hooks..."
+    pre-commit install --hook-type commit-msg
 
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
 
     # Verify installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
-        print_success "Hooks reinstalled successfully"
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ]; then
+        print_success "All hooks reinstalled successfully"
     else
-        print_error "Hook reinstallation may have failed - hook files not found"
+        print_error "Hook reinstallation may have failed - some hook files not found"
     fi
 }
 

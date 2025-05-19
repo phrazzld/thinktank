@@ -77,10 +77,25 @@ git-chglog --version
 
 ### Development Workflow
 
+**FIRST TIME SETUP (REQUIRED):**
+```bash
+# Clone the repository
+git clone https://github.com/phrazzld/thinktank.git
+cd thinktank
+
+# Install all tools AND git hooks (MANDATORY)
+make tools
+
+# OR run the setup script for a more comprehensive setup
+./scripts/setup.sh
+```
+
 Our project provides several Make commands to streamline development:
 
 ```bash
 make help           # Display all available commands
+make tools          # Install all tools and git hooks (run this first!)
+make hooks          # Install only git hooks
 make build          # Build the project
 make test           # Run all tests
 make test-short     # Run short tests (faster)
@@ -102,11 +117,22 @@ We follow strict coding standards in this project, as detailed in our [Developme
 - Document the "why" (rationale), not just the "how" (mechanics)
 - Maintain high test coverage
 
-## Pre-commit Hooks and Commit Message Standards
+## Pre-commit Hooks and Commit Message Standards (MANDATORY)
 
-This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages. **All commits must follow these standards - bypassing validation is strictly forbidden.**
+This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages. **Pre-commit hooks are MANDATORY for all contributors. All commits must follow these standards - bypassing validation is strictly forbidden.**
 
-### Setting Up Pre-commit Hooks
+### IMPORTANT: Automatic Hook Installation
+
+Pre-commit hooks are automatically installed when you run:
+```bash
+make tools      # Installs all development tools AND git hooks
+# OR
+make hooks      # Installs only git hooks
+# OR
+./scripts/setup.sh  # Full development environment setup
+```
+
+### Manual Hook Installation (if automatic installation fails)
 
 1. **Install pre-commit** (if not already installed):
    ```bash
@@ -117,14 +143,22 @@ This project uses pre-commit hooks to ensure code quality and enforce Convention
    brew install pre-commit
    ```
 
-2. **Install the pre-commit hooks**:
+2. **Install ALL required hooks**:
    ```bash
-   # Install all hooks
-   pre-commit install
+   # Install pre-commit hooks with automatic fixes
+   pre-commit install --install-hooks
 
-   # Install commit message hook specifically
+   # Install commit message validation hook
    pre-commit install --hook-type commit-msg
+
+   # Install post-commit hooks
+   pre-commit install --hook-type post-commit
    ```
+
+### Hook Features
+- **Automatic Formatting**: EOF newlines, trailing whitespace, and Go formatting are automatically fixed on commit
+- **Commit Message Validation**: Ensures all commits follow Conventional Commits specification
+- **Code Quality Checks**: Runs linters and tests before allowing commits
 
 3. **Note on go-conventionalcommits**:
 
