@@ -452,7 +452,7 @@
         2. Examples of correct usage are provided.
     - **Depends‑on:** none
 
-- [ ] **T041 · Chore · P3: create CI troubleshooting guide**
+- [x] **T041 · Chore · P3: create CI troubleshooting guide**
     - **Context:** CI Resolution Plan - Prevention Measures: 4. Developer Education
     - **Action:**
         1. Create a new document (e.g., `docs/ci-troubleshooting.md`).
