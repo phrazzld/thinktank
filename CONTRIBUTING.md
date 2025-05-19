@@ -119,11 +119,14 @@ We follow strict coding standards in this project, as detailed in our [Developme
 
 ## Pre-commit Hooks and Commit Message Standards (MANDATORY)
 
-This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages. **Pre-commit hooks are MANDATORY for all contributors. All commits must follow these standards - bypassing validation is strictly forbidden.**
+This project uses pre-commit hooks to ensure code quality and enforce Conventional Commits for consistent commit messages.
 
-### IMPORTANT: Automatic Hook Installation
+**‼️ IMPORTANT: HOOKS ARE REQUIRED ‼️**  
+**Pre-commit hooks are ABSOLUTELY MANDATORY for all contributors without exception. The installation of these hooks is a non-negotiable prerequisite for contributing to this project. Bypassing hooks using `--no-verify` or any other method is STRICTLY FORBIDDEN and will result in your contributions being rejected.**
 
-Pre-commit hooks are automatically installed when you run:
+### Automatic Hook Installation (REQUIRED STEP)
+
+As part of the initial setup process, you MUST install the pre-commit hooks. This is automatically done when you run:
 ```bash
 make tools      # Installs all development tools AND git hooks
 # OR
@@ -132,7 +135,16 @@ make hooks      # Installs only git hooks
 ./scripts/setup.sh  # Full development environment setup
 ```
 
-### Manual Hook Installation (if automatic installation fails)
+**VERIFICATION:** After installation, verify hooks are properly installed by running:
+```bash
+pre-commit info
+```
+
+You should see confirmation that the hooks are installed for this repository.
+
+### Manual Hook Installation (ONLY if automatic installation fails)
+
+If for any reason the automatic installation fails, you MUST follow these steps:
 
 1. **Install pre-commit** (if not already installed):
    ```bash
@@ -155,10 +167,16 @@ make hooks      # Installs only git hooks
    pre-commit install --hook-type post-commit
    ```
 
-### Hook Features
+3. **Verify installation** (REQUIRED):
+   ```bash
+   pre-commit info
+   ```
+
+### Hook Features (Benefits of Mandatory Hooks)
 - **Automatic Formatting**: EOF newlines, trailing whitespace, and Go formatting are automatically fixed on commit
 - **Commit Message Validation**: Ensures all commits follow Conventional Commits specification
 - **Code Quality Checks**: Runs linters and tests before allowing commits
+- **Prevents CI Failures**: Ensures your code will pass CI checks before pushing
 
 3. **Note on go-conventionalcommits**:
 
@@ -226,12 +244,15 @@ This project uses pre-commit hooks with `commitlint` for local commit message va
 
 ### Enforcement Policies
 
-**Important:** The following policies are strictly enforced:
+**MANDATORY ENFORCEMENT:** The following policies are strictly enforced without exception:
 
-1. **No bypassing of pre-commit hooks**: Using `--no-verify` is forbidden and considered a violation of project standards
+1. **Absolutely NO bypassing of pre-commit hooks**: Using `--no-verify` or similar methods to bypass hooks is strictly forbidden and considered a **serious violation** of project standards
 2. **CI validation is mandatory**: All commits pushed to the repository will be validated by CI workflows
-3. **Conventional Commits are required**: Non-compliant commits will block the automated release process
+3. **Conventional Commits are required**: Non-compliant commits will block the automated release process and be rejected
 4. **All commits must pass validation**: Every commit in a PR or push must be individually compliant
+5. **No exceptions without approval**: Any exceptional circumstances requiring hook bypassing MUST be discussed and approved by project maintainers in advance
+
+**VIOLATIONS:** Pull requests containing commits that have bypassed hooks or do not conform to our standards will be rejected. Contributors who repeatedly bypass hooks may lose contribution privileges.
 
 ### Troubleshooting Common Issues
 

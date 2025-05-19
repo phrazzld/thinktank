@@ -508,7 +508,7 @@
     - **Depends‑on:** none
 
 ### Developer Experience & Standards
-- [ ] **T044 · Chore · P2: update CONTRIBUTING.md to mandate pre-commit hook installation and usage**
+- [x] **T044 · Chore · P2: update CONTRIBUTING.md to mandate pre-commit hook installation and usage**
     - **Context:** CI Resolution Plan > Prevention Measures > 1. Mandatory Pre-commit Hooks
     - **Action:**
         1. Modify `CONTRIBUTING.md` to clearly state that pre-commit hook installation (`pre-commit install`) and usage are mandatory for all contributors.
