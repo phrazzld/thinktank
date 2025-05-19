@@ -430,7 +430,7 @@
         2. Run the script after installing hooks to confirm it reports correctly.
     - **Depends‑on:** [T037]
 
-- [ ] **T039 · Chore · P2: configure mandatory reviews for CI workflow changes**
+- [x] **T039 · Chore · P2: configure mandatory reviews for CI workflow changes**
     - **Context:** CI Resolution Plan - Prevention Measures: 2. CI Configuration Reviews
     - **Action:**
         1. Configure repository settings (e.g., via GitHub branch protection rules and/or `CODEOWNERS` file).
@@ -461,3 +461,105 @@
         1. A CI troubleshooting guide exists.
         2. The guide covers the issues addressed in this plan and provides actionable advice.
     - **Depends‑on:** none
+
+## CI Resolution Tasks (PR #24)
+
+### Immediate Fixes
+- [ ] **T042 · Bugfix · P0: add missing trailing newline to docs/ci-troubleshooting.md**
+    - **Context:** CI Resolution Plan > Resolution Steps > Priority 1: Fix Formatting Violation
+    - **Action:**
+        1. Add a trailing newline character to the end of the `docs/ci-troubleshooting.md` file.
+        2. Run `pre-commit install` (if not already done) and then `pre-commit run --files docs/ci-troubleshooting.md` to verify the fix locally.
+        3. Commit the change with the message "fix: add missing trailing newline to ci-troubleshooting.md" and push to `feature/automated-semantic-versioning`.
+    - **Done‑when:**
+        1. `docs/ci-troubleshooting.md` has a trailing newline.
+        2. Local pre-commit check for `docs/ci-troubleshooting.md` passes.
+        3. The "Lint and Format" CI job for PR #24 passes.
+    - **Verification:**
+        1. Observe that the CI pipeline for PR #24 passes the formatting checks after the push.
+    - **Depends‑on:** none
+
+- [ ] **T042a · Chore · P0: ensure git hooks are mandatory and auto-installed**
+    - **Context:** Missing EOF newlines should never reach CI - hooks exist but weren't installed/run locally
+    - **Action:**
+        1. Verify `.pre-commit-config.yaml` has `end-of-file-fixer` hook (already present)
+        2. Add setup script or Makefile target to automatically install pre-commit hooks
+        3. Update CONTRIBUTING.md to emphasize mandatory pre-commit hook installation
+        4. Add CI check to verify commits went through pre-commit hooks
+        5. Consider adding a git hook installer to project setup/bootstrap process
+    - **Done‑when:**
+        1. Pre-commit hooks are automatically installed during project setup
+        2. Contributors cannot accidentally skip hook installation
+        3. CI verifies that commits were made with hooks enabled
+    - **Verification:**
+        1. Clone repo fresh and run setup process
+        2. Verify hooks are automatically installed
+        3. Test that commits without hooks are rejected by CI
+    - **Depends‑on:** none
+
+- [ ] **T043 · Chore · P1: remove leyline docs sync workflow**
+    - **Context:** Leyline project is still in development - we'll add this workflow back later
+    - **Action:**
+        1. Delete the `.github/workflows/leyline.yml` file
+        2. Commit the removal with message "chore: remove leyline docs sync workflow (project in development)"
+    - **Done‑when:**
+        1. Leyline sync workflow is removed from the repository
+        2. CI no longer runs the docs sync job
+    - **Depends‑on:** none
+
+### Developer Experience & Standards
+- [ ] **T044 · Chore · P2: update CONTRIBUTING.md to mandate pre-commit hook installation and usage**
+    - **Context:** CI Resolution Plan > Prevention Measures > 1. Mandatory Pre-commit Hooks
+    - **Action:**
+        1. Modify `CONTRIBUTING.md` to clearly state that pre-commit hook installation (`pre-commit install`) and usage are mandatory for all contributors.
+        2. Include concise instructions for installation and running hooks.
+        3. Document the policy that bypassing hooks (e.g., with `git commit --no-verify`) is prohibited except in explicitly documented and approved exceptions.
+    - **Done‑when:**
+        1. `CONTRIBUTING.md` is updated with the mandatory pre-commit hook policy and instructions.
+    - **Depends‑on:** none
+
+- [ ] **T045 · Chore · P2: review and enhance .pre-commit-config.yaml for comprehensive file coverage**
+    - **Context:** CI Resolution Plan > Prevention Measures > 2. Enhanced Pre-commit Configuration
+    - **Action:**
+        1. Audit the `.pre-commit-config.yaml` file.
+        2. Ensure hooks provide coverage for all key file types used in the project (Markdown, YAML, shell scripts, etc.).
+        3. Add or update hooks to implement more comprehensive checks as needed (e.g., specific linters, formatters).
+    - **Done‑when:**
+        1. `.pre-commit-config.yaml` is updated to provide comprehensive checks for relevant file types.
+        2. The configuration is tested locally by running `pre-commit run --all-files`.
+    - **Depends‑on:** none
+
+### Script & Code Quality
+### CI/CD Infrastructure & Process
+- [ ] **T046 · Refactor · P2: implement fail-fast principle in ci workflows**
+    - **Context:** CI Resolution Plan > Prevention Measures > 4. Improved CI Workflow Design
+    - **Action:**
+        1. Review existing GitHub Actions workflows in `.github/workflows/`.
+        2. Configure workflows to cancel or skip subsequent jobs/steps as soon as a critical job/step fails (e.g., using `jobs.<job_id>.if` conditions or workflow-level cancellation).
+    - **Done‑when:**
+        1. CI workflows are updated to halt or skip non-essential jobs promptly after a failure in a critical path.
+    - **Verification:**
+        1. Intentionally cause a failure in an early CI job and verify that dependent, non-critical jobs are skipped or the workflow run is cancelled quickly.
+    - **Depends‑on:** none
+
+- [ ] **T047 · Chore · P2: establish mandatory reviews for ci workflow changes via CODEOWNERS**
+    - **Context:** CI Resolution Plan > Prevention Measures > 4. Improved CI Workflow Design
+    - **Action:**
+        1. Create or update the `CODEOWNERS` file (e.g., in `.github/CODEOWNERS`).
+        2. Add an entry specifying a designated team or individuals as owners for the `.github/workflows/` directory.
+    - **Done‑when:**
+        1. The `CODEOWNERS` file is configured to automatically request reviews from the specified owners for any pull requests modifying files under `.github/workflows/`.
+    - **Verification:**
+        1. Open a test PR modifying a workflow file and confirm the designated CODEOWNERS are automatically added as reviewers.
+    - **Depends‑on:** none
+
+### Knowledge Management & Documentation
+- [ ] **T048 · Chore · P2: update docs/ci-troubleshooting.md with pr #24 incident details and lessons learned**
+    - **Context:** CI Resolution Plan > Prevention Measures > 6. Living Documentation
+    - **Action:**
+        1. Add new entries to `docs/ci-troubleshooting.md` detailing the formatting violation (T042) from PR #24.
+        2. For each issue, document the symptoms, root cause, and the resolution applied.
+        3. Include any general lessons learned that could help prevent similar issues.
+    - **Done‑when:**
+        1. `docs/ci-troubleshooting.md` is updated with comprehensive details of the PR #24 CI issues and their fixes.
+    - **Depends‑on:** [T042]

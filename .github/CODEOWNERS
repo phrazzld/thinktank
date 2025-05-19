@@ -1,0 +1,15 @@
+# CODEOWNERS
+# This file defines individuals or teams responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code they own.
+#
+# For more information: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Protect CI/CD workflows from unreviewed changes
+# Changes to any workflow files require review from designated maintainers
+# This helps prevent accidental or malicious modifications to build/release processes
+.github/workflows/ @phrazzld
+
+# Additional owners can be added as needed:
+# Example: /docs/ @documentation-team
+# Example: /src/security/ @security-team
