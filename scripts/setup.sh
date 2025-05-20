@@ -303,6 +303,24 @@ if [ -f ".git/hooks/pre-commit" ] || [ -f ".git/hooks/post-commit" ]; then
     fi
 fi
 
+# Set up commit template
+print_header "Setting up Git commit template"
+if [ -f "./scripts/setup-commit-template.sh" ]; then
+    echo "Configuring Git commit template..."
+    ./scripts/setup-commit-template.sh
+    if [ $? -eq 0 ]; then
+        print_success "Git commit template configured successfully"
+        echo "The template will be used for all new commits in this repository"
+    else
+        print_warning "Failed to configure Git commit template"
+        echo "You can set it up manually later by running:"
+        echo "  ./scripts/setup-commit-template.sh"
+    fi
+else
+    print_warning "setup-commit-template.sh not found, skipping commit template setup"
+    echo "You can set it up manually later if it becomes available"
+fi
+
 print_header "Setup Complete"
 echo "Your environment is now ready for development."
 echo "For more information, see the project README.md and hooks/README.md"

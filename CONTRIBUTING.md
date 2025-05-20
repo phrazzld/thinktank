@@ -241,6 +241,25 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 - Body lines: Maximum 100 characters
 - Footer lines: Maximum 100 characters
 
+#### Git Commit Template
+
+This project provides a standardized Git commit template to help you follow the conventional commit format. When you run the setup script (`./scripts/setup.sh`), it automatically configures Git to use this template.
+
+To manually set up the template:
+```bash
+# Configure Git to use our commit template
+./scripts/setup-commit-template.sh
+
+# Or directly with Git
+git config commit.template .github/commit-template.txt
+```
+
+Then, when you run `git commit` (without the `-m` flag), your editor will open with the template pre-filled, including:
+- Conventional commit format examples
+- Type definitions with descriptions
+- Format guidelines for body and footer
+- Breaking change notation examples
+
 **Examples of valid commit messages:**
 ```
 feat: add new file processing module

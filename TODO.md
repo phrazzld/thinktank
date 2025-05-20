@@ -631,7 +631,7 @@
         2. Verify the pre-push hook only warns about the new invalid commits.
     - **Depends‑on:** [T049]
 
-- [ ] **T053 · Chore · P2: create a repository-wide Git commit template**
+- [x] **T053 · Chore · P2: create a repository-wide Git commit template**
     - **Context:** CI Resolution Plan > Long-term Improvements
     - **Action:**
         1. Create `.github/commit-template.txt` with a template for conventional commits.
