@@ -1,15 +1,42 @@
 # CODEOWNERS
 # This file defines individuals or teams responsible for code in this repository.
 # Code owners are automatically requested for review when someone opens a pull request
-# that modifies code they own.
+# that modifies code they own. GitHub will automatically request reviews from code owners
+# when a pull request modifies any files that match the patterns defined in this file.
 #
 # For more information: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# Protect CI/CD workflows from unreviewed changes
-# Changes to any workflow files require review from designated maintainers
-# This helps prevent accidental or malicious modifications to build/release processes
-.github/workflows/ @phrazzld
+# ===== CRITICAL INFRASTRUCTURE =====
 
-# Additional owners can be added as needed:
-# Example: /docs/ @documentation-team
-# Example: /src/security/ @security-team
+# CI/CD Workflow Protection - MANDATORY REVIEWS
+# Changes to any workflow files require review from designated maintainers
+# This is a critical security measure to prevent accidental or malicious
+# modifications to build/release processes, which could lead to:
+#  - Broken CI/CD pipelines
+#  - Compromised builds
+#  - Unauthorized code changes
+#  - Supply chain attacks
+.github/workflows/ @phrazzld @org/ci-admins @devops-lead
+
+# GitHub Configuration
+# These files control repository settings and access controls
+.github/CODEOWNERS @phrazzld @org/repo-admins
+.github/ISSUE_TEMPLATE/ @phrazzld @org/repo-admins
+.github/PULL_REQUEST_TEMPLATE.md @phrazzld @org/repo-admins
+
+# ===== ADDITIONAL SECTIONS =====
+# Add more sections as needed for different parts of the codebase
+
+# Documentation
+# docs/ @org/docs-team
+
+# Security-critical components
+# security/ @org/security-team
+# auth/ @org/security-team
+
+# Core components
+# core/ @org/core-team
+
+# Note: Replace @org with your actual organization name and team names with
+# actual teams that exist in your organization. If teams do not exist yet,
+# use individual maintainers until proper teams are established.

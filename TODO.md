@@ -542,7 +542,7 @@
         1. Intentionally cause a failure in an early CI job and verify that dependent, non-critical jobs are skipped or the workflow run is cancelled quickly.
     - **Depends‑on:** none
 
-- [ ] **T047 · Chore · P2: establish mandatory reviews for ci workflow changes via CODEOWNERS**
+- [x] **T047 · Chore · P2: establish mandatory reviews for ci workflow changes via CODEOWNERS**
     - **Context:** CI Resolution Plan > Prevention Measures > 4. Improved CI Workflow Design
     - **Action:**
         1. Create or update the `CODEOWNERS` file (e.g., in `.github/CODEOWNERS`).
