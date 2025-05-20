@@ -48,12 +48,23 @@ module.exports = {
 };
 EOL
 
-# Create a helper script for validating PRs with baseline
-cat > scripts/validate-pr-commits.sh << EOL
+# Create validate-pr.sh if it doesn't exist
+if [ ! -f "scripts/validate-pr.sh" ]; then
+    # Create the validation script
+    cat > scripts/validate-pr.sh << EOL
 #!/bin/bash
-# validate-pr-commits.sh - Validate PR commits against conventional commits standard
+# validate-pr.sh - Validate PR commits against conventional commits standard
 # Only validates commits made after the baseline commit
+#
+# Usage:
+#   ./scripts/validate-pr.sh [branch] [base-branch]
+#
+# Examples:
+#   ./scripts/validate-pr.sh                  # Check current branch against master
+#   ./scripts/validate-pr.sh feature/foo      # Check feature/foo branch against master
+#   ./scripts/validate-pr.sh feature/foo main # Check feature/foo branch against main
 
+# The baseline commit SHA when conventional commits were established
 BASELINE_COMMIT="${BASELINE_COMMIT}"
 BRANCH=\${1:-HEAD}
 BASE_BRANCH=\${2:-master}
@@ -65,28 +76,51 @@ YELLOW='\033[0;33m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "\${BOLD}Validating commits in \${BRANCH} against \${BASE_BRANCH}${NC}"
-echo "Using baseline commit: \${BASELINE_COMMIT} (May 18, 2025)"
-echo "Only commits made after the baseline will be validated"
+# Print header
+echo -e "\${BOLD}PR Validation - Conventional Commits\${NC}"
+echo "Branch to validate: \${BRANCH}"
+echo "Base branch: \${BASE_BRANCH}"
+echo "Baseline commit: \${BASELINE_COMMIT} (May 18, 2025)"
+echo "Only commits made after the baseline will be validated."
+echo "--------------------------------------------------------"
 
 # Check if commitlint is available
 if ! command -v commitlint &> /dev/null; then
-    echo -e "\${RED}Error: commitlint is not installed${NC}"
+    echo -e "\${RED}Error: commitlint is not installed\${NC}"
     echo "Install with: npm install -g @commitlint/cli @commitlint/config-conventional"
     exit 1
 fi
 
+# Check that the branch exists
+if ! git rev-parse --verify \${BRANCH} &> /dev/null; then
+    echo -e "\${RED}Error: Branch '\${BRANCH}' does not exist\${NC}"
+    exit 1
+fi
+
+# Check that the base branch exists
+if ! git rev-parse --verify \${BASE_BRANCH} &> /dev/null; then
+    echo -e "\${RED}Error: Base branch '\${BASE_BRANCH}' does not exist\${NC}"
+    exit 1
+fi
+
 # Get the commits to validate (only those after the baseline)
-COMMITS=\$(git rev-list \${BASELINE_COMMIT}..\${BRANCH})
+echo "Getting commits to validate..."
+COMMITS=\$(git rev-list \${BASELINE_COMMIT}..\${BRANCH} --not \${BASE_BRANCH})
 
 if [ -z "\${COMMITS}" ]; then
-    echo -e "\${GREEN}No commits to validate after baseline${NC}"
+    echo -e "\${YELLOW}No commits to validate after baseline.\${NC}"
+    echo "This could mean:"
+    echo "  1. All commits in the PR were made before the baseline date"
+    echo "  2. There are no commits unique to this branch"
+    echo "  3. This branch is based on a version before the baseline"
+    echo ""
+    echo -e "\${GREEN}Validation completed: No issues found (no applicable commits)\${NC}"
     exit 0
 fi
 
 # Count commits to validate
 COMMIT_COUNT=\$(echo "\${COMMITS}" | wc -l | tr -d ' ')
-echo "Found \${COMMIT_COUNT} commits to validate"
+echo -e "\${BOLD}Found \${COMMIT_COUNT} commits to validate\${NC}"
 
 # Validate each commit
 FAILED=0
@@ -94,38 +128,53 @@ for COMMIT in \${COMMITS}; do
     COMMIT_MSG=\$(git log --format=%B -n 1 \${COMMIT})
     COMMIT_SHORT=\$(git log --format=%h -n 1 \${COMMIT})
     COMMIT_DATE=\$(git log --format=%ci -n 1 \${COMMIT})
+    COMMIT_AUTHOR=\$(git log --format="%an <%ae>" -n 1 \${COMMIT})
 
-    echo -e "\${BOLD}Checking commit \${COMMIT_SHORT} (\${COMMIT_DATE})${NC}"
+    echo ""
+    echo -e "\${BOLD}Checking commit \${COMMIT_SHORT}\${NC}"
+    echo "Date:   \${COMMIT_DATE}"
+    echo "Author: \${COMMIT_AUTHOR}"
 
     # Use echo to pipe the commit message to commitlint
-    if echo "\${COMMIT_MSG}" | commitlint --config .commitlintrc.yml; then
-        echo -e "\${GREEN}✓ Valid conventional commit${NC}"
+    if echo "\${COMMIT_MSG}" | commitlint; then
+        echo -e "\${GREEN}✓ Valid conventional commit\${NC}"
     else
-        echo -e "\${RED}✗ Invalid commit format${NC}"
+        echo -e "\${RED}✗ Invalid commit format\${NC}"
+        echo ""
         echo "Commit message:"
         echo "--------------"
         echo "\${COMMIT_MSG}"
         echo "--------------"
+        echo ""
+        echo "Fix tips:"
+        echo "  1. Format should be: <type>[optional scope]: <description>"
+        echo "  2. Valid types: feat, fix, docs, style, refactor, test, chore, ci, build, perf"
+        echo "  3. Use 'git commit --amend' to fix the most recent commit"
+        echo "  4. Use 'git rebase -i \${BASE_BRANCH}' to fix older commits"
+        echo ""
         FAILED=1
     fi
-    echo ""
 done
 
+echo ""
 if [ \${FAILED} -eq 0 ]; then
-    echo -e "\${GREEN}All commits passed validation${NC}"
+    echo -e "\${GREEN}Validation successful: All commits follow conventional commit format\${NC}"
+    echo "Your PR is ready to be submitted."
     exit 0
 else
-    echo -e "\${RED}Some commits failed validation${NC}"
-    echo "Please fix the commit messages or refer to docs/conventional-commits.md"
+    echo -e "\${RED}Validation failed: Some commits do not follow conventional commit format\${NC}"
+    echo "Please fix the commit messages before submitting your PR."
+    echo "For more details, see docs/conventional-commits.md"
     exit 1
 fi
 EOL
-
-# Make the script executable
-chmod +x scripts/validate-pr-commits.sh
+    chmod +x scripts/validate-pr.sh
+    print_success "Created PR validation script (scripts/validate-pr.sh)"
+else
+    print_success "PR validation script (scripts/validate-pr.sh) already exists"
+fi
 
 print_success "Created baseline-aware commitlint configuration"
-print_success "Created PR validation script"
 echo ""
 echo "You can now validate your PR commits with:"
-echo "  ./scripts/validate-pr-commits.sh"
+echo "  ./scripts/validate-pr.sh"

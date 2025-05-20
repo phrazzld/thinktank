@@ -599,7 +599,7 @@
         3. Make test commits with both valid and invalid formats and confirm hooks validate only according to the baseline policy.
     - **Depends‑on:** [T049]
 
-- [ ] **T051 · Feature · P2: create local PR validation script for commits with baseline exclusion**
+- [x] **T051 · Feature · P2: create local PR validation script for commits with baseline exclusion**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Create `scripts/validate-pr.sh` script that validates all commits against master.

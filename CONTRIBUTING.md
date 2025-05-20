@@ -151,9 +151,28 @@ You should see confirmation that the hooks are installed for this repository.
 
 **Validating your PR:** To check your branch for commit message compliance, run:
 ```bash
-./scripts/validate-pr-commits.sh
+./scripts/validate-pr.sh
 ```
-This will validate all commits in your branch that come after the baseline commit.
+
+This script will:
+- Only validate commits made after May 18, 2025 (baseline commit `1300e4d`)
+- Skip historical commits before the baseline date
+- Show detailed information about each commit being checked
+- Provide helpful error messages and fix tips for invalid commits
+
+Example usage:
+```bash
+# Check current branch against master
+./scripts/validate-pr.sh
+
+# Check a specific branch against master
+./scripts/validate-pr.sh feature/my-feature
+
+# Check a specific branch against a custom base branch
+./scripts/validate-pr.sh feature/my-feature main
+```
+
+Running this validation before submitting your PR will help you catch and fix any commit message issues early.
 
 ### Manual Hook Installation (ONLY if automatic installation fails)
 
