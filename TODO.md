@@ -554,7 +554,7 @@
     - **Depends‑on:** none
 
 ### Knowledge Management & Documentation
-- [ ] **T048 · Chore · P2: update docs/ci-troubleshooting.md with pr #24 incident details and lessons learned**
+- [x] **T048 · Chore · P2: update docs/ci-troubleshooting.md with pr #24 incident details and lessons learned**
     - **Context:** CI Resolution Plan > Prevention Measures > 6. Living Documentation
     - **Action:**
         1. Add new entries to `docs/ci-troubleshooting.md` detailing the formatting violation (T042) from PR #24.

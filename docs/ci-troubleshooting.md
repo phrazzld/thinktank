@@ -33,24 +33,45 @@ docs/ci-resolution-status.md: no newline at end of file
 ```
 
 #### Diagnosis
-Pre-commit hooks detect formatting issues that weren't fixed locally before committing.
+Pre-commit hooks detect formatting issues that weren't fixed locally before committing. This usually indicates that pre-commit hooks either:
+- Are not installed in the local repository
+- Were bypassed using `--no-verify` (not allowed per project policy)
+- Failed to run properly for some reason
 
 #### Resolution
-1. Run pre-commit hooks locally:
+1. Ensure pre-commit hooks are installed:
+   ```bash
+   pre-commit install
+   ```
+
+2. Run pre-commit hooks locally to fix issues:
    ```bash
    pre-commit run --all-files
    ```
-2. Accept the automatic fixes
-3. Commit the formatting changes:
+
+3. Accept the automatic fixes and commit:
    ```bash
    git add -A
    git commit -m "fix: apply formatting fixes"
    ```
 
+4. For persistent issues, verify your hook installation:
+   ```bash
+   ./scripts/verify-hooks.sh
+   ```
+
 **Common Issues:**
-- Missing EOF newlines in markdown files
+- Missing EOF newlines in markdown files (very common, see [PR #24 incident](#pr-24-missing-eof-newline-and-hook-installation-issues))
 - Trailing whitespace in shell scripts or YAML files
 - Inconsistent indentation
+- CRLF vs LF line endings in files
+
+**Prevention:**
+Always set up hooks immediately after cloning the repository:
+```bash
+# Install hooks (required before first commit)
+pre-commit install
+```
 
 ### 3. Invalid Commit Messages
 
@@ -173,6 +194,14 @@ go mod tidy
 go test ./...
 ```
 
+**Mandatory Pre-Push Checklist:**
+- ✅ Pre-commit hooks are installed (`pre-commit install`)
+- ✅ Running `pre-commit run --all-files` passes all checks
+- ✅ All tests are passing locally (`go test ./...`)
+- ✅ Code builds without errors (`go build ./...`)
+- ✅ Commit messages follow conventional commit format
+- ✅ No sensitive information is being committed
+
 ## CI Pipeline Overview
 
 Our CI pipeline includes these main stages:
@@ -201,3 +230,59 @@ If you encounter a CI issue not covered here:
 4. Update this guide with the solution once resolved
 
 Remember: CI failures are usually due to issues that can be caught locally. Always run pre-commit hooks and tests before pushing!
+
+## Recent Incidents and Lessons Learned
+
+This section documents specific CI incidents, their root causes, resolutions, and lessons learned to help prevent similar issues in the future.
+
+### PR #24: Missing EOF Newline and Hook Installation Issues
+
+#### Incident Summary
+- **Date:** May 2025
+- **PR:** #24 (feature/automated-semantic-versioning)
+- **Issue:** CI builds failing due to formatting violations
+- **Specifically:** Missing newline at end of file in `docs/ci-troubleshooting.md`
+
+#### Background
+PR #24 was implementing automated semantic versioning features. During the implementation, several commits were made that passed local checks but failed in CI due to formatting issues.
+
+#### Symptoms
+1. CI jobs failed with formatting errors:
+   ```
+   Formatting check failed
+   docs/ci-troubleshooting.md: no newline at end of file
+   ```
+2. Manual inspection showed that the file was missing the standard EOF newline character
+3. Pre-commit hooks should have caught and fixed this automatically
+
+#### Root Cause Analysis
+1. **Primary cause:** Pre-commit hooks were not installed or not running on the developer's local machine
+2. **Contributing factors:**
+   - Hook installation was recommended but not strictly enforced
+   - No CI check verified that hooks had run on committed files
+   - Documentation didn't sufficiently emphasize hook importance
+
+#### Resolution
+1. **Immediate fix (T042):**
+   - Added the missing EOF newline to `docs/ci-troubleshooting.md`
+   - Ran `pre-commit run --files docs/ci-troubleshooting.md` to verify
+   - Committed and pushed the fix
+
+2. **Systemic improvements:**
+   - Updated CONTRIBUTING.md to mandate pre-commit hook usage (T044)
+   - Enhanced `.pre-commit-config.yaml` for better file coverage (T045)
+   - Created script to verify hook installation (T038)
+   - Made hook installation part of standard setup process (T042a)
+
+#### Lessons Learned
+1. **Prevention > Resolution:** Formatting issues should never reach CI; they should be caught locally
+2. **Automate Enforcement:** Make proper tooling mandatory, not optional
+3. **Clear Documentation:** Clearly document the importance of hooks and proper setup
+4. **Fail Fast:** Implement verification steps early in CI to detect hook bypassing
+
+#### Related Tasks
+- T042: Fix missing EOF newline
+- T038: Create script to verify hook installation
+- T044: Update CONTRIBUTING.md for mandatory hooks
+- T045: Enhance pre-commit config
+- T042a: Make hook installation automatic
