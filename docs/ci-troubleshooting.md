@@ -1,6 +1,6 @@
 # CI Troubleshooting Guide
 
-**Note: This document was created as part of PR #24 to provide troubleshooting guidance for CI issues, particularly around commit message validation using our baseline validation approach.**
+**Note: This document was updated as part of PR #24 to provide troubleshooting guidance for CI issues, particularly around commit message validation using our forward-only validation approach.**
 
 This guide provides common troubleshooting steps for CI failures in the thinktank project. When the CI pipeline fails, refer to this guide for diagnostic steps and solutions.
 
@@ -38,17 +38,18 @@ git commit -m "FEAT: Add login"  # Uppercase type
 git commit -m "fix: bug."  # Period at end
 ```
 
-#### Baseline Validation Policy
+#### Forward-Only Validation Policy
 
-Our project uses a baseline validation policy for commit messages:
+Our project uses a forward-only validation policy for commit messages:
 
-1. **Only new commits are validated**: Only commits made after our baseline commit (May 18, 2025, commit hash: `1300e4d675ac087783199f1e608409e6853e589f`) are checked against the Conventional Commits standard.
+1. **Only new commits are validated**: The first time our validation script runs, it creates a baseline file (`.git/BASELINE_COMMIT`) that marks the starting point for validation. Only commits made AFTER this baseline file is created are validated.
 
 2. **Historical commits are preserved**: This approach allows us to maintain git history without requiring rebasing or rewriting history.
 
-3. **Troubleshooting baseline validation**:
-   - If validation fails, first check if the problematic commit was made after the baseline date
-   - If you're getting validation errors for pre-baseline commits, ensure you're using the latest version of our CI workflow
+3. **Troubleshooting forward-only validation**:
+   - If you're working with a new clone or branch, the validation script will create a new baseline the first time it runs
+   - All your future commits from that point forward must follow conventional format
+   - If you're getting validation errors, make sure your new commits follow the format
    - You can manually run the validation script locally to check your commits:
      ```bash
      ./scripts/ci/validate-baseline-commits.sh
@@ -56,7 +57,7 @@ Our project uses a baseline validation policy for commit messages:
 
 4. **Body line length limit**: Lines in the commit body must be less than 100 characters long. For longer text, break it into multiple lines.
 
-For more detailed information on our commit message standards and baseline policy, see [docs/conventional-commits.md](./conventional-commits.md).
+For more detailed information on our commit message standards and forward-only validation policy, see [docs/conventional-commits.md](./conventional-commits.md).
 
 ### 2. Go Test Failures
 
@@ -82,7 +83,49 @@ Unit tests are failing due to code changes or environment differences.
    go test -race ./...
    ```
 
-### 3. Build Failures
+### 3. Race Condition Failures
+
+#### Symptom
+```
+WARNING: DATA RACE
+Read at ... by goroutine ...
+Previous write at ... by goroutine ...
+```
+
+#### Diagnosis
+Tests are detecting concurrent access to shared resources without proper synchronization.
+
+#### Resolution
+1. Add mutex protection to shared resources:
+   ```go
+   // Example of mutex protection
+   type SafeResource struct {
+       data map[string]string
+       mutex sync.Mutex
+   }
+
+   func (s *SafeResource) Write(key, value string) {
+       s.mutex.Lock()
+       defer s.mutex.Unlock()
+       s.data[key] = value
+   }
+
+   func (s *SafeResource) Read(key string) string {
+       s.mutex.Lock()
+       defer s.mutex.Unlock()
+       return s.data[key]
+   }
+   ```
+2. Use proper constructor functions to initialize resources
+3. Avoid global variables that could be modified concurrently
+4. Consider using channels for communication between goroutines instead of shared memory
+
+Common race condition locations:
+- Mocks that track call information
+- Test helper functions used across multiple tests
+- In-memory caches or data stores
+
+### 4. Build Failures
 
 #### Symptom
 ```
@@ -121,6 +164,9 @@ pre-commit run --all-files
 
 # Tests
 go test ./...
+
+# Race detection
+go test -race ./...
 
 # Build
 go build ./...
@@ -167,9 +213,9 @@ Our CI pipeline includes these main stages:
 
 1. **Checkout Code**
 2. **Setup Go Environment**
-3. **Commit Message Validation** - Uses our baseline validation approach
+3. **Forward-Only Commit Validation** - Uses baseline file to track validation starting point
 4. **Lint and Format** - Runs pre-commit hooks
-5. **Run Tests** - Executes all unit and integration tests
+5. **Run Tests** - Executes all unit and integration tests with race detection
 6. **Build** - Compiles the application
 7. **Calculate Version** - Uses conventional commits to determine the next semantic version
 

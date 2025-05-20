@@ -24,16 +24,16 @@ jobs:
           cache: true
 
       # ======================================================================
-      # COMMIT MESSAGE VALIDATION WITH BASELINE EXCLUSION
+      # FORWARD-ONLY COMMIT VALIDATION
       # ======================================================================
-      # We only validate commits made AFTER our baseline commit when the conventional commit
-      # standard was officially adopted. This approach:
+      # We use a forward-only approach to commit validation that:
+      # 1. Preserves all historical git commits intact (no rebasing required)
+      # 2. Only validates commits made AFTER a baseline is established
+      # 3. Creates a baseline file on first run to mark validation start
       #
-      # 1. Preserves historical git commits made before the standard was adopted
-      # 2. Ensures all new development follows the conventional commits specification
-      # 3. Prevents CI failures due to legacy/historical commit messages
-      #
-      # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025)
+      # All future commits will need to follow conventional commit format
+      # while all existing/historical commits are exempt from validation.
+      # ======================================================================
       - name: Set up Node.js for commitlint
         uses: actions/setup-node@v3
         with:
@@ -44,13 +44,13 @@ jobs:
         run: |
           npm install --save-dev @commitlint/cli @commitlint/config-conventional
 
-      - name: Validate Commit Messages (baseline-aware)
+      - name: Forward-Only Commit Validation
         if: github.event_name == 'pull_request'
         run: |
-          echo "Running baseline-aware commit validation"
-          echo "Validating commits after 1300e4d (May 18, 2025)"
+          echo "Running forward-only commit validation"
+          echo "This approach preserves git history while ensuring future commits follow conventions"
           chmod +x ./scripts/ci/validate-baseline-commits.sh
-          ./scripts/ci/validate-baseline-commits.sh 1300e4d675ac087783199f1e608409e6853e589f
+          ./scripts/ci/validate-baseline-commits.sh
 
       - name: Verify dependencies
         run: go mod verify

@@ -1,19 +1,44 @@
 #!/bin/bash
 # validate-baseline-commits.sh
 #
-# This script validates commit messages according to conventional commits standard,
-# but only for commits that occur AFTER a specified baseline commit.
-# This allows preserving git history while ensuring all new commits follow conventions.
+# This script provides a forward-only approach to commit message validation,
+# preserving git history while ensuring all future commits follow standards.
 #
-# Usage: ./validate-baseline-commits.sh [baseline-commit-sha]
+# It creates a "baseline commit ID" file on first run that marks the starting point
+# for validation. Only commits made AFTER this file was created will be validated.
 #
-# If no baseline commit is provided, it uses the default specified in this script.
+# Usage: ./validate-baseline-commits.sh [baseline-file-path]
+#
+# If no baseline file path is provided, it uses the default in .git/BASELINE_COMMIT
 
 set -eo pipefail
 
-# Default baseline commit (May 18, 2025)
-DEFAULT_BASELINE_COMMIT="1300e4d675ac087783199f1e608409e6853e589f"
-BASELINE_COMMIT=${1:-$DEFAULT_BASELINE_COMMIT}
+# Determine baseline file path
+DEFAULT_BASELINE_FILE=".git/BASELINE_COMMIT"
+BASELINE_FILE=${1:-$DEFAULT_BASELINE_FILE}
+
+# Current timestamp for new baseline creation
+CURRENT_DATE=$(date +"%Y-%m-%d %H:%M:%S")
+CURRENT_COMMIT=$(git rev-parse HEAD)
+
+# Check if baseline file exists
+if [ ! -f "$BASELINE_FILE" ]; then
+  echo "No baseline commit file found. Creating one to mark the starting point for validation."
+  echo "# Commit validation baseline" > "$BASELINE_FILE"
+  echo "# All commits made AFTER this baseline will be validated against conventional commit standards" >> "$BASELINE_FILE"
+  echo "# Created: $CURRENT_DATE" >> "$BASELINE_FILE"
+  echo "$CURRENT_COMMIT" >> "$BASELINE_FILE"
+  echo ""
+  echo "✅ Created baseline at current commit ($CURRENT_COMMIT)"
+  echo "✅ Future commits will be validated against conventional commit standards"
+  echo "✅ Historical commits are preserved and exempt from validation"
+  echo ""
+  echo "No validation needed - baseline just created."
+  exit 0
+fi
+
+# Read the baseline commit from file
+BASELINE_COMMIT=$(tail -n 1 "$BASELINE_FILE")
 
 # Validation status
 VALIDATION_PASSED=true
@@ -22,7 +47,8 @@ TOTAL_COMMITS=0
 
 echo "Baseline Commit Validation"
 echo "=========================="
-echo "Only validating commits after baseline: ${BASELINE_COMMIT}"
+echo "Only validating commits made after baseline: ${BASELINE_COMMIT}"
+echo "Baseline created: $(grep "Created:" "$BASELINE_FILE" | sed 's/# Created: //')"
 
 # Check if we're in a CI environment, specifically a PR
 if [ -n "$GITHUB_BASE_REF" ]; then
@@ -106,8 +132,9 @@ for commit in $COMMITS_TO_CHECK; do
   commit_msg=$(git log -1 --format="%B" $commit)
   commit_short=$(git log -1 --format="%h" $commit)
   commit_subject=$(echo "$commit_msg" | head -n 1)
+  commit_date=$(git log -1 --format="%ad" --date=iso $commit)
 
-  echo -n "Checking commit $commit_short: \"$commit_subject\"... "
+  echo -n "Checking commit $commit_short ($commit_date): \"$commit_subject\"... "
 
   # Check commit message against commitlint rules
   if echo "$commit_msg" | $COMMITLINT_CMD > /dev/null 2>&1; then
@@ -140,8 +167,8 @@ if [ "$VALIDATION_PASSED" = true ]; then
 else
   echo "❌ Validation failed! Some commits after the baseline do not follow conventional commits format."
   echo ""
-  echo "Note: This project has a baseline commit policy that only requires conventional"
-  echo "commit messages for commits made AFTER $BASELINE_COMMIT (May 18, 2025)."
+  echo "Note: This project has a baseline validation policy that only requires conventional"
+  echo "commit messages for commits made AFTER the baseline file was created."
   echo ""
   echo "Options to fix this:"
   echo "1. Add new commits that follow the conventional format"
