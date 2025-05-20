@@ -90,6 +90,8 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     needs: lint
+    # Fail-fast: Only run if the lint job has succeeded
+    if: success()
     steps:
       # Checkout repository
       - name: Checkout code
@@ -216,6 +218,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: test
+    # Fail-fast: Only run if the test job has succeeded
+    if: success()
     steps:
       # Checkout repository
       - name: Checkout code
@@ -261,7 +265,8 @@ jobs:
   profile:
     name: Profile Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile_tests == 'true'
+    # Only run on manual trigger AND if the lint job has succeeded
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile_tests == 'true' && success()
     needs: lint
     steps:
       # Checkout repository
@@ -319,6 +324,8 @@ jobs:
     name: Calculate Version
     runs-on: ubuntu-latest
     needs: build
+    # Fail-fast: Only run if the build job has succeeded
+    if: success()
     steps:
       # Checkout repository with full history for proper version calculation
       - name: Checkout code
