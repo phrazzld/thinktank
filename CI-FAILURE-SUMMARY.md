@@ -1,62 +1,101 @@
-# CI Failure Summary
+# CI Failure Summary - Updated
 
-## Overview
-- **PR Number:** #24
-- **PR Title:** feat: implement automated semantic versioning and release workflow
-- **PR URL:** [PR #24](https://github.com/phrazzld/thinktank/pull/24)
+## Build Information
+- **PR:** #24 - "feat: implement automated semantic versioning"
 - **Branch:** feature/automated-semantic-versioning
-- **Failed Run ID:** 15137810387
-- **Failed Job:** Lint, Test & Build Check
-- **Failed Step:** Validate Commit Messages
+- **Trigger:** pull_request
+- **Run ID:** 15149138251
+- **Failing Job:** Lint, Test & Build Check
+- **Failing Step:** Validate Commit Messages (baseline-aware)
 
 ## Error Details
 
-The CI pipeline failed at the commit message validation step with the following errors:
+The CI pipeline is failing at the commit message validation step with multiple issues:
 
-1. Invalid commit message detected:
+1. **Invalid Configuration:**
+   ```
+   Unexpected input(s) 'fromRef', valid inputs are ['entryPoint', 'args', 'configFile', 'failOnWarnings', 'failOnErrors', 'helpURL', 'commitDepth', 'token']
+   ```
+
+2. **Invalid Commit Messages:**
    ```
    ⧗   input: This is an invalid commit message without type prefix
    ✖   subject may not be empty [subject-empty]
    ✖   type may not be empty [type-empty]
    ```
 
-2. Commit with warning:
    ```
    ⧗   input: docs: add PR #24 incident details to ci-troubleshooting guide
    ⚠   footer must have leading blank line [footer-leading-blank]
    ```
 
-## Pipeline Execution
+   ```
+   ⧗   input: feat(ci): update commit validation to use baseline commit
+   ✖   body's lines must not be longer than 100 characters [body-max-line-length]
+   ```
 
-The "CI and Release" workflow failed during the "Validate Commit Messages" step. The validation is performed by the `wagoid/commitlint-github-action@v5` GitHub Action, which checks commit messages against the rules defined in `.commitlintrc.yml`.
+## Affected Components
+- `.github/workflows/release.yml` - Commit validation configuration
+- `commitlint-github-action` configuration - Usage of unsupported `fromRef` parameter
 
-- The "Lint, Test & Build Check" job failed
-- The "Create Release" job was skipped due to the previous job failure (as expected with fail-fast configuration)
+## Root Cause Analysis
 
-## Recent Commit History
+1. **Primary Issue: Incompatible Parameter in GitHub Action**
+   - The CI is configured to use `wagoid/commitlint-github-action@v5` with a `fromRef` parameter
+   - This parameter is not supported by this version of the action
+   - The intended functionality was to only validate commits made after baseline commit `1300e4d`
 
-The 10 most recent commits on this branch:
+2. **Secondary Issue: Invalid Commit Messages in History**
+   - PR contains commits that don't follow the conventional commits standard
+   - Some commits predate the baseline commit (May 18, 2025) when the standard was adopted
+   - The PR includes at least one commit with no type prefix and others with formatting issues
 
-1. 04d7a4c docs: add PR #24 incident details to ci-troubleshooting guide
-2. fe23503 chore: enhance CODEOWNERS file for CI workflow protection
-3. b7c3244 refactor: implement fail-fast principle in CI workflows
-4. 82316bb chore: enhance pre-commit hooks for comprehensive file validation
-5. cbc1323 docs: strengthen pre-commit hook installation requirements
-6. f2ec09b chore: remove leyline docs sync workflow (project in development)
-7. 22f9952 chore: ensure git hooks are mandatory and auto-installed
-8. b9901e1 fix: add EOF newline to ci-troubleshooting.md
-9. 5d0e3cb chore: add CODEOWNERS for CI workflow protection
-10. 151d049 docs: create CI troubleshooting guide
+3. **Implementation Conflict: Baseline Validation Approach**
+   - Current CI configuration attempts to implement baseline validation
+   - The chosen method (`fromRef` parameter) is not supported by the action
+   - This creates a situation where historical commits fail validation but shouldn't
 
-## Observed Issues
+## Impact
+- PR #24 cannot be merged until CI passes
+- Current implementation of baseline validation is not working
+- The CI fails to properly implement the intended policy of only validating commits after baseline
 
-1. **Invalid Commit Message:** One of the commits in the history doesn't follow the Conventional Commits format. It's missing a type prefix entirely ("feat:", "fix:", etc.).
+## Previous Resolution Attempts
 
-2. **Footer Format Warning:** The most recent commit (docs: add PR #24 incident details...) has a warning about the commit footer. The commit body and footer should be separated by a blank line.
+The project has already implemented several tasks to address commit validation issues:
 
-## Relevant Files
+1. **Adding Baseline Validation (T049)**
+   - Updated CI workflow to only validate commits after baseline commit `1300e4d`
+   - Implemented to preserve git history while ensuring new commits follow conventions
 
-The following files are related to the failure:
+2. **CI Workflow Enhancements (T054)**
+   - Enhanced error messages to explicitly reference baseline validation policy
+   - Added documentation about baseline approach
+   - Improved clarity of error outputs
 
-1. `.commitlintrc.yml` - Contains the Conventional Commits validation rules
-2. `.github/workflows/release.yml` - Contains the CI workflow configuration
+3. **Commit Standards Documentation (T056)**
+   - Created comprehensive conventional commits reference guide
+   - Added quick reference examples and baseline documentation
+   - Documentation includes clear instructions for fixing invalid commits
+
+Despite these efforts, the current implementation using the `fromRef` parameter is causing configuration errors.
+
+## Recommended Resolution Path
+
+1. **Fix GitHub Action Configuration**
+   - Remove the unsupported `fromRef` parameter
+   - Implement a supported method for baseline validation
+   - Add clear documentation in the workflow file
+
+2. **Improve Error Messages**
+   - Update error messages to clearly explain the baseline validation policy
+   - Provide actionable guidance for contributors on resolving commit message issues
+
+3. **Fix Commit Message Formatting**
+   - Address the specific formatting issues in the recent commits
+   - Ensure commit body lines are under 100 characters in length
+   - Add required blank line before commit footers
+
+4. **Document Approach**
+   - Update documentation to explain the baseline validation approach
+   - Include information about the technical limitations encountered

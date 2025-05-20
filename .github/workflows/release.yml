@@ -1,19 +1,11 @@
----
 name: CI and Release
 
-'on':
+on:
   push:
-    branches:
-      - master
-    tags:
-      - 'v*'  # Matches tags like v1.0.0, v0.1.0-alpha
+    branches: [master]
+    tags: ['v*']
   pull_request:
-    branches:
-      - master
-
-permissions:
-  contents: write  # Required for goreleaser to create releases
-  id-token: write  # Optional: for OIDC if needed later
+    branches: [master]
 
 jobs:
   ci_checks:
@@ -21,16 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Required to get full history for commit validation
+          fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v4
         with:
-          go-version: 'stable'
+          go-version: '1.22'
           cache: true
-          cache-dependency-path: go.sum
 
       # ======================================================================
       # COMMIT MESSAGE VALIDATION WITH BASELINE EXCLUSION
@@ -43,18 +34,14 @@ jobs:
       # 3. Prevents CI failures due to legacy/historical commit messages
       #
       # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025)
-      #
-      # For details on our conventional commits policy and how to fix issues,
-      # see: docs/conventional-commits.md
-      # ======================================================================
       - name: Validate Commit Messages (baseline-aware)
         if: github.event_name == 'pull_request'
         uses: wagoid/commitlint-github-action@v5
         with:
           configFile: .commitlintrc.yml
-          # Only validate commits after our baseline date to preserve git history
-          fromRef: 1300e4d675ac087783199f1e608409e6853e589f
           helpURL: https://github.com/phrazzld/thinktank/blob/master/docs/conventional-commits.md
+          failOnWarnings: false
+          failOnErrors: true
         env:
           # Add a custom message that will appear in GitHub checks UI when validation fails
           GITHUB_FAILED_MESSAGE: |
@@ -73,7 +60,7 @@ jobs:
       - name: Check formatting
         run: |
           if [ -n "$(go fmt ./...)" ]; then
-            echo "Code is not formatted, run 'go fmt ./...'"
+            echo "::error::Code is not formatted, run 'go fmt ./...'"
             exit 1
           fi
 
@@ -81,23 +68,16 @@ jobs:
         run: go vet ./...
 
       - name: Install golangci-lint
-        run: |
-          INSTALLER_URL="https://raw.githubusercontent.com"
-          INSTALLER_URL="${INSTALLER_URL}/golangci/golangci-lint"
-          INSTALLER_URL="${INSTALLER_URL}/master/install.sh"
-          curl -sSfL "$INSTALLER_URL" | \
-            sh -s -- -b $(go env GOPATH)/bin v2.1.1
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
+
       - name: Run golangci-lint
-        run: $(go env GOPATH)/bin/golangci-lint run --timeout=5m
+        run: golangci-lint run --timeout 5m
 
       - name: Run tests
-        run: |
-          go test -v -race -coverprofile=coverage.out \
-            -covermode=atomic ./...
+        run: go test -v -race ./...
 
-      # Check coverage threshold (currently 64%)
       - name: Check coverage threshold
-        run: ./scripts/check-coverage.sh 64
+        run: ./scripts/check-coverage.sh 90
 
       - name: Build validation
         run: go build -v ./...
@@ -106,98 +86,78 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     needs: ci_checks
-    # Run on PRs, direct pushes to master, or v* tags AND ONLY if ci_checks passed
-    if: |
-      needs.ci_checks.result == 'success' &&
-      (github.event_name == 'pull_request' ||
-      (github.event_name == 'push' &&
-       (github.ref == 'refs/heads/master' ||
-        startsWith(github.ref, 'refs/tags/v'))))
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || success()
+    permissions:
+      contents: write
+      packages: write
     steps:
-      - name: Checkout full history
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Required for svu and git-chglog
+          fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v4
         with:
-          go-version: 'stable'
+          go-version: '1.22'
           cache: true
-          cache-dependency-path: go.sum
 
-      - name: Install Release Tools
-        run: |
-          go install github.com/caarlos0/svu@latest
-          go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
-          go install github.com/goreleaser/goreleaser@latest
+      - name: Install svu
+        run: go install github.com/caarlos0/svu@latest
 
-      - name: Determine Version
+      - name: Calculate Version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            # For PRs, calculate next potential version
-            VERSION=$(svu next)
-            echo "Determined next version for PR: $VERSION"
-          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-            # For master branch, calculate next potential version
-            VERSION=$(svu next)
-            echo "Determined next version for master: $VERSION"
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            # For tag pushes, use the tag name as the version
-            VERSION=${GITHUB_REF_NAME}
-            echo "Using version from tag: $VERSION"
+          # For tag pushes, use the tag name (without v prefix)
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            echo "VERSION=${VERSION:1}" >> $GITHUB_ENV  # Remove 'v' prefix
+            echo "IS_RELEASE=true" >> $GITHUB_ENV
+          # For PR builds, create a snapshot version
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            VERSION="$(svu next)-pr-${{ github.event.pull_request.number }}-snapshot"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
+          # For pushes to master, create a snapshot version
           else
-            echo "::error::Unexpected ref: ${{ github.ref }}"
-            exit 1
+            VERSION="$(svu next)-snapshot"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo "IS_RELEASE=false" >> $GITHUB_ENV
           fi
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          # Handle versions with or without 'v' prefix
-          if [[ "${VERSION}" == v* ]]; then
-            echo "RELEASE_TAG=${VERSION}" >> $GITHUB_OUTPUT
-          else
-            echo "RELEASE_TAG=v${VERSION}" >> $GITHUB_OUTPUT
-          fi
+          echo "Using version: $VERSION"
+
+      - name: Install git-chglog
+        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
 
       - name: Generate Changelog
         run: |
-          echo "Generating changelog for version \
-            ${{ steps.version.outputs.RELEASE_TAG }}"
-          git-chglog --next-tag \
-            "${{ steps.version.outputs.RELEASE_TAG }}" \
-            -o RELEASE_NOTES.md
-          echo "Changelog generated as RELEASE_NOTES.md"
-          echo "=== Changelog Preview ==="
-          cat RELEASE_NOTES.md
-          echo "======================="
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            git-chglog -o CHANGELOG.md --next-tag v$VERSION v$VERSION
+          else
+            git-chglog -o CHANGELOG.md
+          fi
 
-      - name: Run Goreleaser (Snapshot for PR/master, Release for tags)
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v5
+        with:
+          install-only: true
+
+      - name: Run GoReleaser
+        if: success()
+        run: |
+          if [[ "$IS_RELEASE" == "true" ]]; then
+            # Full release for tags
+            goreleaser release --release-notes=CHANGELOG.md --clean
+          else
+            # Snapshot release for PRs and master pushes
+            goreleaser release --snapshot --skip=announce,publish --release-notes=CHANGELOG.md --clean
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "Running Goreleaser in snapshot mode for PR..."
-            goreleaser release --snapshot --clean \
-              --release-notes RELEASE_NOTES.md
-          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
-            echo "Running Goreleaser in snapshot mode for master..."
-            goreleaser release --snapshot --clean \
-              --release-notes RELEASE_NOTES.md
-          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "Running Goreleaser for tag \
-              ${{ steps.version.outputs.RELEASE_TAG }}..."
-            # Goreleaser will use the current tag by default
-            # --release-notes will populate the GitHub release body
-            goreleaser release --clean \
-              --release-notes RELEASE_NOTES.md
-          fi
-      - name: Upload Artifacts (snapshot only)
-        if: |
-          success() &&
-          (github.event_name == 'pull_request' ||
-          github.ref == 'refs/heads/master')
-        uses: actions/upload-artifact@v4
+
+      - name: Upload artifacts
+        if: success()
+        uses: actions/upload-artifact@v3
         with:
-          name: thinktank-snapshot-${{ steps.version.outputs.VERSION }}
-          path: dist/
-          retention-days: 7
+          name: thinktank-${{ env.VERSION }}
+          path: dist/*
