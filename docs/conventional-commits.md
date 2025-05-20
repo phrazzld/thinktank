@@ -63,15 +63,47 @@ test: add integration tests for order processing
 chore: update dependency versions
 ```
 
-## Validation Tools
+## Validation and Assistance Tools
 
-The following tools enforce the conventional commit standard:
+The following tools help with conventional commit standards:
 
 1. **Pre-Commit Hook**: Validates commit messages during local development
 2. **Pre-Push Hook**: Validates commits before they are pushed to the remote repository
 3. **CI Pipeline**: Validates all commits in pull requests against the standard
+4. **Commitizen**: Interactive tool that guides you through creating conventional commits (optional but recommended)
+5. **Git Commit Template**: Pre-filled template to help structure your commit messages
 
-All three validation systems are configured to only check commits made after the baseline commit.
+All validation systems are configured to only check commits made after the baseline commit.
+
+### Using Commitizen
+
+[Commitizen](https://github.com/commitizen/cz-cli) is an interactive command-line tool that guides you through creating properly formatted conventional commit messages. It's particularly helpful if you're new to the conventional commits format or want to ensure you don't miss important components.
+
+To use Commitizen:
+
+```bash
+# One-time setup: Install dependencies
+npm install
+
+# Option 1: Use the script
+./scripts/commit.sh
+
+# Option 2: Use Make
+make commit
+
+# Option 3: Use npm directly
+npm run commit
+```
+
+The tool will prompt you to:
+- Select a commit type (feat, fix, docs, etc.)
+- Enter a scope (optional)
+- Write a short description
+- Provide a longer description (optional)
+- Indicate if there are breaking changes
+- Reference issues (optional)
+
+Commitizen ensures your commits follow the conventional format without having to remember all the details.
 
 ## Fixing Invalid Commit Messages
 

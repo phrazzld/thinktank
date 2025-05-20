@@ -77,4 +77,8 @@ test_output_*.md
 # Development symlinks
 docs/prompts
 
+# Node.js dependencies (for Commitizen)
+node_modules/
+package-lock.json
+
 **/.claude/settings.local.json

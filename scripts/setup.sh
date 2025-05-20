@@ -321,9 +321,44 @@ else
     echo "You can set it up manually later if it becomes available"
 fi
 
+# Set up Commitizen for guided commit creation
+print_header "Setting up Commitizen (optional)"
+if [ -f "./package.json" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        echo "Commitizen is available for guided commit creation."
+        echo "Would you like to install the Node.js dependencies for Commitizen? (y/n)"
+        read -r INSTALL_COMMITIZEN
+
+        if [[ $INSTALL_COMMITIZEN =~ ^[Yy]$ ]] || [[ -z $INSTALL_COMMITIZEN ]]; then
+            echo "Installing Commitizen dependencies..."
+            npm install
+
+            if [ $? -eq 0 ]; then
+                print_success "Commitizen dependencies installed successfully"
+                echo "You can now use guided commit creation with:"
+                echo "  ./scripts/commit.sh  or  make commit  or  npm run commit"
+            else
+                print_error "Failed to install Commitizen dependencies"
+                echo "You can try installing them manually with 'npm install'"
+            fi
+        else
+            print_warning "Commitizen dependency installation skipped"
+            echo "You can install them later with 'npm install' if you want to use guided commit creation"
+        fi
+    else
+        print_warning "Node.js/npm is not installed"
+        echo "If you want to use Commitizen for guided commit creation, you'll need to:"
+        echo "1. Install Node.js from https://nodejs.org/"
+        echo "2. Run 'npm install' in this directory"
+    fi
+else
+    print_warning "package.json not found, skipping Commitizen setup"
+    echo "Commitizen configuration may not be properly set up in this repository"
+fi
+
 print_header "Setup Complete"
 echo "Your environment is now ready for development."
-echo "For more information, see the project README.md and hooks/README.md"
+echo "For more information, see the project README.md and CONTRIBUTING.md"
 echo ""
 echo "If you encounter issues with Git hooks, you can run this script again"
 echo "or follow the manual reinstallation steps in hooks/README.md"

@@ -236,6 +236,42 @@ All commits must follow the [Conventional Commits](https://www.conventionalcommi
 
 **For detailed guidance, including our baseline validation policy, see [docs/conventional-commits.md](docs/conventional-commits.md).**
 
+#### Guided Commit Creation with Commitizen
+
+This project supports guided commit creation using Commitizen. This tool provides an interactive interface that helps you build properly formatted conventional commit messages.
+
+**Installation:**
+```bash
+# Install Node.js dependencies (one-time setup)
+npm install
+```
+
+**Usage:**
+```bash
+# Option 1: Using the provided script
+./scripts/commit.sh
+
+# Option 2: Using Make
+make commit
+
+# Option 3: Using npm directly
+npm run commit
+```
+
+The interactive prompt will guide you through:
+1. Selecting the type of change (feat, fix, docs, etc.)
+2. Adding an optional scope
+3. Writing a short description
+4. Adding optional longer description
+5. Mentioning breaking changes (if any)
+6. Referencing issues (if applicable)
+
+Commitizen is optional but recommended, especially for contributors who are new to conventional commits.
+
+#### Manual Commit Format
+
+If not using Commitizen, ensure your commits follow this format:
+
 **Format:** `<type>[optional scope]: <description>`
 
 **Line length limits:**

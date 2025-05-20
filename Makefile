@@ -8,7 +8,7 @@ SHELL := /bin/bash
 BINARY_NAME := thinktank
 GO_FILES := $(shell find . -name "*.go" -not -path "./vendor/*")
 
-.PHONY: help tools hooks build test lint fmt clean vendor coverage cover-report
+.PHONY: help tools hooks build test lint fmt clean vendor coverage cover-report commit
 
 # Display help information about available targets
 help:
@@ -18,6 +18,7 @@ help:
 	@echo "  help       - Display this help message"
 	@echo "  tools      - Install required development tools and git hooks"
 	@echo "  hooks      - Install pre-commit hooks"
+	@echo "  commit     - Run guided commit creation with Commitizen"
 	@echo "  build      - Build the project"
 	@echo "  test       - Run tests"
 	@echo "  lint       - Run linters"
@@ -112,6 +113,11 @@ vendor:
 	@echo "Updating vendor directory..."
 	@go mod vendor
 	@go mod tidy
+
+# Run Commitizen for guided commit creation
+commit:
+	@echo "Starting guided commit creation..."
+	@./scripts/commit.sh
 
 # Default target is help
 .DEFAULT_GOAL := help

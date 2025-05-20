@@ -662,7 +662,7 @@
         2. Verify the CI failure provides clear, actionable instructions that reference the baseline approach.
     - **Depends‑on:** [T049]
 
-- [ ] **T055 · Feature · P3: implement Commitizen for guided commit creation**
+- [x] **T055 · Feature · P3: implement Commitizen for guided commit creation**
     - **Context:** CI Resolution Plan > Long-term Improvements
     - **Action:**
         1. Add Commitizen to the project for guided commit message creation.

@@ -298,7 +298,17 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for all comm
 
 **Important:** Our commit message validation only applies to commits made after May 18, 2025 (baseline commit `1300e4d`). This approach preserves git history while enforcing standards for all new development.
 
-For detailed information about our commit message validation policy, see [docs/conventional-commits.md](docs/conventional-commits.md).
+#### Guided Commit Creation
+
+This project supports guided commit creation using [Commitizen](https://github.com/commitizen/cz-cli), which helps you create properly formatted commit messages through an interactive interface. Use one of these commands:
+
+```bash
+./scripts/commit.sh   # Using the script
+make commit           # Using Make
+npm run commit        # Using npm directly
+```
+
+For detailed information about our commit message validation policy and tools, see [docs/conventional-commits.md](docs/conventional-commits.md).
 
 #### Format
 
