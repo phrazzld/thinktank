@@ -677,7 +677,7 @@
         2. Create a commit using the tool and verify it passes all commit message checks.
     - **Depends‑on:** [T049]
 
-- [ ] **T056 · Chore · P2: create a quick reference guide for conventional commits with baseline policy**
+- [x] **T056 · Chore · P2: create a quick reference guide for conventional commits with baseline policy**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Create `docs/conventional-commits.md` with a concise guide to the required format.
