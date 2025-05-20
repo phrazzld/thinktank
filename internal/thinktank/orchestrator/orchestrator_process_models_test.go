@@ -72,7 +72,7 @@ func TestProcessModelsEmptyOutputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mocks
 			mockAPIService := &MockAPIService{}
-			mockFileWriter := &MockFileWriter{}
+			mockFileWriter := NewMockFileWriter()
 			mockContextGatherer := &MockContextGatherer{}
 			mockAuditLogger := &MockAuditLogger{}
 			mockLogger := &MockLogger{}

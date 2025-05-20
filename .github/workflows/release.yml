@@ -34,25 +34,23 @@ jobs:
       # 3. Prevents CI failures due to legacy/historical commit messages
       #
       # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025)
+      - name: Set up Node.js for commitlint
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
       - name: Validate Commit Messages (baseline-aware)
         if: github.event_name == 'pull_request'
-        uses: wagoid/commitlint-github-action@v5
-        with:
-          configFile: .commitlintrc.yml
-          helpURL: https://github.com/phrazzld/thinktank/blob/master/docs/conventional-commits.md
-          failOnWarnings: false
-          failOnErrors: true
-        env:
-          # Add a custom message that will appear in GitHub checks UI when validation fails
-          GITHUB_FAILED_MESSAGE: |
-            ❌ Some commit messages don't follow the Conventional Commits standard.
-
-            Note: Only commits made AFTER May 18, 2025 (baseline: 1300e4d) are validated.
-
-            Please fix any invalid commit messages. See docs/conventional-commits.md for:
-            - Our baseline validation policy
-            - Commit message format requirements
-            - Instructions for fixing commit messages
+        run: |
+          echo "Running baseline-aware commit validation"
+          echo "Validating commits after 1300e4d (May 18, 2025)"
+          chmod +x ./scripts/ci/validate-baseline-commits.sh
+          ./scripts/ci/validate-baseline-commits.sh 1300e4d675ac087783199f1e608409e6853e589f
 
       - name: Verify dependencies
         run: go mod verify

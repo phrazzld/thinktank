@@ -24,6 +24,8 @@ jobs:
       # Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for baseline validation
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
@@ -77,8 +79,28 @@ jobs:
         run: |
           pip install pre-commit
 
-      # Run pre-commit checks with baseline-aware commit validation
-      # See docs/conventional-commits.md for our baseline validation policy
+      # Set up Node.js for commitlint
+      - name: Set up Node.js for commitlint
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # Install commitlint
+      - name: Install commitlint
+        run: |
+          npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
+      # Run baseline-aware commit validation
+      - name: Validate Commit Messages (baseline-aware)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running baseline-aware commit validation"
+          echo "Only commits made after May 18, 2025 (baseline: 1300e4d) are validated"
+          chmod +x ./scripts/ci/validate-baseline-commits.sh
+          ./scripts/ci/validate-baseline-commits.sh 1300e4d675ac087783199f1e608409e6853e589f
+
+      # Run pre-commit checks
       - name: Run pre-commit checks
         run: |
           echo "Running pre-commit checks (baseline-aware validation)"
@@ -195,8 +217,8 @@ jobs:
           echo ""
           # Display detailed per-package coverage
           ./scripts/check-package-coverage.sh 64 || true # Don't fail here, the next step does enforcement
-                                                         # NOTE: Temporarily lowered to 64% to allow for test development
-                                                         # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
+                                                       # NOTE: Temporarily lowered to 64% to allow for test development
+                                                       # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact

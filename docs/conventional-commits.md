@@ -18,6 +18,7 @@
 - [Benefits of Conventional Commits](#benefits-of-conventional-commits)
 - [Best Practices](#best-practices)
 - [Additional Resources](#additional-resources)
+- [Baseline Validation Policy](#baseline-validation-policy)
 
 ## 🔍 Quick Reference
 
@@ -310,3 +311,32 @@ Follow these guidelines to write effective conventional commit messages:
 - [Our CI/CD Pipeline Documentation](ci-troubleshooting.md)
 - [Git Commit Message Guide](https://chris.beams.io/posts/git-commit/)
 - [Commitizen CLI Tool](https://github.com/commitizen/cz-cli)
+
+## Baseline Validation Policy
+
+This project implements a baseline validation policy for commit messages. This approach allows us to:
+
+1. **Preserve Git History**: We keep our git history intact, including commits made before adopting the conventional commit standard
+2. **Enforce Standards Going Forward**: All new development after the baseline date must follow the standard
+3. **Avoid Unnecessary Rebasing**: We don't need to rewrite history which could cause issues for contributors
+
+### How It Works
+
+- **Baseline Commit**: `1300e4d675ac087783199f1e608409e6853e589f` (May 18, 2025)
+- **Implementation**: Our CI pipeline and pre-commit hooks are configured to only validate commits made after this baseline commit
+- **Script**: We use a custom script (`scripts/ci/validate-baseline-commits.sh`) that filters out commits before the baseline
+
+### For Contributors
+
+- If you're working on code after May 18, 2025, all your commits need to follow the conventional commit format
+- Historical commits (before the baseline) won't be validated or trigger CI failures
+- You can run the baseline validation script locally to check your commits:
+  ```bash
+  ./scripts/ci/validate-baseline-commits.sh
+  ```
+
+### CI Integration
+
+Our CI pipeline automatically handles this using the baseline validation script. When a pull request is created, only commits made after the baseline date are validated against the conventional commit standard.
+
+This approach ensures we maintain a high quality of commit messages going forward while respecting the project's history.

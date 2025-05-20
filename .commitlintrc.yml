@@ -11,3 +11,12 @@ extends:
 # - Subject: lowercase, no period, no blank
 # - Body: optional
 # - Footer: optional
+
+# Rules customizations
+rules:
+  body-max-line-length: [2, 'always', 100]
+  footer-leading-blank: [1, 'always']
+
+# Note: This configuration is meant to be used with scripts/ci/validate-baseline-commits.sh
+# which only validates commits made after our baseline commit (May 18, 2025)
+# Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f

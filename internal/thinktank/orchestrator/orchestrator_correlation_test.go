@@ -28,7 +28,7 @@ func TestCorrelationIDPropagation(t *testing.T) {
 	// Create test dependencies
 	mockAPIService := &MockAPIService{}
 	mockContextGatherer := &MockContextGatherer{}
-	mockFileWriter := &MockFileWriter{}
+	mockFileWriter := NewMockFileWriter()
 	mockAuditLogger := &MockAuditLogger{}
 	rateLimiter := ratelimit.NewRateLimiter(0, 0)
 

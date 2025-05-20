@@ -1,99 +1,35 @@
 # CI Troubleshooting Guide
 
+**Note: This document was created as part of PR #24 to provide troubleshooting guidance for CI issues, particularly around commit message validation using our baseline validation approach.**
+
 This guide provides common troubleshooting steps for CI failures in the thinktank project. When the CI pipeline fails, refer to this guide for diagnostic steps and solutions.
 
 ## Common CI Failures
 
-### 1. Go Tool Installation Issues
-
-#### Symptom
-```
-Error: failed to install go tools: exit status 1
-error obtaining VCS status: exit status 128
-package <package> is not a main package
-```
-
-#### Diagnosis
-This typically occurs when attempting to `go install` a Go library instead of a CLI tool. Go libraries cannot be installed as executables - only packages with a `main` function can.
-
-#### Resolution
-1. Verify the package is actually a CLI tool (contains a `main` package)
-2. Check if you should be adding it as a dependency in `go.mod` instead
-3. If it's a library being used in testing/linting, ensure it's properly referenced in tool configuration files
-
-**Example Issue:** The `go-conventionalcommits` package is a library, not a CLI tool. It should not be installed via `go install`.
-
-### 2. Formatting Violations
-
-#### Symptom
-```
-Formatting check failed
-docs/ci-resolution-status.md: no newline at end of file
-*.sh: trailing whitespace
-```
-
-#### Diagnosis
-Pre-commit hooks detect formatting issues that weren't fixed locally before committing. This usually indicates that pre-commit hooks either:
-- Are not installed in the local repository
-- Were bypassed using `--no-verify` (not allowed per project policy)
-- Failed to run properly for some reason
-
-#### Resolution
-1. Ensure pre-commit hooks are installed:
-   ```bash
-   pre-commit install
-   ```
-
-2. Run pre-commit hooks locally to fix issues:
-   ```bash
-   pre-commit run --all-files
-   ```
-
-3. Accept the automatic fixes and commit:
-   ```bash
-   git add -A
-   git commit -m "fix: apply formatting fixes"
-   ```
-
-4. For persistent issues, verify your hook installation:
-   ```bash
-   ./scripts/verify-hooks.sh
-   ```
-
-**Common Issues:**
-- Missing EOF newlines in markdown files (very common, see [PR #24 incident](#pr-24-missing-eof-newline-and-hook-installation-issues))
-- Trailing whitespace in shell scripts or YAML files
-- Inconsistent indentation
-- CRLF vs LF line endings in files
-
-**Prevention:**
-Always set up hooks immediately after cloning the repository:
-```bash
-# Install hooks (required before first commit)
-pre-commit install
-```
-
-### 3. Invalid Commit Messages
+### 1. Commit Message Validation Failures
 
 #### Symptom
 ```
 Commit message validation failed
 "<commit message>" does not follow Conventional Commits
+
+✖  subject may not be empty [subject-empty]
+✖  type may not be empty [type-empty]
 ```
 
 #### Diagnosis
-Commit messages don't follow the Conventional Commits specification required by this project.
+The CI pipeline is detecting commit messages that don't follow the Conventional Commits format required by this project.
 
 #### Resolution
 1. Follow the pattern: `<type>[optional scope]: <description>`
-2. Valid types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `style`, `perf`
+2. Valid types: `feat`, `fix`, `docs`, `chore`, `test`, `refactor`, `style`, `perf`, `ci`, `build`
 3. Use lowercase, no period at end of subject line
 
 **Examples:**
 ```bash
 # Good
 git commit -m "feat: add user authentication"
-git commit -m "fix: resolve memory leak in cache handler"
+git commit -m "fix(parser): handle edge case in JSON parsing"
 git commit -m "docs: update installation instructions"
 
 # Bad
@@ -102,7 +38,51 @@ git commit -m "FEAT: Add login"  # Uppercase type
 git commit -m "fix: bug."  # Period at end
 ```
 
-### 4. Build Failures
+#### Baseline Validation Policy
+
+Our project uses a baseline validation policy for commit messages:
+
+1. **Only new commits are validated**: Only commits made after our baseline commit (May 18, 2025, commit hash: `1300e4d675ac087783199f1e608409e6853e589f`) are checked against the Conventional Commits standard.
+
+2. **Historical commits are preserved**: This approach allows us to maintain git history without requiring rebasing or rewriting history.
+
+3. **Troubleshooting baseline validation**:
+   - If validation fails, first check if the problematic commit was made after the baseline date
+   - If you're getting validation errors for pre-baseline commits, ensure you're using the latest version of our CI workflow
+   - You can manually run the validation script locally to check your commits:
+     ```bash
+     ./scripts/ci/validate-baseline-commits.sh
+     ```
+
+4. **Body line length limit**: Lines in the commit body must be less than 100 characters long. For longer text, break it into multiple lines.
+
+For more detailed information on our commit message standards and baseline policy, see [docs/conventional-commits.md](./conventional-commits.md).
+
+### 2. Go Test Failures
+
+#### Symptom
+```
+FAIL: TestXXX
+expected X but got Y
+```
+
+#### Diagnosis
+Unit tests are failing due to code changes or environment differences.
+
+#### Resolution
+1. Run tests locally:
+   ```bash
+   go test ./...
+   go test -v -run=TestSpecificName ./path/to/package
+   ```
+2. Check if tests depend on specific environment variables
+3. Verify test data files are committed
+4. Look for race conditions in the tests (run with `-race` flag)
+   ```bash
+   go test -race ./...
+   ```
+
+### 3. Build Failures
 
 #### Symptom
 ```
@@ -125,27 +105,6 @@ Code compilation errors, missing dependencies, or import issues.
    go mod tidy
    ```
 4. Verify no files were accidentally excluded from commit
-
-### 5. Test Failures
-
-#### Symptom
-```
-FAIL: TestXXX
-expected X but got Y
-```
-
-#### Diagnosis
-Unit tests are failing due to code changes or environment differences.
-
-#### Resolution
-1. Run tests locally:
-   ```bash
-   go test ./...
-   go test -v -run TestSpecificName ./path/to/package
-   ```
-2. Check if tests depend on specific environment variables
-3. Verify test data files are committed
-4. Consider if the test needs updating for new behavior
 
 ## General Troubleshooting Tips
 
@@ -208,81 +167,17 @@ Our CI pipeline includes these main stages:
 
 1. **Checkout Code**
 2. **Setup Go Environment**
-3. **Install Tools**
+3. **Commit Message Validation** - Uses our baseline validation approach
 4. **Lint and Format** - Runs pre-commit hooks
 5. **Run Tests** - Executes all unit and integration tests
 6. **Build** - Compiles the application
-7. **Release** (on tags) - Creates releases using goreleaser
-
-## Related Documentation
-
-- [Contributing Guide](../CONTRIBUTING.md) - Development setup and standards
-- [Go Tool Installation Guide](development/tooling.md) - Go libraries vs CLI tools
-- [Pre-commit Configuration](../.pre-commit-config.yaml) - Formatting rules
+7. **Calculate Version** - Uses conventional commits to determine the next semantic version
 
 ## Getting Help
 
 If you encounter a CI issue not covered here:
 
-1. Check the [GitHub Actions logs](https://github.com/your-org/thinktank/actions)
-2. Search existing [issues](https://github.com/your-org/thinktank/issues)
+1. Check the [GitHub Actions logs](https://github.com/phrazzld/thinktank/actions)
+2. Search existing [issues](https://github.com/phrazzld/thinktank/issues)
 3. Ask in the development channel
 4. Update this guide with the solution once resolved
-
-Remember: CI failures are usually due to issues that can be caught locally. Always run pre-commit hooks and tests before pushing!
-
-## Recent Incidents and Lessons Learned
-
-This section documents specific CI incidents, their root causes, resolutions, and lessons learned to help prevent similar issues in the future.
-
-### PR #24: Missing EOF Newline and Hook Installation Issues
-
-#### Incident Summary
-- **Date:** May 2025
-- **PR:** #24 (feature/automated-semantic-versioning)
-- **Issue:** CI builds failing due to formatting violations
-- **Specifically:** Missing newline at end of file in `docs/ci-troubleshooting.md`
-
-#### Background
-PR #24 was implementing automated semantic versioning features. During the implementation, several commits were made that passed local checks but failed in CI due to formatting issues.
-
-#### Symptoms
-1. CI jobs failed with formatting errors:
-   ```
-   Formatting check failed
-   docs/ci-troubleshooting.md: no newline at end of file
-   ```
-2. Manual inspection showed that the file was missing the standard EOF newline character
-3. Pre-commit hooks should have caught and fixed this automatically
-
-#### Root Cause Analysis
-1. **Primary cause:** Pre-commit hooks were not installed or not running on the developer's local machine
-2. **Contributing factors:**
-   - Hook installation was recommended but not strictly enforced
-   - No CI check verified that hooks had run on committed files
-   - Documentation didn't sufficiently emphasize hook importance
-
-#### Resolution
-1. **Immediate fix (T042):**
-   - Added the missing EOF newline to `docs/ci-troubleshooting.md`
-   - Ran `pre-commit run --files docs/ci-troubleshooting.md` to verify
-   - Committed and pushed the fix
-
-2. **Systemic improvements:**
-   - Updated CONTRIBUTING.md to mandate pre-commit hook usage (T044)
-   - Enhanced `.pre-commit-config.yaml` for better file coverage (T045)
-   - Created script to verify hook installation (T038)
-   - Made hook installation part of standard setup process (T042a)
-
-#### Lessons Learned
-1. **Prevention > Resolution:** Formatting issues should never reach CI; they should be caught locally
-2. **Automate Enforcement:** Make proper tooling mandatory, not optional
-3. **Clear Documentation:** Clearly document the importance of hooks and proper setup
-4. **Fail Fast:** Implement verification steps early in CI to detect hook bypassing
-
-#### Related Tasks
-- T042: Fix missing EOF newline
-- T038: Create script to verify hook installation
-- T044: Update CONTRIBUTING.md for mandatory hooks
-- T045: Enhance pre-commit config
-- T042a: Make hook installation automatic

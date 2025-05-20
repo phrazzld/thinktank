@@ -224,14 +224,28 @@ func (m *MockLLMClient) Close() error {
 type MockFileWriter struct {
 	savedFiles map[string]string
 	saveError  error
+	mutex      sync.Mutex // Add mutex to protect against concurrent access
+}
+
+// NewMockFileWriter creates a new instance of MockFileWriter
+func NewMockFileWriter() *MockFileWriter {
+	return &MockFileWriter{
+		savedFiles: make(map[string]string),
+		saveError:  nil,
+	}
 }
 
 // SaveToFile is a mock implementation
 func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
+	// Lock the mutex to prevent concurrent access to savedFiles
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
 	if m.saveError != nil {
 		return m.saveError
 	}
 
+	// Initialize map if nil (but this shouldn't happen if NewMockFileWriter is used)
 	if m.savedFiles == nil {
 		m.savedFiles = make(map[string]string)
 	}
