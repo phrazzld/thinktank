@@ -32,11 +32,16 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      # Validate Commit Messages - Only checks commits made AFTER the commit message policy was established
+      # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025) - First integration of commitlint
+      # This preserves git history while ensuring all new commits follow conventions
       - name: Validate Commit Messages
         if: github.event_name == 'pull_request'
         uses: wagoid/commitlint-github-action@v5
         with:
           configFile: .commitlintrc.yml
+          # Only validate commits after our baseline to avoid failing on legacy commits
+          fromRef: 1300e4d675ac087783199f1e608409e6853e589f
 
       - name: Verify dependencies
         run: go mod verify

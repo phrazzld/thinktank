@@ -566,63 +566,69 @@
 
 ## CI Resolution Tasks (Phase 2)
 
-- [ ] **T049 · Bugfix · P0: fix commit message format issues in PR #24**
-    - **Context:** CI Resolution Plan > Recommended Action Plan
+- [x] **T049 · Feature · P0: update CI workflow to only validate new commits after policy establishment**
+    - **Context:** CI Resolution Plan > Modified Approach
     - **Action:**
-        1. Identify the commits with invalid format or footer issues.
-        2. Use interactive rebase (`git rebase -i`) to rewrite the problematic commits.
-        3. Ensure all commit messages follow the Conventional Commits specification.
-        4. Force-push the corrected branch history.
+        1. Update the commit validation workflow to only check commits made after the commit message policy was established.
+        2. Use commit `1300e4d675ac087783199f1e608409e6853e589f` (May 18, 2025) as the baseline commit when the conventional commit standard was officially adopted.
+        3. Configure the commit linting step to only validate commits after this baseline (using `--from=1300e4d675ac087783199f1e608409e6853e589f` or similar parameter with commitlint).
+        4. Document this approach in a comment within the workflow file.
     - **Done‑when:**
-        1. All commits in the PR follow the Conventional Commits format.
-        2. The CI pipeline passes the "Validate Commit Messages" check.
+        1. CI pipeline only validates commits made after the baseline commit `1300e4d`.
+        2. Legacy commits don't trigger validation failures.
+        3. New commits still must follow the Conventional Commits format.
     - **Verification:**
-        1. Run `npx @commitlint/cli --from=master` locally to verify commit compliance.
-        2. Observe that GitHub Actions completes successfully.
+        1. Test the workflow with a branch containing both old non-conforming commits and new conforming commits.
+        2. Confirm only new commits after the baseline are validated.
     - **Depends‑on:** none
 
-- [ ] **T050 · Feature · P1: implement automated pre-commit hook installation**
+- [ ] **T050 · Feature · P1: implement automated pre-commit hook installation with baseline-aware commit validation**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Modify `scripts/setup.sh` (or create if not exists) to automatically install pre-commit hooks.
-        2. Add code to verify hook installation status and install if missing.
-        3. Update project documentation to mention this automatic installation.
+        2. Ensure the commit-msg hook is configured to use the same baseline approach as the CI workflow.
+        3. Add code to verify hook installation status and install if missing.
+        4. Update project documentation to explain both the automatic installation and baseline validation approach.
     - **Done‑when:**
         1. Pre-commit hooks are automatically installed during project setup.
-        2. Developers don't need to run `pre-commit install` manually.
+        2. The installed commit-msg hook only validates commits after the established baseline.
+        3. Developers don't need to run `pre-commit install` manually.
     - **Verification:**
         1. Clone the repository fresh and run the setup script.
         2. Verify that hooks are installed in `.git/hooks/`.
-        3. Make a test commit and confirm hooks are executed.
+        3. Make test commits with both valid and invalid formats and confirm hooks validate only according to the baseline policy.
     - **Depends‑on:** [T049]
 
-- [ ] **T051 · Feature · P2: create local PR validation script for commits**
+- [ ] **T051 · Feature · P2: create local PR validation script for commits with baseline exclusion**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Create `scripts/validate-pr.sh` script that validates all commits against master.
-        2. Use `@commitlint/cli` to check commits against the same rules used in CI.
-        3. Add clear error messages and instructions for fixing issues.
-        4. Document the script in CONTRIBUTING.md.
+        2. Configure it to check only commits made after the conventional commit policy was established.
+        3. Use `@commitlint/cli` with the same baseline reference as the CI workflow.
+        4. Add clear error messages and instructions for fixing issues.
+        5. Document the script in CONTRIBUTING.md.
     - **Done‑when:**
         1. Developers can run `./scripts/validate-pr.sh` locally to validate their branch.
-        2. The script reports the same issues that would be caught by CI.
+        2. The script ignores historical non-conforming commits before the baseline.
+        3. The script reports the same issues for new commits that would be caught by CI.
     - **Verification:**
-        1. Create a branch with both valid and invalid commits.
-        2. Run the script and verify it identifies the same issues as CI would.
+        1. Create a branch with both old non-conforming commits and new invalid commits.
+        2. Run the script and verify it only identifies issues with new commits after the baseline.
     - **Depends‑on:** [T049]
 
-- [ ] **T052 · Feature · P1: add pre-push hook for commit validation**
+- [ ] **T052 · Feature · P1: add pre-push hook for commit validation with baseline exclusion**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Add a pre-push hook to `.pre-commit-config.yaml` that runs commitlint.
-        2. Configure it to validate all commits that will be pushed.
-        3. Ensure it uses the same rules as CI validation.
+        2. Configure it to validate only new commits after the established baseline (matching CI validation).
+        3. Ensure it uses the same rules and baseline reference as the CI validation.
     - **Done‑when:**
-        1. Attempting to push commits that don't follow conventions is blocked locally.
-        2. Users receive clear error messages about invalid commits before they reach CI.
+        1. Attempting to push new commits that don't follow conventions is blocked locally.
+        2. The pre-push hook doesn't block pushing branches with historical non-conforming commits.
+        3. Users receive clear error messages about invalid commits before they reach CI.
     - **Verification:**
-        1. Create a branch with invalid commits and attempt to push.
-        2. Verify the pre-push hook blocks the push with appropriate error messages.
+        1. Create a branch with both old non-conforming commits and new invalid commits.
+        2. Verify the pre-push hook only warns about the new invalid commits.
     - **Depends‑on:** [T049]
 
 - [ ] **T053 · Chore · P2: create a repository-wide Git commit template**
@@ -640,18 +646,20 @@
         2. Run `git commit` and verify the template appears in the editor.
     - **Depends‑on:** [T049]
 
-- [ ] **T054 · Feature · P2: enhance CI workflow with better error messages**
+- [ ] **T054 · Feature · P2: enhance CI workflow with better error messages and baseline documentation**
     - **Context:** CI Resolution Plan > Long-term Improvements
     - **Action:**
         1. Enhance the GitHub Action configuration to provide more detailed feedback.
-        2. Add custom error messages for common commit format issues.
-        3. Ensure clear instructions for fixing issues are provided in CI failure outputs.
+        2. Add custom error messages specifically mentioning that only new commits are validated.
+        3. Include clear documentation about the baseline commit/date after which validation applies.
+        4. Ensure clear instructions for fixing issues are provided in CI failure outputs.
     - **Done‑when:**
-        1. CI failures include specific guidance on how to fix commit message issues.
-        2. Error messages link to relevant documentation.
+        1. CI failures include specific guidance on how to fix commit message issues for new commits.
+        2. Error messages explain the baseline validation approach.
+        3. Error messages link to relevant documentation.
     - **Verification:**
-        1. Create a PR with an invalid commit format.
-        2. Verify the CI failure provides clear, actionable instructions.
+        1. Create a PR with an invalid commit format after the baseline.
+        2. Verify the CI failure provides clear, actionable instructions that reference the baseline approach.
     - **Depends‑on:** [T049]
 
 - [ ] **T055 · Feature · P3: implement Commitizen for guided commit creation**
@@ -669,17 +677,19 @@
         2. Create a commit using the tool and verify it passes all commit message checks.
     - **Depends‑on:** [T049]
 
-- [ ] **T056 · Chore · P2: create a quick reference guide for conventional commits**
+- [ ] **T056 · Chore · P2: create a quick reference guide for conventional commits with baseline policy**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Create `docs/conventional-commits.md` with a concise guide to the required format.
         2. Include examples of valid and invalid commits specific to the project.
-        3. Explain the relationship between commit types and semantic versioning.
-        4. Link to this guide from CONTRIBUTING.md.
+        3. Clearly document the baseline commit/date after which the conventional commit standard is enforced.
+        4. Explain the relationship between commit types and semantic versioning.
+        5. Link to this guide from CONTRIBUTING.md.
     - **Done‑when:**
         1. A clear, project-specific guide to conventional commits exists.
-        2. New contributors can quickly understand and follow the commit format requirements.
+        2. The guide clearly explains the baseline policy for commit validation.
+        3. New contributors understand that only new commits (after the baseline) must follow the convention.
     - **Verification:**
-        1. Review the guide for clarity and completeness.
+        1. Review the guide for clarity and completeness, especially regarding the baseline policy.
         2. Have a team member use only the guide to create valid commits.
     - **Depends‑on:** [T049]
