@@ -82,6 +82,13 @@ repos:
         language: system
         stages: [commit-msg]  # Run during the commit-msg stage
         pass_filenames: false  # Don't pass filenames to the hook
+    -   id: conventional-commits-push-check
+        name: Validate Conventional Commits on push (with baseline exclusion)
+        entry: scripts/validate-push.sh
+        language: script
+        stages: [pre-push]  # Run during the pre-push stage
+        pass_filenames: false  # Don't pass filenames to the hook as we read from stdin
+        always_run: true  # Always run on push, regardless of what files changed
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh

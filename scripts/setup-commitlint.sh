@@ -176,5 +176,8 @@ fi
 
 print_success "Created baseline-aware commitlint configuration"
 echo ""
-echo "You can now validate your PR commits with:"
-echo "  ./scripts/validate-pr.sh"
+echo "You can now validate your commits with:"
+echo "  ./scripts/validate-pr.sh           # Validate PR commits"
+echo ""
+echo "The pre-push hook will automatically validate commits before pushing"
+echo "using the same baseline-aware validation approach."

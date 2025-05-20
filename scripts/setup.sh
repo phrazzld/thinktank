@@ -148,6 +148,17 @@ if command -v pre-commit >/dev/null 2>&1; then
         echo "Commit message validation will work but without baseline awareness"
     fi
 
+    # Install pre-push hooks
+    echo "Installing pre-push hooks..."
+    pre-commit install --hook-type pre-push
+
+    if [ $? -eq 0 ]; then
+        print_success "Pre-push hooks installed successfully"
+    else
+        print_error "Failed to install pre-push hooks"
+        echo "Please try running 'pre-commit install --hook-type pre-push' manually"
+    fi
+
     # Install post-commit hooks
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
@@ -160,13 +171,13 @@ if command -v pre-commit >/dev/null 2>&1; then
     fi
 
     # Verify hook installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ]; then
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ] && [ -f ".git/hooks/pre-push" ]; then
         print_success "All Git hooks verified in .git/hooks/"
-        print_success "Code formatting and commit message validation are now active"
+        print_success "Code formatting, commit message validation, and pre-push validation are now active"
     else
         print_warning "Some hook files not found in .git/hooks/ directory"
         echo "There may be an issue with your git configuration"
-        echo "Expected hooks: pre-commit, commit-msg, post-commit"
+        echo "Expected hooks: pre-commit, commit-msg, pre-push, post-commit"
     fi
 
     # If glance is not installed, warn about post-commit hook potentially failing
@@ -266,11 +277,14 @@ reinstall_hooks() {
         ./scripts/setup-commitlint.sh
     fi
 
+    echo "Installing pre-push hooks..."
+    pre-commit install --hook-type pre-push
+
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
 
     # Verify installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ]; then
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ] && [ -f ".git/hooks/pre-push" ]; then
         print_success "All hooks reinstalled successfully"
     else
         print_error "Hook reinstallation may have failed - some hook files not found"

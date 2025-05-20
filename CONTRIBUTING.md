@@ -149,7 +149,14 @@ pre-commit info
 
 You should see confirmation that the hooks are installed for this repository.
 
-**Validating your PR:** To check your branch for commit message compliance, run:
+**Pre-push Validation:** When you attempt to push commits, a pre-push hook will automatically validate your commits against the conventional commit standard, using the same baseline-aware approach. This means:
+
+- Only commits made after May 18, 2025 (baseline commit `1300e4d`) will be validated
+- Historical commits before the baseline date will be skipped
+- If any new commits don't follow the conventional commit format, the push will be blocked
+- You'll receive clear error messages and fix tips for any invalid commits
+
+**Manual PR Validation:** To manually check your branch for commit message compliance before pushing, run:
 ```bash
 ./scripts/validate-pr.sh
 ```
@@ -172,7 +179,7 @@ Example usage:
 ./scripts/validate-pr.sh feature/my-feature main
 ```
 
-Running this validation before submitting your PR will help you catch and fix any commit message issues early.
+Running this validation before pushing or submitting your PR will help you catch and fix any commit message issues early.
 
 ### Manual Hook Installation (ONLY if automatic installation fails)
 
@@ -195,6 +202,9 @@ If for any reason the automatic installation fails, you MUST follow these steps:
    # Install commit message validation hook
    pre-commit install --hook-type commit-msg
 
+   # Install pre-push hooks
+   pre-commit install --hook-type pre-push
+
    # Install post-commit hooks
    pre-commit install --hook-type post-commit
    ```
@@ -208,6 +218,8 @@ If for any reason the automatic installation fails, you MUST follow these steps:
 - **Automatic Formatting**: EOF newlines, trailing whitespace, and Go formatting are automatically fixed on commit
 - **Commit Message Validation**: Ensures all commits follow Conventional Commits specification
 - **Code Quality Checks**: Runs linters and tests before allowing commits
+- **Pre-Push Validation**: Validates commit messages before pushing to remote repositories
+- **Baseline-Aware Validation**: All validation respects the May 18, 2025 baseline date
 - **Prevents CI Failures**: Ensures your code will pass CI checks before pushing
 
 3. **Note on go-conventionalcommits**:

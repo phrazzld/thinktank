@@ -616,7 +616,7 @@
         2. Run the script and verify it only identifies issues with new commits after the baseline.
     - **Depends‑on:** [T049]
 
-- [ ] **T052 · Feature · P1: add pre-push hook for commit validation with baseline exclusion**
+- [x] **T052 · Feature · P1: add pre-push hook for commit validation with baseline exclusion**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Add a pre-push hook to `.pre-commit-config.yaml` that runs commitlint.
