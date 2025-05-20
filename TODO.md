@@ -518,7 +518,7 @@
         1. `CONTRIBUTING.md` is updated with the mandatory pre-commit hook policy and instructions.
     - **Depends‑on:** none
 
-- [ ] **T045 · Chore · P2: review and enhance .pre-commit-config.yaml for comprehensive file coverage**
+- [x] **T045 · Chore · P2: review and enhance .pre-commit-config.yaml for comprehensive file coverage**
     - **Context:** CI Resolution Plan > Prevention Measures > 2. Enhanced Pre-commit Configuration
     - **Action:**
         1. Audit the `.pre-commit-config.yaml` file.
