@@ -116,7 +116,8 @@ do
         echo ""
         echo -e "${RED}Push validation failed: Some commits do not follow conventional commit format${NC}"
         echo "Please fix the commit messages before pushing."
-        echo "For more details, see docs/conventional-commits.md"
+        echo -e "For detailed guidance and our baseline validation policy, see:${BOLD} docs/conventional-commits.md${NC}"
+        echo "Note: Only commits made after May 18, 2025 (baseline: 1300e4d) are validated."
         exit 1
     fi
 done

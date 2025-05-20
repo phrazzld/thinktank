@@ -234,6 +234,8 @@ If for any reason the automatic installation fails, you MUST follow these steps:
 
 All commits must follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This enables automated semantic versioning and changelog generation. **Non-compliant commits will be rejected by both local hooks and CI.**
 
+**For detailed guidance, including our baseline validation policy, see [docs/conventional-commits.md](docs/conventional-commits.md).**
+
 **Format:** `<type>[optional scope]: <description>`
 
 **Line length limits:**

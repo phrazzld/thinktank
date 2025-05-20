@@ -32,16 +32,40 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
-      # Validate Commit Messages - Only checks commits made AFTER the commit message policy was established
-      # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025) - First integration of commitlint
-      # This preserves git history while ensuring all new commits follow conventions
-      - name: Validate Commit Messages
+      # ======================================================================
+      # COMMIT MESSAGE VALIDATION WITH BASELINE EXCLUSION
+      # ======================================================================
+      # We only validate commits made AFTER our baseline commit when the conventional commit
+      # standard was officially adopted. This approach:
+      #
+      # 1. Preserves historical git commits made before the standard was adopted
+      # 2. Ensures all new development follows the conventional commits specification
+      # 3. Prevents CI failures due to legacy/historical commit messages
+      #
+      # Baseline commit: 1300e4d675ac087783199f1e608409e6853e589f (May 18, 2025)
+      #
+      # For details on our conventional commits policy and how to fix issues,
+      # see: docs/conventional-commits.md
+      # ======================================================================
+      - name: Validate Commit Messages (baseline-aware)
         if: github.event_name == 'pull_request'
         uses: wagoid/commitlint-github-action@v5
         with:
           configFile: .commitlintrc.yml
-          # Only validate commits after our baseline to avoid failing on legacy commits
+          # Only validate commits after our baseline date to preserve git history
           fromRef: 1300e4d675ac087783199f1e608409e6853e589f
+          helpURL: https://github.com/phrazzld/thinktank/blob/master/docs/conventional-commits.md
+        env:
+          # Add a custom message that will appear in GitHub checks UI when validation fails
+          GITHUB_FAILED_MESSAGE: |
+            ❌ Some commit messages don't follow the Conventional Commits standard.
+
+            Note: Only commits made AFTER May 18, 2025 (baseline: 1300e4d) are validated.
+
+            Please fix any invalid commit messages. See docs/conventional-commits.md for:
+            - Our baseline validation policy
+            - Commit message format requirements
+            - Instructions for fixing commit messages
 
       - name: Verify dependencies
         run: go mod verify

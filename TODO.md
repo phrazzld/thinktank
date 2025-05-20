@@ -646,7 +646,7 @@
         2. Run `git commit` and verify the template appears in the editor.
     - **Depends‑on:** [T049]
 
-- [ ] **T054 · Feature · P2: enhance CI workflow with better error messages and baseline documentation**
+- [x] **T054 · Feature · P2: enhance CI workflow with better error messages and baseline documentation**
     - **Context:** CI Resolution Plan > Long-term Improvements
     - **Action:**
         1. Enhance the GitHub Action configuration to provide more detailed feedback.

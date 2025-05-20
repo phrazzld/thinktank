@@ -77,8 +77,14 @@ jobs:
         run: |
           pip install pre-commit
 
+      # Run pre-commit checks with baseline-aware commit validation
+      # See docs/conventional-commits.md for our baseline validation policy
       - name: Run pre-commit checks
-        run: pre-commit run --all-files
+        run: |
+          echo "Running pre-commit checks (baseline-aware validation)"
+          echo "Only commits made after May 18, 2025 (baseline: 1300e4d) are validated"
+          echo "See docs/conventional-commits.md for details on our validation policy"
+          pre-commit run --all-files
 
       # Verify default model consistency
       - name: Check default model consistency

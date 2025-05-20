@@ -77,13 +77,17 @@ repos:
         types: [go]
         pass_filenames: false
     -   id: conventional-commit-check
-        name: Check Conventional Commit compliance
-        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then cat $1 | commitlint; else echo 'Skipping commitlint in batch mode'; fi"
+        name: Check Conventional Commit compliance (baseline-aware)
+        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then echo 'Validating commit message against conventional commit standard (baseline-aware policy)' && cat $1 | commitlint && echo 'See docs/conventional-commits.md for our baseline validation policy'; else echo 'Skipping commitlint in batch mode'; fi"
         language: system
         stages: [commit-msg]  # Run during the commit-msg stage
         pass_filenames: false  # Don't pass filenames to the hook
     -   id: conventional-commits-push-check
-        name: Validate Conventional Commits on push (with baseline exclusion)
+        name: Validate Conventional Commits on push (baseline-aware policy)
+        description: |
+          Validates commit messages in push against conventional commit standard.
+          Only validates commits made after baseline (May 18, 2025).
+          See docs/conventional-commits.md for details.
         entry: scripts/validate-push.sh
         language: script
         stages: [pre-push]  # Run during the pre-push stage

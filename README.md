@@ -294,6 +294,12 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 We use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages. This enables automatic semantic versioning and changelog generation.
 
+#### Baseline Validation Policy
+
+**Important:** Our commit message validation only applies to commits made after May 18, 2025 (baseline commit `1300e4d`). This approach preserves git history while enforcing standards for all new development.
+
+For detailed information about our commit message validation policy, see [docs/conventional-commits.md](docs/conventional-commits.md).
+
 #### Format
 
 ```
