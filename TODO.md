@@ -563,3 +563,123 @@
     - **Done‑when:**
         1. `docs/ci-troubleshooting.md` is updated with comprehensive details of the PR #24 CI issues and their fixes.
     - **Depends‑on:** [T042]
+
+## CI Resolution Tasks (Phase 2)
+
+- [ ] **T049 · Bugfix · P0: fix commit message format issues in PR #24**
+    - **Context:** CI Resolution Plan > Recommended Action Plan
+    - **Action:**
+        1. Identify the commits with invalid format or footer issues.
+        2. Use interactive rebase (`git rebase -i`) to rewrite the problematic commits.
+        3. Ensure all commit messages follow the Conventional Commits specification.
+        4. Force-push the corrected branch history.
+    - **Done‑when:**
+        1. All commits in the PR follow the Conventional Commits format.
+        2. The CI pipeline passes the "Validate Commit Messages" check.
+    - **Verification:**
+        1. Run `npx @commitlint/cli --from=master` locally to verify commit compliance.
+        2. Observe that GitHub Actions completes successfully.
+    - **Depends‑on:** none
+
+- [ ] **T050 · Feature · P1: implement automated pre-commit hook installation**
+    - **Context:** CI Resolution Plan > Prevention Measures
+    - **Action:**
+        1. Modify `scripts/setup.sh` (or create if not exists) to automatically install pre-commit hooks.
+        2. Add code to verify hook installation status and install if missing.
+        3. Update project documentation to mention this automatic installation.
+    - **Done‑when:**
+        1. Pre-commit hooks are automatically installed during project setup.
+        2. Developers don't need to run `pre-commit install` manually.
+    - **Verification:**
+        1. Clone the repository fresh and run the setup script.
+        2. Verify that hooks are installed in `.git/hooks/`.
+        3. Make a test commit and confirm hooks are executed.
+    - **Depends‑on:** [T049]
+
+- [ ] **T051 · Feature · P2: create local PR validation script for commits**
+    - **Context:** CI Resolution Plan > Prevention Measures
+    - **Action:**
+        1. Create `scripts/validate-pr.sh` script that validates all commits against master.
+        2. Use `@commitlint/cli` to check commits against the same rules used in CI.
+        3. Add clear error messages and instructions for fixing issues.
+        4. Document the script in CONTRIBUTING.md.
+    - **Done‑when:**
+        1. Developers can run `./scripts/validate-pr.sh` locally to validate their branch.
+        2. The script reports the same issues that would be caught by CI.
+    - **Verification:**
+        1. Create a branch with both valid and invalid commits.
+        2. Run the script and verify it identifies the same issues as CI would.
+    - **Depends‑on:** [T049]
+
+- [ ] **T052 · Feature · P1: add pre-push hook for commit validation**
+    - **Context:** CI Resolution Plan > Prevention Measures
+    - **Action:**
+        1. Add a pre-push hook to `.pre-commit-config.yaml` that runs commitlint.
+        2. Configure it to validate all commits that will be pushed.
+        3. Ensure it uses the same rules as CI validation.
+    - **Done‑when:**
+        1. Attempting to push commits that don't follow conventions is blocked locally.
+        2. Users receive clear error messages about invalid commits before they reach CI.
+    - **Verification:**
+        1. Create a branch with invalid commits and attempt to push.
+        2. Verify the pre-push hook blocks the push with appropriate error messages.
+    - **Depends‑on:** [T049]
+
+- [ ] **T053 · Chore · P2: create a repository-wide Git commit template**
+    - **Context:** CI Resolution Plan > Long-term Improvements
+    - **Action:**
+        1. Create `.github/commit-template.txt` with a template for conventional commits.
+        2. Include examples and placeholders for type, scope, and description.
+        3. Add script to configure Git to use this template.
+        4. Document the template in CONTRIBUTING.md.
+    - **Done‑when:**
+        1. The repository includes a helpful commit template.
+        2. New developers get a pre-filled template when running `git commit`.
+    - **Verification:**
+        1. Set up the template (`git config commit.template .github/commit-template.txt`).
+        2. Run `git commit` and verify the template appears in the editor.
+    - **Depends‑on:** [T049]
+
+- [ ] **T054 · Feature · P2: enhance CI workflow with better error messages**
+    - **Context:** CI Resolution Plan > Long-term Improvements
+    - **Action:**
+        1. Enhance the GitHub Action configuration to provide more detailed feedback.
+        2. Add custom error messages for common commit format issues.
+        3. Ensure clear instructions for fixing issues are provided in CI failure outputs.
+    - **Done‑when:**
+        1. CI failures include specific guidance on how to fix commit message issues.
+        2. Error messages link to relevant documentation.
+    - **Verification:**
+        1. Create a PR with an invalid commit format.
+        2. Verify the CI failure provides clear, actionable instructions.
+    - **Depends‑on:** [T049]
+
+- [ ] **T055 · Feature · P3: implement Commitizen for guided commit creation**
+    - **Context:** CI Resolution Plan > Long-term Improvements
+    - **Action:**
+        1. Add Commitizen to the project for guided commit message creation.
+        2. Configure it to match the project's conventional commit requirements.
+        3. Document its usage in CONTRIBUTING.md.
+        4. Make it available through a script or NPM command.
+    - **Done‑when:**
+        1. Developers can create properly formatted commits via a guided interface.
+        2. New contributors can easily adhere to the commit message standards.
+    - **Verification:**
+        1. Install and run Commitizen.
+        2. Create a commit using the tool and verify it passes all commit message checks.
+    - **Depends‑on:** [T049]
+
+- [ ] **T056 · Chore · P2: create a quick reference guide for conventional commits**
+    - **Context:** CI Resolution Plan > Prevention Measures
+    - **Action:**
+        1. Create `docs/conventional-commits.md` with a concise guide to the required format.
+        2. Include examples of valid and invalid commits specific to the project.
+        3. Explain the relationship between commit types and semantic versioning.
+        4. Link to this guide from CONTRIBUTING.md.
+    - **Done‑when:**
+        1. A clear, project-specific guide to conventional commits exists.
+        2. New contributors can quickly understand and follow the commit format requirements.
+    - **Verification:**
+        1. Review the guide for clarity and completeness.
+        2. Have a team member use only the guide to create valid commits.
+    - **Depends‑on:** [T049]
