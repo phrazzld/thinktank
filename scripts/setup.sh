@@ -131,6 +131,23 @@ if command -v pre-commit >/dev/null 2>&1; then
         echo "Please try running 'pre-commit install --hook-type commit-msg' manually"
     fi
 
+    # Set up baseline-aware commit validation
+    echo "Setting up baseline-aware commit validation..."
+    if [ -f "./scripts/setup-commitlint.sh" ]; then
+        ./scripts/setup-commitlint.sh
+        if [ $? -eq 0 ]; then
+            print_success "Baseline-aware commit validation configured successfully"
+            echo "Only commits made after the baseline commit (May 18, 2025) will be validated"
+            echo "This matches the CI workflow validation approach"
+        else
+            print_error "Failed to configure baseline-aware commit validation"
+            echo "Commit message validation will still work but without baseline awareness"
+        fi
+    else
+        print_warning "setup-commitlint.sh not found, skipping baseline configuration"
+        echo "Commit message validation will work but without baseline awareness"
+    fi
+
     # Install post-commit hooks
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
@@ -242,6 +259,12 @@ reinstall_hooks() {
 
     echo "Installing commit-msg hooks..."
     pre-commit install --hook-type commit-msg
+
+    # Set up baseline-aware commit validation on reinstall
+    if [ -f "./scripts/setup-commitlint.sh" ]; then
+        echo "Reconfiguring baseline-aware commit validation..."
+        ./scripts/setup-commitlint.sh
+    fi
 
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit

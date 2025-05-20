@@ -135,12 +135,25 @@ make hooks      # Installs only git hooks
 ./scripts/setup.sh  # Full development environment setup
 ```
 
+**Baseline-Aware Commit Validation:**
+The setup process configures commit message validation with baseline awareness. This means:
+- Commit message validation only applies to commits made after May 18, 2025 (commit `1300e4d`)
+- Historical commits before the baseline date are exempt from validation
+- This matches how CI validates commits, avoiding false failures for old commits
+- All new commits must still follow the Conventional Commits standard
+
 **VERIFICATION:** After installation, verify hooks are properly installed by running:
 ```bash
 pre-commit info
 ```
 
 You should see confirmation that the hooks are installed for this repository.
+
+**Validating your PR:** To check your branch for commit message compliance, run:
+```bash
+./scripts/validate-pr-commits.sh
+```
+This will validate all commits in your branch that come after the baseline commit.
 
 ### Manual Hook Installation (ONLY if automatic installation fails)
 

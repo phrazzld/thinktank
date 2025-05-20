@@ -582,7 +582,7 @@
         2. Confirm only new commits after the baseline are validated.
     - **Depends‑on:** none
 
-- [ ] **T050 · Feature · P1: implement automated pre-commit hook installation with baseline-aware commit validation**
+- [x] **T050 · Feature · P1: implement automated pre-commit hook installation with baseline-aware commit validation**
     - **Context:** CI Resolution Plan > Prevention Measures
     - **Action:**
         1. Modify `scripts/setup.sh` (or create if not exists) to automatically install pre-commit hooks.
