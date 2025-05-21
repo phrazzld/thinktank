@@ -1,5 +1,15 @@
-# .golangci.yml
-version: 2
+# Specify the configuration version explicitly
+version: "2"
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  gofmt:
+    simplify: true
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+
 run:
   timeout: 5m
 
@@ -12,6 +22,11 @@ linters:
     - unused
 
 issues:
-  # Define output format
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+  max-issues-per-linter: 0
+  max-same-issues: 0
   output:
     format: colored-line-number

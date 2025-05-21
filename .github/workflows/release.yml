@@ -55,11 +55,12 @@ jobs:
       - name: Run vet
         run: go vet ./...
 
-      - name: Install golangci-lint
-        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.56.2
-
-      - name: Run golangci-lint
-        run: golangci-lint run --timeout 5m
+      - name: Install golangci-lint and run it directly
+        run: |
+          # Install golangci-lint v2.1.1 directly
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+          # Run golangci-lint directly without using the action to avoid --out-format flag issues
+          $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 
       - name: Run tests
         run: go test -v -race ./...
