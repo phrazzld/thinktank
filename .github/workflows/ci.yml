@@ -50,6 +50,15 @@ jobs:
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
 
+      # Run forward-only commit validation (create baseline at current point)
+      - name: Forward-Only Commit Validation
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running forward-only commit validation"
+          echo "This approach preserves git history while ensuring future commits follow conventions"
+          chmod +x ./scripts/ci/validate-baseline-commits.sh
+          ./scripts/ci/validate-baseline-commits.sh
+
       # Verify dependencies integrity
       - name: Verify dependencies
         run: go mod verify
@@ -78,27 +87,6 @@ jobs:
       - name: Install pre-commit
         run: |
           pip install pre-commit
-
-      # Set up Node.js for commitlint
-      - name: Set up Node.js for commitlint
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      # Install commitlint
-      - name: Install commitlint
-        run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
-
-      # Run forward-only commit validation (create baseline at current point)
-      - name: Forward-Only Commit Validation
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "Running forward-only commit validation"
-          echo "This approach preserves git history while ensuring future commits follow conventions"
-          chmod +x ./scripts/ci/validate-baseline-commits.sh
-          ./scripts/ci/validate-baseline-commits.sh
 
       # Run pre-commit checks
       - name: Run pre-commit checks

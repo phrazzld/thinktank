@@ -4,6 +4,8 @@
 # This script provides a forward-only approach to commit message validation,
 # preserving git history while ensuring all future commits follow standards.
 #
+# It uses pure bash for validation without external dependencies.
+#
 # It creates a "baseline commit ID" file on first run that marks the starting point
 # for validation. Only commits made AFTER this file was created will be validated.
 #
@@ -110,21 +112,8 @@ fi
 TOTAL_COMMITS=$(echo "$COMMITS_TO_CHECK" | wc -l | tr -d ' ')
 echo "Found $TOTAL_COMMITS commit(s) to validate"
 
-# Setup commitlint command
-# First check if npx is available
-if command -v npx &> /dev/null; then
-  COMMITLINT_CMD="npx commitlint"
-else
-  # Fall back to direct node_modules path if npx isn't available
-  COMMITLINT_CMD="./node_modules/.bin/commitlint"
-
-  # Check if commitlint is installed
-  if [ ! -f "$COMMITLINT_CMD" ]; then
-    echo "Error: commitlint not found. Please ensure @commitlint/cli is installed."
-    echo "You can install it with: npm install --save-dev @commitlint/cli @commitlint/config-conventional"
-    exit 1
-  fi
-fi
+# Valid commit types
+VALID_TYPES="feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert"
 
 # Process each commit
 echo "Validating commits..."
@@ -136,8 +125,10 @@ for commit in $COMMITS_TO_CHECK; do
 
   echo -n "Checking commit $commit_short ($commit_date): \"$commit_subject\"... "
 
-  # Check commit message against commitlint rules
-  if echo "$commit_msg" | $COMMITLINT_CMD > /dev/null 2>&1; then
+  # Pure bash validation of commit message format using regex
+  # Match pattern: <type>[optional scope]: <description>
+  # Example: feat(api): add new endpoint
+  if [[ "$commit_subject" =~ ^($VALID_TYPES)(\([a-z0-9/-]+\))?!?:\ [a-z] ]]; then
     echo "✓ VALID"
   else
     echo "✗ INVALID"
@@ -147,7 +138,12 @@ for commit in $COMMITS_TO_CHECK; do
     echo "$commit_msg"
     echo "------------------------"
     echo "Validation errors:"
-    echo "$commit_msg" | $COMMITLINT_CMD || true
+    echo "Commit message must follow the conventional commit format:"
+    echo "<type>[optional scope]: <description>"
+    echo ""
+    echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert"
+    echo "Scope is optional and should be lowercase"
+    echo "Description should start with lowercase letter"
     echo "=========================="
     VALIDATION_PASSED=false
     INVALID_COMMITS=$((INVALID_COMMITS + 1))

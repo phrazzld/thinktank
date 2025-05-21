@@ -34,16 +34,6 @@ jobs:
       # All future commits will need to follow conventional commit format
       # while all existing/historical commits are exempt from validation.
       # ======================================================================
-      - name: Set up Node.js for commitlint
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install commitlint
-        run: |
-          npm install --save-dev @commitlint/cli @commitlint/config-conventional
-
       - name: Forward-Only Commit Validation
         if: github.event_name == 'pull_request'
         run: |
