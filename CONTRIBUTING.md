@@ -37,7 +37,7 @@ Ensure `$GOPATH/bin` or `$(go env GOBIN)` is in your `PATH`.
 | Tool | Version | Managed In |
 |------|---------|------------|
 | Go | 1.23.x | `go.mod` |
-| golangci-lint | v2.1.6 | `tools.go` |
+| golangci-lint | v2.1.5 | `tools.go` |
 | svu | v3.2.3 | `tools.go` |
 | git-chglog | v0.15.4 | `tools.go` |
 | goreleaser | v1.26.2 | `tools.go` |
@@ -92,7 +92,7 @@ If you prefer to install tools manually, you can run:
 
 ```bash
 # Install tools directly using go install
-go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
 go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 go install github.com/caarlos0/svu/v3@v3.2.3
 go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4

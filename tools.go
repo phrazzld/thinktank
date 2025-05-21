@@ -37,7 +37,7 @@ import (
 // To install a tool with a specific version, use: go install <import-path>@<version>
 //
 // For example:
-// go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+// go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
 // go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 // go install github.com/caarlos0/svu/v3@v3.2.3
 // go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4

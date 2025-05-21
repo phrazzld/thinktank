@@ -14,7 +14,7 @@
     6. Document all versions in `CONTRIBUTING.md`
   - **Done-when:** All tool versions are explicitly pinned and reproducible across environments
 
-- [ ] **T002: Upgrade and Unify `golangci-lint` Configuration**
+- [x] **T002: Upgrade and Unify `golangci-lint` Configuration**
   - **Context:** Using outdated `golangci-lint v2.1.1` with minimal linter set
   - **Action:**
     1. Choose a recent, stable `golangci-lint` version (e.g., `v1.59.1`)
@@ -84,7 +84,16 @@
   - **Done-when:** CI fails below 75% overall and critical package thresholds
 
 ### Developer Experience
-- [ ] **T009: Implement Automated Pre-commit Hook Installation**
+- [ ] **T009: Fix golangci-lint Issues Identified by Expanded Linter Set**
+  - **Context:** Expanded linter set in T002 revealed 786 issues that need to be fixed
+  - **Action:**
+    1. Create a plan to gradually address each category of linter issues
+    2. Fix high-priority issues (security, potential bugs) first
+    3. Address test-related issues (thelper, tparallel)
+    4. Fix code quality issues (funlen, gocyclo, etc.)
+  - **Done-when:** All issues are fixed and golangci-lint passes in CI and pre-commit hooks
+
+- [ ] **T010: Implement Automated Pre-commit Hook Installation**
   - **Context:** CI Resolution Tasks - Prevention Measures
   - **Action:**
     1. Modify `scripts/setup.sh` for automatic hook installation

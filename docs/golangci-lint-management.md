@@ -4,7 +4,7 @@ This document outlines best practices for updating and managing the golangci-lin
 
 ## Current Configuration
 
-The project currently uses golangci-lint v2.1.1 with an explicit configuration version set to "2" in `.golangci.yml`.
+The project currently uses golangci-lint v2.1.5 with an expanded set of linters configured in `.golangci.yml`. The configuration enables a comprehensive set of linters to catch a wide range of potential issues.
 
 ## Version Management
 
@@ -20,22 +20,42 @@ Both files use the same version installation command:
 ```yaml
 - name: Install golangci-lint and run it directly
   run: |
-    # Install golangci-lint v2.1.1 directly
-    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+    # Install golangci-lint v2.1.5 directly using go install
+    go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
     # Run golangci-lint directly without using the action to avoid --out-format flag issues
     $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 ```
 
+This approach using `go install` is preferred over the curl-based installation method for better security and consistency with other Go tools.
+
 ### Configuration File
 
-The `.golangci.yml` file contains the linter configuration. The version is specified at the top of the file:
+The `.golangci.yml` file contains a comprehensive linter configuration with an expanded set of linters:
 
 ```yaml
-# Specify the configuration version explicitly
-version: "2"
+run:
+  timeout: 5m
+  tests: true
+  skip-dirs:
+    - vendor/
+
+# Linter selection
+linters:
+  disable-all: true
+  enable:
+    # Critical linters - always enabled
+    - errcheck      # Detect unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Go vet examines Go source code for suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Go static analysis tool
+    - unused        # Check for unused constants, variables, functions and types
+
+    # Plus many additional linters for code quality
+    # ...
 ```
 
-This version must be compatible with the golangci-lint binary version.
+The configuration includes multiple categories of linters, from essential code correctness checkers to style and security linters. We've also configured specific exclusions for test files to prevent common false positives in test code.
 
 ## Updating golangci-lint
 
