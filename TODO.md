@@ -9,5 +9,5 @@
 ## Documentation
 
 - [x] Add details about the pure bash commit validation approach to CONTRIBUTING.md
-- Create developer guidelines for adding new workflows or CI tools
+- [x] Create developer guidelines for adding new workflows or CI tools
 - Document the process for updating or fixing golangci-lint configuration
