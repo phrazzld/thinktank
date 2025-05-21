@@ -142,6 +142,56 @@ The setup process configures commit message validation with baseline awareness. 
 - This matches how CI validates commits, avoiding false failures for old commits
 - All new commits must still follow the Conventional Commits standard
 
+### Pure Bash Commit Validation
+
+This project uses a pure bash approach for validating commit messages, implemented in `scripts/ci/validate-baseline-commits.sh`. This approach provides several benefits over traditional commit validation tools:
+
+**How it works:**
+1. **Baseline Creation**: On first run, the script creates a baseline file (`.git/BASELINE_COMMIT`) that stores the current commit hash
+2. **Forward-Only Validation**: Only commits made *after* the baseline are validated, preserving historical commits
+3. **Pure Bash Implementation**: Uses native bash with regex pattern matching to validate commit messages, with zero external dependencies
+4. **Flexible Environment Detection**: Automatically adjusts behavior based on local or CI environment
+5. **PR-Aware**: In pull request workflows, validates only the PR's commits after the baseline
+
+**Technical implementation:**
+- Uses Git's native commands to extract commit information
+- Validates commit messages against conventional commit format using bash regex
+- Handles PR situations by finding the common ancestor between baseline and current branch
+- Preserves Git history while enforcing standards for new contributions
+- Provides detailed error messages and fix guidance
+
+**Advantages of this approach:**
+- **Zero Dependencies**: No need for Node.js, npm, external validation tools, or language-specific libraries
+- **Portability**: Works consistently across different environments (local, CI, various OSes)
+- **Performance**: Extremely fast validation even in large repositories
+- **Legacy Compatibility**: Prevents validation failures on historical commits
+- **CI Integration**: Seamlessly integrates with GitHub Actions and other CI systems
+- **Hybrid Validation**: Combines the benefits of standard enforcement with the practicality of preserving Git history
+
+**Integration with CI workflows:**
+The script is automatically executed in both the CI and Release workflows for pull requests:
+```yaml
+- name: Forward-Only Commit Validation
+  if: github.event_name == 'pull_request'
+  run: |
+    echo "Running forward-only commit validation"
+    echo "This approach preserves git history while ensuring future commits follow conventions"
+    chmod +x ./scripts/ci/validate-baseline-commits.sh
+    ./scripts/ci/validate-baseline-commits.sh
+```
+
+**Local validation:**
+You can run the validation script locally to check your commits before pushing:
+```bash
+# Validate all commits after the baseline
+./scripts/ci/validate-baseline-commits.sh
+
+# Use a custom baseline file
+./scripts/ci/validate-baseline-commits.sh /path/to/baseline-file
+```
+
+This pure bash approach aligns with our project philosophy of using simple, dependency-light solutions that are maintainable, performant, and work reliably across different environments.
+
 **VERIFICATION:** After installation, verify hooks are properly installed by running:
 ```bash
 pre-commit info
