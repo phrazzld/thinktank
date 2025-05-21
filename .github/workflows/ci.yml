@@ -23,13 +23,13 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7.1.7
         with:
           fetch-depth: 0  # Need full history for baseline validation
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -38,7 +38,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -78,8 +78,8 @@ jobs:
       # Run comprehensive linting
       - name: Install golangci-lint and run it directly
         run: |
-          # Install golangci-lint v2.1.1 directly
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+          # Install golangci-lint v2.1.6 directly
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
           # Run golangci-lint directly without using the action to avoid --out-format flag issues
           $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 
@@ -110,11 +110,11 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -123,7 +123,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -209,7 +209,7 @@ jobs:
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: coverage-report
           path: coverage.out
@@ -238,11 +238,11 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -251,7 +251,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -270,7 +270,7 @@ jobs:
 
       # Upload binary as artifact
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: thinktank-binary
           path: thinktank
@@ -286,11 +286,11 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -299,7 +299,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -328,7 +328,7 @@ jobs:
 
       # Upload profiling data as artifact
       - name: Upload profiling data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: test-profiles
           path: |
@@ -344,13 +344,13 @@ jobs:
     steps:
       # Checkout repository with full history for proper version calculation
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0  # Full history needed for svu to calculate version
 
       # Setup Go environment
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true

@@ -46,14 +46,16 @@ hooks:
 	@echo "Pre-commit hooks installed successfully."
 	@echo "All code formatting will be automatically checked and fixed on commit."
 
-# Install required Go tools from tools.go
+# Install required Go tools from tools.go with specified versions
 tools: hooks
 	@echo "Installing development tools..."
-	@grep -E "_ \".*\"" tools.go | sed -E 's/.*_ "(.*)"$$/\1/' | while read pkg; do \
-		if [ "$$pkg" = "github.com/leodido/go-conventionalcommits" ]; then \
+	@grep -E "_ \".*\"" tools.go | sed -E 's/.*_ \"(.*)[@v].*\"$$/\1/' | while read pkg; do \
+		if [[ "$$pkg" == "github.com/leodido/go-conventionalcommits" ]]; then \
 			echo "Note: $$pkg is a library, not a CLI tool, skipping go install"; \
 		else \
-			go install $$pkg@latest; \
+			echo "Installing $$pkg..."; \
+			full_pkg=$$(grep -E "_ \"$$pkg.*\"" tools.go | sed -E 's/.*_ \"(.*)"$$/\1/'); \
+			go install "$$full_pkg"; \
 		fi \
 	done
 	@echo "Tools installed successfully."

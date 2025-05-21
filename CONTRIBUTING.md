@@ -19,9 +19,53 @@ Thank you for your interest in contributing to Thinktank! This document provides
 
 Before you begin, ensure you have the following installed:
 
-- **Go 1.21+**: The project requires Go version 1.21 or later. [Download Go](https://golang.org/dl/)
+- **Go 1.23+**: The project requires Go version 1.23 or later. [Download Go](https://golang.org/dl/)
 - **Git**: For version control. [Download Git](https://git-scm.com/downloads)
 - **Make**: Required for running Makefile commands
+
+### Tooling and Versions
+
+This project standardizes on specific tool versions to ensure reproducible builds and a consistent development environment. All tools are explicitly pinned to ensure consistent behavior across all environments.
+
+#### Go Tools
+Go CLI tools are managed via `tools.go` and installed with pinned versions. Install them by running:
+```bash
+make tools
+```
+Ensure `$GOPATH/bin` or `$(go env GOBIN)` is in your `PATH`.
+
+| Tool | Version | Managed In |
+|------|---------|------------|
+| Go | 1.23.x | `go.mod` |
+| golangci-lint | v2.1.6 | `tools.go` |
+| svu | v3.2.3 | `tools.go` |
+| git-chglog | v0.15.4 | `tools.go` |
+| goreleaser | v1.26.2 | `tools.go` |
+| govulncheck | v1.1.4 | `tools.go` |
+| commitlint | v0.10.1 | `tools.go` |
+| go-conventionalcommits | v0.12.0 | `tools.go` |
+
+#### JavaScript/Node.js Tools
+JS tools are managed via `package.json`. Install them by running:
+```bash
+npm install
+```
+
+| Tool | Version | Managed In |
+|------|---------|------------|
+| commitizen | 4.3.0 | `package.json` |
+| cz-conventional-changelog | 3.3.0 | `package.json` |
+
+#### GitHub Actions
+Workflow actions are pinned to specific versions in `.github/workflows/`.
+
+| Action | Version |
+|--------|---------|
+| actions/checkout | v4.1.7 |
+| actions/setup-go | v5.0.2 |
+| actions/cache | v3.3.2 |
+| actions/upload-artifact | v4.1.0 |
+| goreleaser/goreleaser-action | v5.0.0 |
 
 ### Tools Installation
 
@@ -48,10 +92,11 @@ If you prefer to install tools manually, you can run:
 
 ```bash
 # Install tools directly using go install
-go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-go install golang.org/x/vuln/cmd/govulncheck@latest
-go install github.com/caarlos0/svu@latest
-go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+go install github.com/caarlos0/svu/v3@v3.2.3
+go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4
+go install github.com/goreleaser/goreleaser@v1.26.2
 ```
 
 #### PATH Configuration

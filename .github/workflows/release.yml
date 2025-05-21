@@ -13,12 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -58,8 +58,8 @@ jobs:
 
       - name: Install golangci-lint and run it directly
         run: |
-          # Install golangci-lint v2.1.1 directly
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+          # Install golangci-lint v2.1.6 directly
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
           # Run golangci-lint directly without using the action to avoid --out-format flag issues
           $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 
@@ -90,12 +90,12 @@ jobs:
       packages: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -137,9 +137,9 @@ jobs:
           fi
 
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v5
+        uses: goreleaser/goreleaser-action@v5.0.0
         with:
-          version: v1.20.0
+          version: v1.26.2
           install-only: true
 
       - name: Run GoReleaser
