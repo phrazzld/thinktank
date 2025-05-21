@@ -1,26 +1,32 @@
-# CI Failure Summary for PR #24
+# CI Failure Summary
 
-## Overview
-PR #24 "feat: implement automated semantic versioning and release workflow" is currently failing CI checks due to an issue with the commit message validation implementation.
+## Build Information
+- PR: #24 "feat: implement automated semantic versioning and release workflow"
+- Failing Job: "Lint, Test & Build Check" in the "CI and Release" workflow
+- Status: FAILURE
 
-## Primary Issues
+## Error Logs
+The CI failure is due to insufficient code coverage. The CI workflow requires 90% test coverage, but the current coverage is only 71.9%.
 
-### 1. Commit Message Validation Errors
-* The baseline validation script (`scripts/ci/validate-baseline-commits.sh`) is checking commits after the baseline date but applying validation incorrectly
-* The implementation is inconsistent: it properly identifies post-baseline commits but doesn't properly exempt pre-baseline commits
-* All 26 commits in the PR are being flagged as invalid, despite the intention to only validate new commits
+```
+Total code coverage: 71.9%
+❌ Coverage check failed (71.9% < 90%)
+```
 
-### 2. Improper Baseline Implementation
-* The baseline approach is conceptually correct but has implementation flaws
-* The current script is trying to validate all commits after the baseline (May 18, 2025) rather than only validating commits that are made from this point forward
-* This creates an impossible situation where historical commits (which can't be changed without rewriting history) are being validated against a standard adopted later
+## Affected Components
+The `check-coverage.sh` script runs against all packages and requires a minimum coverage threshold of 90% in the release workflow.
 
-## Solution Direction
-The correct implementation should:
-1. Preserve git history (no rebasing or squashing)
-2. Only enforce conventional commit format for NEW commits moving forward
-3. Leave historical commits untouched but still included in the PR
-4. Update validation script to work correctly with the baseline approach
-5. Fix CI configuration to properly implement this policy
+## Additional Context
+The CI and Go CI workflows have different coverage thresholds:
+- CI and Release workflow: 90% threshold
+- Go CI workflow: 64% threshold (temporarily lowered from 75%, with a target of 90%)
 
-This aligns with the user's requirement: "we do not fucking want to rebase. we do not believe in rewriting history. whatever our fix, it should preserve history"
+This discrepancy is causing the build to fail in the CI and Release workflow while potentially passing in the Go CI workflow.
+
+## Key Findings
+1. The release workflow uses a higher threshold (90%) than the CI workflow (64%)
+2. Package-specific thresholds are defined but not used in the release workflow
+3. The project is working towards improving test coverage but has not reached the target level yet
+
+## Root Cause
+There's a mismatch between the coverage thresholds in the CI and Release workflows. While the Go CI workflow has temporarily lowered thresholds to accommodate ongoing test development, the Release workflow still enforces the target threshold of 90%.
