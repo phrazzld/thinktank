@@ -91,10 +91,28 @@ run_test() {
     cd ..
 }
 
+# Install SVU if not already installed
+install_svu() {
+    if ! command -v svu &> /dev/null; then
+        echo "Installing SVU..."
+        go install github.com/caarlos0/svu/v3@v3.2.3
+        # Verify installation
+        if ! command -v svu &> /dev/null; then
+            echo "Error: Failed to install SVU. Please install manually with:"
+            echo "go install github.com/caarlos0/svu/v3@v3.2.3"
+            exit 1
+        fi
+    fi
+    echo "Using SVU version: $(svu --version)"
+}
+
 # Main test execution
 main() {
     echo "Starting SVU version calculation tests..."
     echo
+
+    # Install SVU if needed
+    install_svu
 
     # Initialize results file
     init_results

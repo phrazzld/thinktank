@@ -358,7 +358,7 @@ jobs:
 
       # Install svu for semantic version calculation
       - name: Install svu
-        run: go install github.com/caarlos0/svu@v3.2.3
+        run: go install github.com/caarlos0/svu/v3@v3.2.3
 
       # Calculate next semantic version
       - name: Calculate next version
