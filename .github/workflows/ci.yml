@@ -86,7 +86,7 @@ jobs:
       # Install and run pre-commit checks
       - name: Install pre-commit
         run: |
-          pip install pre-commit
+          pip install pre-commit==4.2.0
 
       # Run pre-commit checks
       - name: Run pre-commit checks
@@ -358,7 +358,7 @@ jobs:
 
       # Install svu for semantic version calculation
       - name: Install svu
-        run: go install github.com/caarlos0/svu@latest
+        run: go install github.com/caarlos0/svu@v3.2.3
 
       # Calculate next semantic version
       - name: Calculate next version

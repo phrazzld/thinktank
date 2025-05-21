@@ -94,7 +94,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install svu
-        run: go install github.com/caarlos0/svu@latest
+        run: go install github.com/caarlos0/svu@v3.2.3
 
       - name: Calculate Version
         id: version
@@ -118,7 +118,7 @@ jobs:
           echo "Using version: $VERSION"
 
       - name: Install git-chglog
-        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@latest
+        run: go install github.com/git-chglog/git-chglog/cmd/git-chglog@v0.15.4
 
       - name: Generate Changelog
         run: |
