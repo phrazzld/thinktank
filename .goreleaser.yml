@@ -69,8 +69,6 @@ checksum:
 # Snapshot configuration for non-tagged builds
 snapshot:
   name_template: '{{ incpatch .Version }}-next'
-  # Additional snapshot settings
-  signatures: false     # Explicitly disable signing for snapshots
 
 # Changelog configuration
 # We use git-chglog for changelog generation, so we disable GoReleaser's built-in
@@ -102,7 +100,8 @@ release:
   # T011: Use pre-generated CHANGELOG.md via --release-notes flag in CI
   # The changelog is generated in the before hooks
 
-# Signs the checksum file using GPG (only for official releases, not snapshots)
+# Signs the checksum file using GPG (for official releases)
+# For snapshot builds, use --skip=sign in the command line
 signs:
   - artifacts: checksum
     args:
@@ -113,20 +112,6 @@ signs:
       - "${signature}"
       - "--detach-sig"
       - "${artifact}"
-    # Skip signing for snapshot builds or when GPG_FINGERPRINT is not set
-    signature: "${artifact}.sig"
-    cmd: gpg
-    output: true
-    env:
-      - GPG_TTY=/dev/null
-    id: gpg
-    # Only sign when not in snapshot mode and GPG_FINGERPRINT is available
-    condition: >
-      {{ if and (not .IsSnapshot) (not (eq (getenv "GPG_FINGERPRINT") "")) }}
-      true
-      {{ else }}
-      false
-      {{ end }}
 
 # Before hooks - commands to run before the release
 before:

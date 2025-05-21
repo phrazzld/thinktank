@@ -15,7 +15,8 @@ GoReleaser is configured to sign release artifacts (specifically checksums) when
 The signing configuration is defined in `.goreleaser.yml` under the `signs` section:
 
 ```yaml
-# Signs the checksum file using GPG (only for official releases, not snapshots)
+# Signs the checksum file using GPG (for official releases)
+# For snapshot builds, use --skip=sign in the command line
 signs:
   - artifacts: checksum
     args:
@@ -26,20 +27,6 @@ signs:
       - "${signature}"
       - "--detach-sig"
       - "${artifact}"
-    # Skip signing for snapshot builds or when GPG_FINGERPRINT is not set
-    signature: "${artifact}.sig"
-    cmd: gpg
-    output: true
-    env:
-      - GPG_TTY=/dev/null
-    id: gpg
-    # Only sign when not in snapshot mode and GPG_FINGERPRINT is available
-    condition: >
-      {{ if and (not .IsSnapshot) (not (eq (getenv "GPG_FINGERPRINT") "")) }}
-      true
-      {{ else }}
-      false
-      {{ end }}
 ```
 
 ## How Signing Works
@@ -50,8 +37,8 @@ signs:
    - The signature is published alongside the release artifacts
 
 2. For snapshot builds (PRs, development builds):
-   - Signing is explicitly disabled (through both configuration and command line flags)
-   - This prevents errors when GPG keys aren't available in CI
+   - Signing is explicitly disabled using the `--skip=sign` command line flag
+   - This prevents errors when GPG keys aren't available in CI environments
 
 ## Required Environment Variables
 
@@ -77,6 +64,16 @@ In the release workflow (`.github/workflows/release.yml`), different flags are u
   ```
 
 Note the `--skip=sign` flag for snapshots, which explicitly disables signing.
+
+The workflow uses a specific version of GoReleaser to ensure compatibility:
+
+```yaml
+- name: Install GoReleaser
+  uses: goreleaser/goreleaser-action@v5
+  with:
+    version: v1.20.0
+    install-only: true
+```
 
 ## Troubleshooting
 

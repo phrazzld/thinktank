@@ -139,6 +139,7 @@ jobs:
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v5
         with:
+          version: v1.20.0
           install-only: true
 
       - name: Run GoReleaser
