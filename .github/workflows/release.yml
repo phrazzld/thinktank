@@ -149,8 +149,8 @@ jobs:
             # Full release for tags
             goreleaser release --release-notes=CHANGELOG.md --clean
           else
-            # Snapshot release for PRs and master pushes (skip signing)
-            goreleaser release --snapshot --skip=announce,publish,sign --release-notes=CHANGELOG.md --clean
+            # Snapshot release for PRs and master pushes
+            goreleaser release --snapshot --skip-publish --skip-announce --skip-sign --release-notes=CHANGELOG.md --clean
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

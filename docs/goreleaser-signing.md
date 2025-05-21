@@ -60,10 +60,10 @@ In the release workflow (`.github/workflows/release.yml`), different flags are u
 
 - For snapshot builds:
   ```bash
-  goreleaser release --snapshot --skip=announce,publish,sign --release-notes=CHANGELOG.md --clean
+  goreleaser release --snapshot --skip-publish --skip-announce --skip-sign --release-notes=CHANGELOG.md --clean
   ```
 
-Note the `--skip=sign` flag for snapshots, which explicitly disables signing.
+Note the `--skip-sign` flag for snapshots, which explicitly disables signing.
 
 The workflow uses a specific version of GoReleaser to ensure compatibility:
 
