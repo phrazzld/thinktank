@@ -3,7 +3,7 @@
 ## CI Improvements
 
 - [x] Fix golangci-lint configuration in the CI and Release workflow to match the version used in CI
-- Update workflow files to use the same version of golangci-lint
+- [x] Update workflow files to use the same version of golangci-lint
 - Consider adding version pinning for all tools to ensure consistency
 
 ## Documentation
