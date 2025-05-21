@@ -23,11 +23,13 @@ jobs:
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7.1.7
+        with:
+          fetch-depth: 0  # Need full history for baseline validation
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -36,7 +38,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -47,6 +49,15 @@ jobs:
       - name: Cache status report
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
+
+      # Run forward-only commit validation (create baseline at current point)
+      - name: Forward-Only Commit Validation
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Running forward-only commit validation"
+          echo "This approach preserves git history while ensuring future commits follow conventions"
+          chmod +x ./scripts/ci/validate-baseline-commits.sh
+          ./scripts/ci/validate-baseline-commits.sh
 
       # Verify dependencies integrity
       - name: Verify dependencies
@@ -67,18 +78,22 @@ jobs:
       # Run comprehensive linting
       - name: Install golangci-lint and run it directly
         run: |
-          # Install golangci-lint v2.1.1 directly
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
+          # Install golangci-lint v2.1.5 directly using go install
+          go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.5
           # Run golangci-lint directly without using the action to avoid --out-format flag issues
           $(go env GOPATH)/bin/golangci-lint run --timeout=5m
 
       # Install and run pre-commit checks
       - name: Install pre-commit
         run: |
-          pip install pre-commit
+          pip install pre-commit==4.2.0
 
+      # Run pre-commit checks
       - name: Run pre-commit checks
-        run: pre-commit run --all-files
+        run: |
+          echo "Running pre-commit checks (forward-only validation)"
+          echo "See docs/conventional-commits.md for details on our validation policy"
+          pre-commit run --all-files
 
       # Verify default model consistency
       - name: Check default model consistency
@@ -90,14 +105,16 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     needs: lint
+    # Fail-fast: Only run if the lint job has succeeded
+    if: success()
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -106,7 +123,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -187,12 +204,12 @@ jobs:
           echo ""
           # Display detailed per-package coverage
           ./scripts/check-package-coverage.sh 64 || true # Don't fail here, the next step does enforcement
-                                                         # NOTE: Temporarily lowered to 64% to allow for test development
-                                                         # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
+                                                       # NOTE: Temporarily lowered to 64% to allow for test development
+                                                       # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: coverage-report
           path: coverage.out
@@ -216,14 +233,16 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: test
+    # Fail-fast: Only run if the test job has succeeded
+    if: success()
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -232,7 +251,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -251,7 +270,7 @@ jobs:
 
       # Upload binary as artifact
       - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: thinktank-binary
           path: thinktank
@@ -261,16 +280,17 @@ jobs:
   profile:
     name: Profile Tests
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile_tests == 'true'
+    # Only run on manual trigger AND if the lint job has succeeded
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.profile_tests == 'true' && success()
     needs: lint
     steps:
       # Checkout repository
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.1.7
 
       # Setup Go environment with comprehensive caching
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v5.0.2
         with:
           go-version: 'stable'
           cache: true
@@ -279,7 +299,7 @@ jobs:
       # Cache Go build outputs for faster builds
       - name: Cache Go build cache
         id: go-cache
-        uses: actions/cache@v3
+        uses: actions/cache@v3.3.2
         with:
           path: ~/.cache/go-build
           key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
@@ -308,9 +328,53 @@ jobs:
 
       # Upload profiling data as artifact
       - name: Upload profiling data
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.1.0
         with:
           name: test-profiles
           path: |
             *.prof
-          retention-days: 7
+
+  # Version calculation job for semantic versioning
+  version:
+    name: Calculate Version
+    runs-on: ubuntu-latest
+    needs: build
+    # Fail-fast: Only run if the build job has succeeded
+    if: success()
+    steps:
+      # Checkout repository with full history for proper version calculation
+      - name: Checkout code
+        uses: actions/checkout@v4.1.7
+        with:
+          fetch-depth: 0  # Full history needed for svu to calculate version
+
+      # Setup Go environment
+      - name: Set up Go
+        uses: actions/setup-go@v5.0.2
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Install svu for semantic version calculation
+      - name: Install svu
+        run: go install github.com/caarlos0/svu/v3@v3.2.3
+
+      # Calculate next semantic version
+      - name: Calculate next version
+        id: version
+        run: |
+          # Calculate the next version based on conventional commits
+          NEXT_VERSION=$(svu next)
+          echo "Next version: $NEXT_VERSION"
+          # Export as environment variable
+          echo "NEXT_VERSION=$NEXT_VERSION" >> $GITHUB_ENV
+          # Export as job output
+          echo "version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      # Log version information
+      - name: Log version info
+        run: |
+          echo "Current version: $(svu current)"
+          echo "Next version: ${{ env.NEXT_VERSION }}"
+          echo "Version output: ${{ steps.version.outputs.version }}"

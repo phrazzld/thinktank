@@ -22,6 +22,32 @@ thinktank --instructions task.txt ./my-project
 thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
 ```
 
+## Development Setup (MANDATORY for Contributors)
+
+When contributing to Thinktank, please follow this setup process:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/phrazzld/thinktank.git
+cd thinktank
+
+# 2. Install development tools AND git hooks (REQUIRED)
+make tools
+
+# This automatically installs:
+# - All development tools from tools.go
+# - Pre-commit hooks for code formatting (EOF newlines, trailing spaces, etc.)
+# - Commit message validation for Conventional Commits
+# - Post-commit hooks for documentation updates
+```
+
+**Important Requirements:**
+- **Pre-commit hooks are MANDATORY** - They ensure code quality and prevent CI failures
+- **Conventional Commits are REQUIRED** - All commits must follow the specification
+- **No bypassing hooks** - Using `--no-verify` is strictly forbidden
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions and commit message examples.
+
 ## Key Features
 
 - **Multiple LLM Providers**: Supports Gemini, OpenAI, and OpenRouter models
@@ -172,8 +198,53 @@ This tolerant mode is particularly useful when using multiple models for redunda
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
 - **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
 - **Color Output Issues**: Summary output uses ANSI color codes for terminal display, which may not be suitable for all environments. Redirect to a file for plain text output.
+- **Synthesis Output Truncation**: If synthesis outputs are being cut off:
+  - Try using a model with higher output limits (e.g., `--synthesis-model gpt-4.1` which has 200k output tokens)
+  - Use fewer primary models to reduce the combined output size
+  - Check the synthesis output file for a warning message about truncation
+  - Consider using OpenRouter models which often have higher token limits
 
 ## Development & Contributing
+
+### Development Setup
+
+To set up your development environment for thinktank:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/phrazzld/thinktank.git
+   cd thinktank
+   ```
+
+2. **Verify Go installation**:
+   - Ensure you have Go 1.21 or later installed (as specified in `go.mod`)
+   - Check your Go version: `go version`
+
+3. **Install required development tools**:
+   ```bash
+   # Install all required tools in one command
+   make tools
+   ```
+   This will install the following tools from our `tools.go`:
+   - golangci-lint: Code linting
+   - govulncheck: Security vulnerability scanning
+   - svu: Semantic versioning utilities
+   - git-chglog: Changelog generation
+
+4. **Verify tools installation**:
+   - Ensure `$GOPATH/bin` is in your PATH
+   - Test tool availability: `golangci-lint --version`
+
+5. **Additional development commands**:
+   ```bash
+   make help       # Display available Make targets
+   make build      # Build the project
+   make test       # Run all tests
+   make lint       # Run linters
+   make fmt        # Format code
+   ```
+
+For more detailed setup instructions, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Code Coverage Requirements
 
@@ -218,6 +289,120 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 - Mock only true external dependencies, not internal collaborators
 - Maintain high coverage, particularly for critical components
 - Run the full test suite before submitting changes
+
+### Commit Conventions
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) for all commit messages. This enables automatic semantic versioning and changelog generation.
+
+#### Baseline Validation Policy
+
+**Important:** Our commit message validation only applies to commits made after May 18, 2025 (baseline commit `1300e4d`). This approach preserves git history while enforcing standards for all new development.
+
+#### Guided Commit Creation
+
+This project supports guided commit creation using [Commitizen](https://github.com/commitizen/cz-cli), which helps you create properly formatted commit messages through an interactive interface. Use one of these commands:
+
+```bash
+./scripts/commit.sh   # Using the script
+make commit           # Using Make
+npm run commit        # Using npm directly
+```
+
+For detailed information about our commit message validation policy and tools, see [docs/conventional-commits.md](docs/conventional-commits.md).
+
+#### Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Examples
+
+```bash
+# Features
+feat: add support for custom output directories
+feat(api): implement new authentication endpoint
+feat!: change API response format (breaking change)
+
+# Bug fixes
+fix: resolve memory leak in file parsing
+fix(cli): correct handling of empty input files
+
+# Documentation
+docs: update README with new examples
+docs(api): add OpenAPI specifications
+
+# Refactoring
+refactor: simplify error handling logic
+refactor(registry): restructure provider interface
+
+# Testing
+test: add integration tests for synthesis feature
+test(e2e): cover edge cases in CLI parsing
+
+# Build/CI
+build: upgrade Go version to 1.22
+ci: add coverage reporting to workflow
+```
+
+#### Requirements
+
+- Use present tense, imperative mood: "add feature" not "added feature"
+- Don't capitalize the first letter after type
+- No period at the end of the subject line
+- Use `!` after type for breaking changes
+- Reference issues/PRs in the footer when applicable
+
+### Release Process
+
+Our release process is fully automated using semantic versioning based on commit messages.
+
+#### How It Works
+
+1. **Commit messages** following Conventional Commits trigger automatic version calculation
+2. **On push to `master`**: CI runs tests, builds, and creates snapshot releases
+3. **On version tag push** (e.g., `v1.2.3`): CI creates a full release with:
+   - Multi-platform binaries (darwin/linux/windows)
+   - Automatically generated changelog
+   - GitHub release with artifacts
+
+#### Tools Used
+
+- **svu**: Calculates the next semantic version based on commit history
+- **git-chglog**: Generates changelog from Conventional Commits
+- **goreleaser**: Builds binaries and creates GitHub releases
+
+#### Creating a Release
+
+Releases are created automatically when a semantic version tag is pushed:
+
+```bash
+# The CI will automatically determine the next version based on commits since last tag
+# But you can manually create a release by tagging:
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+The CI pipeline will:
+1. Validate all commit messages
+2. Run tests and linting
+3. Build binaries for all platforms
+4. Generate changelog from commits
+5. Create GitHub release with artifacts
+
+#### Changelog
+
+The project changelog is automatically generated from commit messages and can be found in [CHANGELOG.md](CHANGELOG.md). This file is updated automatically during the release process based on Conventional Commits since the last release. Do not edit this file manually.
+
+#### Version Bumping
+
+- `fix:` commits trigger a patch version bump (1.0.x)
+- `feat:` commits trigger a minor version bump (1.x.0)
+- Breaking changes (`feat!:` or `fix!:`) trigger a major version bump (x.0.0)
 
 ## Learn More
 

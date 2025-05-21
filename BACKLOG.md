@@ -1,15 +1,23 @@
 # BACKLOG
 
-- [ ] **[Refactor]**: Enhance Error Handling and Logging Consistency (Refined T13, Original T38, T47, T74, T75, T81)
-  - **Complexity**: Complex
-  - **Rationale**: Critical for reliability, debugging, and operational excellence. Adheres to Development Philosophy on Consistent Error Handling (§8), Logging Strategy (§10), and Go Appendix §8 (Error Handling), §11 (Logging). Ensures separation of concerns, rich self-describing errors, structured JSON logs, context propagation, and sanitized error details.
-  - **Expected Outcome**: All errors are rich, self-describing types (e.g., `llm.LLMError`). Consistent structured JSON logging via `log/slog` with mandatory context fields (correlation_id, model, phase). Sanitized error details in logs. Improved user-facing error messages. Custom loggers replaced.
-  - **Dependencies**: None.
-
-- fix persistent synthesis file truncation
-
 ## High Priority
 
+### CI/CD & Automation
+
+- [ ] **[Automation/Process]**: Implement Automated Semantic Versioning via Conventional Commits (Refined T14, Original T56, T57)
+  - **Complexity**: Medium
+  - **Rationale**: Provides a clear, automated release process, improves maintainability, and adheres to Philosophy §9. Mandatory for robust software delivery. Enforces consistent commit history.
+  - **Expected Outcome**: Conventional Commits specification adopted and enforced (e.g., via `commitlint`). CI pipeline automates version bumping, Git tagging, and `CHANGELOG.md` generation.
+
+- [ ] **[Automation/Process]**: Enhance CI Pipeline with Mandatory Quality Gates (Original T59)
+  - **Complexity**: Medium
+  - **Rationale**: Guarantees minimum code quality and security standards are met before code is merged or released. Mandatory per Philosophy §9.2.
+  - **Expected Outcome**: CI workflow enforces mandatory, blocking steps for: Lint, Format Check, Unit Tests, Integration Tests, Coverage Check, Security Scan, Build.
+
+- [ ] **[Automation/Security]**: Implement Automated Vulnerability Scanning in CI (Original T60)
+  - **Complexity**: Simple
+  - **Rationale**: Essential security practice to prevent deploying code with known vulnerabilities. Mandatory requirement of Philosophy §9.2.7 and Go Appendix §12.
+  - **Expected Outcome**: CI pipeline includes `govulncheck` (Go) and potentially `npm audit` (if applicable), failing the build on discovery of new Critical or High severity vulnerabilities.
 ### Core Features & Value Delivery
 
 - [ ] **[Feature]**: Develop Flexible Workflow Engine (Original T25)
@@ -29,22 +37,6 @@
   - **Rationale**: Ensures correct handling of cancellation, deadlines, and request-scoped data in concurrent operations, and detects race conditions. Mandatory per Go Appendix §9 and Philosophy §9.2.
   - **Expected Outcome**: `context.Context` correctly used as the first argument and propagated throughout the codebase. `go test -race ./...` added to all CI test commands, and any detected races are fixed.
 
-### CI/CD & Automation
-
-- [ ] **[Automation/Process]**: Implement Automated Semantic Versioning via Conventional Commits (Refined T14, Original T56, T57)
-  - **Complexity**: Medium
-  - **Rationale**: Provides a clear, automated release process, improves maintainability, and adheres to Philosophy §9. Mandatory for robust software delivery. Enforces consistent commit history.
-  - **Expected Outcome**: Conventional Commits specification adopted and enforced (e.g., via `commitlint`). CI pipeline automates version bumping, Git tagging, and `CHANGELOG.md` generation.
-
-- [ ] **[Automation/Process]**: Enhance CI Pipeline with Mandatory Quality Gates (Original T59)
-  - **Complexity**: Medium
-  - **Rationale**: Guarantees minimum code quality and security standards are met before code is merged or released. Mandatory per Philosophy §9.2.
-  - **Expected Outcome**: CI workflow enforces mandatory, blocking steps for: Lint, Format Check, Unit Tests, Integration Tests, Coverage Check, Security Scan, Build.
-
-- [ ] **[Automation/Security]**: Implement Automated Vulnerability Scanning in CI (Original T60)
-  - **Complexity**: Simple
-  - **Rationale**: Essential security practice to prevent deploying code with known vulnerabilities. Mandatory requirement of Philosophy §9.2.7 and Go Appendix §12.
-  - **Expected Outcome**: CI pipeline includes `govulncheck` (Go) and potentially `npm audit` (if applicable), failing the build on discovery of new Critical or High severity vulnerabilities.
 
 ### Testing & Reliability
 

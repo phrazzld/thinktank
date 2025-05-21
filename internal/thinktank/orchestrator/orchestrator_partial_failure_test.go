@@ -93,7 +93,7 @@ func TestPartialFailureErrorHandling(t *testing.T) {
 			// Create other mocks
 			mockAPIService := &MockAPIService{}
 			mockContextGatherer := &MockContextGatherer{}
-			mockFileWriter := &MockFileWriter{}
+			mockFileWriter := NewMockFileWriter()
 			mockRateLimiter := ratelimit.NewRateLimiter(0, 0)
 			mockAuditLogger := &MockAuditLogger{}
 

@@ -163,7 +163,7 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 
 			// Create mocks for other dependencies
 			mockContextGatherer := &MockContextGatherer{}
-			mockFileWriter := &MockFileWriter{}
+			mockFileWriter := NewMockFileWriter()
 			mockRateLimiter := ratelimit.NewRateLimiter(0, 0)
 			mockAuditLogger := NewMockAuditLogger()
 			logger := &MockLogger{}

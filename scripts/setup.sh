@@ -105,17 +105,58 @@ else
 fi
 
 # Install git hooks
-print_header "Installing Git hooks"
+print_header "Installing Git hooks (MANDATORY)"
 if command -v pre-commit >/dev/null 2>&1; then
+    echo "Git hooks are MANDATORY for this project. Installing all required hooks..."
+
     # Install pre-commit hooks
     echo "Installing pre-commit hooks..."
-    pre-commit install
+    pre-commit install --install-hooks
 
     if [ $? -eq 0 ]; then
         print_success "Pre-commit hooks installed successfully"
     else
         print_error "Failed to install pre-commit hooks"
-        echo "Please try running 'pre-commit install' manually"
+        echo "Please try running 'pre-commit install --install-hooks' manually"
+    fi
+
+    # Install commit-msg hooks for conventional commit validation
+    echo "Installing commit-msg hooks..."
+    pre-commit install --hook-type commit-msg
+
+    if [ $? -eq 0 ]; then
+        print_success "Commit-msg hooks installed successfully"
+    else
+        print_error "Failed to install commit-msg hooks"
+        echo "Please try running 'pre-commit install --hook-type commit-msg' manually"
+    fi
+
+    # Set up baseline-aware commit validation
+    echo "Setting up baseline-aware commit validation..."
+    if [ -f "./scripts/setup-commitlint.sh" ]; then
+        ./scripts/setup-commitlint.sh
+        if [ $? -eq 0 ]; then
+            print_success "Baseline-aware commit validation configured successfully"
+            echo "Only commits made after the baseline commit (May 18, 2025) will be validated"
+            echo "This matches the CI workflow validation approach"
+        else
+            print_error "Failed to configure baseline-aware commit validation"
+            echo "Commit message validation will still work but without baseline awareness"
+        fi
+    else
+        print_warning "setup-commitlint.sh not found, skipping baseline configuration"
+        echo "Commit message validation will work but without baseline awareness"
+    fi
+
+    # Install pre-push hooks
+    echo "Installing pre-push hooks..."
+    pre-commit install --hook-type pre-push
+
+    if [ $? -eq 0 ]; then
+        print_success "Pre-push hooks installed successfully"
+    else
+        print_error "Failed to install pre-push hooks"
+        echo "Please try running 'pre-commit install --hook-type pre-push' manually"
     fi
 
     # Install post-commit hooks
@@ -130,11 +171,13 @@ if command -v pre-commit >/dev/null 2>&1; then
     fi
 
     # Verify hook installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
-        print_success "Git hooks verified in .git/hooks/"
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ] && [ -f ".git/hooks/pre-push" ]; then
+        print_success "All Git hooks verified in .git/hooks/"
+        print_success "Code formatting, commit message validation, and pre-push validation are now active"
     else
-        print_warning "Hook files not found in .git/hooks/ directory"
+        print_warning "Some hook files not found in .git/hooks/ directory"
         echo "There may be an issue with your git configuration"
+        echo "Expected hooks: pre-commit, commit-msg, pre-push, post-commit"
     fi
 
     # If glance is not installed, warn about post-commit hook potentially failing
@@ -223,16 +266,28 @@ reinstall_hooks() {
     pre-commit clean
 
     echo "Installing pre-commit hooks..."
-    pre-commit install
+    pre-commit install --install-hooks
+
+    echo "Installing commit-msg hooks..."
+    pre-commit install --hook-type commit-msg
+
+    # Set up baseline-aware commit validation on reinstall
+    if [ -f "./scripts/setup-commitlint.sh" ]; then
+        echo "Reconfiguring baseline-aware commit validation..."
+        ./scripts/setup-commitlint.sh
+    fi
+
+    echo "Installing pre-push hooks..."
+    pre-commit install --hook-type pre-push
 
     echo "Installing post-commit hooks..."
     pre-commit install --hook-type post-commit
 
     # Verify installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ]; then
-        print_success "Hooks reinstalled successfully"
+    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ] && [ -f ".git/hooks/pre-push" ]; then
+        print_success "All hooks reinstalled successfully"
     else
-        print_error "Hook reinstallation may have failed - hook files not found"
+        print_error "Hook reinstallation may have failed - some hook files not found"
     fi
 }
 
@@ -248,9 +303,62 @@ if [ -f ".git/hooks/pre-commit" ] || [ -f ".git/hooks/post-commit" ]; then
     fi
 fi
 
+# Set up commit template
+print_header "Setting up Git commit template"
+if [ -f "./scripts/setup-commit-template.sh" ]; then
+    echo "Configuring Git commit template..."
+    ./scripts/setup-commit-template.sh
+    if [ $? -eq 0 ]; then
+        print_success "Git commit template configured successfully"
+        echo "The template will be used for all new commits in this repository"
+    else
+        print_warning "Failed to configure Git commit template"
+        echo "You can set it up manually later by running:"
+        echo "  ./scripts/setup-commit-template.sh"
+    fi
+else
+    print_warning "setup-commit-template.sh not found, skipping commit template setup"
+    echo "You can set it up manually later if it becomes available"
+fi
+
+# Set up Commitizen for guided commit creation
+print_header "Setting up Commitizen (optional)"
+if [ -f "./package.json" ]; then
+    if command -v npm >/dev/null 2>&1; then
+        echo "Commitizen is available for guided commit creation."
+        echo "Would you like to install the Node.js dependencies for Commitizen? (y/n)"
+        read -r INSTALL_COMMITIZEN
+
+        if [[ $INSTALL_COMMITIZEN =~ ^[Yy]$ ]] || [[ -z $INSTALL_COMMITIZEN ]]; then
+            echo "Installing Commitizen dependencies..."
+            npm install
+
+            if [ $? -eq 0 ]; then
+                print_success "Commitizen dependencies installed successfully"
+                echo "You can now use guided commit creation with:"
+                echo "  ./scripts/commit.sh  or  make commit  or  npm run commit"
+            else
+                print_error "Failed to install Commitizen dependencies"
+                echo "You can try installing them manually with 'npm install'"
+            fi
+        else
+            print_warning "Commitizen dependency installation skipped"
+            echo "You can install them later with 'npm install' if you want to use guided commit creation"
+        fi
+    else
+        print_warning "Node.js/npm is not installed"
+        echo "If you want to use Commitizen for guided commit creation, you'll need to:"
+        echo "1. Install Node.js from https://nodejs.org/"
+        echo "2. Run 'npm install' in this directory"
+    fi
+else
+    print_warning "package.json not found, skipping Commitizen setup"
+    echo "Commitizen configuration may not be properly set up in this repository"
+fi
+
 print_header "Setup Complete"
 echo "Your environment is now ready for development."
-echo "For more information, see the project README.md and hooks/README.md"
+echo "For more information, see the project README.md and CONTRIBUTING.md"
 echo ""
 echo "If you encounter issues with Git hooks, you can run this script again"
 echo "or follow the manual reinstallation steps in hooks/README.md"

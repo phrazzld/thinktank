@@ -45,13 +45,16 @@ func TestStitchSynthesisPromptFailedModels(t *testing.T) {
 	}
 
 	// Verify essential prompt structure is correct
-	if !strings.Contains(synthesisPrompt, "<instructions>") {
-		t.Error("Synthesis prompt missing instructions section")
+	if !strings.Contains(synthesisPrompt, "<synthesis_instructions>") {
+		t.Error("Synthesis prompt missing synthesis_instructions section")
+	}
+	if !strings.Contains(synthesisPrompt, "<original_task_context>") {
+		t.Error("Synthesis prompt missing original_task_context section")
 	}
 	if !strings.Contains(synthesisPrompt, "<model_outputs>") {
 		t.Error("Synthesis prompt missing model_outputs section")
 	}
-	if !strings.Contains(synthesisPrompt, "Please synthesize these outputs") {
+	if !strings.Contains(synthesisPrompt, "You are a synthesis model") {
 		t.Error("Synthesis prompt missing synthesis instructions")
 	}
 }

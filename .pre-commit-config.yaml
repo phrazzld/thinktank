@@ -8,13 +8,26 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0  # Use the latest stable version
     hooks:
+    # File formatting hooks
     -   id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
     -   id: end-of-file-fixer
+
+    # File validation hooks
     -   id: check-yaml
+    -   id: check-json
     -   id: check-added-large-files
 
+    # Security and error prevention hooks
+    -   id: detect-private-key
+    -   id: check-merge-conflict
+
+    # Shell script specific hooks
+    -   id: check-executables-have-shebangs
+    -   id: check-shebang-scripts-are-executable
+
 -   repo: https://github.com/golangci/golangci-lint
-    rev: v2.1.1  # Use the latest stable version
+    rev: v2.1.5  # Current stable v2 release
     hooks:
     -   id: golangci-lint
         args: ["--timeout=5m"]
@@ -32,6 +45,23 @@ repos:
         pass_filenames: false
         language: system
 
+-   repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.39.0
+    hooks:
+    -   id: markdownlint
+        # Configure markdownlint rules - allow line length exceptions for tables, etc.
+        args: [--config=.markdownlint.yaml]
+
+-   repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.9.0.6
+    hooks:
+    -   id: shellcheck
+        args:
+        - --severity=warning  # Adjust severity as needed
+        - --exclude=SC2034,SC2124  # Exclude specific warnings that are acceptable in this project
+        # SC2034: Variable appears unused (often used for flags or future use)
+        # SC2124: Assigning array to string (common pattern in some scripts)
+
 -   repo: local
     hooks:
     -   id: check-large-files
@@ -46,6 +76,23 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: conventional-commit-check
+        name: Check Conventional Commit compliance (baseline-aware)
+        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then echo 'Validating commit message against conventional commit standard (baseline-aware policy)' && cat $1 | commitlint && echo 'See docs/conventional-commits.md for our baseline validation policy'; else echo 'Skipping commitlint in batch mode'; fi"
+        language: system
+        stages: [commit-msg]  # Run during the commit-msg stage
+        pass_filenames: false  # Don't pass filenames to the hook
+    -   id: conventional-commits-push-check
+        name: Validate Conventional Commits on push (baseline-aware policy)
+        description: |
+          Validates commit messages in push against conventional commit standard.
+          Only validates commits made after baseline (May 18, 2025).
+          See docs/conventional-commits.md for details.
+        entry: scripts/validate-push.sh
+        language: script
+        stages: [pre-push]  # Run during the pre-push stage
+        pass_filenames: false  # Don't pass filenames to the hook as we read from stdin
+        always_run: true  # Always run on push, regardless of what files changed
     -   id: run-glance
         name: Run glance to update directory overviews
         entry: .pre-commit-hooks/run_glance.sh
