@@ -23,6 +23,8 @@ import (
 
 // Deprecated: Using a global var here as a temporary fix during refactoring
 // A better approach would be to inject a random generator instance
+//
+//nolint:gosec // G404: This is for correlation ID generation, not cryptographic use
 var globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 // Execute is the main entry point for the core application logic.

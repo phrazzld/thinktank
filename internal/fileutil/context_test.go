@@ -9,6 +9,7 @@ import (
 // setupTestDir creates a directory structure for testing
 // Returns the test directory path and a cleanup function
 func setupTestDir(t *testing.T) (string, func()) {
+	t.Helper()
 	// Create a temporary directory
 	testDir, err := os.MkdirTemp("", "fileutil_test_*")
 	if err != nil {

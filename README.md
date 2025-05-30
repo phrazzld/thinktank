@@ -24,27 +24,35 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 
 ## Development Setup (MANDATORY for Contributors)
 
-When contributing to Thinktank, please follow this setup process:
+**⚠️ CRITICAL: Pre-commit hooks are ABSOLUTELY MANDATORY for all contributors. Failure to install hooks will result in rejected contributions.**
+
+When contributing to Thinktank, you MUST follow this setup process:
 
 ```bash
 # 1. Clone the repository
 git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 
-# 2. Install development tools AND git hooks (REQUIRED)
+# 2. Run the setup script (REQUIRED - THIS IS NON-NEGOTIABLE)
+./scripts/setup.sh
+
+# OR use Make (also installs hooks)
 make tools
 
-# This automatically installs:
-# - All development tools from tools.go
-# - Pre-commit hooks for code formatting (EOF newlines, trailing spaces, etc.)
-# - Commit message validation for Conventional Commits
-# - Post-commit hooks for documentation updates
+# The setup process automatically installs:
+# ✓ All development tools from tools.go
+# ✓ Pre-commit hooks for code formatting and quality checks
+# ✓ Commit-msg hooks for Conventional Commits validation
+# ✓ Pre-push hooks for final validation before pushing
+# ✓ Post-commit hooks for documentation generation
 ```
 
-**Important Requirements:**
-- **Pre-commit hooks are MANDATORY** - They ensure code quality and prevent CI failures
-- **Conventional Commits are REQUIRED** - All commits must follow the specification
-- **No bypassing hooks** - Using `--no-verify` is strictly forbidden
+**🚨 MANDATORY REQUIREMENTS:**
+- **Pre-commit hooks MUST be installed** - Setup will fail if hooks cannot be installed
+- **All 4 hook types are required** - pre-commit, commit-msg, pre-push, post-commit
+- **Conventional Commits are ENFORCED** - Invalid commits will be rejected
+- **NO BYPASSING ALLOWED** - Using `--no-verify` is a serious violation and grounds for ban
+- **CI will verify hook configuration** - Misconfigured environments will fail CI
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed setup instructions and commit message examples.
 
@@ -298,14 +306,17 @@ We use [Conventional Commits](https://www.conventionalcommits.org/) for all comm
 
 **Important:** Our commit message validation only applies to commits made after May 18, 2025 (baseline commit `1300e4d`). This approach preserves git history while enforcing standards for all new development.
 
-#### Guided Commit Creation
+#### Commit Message Format
 
-This project supports guided commit creation using [Commitizen](https://github.com/commitizen/cz-cli), which helps you create properly formatted commit messages through an interactive interface. Use one of these commands:
+This project uses conventional commits for automated versioning and changelog generation. Commit messages are automatically validated by pre-commit hooks and CI using our Go-based validator.
 
-```bash
-./scripts/commit.sh   # Using the script
-make commit           # Using Make
-npm run commit        # Using npm directly
+**Format:** `<type>[optional scope]: <description>`
+
+**Examples:**
+```
+feat: add user authentication
+fix(api): resolve timeout issue  
+docs: update README with new examples
 ```
 
 For detailed information about our commit message validation policy and tools, see [docs/conventional-commits.md](docs/conventional-commits.md).

@@ -22,6 +22,46 @@ Before you begin, ensure you have the following installed:
 - **Go 1.23+**: The project requires Go version 1.23 or later. [Download Go](https://golang.org/dl/)
 - **Git**: For version control. [Download Git](https://git-scm.com/downloads)
 - **Make**: Required for running Makefile commands
+- **pre-commit**: MANDATORY for all contributors. [Installation Guide](https://pre-commit.com/#install)
+
+### 🚨 MANDATORY Setup Process
+
+**IMPORTANT**: The following setup is NOT OPTIONAL. All contributors MUST complete these steps before making any commits:
+
+1. **Run the setup script** (this will install pre-commit and all hooks):
+   ```bash
+   ./scripts/setup.sh
+   ```
+
+2. **If setup.sh fails**, manually install pre-commit and hooks:
+   ```bash
+   # Install pre-commit (choose ONE method):
+   pip install pre-commit          # Option 1: Using pip
+   pipx install pre-commit          # Option 2: Using pipx
+   brew install pre-commit          # Option 3: Using Homebrew
+   conda install -c conda-forge pre-commit  # Option 4: Using conda
+
+   # Then install hooks:
+   make hooks
+   ```
+
+3. **Verify installation**:
+   ```bash
+   make hooks-status
+   ```
+
+**Why is this mandatory?**
+- Ensures code quality standards are met locally
+- Prevents CI failures due to formatting/linting issues
+- Validates commit messages follow Conventional Commits
+- Maintains consistency across all contributors
+
+**Consequences of skipping setup:**
+- ❌ Your commits will fail CI checks
+- ❌ Your PRs will be automatically rejected
+- ❌ You will waste time fixing preventable issues
+
+**Having issues?** See [Hook Troubleshooting Guide](docs/troubleshooting-hooks.md)
 
 ### Tooling and Versions
 
@@ -45,16 +85,12 @@ Ensure `$GOPATH/bin` or `$(go env GOBIN)` is in your `PATH`.
 | commitlint | v0.10.1 | `tools.go` |
 | go-conventionalcommits | v0.12.0 | `tools.go` |
 
-#### JavaScript/Node.js Tools
-JS tools are managed via `package.json`. Install them by running:
-```bash
-npm install
-```
+#### Commit Validation Tools
+Commit message validation is handled by our native Go validator:
 
 | Tool | Version | Managed In |
 |------|---------|------------|
-| commitizen | 4.3.0 | `package.json` |
-| cz-conventional-changelog | 3.3.0 | `package.json` |
+| commitvalidate | current | `cmd/commitvalidate/` |
 
 #### GitHub Actions
 Workflow actions are pinned to specific versions in `.github/workflows/`.
@@ -69,11 +105,13 @@ Workflow actions are pinned to specific versions in `.github/workflows/`.
 
 ### Tools Installation
 
+**🔴 CRITICAL: Hook installation is MANDATORY and will be verified. Contributors who skip this step will have their PRs automatically rejected.**
+
 This project uses several tools for development, testing, and code quality. We maintain a `tools.go` file to pin tool dependencies and ensure consistent versions across all development environments.
 
-#### Automatic Installation (Recommended)
+#### Automatic Installation (REQUIRED - Not Optional)
 
-The simplest way to install all required tools is through our Makefile:
+You MUST install all tools and hooks through one of these methods:
 
 ```bash
 # Clone the repository if you haven't already
@@ -122,18 +160,29 @@ git-chglog --version
 
 ### Development Workflow
 
-**FIRST TIME SETUP (REQUIRED):**
+**FIRST TIME SETUP (ABSOLUTELY REQUIRED - NO EXCEPTIONS):**
 ```bash
 # Clone the repository
 git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 
-# Install all tools AND git hooks (MANDATORY)
-make tools
-
-# OR run the setup script for a more comprehensive setup
+# Run the comprehensive setup script (MANDATORY)
 ./scripts/setup.sh
+
+# This script will:
+# 1. Check for required dependencies (Go, pre-commit)
+# 2. Install missing dependencies with your permission
+# 3. Install ALL required git hooks (pre-commit, commit-msg, pre-push, post-commit)
+# 4. Verify hook installation and fail if any hooks are missing
+# 5. Configure baseline-aware commit validation
+# 6. Set up the commit template
+# 7. Validate your environment is ready
+
+# Alternative: Use make tools (also mandatory if not using setup.sh)
+make tools
 ```
+
+**⚠️ The setup script will EXIT WITH ERROR if hooks cannot be installed. This is intentional - hooks are not optional.**
 
 Our project provides several Make commands to streamline development:
 
@@ -350,7 +399,7 @@ npm install
 make commit
 
 # Option 3: Using npm directly
-npm run commit
+git commit
 ```
 
 The interactive prompt will guide you through:
@@ -483,6 +532,38 @@ The CI/CD pipeline automatically:
 - Creates releases with `goreleaser`
 
 This automation depends entirely on proper commit message formatting, which is why enforcement is mandatory.
+
+## Security Vulnerability Scanning
+
+The CI pipeline includes automated vulnerability scanning using `govulncheck`. This tool analyzes Go dependencies for known security vulnerabilities.
+
+### Policy
+- CI builds **WILL FAIL** if any **Critical** or **High** severity vulnerabilities are detected
+- All vulnerabilities must be addressed before merging
+
+### Running Locally
+```bash
+# Install govulncheck (version must match CI)
+go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
+
+# Run scan
+govulncheck ./...
+
+# For JSON output (like CI)
+govulncheck -json ./...
+```
+
+### Addressing Vulnerabilities
+1. **Preferred:** Update the vulnerable dependency
+   ```bash
+   go get vulnerable/package@latest
+   go mod tidy
+   ```
+2. Review the vulnerability details from govulncheck output
+3. If immediate update isn't possible, document mitigation plan
+4. No bypassing allowed - vulnerabilities must be resolved
+
+For more information on interpreting results, see the official [govulncheck documentation](https://go.dev/vuln/govulncheck).
 
 ## Testing Requirements
 

@@ -4,6 +4,7 @@ package testutil
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io/fs"
 	"path/filepath"
 	"sort"
@@ -97,10 +98,15 @@ func (m *MemFS) WriteFileWithContext(ctx context.Context, path string, data []by
 	}
 
 	// Create or update file
+	// Validate permission value is non-negative and within uint32 range
+	if perm < 0 || perm > 0777 {
+		return fmt.Errorf("invalid file permission: %d", perm)
+	}
 	m.files[path] = &MemFile{
 		Data:    append([]byte{}, data...), // Make a copy of the data
 		ModTime: time.Now(),
-		Mode:    fs.FileMode(perm),
+
+		Mode: fs.FileMode(perm),
 	}
 
 	return nil
@@ -147,9 +153,14 @@ func (m *MemFS) MkdirAllWithContext(ctx context.Context, path string, perm int) 
 
 		// Create directory if it doesn't exist
 		if _, ok := m.directories[currentPath]; !ok {
+			// Validate permission value is non-negative and within uint32 range
+			if perm < 0 || perm > 0777 {
+				return fmt.Errorf("invalid directory permission: %d", perm)
+			}
 			m.directories[currentPath] = &MemDirectory{
 				ModTime: time.Now(),
-				Mode:    fs.FileMode(perm),
+
+				Mode: fs.FileMode(perm),
 			}
 		}
 	}

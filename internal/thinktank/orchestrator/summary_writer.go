@@ -178,7 +178,7 @@ func truncateList(items []string, maxLen int) string {
 		return text
 	}
 
-	var names []string
+	names := make([]string, 0, len(items))
 	var usedChars int
 
 	for _, item := range items {

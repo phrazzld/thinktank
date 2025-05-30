@@ -4,6 +4,7 @@ package gemini
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"sync"
 
@@ -174,14 +175,30 @@ func (a *GeminiClientAdapter) getIntParam(name string) (int32, bool) {
 	if val, ok := a.params[name]; ok {
 		switch v := val.(type) {
 		case int:
+			if v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, false
+			}
+
 			return int32(v), true
 		case int32:
 			return v, true
 		case int64:
+			if v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, false
+			}
+
 			return int32(v), true
 		case float64:
+			if v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, false
+			}
+
 			return int32(v), true
 		case float32:
+			if v < math.MinInt32 || v > math.MaxInt32 {
+				return 0, false
+			}
+
 			return int32(v), true
 		}
 	}

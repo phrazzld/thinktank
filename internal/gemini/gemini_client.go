@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -125,12 +126,24 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, param
 		if topK, ok := params["top_k"]; ok {
 			switch v := topK.(type) {
 			case int:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("top_k value %d is out of range for int32", v)
+				}
+
 				c.model.SetTopK(int32(v))
 			case int32:
 				c.model.SetTopK(v)
 			case int64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("top_k value %d is out of range for int32", v)
+				}
+
 				c.model.SetTopK(int32(v))
 			case float64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("top_k value %f is out of range for int32", v)
+				}
+
 				c.model.SetTopK(int32(v))
 			}
 		}
@@ -139,12 +152,24 @@ func (c *geminiClient) GenerateContent(ctx context.Context, prompt string, param
 		if maxTokens, ok := params["max_output_tokens"]; ok {
 			switch v := maxTokens.(type) {
 			case int:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %d is out of range for int32", v)
+				}
+
 				c.model.SetMaxOutputTokens(int32(v))
 			case int32:
 				c.model.SetMaxOutputTokens(v)
 			case int64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %d is out of range for int32", v)
+				}
+
 				c.model.SetMaxOutputTokens(int32(v))
 			case float64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %f is out of range for int32", v)
+				}
+
 				c.model.SetMaxOutputTokens(int32(v))
 			}
 		}

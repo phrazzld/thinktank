@@ -58,7 +58,8 @@ func (m *ErrorMockRoundTripper) RoundTrip(req *http.Request) (*http.Response, er
 
 // setupTestClient creates a test client with the given mock round tripper
 // This function is prepared for future use when the client implementation is complete
-// nolint:unused // Will be used in the future with full client implementation
+//
+//nolint:unused // Will be used in the future with full client implementation
 func setupTestClient(mockTransport *ErrorMockRoundTripper) (*OpenAIClientAdapter, error) {
 	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
 

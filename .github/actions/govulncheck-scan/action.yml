@@ -1,0 +1,34 @@
+name: 'Go Vulnerability Check'
+description: 'Runs govulncheck and fails on Critical/High vulnerabilities'
+inputs:
+  go-version:
+    description: 'Go version to use'
+    required: false
+    default: 'stable'
+  working-directory:
+    description: 'Directory to run govulncheck in'
+    required: false
+    default: '.'
+  govulncheck-version:
+    description: 'Version of govulncheck to install'
+    required: false
+    default: 'v1.1.4'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install govulncheck
+      shell: bash
+      run: |
+        echo "Installing govulncheck@${{ inputs.govulncheck-version }}..."
+        go install golang.org/x/vuln/cmd/govulncheck@${{ inputs.govulncheck-version }}
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Run vulnerability scan
+      shell: bash
+      run: |
+        echo "Running govulncheck..."
+        # Run with -json flag and pipe to parser
+        # Continue even if govulncheck exits non-zero (it does on any vuln)
+        govulncheck -json ./... 2>&1 | ${{ github.workspace }}/scripts/ci/parse-govulncheck.sh || exit $?
+      working-directory: ${{ inputs.working-directory }}

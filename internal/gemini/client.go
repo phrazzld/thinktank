@@ -77,7 +77,7 @@ func WithHTTPClient(client interface{}) ClientOption {
 // For new code, consider using NewLLMClient which returns the provider-agnostic llm.LLMClient directly
 func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (Client, error) {
 	// Create internalOpts that wrap the public options
-	var internalOpts []geminiClientOption
+	internalOpts := make([]geminiClientOption, 0, len(opts))
 	for _, opt := range opts {
 		// Create a wrapper that calls the public option with the geminiClient
 		internalOpts = append(internalOpts, func(gc *geminiClient) {
@@ -116,7 +116,7 @@ func NewClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts 
 // This is the preferred method for new code
 func NewLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string, opts ...ClientOption) (llm.LLMClient, error) {
 	// Create internalOpts that wrap the public options
-	var internalOpts []geminiClientOption
+	internalOpts := make([]geminiClientOption, 0, len(opts))
 	for _, opt := range opts {
 		// Create a wrapper that calls the public option with the geminiClient
 		internalOpts = append(internalOpts, func(gc *geminiClient) {

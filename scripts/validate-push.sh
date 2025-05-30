@@ -21,10 +21,10 @@ echo "Baseline commit: ${BASELINE_COMMIT} (May 18, 2025)"
 echo "Only commits made after the baseline will be validated."
 echo "--------------------------------------------------------"
 
-# Check if commitlint is available
-if ! command -v commitlint &> /dev/null; then
-    echo -e "${RED}Error: commitlint is not installed${NC}"
-    echo "Install with: npm install -g @commitlint/cli @commitlint/config-conventional"
+# Check if npx/commitlint is available
+if ! command -v npx &> /dev/null; then
+    echo -e "${RED}Error: npx is not available${NC}"
+    echo "Install Node.js and npm to run commitlint"
     exit 1
 fi
 
@@ -91,8 +91,8 @@ do
         echo "Date:   ${COMMIT_DATE}"
         echo "Author: ${COMMIT_AUTHOR}"
 
-        # Use echo to pipe the commit message to commitlint
-        if echo "${COMMIT_MSG}" | commitlint; then
+        # Use echo to pipe the commit message to commitlint with unified config
+        if echo "${COMMIT_MSG}" | go run ./cmd/commitvalidate --stdin; then
             echo -e "${GREEN}✓ Valid conventional commit${NC}"
         else
             echo -e "${RED}✗ Invalid commit format${NC}"

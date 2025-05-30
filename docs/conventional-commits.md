@@ -12,7 +12,7 @@
   - [Valid Commit Messages](#valid-commit-messages)
   - [Invalid Commit Messages](#invalid-commit-messages-dont-do-these)
 - [Validation and Assistance Tools](#validation-and-assistance-tools)
-  - [Using Commitizen](#using-commitizen)
+  - [Validation Tools](#validation-tools)
 - [Fixing Invalid Commit Messages](#fixing-invalid-commit-messages)
 - [Relationship to Semantic Versioning](#relationship-to-semantic-versioning)
 - [Benefits of Conventional Commits](#benefits-of-conventional-commits)
@@ -166,35 +166,48 @@ The following tools help with conventional commit standards:
 
 All validation systems are configured to only check commits made after baseline creation.
 
-### Using Commitizen
+### Validation Tools
 
-[Commitizen](https://github.com/commitizen/cz-cli) is an interactive command-line tool that guides you through creating properly formatted conventional commit messages. It's particularly helpful if you're new to the conventional commits format or want to ensure you don't miss important components.
+This project uses a native Go-based validator for commit messages that runs automatically in multiple places:
 
-To use Commitizen:
+#### Pre-commit Hooks
+When you run `git commit`, pre-commit hooks automatically validate your commit message format before allowing the commit.
+
+#### CI Validation  
+All pull requests have their commit messages validated in CI using the same Go validator.
+
+#### Manual Validation
+You can manually validate commit messages using:
 
 ```bash
-# One-time setup: Install dependencies
-npm install
+# Validate a commit message from stdin
+echo "feat: add new feature" | go run ./cmd/commitvalidate --stdin
 
-# Option 1: Use the script
-./scripts/commit.sh
+# Validate a specific commit
+go run ./cmd/commitvalidate --commit abc123def
 
-# Option 2: Use Make
-make commit
-
-# Option 3: Use npm directly
-npm run commit
+# Validate a range of commits  
+go run ./cmd/commitvalidate --from origin/main --to HEAD
 ```
 
-The tool will prompt you to:
-- Select a commit type (feat, fix, docs, etc.)
-- Enter a scope (optional)
-- Write a short description
-- Provide a longer description (optional)
-- Indicate if there are breaking changes
-- Reference issues (optional)
+#### Validation Rules
+The validator enforces:
+- Conventional commit format: `<type>[scope]: <description>`
+- Valid commit types (feat, fix, docs, etc.)
+- Lowercase scope format with hyphens/slashes
+- Description starting with lowercase (except for acronyms)
+- No periods at end of description
+- Body line length limit of 100 characters
+- Proper footer formatting
 
-Commitizen ensures your commits follow the conventional format without having to remember all the details.
+#### Error Messages
+The validator provides clear error messages to help you fix invalid commits:
+
+```
+✗ Commit message validation failed:
+  - invalid commit type 'feature'. Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert
+  - description should start with lowercase letter
+```
 
 ## Fixing Invalid Commit Messages
 

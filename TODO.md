@@ -24,18 +24,22 @@
     5. Remove unjustified linter disables
   - **Done-when:** CI, pre-commit, and local environments use the same recent version with comprehensive linter set
 
-- [ ] **T003: Unify Commit Message Validation on `commitlint`**
-  - **Context:** Multiple validation mechanisms (`bash regex` vs. `commitlint` CLI) causing inconsistency
+- [ ] **T007: Fix PR #24 Commit Message Format (Migration to Go-based Validator)**
+  - **Context:** Node.js commitlint dependency was causing CI failures, replaced with Go validator
   - **Action:**
-    1. Remove bash/regex commit validation scripts
-    2. Adapt `scripts/validate-push.sh` for CI with `commitlint`
-    3. Update pre-commit hooks to use `commitlint` consistently
-    4. Consolidate local config files (`.commitlint-with-baseline.js` or `.commitlintrc-local.js`)
-    5. Fix or remove broken `ignores` function
-    6. Update docs for unified validation process
-  - **Done-when:** `commitlint` is the sole validation tool used consistently in local and CI environments
+    1. ✅ Create cmd/commitvalidate/ with Go-based conventional commit validator
+    2. ✅ Add internal/commitvalidate/ with validation logic and tests
+    3. ✅ Remove package.json and Node.js dependency
+    4. ✅ Remove .commitlintrc-local.js configuration  
+    5. ✅ Remove scripts/commit.sh and scripts/ci/validate-baseline-commits.sh
+    6. ✅ Update CI workflows to use Go validator instead of npm commitlint
+    7. ✅ Update pre-commit config to use new Go validator
+    8. ✅ Update documentation to reflect Go-based validation
+    9. ✅ Maintain baseline-aware validation (commits after May 18, 2025)
+  - **Status:** READY TO COMMIT - Eliminates Node.js dependency causing CI failures
+  - **Done-when:** Go-based commit validator is deployed and Node.js dependency removed
 
-- [ ] **T004: Add Automated Vulnerability Scanning to CI**
+- [x] **T004: Add Automated Vulnerability Scanning to CI**
   - **Context:** Missing `govulncheck` step in CI/CD pipeline
   - **Action:**
     1. Add `govulncheck` installation to CI/Release workflows
@@ -46,10 +50,13 @@
 - [ ] **T005: Enforce Robust Pre-commit Hook Installation**
   - **Context:** Inconsistent hook installation can lead to CI failures
   - **Action:**
-    1. Enhance `scripts/setup.sh` to verify pre-commit CLI installation
-    2. Update Makefile to install all required hooks (commit-msg, pre-push, post-commit)
-    3. Make hook installation mandatory in documentation
-    4. Add CI validation for pre-commit configuration
+    1. ✅ Enhance `scripts/setup.sh` to verify pre-commit CLI installation
+    2. ✅ Update Makefile to install all required hooks (commit-msg, pre-push, post-commit)
+    3. ✅ Make hook installation mandatory in documentation
+    4. ✅ Add troubleshooting guide for hook issues
+    5. ✅ Add network connectivity checks
+    6. ✅ Improve version validation with explicit comparison
+  - **Status:** READY TO COMMIT - All implementation complete, blocked by T009 linter issues
   - **Done-when:** Pre-commit hooks are consistently installed for all contributors
 
 ### Security & Stability
@@ -85,13 +92,40 @@
 
 ### Developer Experience
 - [ ] **T009: Fix golangci-lint Issues Identified by Expanded Linter Set**
-  - **Context:** Expanded linter set in T002 revealed 786 issues that need to be fixed
+  - **Context:** Expanded linter set in T002 revealed 749 remaining issues (reduced from 786)
   - **Action:**
-    1. Create a plan to gradually address each category of linter issues
-    2. Fix high-priority issues (security, potential bugs) first
-    3. Address test-related issues (thelper, tparallel)
-    4. Fix code quality issues (funlen, gocyclo, etc.)
-  - **Done-when:** All issues are fixed and golangci-lint passes in CI and pre-commit hooks
+    **Phase 1: Test Helper Issues (53 issues)**
+    - Fix thelper violations: Add t.Helper() to test helper functions
+    - Fix thelper parameter naming: Rename testing.TB parameters to 'tb'
+
+    **Phase 2: Security Issues (47 issues)**  
+    - G301: Fix directory permissions (expect 0750 or less) - 20 issues
+    - G304: Fix potential file inclusion via variable - 22 issues
+    - G306: Fix WriteFile permissions (expect 0600 or less) - 19 issues
+    - G302: Fix file permissions (expect 0600 or less) - 6 issues
+    - G204: Fix subprocess with tainted input - 2 issues
+    - G101: Fix potential hardcoded credentials - 1 issue
+
+    **Phase 3: Code Quality Issues (377 issues)**
+    - unused-parameter (revive): Remove or rename unused parameters - 322 issues
+    - package-comments (revive): Add proper package comments - 8 issues
+    - exported (revive): Fix exported types/functions - 19 issues
+    - var-naming (revive): Fix variable naming conventions - 2 issues
+    - unexported-return (revive): Fix unexported return types - 2 issues
+    - indent-error-flow (revive): Fix if-else indentation - 3 issues
+    - redefines-builtin-id (revive): Fix builtin function redefinition - 3 issues
+    - var-declaration (revive): Fix variable declarations - 1 issue
+    - empty-block (revive): Remove empty blocks - 1 issue
+
+    **Phase 4: Function Length Issues (167 issues)**
+    - funlen: Split functions longer than 60 lines or 40 statements - 167 issues
+
+    **Phase 5: Complexity Issues (14 issues)**
+    - gocyclo: Reduce cyclomatic complexity > 30 - 14 issues
+
+    **Phase 6: String Constants (29 issues)**
+    - goconst: Extract repeated strings to constants - 29 issues
+  - **Done-when:** All 749 issues are fixed and golangci-lint passes in CI and pre-commit hooks
 
 - [ ] **T010: Implement Automated Pre-commit Hook Installation**
   - **Context:** CI Resolution Tasks - Prevention Measures

@@ -16,11 +16,14 @@ import (
 // Configuration constants
 const (
 	// Default values
-	DefaultOutputFile      = "PLAN.md"
-	DefaultModel           = "gemini-2.5-pro-preview-03-25"
-	APIKeyEnvVar           = "GEMINI_API_KEY"
-	APIEndpointEnvVar      = "GEMINI_API_URL"
-	OpenAIAPIKeyEnvVar     = "OPENAI_API_KEY"
+	DefaultOutputFile = "PLAN.md"
+	DefaultModel      = "gemini-2.5-pro-preview-03-25"
+	//nolint:gosec // G101: These are environment variable names, not hardcoded secrets
+	APIKeyEnvVar      = "GEMINI_API_KEY"
+	APIEndpointEnvVar = "GEMINI_API_URL"
+	//nolint:gosec // G101: These are environment variable names, not hardcoded secrets
+	OpenAIAPIKeyEnvVar = "OPENAI_API_KEY"
+	//nolint:gosec // G101: These are environment variable names, not hardcoded secrets
 	OpenRouterAPIKeyEnvVar = "OPENROUTER_API_KEY"
 	DefaultFormat          = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 

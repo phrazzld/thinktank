@@ -3,6 +3,7 @@ package testutil
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,6 +43,11 @@ func (fs *RealFS) WriteFileWithContext(ctx context.Context, path string, data []
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	// Validate permission value is non-negative and within uint32 range
+	if perm < 0 || perm > 0777 {
+		return fmt.Errorf("invalid file permission: %d", perm)
+	}
+
 	return os.WriteFile(path, data, os.FileMode(perm))
 }
 
@@ -56,6 +62,11 @@ func (fs *RealFS) MkdirAllWithContext(ctx context.Context, path string, perm int
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
+	// Validate permission value is non-negative and within uint32 range
+	if perm < 0 || perm > 0777 {
+		return fmt.Errorf("invalid directory permission: %d", perm)
+	}
+
 	return os.MkdirAll(path, os.FileMode(perm))
 }
 

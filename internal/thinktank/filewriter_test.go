@@ -5,6 +5,7 @@ import (
 	"context"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -13,12 +14,15 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank"
 )
 
-// mockAuditLogger for testing FileWriter
+// mockAuditLogger for testing FileWriter - thread-safe implementation
 type mockAuditLogger struct {
+	mu      sync.Mutex
 	entries []auditlog.AuditEntry
 }
 
 func (m *mockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.entries = append(m.entries, entry)
 	return nil
 }
@@ -28,6 +32,8 @@ func (m *mockAuditLogger) LogLegacy(entry auditlog.AuditEntry) error {
 }
 
 func (m *mockAuditLogger) LogOp(ctx context.Context, operation, status string, inputs map[string]interface{}, outputs map[string]interface{}, err error) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	// Create an AuditEntry from the parameters
 	entry := auditlog.AuditEntry{
 		Operation: operation,
@@ -45,6 +51,15 @@ func (m *mockAuditLogger) LogOpLegacy(operation, status string, inputs map[strin
 
 func (m *mockAuditLogger) Close() error {
 	return nil
+}
+
+// GetEntries returns a copy of all logged entries - thread-safe
+func (m *mockAuditLogger) GetEntries() []auditlog.AuditEntry {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]auditlog.AuditEntry, len(m.entries))
+	copy(result, m.entries)
+	return result
 }
 
 // TestSaveToFile tests the SaveToFile method

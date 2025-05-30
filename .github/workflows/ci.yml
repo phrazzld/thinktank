@@ -51,17 +51,53 @@ jobs:
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
 
       # Run forward-only commit validation (create baseline at current point)
-      - name: Forward-Only Commit Validation
+      - name: Validate Conventional Commits (Go-based)
         if: github.event_name == 'pull_request'
         run: |
-          echo "Running forward-only commit validation"
-          echo "This approach preserves git history while ensuring future commits follow conventions"
-          chmod +x ./scripts/ci/validate-baseline-commits.sh
-          ./scripts/ci/validate-baseline-commits.sh
+          echo "Validating conventional commits with Go-based validator"
+          echo "Using unified validation with baseline awareness"
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          # Use the same baseline logic as validate-push.sh
+          BASELINE_COMMIT="1300e4d675ac087783199f1e608409e6853e589f"
+
+          # Get commits to validate (those after baseline)
+          COMMITS=$(git rev-list "${BASE_SHA}..${HEAD_SHA}")
+
+          if [ -z "$COMMITS" ]; then
+            echo "No commits to validate in PR"
+            exit 0
+          fi
+
+          echo "Validating $(echo "$COMMITS" | wc -l) commits"
+
+          # Validate each commit individually
+          for commit in $COMMITS; do
+            if git merge-base --is-ancestor "${BASELINE_COMMIT}" "${commit}" && [ "${commit}" != "${BASELINE_COMMIT}" ]; then
+              echo "Validating commit ${commit}"
+              COMMIT_MSG=$(git show -s --format=%B "${commit}")
+              if ! echo "${COMMIT_MSG}" | go run ./cmd/commitvalidate --stdin; then
+                echo "❌ Commit ${commit} has invalid message format"
+                exit 1
+              fi
+            else
+              echo "⏭️  Skipping commit ${commit} (before baseline)"
+            fi
+          done
+
+          echo "✅ All commits validated successfully"
 
       # Verify dependencies integrity
       - name: Verify dependencies
         run: go mod verify
+
+      # Validate pre-commit configuration
+      - name: Validate pre-commit configuration
+        run: |
+          echo "Validating pre-commit configuration..."
+          ./scripts/ci/validate-precommit-config.sh
+        timeout-minutes: 1
 
       # Check code formatting
       - name: Check formatting
@@ -227,6 +263,12 @@ jobs:
         run: |
           # This script enforces package-specific thresholds for critical packages
           ./scripts/ci/check-package-specific-coverage.sh
+
+      # Run vulnerability scan
+      - name: Vulnerability scan
+        uses: ./.github/actions/govulncheck-scan
+        with:
+          govulncheck-version: 'v1.1.4'
 
   # Build job for building Go binary
   build:

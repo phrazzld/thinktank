@@ -212,6 +212,7 @@ func TestTokenBucket(t *testing.T) {
 func TestRateLimiter(t *testing.T) {
 	t.Parallel() // Run parallel with other test files
 	t.Run("Combined Limiting - Semaphore First", func(t *testing.T) {
+		t.Parallel()
 		// Create a rate limiter with tight concurrency limit but loose rate limit
 		limiter := NewRateLimiter(2, 600)
 
@@ -238,6 +239,7 @@ func TestRateLimiter(t *testing.T) {
 	})
 
 	t.Run("Combined Limiting - Token Bucket First", func(t *testing.T) {
+		t.Parallel()
 		// Create a rate limiter with loose concurrency limit but tight rate limit
 		limiter := NewRateLimiter(10, 60) // 60 RPM with burst of 1
 
@@ -261,6 +263,7 @@ func TestRateLimiter(t *testing.T) {
 	})
 
 	t.Run("Disabled Limiting", func(t *testing.T) {
+		t.Parallel()
 		// Create a rate limiter with both limits disabled
 		limiter := NewRateLimiter(0, 0)
 

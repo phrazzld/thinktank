@@ -667,7 +667,7 @@ func (m *MockLogger) GetAllCorrelationIDs() []string {
 	}
 
 	// Convert map keys to slice
-	var result []string
+	result := make([]string, 0, len(idMap))
 	for id := range idMap {
 		result = append(result, id)
 	}

@@ -77,8 +77,8 @@ repos:
         types: [go]
         pass_filenames: false
     -   id: conventional-commit-check
-        name: Check Conventional Commit compliance (baseline-aware)
-        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then echo 'Validating commit message against conventional commit standard (baseline-aware policy)' && cat $1 | commitlint && echo 'See docs/conventional-commits.md for our baseline validation policy'; else echo 'Skipping commitlint in batch mode'; fi"
+        name: Check Conventional Commit compliance (Go-based)
+        entry: bash -c "if [ -z \"$PRE_COMMIT_FROM_REF\" ]; then echo 'Validating commit message with Go validator...' && cat $1 | go run ./cmd/commitvalidate --stdin && echo 'Commit message validated successfully'; else echo 'Skipping validation in batch mode'; fi"
         language: system
         stages: [commit-msg]  # Run during the commit-msg stage
         pass_filenames: false  # Don't pass filenames to the hook

@@ -1,6 +1,8 @@
 # Git Hooks
 
-This directory contains documentation for Git hooks used in this project.
+**⚠️ MANDATORY: All contributors MUST have git hooks installed. This is NOT optional.**
+
+This directory contains documentation for Git hooks used in this project. Hook installation is verified by CI and contributions without proper hooks will be rejected.
 
 ## Pre-commit Hook
 
@@ -84,20 +86,34 @@ The post-commit hook requires:
 
 The `scripts/setup.sh` script attempts to detect and install these dependencies if needed.
 
-## Installation
+## Installation (MANDATORY)
 
-There are two ways to set up the hooks:
+**🔴 CRITICAL: You MUST install hooks before contributing. No exceptions.**
 
-### Option 1: Using the Setup Script (Recommended)
-
-Run our setup script, which will check for and install required dependencies (including pre-commit):
+### Option 1: Using the Setup Script (REQUIRED for New Contributors)
 
 ```bash
 # From the project root
 ./scripts/setup.sh
+
+# This script will:
+# - Check all dependencies
+# - Install pre-commit if missing
+# - Install ALL required hooks
+# - Verify installation succeeded
+# - EXIT WITH ERROR if hooks cannot be installed
 ```
 
-### Option 2: Manual Installation
+### Option 2: Using Make (Alternative)
+
+```bash
+# From the project root
+make tools  # Installs tools AND hooks
+# OR
+make hooks  # Installs only hooks
+```
+
+### Option 3: Manual Installation (ONLY if above methods fail)
 
 1. Install the pre-commit framework:
    ```bash
@@ -110,9 +126,14 @@ Run our setup script, which will check for and install required dependencies (in
 
 2. Install the hooks:
    ```bash
-   # From the project root
-   pre-commit install  # For pre-commit hooks
-   pre-commit install --hook-type post-commit  # For post-commit hooks
+   # From the project root - MUST install ALL hook types
+   pre-commit install --install-hooks
+   pre-commit install --hook-type commit-msg
+   pre-commit install --hook-type pre-push
+   pre-commit install --hook-type post-commit
+
+   # Verify ALL hooks are installed
+   ls -la .git/hooks/pre-commit .git/hooks/commit-msg .git/hooks/pre-push .git/hooks/post-commit
    ```
 
 ## Usage
@@ -172,6 +193,22 @@ As the project evolves:
 1. Periodically update pre-commit: `pip install --upgrade pre-commit`
 2. Update hook revisions in `.pre-commit-config.yaml` when new versions are available
 3. Ensure the `scripts/setup.sh` script remains compatible with hook changes
+
+## Verification
+
+**Run this command to verify your environment is properly configured:**
+```bash
+./scripts/verify-dev-env.sh
+```
+
+This script will check:
+- Go installation
+- Pre-commit installation and version
+- All required hooks are installed
+- Hooks are executable
+- Pre-commit configuration is valid
+- Development tools are available
+- Baseline commit configuration
 
 ## Troubleshooting
 

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -205,12 +206,24 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 			case int32:
 				maxTokens = &v
 			case int:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_tokens value %d is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			case int64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_tokens value %d is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			case float64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_tokens value %f is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			}
@@ -220,12 +233,24 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 			case int32:
 				maxTokens = &v
 			case int:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %d is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			case int64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %d is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			case float64:
+				if v < math.MinInt32 || v > math.MaxInt32 {
+					return nil, fmt.Errorf("max_output_tokens value %f is out of range for int32", v)
+				}
+
 				maxInt32 := int32(v)
 				maxTokens = &maxInt32
 			}

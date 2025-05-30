@@ -101,8 +101,10 @@ func isGitIgnored(path string, config *Config) bool {
 	if config.GitAvailable {
 		dir := filepath.Dir(path)
 		// Check if the directory is actually a git repo first
+		//nolint:gosec // G204: Using git with fixed, safe arguments
 		gitRepoCheck := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
 		if gitRepoCheck.Run() == nil { // If it is a git repo
+			//nolint:gosec // G204: Using git with fixed, safe arguments
 			cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", base)
 			err := cmd.Run()
 			if err == nil { // Exit code 0: file IS ignored
@@ -206,6 +208,7 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 		return // Already logged why it was skipped
 	}
 
+	//nolint:gosec // G304: Path is validated by shouldProcess function
 	content, err := os.ReadFile(path)
 	if err != nil {
 		config.Logger.Printf("Warning: Cannot read file %s: %v\n", path, err)

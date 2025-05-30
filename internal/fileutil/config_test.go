@@ -23,6 +23,7 @@ func TestNewConfig(t *testing.T) {
 			excludeNames: "",
 			format:       "test-format",
 			checkFunc: func(t *testing.T, c *Config) {
+				t.Helper()
 				if c.Verbose != false {
 					t.Errorf("Expected Verbose to be false, got %v", c.Verbose)
 				}
@@ -48,6 +49,7 @@ func TestNewConfig(t *testing.T) {
 			excludeNames: "",
 			format:       "format",
 			checkFunc: func(t *testing.T, c *Config) {
+				t.Helper()
 				if !c.Verbose {
 					t.Errorf("Expected Verbose to be true, got %v", c.Verbose)
 				}
@@ -70,6 +72,7 @@ func TestNewConfig(t *testing.T) {
 			excludeNames: "",
 			format:       "format",
 			checkFunc: func(t *testing.T, c *Config) {
+				t.Helper()
 				if len(c.ExcludeExts) != 3 {
 					t.Errorf("Expected 3 exclude extensions, got %d", len(c.ExcludeExts))
 				}
@@ -89,6 +92,7 @@ func TestNewConfig(t *testing.T) {
 			excludeNames: "node_modules,dist,build",
 			format:       "format",
 			checkFunc: func(t *testing.T, c *Config) {
+				t.Helper()
 				if len(c.ExcludeNames) != 3 {
 					t.Errorf("Expected 3 exclude names, got %d", len(c.ExcludeNames))
 				}
@@ -108,6 +112,7 @@ func TestNewConfig(t *testing.T) {
 			excludeNames: "node_modules,dist",
 			format:       "custom-format",
 			checkFunc: func(t *testing.T, c *Config) {
+				t.Helper()
 				if !c.Verbose {
 					t.Errorf("Expected Verbose to be true, got %v", c.Verbose)
 				}

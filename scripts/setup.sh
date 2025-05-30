@@ -45,6 +45,31 @@ print_header "Checking pre-commit framework installation"
 if command -v pre-commit >/dev/null 2>&1; then
     PRECOMMIT_VERSION=$(pre-commit --version)
     print_success "pre-commit is installed: $PRECOMMIT_VERSION"
+
+    # Verify pre-commit version is recent enough
+    MIN_VERSION="3.0.0"
+    CURRENT_VERSION=$(pre-commit --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+
+    # Function to compare versions
+    version_ge() {
+        # Returns 0 if version $1 >= version $2
+        [ "$(printf '%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
+    }
+
+    if ! version_ge "$CURRENT_VERSION" "$MIN_VERSION"; then
+        print_error "pre-commit version $CURRENT_VERSION is older than required $MIN_VERSION"
+        echo "This project requires pre-commit version $MIN_VERSION or newer."
+        echo ""
+        echo "To upgrade pre-commit:"
+        echo "  pip install --upgrade pre-commit"
+        echo "  # or"
+        echo "  pipx upgrade pre-commit"
+        echo "  # or"
+        echo "  brew upgrade pre-commit"
+        echo ""
+        print_error "Please upgrade pre-commit and run this script again."
+        exit 1
+    fi
 else
     print_warning "pre-commit framework is not installed"
     echo "The pre-commit framework is REQUIRED for this project's development workflow."
@@ -56,6 +81,15 @@ else
 
     if [[ $INSTALL_PRECOMMIT =~ ^[Yy]$ ]] || [[ -z $INSTALL_PRECOMMIT ]]; then
         echo "Installing pre-commit..."
+
+        # Check network connectivity
+        echo "Checking network connectivity..."
+        if ! ping -c 1 -W 2 pypi.org >/dev/null 2>&1 && ! ping -c 1 -W 2 github.com >/dev/null 2>&1; then
+            print_error "No network connectivity detected"
+            echo "Please check your internet connection and try again."
+            echo "If you're behind a proxy, ensure your proxy settings are configured."
+            exit 1
+        fi
 
         if command -v pip >/dev/null 2>&1; then
             pip install pre-commit
@@ -83,24 +117,31 @@ else
             exit 1
         fi
     else
-        print_error "pre-commit installation skipped, but it is required for development"
-        echo "Please be aware that:"
-        echo "  - Your commits may not meet project standards"
-        echo "  - CI checks may fail on your pull requests"
-        echo "  - Other developers may need to fix issues in your code"
+        print_error "pre-commit installation is MANDATORY for this project"
         echo ""
-        echo "To install pre-commit later, see hooks/README.md or visit https://pre-commit.com/#install"
-
-        # Ask if they want to continue without pre-commit
-        echo "Do you want to continue setup without pre-commit? (y/n) [n recommended]"
-        read -r CONTINUE_WITHOUT_PRECOMMIT
-
-        if [[ ! $CONTINUE_WITHOUT_PRECOMMIT =~ ^[Yy]$ ]]; then
-            print_error "Setup aborted. Please install pre-commit and run setup again."
-            exit 1
-        fi
-
-        print_warning "Continuing setup without pre-commit (not recommended)"
+        echo "Pre-commit hooks ensure:"
+        echo "  ✓ Code quality and formatting standards"
+        echo "  ✓ Commit message compliance"
+        echo "  ✓ CI/CD pipeline success"
+        echo ""
+        echo "Manual installation instructions:"
+        echo ""
+        echo "Option 1 - Using pip (recommended):"
+        echo "  pip install pre-commit"
+        echo ""
+        echo "Option 2 - Using pipx:"
+        echo "  pipx install pre-commit"
+        echo ""
+        echo "Option 3 - Using Homebrew (macOS/Linux):"
+        echo "  brew install pre-commit"
+        echo ""
+        echo "Option 4 - Using conda:"
+        echo "  conda install -c conda-forge pre-commit"
+        echo ""
+        echo "For more options, visit: https://pre-commit.com/#install"
+        echo ""
+        print_error "Setup cannot continue without pre-commit. Please install it and run this script again."
+        exit 1
     fi
 fi
 
@@ -171,13 +212,29 @@ if command -v pre-commit >/dev/null 2>&1; then
     fi
 
     # Verify hook installation
-    if [ -f ".git/hooks/pre-commit" ] && [ -f ".git/hooks/post-commit" ] && [ -f ".git/hooks/commit-msg" ] && [ -f ".git/hooks/pre-push" ]; then
+    MISSING_HOOKS=()
+    for hook in pre-commit commit-msg pre-push post-commit; do
+        if [ ! -f ".git/hooks/$hook" ]; then
+            MISSING_HOOKS+=("$hook")
+        fi
+    done
+
+    if [ ${#MISSING_HOOKS[@]} -eq 0 ]; then
         print_success "All Git hooks verified in .git/hooks/"
         print_success "Code formatting, commit message validation, and pre-push validation are now active"
+
+        # Verify hooks are executable
+        for hook in pre-commit commit-msg pre-push post-commit; do
+            if [ ! -x ".git/hooks/$hook" ]; then
+                chmod +x ".git/hooks/$hook"
+                print_warning "Made .git/hooks/$hook executable"
+            fi
+        done
     else
-        print_warning "Some hook files not found in .git/hooks/ directory"
-        echo "There may be an issue with your git configuration"
-        echo "Expected hooks: pre-commit, commit-msg, pre-push, post-commit"
+        print_error "Missing hook files in .git/hooks/: ${MISSING_HOOKS[*]}"
+        echo "This is a critical error. Hooks are MANDATORY for this project."
+        echo "Please try reinstalling hooks or seek help from maintainers."
+        exit 1
     fi
 
     # If glance is not installed, warn about post-commit hook potentially failing
@@ -321,39 +378,46 @@ else
     echo "You can set it up manually later if it becomes available"
 fi
 
-# Set up Commitizen for guided commit creation
-print_header "Setting up Commitizen (optional)"
-if [ -f "./package.json" ]; then
-    if command -v npm >/dev/null 2>&1; then
-        echo "Commitizen is available for guided commit creation."
-        echo "Would you like to install the Node.js dependencies for Commitizen? (y/n)"
-        read -r INSTALL_COMMITIZEN
+# Commit message format information
+print_header "Commit Message Format"
+echo "This project uses conventional commits for automated versioning."
+echo "Commit messages are automatically validated by pre-commit hooks and CI."
+echo ""
+echo "Format: <type>[optional scope]: <description>"
+echo "Example: feat(api): add user authentication"
+echo ""
+echo "For detailed guidelines, see docs/conventional-commits.md"
 
-        if [[ $INSTALL_COMMITIZEN =~ ^[Yy]$ ]] || [[ -z $INSTALL_COMMITIZEN ]]; then
-            echo "Installing Commitizen dependencies..."
-            npm install
+# Final verification of mandatory components
+print_header "Verifying Mandatory Components"
 
-            if [ $? -eq 0 ]; then
-                print_success "Commitizen dependencies installed successfully"
-                echo "You can now use guided commit creation with:"
-                echo "  ./scripts/commit.sh  or  make commit  or  npm run commit"
-            else
-                print_error "Failed to install Commitizen dependencies"
-                echo "You can try installing them manually with 'npm install'"
-            fi
-        else
-            print_warning "Commitizen dependency installation skipped"
-            echo "You can install them later with 'npm install' if you want to use guided commit creation"
-        fi
-    else
-        print_warning "Node.js/npm is not installed"
-        echo "If you want to use Commitizen for guided commit creation, you'll need to:"
-        echo "1. Install Node.js from https://nodejs.org/"
-        echo "2. Run 'npm install' in this directory"
+MANDATORY_OK=true
+
+# Check Go
+if ! command -v go >/dev/null 2>&1; then
+    print_error "Go is not installed - MANDATORY"
+    MANDATORY_OK=false
+fi
+
+# Check pre-commit
+if ! command -v pre-commit >/dev/null 2>&1; then
+    print_error "pre-commit is not installed - MANDATORY"
+    MANDATORY_OK=false
+fi
+
+# Check all hooks
+for hook in pre-commit commit-msg pre-push post-commit; do
+    if [ ! -f ".git/hooks/$hook" ]; then
+        print_error "Git hook '$hook' is not installed - MANDATORY"
+        MANDATORY_OK=false
     fi
-else
-    print_warning "package.json not found, skipping Commitizen setup"
-    echo "Commitizen configuration may not be properly set up in this repository"
+done
+
+if [ "$MANDATORY_OK" = false ]; then
+    print_header "Setup INCOMPLETE - Mandatory Components Missing"
+    echo "Your environment is NOT ready for development."
+    echo "Please resolve the errors above and run this script again."
+    exit 1
 fi
 
 print_header "Setup Complete"
