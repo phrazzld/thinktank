@@ -82,7 +82,7 @@ Ensure `$GOPATH/bin` or `$(go env GOBIN)` is in your `PATH`.
 | git-chglog | v0.15.4 | `tools.go` |
 | goreleaser | v1.26.2 | `tools.go` |
 | govulncheck | v1.1.4 | `tools.go` |
-| commitlint | v0.10.1 | `tools.go` |
+| commitvalidate | - | `cmd/commitvalidate` |
 | go-conventionalcommits | v0.12.0 | `tools.go` |
 
 #### Commit Validation Tools
@@ -473,19 +473,11 @@ FEAT: add feature     # Type should be lowercase
 
 ### Custom Git Hooks Path
 
-This project uses a custom Git hooks path at `.commitlint/hooks` for commit message validation. This is configured automatically via the project's Git configuration. If you need to reset this configuration:
-
-```bash
-# View the current hooks path
-git config core.hooksPath
-
-# Reset to the project's custom hooks path if needed
-git config core.hooksPath .commitlint/hooks
-```
+This project uses pre-commit hooks for commit message validation. The hooks are installed automatically when you run the setup script.
 
 ### Commit Message Validation Tools
 
-This project uses pre-commit hooks with `commitlint` for local commit message validation. The hooks are automatically run when you commit.
+This project uses pre-commit hooks with a Go-based validator (`cmd/commitvalidate`) for local commit message validation. The hooks are automatically run when you commit. The validator only checks commits made after the baseline date (May 18, 2025).
 
 ### Enforcement Policies
 

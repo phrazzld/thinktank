@@ -24,7 +24,7 @@
     5. Remove unjustified linter disables
   - **Done-when:** CI, pre-commit, and local environments use the same recent version with comprehensive linter set
 
-- [ ] **T007: Fix PR #24 Commit Message Format (Migration to Go-based Validator)**
+- [x] **T007: Fix PR #24 Commit Message Format (Migration to Go-based Validator)**
   - **Context:** Node.js commitlint dependency was causing CI failures, replaced with Go validator
   - **Action:**
     1. ✅ Create cmd/commitvalidate/ with Go-based conventional commit validator
@@ -60,14 +60,15 @@
   - **Done-when:** Pre-commit hooks are consistently installed for all contributors
 
 ### Security & Stability
-- [ ] **T006: Audit Test Mocks for Race Conditions**
+- [x] **T006: Audit Test Mocks for Race Conditions**
   - **Context:** `MockFileWriter` needed mutex protection, other mocks likely have similar issues
   - **Action:**
-    1. Review all test mocks for shared mutable state
-    2. Add mutex protection where necessary
-    3. Ensure all constructors initialize mutexes correctly
-    4. Run `go test -race ./...` to verify
+    1. ✅ Review all test mocks for shared mutable state
+    2. ✅ Add mutex protection where necessary
+    3. ✅ Ensure all constructors initialize mutexes correctly
+    4. ✅ Run `go test -race ./...` to verify
   - **Done-when:** Race detector reports no issues
+  - **Completed:** Fixed race conditions in MockEnvironmentProvider, MockTimeProvider, BaseMockOutputWriter, MockAuditLogger, and MockFileWriter. All tests pass with race detector.
 
 - [ ] **T007: Fix PR #24 Commit Message Format**
   - **Context:** CI Resolution Tasks - Invalid Commit Message Format in PR #24

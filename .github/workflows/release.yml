@@ -43,9 +43,6 @@ jobs:
             exit 0
           fi
 
-          echo "Installing dependencies..."
-          npm install --silent
-
           echo "Commits to validate:"
           echo "${COMMITS}"
 

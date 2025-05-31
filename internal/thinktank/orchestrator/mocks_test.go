@@ -91,7 +91,12 @@ func (m *MockAuditLogger) Log(ctx context.Context, entry auditlog.AuditEntry) er
 		}
 	}
 
-	return m.LogError
+	// Lock mutex for thread-safe access to LogError
+	m.mutex.Lock()
+	err := m.LogError
+	m.mutex.Unlock()
+
+	return err
 }
 
 // LogLegacy implements the backward-compatible AuditLogger.LogLegacy method
@@ -237,7 +242,7 @@ func NewMockFileWriter() *MockFileWriter {
 
 // SaveToFile is a mock implementation
 func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
-	// Lock the mutex to prevent concurrent access to savedFiles
+	// Lock the mutex to prevent concurrent access to savedFiles and saveError
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -252,4 +257,24 @@ func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
 
 	m.savedFiles[outputFile] = content
 	return nil
+}
+
+// SetSaveError sets the save error in a thread-safe manner
+func (m *MockFileWriter) SetSaveError(err error) {
+	m.mutex.Lock()
+	m.saveError = err
+	m.mutex.Unlock()
+}
+
+// GetSavedFiles returns a copy of saved files in a thread-safe manner
+func (m *MockFileWriter) GetSavedFiles() map[string]string {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// Create a copy to avoid data races
+	result := make(map[string]string)
+	for k, v := range m.savedFiles {
+		result[k] = v
+	}
+	return result
 }

@@ -102,14 +102,17 @@ type MockFilesystemIO struct {
 	// StatWithContextFunc allows customizing the behavior of StatWithContext in tests
 	StatWithContextFunc func(ctx context.Context, path string) (bool, error)
 
-	// FileContents stores file contents for in-memory simulation
-	FileContents map[string][]byte
+	// fileContents stores file contents for in-memory simulation
+	// Access must be synchronized via mutex
+	fileContents map[string][]byte
 
-	// CreatedDirs tracks directories that have been created
-	CreatedDirs map[string]bool
+	// createdDirs tracks directories that have been created
+	// Access must be synchronized via mutex
+	createdDirs map[string]bool
 
 	// mutex for thread-safe access to maps
-	mutex sync.Mutex
+	// Use RWMutex for better read performance
+	mutex sync.RWMutex
 }
 
 // NewMockFilesystemIO creates a new MockFilesystemIO with default implementations
@@ -118,8 +121,8 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 	createdDirs := make(map[string]bool)
 
 	m := &MockFilesystemIO{
-		FileContents: fileContents,
-		CreatedDirs:  createdDirs,
+		fileContents: fileContents,
+		createdDirs:  createdDirs,
 	}
 
 	// Default implementation of ReadFile
@@ -127,7 +130,12 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Normalize path
 		path = filepath.Clean(path)
 
-		if content, ok := m.FileContents[path]; ok {
+		// Lock for reading
+		m.mutex.RLock()
+		content, ok := m.fileContents[path]
+		m.mutex.RUnlock()
+
+		if ok {
 			return content, nil
 		}
 		return nil, &mockFileError{msg: "file not found: " + path}
@@ -143,14 +151,23 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Normalize path
 		path = filepath.Clean(path)
 
-		// Check if parent directory exists
+		// Check if parent directory exists (need read lock)
 		dir := filepath.Dir(path)
-		if dir != "." && !m.CreatedDirs[dir] {
-			return &mockFileError{msg: "directory does not exist: " + dir}
+		if dir != "." {
+			m.mutex.RLock()
+			dirExists := m.createdDirs[dir]
+			m.mutex.RUnlock()
+
+			if !dirExists {
+				return &mockFileError{msg: "directory does not exist: " + dir}
+			}
 		}
 
-		// Store file content
-		m.FileContents[path] = data
+		// Store file content (need write lock)
+		m.mutex.Lock()
+		m.fileContents[path] = data
+		m.mutex.Unlock()
+
 		return nil
 	}
 
@@ -164,8 +181,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Normalize path
 		path = filepath.Clean(path)
 
-		// Mark directory as created
-		m.CreatedDirs[path] = true
+		// Mark directory as created (need write lock)
+		m.mutex.Lock()
+		m.createdDirs[path] = true
+		m.mutex.Unlock()
+
 		return nil
 	}
 
@@ -179,14 +199,25 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Normalize path
 		path = filepath.Clean(path)
 
+		// Need write lock for all operations
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+
 		// Remove directory
-		delete(m.CreatedDirs, path)
+		delete(m.createdDirs, path)
 
 		// Remove all files in this directory
-		for filePath := range m.FileContents {
+		// Create a list of files to delete to avoid modifying map during iteration
+		var toDelete []string
+		for filePath := range m.fileContents {
 			if filepath.Dir(filePath) == path {
-				delete(m.FileContents, filePath)
+				toDelete = append(toDelete, filePath)
 			}
+		}
+
+		// Delete the files
+		for _, filePath := range toDelete {
+			delete(m.fileContents, filePath)
 		}
 
 		return nil
@@ -202,11 +233,11 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 		// Normalize path
 		path = filepath.Clean(path)
 
-		// Check if file exists
-		_, fileExists := m.FileContents[path]
-
-		// Check if directory exists
-		dirExists := m.CreatedDirs[path]
+		// Check if file or directory exists (need read lock)
+		m.mutex.RLock()
+		_, fileExists := m.fileContents[path]
+		dirExists := m.createdDirs[path]
+		m.mutex.RUnlock()
 
 		if fileExists || dirExists {
 			return true, nil
@@ -225,71 +256,61 @@ func NewMockFilesystemIO() *MockFilesystemIO {
 
 // ReadFile implements the FilesystemIO interface
 func (m *MockFilesystemIO) ReadFile(path string) ([]byte, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.ReadFileFunc(path)
 }
 
 // ReadFileWithContext implements the FilesystemIO interface
 func (m *MockFilesystemIO) ReadFileWithContext(ctx context.Context, path string) ([]byte, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.ReadFileWithContextFunc(ctx, path)
 }
 
 // WriteFile implements the FilesystemIO interface
 func (m *MockFilesystemIO) WriteFile(path string, data []byte, perm int) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.WriteFileFunc(path, data, perm)
 }
 
 // WriteFileWithContext implements the FilesystemIO interface
 func (m *MockFilesystemIO) WriteFileWithContext(ctx context.Context, path string, data []byte, perm int) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.WriteFileWithContextFunc(ctx, path, data, perm)
 }
 
 // MkdirAll implements the FilesystemIO interface
 func (m *MockFilesystemIO) MkdirAll(path string, perm int) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.MkdirAllFunc(path, perm)
 }
 
 // MkdirAllWithContext implements the FilesystemIO interface
 func (m *MockFilesystemIO) MkdirAllWithContext(ctx context.Context, path string, perm int) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.MkdirAllWithContextFunc(ctx, path, perm)
 }
 
 // RemoveAll implements the FilesystemIO interface
 func (m *MockFilesystemIO) RemoveAll(path string) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.RemoveAllFunc(path)
 }
 
 // RemoveAllWithContext implements the FilesystemIO interface
 func (m *MockFilesystemIO) RemoveAllWithContext(ctx context.Context, path string) error {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.RemoveAllWithContextFunc(ctx, path)
 }
 
 // Stat implements the FilesystemIO interface
 func (m *MockFilesystemIO) Stat(path string) (bool, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.StatFunc(path)
 }
 
 // StatWithContext implements the FilesystemIO interface
 func (m *MockFilesystemIO) StatWithContext(ctx context.Context, path string) (bool, error) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
+	// No locking here - the func handles its own locking
 	return m.StatWithContextFunc(ctx, path)
 }
 
@@ -321,7 +342,11 @@ type MockEnvironmentProvider struct {
 	LookupEnvFunc func(key string) (string, bool)
 
 	// EnvVars stores environment variables for in-memory simulation
+	// Access must be synchronized via mutex
 	EnvVars map[string]string
+
+	// mutex for thread-safe access to EnvVars
+	mutex sync.RWMutex
 }
 
 // NewMockEnvironmentProvider creates a new MockEnvironmentProvider with default implementations
@@ -334,12 +359,17 @@ func NewMockEnvironmentProvider() *MockEnvironmentProvider {
 
 	// Default implementation of GetEnv
 	m.GetEnvFunc = func(key string) string {
-		return m.EnvVars[key]
+		m.mutex.RLock()
+		value := m.EnvVars[key]
+		m.mutex.RUnlock()
+		return value
 	}
 
 	// Default implementation of LookupEnv
 	m.LookupEnvFunc = func(key string) (string, bool) {
+		m.mutex.RLock()
 		value, exists := m.EnvVars[key]
+		m.mutex.RUnlock()
 		return value, exists
 	}
 
@@ -354,6 +384,13 @@ func (m *MockEnvironmentProvider) GetEnv(key string) string {
 // LookupEnv implements the EnvironmentProvider interface
 func (m *MockEnvironmentProvider) LookupEnv(key string) (string, bool) {
 	return m.LookupEnvFunc(key)
+}
+
+// SetEnv sets an environment variable in a thread-safe manner
+func (m *MockEnvironmentProvider) SetEnv(key, value string) {
+	m.mutex.Lock()
+	m.EnvVars[key] = value
+	m.mutex.Unlock()
 }
 
 // TimeProvider represents the external boundary for time operations
@@ -374,7 +411,11 @@ type MockTimeProvider struct {
 	SleepFunc func(d time.Duration)
 
 	// CurrentTime stores the current time for in-memory simulation
+	// Access must be synchronized via mutex
 	CurrentTime time.Time
+
+	// mutex for thread-safe access to CurrentTime
+	mutex sync.RWMutex
 }
 
 // NewMockTimeProvider creates a new MockTimeProvider with default implementations
@@ -385,13 +426,18 @@ func NewMockTimeProvider() *MockTimeProvider {
 
 	// Default implementation of Now
 	m.NowFunc = func() time.Time {
-		return m.CurrentTime
+		m.mutex.RLock()
+		t := m.CurrentTime
+		m.mutex.RUnlock()
+		return t
 	}
 
 	// Default implementation of Sleep
 	m.SleepFunc = func(d time.Duration) {
 		// Simulate time passing
+		m.mutex.Lock()
 		m.CurrentTime = m.CurrentTime.Add(d)
+		m.mutex.Unlock()
 	}
 
 	return m
@@ -405,4 +451,11 @@ func (m *MockTimeProvider) Now() time.Time {
 // Sleep implements the TimeProvider interface
 func (m *MockTimeProvider) Sleep(d time.Duration) {
 	m.SleepFunc(d)
+}
+
+// SetTime sets the current time in a thread-safe manner
+func (m *MockTimeProvider) SetTime(t time.Time) {
+	m.mutex.Lock()
+	m.CurrentTime = t
+	m.mutex.Unlock()
 }
