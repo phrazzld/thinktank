@@ -44,7 +44,7 @@ func NewValidator() *Validator {
 			"feat", "fix", "docs", "style", "refactor",
 			"perf", "test", "chore", "ci", "build", "revert",
 		},
-		MaxBodyLineLength:      100,
+		MaxBodyLineLength:      0, // 0 means no limit
 		RequireFooterBlankLine: true,
 	}
 }
@@ -219,6 +219,11 @@ func (v *Validator) validateDescription(description string) error {
 
 // validateBodyLineLength validates body line lengths
 func (v *Validator) validateBodyLineLength(body string) error {
+	// Skip validation if MaxBodyLineLength is 0 (no limit)
+	if v.MaxBodyLineLength == 0 {
+		return nil
+	}
+
 	lines := strings.Split(body, "\n")
 	for i, line := range lines {
 		if len(line) > v.MaxBodyLineLength {
