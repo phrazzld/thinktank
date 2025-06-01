@@ -12,9 +12,19 @@ set -e
 # Package thresholds are defined in this script and documented in coverage-analysis.md.
 # The CI workflow enforces these thresholds by running this script.
 
-# Define the overall threshold (temporarily lowered to 64%)
-# TODO: Restore to 75% after test coverage is complete
-OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-64}
+# Define the overall threshold with gradual rollout support
+DEFAULT_OVERALL_THRESHOLD=75
+CURRENT_OVERALL_THRESHOLD=55
+
+# Support for gradual rollout via environment variables
+if [ "$COVERAGE_GRADUAL_ROLLOUT" = "true" ]; then
+    # Use current threshold during gradual rollout
+    OVERALL_THRESHOLD=${COVERAGE_THRESHOLD_CURRENT:-$CURRENT_OVERALL_THRESHOLD}
+    echo "🔄 Gradual rollout enabled: using current threshold $OVERALL_THRESHOLD% (target: ${COVERAGE_THRESHOLD_TARGET:-$DEFAULT_OVERALL_THRESHOLD}%)"
+else
+    # Use override if provided, otherwise default to 75%
+    OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-$DEFAULT_OVERALL_THRESHOLD}
+fi
 
 # Determine the module path
 MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')

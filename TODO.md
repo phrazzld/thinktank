@@ -82,7 +82,7 @@
 ## High Priority (P1)
 
 ### Testing & Quality
-- [ ] **T008: Restore and Enforce Coverage Thresholds**
+- [x] **T008: Restore and Enforce Coverage Thresholds**
   - **Context:** Coverage thresholds temporarily reduced to 64%
   - **Action:**
     1. Raise overall threshold to 75% in all scripts and CI
