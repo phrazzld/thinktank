@@ -32,7 +32,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	}()
 
 	outputDir := filepath.Join(tempDir, "output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 
@@ -152,6 +152,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 		t.Errorf("Expected synthesis output file %s not created", expectedSynthesisFile)
 	} else {
 		// Verify synthesis file content
+		//nolint:gosec // G304: Test file reading with controlled temp directory path
 		content, readErr := os.ReadFile(expectedSynthesisFile)
 		if readErr != nil {
 			t.Errorf("Failed to read synthesis output file %s: %v", expectedSynthesisFile, readErr)
@@ -173,6 +174,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 			t.Errorf("Expected output file %s not created", expectedFilePath)
 		} else {
 			// Verify file content
+			//nolint:gosec // G304: Test file reading with controlled temp directory path
 			content, modelReadErr := os.ReadFile(expectedFilePath)
 			if modelReadErr != nil {
 				t.Errorf("Failed to read output file %s: %v", expectedFilePath, modelReadErr)
@@ -203,7 +205,7 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	}()
 
 	outputDir := filepath.Join(tempDir, "output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 

@@ -275,7 +275,7 @@ func SetOrchestratorConstructor(constructor func(
 
 // incrementalCounter is used to ensure uniqueness of generated names
 // even when many names are generated in quick succession
-var incrementalCounter uint32 = 0
+var incrementalCounter uint32
 
 // generateTimestampedRunName returns a unique directory name in the format thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN
 // where NNNNNNNNN is a combination of nanoseconds, random number, and incremental counter to ensure uniqueness.

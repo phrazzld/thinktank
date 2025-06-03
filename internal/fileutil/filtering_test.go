@@ -35,6 +35,7 @@ func TestShouldProcess(t *testing.T) {
 				c.ExcludeExts = []string{".exe", ".bin"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping excluded extension") {
 					t.Errorf("Expected log about excluded extension")
 				}
@@ -56,6 +57,7 @@ func TestShouldProcess(t *testing.T) {
 				c.IncludeExts = []string{".go", ".md"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping non-included extension") {
 					t.Errorf("Expected log about non-included extension")
 				}
@@ -69,6 +71,7 @@ func TestShouldProcess(t *testing.T) {
 				c.ExcludeNames = []string{"node_modules", "dist"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping excluded name") {
 					t.Errorf("Expected log about excluded name")
 				}
@@ -109,6 +112,7 @@ func TestShouldProcess(t *testing.T) {
 				c.ExcludeExts = []string{".exe"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping excluded extension") {
 					t.Errorf("Expected log about excluded extension")
 				}
@@ -138,6 +142,7 @@ func TestShouldProcess(t *testing.T) {
 				c.IncludeExts = []string{".go", ".md"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping non-included extension") {
 					t.Errorf("Expected log about non-included extension")
 				}
@@ -169,6 +174,7 @@ func TestShouldProcess(t *testing.T) {
 				c.ExcludeExts = []string{".go", ".bin"} // Conflicting configuration
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping excluded extension") {
 					t.Errorf("Expected log about excluded extension")
 				}
@@ -190,6 +196,7 @@ func TestShouldProcess(t *testing.T) {
 				c.IncludeExts = []string{".go"}
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping non-included extension") {
 					t.Errorf("Expected log about non-included extension")
 				}
@@ -220,6 +227,7 @@ func TestShouldProcess(t *testing.T) {
 				c.ExcludeExts = []string{".go"} // Conflicts with include
 			},
 			checkLogging: func(t *testing.T, l *MockLogger) {
+				t.Helper()
 				if !l.ContainsMessage("Skipping excluded extension") {
 					t.Errorf("Expected log about excluded extension")
 				}

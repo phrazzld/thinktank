@@ -32,7 +32,7 @@ func TestProcessFileErrors(t *testing.T) {
 
 	// Create a readable file for testing path conversion
 	readablePath := filepath.Join(tempDir, "readable.txt")
-	err = os.WriteFile(readablePath, []byte("test content"), 0640)
+	err = os.WriteFile(readablePath, []byte("test content"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -62,7 +62,7 @@ func TestProcessFileErrors(t *testing.T) {
 			setupFunc: func() {
 				// Write binary content
 				binaryContent := []byte{0x00, 0x01, 0x02, 0x03, 0xFF}
-				err := os.WriteFile(readablePath, binaryContent, 0640)
+				err := os.WriteFile(readablePath, binaryContent, 0600)
 				if err != nil {
 					t.Fatalf("Failed to write binary file: %v", err)
 				}
@@ -75,7 +75,7 @@ func TestProcessFileErrors(t *testing.T) {
 			setupFunc: func() {
 				// Create a temporary text file to process, but with a relative path
 				// that we'll check for conversion warning
-				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test content"), 0640)
+				err := os.WriteFile(filepath.Join(tempDir, "test.txt"), []byte("test content"), 0600)
 				if err != nil {
 					t.Fatalf("Failed to create test file: %v", err)
 				}
@@ -135,7 +135,7 @@ func TestPathConversionError(t *testing.T) {
 
 	// Create a test file
 	testFilePath := filepath.Join(tempDir, "testfile.txt")
-	err := os.WriteFile(testFilePath, []byte("test content"), 0640)
+	err := os.WriteFile(testFilePath, []byte("test content"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}

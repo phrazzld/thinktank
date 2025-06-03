@@ -104,18 +104,21 @@ func TestStitchPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check instructions block
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<instructions>\nStandard test instructions for multiple files\n</instructions>") {
 						t.Error("Instructions section not formatted correctly")
 					}
 				},
 				// Check context block
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<context>") || !strings.Contains(result, "</context>") {
 						t.Error("Missing context section tags")
 					}
 				},
 				// Check file paths
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<path>/standard/file.go</path>") {
 						t.Error("Missing or incorrectly formatted standard file path tag")
 					}
@@ -125,6 +128,7 @@ func TestStitchPrompt(t *testing.T) {
 				},
 				// Check file content
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "package main") {
 						t.Error("Missing content from standard file")
 					}
@@ -134,6 +138,7 @@ func TestStitchPrompt(t *testing.T) {
 				},
 				// Check for no XML escaping (content should be preserved as-is)
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<r>value</r>") {
 						t.Error("XML tags in content were not properly preserved")
 					}
@@ -146,12 +151,14 @@ func TestStitchPrompt(t *testing.T) {
 			contextFiles: []fileutil.FileMeta{standardFile},
 			checks: []func(t *testing.T, result string){
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Check that instructions tags exist even with empty content
 					if !strings.Contains(result, "<instructions>\n</instructions>") {
 						t.Error("Empty instructions not properly formatted")
 					}
 				},
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Check that file content is still included
 					if !strings.Contains(result, "package main") {
 						t.Error("Missing file content despite empty instructions")
@@ -165,12 +172,14 @@ func TestStitchPrompt(t *testing.T) {
 			contextFiles: []fileutil.FileMeta{},
 			checks: []func(t *testing.T, result string){
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Verify instructions are included
 					if !strings.Contains(result, "Instructions with empty context") {
 						t.Error("Missing instructions content")
 					}
 				},
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Check that context tags exist even with no files
 					if !strings.Contains(result, "<context>") && strings.Contains(result, "</context>") {
 						t.Error("Empty context not properly formatted")
@@ -184,6 +193,7 @@ func TestStitchPrompt(t *testing.T) {
 			contextFiles: []fileutil.FileMeta{emptyFile},
 			checks: []func(t *testing.T, result string){
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Verify file path is included
 					if !strings.Contains(result, "<path>/empty/file.go</path>") {
 						t.Error("Missing path tag for empty file")
@@ -197,12 +207,14 @@ func TestStitchPrompt(t *testing.T) {
 			contextFiles: []fileutil.FileMeta{standardFile},
 			checks: []func(t *testing.T, result string){
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Verify instructions are preserved as-is (not escaped)
 					if !strings.Contains(result, "Instructions with <tags> that should NOT be escaped") {
 						t.Error("Instructions content was incorrectly modified")
 					}
 				},
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Double-check that the file content is still properly escaped
 					if !strings.Contains(result, "fmt.Println") {
 						t.Error("Missing expected file content")
@@ -218,12 +230,14 @@ func TestStitchPrompt(t *testing.T) {
 			},
 			checks: []func(t *testing.T, result string){
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Verify path is correctly included without escaping
 					if !strings.Contains(result, "<path>/path/with/<special>/chars.go</path>") {
 						t.Error("Path with special characters not properly handled")
 					}
 				},
 				func(t *testing.T, result string) {
+					t.Helper()
 					// Check content is included
 					if !strings.Contains(result, "special path content") {
 						t.Error("Missing content from file with special path")

@@ -29,6 +29,7 @@ func (fs *RealFS) ReadFileWithContext(ctx context.Context, path string) ([]byte,
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	//nolint:gosec // G304: Test filesystem wrapper implementing interface
 	return os.ReadFile(path)
 }
 
@@ -196,6 +197,7 @@ func (fs *RealFS) FindInFiles(content string, filePatterns ...string) (map[strin
 		}
 
 		// Read file
+		//nolint:gosec // G304: File search function using glob-validated paths
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue

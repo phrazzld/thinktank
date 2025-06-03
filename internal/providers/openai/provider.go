@@ -1,4 +1,4 @@
-// internal/providers/openai/provider.go
+// Package openai provides OpenAI API provider implementation.
 package openai
 
 import (

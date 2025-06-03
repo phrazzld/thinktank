@@ -39,7 +39,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	}()
 
 	outputDir := filepath.Join(tempDir, "output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 
@@ -142,10 +142,10 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 			// Actually save the file to test file existence later
 			dir := filepath.Dir(filePath)
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0750); err != nil {
 				return err
 			}
-			return os.WriteFile(filePath, []byte(content), 0640)
+			return os.WriteFile(filePath, []byte(content), 0600)
 		},
 	}
 

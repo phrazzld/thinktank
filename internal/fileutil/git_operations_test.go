@@ -201,6 +201,7 @@ exit /b 2
 `
 	}
 
+	//nolint:gosec // G306: Script file needs execute permissions
 	// Write the mock git script
 	err := os.WriteFile(mockGitPath, []byte(mockGitScript), 0755)
 	if err != nil {
@@ -347,6 +348,7 @@ exit /b 2
 `
 	}
 
+	//nolint:gosec // G306: Script file needs execute permissions
 	// Write the mock git script
 	err := os.WriteFile(mockGitPath, []byte(mockGitScript), 0755)
 	if err != nil {

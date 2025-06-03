@@ -26,6 +26,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check synthesis instructions block
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<synthesis_instructions>") {
 						t.Error("Missing synthesis instructions section")
 					}
@@ -35,6 +36,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				},
 				// Check original task context
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<original_task_context>") {
 						t.Error("Missing original task context section")
 					}
@@ -44,12 +46,14 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				},
 				// Check model_outputs block
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<model_outputs>") || !strings.Contains(result, "</model_outputs>") {
 						t.Error("Missing model_outputs section tags")
 					}
 				},
 				// Check output blocks with model attribution
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<model_result model=\"model1\">") {
 						t.Error("Missing or incorrectly formatted model1 output tag")
 					}
@@ -59,6 +63,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				},
 				// Check model contents
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "null pointer issue") {
 						t.Error("Model1 output content missing")
 					}
@@ -68,12 +73,14 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				},
 				// Check final synthesis directive
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "Based on the above model outputs, create your comprehensive synthesis") {
 						t.Error("Missing final synthesis directive")
 					}
 				},
 				// Check closing tags
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "</model_result>") {
 						t.Error("Missing closing model_result tags")
 					}
@@ -89,12 +96,14 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check that original task context exists even with empty instructions
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<original_task_context>") {
 						t.Error("Missing original task context section")
 					}
 				},
 				// Check that model output is still included
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "Some analysis without instructions") {
 						t.Error("Model output not included")
 					}
@@ -108,6 +117,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check basic structure exists
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<synthesis_instructions>") {
 						t.Error("Missing synthesis instructions")
 					}
@@ -129,6 +139,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check model_result tag exists even with empty content
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<model_result model=\"model1\">") {
 						t.Error("Missing model_result tag for empty output")
 					}
@@ -144,6 +155,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check special characters in model name are preserved
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<model_result model=\"model-v2.1\">") {
 						t.Error("Special characters in model name not preserved")
 					}
@@ -159,6 +171,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check XML-like content is preserved
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "Some <tag>content</tag> with XML-like structure") {
 						t.Error("XML-like content in model output not preserved")
 					}
@@ -176,6 +189,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 			checks: []func(t *testing.T, result string){
 				// Check all models are included
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "<model_result model=\"model1\">") ||
 						!strings.Contains(result, "<model_result model=\"model2\">") ||
 						!strings.Contains(result, "<model_result model=\"model3\">") {
@@ -184,6 +198,7 @@ func TestStitchSynthesisPrompt(t *testing.T) {
 				},
 				// Check content preservation
 				func(t *testing.T, result string) {
+					t.Helper()
 					if !strings.Contains(result, "Short response") {
 						t.Error("Short response not preserved")
 					}

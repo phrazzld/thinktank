@@ -23,56 +23,56 @@ type mockAPILogger struct {
 // Ensure mockAPILogger implements logutil.LoggerInterface
 var _ logutil.LoggerInterface = (*mockAPILogger)(nil)
 
-func (m *mockAPILogger) Debug(format string, args ...interface{}) {
+func (m *mockAPILogger) Debug(format string, _ ...interface{}) {
 	m.debugMessages = append(m.debugMessages, format)
 }
 
-func (m *mockAPILogger) Info(format string, args ...interface{}) {
+func (m *mockAPILogger) Info(format string, _ ...interface{}) {
 	m.infoMessages = append(m.infoMessages, format)
 }
 
-func (m *mockAPILogger) Warn(format string, args ...interface{}) {
+func (m *mockAPILogger) Warn(format string, _ ...interface{}) {
 	m.warnMessages = append(m.warnMessages, format)
 }
 
-func (m *mockAPILogger) Error(format string, args ...interface{}) {
+func (m *mockAPILogger) Error(format string, _ ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
 }
 
-func (m *mockAPILogger) Fatal(format string, args ...interface{}) {
+func (m *mockAPILogger) Fatal(_ string, _ ...interface{}) {
 	// Don't actually exit in tests
 }
 
-func (m *mockAPILogger) Println(v ...interface{}) {
+func (m *mockAPILogger) Println(_ ...interface{}) {
 	// No-op for tests
 }
 
-func (m *mockAPILogger) Printf(format string, v ...interface{}) {
+func (m *mockAPILogger) Printf(_ string, _ ...interface{}) {
 	// No-op for tests
 }
 
 // Context-aware logging methods
-func (m *mockAPILogger) DebugContext(ctx context.Context, format string, args ...interface{}) {
+func (m *mockAPILogger) DebugContext(_ context.Context, format string, _ ...interface{}) {
 	m.debugMessages = append(m.debugMessages, format)
 }
 
-func (m *mockAPILogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+func (m *mockAPILogger) InfoContext(_ context.Context, format string, _ ...interface{}) {
 	m.infoMessages = append(m.infoMessages, format)
 }
 
-func (m *mockAPILogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+func (m *mockAPILogger) WarnContext(_ context.Context, format string, _ ...interface{}) {
 	m.warnMessages = append(m.warnMessages, format)
 }
 
-func (m *mockAPILogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+func (m *mockAPILogger) ErrorContext(_ context.Context, format string, _ ...interface{}) {
 	m.errorMessages = append(m.errorMessages, format)
 }
 
-func (m *mockAPILogger) FatalContext(ctx context.Context, format string, args ...interface{}) {
+func (m *mockAPILogger) FatalContext(_ context.Context, _ string, _ ...interface{}) {
 	// Don't actually exit in tests
 }
 
-func (m *mockAPILogger) WithContext(ctx context.Context) logutil.LoggerInterface {
+func (m *mockAPILogger) WithContext(_ context.Context) logutil.LoggerInterface {
 	return m
 }
 

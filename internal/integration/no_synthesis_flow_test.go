@@ -35,7 +35,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 	}()
 
 	outputDir := filepath.Join(tempDir, "output")
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0750); err != nil {
 		t.Fatalf("Failed to create output dir: %v", err)
 	}
 
@@ -113,10 +113,10 @@ func TestNoSynthesisFlow(t *testing.T) {
 		SaveToFileFunc: func(content, filePath string) error {
 			// Actually save the files to verify they exist later
 			dir := filepath.Dir(filePath)
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0750); err != nil {
 				return err
 			}
-			return os.WriteFile(filePath, []byte(content), 0640)
+			return os.WriteFile(filePath, []byte(content), 0600)
 		},
 	}
 
@@ -160,6 +160,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 			t.Errorf("Expected output file %s not created", expectedFilePath)
 		} else {
 			// Verify file content
+			//nolint:gosec // G304: Test file reading with controlled temp directory path
 			content, err := os.ReadFile(expectedFilePath)
 			if err != nil {
 				t.Errorf("Failed to read output file %s: %v", expectedFilePath, err)

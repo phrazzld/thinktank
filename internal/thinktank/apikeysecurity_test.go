@@ -15,6 +15,7 @@ func TestAPIKeyLoggingSecurity(t *testing.T) {
 	logger := logutil.NewLogger(logutil.DebugLevel, buffer, "")
 
 	// Create API key for testing
+	//nolint:gosec // G101: Test API key, not a real credential
 	testAPIKey := "test-api-key-secret-12345"
 
 	// Test logging with API key metadata

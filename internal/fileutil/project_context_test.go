@@ -95,28 +95,28 @@ func TestGatherProjectContextWalkErrors(t *testing.T) {
 
 	// Create a directory with a file
 	testDir := filepath.Join(tempDir, "testdir")
-	err := os.MkdirAll(testDir, 0755)
+	err := os.MkdirAll(testDir, 0750)
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
 
 	// Create a test file with a known extension for filtering
 	testFilePath := filepath.Join(testDir, "testfile.txt")
-	err = os.WriteFile(testFilePath, []byte("test content"), 0640)
+	err = os.WriteFile(testFilePath, []byte("test content"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
 	// Create a nested directory with no access permission
 	noAccessDir := filepath.Join(tempDir, "noaccess")
-	err = os.MkdirAll(noAccessDir, 0755)
+	err = os.MkdirAll(noAccessDir, 0750)
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
 
 	// Create a file in the no-access directory
 	noAccessFile := filepath.Join(noAccessDir, "secretfile.txt")
-	err = os.WriteFile(noAccessFile, []byte("secret content"), 0640)
+	err = os.WriteFile(noAccessFile, []byte("secret content"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
@@ -128,7 +128,8 @@ func TestGatherProjectContextWalkErrors(t *testing.T) {
 	}
 	// Ensure we reset permissions after the test
 	defer func() {
-		chmodErr := os.Chmod(noAccessDir, 0755)
+		//nolint:gosec // G302: Test cleanup restores normal directory permissions
+		chmodErr := os.Chmod(noAccessDir, 0750)
 		if chmodErr != nil {
 			t.Logf("Warning: Could not restore permissions: %v", chmodErr)
 		}
@@ -186,36 +187,36 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 	// Create test directories and files
 	// 1. A directory excluded by name
 	excludedDir := filepath.Join(tempDir, "node_modules")
-	err := os.MkdirAll(excludedDir, 0755)
+	err := os.MkdirAll(excludedDir, 0750)
 	if err != nil {
 		t.Fatalf("Failed to create excluded directory: %v", err)
 	}
 	excludedFile := filepath.Join(excludedDir, "package.json")
-	err = os.WriteFile(excludedFile, []byte("{}"), 0640)
+	err = os.WriteFile(excludedFile, []byte("{}"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create file in excluded directory: %v", err)
 	}
 
 	// 2. A .git directory (should be implicitly excluded)
 	gitDir := filepath.Join(tempDir, ".git")
-	err = os.MkdirAll(gitDir, 0755)
+	err = os.MkdirAll(gitDir, 0750)
 	if err != nil {
 		t.Fatalf("Failed to create .git directory: %v", err)
 	}
 	gitFile := filepath.Join(gitDir, "HEAD")
-	err = os.WriteFile(gitFile, []byte("ref: refs/heads/main"), 0640)
+	err = os.WriteFile(gitFile, []byte("ref: refs/heads/main"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create file in .git directory: %v", err)
 	}
 
 	// 3. Regular files that should be processed
 	srcDir := filepath.Join(tempDir, "src")
-	err = os.MkdirAll(srcDir, 0755)
+	err = os.MkdirAll(srcDir, 0750)
 	if err != nil {
 		t.Fatalf("Failed to create src directory: %v", err)
 	}
 	srcFile := filepath.Join(srcDir, "main.go")
-	err = os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0640)
+	err = os.WriteFile(srcFile, []byte("package main\n\nfunc main() {}\n"), 0600)
 	if err != nil {
 		t.Fatalf("Failed to create go file: %v", err)
 	}
@@ -253,14 +254,14 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 		t.Run("Walking Error", func(t *testing.T) {
 			// Create a directory with no permissions to read its contents
 			badDir := filepath.Join(tempDir, "bad-dir")
-			err := os.MkdirAll(badDir, 0755)
+			err := os.MkdirAll(badDir, 0750)
 			if err != nil {
 				t.Fatalf("Failed to create bad directory: %v", err)
 			}
 
 			// Create a file inside that will be inaccessible
 			badFile := filepath.Join(badDir, "secret.txt")
-			err = os.WriteFile(badFile, []byte("secret"), 0640)
+			err = os.WriteFile(badFile, []byte("secret"), 0600)
 			if err != nil {
 				t.Fatalf("Failed to create file in bad directory: %v", err)
 			}
@@ -271,7 +272,8 @@ func TestWalkDirectoryErrorHandling(t *testing.T) {
 				t.Fatalf("Failed to change directory permissions: %v", err)
 			}
 			defer func() {
-				chmodErr := os.Chmod(badDir, 0755) // Restore permissions
+				//nolint:gosec // G302: Test cleanup restores normal directory permissions
+				chmodErr := os.Chmod(badDir, 0750) // Restore permissions
 				if chmodErr != nil {
 					t.Logf("Warning: Could not restore permissions: %v", chmodErr)
 				}
@@ -443,13 +445,13 @@ func TestGatherProjectContextFiltering(t *testing.T) {
 				fullPath := filepath.Join(tempDir, relativePath)
 
 				// Ensure the parent directory exists
-				err := os.MkdirAll(filepath.Dir(fullPath), 0755)
+				err := os.MkdirAll(filepath.Dir(fullPath), 0750)
 				if err != nil {
 					t.Fatalf("Failed to create directory: %v", err)
 				}
 
 				// Create the file
-				err = os.WriteFile(fullPath, []byte(content), 0640)
+				err = os.WriteFile(fullPath, []byte(content), 0600)
 				if err != nil {
 					t.Fatalf("Failed to write file: %v", err)
 				}

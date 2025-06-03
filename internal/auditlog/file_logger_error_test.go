@@ -60,12 +60,13 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	// Skip test for write error with mock file - would require os.File mock
 	// Instead, we'll log the audit entry to a file we can't write to
 	readOnlyDir2 := filepath.Join(dir, "readonly_dir")
-	readonlyErr := os.Mkdir(readOnlyDir2, 0755)
+	readonlyErr := os.Mkdir(readOnlyDir2, 0750)
 	if readonlyErr != nil {
 		t.Fatalf("Failed to create readonly dir: %v", readonlyErr)
 	}
 
 	readOnlyFile := filepath.Join(readOnlyDir2, "readonly.log")
+	//nolint:gosec // G304: Test file creation with controlled temp directory path
 	f, createErr2 := os.Create(readOnlyFile)
 	if createErr2 != nil {
 		t.Fatalf("Failed to create readonly file: %v", createErr2)
@@ -87,13 +88,14 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 
 	// Create a temporary file with read-only permissions
 	readOnlyDir := filepath.Join(dir, "readonly")
-	if mkdirErr := os.Mkdir(readOnlyDir, 0o755); mkdirErr != nil {
+	if mkdirErr := os.Mkdir(readOnlyDir, 0o750); mkdirErr != nil {
 		t.Fatalf("Failed to create readonly dir: %v", mkdirErr)
 	}
 
 	readOnlyLogPath := filepath.Join(readOnlyDir, "readonly.log")
 
 	// Create the file first
+	//nolint:gosec // G304: Test file creation with controlled temp directory path
 	f, createErr := os.Create(readOnlyLogPath)
 	if createErr != nil {
 		t.Fatalf("Failed to create readonly log file: %v", createErr)
@@ -108,6 +110,7 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Make the directory read-only to prevent file creation
+	//nolint:gosec // G302: Test directory needs restrictive permissions for testing
 	if dirChmodErr := os.Chmod(readOnlyDir, 0o500); dirChmodErr != nil {
 		t.Fatalf("Failed to set readonly directory: %v", dirChmodErr)
 	}
@@ -125,9 +128,11 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Cleanup - restore permissions to allow cleanup
+	//nolint:gosec // G302: Test cleanup restores normal directory permissions
 	if chmodErr := os.Chmod(readOnlyDir, 0o755); chmodErr != nil {
 		t.Logf("Warning: Failed to restore directory permissions: %v", chmodErr)
 	}
+	//nolint:gosec // G302: Test cleanup restores normal file permissions
 	if chmodErr := os.Chmod(readOnlyLogPath, 0o644); chmodErr != nil {
 		t.Logf("Warning: Failed to restore file permissions: %v", chmodErr)
 	}
@@ -154,6 +159,7 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, readErr := os.ReadFile(logPath)
 	if readErr != nil {
 		t.Fatalf("Failed to read log file: %v", readErr)
@@ -193,6 +199,7 @@ func TestFileAuditLogger_ErrorHandling(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	timeContent, timeReadErr := os.ReadFile(logPath)
 	if timeReadErr != nil {
 		t.Fatalf("Failed to read log file: %v", timeReadErr)

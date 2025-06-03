@@ -160,7 +160,7 @@ func (m *Manager) installDefaultConfig() error {
 
 	// Create config directory
 	configDir := filepath.Join(homeDir, ConfigDirName)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0750); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -196,6 +196,7 @@ func (m *Manager) installDefaultConfig() error {
 	}
 
 	// Read the default configuration
+	//nolint:gosec // G304: Config file path validated by prior os.Stat check
 	defaultConfig, err := os.ReadFile(defaultConfigPath)
 	if err != nil {
 		return fmt.Errorf("failed to read default configuration file: %w", err)
@@ -203,7 +204,7 @@ func (m *Manager) installDefaultConfig() error {
 
 	// Write to the user's config directory
 	targetConfigPath := filepath.Join(configDir, ModelsConfigFileName)
-	if err := os.WriteFile(targetConfigPath, defaultConfig, 0640); err != nil {
+	if err := os.WriteFile(targetConfigPath, defaultConfig, 0600); err != nil {
 		return fmt.Errorf("failed to write configuration file: %w", err)
 	}
 

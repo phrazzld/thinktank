@@ -171,7 +171,7 @@ func (env *BoundaryTestEnv) SetupInstructionsFile(content string) string {
 	// Create it in the parent directory, not in the output directory
 	// Instructions file should be separate from output files
 	instructionsPath := filepath.Join(filepath.Dir(env.Config.OutputDir), "instructions.md")
-	err := env.Filesystem.WriteFile(instructionsPath, []byte(content), 0640)
+	err := env.Filesystem.WriteFile(instructionsPath, []byte(content), 0600)
 	if err != nil {
 		panic(fmt.Sprintf("Failed to write instructions file: %v", err))
 	}
@@ -184,7 +184,7 @@ func (env *BoundaryTestEnv) SetupInstructionsFile(content string) string {
 	if err := os.MkdirAll(dirPath, 0750); err != nil {
 		fmt.Printf("Warning: Failed to create real directory %s: %v\n", dirPath, err)
 	}
-	if err := os.WriteFile(instructionsPath, []byte(content), 0640); err != nil {
+	if err := os.WriteFile(instructionsPath, []byte(content), 0600); err != nil {
 		fmt.Printf("Warning: Failed to write real file %s: %v\n", instructionsPath, err)
 	}
 
@@ -351,13 +351,14 @@ func getProviderFromModelName(modelName string) string {
 	modelLower := strings.ToLower(modelName)
 	if strings.Contains(modelLower, "gpt") {
 		return "openai"
-	} else if strings.Contains(modelLower, "gemini") {
-		return "gemini"
-	} else if strings.Contains(modelLower, "claude") {
-		return "anthropic"
-	} else {
-		return "unknown"
 	}
+	if strings.Contains(modelLower, "gemini") {
+		return "gemini"
+	}
+	if strings.Contains(modelLower, "claude") {
+		return "anthropic"
+	}
+	return "unknown"
 }
 
 // GetModelTokenLimits retrieves token limits for a given model
@@ -488,7 +489,7 @@ func (w *BoundaryFileWriter) SaveToFile(content, filePath string) error {
 	}
 
 	// Write file
-	if err := w.filesystem.WriteFile(filePath, []byte(content), 0640); err != nil {
+	if err := w.filesystem.WriteFile(filePath, []byte(content), 0600); err != nil {
 		w.logger.Error("Failed to write file %s: %v", filePath, err)
 		return err
 	}

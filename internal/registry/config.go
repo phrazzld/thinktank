@@ -73,6 +73,7 @@ func (c *ConfigLoader) Load() (*ModelsConfig, error) {
 	c.Logger.InfoContext(ctx, "Loading model configuration from: %s", configPath)
 
 	// Read the configuration file
+	//nolint:gosec // G304: Config file path validated by GetConfigPath()
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {

@@ -206,7 +206,8 @@ func TestSaveToFile_ErrorConditions(t *testing.T) {
 
 		// Create a test file with invalid permissions for directory creation
 		invalidPath := filepath.Join(tempDir, "invalid-dir")
-		if err := os.Mkdir(invalidPath, 0444); err != nil { // Read-only directory
+		//nolint:gosec // G301: Intentionally using restrictive permissions (0444) for testing error handling
+		if err := os.Mkdir(invalidPath, 0444); err != nil { // Read-only directory (intentional for testing)
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 		// Try to write to a path inside the read-only directory

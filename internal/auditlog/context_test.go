@@ -56,6 +56,7 @@ func TestAuditLogger_Context(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
@@ -135,6 +136,7 @@ func TestLogOp_Context(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
@@ -224,6 +226,7 @@ func TestLogLegacy(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
@@ -284,6 +287,7 @@ func TestLogOpLegacy(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)

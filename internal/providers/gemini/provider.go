@@ -1,4 +1,4 @@
-// internal/providers/gemini/provider.go
+// Package gemini provides Google Gemini API provider implementation.
 package gemini
 
 import (

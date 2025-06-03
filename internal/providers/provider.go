@@ -1,4 +1,4 @@
-// internal/providers/provider.go
+// Package providers contains common interfaces and utilities for LLM providers.
 package providers
 
 import (

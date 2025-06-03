@@ -244,6 +244,7 @@ func initializeTestRegistry(t *testing.T, reg *registry.Registry) {
 
 // Register test provider implementations with the registry
 func registerTestProviders(t *testing.T, reg *registry.Registry) {
+	t.Helper()
 	// Register mock provider implementations
 	if err := reg.RegisterProviderImplementation(context.Background(), "gemini", &mockProvider{providerName: "gemini"}); err != nil {
 		t.Fatalf("Failed to register Gemini provider: %v", err)
@@ -270,7 +271,7 @@ type mockProvider struct {
 	providerName string
 }
 
-func (m *mockProvider) CreateClient(ctx context.Context, apiKey, modelId, apiEndpoint string) (llm.LLMClient, error) {
+func (m *mockProvider) CreateClient(_ context.Context, apiKey, modelID, apiEndpoint string) (llm.LLMClient, error) {
 	// Return an error to simulate client creation failure
 	// The test doesn't need the actual client, it just verifies the API key usage
 	return nil, fmt.Errorf("mock provider %s error: key=%s", m.providerName, apiKey)

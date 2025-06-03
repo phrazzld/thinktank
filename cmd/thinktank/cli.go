@@ -174,15 +174,15 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 			if err := regManager.Initialize(); err != nil {
 				logger.Error("Failed to initialize registry for synthesis model validation: %v", err)
 				return fmt.Errorf("invalid synthesis model: failed to validate '%s'", config.SynthesisModel)
-			} else {
-				// Check if the model exists in the registry
-				_, err := regManager.GetProviderForModel(config.SynthesisModel)
-				if err != nil {
-					logger.Error("Synthesis model '%s' not found in registry", config.SynthesisModel)
-					return fmt.Errorf("invalid synthesis model: '%s' not found or not supported", config.SynthesisModel)
-				}
-				logger.Debug("Synthesis model '%s' successfully validated", config.SynthesisModel)
 			}
+
+			// Check if the model exists in the registry
+			_, err := regManager.GetProviderForModel(config.SynthesisModel)
+			if err != nil {
+				logger.Error("Synthesis model '%s' not found in registry", config.SynthesisModel)
+				return fmt.Errorf("invalid synthesis model: '%s' not found or not supported", config.SynthesisModel)
+			}
+			logger.Debug("Synthesis model '%s' successfully validated", config.SynthesisModel)
 		} else {
 			// Registry not available, but we still need to validate
 			// Use string matching fallback to determine if this is a likely valid model
@@ -213,7 +213,7 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 
 // getRegistryManagerForValidation returns the registry manager for validation
 // This is a variable to allow for easier testing
-var getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
+var getRegistryManagerForValidation = func(_ logutil.LoggerInterface) interface{} {
 	return registry.GetGlobalManager(nil)
 }
 

@@ -1,4 +1,4 @@
-// internal/gemini/mock_client.go
+// Package gemini provides Google Gemini API client implementation.
 package gemini
 
 import (

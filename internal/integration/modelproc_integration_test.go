@@ -460,6 +460,7 @@ type ModelProcTestEnv struct {
 
 // setupModelProcTestEnvWithLogger creates a test environment for modelproc tests using the provided logger
 func setupModelProcTestEnvWithLogger(t *testing.T, logger logutil.LoggerInterface) *ModelProcTestEnv {
+	t.Helper()
 	// Create an API caller
 	apiCaller := &ModelProcAPIClient{
 		CallLLMAPIFunc: func(ctx context.Context, model, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {

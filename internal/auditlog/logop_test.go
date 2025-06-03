@@ -123,6 +123,7 @@ func TestFileAuditLogger_LogOp(t *testing.T) {
 			}
 
 			// Read the log file
+			//nolint:gosec // G304: Test file reading with controlled temp directory path
 			content, err := os.ReadFile(logPath)
 			if err != nil {
 				t.Fatalf("Failed to read log file: %v", err)

@@ -34,8 +34,8 @@ func CreateStandardTestRegistry() *MockRegistry {
 }
 
 // SetupSuccessClient creates a registry with a model, provider, and a success client
-func SetupSuccessClient(t testing.TB) (*MockRegistry, *MockLLMClient, *MockProvider) {
-	t.Helper()
+func SetupSuccessClient(tb testing.TB) (*MockRegistry, *MockLLMClient, *MockProvider) {
+	tb.Helper()
 
 	// Create a registry with standard models and providers
 	registry := CreateStandardTestRegistry()
@@ -56,8 +56,8 @@ func SetupSuccessClient(t testing.TB) (*MockRegistry, *MockLLMClient, *MockProvi
 }
 
 // SetupErrorClient creates a registry with a model, provider, and an error client
-func SetupErrorClient(t testing.TB, errorType string) (*MockRegistry, *MockLLMClient, *MockProvider, error) {
-	t.Helper()
+func SetupErrorClient(tb testing.TB, errorType string) (*MockRegistry, *MockLLMClient, *MockProvider, error) {
+	tb.Helper()
 
 	// Create a registry with standard models and providers
 	registry := CreateStandardTestRegistry()
@@ -132,37 +132,37 @@ func CommonTestParameters() map[string]interface{} {
 }
 
 // AssertErrorType checks if an error is of the expected type
-func AssertErrorType(t testing.TB, err, expectedErr error) {
-	t.Helper()
+func AssertErrorType(tb testing.TB, err, expectedErr error) {
+	tb.Helper()
 
 	if expectedErr == nil {
 		if err != nil {
-			t.Errorf("Expected no error, but got %v", err)
+			tb.Errorf("Expected no error, but got %v", err)
 		}
 		return
 	}
 
 	if err == nil {
-		t.Errorf("Expected error %v, but got nil", expectedErr)
+		tb.Errorf("Expected error %v, but got nil", expectedErr)
 		return
 	}
 
 	if !errors.Is(err, expectedErr) {
-		t.Errorf("Expected error %v, but got %v", expectedErr, err)
+		tb.Errorf("Expected error %v, but got %v", expectedErr, err)
 	}
 }
 
 // AssertClientCalled checks if a client was called with the expected prompt
-func AssertClientCalled(t testing.TB, client *MockLLMClient, expectedPrompt string) {
-	t.Helper()
+func AssertClientCalled(tb testing.TB, client *MockLLMClient, expectedPrompt string) {
+	tb.Helper()
 
 	if client == nil {
-		t.Error("Client is nil, cannot check call")
+		tb.Error("Client is nil, cannot check call")
 		return
 	}
 
 	if len(client.Calls) == 0 {
-		t.Error("Client was not called")
+		tb.Error("Client was not called")
 		return
 	}
 
@@ -176,7 +176,7 @@ func AssertClientCalled(t testing.TB, client *MockLLMClient, expectedPrompt stri
 	}
 
 	if !found {
-		t.Errorf("Expected client to be called with prompt %q, but it was not", expectedPrompt)
+		tb.Errorf("Expected client to be called with prompt %q, but it was not", expectedPrompt)
 	}
 }
 
@@ -242,8 +242,8 @@ func RunCommonParameterTests(t *testing.T, validateFunc func(string, string, int
 }
 
 // RunCommonModelTests runs common model-related tests
-func RunCommonModelTests(t testing.TB, registry *MockRegistry) {
-	t.Helper()
+func RunCommonModelTests(tb testing.TB, registry *MockRegistry) {
+	tb.Helper()
 
 	// Test getting standard models
 	standardModels := []string{"test-model"}
@@ -251,28 +251,28 @@ func RunCommonModelTests(t testing.TB, registry *MockRegistry) {
 	for _, modelName := range standardModels {
 		model, err := registry.GetModel(ctx, modelName)
 		if err != nil {
-			t.Errorf("Failed to get model %s: %v", modelName, err)
+			tb.Errorf("Failed to get model %s: %v", modelName, err)
 			continue
 		}
 
 		if model == nil {
-			t.Errorf("Model %s was nil", modelName)
+			tb.Errorf("Model %s was nil", modelName)
 			continue
 		}
 
-		t.Logf("Successfully retrieved model %s", modelName)
+		tb.Logf("Successfully retrieved model %s", modelName)
 	}
 
 	// Test non-existent model
 	_, err := registry.GetModel(ctx, "non-existent-model")
 	if err == nil {
-		t.Error("Expected error when getting non-existent model, but got nil")
+		tb.Error("Expected error when getting non-existent model, but got nil")
 	}
 }
 
 // RunCommonProviderTests runs common provider-related tests
-func RunCommonProviderTests(t testing.TB, registry *MockRegistry) {
-	t.Helper()
+func RunCommonProviderTests(tb testing.TB, registry *MockRegistry) {
+	tb.Helper()
 
 	// Test getting standard providers
 	standardProviders := []string{"test-provider"}
@@ -280,21 +280,21 @@ func RunCommonProviderTests(t testing.TB, registry *MockRegistry) {
 	for _, providerName := range standardProviders {
 		provider, err := registry.GetProvider(ctx, providerName)
 		if err != nil {
-			t.Errorf("Failed to get provider %s: %v", providerName, err)
+			tb.Errorf("Failed to get provider %s: %v", providerName, err)
 			continue
 		}
 
 		if provider == nil {
-			t.Errorf("Provider %s was nil", providerName)
+			tb.Errorf("Provider %s was nil", providerName)
 			continue
 		}
 
-		t.Logf("Successfully retrieved provider %s", providerName)
+		tb.Logf("Successfully retrieved provider %s", providerName)
 	}
 
 	// Test non-existent provider
 	_, err := registry.GetProvider(ctx, "non-existent-provider")
 	if err == nil {
-		t.Error("Expected error when getting non-existent provider, but got nil")
+		tb.Error("Expected error when getting non-existent provider, but got nil")
 	}
 }

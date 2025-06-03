@@ -228,29 +228,29 @@ func (s *RegistryTestSetup) CreateTestContext() context.Context {
 }
 
 // AssertRegistryMethodCalled checks that a specified registry method was called
-func AssertRegistryMethodCalled(t testing.TB, registry *MockRegistry, methodName string) {
-	t.Helper()
+func AssertRegistryMethodCalled(tb testing.TB, registry *MockRegistry, methodName string) {
+	tb.Helper()
 	calls := registry.GetMethodCalls(methodName)
 	if len(calls) == 0 {
-		t.Errorf("Expected registry method %s to be called, but it wasn't", methodName)
+		tb.Errorf("Expected registry method %s to be called, but it wasn't", methodName)
 	}
 }
 
 // AssertRegistryMethodNotCalled checks that a specified registry method was not called
-func AssertRegistryMethodNotCalled(t testing.TB, registry *MockRegistry, methodName string) {
-	t.Helper()
+func AssertRegistryMethodNotCalled(tb testing.TB, registry *MockRegistry, methodName string) {
+	tb.Helper()
 	calls := registry.GetMethodCalls(methodName)
 	if len(calls) > 0 {
-		t.Errorf("Expected registry method %s not to be called, but it was called %d times", methodName, len(calls))
+		tb.Errorf("Expected registry method %s not to be called, but it was called %d times", methodName, len(calls))
 	}
 }
 
 // AssertRegistryMethodCalledWith checks that a registry method was called with specific arguments
-func AssertRegistryMethodCalledWith(t testing.TB, registry *MockRegistry, methodName string, expectedArg interface{}) {
-	t.Helper()
+func AssertRegistryMethodCalledWith(tb testing.TB, registry *MockRegistry, methodName string, expectedArg interface{}) {
+	tb.Helper()
 	calls := registry.GetMethodCalls(methodName)
 	if len(calls) == 0 {
-		t.Errorf("Expected registry method %s to be called, but it wasn't", methodName)
+		tb.Errorf("Expected registry method %s to be called, but it wasn't", methodName)
 		return
 	}
 
@@ -268,28 +268,28 @@ func AssertRegistryMethodCalledWith(t testing.TB, registry *MockRegistry, method
 	}
 
 	if !found {
-		t.Errorf("Expected registry method %s to be called with %v, but it wasn't", methodName, expectedArg)
+		tb.Errorf("Expected registry method %s to be called with %v, but it wasn't", methodName, expectedArg)
 	}
 }
 
 // AssertRegistryMethodCalledTimes checks that a registry method was called a specific number of times
-func AssertRegistryMethodCalledTimes(t testing.TB, registry *MockRegistry, methodName string, expectedCalls int) {
-	t.Helper()
+func AssertRegistryMethodCalledTimes(tb testing.TB, registry *MockRegistry, methodName string, expectedCalls int) {
+	tb.Helper()
 	calls := registry.GetMethodCalls(methodName)
 	if len(calls) != expectedCalls {
-		t.Errorf("Expected registry method %s to be called %d times, but it was called %d times",
+		tb.Errorf("Expected registry method %s to be called %d times, but it was called %d times",
 			methodName, expectedCalls, len(calls))
 	}
 }
 
 // AssertRegistryCallOrder checks that registry methods were called in the expected order
-func AssertRegistryCallOrder(t testing.TB, registry *MockRegistry, expectedOrder []string) {
-	t.Helper()
+func AssertRegistryCallOrder(tb testing.TB, registry *MockRegistry, expectedOrder []string) {
+	tb.Helper()
 	sequence := registry.GetCallSequence()
 
 	// Check that sequence contains at least the expected calls
 	if len(sequence) < len(expectedOrder) {
-		t.Errorf("Expected at least %d registry calls, got %d", len(expectedOrder), len(sequence))
+		tb.Errorf("Expected at least %d registry calls, got %d", len(expectedOrder), len(sequence))
 		return
 	}
 
@@ -307,7 +307,7 @@ func AssertRegistryCallOrder(t testing.TB, registry *MockRegistry, expectedOrder
 		}
 
 		if !found {
-			t.Errorf("Expected registry method %s at position %d in call sequence, not found after position %d",
+			tb.Errorf("Expected registry method %s at position %d in call sequence, not found after position %d",
 				method, i, lastIndex)
 			break
 		}

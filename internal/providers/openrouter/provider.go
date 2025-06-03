@@ -14,7 +14,7 @@ import (
 
 // Helper function to get minimum of two integers
 // Reason: Maintained for upcoming stream token management functionality in OpenRouter client
-func min(a, b int) int { //nolint:unused
+func minInt(a, b int) int { //nolint:unused
 	if a < b {
 		return a
 	}

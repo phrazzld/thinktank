@@ -75,6 +75,7 @@ func TestFileWriterContract(t *testing.T) {
 					return err
 				}
 				// Make it read-only for this user
+				//nolint:gosec // G302: Test directory needs restrictive permissions for testing
 				return os.Chmod(readonlyDir, 0500)
 			},
 			wantErr: true, // Should fail to create file in read-only dir

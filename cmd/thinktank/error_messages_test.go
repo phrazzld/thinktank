@@ -87,6 +87,7 @@ func TestHandleErrorMessages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a subprocess to test the error message
+			//nolint:gosec // G204: Test subprocess spawning with os.Args[0] is safe
 			cmd := exec.Command(os.Args[0], "-test.run=TestHandleErrorMessages")
 
 			// Set up environment for the subprocess

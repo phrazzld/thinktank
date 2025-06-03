@@ -349,6 +349,7 @@ func TestRequestFormation(t *testing.T) {
 			prompt: "Test prompt",
 			params: nil,
 			checkRequest: func(t *testing.T, req *http.Request) {
+				t.Helper()
 				// Verify method and content type
 				assert.Equal(t, "POST", req.Method)
 				assert.Equal(t, "application/json", req.Header.Get("Content-Type"))
@@ -384,6 +385,7 @@ func TestRequestFormation(t *testing.T) {
 				"temperature": float32(0.7),
 			},
 			checkRequest: func(t *testing.T, req *http.Request) {
+				t.Helper()
 				body, err := io.ReadAll(req.Body)
 				require.NoError(t, err)
 
@@ -409,6 +411,7 @@ func TestRequestFormation(t *testing.T) {
 				"max_tokens": 100,
 			},
 			checkRequest: func(t *testing.T, req *http.Request) {
+				t.Helper()
 				body, err := io.ReadAll(req.Body)
 				require.NoError(t, err)
 
@@ -428,6 +431,7 @@ func TestRequestFormation(t *testing.T) {
 				"max_output_tokens": 150, // Gemini-style
 			},
 			checkRequest: func(t *testing.T, req *http.Request) {
+				t.Helper()
 				body, err := io.ReadAll(req.Body)
 				require.NoError(t, err)
 
@@ -451,6 +455,7 @@ func TestRequestFormation(t *testing.T) {
 				"max_tokens":        200,
 			},
 			checkRequest: func(t *testing.T, req *http.Request) {
+				t.Helper()
 				body, err := io.ReadAll(req.Body)
 				require.NoError(t, err)
 

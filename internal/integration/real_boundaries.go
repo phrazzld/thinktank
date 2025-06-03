@@ -24,6 +24,7 @@ func (r *RealFilesystemIO) ReadFileWithContext(ctx context.Context, path string)
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
 	}
+	//nolint:gosec // G304: Wrapper interface for filesystem operations in integration tests
 	return os.ReadFile(path)
 }
 

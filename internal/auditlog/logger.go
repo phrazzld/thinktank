@@ -60,7 +60,8 @@ func NewFileAuditLogger(filePath string, internalLogger logutil.LoggerInterface)
 	// Create a context with a correlation ID for initialization logs
 	ctx := logutil.WithCorrelationID(context.Background())
 
-	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
+	//nolint:gosec // G304: Audit log file path provided by caller configuration
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		internalLogger.ErrorContext(ctx, "Failed to open audit log file '%s': %v", filePath, err)
 		return nil, fmt.Errorf("failed to open audit log file %s: %w", filePath, err)

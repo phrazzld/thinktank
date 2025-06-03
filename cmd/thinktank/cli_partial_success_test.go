@@ -48,6 +48,7 @@ func TestExitCodeHandling(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Set environment variables for the subprocess
+			//nolint:gosec // G204: Test subprocess spawning with os.Args[0] is safe
 			cmd := exec.Command(os.Args[0], "-test.run=TestExitCodeHandling")
 			cmd.Env = append(os.Environ(),
 				"GO_TEST_EXIT_CODE_PROCESS=1",

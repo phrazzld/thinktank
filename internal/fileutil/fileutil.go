@@ -1,4 +1,4 @@
-// internal/fileutil/fileutil.go
+// Package fileutil provides file system utilities for context gathering and file processing.
 package fileutil
 
 import (
@@ -111,12 +111,16 @@ func isGitIgnored(path string, config *Config) bool {
 				config.Logger.Printf("Verbose: Git ignored: %s\n", path)
 				return true
 			}
-			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-				// Exit code 1: file is NOT ignored
-				// Continue to other checks like hidden files
-			} else if err != nil {
-				// Other errors running check-ignore, log it but fall back
-				config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+			// Handle git check-ignore errors
+			if err != nil {
+				// Exit code 1 means file is NOT ignored (expected), other errors should be logged
+				if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() != 1 {
+					config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+				} else if !ok {
+					// Non-ExitError (e.g., command not found)
+					config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
+				}
+				// For exit code 1, just continue to hidden file check
 			}
 		}
 		// If not a git repo or check-ignore failed non-fatally, proceed to hidden check

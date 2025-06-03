@@ -143,7 +143,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// Each provider requires its own specific API key format.
 
 	// Start with an empty key, which we'll populate from environment or passed parameter
-	effectiveApiKey := ""
+	effectiveAPIKey := ""
 
 	// STEP 1: First try to get the key from environment variable based on provider
 	// This is the recommended and preferred method for providing API keys
@@ -151,9 +151,9 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	modelConfig, err := configLoader.Load()
 	if err == nil && modelConfig != nil && modelConfig.APIKeySources != nil {
 		if envVar, ok := modelConfig.APIKeySources[modelDef.Provider]; ok && envVar != "" {
-			envApiKey := os.Getenv(envVar)
-			if envApiKey != "" {
-				effectiveApiKey = envApiKey
+			envAPIKey := os.Getenv(envVar)
+			if envAPIKey != "" {
+				effectiveAPIKey = envAPIKey
 				s.logger.DebugContext(ctx, "Using API key from environment variable %s for provider '%s'",
 					envVar, modelDef.Provider)
 			}
@@ -162,15 +162,15 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 
 	// STEP 2: Only fall back to the passed apiKey if environment variable is not set
 	// This is discouraged for production use but supported for testing/development
-	if effectiveApiKey == "" && apiKey != "" {
-		effectiveApiKey = apiKey
+	if effectiveAPIKey == "" && apiKey != "" {
+		effectiveAPIKey = apiKey
 		s.logger.DebugContext(ctx, "Environment variable not set or empty, using provided API key for provider '%s'",
 			modelDef.Provider)
 	}
 
 	// STEP 3: If no API key is available from either source, reject the request
 	// API keys are required for all providers
-	if effectiveApiKey == "" {
+	if effectiveAPIKey == "" {
 		envVarName := getEnvVarNameForProvider(modelDef.Provider, modelConfig)
 		return nil, fmt.Errorf("%w: API key is required for model '%s' with provider '%s'. Please set the %s environment variable",
 			llm.ErrClientInitialization, modelName, modelDef.Provider, envVarName)
@@ -181,17 +181,17 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 		modelName, modelDef.Provider)
 
 	// Verify the API key is non-empty before passing it to the provider
-	if effectiveApiKey == "" {
+	if effectiveAPIKey == "" {
 		s.logger.ErrorContext(ctx, "Empty API key for provider '%s' - this will cause authentication failures", modelDef.Provider)
 	} else {
 		// Log API key metadata only (NEVER log any portion of the key itself)
 		s.logger.DebugContext(ctx, "Using API key for provider '%s' (length: %d, source: via environment variable)",
-			modelDef.Provider, len(effectiveApiKey))
+			modelDef.Provider, len(effectiveAPIKey))
 	}
 
 	// Since we're now using the providers.Provider type directly, we no longer need to do
 	// a type assertion to get the CreateClient method - it's already part of the interface
-	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelDef.APIModelID, effectiveEndpoint)
+	client, err := providerImpl.CreateClient(ctx, effectiveAPIKey, modelDef.APIModelID, effectiveEndpoint)
 	if err != nil {
 		// Check if it's already an API error with enhanced details from Gemini
 		if apiErr, ok := gemini.IsAPIError(err); ok {

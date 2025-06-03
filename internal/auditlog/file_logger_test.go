@@ -222,6 +222,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 	}
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
@@ -282,6 +283,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 	}
 
 	// Read the log file again
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err = os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file for minimal entry: %v", err)
@@ -327,6 +329,7 @@ func TestFileAuditLogger_Log(t *testing.T) {
 	}
 
 	// Read the log file again
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err = os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file for error entry: %v", err)
@@ -446,6 +449,7 @@ func TestFileAuditLogger_Concurrency(t *testing.T) {
 	wg.Wait()
 
 	// Read the log file
+	//nolint:gosec // G304: Test file reading with controlled temp directory path
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)

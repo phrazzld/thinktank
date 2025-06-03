@@ -83,7 +83,7 @@ func NewTokenBucket(ratePerMin, maxBurst int) *TokenBucket {
 
 	// Set burst size, defaulting to 1/10 of rate (min 1, max 10)
 	if maxBurst <= 0 {
-		maxBurst = min(max(1, ratePerMin/10), 10)
+		maxBurst = minInt(maxInt(1, ratePerMin/10), 10)
 	}
 
 	return &TokenBucket{
@@ -188,14 +188,14 @@ func (rl *RateLimiter) Release() {
 }
 
 // Helper functions for min/max (Go 1.21+ has these in standard math package)
-func min(a, b int) int {
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func max(a, b int) int {
+func maxInt(a, b int) int {
 	if a > b {
 		return a
 	}

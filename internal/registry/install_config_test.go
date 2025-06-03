@@ -31,14 +31,14 @@ func TestInstallDefaultConfigNoAbsolutePath(t *testing.T) {
 	// Create a test project directory with a config subdirectory
 	projectDir := filepath.Join(tempDir, "project")
 	projectConfigDir := filepath.Join(projectDir, "config")
-	if err := os.MkdirAll(projectConfigDir, 0755); err != nil {
+	if err := os.MkdirAll(projectConfigDir, 0750); err != nil {
 		t.Fatalf("Failed to create project config directory: %v", err)
 	}
 
 	// Create a test models.yaml file in the project config directory
 	testConfigContent := "# Test config file"
 	testConfigPath := filepath.Join(projectConfigDir, ModelsConfigFileName)
-	if err := os.WriteFile(testConfigPath, []byte(testConfigContent), 0640); err != nil {
+	if err := os.WriteFile(testConfigPath, []byte(testConfigContent), 0600); err != nil {
 		t.Fatalf("Failed to write test config file: %v", err)
 	}
 
@@ -60,7 +60,7 @@ func TestInstallDefaultConfigNoAbsolutePath(t *testing.T) {
 
 	// Create an empty directory with no config file
 	emptyDir := filepath.Join(tempDir, "empty")
-	if err := os.MkdirAll(emptyDir, 0755); err != nil {
+	if err := os.MkdirAll(emptyDir, 0750); err != nil {
 		t.Fatalf("Failed to create empty directory: %v", err)
 	}
 

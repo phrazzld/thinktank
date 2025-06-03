@@ -1,4 +1,4 @@
-// internal/integration/integration_test_mocks.go
+// Package integration provides integration tests for the thinktank package.
 package integration
 
 import (

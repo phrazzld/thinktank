@@ -1,4 +1,4 @@
-// internal/llm/client.go
+// Package llm provides LLM client interfaces and common types.
 package llm
 
 import (

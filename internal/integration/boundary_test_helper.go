@@ -18,6 +18,7 @@ func IntegrationTestWithBoundaries(t *testing.T, testFunc func(env *BoundaryTest
 
 // VerifyFileContent verifies a file exists in the mock filesystem and has the expected content
 func VerifyFileContent(t *testing.T, env *BoundaryTestEnv, filePath, expectedContent string) {
+	t.Helper()
 	exists, err := env.Filesystem.Stat(filePath)
 	if err != nil || !exists {
 		t.Errorf("Expected file %s not created", filePath)
@@ -41,6 +42,7 @@ func VerifyFileContent(t *testing.T, env *BoundaryTestEnv, filePath, expectedCon
 // SetupStandardTestEnvironment configures a standard test environment with the given models
 func SetupStandardTestEnvironment(t *testing.T, env *BoundaryTestEnv, instructions string,
 	modelNames []string, synthesisModel string, modelOutputs map[string]string) string {
+	t.Helper()
 	// Set up models to use
 	env.SetupModels(modelNames, synthesisModel)
 

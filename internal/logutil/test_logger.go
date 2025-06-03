@@ -19,6 +19,7 @@ type TestLogger struct {
 
 // NewTestLogger creates a new test logger
 func NewTestLogger(t *testing.T) *TestLogger {
+	t.Helper()
 	return &TestLogger{
 		t:     t,
 		logs:  []string{},
