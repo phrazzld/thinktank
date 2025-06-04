@@ -71,7 +71,7 @@ func TestCreateClient(t *testing.T) {
 			modelID:      "gpt-3.5-turbo",
 			apiEndpoint:  "",
 			expectError:  true,
-			errorMessage: "no valid OpenAI API key provided",
+			errorMessage: "API key required but not found",
 		},
 		{
 			name:         "Non-standard API key format",
@@ -79,8 +79,8 @@ func TestCreateClient(t *testing.T) {
 			envKey:       "",
 			modelID:      "gpt-3.5-turbo",
 			apiEndpoint:  "",
-			expectError:  true, // It will error as it doesn't look like an OpenAI key
-			errorMessage: "no valid OpenAI API key provided",
+			expectError:  false, // Centralized resolver now only warns about non-standard keys
+			errorMessage: "",
 		},
 		{
 			name:        "Custom API endpoint",

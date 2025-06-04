@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
 	"sync"
 
+	"github.com/phrazzld/thinktank/internal/apikey"
 	"github.com/phrazzld/thinktank/internal/gemini"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
@@ -41,19 +41,19 @@ func (p *GeminiProvider) CreateClient(
 ) (llm.LLMClient, error) {
 	p.logger.Debug("Creating Gemini client for model: %s", modelID)
 
-	// Use provided API key first
-	effectiveAPIKey := apiKey
-
-	// If none provided, try environment variable
-	if effectiveAPIKey == "" {
-		effectiveAPIKey = os.Getenv("GOOGLE_API_KEY")
-		if effectiveAPIKey == "" {
-			return nil, fmt.Errorf("no API key provided and GOOGLE_API_KEY environment variable not set")
-		}
-		p.logger.Debug("Using API key from GOOGLE_API_KEY environment variable")
-	} else {
-		p.logger.Debug("Using provided API key")
+	// Use centralized API key resolver
+	keyResolver := apikey.NewAPIKeyResolver(p.logger)
+	keyResult, err := keyResolver.ResolveAPIKey(ctx, "gemini", apiKey)
+	if err != nil {
+		return nil, err
 	}
+
+	// Validate the resolved API key
+	if err := keyResolver.ValidateAPIKey(ctx, "gemini", keyResult.Key); err != nil {
+		return nil, fmt.Errorf("invalid API key: %w", err)
+	}
+
+	effectiveAPIKey := keyResult.Key
 
 	// Store API key for later use
 	p.apiKey = effectiveAPIKey

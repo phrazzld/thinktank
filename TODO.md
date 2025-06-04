@@ -174,13 +174,14 @@
 ## Medium Priority (P2)
 
 ### Code Organization & Maintenance
-- [ ] **T013: Centralize API Key Resolution Logic**
+- [x] **T013: Centralize API Key Resolution Logic**
   - **Context:** API key resolution logic is scattered and complex
   - **Action:**
-    1. Create single function for key resolution with clear precedence
-    2. Document lookup order in code and docs
-    3. Add comprehensive unit tests
+    1. ✅ Create single function for key resolution with clear precedence
+    2. ✅ Document lookup order in code and docs
+    3. ✅ Add comprehensive unit tests
   - **Done-when:** All code paths use centralized key resolution
+  - **Completed:** Created centralized APIKeyResolver in internal/apikey package with comprehensive tests and documentation
 
 ### Developer Tooling
 - [ ] **T014: Enhance CI Workflow with Better Error Messages**

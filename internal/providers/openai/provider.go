@@ -5,10 +5,9 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"os"
-	"strings"
 	"sync"
 
+	"github.com/phrazzld/thinktank/internal/apikey"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/openai"
@@ -42,31 +41,19 @@ func (p *OpenAIProvider) CreateClient(
 ) (llm.LLMClient, error) {
 	p.logger.Debug("Creating OpenAI client for model: %s", modelID)
 
-	// For OpenAI, we should ALWAYS use the OPENAI_API_KEY environment variable
-	// or a valid OpenAI API key provided as an argument
-
-	// Initialize the effective API key variable
-	var effectiveAPIKey string
-
-	// Check if the provided API key is a valid OpenAI key
-	if apiKey != "" && strings.HasPrefix(apiKey, "sk-") {
-		// Use the provided key since it looks like a valid OpenAI key
-		effectiveAPIKey = apiKey
-		p.logger.Debug("Using provided API key which matches OpenAI key format")
-	} else {
-		// Always fall back to the OPENAI_API_KEY environment variable
-		effectiveAPIKey = os.Getenv("OPENAI_API_KEY")
-		if effectiveAPIKey == "" {
-			return nil, fmt.Errorf("no valid OpenAI API key provided and OPENAI_API_KEY environment variable not set")
-		}
-
-		// Verify this looks like an OpenAI key
-		if !strings.HasPrefix(effectiveAPIKey, "sk-") {
-			p.logger.Warn("OpenAI API key does not have expected format (should start with 'sk-'). This will likely fail.")
-		} else {
-			p.logger.Debug("Using API key from OPENAI_API_KEY environment variable")
-		}
+	// Use centralized API key resolver
+	keyResolver := apikey.NewAPIKeyResolver(p.logger)
+	keyResult, err := keyResolver.ResolveAPIKey(ctx, "openai", apiKey)
+	if err != nil {
+		return nil, err
 	}
+
+	// Validate the resolved API key
+	if err := keyResolver.ValidateAPIKey(ctx, "openai", keyResult.Key); err != nil {
+		return nil, fmt.Errorf("invalid API key: %w", err)
+	}
+
+	effectiveAPIKey := keyResult.Key
 
 	// Store API key for later use
 	p.apiKey = effectiveAPIKey

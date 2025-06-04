@@ -4,9 +4,9 @@ package openrouter
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
+	"github.com/phrazzld/thinktank/internal/apikey"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/providers"
@@ -47,21 +47,21 @@ func (p *OpenRouterProvider) CreateClient(
 ) (llm.LLMClient, error) {
 	p.logger.Debug("Creating OpenRouter client for model: %s", modelID)
 
-	// Initialize API key from provided argument or environment variable
-	effectiveAPIKey := apiKey
-	if effectiveAPIKey != "" {
-		p.logger.Debug("Using provided API key (length: %d)", len(effectiveAPIKey))
-	} else {
-		// Fall back to the OPENROUTER_API_KEY environment variable
-		effectiveAPIKey = os.Getenv("OPENROUTER_API_KEY")
-		p.logger.Debug("OPENROUTER_API_KEY environment variable length: %d", len(effectiveAPIKey))
-		if effectiveAPIKey == "" {
-			return nil, fmt.Errorf("no OpenRouter API key provided and OPENROUTER_API_KEY environment variable not set")
-		}
-		p.logger.Debug("Using API key from OPENROUTER_API_KEY environment variable")
+	// Use centralized API key resolver
+	keyResolver := apikey.NewAPIKeyResolver(p.logger)
+	keyResult, err := keyResolver.ResolveAPIKey(ctx, "openrouter", apiKey)
+	if err != nil {
+		return nil, err
 	}
 
-	// Validate the API key format
+	// Validate the resolved API key with basic validation
+	if err := keyResolver.ValidateAPIKey(ctx, "openrouter", keyResult.Key); err != nil {
+		return nil, fmt.Errorf("invalid API key: %w", err)
+	}
+
+	effectiveAPIKey := keyResult.Key
+
+	// Additional OpenRouter-specific validation
 	if !strings.HasPrefix(effectiveAPIKey, "sk-or") {
 		p.logger.Warn("OpenRouter API key does not have the expected 'sk-or' prefix. This will cause authentication failures.")
 		return nil, fmt.Errorf("invalid OpenRouter API key format: key should start with 'sk-or'. Please check your API key and ensure you're using an OpenRouter key, not another provider's key")
