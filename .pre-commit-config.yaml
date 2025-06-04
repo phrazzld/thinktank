@@ -27,10 +27,12 @@ repos:
     -   id: check-shebang-scripts-are-executable
 
 -   repo: https://github.com/golangci/golangci-lint
-    rev: v2.1.5  # Current stable v2 release
+    rev: v2.1.6  # Current stable v2 release
     hooks:
     -   id: golangci-lint
         args: ["--timeout=5m"]
+        types: [go]
+        pass_filenames: false
 
 -   repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1  # Use the latest stable version
@@ -46,14 +48,14 @@ repos:
         language: system
 
 -   repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.39.0
+    rev: v0.45.0
     hooks:
     -   id: markdownlint
         # Configure markdownlint rules - allow line length exceptions for tables, etc.
         args: [--config=.markdownlint.yaml]
 
 -   repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.9.0.6
+    rev: v0.10.0.1
     hooks:
     -   id: shellcheck
         args:

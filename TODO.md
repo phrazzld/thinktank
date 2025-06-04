@@ -153,13 +153,14 @@
     3. ✅ Document in developer docs
   - **Done-when:** Pushing invalid commits is blocked before reaching remote
 
-- [ ] **T011a: Fix golangci-lint pre-commit hook configuration**
+- [x] **T011a: Fix golangci-lint pre-commit hook configuration**
   - **Context:** golangci-lint runs on entire codebase even when no Go files are modified
   - **Action:**
-    1. Update .pre-commit-config.yaml to only run golangci-lint on changed Go files
-    2. Ensure hook respects SKIP environment variable
-    3. Consider updating to match CI behavior (only on relevant files)
+    1. ✅ Update .pre-commit-config.yaml to only run golangci-lint on changed Go files
+    2. ✅ Ensure hook respects SKIP environment variable
+    3. ✅ Consider updating to match CI behavior (only on relevant files)
   - **Done-when:** golangci-lint only runs when Go files are actually modified
+  - **Completed:** Added `types: [go]` filter to golangci-lint hook configuration
 
 - [ ] **T012: Create Repository-wide Git Commit Template**
   - **Context:** CI Resolution Tasks - Long-term Improvements
