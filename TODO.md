@@ -162,13 +162,14 @@
   - **Done-when:** golangci-lint only runs when Go files are actually modified
   - **Completed:** Added `types: [go]` filter to golangci-lint hook configuration
 
-- [ ] **T012: Create Repository-wide Git Commit Template**
+- [x] **T012: Create Repository-wide Git Commit Template**
   - **Context:** CI Resolution Tasks - Long-term Improvements
   - **Action:**
-    1. Create `.github/commit-template.txt` with examples
-    2. Update setup script to configure Git to use template
-    3. Document usage in `CONTRIBUTING.md`
+    1. ✅ Create `.github/commit-template.txt` with examples
+    2. ✅ Update setup script to configure Git to use template
+    3. ✅ Document usage in `CONTRIBUTING.md`
   - **Done-when:** New developers get template configured automatically
+  - **Completed:** Template created with comprehensive guidelines and examples. Setup script already existed and documentation was already present.
 
 ## Medium Priority (P2)
 

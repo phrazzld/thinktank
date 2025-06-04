@@ -1,61 +1,51 @@
-# <type>[optional scope]: <short description>
-# |<---- Using a maximum of 72 characters ---->|
+# <type>[optional scope]: <description>
+
+# --- TYPE DEFINITIONS ---
+# feat: A new feature (MINOR version bump)
+# fix: A bug fix (PATCH version bump)
+# docs: Documentation only changes
+# style: Changes that do not affect code meaning (formatting, etc)
+# refactor: A code change that neither fixes a bug nor adds a feature
+# perf: A code change that improves performance
+# test: Adding missing or correcting existing tests
+# chore: Changes to build process or auxiliary tools
+# ci: Changes to CI configuration files and scripts
+# build: Changes that affect the build system or external dependencies
+# revert: Reverts a previous commit
+
+# --- SCOPE EXAMPLES (optional) ---
+# api, registry, providers/openai, providers/gemini, providers/openrouter,
+# cli, config, fileutil, orchestrator, e2e, docs
+
+# --- BREAKING CHANGES ---
+# Add '!' after type/scope for breaking changes: feat!: change API format
+# Or include BREAKING CHANGE: in the footer
+
+# --- BODY FORMAT (optional) ---
+# Provide more context about the change here. Wrap at 72 characters.
+# Explain the problem this change solves and why you chose this solution.
+# Focus on why the change was made, not just what was changed.
+
+# --- FOOTER FORMAT (optional) ---
+# Fixes: #123
+# Closes: #456
+# BREAKING CHANGE: Description of what breaks and migration instructions
+
+# --- EXAMPLES ---
+# feat(api): add support for streaming responses
+# fix(providers/openai): handle rate limit errors correctly
+# docs: update README with installation instructions
+# refactor(orchestrator): simplify error handling logic
+# fix!: remove deprecated endpoint
 #
-# Examples:
-#   feat: add user authentication
-#   fix(parser): handle edge case in JSON parsing
-#   docs: update API reference documentation
-#   style: format code according to linting rules
-#   refactor: simplify validation logic
-#   test: add unit tests for config parser
-#   chore: update dependencies
-#   perf: improve algorithm performance
-#   ci: update GitHub workflow configuration
-#   build: modify build scripts
-#
-# --- COMMIT END ---
-# Type can be:
-#   feat     (new feature)
-#   fix      (bug fix)
-#   docs     (documentation changes)
-#   style    (formatting, missing semicolons, etc; no code change)
-#   refactor (refactoring code, e.g., renaming a variable; no behavior change)
-#   test     (adding missing tests, refactoring tests; no prod code change)
-#   chore    (updating grunt tasks etc; no prod code change)
-#   perf     (performance improvements)
-#   ci       (CI/CD related changes)
-#   build    (build system or external dependencies)
-#
-# For BREAKING CHANGES, add an ! after the type/scope:
-#   feat!: change user authentication API
-#   refactor(auth)!: remove deprecated methods
-#
-# Optional longer description. Wrapped at 72 characters.
-# Use blank lines to separate paragraphs.
-#
-# - Include motivation for the change and contrast with previous behavior
-# - Explain why the change was necessary
-# - Include relevant context
-#
-# --- COMMIT END ---
-# Optional footer. Wrapped at 72 characters.
-#
-# BREAKING CHANGE: <describe the breaking change here>
-# DEPRECATED: <what is deprecated>
-# REMOVED: <what is removed>
-# ADDED: <what is added>
-# CHANGED: <what changed>
-# SECURITY: <security related changes>
-#
-# For issues:
-# Fixes #123, #456
-# Closes #321
-# Related to #789
-#
-# --- COMMIT END ---
-# Guidelines:
-# - Use the imperative mood in the subject line
-# - Do not end the subject line with a period
-# - Separate subject from body with a blank line
-# - Use the body to explain what and why vs. how
-# - Use the footer to reference issues and include breaking changes
+# BREAKING CHANGE: The /api/v1/models endpoint has been removed.
+# Use /api/v2/models instead which provides the same functionality.
+
+# --- GUIDELINES ---
+# 1. Use imperative mood in subject line (e.g., "add" not "added")
+# 2. Do not capitalize first letter of description
+# 3. Do not end subject line with a period
+# 4. Keep subject line under 72 characters
+# 5. Separate subject from body with a blank line
+# 6. Use body to explain what and why, not how
+# 7. Each commit should represent a single logical change
