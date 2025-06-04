@@ -15,7 +15,7 @@ import (
 // This test demonstrates the approach of mocking only external boundaries while using real
 // internal implementations.
 func TestBoundarySynthesisFlow(t *testing.T) {
-	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
+	TestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Configure test parameters
 		instructions := "Test instructions for synthesis"
 		modelNames := []string{"model1", "model2", "model3"}
@@ -56,7 +56,7 @@ func TestBoundarySynthesisFlow(t *testing.T) {
 
 // TestBoundarySynthesisWithPartialFailure tests synthesis with some failed models
 func TestBoundarySynthesisWithPartialFailure(t *testing.T) {
-	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
+	TestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Configure test parameters
 		instructions := "Test instructions for synthesis with partial failure"
 		modelNames := []string{"model1", "model2", "model3"}

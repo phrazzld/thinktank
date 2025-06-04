@@ -320,9 +320,8 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 		}
 	} else if fileSaveErrors != nil {
 		return fileSaveErrors
-	} else {
-		return returnErr
 	}
+	return returnErr
 }
 
 // Override gatherProjectContext to return a dummy context

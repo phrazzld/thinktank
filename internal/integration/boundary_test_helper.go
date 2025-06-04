@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// IntegrationTestWithBoundaries runs an integration test with proper boundary mocks
+// TestWithBoundaries runs an integration test with proper boundary mocks
 // This helper function makes it easier to refactor tests to use boundary mocks
-func IntegrationTestWithBoundaries(t *testing.T, testFunc func(env *BoundaryTestEnv)) {
+func TestWithBoundaries(t *testing.T, testFunc func(env *BoundaryTestEnv)) {
 	// Create test environment with mocked boundaries
 	env := NewBoundaryTestEnv(t)
 

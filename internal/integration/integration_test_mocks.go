@@ -29,6 +29,7 @@ type MockAPIService struct {
 	GetErrorDetailsFunc        func(err error) string
 }
 
+// InitLLMClient initializes an LLM client for the given model
 func (m *MockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
 	if m.InitLLMClientFunc != nil {
 		return m.InitLLMClientFunc(ctx, apiKey, modelName, apiEndpoint)
@@ -36,6 +37,7 @@ func (m *MockAPIService) InitLLMClient(ctx context.Context, apiKey, modelName, a
 	return nil, nil
 }
 
+// GetModelParameters retrieves the parameters for a given model
 func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	if m.GetModelParametersFunc != nil {
 		return m.GetModelParametersFunc(ctx, modelName)

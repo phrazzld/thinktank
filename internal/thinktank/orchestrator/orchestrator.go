@@ -726,29 +726,28 @@ func (o *Orchestrator) handleProcessingOutcome(ctx context.Context, processingEr
 				nil, wrappedErr)
 
 			return wrappedErr
-		} else {
-			// File system errors are usually server-side issues
-			var wrappedErr error
-			if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
-				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
-					"file save operation failed", catErr.Category())
-			} else {
-				wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
-					"file save operation failed", llm.CategoryServer)
-			}
-
-			contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", wrappedErr)
-
-			// Log the completion outcome with audit logger
-			o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
-				map[string]interface{}{
-					"error_type":     "file_save_errors",
-					"error_category": CategorizeOrchestratorError(wrappedErr).String(),
-				},
-				nil, wrappedErr)
-
-			return wrappedErr
 		}
+		// File system errors are usually server-side issues
+		var wrappedErr error
+		if catErr, ok := llm.IsCategorizedError(fileSaveErr); ok {
+			wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+				"file save operation failed", catErr.Category())
+		} else {
+			wrappedErr = llm.Wrap(fileSaveErr, "orchestrator",
+				"file save operation failed", llm.CategoryServer)
+		}
+
+		contextLogger.ErrorContext(ctx, "Completed with file save errors: %v", wrappedErr)
+
+		// Log the completion outcome with audit logger
+		o.logAuditEvent(ctx, "ExecuteEnd", "Failure",
+			map[string]interface{}{
+				"error_type":     "file_save_errors",
+				"error_category": CategorizeOrchestratorError(wrappedErr).String(),
+			},
+			nil, wrappedErr)
+
+		return wrappedErr
 	} else if processingErr != nil {
 		// Only model errors - these should already be LLMError types
 		// from the processor, but we'll ensure consistency

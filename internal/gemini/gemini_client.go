@@ -250,13 +250,6 @@ func (c *geminiClient) GetModelName() string {
 
 // Helper functions to support the code
 
-// WithLogger allows injecting a custom logger
-func WithLogger(logger logutil.LoggerInterface) geminiClientOption {
-	return func(c *geminiClient) {
-		c.logger = logger
-	}
-}
-
 // mapSafetyRatings converts genai safety ratings to our internal format
 func mapSafetyRatings(ratings []*genai.SafetyRating) []SafetyRating {
 	if ratings == nil {

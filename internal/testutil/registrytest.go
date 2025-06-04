@@ -315,18 +315,18 @@ func AssertRegistryCallOrder(tb testing.TB, registry *MockRegistry, expectedOrde
 }
 
 // AssertErrorMatches checks if an error matches the expected one
-func AssertErrorMatches(t testing.TB, err error, expected error) {
-	t.Helper()
+func AssertErrorMatches(tb testing.TB, err error, expected error) {
+	tb.Helper()
 	if err == nil && expected != nil {
-		t.Errorf("Expected error %v, got nil", expected)
+		tb.Errorf("Expected error %v, got nil", expected)
 		return
 	}
 	if err != nil && expected == nil {
-		t.Errorf("Expected no error, got %v", err)
+		tb.Errorf("Expected no error, got %v", err)
 		return
 	}
 	if err != nil && expected != nil && !errors.Is(err, expected) {
-		t.Errorf("Expected error %v, got %v", expected, err)
+		tb.Errorf("Expected error %v, got %v", expected, err)
 	}
 }
 

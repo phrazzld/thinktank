@@ -95,17 +95,17 @@
 - [~] **T009: Fix golangci-lint Issues Identified by Expanded Linter Set**
   - **Context:** Expanded linter set in T002 revealed 749 remaining issues (reduced from 786)
   - **Action:**
-    **Phase 1: Test Helper Issues (53 issues)**
-    - Fix thelper violations: Add t.Helper() to test helper functions
-    - Fix thelper parameter naming: Rename testing.TB parameters to 'tb'
+    **Phase 1: Test Helper Issues (53 issues) - COMPLETED**
+    - ✅ Fix thelper violations: Add t.Helper() to test helper functions
+    - ✅ Fix thelper parameter naming: Rename testing.TB parameters to 'tb'
 
-    **Phase 2: Security Issues (47 issues)**  
-    - G301: Fix directory permissions (expect 0750 or less) - 20 issues
-    - G304: Fix potential file inclusion via variable - 22 issues
-    - G306: Fix WriteFile permissions (expect 0600 or less) - 19 issues
-    - G302: Fix file permissions (expect 0600 or less) - 6 issues
-    - G204: Fix subprocess with tainted input - 2 issues
-    - G101: Fix potential hardcoded credentials - 1 issue
+    **Phase 2: Security Issues (47 issues) - COMPLETED**  
+    - ✅ G301: Fix directory permissions (expect 0750 or less) - 20 issues
+    - ✅ G304: Fix potential file inclusion via variable - 22 issues
+    - ✅ G306: Fix WriteFile permissions (expect 0600 or less) - 19 issues
+    - ✅ G302: Fix file permissions (expect 0600 or less) - 6 issues
+    - ✅ G204: Fix subprocess with tainted input - 2 issues
+    - ✅ G101: Fix potential hardcoded credentials - 1 issue
 
     **Phase 3: Code Quality Issues (377 issues) - PARTIAL COMPLETION**
     - ✅ package-comments (revive): Add proper package comments - 9 issues FIXED
@@ -152,6 +152,14 @@
     2. ✅ Configure to run validation from branch point
     3. ✅ Document in developer docs
   - **Done-when:** Pushing invalid commits is blocked before reaching remote
+
+- [ ] **T011a: Fix golangci-lint pre-commit hook configuration**
+  - **Context:** golangci-lint runs on entire codebase even when no Go files are modified
+  - **Action:**
+    1. Update .pre-commit-config.yaml to only run golangci-lint on changed Go files
+    2. Ensure hook respects SKIP environment variable
+    3. Consider updating to match CI behavior (only on relevant files)
+  - **Done-when:** golangci-lint only runs when Go files are actually modified
 
 - [ ] **T012: Create Repository-wide Git Commit Template**
   - **Context:** CI Resolution Tasks - Long-term Improvements

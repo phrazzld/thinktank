@@ -85,6 +85,7 @@ func TestSetupErrorCase(t *testing.T) {
 			name:      "Model not found error",
 			errorType: "model_not_found",
 			methodCheck: func(t *testing.T, setup *RegistryTestSetup) {
+				t.Helper()
 				_, err := setup.Registry.GetModel("any-model")
 				if err == nil {
 					t.Error("Expected GetModel to return an error, but it did not")
@@ -95,6 +96,7 @@ func TestSetupErrorCase(t *testing.T) {
 			name:      "Provider not found error",
 			errorType: "provider_not_found",
 			methodCheck: func(t *testing.T, setup *RegistryTestSetup) {
+				t.Helper()
 				_, err := setup.Registry.GetProvider("any-provider")
 				if err == nil {
 					t.Error("Expected GetProvider to return an error, but it did not")
@@ -105,6 +107,7 @@ func TestSetupErrorCase(t *testing.T) {
 			name:      "Implementation not found error",
 			errorType: "implementation_not_found",
 			methodCheck: func(t *testing.T, setup *RegistryTestSetup) {
+				t.Helper()
 				_, err := setup.Registry.GetProviderImplementation("any-provider")
 				if err == nil {
 					t.Error("Expected GetProviderImplementation to return an error, but it did not")
@@ -115,6 +118,7 @@ func TestSetupErrorCase(t *testing.T) {
 			name:      "Client creation error",
 			errorType: "client_creation_failed",
 			methodCheck: func(t *testing.T, setup *RegistryTestSetup) {
+				t.Helper()
 				setup.SetupStandardRegistry() // We need a model and provider first
 
 				// Then we override the provider implementation

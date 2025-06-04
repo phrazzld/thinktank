@@ -301,6 +301,7 @@ func (m *MockOrchestrator) Run(ctx context.Context, instructions string) error {
 
 // setupTestEnvironment creates a temporary directory for testing
 func setupTestEnvironment(t *testing.T) (string, func()) {
+	t.Helper()
 	// Create filesystem abstraction
 	fs := testutil.NewRealFS()
 
@@ -321,6 +322,7 @@ func setupTestEnvironment(t *testing.T) (string, func()) {
 
 // createTestFile creates a test file with the given content
 func createTestFile(t *testing.T, path, content string) string {
+	t.Helper()
 	// Create filesystem abstraction
 	fs := testutil.NewRealFS()
 
