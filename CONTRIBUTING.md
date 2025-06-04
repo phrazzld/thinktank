@@ -275,14 +275,56 @@ The script is automatically executed in both the CI and Release workflows for pu
 ```
 
 **Local validation:**
-You can run the validation script locally to check your commits before pushing:
+You can run validation scripts locally to check your commits before pushing:
+
 ```bash
-# Validate all commits after the baseline
+# Validate all commits after the baseline (legacy script)
 ./scripts/ci/validate-baseline-commits.sh
 
 # Use a custom baseline file
 ./scripts/ci/validate-baseline-commits.sh /path/to/baseline-file
+
+# Validate current branch commits (NEW - recommended for PR validation)
+./scripts/validate-pr-commits.sh
+
+# Validate against specific base branch
+./scripts/validate-pr-commits.sh main
 ```
+
+### Branch Commit Validation (NEW)
+
+The `scripts/validate-pr-commits.sh` script provides an improved local validation experience specifically designed for validating feature branch commits before creating PRs. This script:
+
+**Features:**
+- Uses identical validation logic as the CI workflow
+- Validates commits between your current branch and the base branch (default: master)
+- Provides clear, actionable feedback with color-coded output
+- Includes specific guidance on fixing invalid commit messages
+- Handles edge cases (no commits, branch variations, baseline awareness)
+
+**Usage examples:**
+```bash
+# Validate current branch against master
+./scripts/validate-pr-commits.sh
+
+# Validate against main branch
+./scripts/validate-pr-commits.sh main
+
+# Get help and usage information
+./scripts/validate-pr-commits.sh --help
+```
+
+**Why use this script:**
+- **Early feedback**: Catch commit message issues before pushing/creating PRs
+- **CI alignment**: Uses the same validation logic as CI workflow to prevent failures
+- **Time savings**: Reduces iteration time in the development workflow
+- **Better UX**: Provides clearer output and guidance than CI error messages
+
+**Integration with development workflow:**
+1. Make commits on your feature branch
+2. Before pushing or creating a PR, run: `./scripts/validate-pr-commits.sh`
+3. Fix any identified issues using the provided guidance
+4. Push with confidence that CI validation will pass
 
 This pure bash approach aligns with our project philosophy of using simple, dependency-light solutions that are maintainable, performant, and work reliably across different environments.
 
@@ -293,12 +335,51 @@ pre-commit info
 
 You should see confirmation that the hooks are installed for this repository.
 
-**Pre-push Validation:** When you attempt to push commits, a pre-push hook will automatically validate your commits against the conventional commit standard, using the same baseline-aware approach. This means:
+### Pre-push Validation Hook
 
-- Only commits made after May 18, 2025 (baseline commit `1300e4d`) will be validated
-- Historical commits before the baseline date will be skipped
-- If any new commits don't follow the conventional commit format, the push will be blocked
-- You'll receive clear error messages and fix tips for any invalid commits
+The pre-push hook automatically validates commit messages before allowing pushes to the remote repository. This provides a final safety check to prevent CI failures.
+
+**How it works:**
+- Runs automatically when you execute `git push`
+- Validates all commits being pushed that are after the baseline (May 18, 2025)
+- Uses the same Go-based validator as the CI workflow
+- Blocks the push if any commit messages are invalid
+
+**What gets validated:**
+- New commits on existing branches (from remote HEAD to your local HEAD)
+- All commits on new branches (from baseline to branch tip)
+- Only commits made after May 18, 2025 (baseline commit `1300e4d`)
+
+**Edge cases handled:**
+- Branch deletions are allowed without validation
+- Force pushes validate all commits in the new range
+- Empty pushes (no new commits) pass validation
+
+**When validation fails:**
+If the pre-push hook detects invalid commit messages, you'll see:
+- Specific commits that failed validation
+- Clear error messages explaining what's wrong
+- Instructions on how to fix the commits
+- Commands to run for fixing recent commits
+
+**Fixing validation failures:**
+```bash
+# Fix the most recent commit
+git commit --amend
+
+# Fix older commits interactively
+git rebase -i origin/master  # or your base branch
+
+# Validate locally before trying to push again
+./scripts/validate-pr-commits.sh
+```
+
+**Emergency bypass (use with caution):**
+In rare cases where you need to push despite validation (e.g., emergency hotfix with pre-existing commits):
+```bash
+git push --no-verify
+```
+⚠️ **Warning:** Bypassing validation may cause CI failures. Use this only when absolutely necessary and coordinate with your team.
 
 **Manual PR Validation:** To manually check your branch for commit message compliance before pushing, run:
 ```bash

@@ -114,7 +114,7 @@ jobs:
           # Set test API key for E2E tests
           export OPENAI_API_KEY="test-api-key"
           export GEMINI_API_KEY="test-api-key"
-          
+
           # Run E2E tests with timeout
           timeout 300 ./internal/e2e/run_e2e_tests.sh -v || {
             echo "❌ E2E tests failed or timed out"

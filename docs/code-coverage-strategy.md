@@ -6,7 +6,7 @@ This document outlines the code coverage strategy for the thinktank project, inc
 
 The project implements a **gradual rollout approach** to code coverage thresholds:
 
-1. **Overall Coverage Threshold**: 
+1. **Overall Coverage Threshold**:
    - **Target**: 75% (T008 compliance)
    - **Current**: 49% (gradual rollout)
    - **Implementation**: Environment variable controlled rollout

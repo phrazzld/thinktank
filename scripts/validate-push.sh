@@ -21,10 +21,10 @@ echo "Baseline commit: ${BASELINE_COMMIT} (May 18, 2025)"
 echo "Only commits made after the baseline will be validated."
 echo "--------------------------------------------------------"
 
-# Check if npx/commitlint is available
-if ! command -v npx &> /dev/null; then
-    echo -e "${RED}Error: npx is not available${NC}"
-    echo "Install Node.js and npm to run commitlint"
+# Verify Go validator is available
+if ! go run ./cmd/commitvalidate --help >/dev/null 2>&1; then
+    echo -e "${RED}Error: Go commit validator is not available${NC}"
+    echo "Ensure you're in the project root and Go is installed"
     exit 1
 fi
 
@@ -60,69 +60,31 @@ do
         fi
     fi
 
-    # Get the commits to validate
-    COMMITS=$(git rev-list ${RANGE})
+    # Use the Go validator's range validation feature for efficiency
+    # The validator will handle baseline checking internally
+    echo -e "${BOLD}Validating commit range: ${RANGE}${NC}"
 
-    if [ -z "${COMMITS}" ]; then
-        echo -e "${YELLOW}No commits to validate after baseline.${NC}"
-        echo "This could mean:"
-        echo "  1. All commits in the push were made before the baseline date"
-        echo "  2. There are no new commits to push"
-        echo "  3. This branch is based on a version before the baseline"
+    if go run ./cmd/commitvalidate --from "${RANGE%%..*}" --to "${RANGE##*..}" --verbose; then
         echo ""
-        echo -e "${GREEN}Validation completed: No issues found (no applicable commits)${NC}"
-        continue
-    fi
-
-    # Count commits to validate
-    COMMIT_COUNT=$(echo "${COMMITS}" | wc -l | tr -d ' ')
-    echo -e "${BOLD}Found ${COMMIT_COUNT} commits to validate${NC}"
-
-    # Validate each commit
-    FAILED=0
-    for COMMIT in ${COMMITS}; do
-        COMMIT_MSG=$(git log --format=%B -n 1 ${COMMIT})
-        COMMIT_SHORT=$(git log --format=%h -n 1 ${COMMIT})
-        COMMIT_DATE=$(git log --format=%ci -n 1 ${COMMIT})
-        COMMIT_AUTHOR=$(git log --format="%an <%ae>" -n 1 ${COMMIT})
-
-        echo ""
-        echo -e "${BOLD}Checking commit ${COMMIT_SHORT}${NC}"
-        echo "Date:   ${COMMIT_DATE}"
-        echo "Author: ${COMMIT_AUTHOR}"
-
-        # Use echo to pipe the commit message to commitlint with unified config
-        if echo "${COMMIT_MSG}" | go run ./cmd/commitvalidate --stdin; then
-            echo -e "${GREEN}✓ Valid conventional commit${NC}"
-        else
-            echo -e "${RED}✗ Invalid commit format${NC}"
-            echo ""
-            echo "Commit message:"
-            echo "--------------"
-            echo "${COMMIT_MSG}"
-            echo "--------------"
-            echo ""
-            echo "Fix tips:"
-            echo "  1. Format should be: <type>[optional scope]: <description>"
-            echo "  2. Valid types: feat, fix, docs, style, refactor, test, chore, ci, build, perf"
-            echo "  3. Use 'git commit --amend' to fix the most recent commit"
-            echo "  4. Use 'git rebase -i' to fix older commits"
-            echo ""
-            FAILED=1
-        fi
-    done
-
-    if [ ${FAILED} -eq 1 ]; then
+        echo -e "${GREEN}Validation successful: All commits follow conventional commit format${NC}"
+    else
         echo ""
         echo -e "${RED}Push validation failed: Some commits do not follow conventional commit format${NC}"
-        echo "Please fix the commit messages before pushing."
-        echo -e "For detailed guidance and our baseline validation policy, see:${BOLD} docs/conventional-commits.md${NC}"
-        echo "Note: Only commits made after May 18, 2025 (baseline: 1300e4d) are validated."
+        echo ""
+        echo "Please fix the invalid commit messages before pushing."
+        echo -e "For detailed guidance, see: ${BOLD}docs/conventional-commits.md${NC}"
+        echo ""
+        echo "To fix recent commits:"
+        echo "  • Use 'git commit --amend' to fix the most recent commit"
+        echo "  • Use 'git rebase -i ${RANGE%%..*}' to fix older commits"
+        echo ""
+        echo "To validate locally before pushing:"
+        echo "  • Run: ./scripts/validate-pr-commits.sh"
+        echo ""
         exit 1
     fi
 done
 
-echo ""
-echo -e "${GREEN}Validation successful: All commits follow conventional commit format${NC}"
+# If we've reached here, all validations passed
 echo "Push will proceed."
 exit 0

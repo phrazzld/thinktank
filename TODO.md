@@ -137,20 +137,20 @@
   - **Status:** Completed - discovered that comprehensive automated hook installation was already fully implemented in scripts/setup.sh and Makefile, meeting all success criteria
   - **Done-when:** Running setup automatically installs all required hooks
 
-- [ ] **T010a: Implement Commit Message Validation for Branch Commits**
+- [x] **T010a: Implement Commit Message Validation for Branch Commits**
   - **Context:** CI Resolution Tasks - Prevention Measures
   - **Action:**
-    1. Create `scripts/validate-pr-commits.sh` for local validation
-    2. Add documentation on usage
-    3. Ensure same rules as CI workflow
+    1. ✅ Create `scripts/validate-pr-commits.sh` for local validation
+    2. ✅ Add documentation on usage
+    3. ✅ Ensure same rules as CI workflow
   - **Done-when:** Developers can validate branch history before pushing
 
-- [ ] **T011: Add Pre-push Hook for Commit Message Validation**
+- [x] **T011: Add Pre-push Hook for Commit Message Validation**
   - **Context:** CI Resolution Tasks - Prevention Measures
   - **Action:**
-    1. Update `.pre-commit-config.yaml` for pre-push validation
-    2. Configure to run validation from branch point
-    3. Document in developer docs
+    1. ✅ Update `.pre-commit-config.yaml` for pre-push validation
+    2. ✅ Configure to run validation from branch point
+    3. ✅ Document in developer docs
   - **Done-when:** Pushing invalid commits is blocked before reaching remote
 
 - [ ] **T012: Create Repository-wide Git Commit Template**
