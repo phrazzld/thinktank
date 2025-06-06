@@ -1,0 +1,53 @@
+repos:
+# Security and secret detection (fast, critical)
+-   repo: https://github.com/phrazzld/ward
+    rev: v0.1.0
+    hooks:
+    -   id: ward-check
+    -   id: ward-log
+
+# Basic file hygiene (very fast)
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+    -   id: check-added-large-files
+        args: ['--maxkb=500']  # Stricter limit
+
+# Fast Go checks only
+-   repo: https://github.com/dnephin/pre-commit-golang
+    rev: v0.5.1
+    hooks:
+    -   id: go-fmt
+    -   id: go-vet
+        exclude: "(internal/e2e/.*|internal/lint/.*)"
+    -   id: go-mod-tidy
+
+# Local fast checks
+-   repo: local
+    hooks:
+    -   id: check-correlation-id
+        name: Check for manual correlation_id formatting in logs
+        entry: scripts/check-correlation-id.sh
+        language: script
+        types: [go]
+        pass_filenames: false
+    -   id: check-large-files
+        name: Check for large Go files
+        entry: scripts/check-large-files.sh
+        language: script
+        types: [go]
+        pass_filenames: false
+
+# Post-commit hooks (run after successful commit)
+-   repo: local
+    hooks:
+    -   id: run-glance
+        name: Run glance to update directory overviews
+        entry: .pre-commit-hooks/run_glance.sh
+        language: script
+        stages: [post-commit]
+        pass_filenames: false
+        always_run: true
