@@ -118,11 +118,40 @@ jobs:
         run: |
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
 
-      # Placeholder for vulnerability scanning steps (will be added in subsequent tasks)
-      - name: Placeholder for vulnerability scanning
+      # Install govulncheck with retry logic for network failures
+      - name: Install govulncheck
         run: |
-          echo "Vulnerability scanning job established successfully"
-          echo "Scanning steps will be implemented in subsequent tasks"
+          echo "Installing govulncheck..."
+
+          # Attempt installation with single retry on network failure
+          RETRY_COUNT=0
+          MAX_RETRIES=1
+
+          while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
+            if go install golang.org/x/vuln/cmd/govulncheck@latest; then
+              echo "✅ govulncheck installed successfully"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -le $MAX_RETRIES ]; then
+                echo "⚠️  Installation failed, retrying (attempt $RETRY_COUNT of $MAX_RETRIES)..."
+                sleep 2
+              else
+                echo "❌ CRITICAL: Failed to install govulncheck after $MAX_RETRIES retries"
+                echo "This is likely a network or infrastructure issue"
+                exit 1
+              fi
+            fi
+          done
+
+          # Verify installation
+          if ! command -v govulncheck >/dev/null 2>&1; then
+            echo "❌ CRITICAL: govulncheck not found in PATH after installation"
+            exit 1
+          fi
+
+          echo "govulncheck version: $(govulncheck -version 2>/dev/null || echo 'version command not available')"
+        timeout-minutes: 3
 
   # Test job for running Go tests
   test:
