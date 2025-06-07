@@ -153,6 +153,44 @@ jobs:
           echo "govulncheck version: $(govulncheck -version 2>/dev/null || echo 'version command not available')"
         timeout-minutes: 3
 
+      # Execute vulnerability scan with dual reporting
+      - name: Run vulnerability scan
+        run: |
+          echo "Scanning for Go vulnerabilities..."
+
+          # Initialize scan result tracking
+          SCAN_EXIT_CODE=0
+
+          # Generate JSON report (machine-readable for automation)
+          echo "Generating JSON report..."
+          if ! govulncheck -json ./... > vuln-report.json 2>&1; then
+            SCAN_EXIT_CODE=1
+          fi
+
+          # Generate text report (human-readable for immediate review)
+          echo "Generating text report..."
+          govulncheck ./... > vuln-report.txt 2>&1 || SCAN_EXIT_CODE=1
+
+          # Check scan results and provide clear feedback
+          if [ $SCAN_EXIT_CODE -eq 0 ]; then
+            echo "✅ No known vulnerabilities found"
+            echo "Scan completed successfully - codebase is secure"
+          else
+            echo "❌ CRITICAL: Vulnerabilities found in dependencies"
+            echo ""
+            echo "Security scan failed - vulnerabilities detected that require immediate attention"
+            echo ""
+            echo "Text report summary:"
+            echo "===================="
+            cat vuln-report.txt
+            echo ""
+            echo "Full JSON report saved as artifact for detailed analysis"
+            echo ""
+            echo "Please review the vulnerability details above and update affected dependencies"
+            exit 1
+          fi
+        timeout-minutes: 3
+
   # Test job for running Go tests
   test:
     name: Test
