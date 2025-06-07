@@ -85,6 +85,45 @@ jobs:
         run: ./scripts/ci/check-defaults.sh --verbose
         timeout-minutes: 1
 
+  # Security vulnerability scanning job
+  vulnerability-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Go environment with comprehensive caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Cache Go build outputs for faster builds
+      - name: Cache Go build cache
+        id: go-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+
+      # Log cache usage for monitoring
+      - name: Cache status report
+        run: |
+          echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
+
+      # Placeholder for vulnerability scanning steps (will be added in subsequent tasks)
+      - name: Placeholder for vulnerability scanning
+        run: |
+          echo "Vulnerability scanning job established successfully"
+          echo "Scanning steps will be implemented in subsequent tasks"
+
   # Test job for running Go tests
   test:
     name: Test
