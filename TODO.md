@@ -50,7 +50,7 @@ This synthesis combines insights from 10 different AI models to create the defin
         2. Test with known vulnerability (should fail with report)
     - **Depends-on:** [T002]
 
-- [ ] **T004 · Feature · P0: Configure artifact upload and retention**
+- [x] **T004 · Feature · P0: Configure artifact upload and retention**
     - **Context:** All models included this; Grok 3 specified retention requirements most clearly
     - **Action:**
         1. Upload both reports using `actions/upload-artifact@v4`

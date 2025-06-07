@@ -191,6 +191,17 @@ jobs:
           fi
         timeout-minutes: 3
 
+      # Upload vulnerability reports as artifacts for audit trail
+      - name: Upload vulnerability reports
+        uses: actions/upload-artifact@v4
+        if: always()  # Upload reports even if scan fails
+        with:
+          name: vulnerability-reports
+          path: |
+            vuln-report.json
+            vuln-report.txt
+          retention-days: 30
+
   # Test job for running Go tests
   test:
     name: Test
