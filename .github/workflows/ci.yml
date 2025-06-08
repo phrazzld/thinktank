@@ -86,10 +86,12 @@ jobs:
         timeout-minutes: 1
 
   # Security vulnerability scanning job
+  # Runs in parallel with test job for optimal performance
+  # Scans for known vulnerabilities in Go dependencies using govulncheck
   vulnerability-scan:
     name: Security Vulnerability Scan
     runs-on: ubuntu-latest
-    needs: lint
+    needs: lint  # Run after lint, parallel to test
     steps:
       # Checkout repository
       - name: Checkout code
@@ -119,6 +121,7 @@ jobs:
           echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
 
       # Install govulncheck with retry logic for network failures
+      # Implements single retry on network failure with 2-second delay
       - name: Install govulncheck
         run: |
           echo "Installing govulncheck..."
@@ -154,6 +157,8 @@ jobs:
         timeout-minutes: 3
 
       # Execute vulnerability scan with dual reporting
+      # Uses module-level scanning for comprehensive coverage
+      # Generates both JSON (automation) and text (human-readable) reports
       - name: Run vulnerability scan
         run: |
           echo "Scanning for Go vulnerabilities..."
@@ -192,6 +197,8 @@ jobs:
         timeout-minutes: 3
 
       # Upload vulnerability reports as artifacts for audit trail
+      # Reports are preserved for 30 days regardless of scan result
+      # Provides security team access for analysis and compliance
       - name: Upload vulnerability reports
         uses: actions/upload-artifact@v4
         if: always()  # Upload reports even if scan fails
