@@ -163,13 +163,13 @@ jobs:
 
           # Generate JSON report (machine-readable for automation)
           echo "Generating JSON report..."
-          if ! govulncheck -json ./... > vuln-report.json 2>&1; then
+          if ! govulncheck -scan=module -json > vuln-report.json 2>&1; then
             SCAN_EXIT_CODE=1
           fi
 
           # Generate text report (human-readable for immediate review)
           echo "Generating text report..."
-          govulncheck ./... > vuln-report.txt 2>&1 || SCAN_EXIT_CODE=1
+          govulncheck -scan=module > vuln-report.txt 2>&1 || SCAN_EXIT_CODE=1
 
           # Check scan results and provide clear feedback
           if [ $SCAN_EXIT_CODE -eq 0 ]; then
