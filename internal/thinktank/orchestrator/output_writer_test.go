@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -13,6 +14,7 @@ import (
 
 // mockFileWriter implements the interfaces.FileWriter interface for testing
 type mockFileWriter struct {
+	mu         sync.RWMutex
 	savedFiles map[string]string
 	failPath   string
 	failErr    error
@@ -35,6 +37,9 @@ func (m *mockFileWriter) SaveToFile(content, path string) error {
 	if path == m.failPath && m.failErr != nil {
 		return m.failErr
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.savedFiles[path] = content
 	return nil
 }
@@ -125,7 +130,11 @@ func TestDefaultOutputWriter_SaveIndividualOutputs(t *testing.T) {
 				}
 
 				// Check if the file was saved with the correct content
-				if savedContent, ok := mockFileWriter.savedFiles[expectedPath]; ok {
+				mockFileWriter.mu.RLock()
+				savedContent, ok := mockFileWriter.savedFiles[expectedPath]
+				mockFileWriter.mu.RUnlock()
+
+				if ok {
 					if savedContent != content {
 						t.Errorf("Content mismatch for model %s. Expected %q but got %q", modelName, content, savedContent)
 					}
@@ -214,7 +223,11 @@ func TestDefaultOutputWriter_SaveSynthesisOutput(t *testing.T) {
 				expectedPath := filepath.Join(tt.outputDir, sanitizedModelName+"-synthesis.md")
 
 				// Check if the file was saved with the correct content
-				if savedContent, ok := mockFileWriter.savedFiles[expectedPath]; ok {
+				mockFileWriter.mu.RLock()
+				savedContent, ok := mockFileWriter.savedFiles[expectedPath]
+				mockFileWriter.mu.RUnlock()
+
+				if ok {
 					if savedContent != tt.content {
 						t.Errorf("Content mismatch for synthesis output. Expected %q but got %q", tt.content, savedContent)
 					}

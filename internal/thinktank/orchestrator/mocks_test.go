@@ -222,6 +222,7 @@ func (m *MockLLMClient) Close() error {
 
 // MockFileWriter provides a minimal implementation for testing
 type MockFileWriter struct {
+	mu         sync.Mutex
 	savedFiles map[string]string
 	saveError  error
 }
@@ -231,6 +232,9 @@ func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
 	if m.saveError != nil {
 		return m.saveError
 	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	if m.savedFiles == nil {
 		m.savedFiles = make(map[string]string)
