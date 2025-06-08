@@ -5,7 +5,6 @@ go 1.23.0
 toolchain go1.23.7
 
 require (
-	github.com/gogo/protobuf v1.3.1
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0
 	github.com/openai/openai-go v0.1.0-beta.10

@@ -96,7 +96,7 @@ This synthesis combines insights from 10 different AI models to create the defin
         1. Download and inspect clean report content
     - **Depends-on:** [T004]
 
-- [~] **T007 · Test · P1: Validate vulnerability detection and failure**
+- [x] **T007 · Test · P1: Validate vulnerability detection and failure**
     - **Context:** All models included; synthetic vulnerability approach from multiple models
     - **Action:**
         1. Create test branch with known vulnerable dependency
