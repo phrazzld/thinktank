@@ -109,7 +109,7 @@ This synthesis combines insights from 10 different AI models to create the defin
     - **Depends-on:** [T004]
 
 ### Integration & Performance Tests
-- [~] **T008 · Test · P2: Verify CI integration and performance**
+- [x] **T008 · Test · P2: Verify CI integration and performance**
     - **Context:** Combined insights from Llama Scout (parallel execution) and GPT-4.1 (performance focus)
     - **Action:**
         1. Confirm scan runs parallel to test job
