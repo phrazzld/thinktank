@@ -45,7 +45,7 @@
         1. Lower the coverage of a critical package below 95% and confirm the new CI job fails.
     - **Depends‑on:** T003
 
-- [ ] **T005 · Feature · P1: add trufflehog secret scanning to pre-commit and ci**
+- [x] **T005 · Feature · P1: add trufflehog secret scanning to pre-commit and ci**
     - **Context:** Phase 1, Step 1.3: Add pre-commit secret scanning with truffleHog
     - **Action:**
         1. Integrate `truffleHog` into the project's pre-commit hook configuration.

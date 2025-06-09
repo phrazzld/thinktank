@@ -1,0 +1,154 @@
+name: Security Gates
+
+# Trigger on push and pull requests to master branch
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+# Security scanning jobs - part of Stage 1 Foundation Gates
+jobs:
+  # Secret scanning with TruffleHog
+  secret-scan:
+    name: Secret Detection Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for comprehensive scanning
+
+      - name: Run TruffleHog secret detection
+        uses: trufflesecurity/trufflehog@main
+        with:
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified --fail
+
+      - name: Report scan completion
+        if: success()
+        run: |
+          echo "✅ Secret detection scan completed successfully"
+          echo "No verified secrets found in the codebase"
+
+      - name: Report scan failure
+        if: failure()
+        run: |
+          echo "❌ CRITICAL: Secrets detected in codebase"
+          echo "Please remove any hardcoded secrets and use environment variables or secret management instead"
+          exit 1
+
+  # License compliance checking
+  license-scan:
+    name: Dependency License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install go-licenses
+        run: go install github.com/google/go-licenses@latest
+
+      - name: Check license compliance
+        run: |
+          set -eo pipefail
+          echo "Checking dependency license compliance..."
+
+          # Define allowed licenses (permissive licenses commonly used in Go ecosystem)
+          ALLOWED_LICENSES=(
+            "Apache-2.0"
+            "BSD-2-Clause"
+            "BSD-3-Clause"
+            "MIT"
+            "ISC"
+            "Unlicense"
+          )
+
+          # Get all licenses and check against allowlist
+          go-licenses csv . > licenses.csv
+
+          # Check each license
+          while IFS=, read -r package license_url license_type; do
+            if [ -n "$license_type" ] && [ "$license_type" != "license" ]; then
+              allowed=false
+              for allowed_license in "${ALLOWED_LICENSES[@]}"; do
+                if [ "$license_type" = "$allowed_license" ]; then
+                  allowed=true
+                  break
+                fi
+              done
+
+              if [ "$allowed" = false ]; then
+                echo "❌ FORBIDDEN LICENSE: $package uses $license_type"
+                echo "Only the following licenses are allowed: ${ALLOWED_LICENSES[*]}"
+                exit 1
+              else
+                echo "✅ $package: $license_type (allowed)"
+              fi
+            fi
+          done < licenses.csv
+
+          echo "✅ All dependency licenses are compliant"
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: license-report
+          path: licenses.csv
+          retention-days: 30
+
+  # SAST scanning with gosec
+  sast-scan:
+    name: Static Application Security Testing
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      - name: Install gosec
+        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec security scan
+        run: |
+          set -eo pipefail
+          echo "Running SAST security analysis..."
+
+          # Run gosec with JSON output for detailed reporting
+          gosec -fmt json -out gosec-report.json -severity medium ./...
+
+          # Run gosec with text output for immediate feedback
+          gosec -severity medium ./...
+
+          echo "✅ SAST scan completed successfully"
+
+      - name: Upload SAST report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-report
+          path: gosec-report.json
+          retention-days: 30
+
+      - name: Report SAST failure
+        if: failure()
+        run: |
+          echo "❌ CRITICAL: Security vulnerabilities detected by SAST scan"
+          echo "Please review and fix all medium+ severity security issues"
+          echo "See gosec-report.json artifact for detailed findings"
+          exit 1
