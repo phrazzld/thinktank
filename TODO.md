@@ -13,7 +13,7 @@
         1. Introduce a failing command (e.g., `false`) into a script and confirm the CI job halts immediately.
     - **Depends‑on:** none
 
-- [ ] **T002 · Refactor · P1: implement explicit job dependency graph in ci workflow**
+- [x] **T002 · Refactor · P1: implement explicit job dependency graph in ci workflow**
     - **Context:** Phase 1, Step 1.1: Implement explicit job dependencies with `needs` relationships
     - **Action:**
         1. Update `.github/workflows/ci.yml` to use the `needs` keyword to enforce the sequential `Quality Gate Hierarchy` defined in the plan.
