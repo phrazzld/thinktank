@@ -186,6 +186,27 @@ This synthesis combines insights from 10 different AI models to create the defin
         1. Execute rollback test to confirm process
     - **Depends-on:** [T008]
 
+## Critical Fixes (Before Merge)
+
+- [~] **T013 · Fix · P0: Differentiate vulnerability findings from tool failures in CI**
+    - **Context:** Code review revealed CI workflow conflates all govulncheck failures as "vulnerabilities found", causing misleading diagnostics
+    - **Action:**
+        1. Modify vulnerability scan step to capture exit codes separately
+        2. Check report contents to confirm if failures are due to vulnerabilities vs tool errors
+        3. Provide distinct error messages for each failure type
+    - **Done-when:**
+        1. Tool failures report "Security scan failed due to tool error"
+        2. Vulnerability findings report "Vulnerabilities found in dependencies"
+        3. Both failure types include appropriate diagnostic information
+    - **Verification:**
+        1. Test with simulated tool failure (corrupted go.mod)
+        2. Test with actual vulnerability (confirm correct diagnosis)
+    - **Implementation Notes:**
+        - Check for vulnerability patterns in reports: `"vulnerabilities":\s*\[` (JSON) or `Vulnerability:` (text)
+        - Preserve exit code for debugging tool failures
+        - Include different remediation guidance based on failure type
+    - **Depends-on:** [T003]
+
 ## Success Metrics (Collective Intelligence)
 
 ### Implementation Success Checkpoints

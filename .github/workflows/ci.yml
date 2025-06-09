@@ -163,24 +163,43 @@ jobs:
         run: |
           echo "Scanning for Go vulnerabilities..."
 
-          # Initialize scan result tracking
-          SCAN_EXIT_CODE=0
+          # Initialize tracking variables
+          JSON_EXIT_CODE=0
+          TEXT_EXIT_CODE=0
+          VULNERABILITIES_DETECTED=false
 
           # Generate JSON report (machine-readable for automation)
           echo "Generating JSON report..."
           if ! govulncheck -scan=module -json > vuln-report.json 2>&1; then
-            SCAN_EXIT_CODE=1
+            JSON_EXIT_CODE=$?
           fi
 
           # Generate text report (human-readable for immediate review)
           echo "Generating text report..."
-          govulncheck -scan=module > vuln-report.txt 2>&1 || SCAN_EXIT_CODE=1
+          if ! govulncheck -scan=module > vuln-report.txt 2>&1; then
+            TEXT_EXIT_CODE=$?
+          fi
 
-          # Check scan results and provide clear feedback
-          if [ $SCAN_EXIT_CODE -eq 0 ]; then
+          # Determine if we have actual vulnerabilities or a tool failure
+          # Check if either command failed
+          if [ $JSON_EXIT_CODE -ne 0 ] || [ $TEXT_EXIT_CODE -ne 0 ]; then
+            # Check report contents to determine failure type
+            # Check JSON report for vulnerability patterns
+            if [ -s vuln-report.json ] && grep -q '"vulnerabilities":\s*\[' vuln-report.json && ! grep -q '"vulnerabilities":\s*\[\s*\]' vuln-report.json; then
+              VULNERABILITIES_DETECTED=true
+            fi
+
+            # If JSON check didn't find vulnerabilities, check text report
+            if [ "$VULNERABILITIES_DETECTED" = "false" ] && [ -s vuln-report.txt ] && grep -q "Vulnerability:" vuln-report.txt; then
+              VULNERABILITIES_DETECTED=true
+            fi
+          fi
+
+          # Provide appropriate feedback based on scan results
+          if [ $JSON_EXIT_CODE -eq 0 ] && [ $TEXT_EXIT_CODE -eq 0 ]; then
             echo "✅ No known vulnerabilities found"
             echo "Scan completed successfully - codebase is secure"
-          else
+          elif [ "$VULNERABILITIES_DETECTED" = "true" ]; then
             echo "❌ CRITICAL: Vulnerabilities found in dependencies"
             echo ""
             echo "Security scan failed - vulnerabilities detected that require immediate attention"
@@ -192,6 +211,41 @@ jobs:
             echo "Full JSON report saved as artifact for detailed analysis"
             echo ""
             echo "Please review the vulnerability details above and update affected dependencies"
+            exit 1
+          else
+            echo "❌ CRITICAL: Security scan failed due to tool error"
+            echo ""
+            echo "The govulncheck tool encountered an issue preventing successful scan execution."
+            echo "This is likely due to:"
+            echo "- Network connectivity issues fetching vulnerability database"
+            echo "- Malformed go.mod or go.sum files"
+            echo "- Internal govulncheck tool error"
+            echo "- Insufficient permissions or resources"
+            echo ""
+            echo "Debug information:"
+            echo "=================="
+            echo "JSON scan exit code: $JSON_EXIT_CODE"
+            echo "Text scan exit code: $TEXT_EXIT_CODE"
+            echo ""
+            if [ -s vuln-report.txt ]; then
+              echo "Tool output (if any):"
+              echo "---------------------"
+              head -n 50 vuln-report.txt
+            else
+              echo "No text report generated"
+            fi
+            echo ""
+            if [ -s vuln-report.json ]; then
+              echo "JSON report size: $(wc -c < vuln-report.json) bytes"
+            else
+              echo "No JSON report generated"
+            fi
+            echo ""
+            echo "Please investigate the tool failure before retrying."
+            echo "Common fixes:"
+            echo "- Verify go.mod and go.sum are valid"
+            echo "- Check network connectivity"
+            echo "- Ensure Go modules are properly initialized"
             exit 1
           fi
         timeout-minutes: 3
