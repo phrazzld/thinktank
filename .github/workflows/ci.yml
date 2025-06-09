@@ -55,6 +55,7 @@ jobs:
       # Check code formatting
       - name: Check formatting
         run: |
+          set -eo pipefail
           if [ -n "$(go fmt ./...)" ]; then
             echo "Code is not formatted, run 'go fmt ./...'"
             exit 1
@@ -67,6 +68,7 @@ jobs:
       # Run comprehensive linting
       - name: Install golangci-lint and run it directly
         run: |
+          set -eo pipefail
           # Install golangci-lint v2.1.1 directly
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.1.1
           # Run golangci-lint directly without using the action to avoid --out-format flag issues
@@ -75,6 +77,7 @@ jobs:
       # Install and run pre-commit checks
       - name: Install pre-commit
         run: |
+          set -eo pipefail
           pip install pre-commit
 
       - name: Run pre-commit checks
@@ -124,6 +127,7 @@ jobs:
       # Implements single retry on network failure with 2-second delay
       - name: Install govulncheck
         run: |
+          set -eo pipefail
           echo "Installing govulncheck..."
 
           # Attempt installation with single retry on network failure
@@ -161,6 +165,7 @@ jobs:
       # Generates both JSON (automation) and text (human-readable) reports
       - name: Run vulnerability scan
         run: |
+          set -eo pipefail
           echo "Scanning for Go vulnerabilities..."
 
           # Initialize tracking variables
@@ -304,6 +309,7 @@ jobs:
       # Build a CI-specific binary for E2E tests to avoid cross-platform issues
       - name: Build E2E test binary
         run: |
+          set -eo pipefail
           # Determine current platform
           export GOOS=linux
           export GOARCH=amd64
@@ -323,18 +329,21 @@ jobs:
       # Run a simplified version of E2E tests in CI to avoid execution format issues
       - name: Run E2E tests with full coverage
         run: |
+          set -eo pipefail
+
           # For CI, we'll use a different approach - running tests without attempting to execute the binary
           # This avoids cross-platform binary format issues
           export SKIP_BINARY_EXECUTION=true # This will be checked in the test code
 
-          # Run tests with the special environment variable
-          go test -v -tags=manual_api_test ./internal/e2e/... -run TestAPIKeyError || echo "Some tests may be skipped due to binary execution issues"
+          # Run tests with the special environment variable - FAIL if tests fail
+          echo "Running E2E API key error tests..."
+          go test -v -tags=manual_api_test ./internal/e2e/... -run TestAPIKeyError
 
-          # Run basic checks to ensure test files compile
-          go test -v -tags=manual_api_test ./internal/e2e/... -run=NonExistentTest || true
+          # Run basic checks to ensure test files compile - FAIL if compilation fails
+          echo "Verifying E2E test compilation..."
+          go test -v -tags=manual_api_test ./internal/e2e/... -run=NonExistentTest
 
-          # Consider the E2E tests as "passed" for CI purposes
-          echo "E2E tests checked for compilation - skipping binary execution in CI"
+          echo "✅ E2E tests compilation verified and API tests passed"
         timeout-minutes: 15
 
       # Run other tests with race detection
@@ -350,6 +359,7 @@ jobs:
       # Generate coverage report with short flag to skip long-running tests
       - name: Generate coverage report
         run: |
+          set -eo pipefail
           # Use the same coverage generation logic as our check-coverage.sh script
           MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
           PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/")
@@ -359,14 +369,17 @@ jobs:
       # Display coverage summary with per-package details
       - name: Display coverage summary
         run: |
+          set -eo pipefail
+
           # Display overall coverage
           go tool cover -func=coverage.out
 
           echo ""
-          # Display detailed per-package coverage
-          ./scripts/check-package-coverage.sh 64 || true # Don't fail here, the next step does enforcement
-                                                         # NOTE: Temporarily lowered to 64% to allow for test development
-                                                         # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
+          # Display detailed per-package coverage with fail-fast enforcement
+          echo "Checking per-package coverage thresholds..."
+          ./scripts/check-package-coverage.sh 64
+          # NOTE: Temporarily lowered to 64% to allow for test development
+          # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact
@@ -379,6 +392,7 @@ jobs:
       # Check coverage threshold
       - name: Check overall coverage threshold
         run: |
+          set -eo pipefail
           # Use dedicated script for checking coverage with temporarily lowered threshold
           ./scripts/check-coverage.sh 64  # Temporarily lowered to 64% to allow for test development
           # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
@@ -386,6 +400,7 @@ jobs:
       # Check package-specific coverage thresholds
       - name: Check package-specific coverage thresholds
         run: |
+          set -eo pipefail
           # This script enforces package-specific thresholds for critical packages
           ./scripts/ci/check-package-specific-coverage.sh
 
