@@ -85,6 +85,184 @@ jobs:
         run: ./scripts/ci/check-defaults.sh --verbose
         timeout-minutes: 1
 
+  # Security vulnerability scanning job
+  # Runs in parallel with test job for optimal performance
+  # Scans for known vulnerabilities in Go dependencies using govulncheck
+  vulnerability-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: lint  # Run after lint, parallel to test
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Setup Go environment with comprehensive caching
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+          cache: true
+          cache-dependency-path: go.sum
+
+      # Cache Go build outputs for faster builds
+      - name: Cache Go build cache
+        id: go-cache
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/go-build
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/*.go') }}
+          restore-keys: |
+            ${{ runner.os }}-go-build-
+
+      # Log cache usage for monitoring
+      - name: Cache status report
+        run: |
+          echo "Go module cache hit: ${{ steps.go-cache.outputs.cache-hit == 'true' && 'yes' || 'no' }}"
+
+      # Install govulncheck with retry logic for network failures
+      # Implements single retry on network failure with 2-second delay
+      - name: Install govulncheck
+        run: |
+          echo "Installing govulncheck..."
+
+          # Attempt installation with single retry on network failure
+          RETRY_COUNT=0
+          MAX_RETRIES=1
+
+          while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
+            if go install golang.org/x/vuln/cmd/govulncheck@latest; then
+              echo "✅ govulncheck installed successfully"
+              break
+            else
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              if [ $RETRY_COUNT -le $MAX_RETRIES ]; then
+                echo "⚠️  Installation failed, retrying (attempt $RETRY_COUNT of $MAX_RETRIES)..."
+                sleep 2
+              else
+                echo "❌ CRITICAL: Failed to install govulncheck after $MAX_RETRIES retries"
+                echo "This is likely a network or infrastructure issue"
+                exit 1
+              fi
+            fi
+          done
+
+          # Verify installation
+          if ! command -v govulncheck >/dev/null 2>&1; then
+            echo "❌ CRITICAL: govulncheck not found in PATH after installation"
+            exit 1
+          fi
+
+          echo "govulncheck version: $(govulncheck -version 2>/dev/null || echo 'version command not available')"
+        timeout-minutes: 3
+
+      # Execute vulnerability scan with dual reporting
+      # Uses module-level scanning for comprehensive coverage
+      # Generates both JSON (automation) and text (human-readable) reports
+      - name: Run vulnerability scan
+        run: |
+          echo "Scanning for Go vulnerabilities..."
+
+          # Initialize tracking variables
+          JSON_EXIT_CODE=0
+          TEXT_EXIT_CODE=0
+          VULNERABILITIES_DETECTED=false
+
+          # Generate JSON report (machine-readable for automation)
+          echo "Generating JSON report..."
+          if ! govulncheck -scan=module -json > vuln-report.json 2>&1; then
+            JSON_EXIT_CODE=$?
+          fi
+
+          # Generate text report (human-readable for immediate review)
+          echo "Generating text report..."
+          if ! govulncheck -scan=module > vuln-report.txt 2>&1; then
+            TEXT_EXIT_CODE=$?
+          fi
+
+          # Determine if we have actual vulnerabilities or a tool failure
+          # Check if either command failed
+          if [ $JSON_EXIT_CODE -ne 0 ] || [ $TEXT_EXIT_CODE -ne 0 ]; then
+            # Check report contents to determine failure type
+            # Check JSON report for vulnerability patterns
+            if [ -s vuln-report.json ] && grep -q '"vulnerabilities":\s*\[' vuln-report.json && ! grep -q '"vulnerabilities":\s*\[\s*\]' vuln-report.json; then
+              VULNERABILITIES_DETECTED=true
+            fi
+
+            # If JSON check didn't find vulnerabilities, check text report
+            if [ "$VULNERABILITIES_DETECTED" = "false" ] && [ -s vuln-report.txt ] && grep -q "Vulnerability:" vuln-report.txt; then
+              VULNERABILITIES_DETECTED=true
+            fi
+          fi
+
+          # Provide appropriate feedback based on scan results
+          if [ $JSON_EXIT_CODE -eq 0 ] && [ $TEXT_EXIT_CODE -eq 0 ]; then
+            echo "✅ No known vulnerabilities found"
+            echo "Scan completed successfully - codebase is secure"
+          elif [ "$VULNERABILITIES_DETECTED" = "true" ]; then
+            echo "❌ CRITICAL: Vulnerabilities found in dependencies"
+            echo ""
+            echo "Security scan failed - vulnerabilities detected that require immediate attention"
+            echo ""
+            echo "Text report summary:"
+            echo "===================="
+            cat vuln-report.txt
+            echo ""
+            echo "Full JSON report saved as artifact for detailed analysis"
+            echo ""
+            echo "Please review the vulnerability details above and update affected dependencies"
+            exit 1
+          else
+            echo "❌ CRITICAL: Security scan failed due to tool error"
+            echo ""
+            echo "The govulncheck tool encountered an issue preventing successful scan execution."
+            echo "This is likely due to:"
+            echo "- Network connectivity issues fetching vulnerability database"
+            echo "- Malformed go.mod or go.sum files"
+            echo "- Internal govulncheck tool error"
+            echo "- Insufficient permissions or resources"
+            echo ""
+            echo "Debug information:"
+            echo "=================="
+            echo "JSON scan exit code: $JSON_EXIT_CODE"
+            echo "Text scan exit code: $TEXT_EXIT_CODE"
+            echo ""
+            if [ -s vuln-report.txt ]; then
+              echo "Tool output (if any):"
+              echo "---------------------"
+              head -n 50 vuln-report.txt
+            else
+              echo "No text report generated"
+            fi
+            echo ""
+            if [ -s vuln-report.json ]; then
+              echo "JSON report size: $(wc -c < vuln-report.json) bytes"
+            else
+              echo "No JSON report generated"
+            fi
+            echo ""
+            echo "Please investigate the tool failure before retrying."
+            echo "Common fixes:"
+            echo "- Verify go.mod and go.sum are valid"
+            echo "- Check network connectivity"
+            echo "- Ensure Go modules are properly initialized"
+            exit 1
+          fi
+        timeout-minutes: 3
+
+      # Upload vulnerability reports as artifacts for audit trail
+      # Reports are preserved for 30 days regardless of scan result
+      # Provides security team access for analysis and compliance
+      - name: Upload vulnerability reports
+        uses: actions/upload-artifact@v4
+        if: always()  # Upload reports even if scan fails
+        with:
+          name: vulnerability-reports
+          path: |
+            vuln-report.json
+            vuln-report.txt
+          retention-days: 30
+
   # Test job for running Go tests
   test:
     name: Test

@@ -42,6 +42,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   * Use coverage scripts to identify coverage gaps before committing
 * **Do not add your signature to commit messages**
 
+## Security & Vulnerability Scanning
+
+* **Automated Vulnerability Scanning:** All commits and PRs are automatically scanned for vulnerabilities
+  * **Tool:** `govulncheck` (official Go vulnerability scanner)
+  * **Scan Level:** Module-level scanning (`-scan=module`) for comprehensive coverage
+  * **Frequency:** Every commit and PR to master branch
+  * **Failure Behavior:** Hard fail - ANY vulnerability detected fails the build
+  * **Reports:** JSON and text formats uploaded as artifacts (30-day retention)
+  * **Timeout:** 3-minute maximum execution time with retry logic
+* **Manual Vulnerability Check:** `govulncheck -scan=module`
+* **Emergency Rollback:** Comment out vulnerability-scan job in `.github/workflows/ci.yml`
+
 ## Using the `thinktank` CLI
 
 This repo contains the `thinktank` CLI tool itself, which can analyze code using different LLM models. When working on problems:
