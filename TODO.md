@@ -57,7 +57,7 @@
         1. Attempt to commit a file with a fake API key and confirm the commit is blocked.
     - **Depends‑on:** none
 
-- [ ] **T006 · Feature · P2: implement dependency license compliance checking**
+- [x] **T006 · Feature · P2: implement dependency license compliance checking**
     - **Context:** Phase 1, Step 1.3: Implement dependency license compliance checking
     - **Action:**
         1. Integrate a license checking tool (e.g., `go-licenses`) into the security workflow.
@@ -67,8 +67,9 @@
     - **Verification:**
         1. Add a dependency with a known disallowed license and confirm the security workflow fails.
     - **Depends‑on:** none
+    - **Note:** Implemented as part of T005 security-gates.yml workflow
 
-- [ ] **T007 · Feature · P2: add sast scanning to the security workflow**
+- [x] **T007 · Feature · P2: add sast scanning to the security workflow**
     - **Context:** Phase 1, Step 1.3: Add SAST (Static Application Security Testing) scanning
     - **Action:**
         1. Add a SAST tool (e.g., CodeQL or gosec) to the `.github/workflows/security-gates.yml` workflow.
@@ -78,9 +79,10 @@
     - **Verification:**
         1. Introduce code with a known vulnerability pattern and confirm the SAST job fails.
     - **Depends‑on:** none
+    - **Note:** Implemented as part of T005 security-gates.yml workflow
 
 ## Phase 2: Quality Gate Orchestration
-- [ ] **T008 · Feature · P2: implement the quality gate controller binary**
+- [~] **T008 · Feature · P2: implement the quality gate controller binary**
     - **Context:** Phase 2, Step 2.1: Implement Quality Gate Controller
     - **Action:**
         1. Implement the Go interfaces and types for gates, results, and reports in `internal/cicd/quality_gates.go`.
