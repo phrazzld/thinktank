@@ -77,4 +77,7 @@ test_output_*.md
 # Development symlinks
 docs/prompts
 
+# Development artifacts and patches
+dev/
+
 **/.claude/settings.local.json
