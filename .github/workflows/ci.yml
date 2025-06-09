@@ -387,9 +387,8 @@ jobs:
           echo ""
           # Display detailed per-package coverage with fail-fast enforcement
           echo "Checking per-package coverage thresholds..."
-          ./scripts/check-package-coverage.sh 64
-          # NOTE: Temporarily lowered to 64% to allow for test development
-          # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
+          ./scripts/check-package-coverage.sh 90
+          # Coverage threshold restored to 90% target for quality gate enforcement
 
       # Upload coverage report as artifact
       - name: Upload coverage report artifact
@@ -403,9 +402,8 @@ jobs:
       - name: Check overall coverage threshold
         run: |
           set -eo pipefail
-          # Use dedicated script for checking coverage with temporarily lowered threshold
-          ./scripts/check-coverage.sh 64  # Temporarily lowered to 64% to allow for test development
-          # TODO: Restore to 75% (or higher - target is 90%) after test coverage is complete
+          # Use dedicated script for checking coverage with 90% quality gate threshold
+          ./scripts/check-coverage.sh 90  # Quality gate enforcement at 90% target threshold
 
       # Check package-specific coverage thresholds
       - name: Check package-specific coverage thresholds

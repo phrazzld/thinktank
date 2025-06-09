@@ -24,7 +24,7 @@
         1. Intentionally fail an early-stage job and confirm that all dependent downstream jobs are skipped.
     - **Depends‑on:** none
 
-- [ ] **T003 · Refactor · P1: update overall test coverage threshold to 90%**
+- [x] **T003 · Refactor · P1: update overall test coverage threshold to 90%**
     - **Context:** Phase 1, Step 1.2: Restore Coverage Threshold Enforcement
     - **Action:**
         1. Change the coverage threshold from 64% to 90% in all relevant files, including `.github/workflows/ci.yml` and `scripts/check-coverage.sh`.
