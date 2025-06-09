@@ -34,7 +34,7 @@
         1. Push a commit that lowers coverage below 90% and confirm the build fails at the coverage check.
     - **Depends‑on:** T001
 
-- [ ] **T004 · Feature · P2: implement package-specific coverage enforcement**
+- [x] **T004 · Feature · P2: implement package-specific coverage enforcement**
     - **Context:** Phase 1, Step 1.2: Implement package-specific coverage enforcement (critical packages: 95%)
     - **Action:**
         1. Create or update `scripts/ci/check-package-specific-coverage.sh` to parse a configuration of critical packages and their required thresholds (e.g., 95%).
