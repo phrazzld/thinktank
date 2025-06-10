@@ -626,7 +626,15 @@ func findOrBuildBinary() (string, error) {
 	// Build command targeting the main package - explicitly set to the host OS/arch
 	fmt.Printf("Building binary for %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
-	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
+	// Build with explicit source files to avoid package conflicts with test files
+	sourceFiles := []string{
+		"cmd/thinktank/main.go",
+		"cmd/thinktank/cli.go",
+		"cmd/thinktank/api.go",
+		"cmd/thinktank/output.go",
+	}
+	cmdArgs := append([]string{"build", "-o", buildOutput}, sourceFiles...)
+	cmd := exec.Command("go", cmdArgs...)
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
 
 	// Set appropriate environment variables to ensure binary is built for the current OS

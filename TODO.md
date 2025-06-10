@@ -82,7 +82,7 @@
     - **Note:** Implemented as part of T005 security-gates.yml workflow
 
 ## Phase 2: Quality Gate Orchestration
-- [~] **T008 · Feature · P2: implement the quality gate controller binary**
+- [x] **T008 · Feature · P2: implement the quality gate controller binary**
     - **Context:** Phase 2, Step 2.1: Implement Quality Gate Controller
     - **Action:**
         1. Implement the Go interfaces and types for gates, results, and reports in `internal/cicd/quality_gates.go`.
@@ -95,7 +95,7 @@
         1. Run the compiled binary with a sample configuration and confirm it executes mock gates correctly.
     - **Depends‑on:** none
 
-- [ ] **T009 · Feature · P2: implement performance regression detection gate**
+- [x] **T009 · Feature · P2: implement performance regression detection gate**
     - **Context:** Phase 2, Step 2.2: Add Performance Regression Detection
     - **Action:**
         1. Implement a Go benchmark execution framework and a script (`scripts/performance/run-benchmarks.sh`) to run it.
@@ -108,7 +108,7 @@
         1. Intentionally slow down a benchmarked function and confirm the performance gate fails.
     - **Depends‑on:** none
 
-- [ ] **T010 · Bugfix · P1: fix e2e test binary execution errors in ci**
+- [x] **T010 · Bugfix · P1: fix e2e test binary execution errors in ci**
     - **Context:** Phase 2, Step 2.3: Fix E2E Test Execution
     - **Action:**
         1. Investigate the root cause of the `exec format error` for the E2E binary in the CI environment.
@@ -119,7 +119,7 @@
         1. Observe a successful E2E test run in CI without execution format errors.
     - **Depends‑on:** none
 
-- [ ] **T011 · Feature · P2: containerize the e2e test execution environment**
+- [x] **T011 · Feature · P2: containerize the e2e test execution environment**
     - **Context:** Phase 2, Step 2.3: Fix E2E Test Execution
     - **Action:**
         1. Create a `docker/e2e-test.Dockerfile` that installs all necessary dependencies for running the E2E test suite.
@@ -131,7 +131,7 @@
     - **Depends‑on:** T010
 
 ## Phase 3: Advanced Quality Features
-- [ ] **T012 · Feature · P2: implement emergency override system with audit trail**
+- [x] **T012 · Feature · P2: implement emergency override system with audit trail**
     - **Context:** Phase 3, Step 3.1: Implement Emergency Override System
     - **Action:**
         1. Implement logic in `internal/cicd/emergency_overrides.go` to detect an override signal (e.g., a specific PR label) and bypass failed gates.
@@ -154,7 +154,7 @@
         1. Use the override system and confirm that a corresponding issue is created.
     - **Depends‑on:** T012
 
-- [ ] **T014 · Feature · P2: create quality dashboard generation and deployment workflow**
+- [~] **T014 · Feature · P2: create quality dashboard generation and deployment workflow**
     - **Context:** Phase 3, Step 3.2: Create Quality Dashboard
     - **Action:**
         1. Implement a script (`scripts/quality/generate-dashboard.sh`) to collect quality metrics (coverage, lint/test results, etc.) from CI artifacts.

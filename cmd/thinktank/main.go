@@ -1,5 +1,5 @@
-// Package thinktank provides the command-line interface for the thinktank tool
-package thinktank
+// Package main provides the command-line interface for the thinktank tool
+package main
 
 import (
 	"context"
@@ -305,4 +305,9 @@ func Main() {
 	}); err != nil {
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
 	}
+}
+
+// main is the entry point for the Go runtime
+func main() {
+	Main()
 }

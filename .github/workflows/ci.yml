@@ -318,44 +318,45 @@ jobs:
         run: go test -v -race -short -parallel 4 ./internal/integration/...
         timeout-minutes: 5
 
-      # Build a CI-specific binary for E2E tests to avoid cross-platform issues
-      - name: Build E2E test binary
+      # Build Docker image for E2E test environment
+      - name: Build E2E test Docker image
         run: |
           set -eo pipefail
-          # Determine current platform
-          export GOOS=linux
-          export GOARCH=amd64
+          echo "Building E2E test Docker image..."
+          docker build -f docker/e2e-test.Dockerfile -t thinktank-e2e:latest .
 
-          # Build a binary specifically for CI E2E tests with explicit target platform
-          echo "Building binary for $GOOS/$GOARCH..."
-          GOOS=$GOOS GOARCH=$GOARCH CGO_ENABLED=0 go build -o thinktank-e2e ./cmd/thinktank
-          chmod +x thinktank-e2e
+          # Verify image was built successfully
+          docker images thinktank-e2e:latest
+          echo "✅ E2E test Docker image built successfully"
+        timeout-minutes: 5
 
-          # Check binary details
-          file thinktank-e2e
-
-          # Verify binary works
-          ./thinktank-e2e --version || echo "Binary built but doesn't have --version flag, continuing..."
-        timeout-minutes: 2
-
-      # Run a simplified version of E2E tests in CI to avoid execution format issues
-      - name: Run E2E tests with full coverage
+      # Run E2E tests in containerized environment
+      - name: Run E2E tests in Docker container
         run: |
           set -eo pipefail
+          echo "Running E2E tests in containerized environment..."
 
-          # For CI, we'll use a different approach - running tests without attempting to execute the binary
-          # This avoids cross-platform binary format issues
-          export SKIP_BINARY_EXECUTION=true # This will be checked in the test code
+          # Run E2E tests that require actual binary execution inside Docker container
+          echo "Running E2E tests with binary execution in container..."
+          docker run --rm \
+            -e GEMINI_API_KEY=test-api-key \
+            -e OPENAI_API_KEY=test-api-key \
+            -e OPENROUTER_API_KEY=test-api-key \
+            -e THINKTANK_DEBUG=true \
+            thinktank-e2e:latest \
+            go test -v -tags=manual_api_test ./internal/e2e/... -run TestAPIKeyError
 
-          # Run tests with the special environment variable - FAIL if tests fail
-          echo "Running E2E API key error tests..."
-          go test -v -tags=manual_api_test ./internal/e2e/... -run TestAPIKeyError
+          # Run additional E2E tests to verify binary functionality in container
+          echo "Running comprehensive E2E test verification in container..."
+          docker run --rm \
+            -e GEMINI_API_KEY=test-api-key \
+            -e OPENAI_API_KEY=test-api-key \
+            -e OPENROUTER_API_KEY=test-api-key \
+            -e THINKTANK_DEBUG=true \
+            thinktank-e2e:latest \
+            go test -v -tags=manual_api_test ./internal/e2e/... -run TestBasicExecution
 
-          # Run basic checks to ensure test files compile - FAIL if compilation fails
-          echo "Verifying E2E test compilation..."
-          go test -v -tags=manual_api_test ./internal/e2e/... -run=NonExistentTest
-
-          echo "✅ E2E tests compilation verified and API tests passed"
+          echo "✅ E2E tests completed successfully in containerized environment"
         timeout-minutes: 15
 
       # Run other tests with race detection

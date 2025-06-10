@@ -59,9 +59,17 @@ profile_data/
 
 # Build artifacts
 main
+quality-gates
 
 # Test files
 test.txt
+
+# Log files
+*.log
+override-audit.log
+
+# Dashboard temp files
+docs/quality-dashboard/workflow-runs.json
 
 # Glance files (temporary notes)
 **/glance.md
