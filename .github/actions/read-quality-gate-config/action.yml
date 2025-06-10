@@ -149,8 +149,17 @@ runs:
         # Install yq for YAML parsing if not available
         if ! command -v yq >/dev/null 2>&1; then
           echo "Installing yq for YAML parsing..."
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 || {
+            echo "❌ Failed to download yq from GitHub releases"
+            echo "Error: Unable to install yq dependency for YAML parsing"
+            exit 1
+          }
+          sudo chmod +x /usr/local/bin/yq || {
+            echo "❌ Failed to make yq executable"
+            echo "Error: Unable to set executable permissions on yq binary"
+            exit 1
+          }
+          echo "✅ yq installed successfully"
         fi
 
         # Read CI gates

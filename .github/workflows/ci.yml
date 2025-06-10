@@ -238,7 +238,7 @@ jobs:
           MAX_RETRIES=1
 
           while [ $RETRY_COUNT -le $MAX_RETRIES ]; do
-            if go install golang.org/x/vuln/cmd/govulncheck@latest; then
+            if go install golang.org/x/vuln/cmd/govulncheck@v1.0.4; then
               echo "✅ govulncheck installed successfully"
               break
             else

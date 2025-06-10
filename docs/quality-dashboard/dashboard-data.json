@@ -1,14 +1,14 @@
 {
-  "generated_at": "2025-06-10T02:05:18Z",
+  "generated_at": "2025-06-10T17:09:08Z",
   "repository": "phrazzld/thinktank",
   "summary": {
-    "overall_health": "20%",
-    "coverage_success_rate": "60.00%",
+    "overall_health": "16%",
+    "coverage_success_rate": "50.00%",
     "security_success_rate": "0%",
     "performance_success_rate": "0%"
   },
   "latest_metrics": {
-    "run_id": 15526528483,
+    "run_id": 15564730058,
     "coverage": {
       "overall": 90.5,
       "packages": {
@@ -35,6 +35,12 @@
   },
   "trends": {
     "coverage": [
+      {
+        "date": "2025-06-10",
+        "run_id": 15564730058,
+        "conclusion": "failure",
+        "run_number": 283
+      },
       {
         "date": "2025-06-09",
         "run_id": 15524204332,
@@ -88,15 +94,16 @@
         "run_id": 15498831579,
         "conclusion": "success",
         "run_number": 272
-      },
-      {
-        "date": "2025-06-06",
-        "run_id": 15501505559,
-        "conclusion": "success",
-        "run_number": 273
       }
     ],
-    "security": [],
+    "security": [
+      {
+        "date": "2025-06-10",
+        "run_id": 15564730084,
+        "conclusion": "failure",
+        "run_number": 1
+      }
+    ],
     "performance": []
   },
   "quality_gates": {

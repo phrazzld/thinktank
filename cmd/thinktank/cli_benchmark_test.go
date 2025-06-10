@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"testing"
 	"time"
@@ -12,22 +13,17 @@ import (
 
 // BenchmarkParseFlags benchmarks the CLI flag parsing functionality
 func BenchmarkParseFlags(b *testing.B) {
-	// Save original args and restore after test
-	origArgs := os.Args
-	defer func() { os.Args = origArgs }()
-
 	benchmarks := []struct {
 		name string
 		args []string
 	}{
 		{
 			name: "MinimalArgs",
-			args: []string{"thinktank", "--instructions", "test.md", "file.go"},
+			args: []string{"--instructions", "test.md", "file.go"},
 		},
 		{
 			name: "TypicalArgs",
 			args: []string{
-				"thinktank",
 				"--instructions", "instructions.md",
 				"--output-dir", "./output",
 				"--model", "gemini-2.5-pro",
@@ -41,7 +37,6 @@ func BenchmarkParseFlags(b *testing.B) {
 		{
 			name: "ComplexArgs",
 			args: []string{
-				"thinktank",
 				"--instructions", "instructions.md",
 				"--output-dir", "./output",
 				"--model", "gemini-2.5-pro",
@@ -51,11 +46,12 @@ func BenchmarkParseFlags(b *testing.B) {
 				"--exclude-names", "vendor,node_modules",
 				"--verbose",
 				"--dry-run",
-				"--confirm-tokens", "5000",
 				"--log-level", "debug",
 				"--audit-log-file", "audit.log",
-				"--force-overwrite",
 				"--partial-success-ok",
+				"--max-concurrent", "3",
+				"--rate-limit", "30",
+				"--timeout", "5m",
 				"./src", "./docs", "./config",
 			},
 		},
@@ -65,10 +61,10 @@ func BenchmarkParseFlags(b *testing.B) {
 		b.Run(bm.name, func(b *testing.B) {
 			b.ReportAllocs()
 			for i := 0; i < b.N; i++ {
-				os.Args = bm.args
-				_, err := ParseFlags()
+				flagSet := flag.NewFlagSet("thinktank", flag.ContinueOnError)
+				_, err := ParseFlagsWithEnv(flagSet, bm.args, os.Getenv)
 				if err != nil {
-					b.Fatalf("ParseFlags failed: %v", err)
+					b.Fatalf("ParseFlagsWithEnv failed: %v", err)
 				}
 			}
 		})

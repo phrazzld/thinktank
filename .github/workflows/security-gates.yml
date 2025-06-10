@@ -141,7 +141,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install go-licenses
-        run: go install github.com/google/go-licenses@latest
+        run: go install github.com/google/go-licenses@v1.6.0
 
       - name: Check license compliance
         run: |
@@ -210,7 +210,7 @@ jobs:
           cache-dependency-path: go.sum
 
       - name: Install gosec
-        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@v2.20.0
 
       - name: Run gosec security scan
         run: |
