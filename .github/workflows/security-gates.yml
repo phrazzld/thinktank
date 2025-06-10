@@ -74,12 +74,29 @@ jobs:
               core.setOutput('override_reason', '');
               core.setOutput('bypass_security', 'false');
             }
+
+  # Read quality gate feature flags configuration
+  read-config:
+    name: Read Quality Gate Configuration
+    runs-on: ubuntu-latest
+    outputs:
+      secret_scan_enabled: ${{ steps.config.outputs.secret_scan_enabled }}
+      secret_scan_required: ${{ steps.config.outputs.secret_scan_required }}
+      license_scan_enabled: ${{ steps.config.outputs.license_scan_enabled }}
+      license_scan_required: ${{ steps.config.outputs.license_scan_required }}
+      sast_scan_enabled: ${{ steps.config.outputs.sast_scan_enabled }}
+      sast_scan_required: ${{ steps.config.outputs.sast_scan_required }}
+    steps:
+      - name: Read quality gate configuration
+        id: config
+        uses: ./.github/actions/read-quality-gate-config
+
   # Secret scanning with TruffleHog
   secret-scan:
     name: Secret Detection Scan
     runs-on: ubuntu-latest
-    needs: [check-override]
-    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
+    needs: [read-config, check-override]
+    if: always() && needs.read-config.outputs.secret_scan_enabled == 'true' && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -110,8 +127,8 @@ jobs:
   license-scan:
     name: Dependency License Compliance
     runs-on: ubuntu-latest
-    needs: [check-override]
-    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
+    needs: [read-config, check-override]
+    if: always() && needs.read-config.outputs.license_scan_enabled == 'true' && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -179,8 +196,8 @@ jobs:
   sast-scan:
     name: Static Application Security Testing
     runs-on: ubuntu-latest
-    needs: [check-override]
-    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
+    needs: [read-config, check-override]
+    if: always() && needs.read-config.outputs.sast_scan_enabled == 'true' && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

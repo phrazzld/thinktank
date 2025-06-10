@@ -1,0 +1,81 @@
+# Quality Gates Feature Flag Configuration
+#
+# This file controls which quality gates are enabled in CI/CD workflows.
+# Each gate can be:
+# - enabled: true/false - whether the gate runs at all
+# - required: true/false - whether gate failure blocks the pipeline
+#
+# When enabled=false, the gate is completely skipped
+# When enabled=true but required=false, the gate runs but failure doesn't block merge
+
+version: "1.0"
+
+# CI Workflow Gates (ci.yml)
+ci_gates:
+  # Code quality checks (format, vet, golangci-lint, pre-commit)
+  lint:
+    enabled: true
+    required: true
+    description: "Code formatting, linting, and style checks"
+
+  # Security vulnerability scanning in dependencies
+  vulnerability_scan:
+    enabled: true
+    required: true
+    description: "Dependency vulnerability scanning with govulncheck"
+
+  # Unit, integration, and coverage tests
+  test:
+    enabled: true
+    required: true
+    description: "Test execution and coverage validation"
+
+  # Binary compilation and build verification
+  build:
+    enabled: true
+    required: true
+    description: "Binary compilation and build artifact generation"
+
+# Security Gates Workflow (security-gates.yml)
+security_gates:
+  # TruffleHog secret detection
+  secret_scan:
+    enabled: true
+    required: true
+    description: "Secret and credential detection in codebase"
+
+  # Dependency license compliance checking
+  license_scan:
+    enabled: true
+    required: true
+    description: "Dependency license compliance validation"
+
+  # Static Application Security Testing
+  sast_scan:
+    enabled: true
+    required: true
+    description: "Static security analysis with gosec"
+
+# Additional Workflow Gates
+additional_gates:
+  # Quality dashboard generation
+  quality_dashboard:
+    enabled: true
+    required: false
+    description: "Quality metrics dashboard generation and deployment"
+
+  # Dependabot automation workflow
+  dependency_updates:
+    enabled: true
+    required: false
+    description: "Automated dependency update processing"
+
+# Override behavior configuration
+override_settings:
+  # Whether feature flags can be overridden by emergency override labels
+  # If true, emergency override labels can bypass even disabled gates
+  allow_emergency_override: true
+
+  # Whether to create technical debt issues when gates are disabled
+  # If true, disabling required gates creates tracking issues
+  track_disabled_gates: false
