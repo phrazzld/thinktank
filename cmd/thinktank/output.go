@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 // FileWriter defines the interface for file writing
 type FileWriter interface {
 	// SaveToFile writes content to the specified file
-	SaveToFile(content, outputFile string) error
+	SaveToFile(ctx context.Context, content, outputFile string) error
 }
 
 // fileWriter implements the FileWriter interface
@@ -32,7 +33,7 @@ func NewFileWriter(logger logutil.LoggerInterface, dirPermissions, filePermissio
 }
 
 // SaveToFile writes content to the specified file
-func (fw *fileWriter) SaveToFile(content, outputFile string) error {
+func (fw *fileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	// Ensure output path is absolute
 	outputPath := outputFile
 	if !filepath.IsAbs(outputPath) {

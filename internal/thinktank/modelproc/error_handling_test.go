@@ -157,7 +157,7 @@ func TestModelProcessor_Process_SaveError(t *testing.T) {
 	}
 
 	mockWriter := &mockFileWriter{
-		saveToFileFunc: func(content, outputFile string) error {
+		saveToFileFunc: func(ctx context.Context, content, outputFile string) error {
 			return expectedErr
 		},
 	}

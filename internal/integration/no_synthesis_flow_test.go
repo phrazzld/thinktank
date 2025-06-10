@@ -110,7 +110,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 
 	// Create file writer
 	fileWriter := &MockFileWriter{
-		SaveToFileFunc: func(content, filePath string) error {
+		SaveToFileFunc: func(ctx context.Context, content, filePath string) error {
 			// Actually save the files to verify they exist later
 			dir := filepath.Dir(filePath)
 			if err := os.MkdirAll(dir, 0755); err != nil {

@@ -357,7 +357,7 @@ func NewMockContextGatherer() *MockContextGatherer {
 // MockFileWriter implements FileWriter for testing
 type MockFileWriter struct {
 	// Function fields
-	SaveToFileFunc func(content, outputFile string) error
+	SaveToFileFunc func(ctx context.Context, content, outputFile string) error
 
 	// Call tracking fields
 	SaveToFileCalls []SaveToFileCall
@@ -365,23 +365,25 @@ type MockFileWriter struct {
 
 // Call record structs
 type SaveToFileCall struct {
+	Ctx        context.Context
 	Content    string
 	OutputFile string
 }
 
 // MockFileWriter method implementations
-func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
+func (m *MockFileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	m.SaveToFileCalls = append(m.SaveToFileCalls, SaveToFileCall{
+		Ctx:        ctx,
 		Content:    content,
 		OutputFile: outputFile,
 	})
-	return m.SaveToFileFunc(content, outputFile)
+	return m.SaveToFileFunc(ctx, content, outputFile)
 }
 
 // NewMockFileWriter creates a new MockFileWriter with default implementations
 func NewMockFileWriter() *MockFileWriter {
 	return &MockFileWriter{
-		SaveToFileFunc: func(content, outputFile string) error {
+		SaveToFileFunc: func(ctx context.Context, content, outputFile string) error {
 			return nil
 		},
 	}

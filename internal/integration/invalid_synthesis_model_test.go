@@ -134,7 +134,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 	// Create file writer that tracks written files
 	fileWriter := &MockFileWriter{
-		SaveToFileFunc: func(content, filePath string) error {
+		SaveToFileFunc: func(ctx context.Context, content, filePath string) error {
 			// Record that this file was written with mutex protection
 			filesMutex.Lock()
 			filesWritten[filePath] = true

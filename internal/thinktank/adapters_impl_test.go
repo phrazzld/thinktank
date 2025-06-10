@@ -545,16 +545,17 @@ func TestFileWriterAdapter_SaveToFile(t *testing.T) {
 
 	// Set up expected return value
 	expectedErr := errors.New("test error")
-	mock.SaveToFileFunc = func(content, outputFile string) error {
+	mock.SaveToFileFunc = func(ctx context.Context, content, outputFile string) error {
 		return expectedErr
 	}
 
 	// Create test inputs
+	ctx := context.Background()
 	content := "test content"
 	outputFile := "test-output.txt"
 
 	// Call the adapter method
-	err := adapter.SaveToFile(content, outputFile)
+	err := adapter.SaveToFile(ctx, content, outputFile)
 
 	// Verify that the adapter delegated the call correctly
 	if err != expectedErr {

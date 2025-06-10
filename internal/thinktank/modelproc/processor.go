@@ -47,7 +47,7 @@ type APIService interface {
 // FileWriter defines the interface for file output writing
 type FileWriter interface {
 	// SaveToFile writes content to the specified file
-	SaveToFile(content, outputFile string) error
+	SaveToFile(ctx context.Context, content, outputFile string) error
 }
 
 // ModelProcessor handles all interactions with AI models including initialization,
@@ -273,7 +273,7 @@ func (p *ModelProcessor) saveOutputToFile(ctx context.Context, outputFilePath, c
 
 	// Save output file
 	p.logger.InfoContext(ctx, "Writing output to %s...", outputFilePath)
-	err := p.fileWriter.SaveToFile(content, outputFilePath)
+	err := p.fileWriter.SaveToFile(ctx, content, outputFilePath)
 
 	// Calculate duration in milliseconds
 	saveDurationMs := time.Since(saveStartTime).Milliseconds()

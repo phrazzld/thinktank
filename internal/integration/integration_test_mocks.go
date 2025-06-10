@@ -114,12 +114,12 @@ func (m *MockContextGatherer) DisplayDryRunInfo(ctx context.Context, stats *inte
 // This will be removed in favor of boundary-based mocks
 // Use BoundaryFileWriter from boundary_test_adapter.go instead
 type MockFileWriter struct {
-	SaveToFileFunc func(content, filePath string) error
+	SaveToFileFunc func(ctx context.Context, content, filePath string) error
 }
 
 // SaveToFile implements the file writer interface
-func (m *MockFileWriter) SaveToFile(content, filePath string) error {
-	return m.SaveToFileFunc(content, filePath)
+func (m *MockFileWriter) SaveToFile(ctx context.Context, content, filePath string) error {
+	return m.SaveToFileFunc(ctx, content, filePath)
 }
 
 // Deprecated: MockAuditLogger directly mocks an internal implementation

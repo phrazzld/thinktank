@@ -19,7 +19,7 @@ import (
 // FileWriter defines the interface for file output writing
 type FileWriter interface {
 	// SaveToFile writes content to the specified file
-	SaveToFile(content, outputFile string) error
+	SaveToFile(ctx context.Context, content, outputFile string) error
 }
 
 // fileWriter implements the FileWriter interface
@@ -46,9 +46,7 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 // It ensures proper directory existence, resolves relative paths to absolute paths,
 // and generates appropriate audit log entries for the operation's start and completion.
 // The method handles errors gracefully and ensures they are properly logged.
-func (fw *fileWriter) SaveToFile(content, outputFile string) error {
-	// Create a background context since this interface doesn't accept context
-	ctx := context.Background()
+func (fw *fileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
 	inputs := map[string]interface{}{

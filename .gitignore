@@ -89,3 +89,4 @@ docs/prompts
 dev/
 
 **/.claude/settings.local.json
+coverage.out

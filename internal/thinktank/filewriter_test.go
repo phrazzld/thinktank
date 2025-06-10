@@ -131,7 +131,7 @@ func TestSaveToFile(t *testing.T) {
 			tc.setupFunc()
 
 			// Save to file
-			err := fileWriter.SaveToFile(tc.content, tc.outputFile)
+			err := fileWriter.SaveToFile(context.Background(), tc.content, tc.outputFile)
 
 			// Run cleanup function
 			defer tc.cleanFunc()

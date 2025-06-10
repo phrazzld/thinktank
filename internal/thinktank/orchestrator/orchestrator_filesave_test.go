@@ -24,7 +24,7 @@ type MockFailingFileWriter struct {
 }
 
 // SaveToFile implements the FileWriter interface
-func (m *MockFailingFileWriter) SaveToFile(content, outputFile string) error {
+func (m *MockFailingFileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	// Check if this file should fail
 	for _, failingFile := range m.FailingFiles {
 		if strings.Contains(outputFile, failingFile) {
@@ -278,7 +278,7 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+".md")
 
 			// Save the output to file
-			if err := o.fileWriter.SaveToFile(content, outputFilePath); err != nil {
+			if err := o.fileWriter.SaveToFile(ctx, content, outputFilePath); err != nil {
 				errorCount++
 			} else {
 				savedCount++
@@ -302,7 +302,7 @@ func (o *filesaveTestOrchestrator) Run(ctx context.Context, instructions string)
 			outputFilePath := filepath.Join(o.config.OutputDir, sanitizedModelName+"-synthesis.md")
 
 			// Save the synthesis output to file
-			if err := o.fileWriter.SaveToFile(synthesisContent, outputFilePath); err != nil {
+			if err := o.fileWriter.SaveToFile(ctx, synthesisContent, outputFilePath); err != nil {
 				fileSaveErrors = fmt.Errorf("%w: failed to save synthesis output to %s: %v", ErrOutputFileSaveFailed, outputFilePath, err)
 			}
 		}

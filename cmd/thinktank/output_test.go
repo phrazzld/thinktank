@@ -139,7 +139,7 @@ func TestSaveToFile(t *testing.T) {
 			}
 
 			// Execute the SaveToFile method
-			err = fw.SaveToFile(tt.content, tt.outputFilePath)
+			err = fw.SaveToFile(context.Background(), tt.content, tt.outputFilePath)
 
 			// Check if error matches expectation
 			if (err != nil) != tt.expectError {
@@ -210,7 +210,7 @@ func TestSaveToFile_ErrorConditions(t *testing.T) {
 			t.Fatalf("Failed to create test directory: %v", err)
 		}
 		// Try to write to a path inside the read-only directory
-		err := fw.SaveToFile("test content", filepath.Join(invalidPath, "subdir", "test.txt"))
+		err := fw.SaveToFile(context.Background(), "test content", filepath.Join(invalidPath, "subdir", "test.txt"))
 
 		// Verify error was returned
 		if err == nil {

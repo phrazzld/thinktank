@@ -65,7 +65,7 @@
         2. Run benchmarks with `-parallel` flag without race conditions
     - **Depends-on:** none
 
-- [ ] **T005 · Refactor · P2: Add context propagation to FileWriter interface**
+- [x] **T005 · Refactor · P2: Add context propagation to FileWriter interface**
     - **Context:** FileWriter.SaveToFile doesn't accept context, breaking correlation ID traceability
     - **Action:**
         1. Update FileWriter interface to accept `ctx context.Context` as first parameter

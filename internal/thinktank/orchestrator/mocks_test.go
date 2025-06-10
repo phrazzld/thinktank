@@ -228,7 +228,7 @@ type MockFileWriter struct {
 }
 
 // SaveToFile is a mock implementation
-func (m *MockFileWriter) SaveToFile(content, outputFile string) error {
+func (m *MockFileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	if m.saveError != nil {
 		return m.saveError
 	}

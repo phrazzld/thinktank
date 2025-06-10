@@ -154,6 +154,6 @@ type FileWriterAdapter struct {
 
 // SaveToFile delegates to the underlying FileWriter implementation
 // .nocover - pure wrapper method that simply delegates to underlying implementation
-func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error {
-	return f.FileWriter.SaveToFile(content, outputFile)
+func (f *FileWriterAdapter) SaveToFile(ctx context.Context, content, outputFile string) error {
+	return f.FileWriter.SaveToFile(ctx, content, outputFile)
 }
