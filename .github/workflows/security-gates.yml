@@ -87,6 +87,10 @@ jobs:
       sast_scan_enabled: ${{ steps.config.outputs.sast_scan_enabled }}
       sast_scan_required: ${{ steps.config.outputs.sast_scan_required }}
     steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Read quality gate configuration
         id: config
         uses: ./.github/actions/read-quality-gate-config
