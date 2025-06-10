@@ -1,0 +1,69 @@
+# Dependabot configuration for automatic dependency updates
+# Documentation: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # Go module dependency updates
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "UTC"
+
+    # Automatically open PRs for security updates
+    open-pull-requests-limit: 10
+
+    # PR configuration
+    assignees:
+      - "phrazzld"
+    labels:
+      - "dependencies"
+      - "automated"
+
+    # Commit message configuration following conventional commits
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps"
+      include: "scope"
+
+    # Grouping strategy for easier review
+    groups:
+      # Group patch and minor updates together
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+
+      # Separate major updates for careful review
+      major-updates:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
+
+    # Auto-merge configuration for security patches
+    # Note: This requires branch protection rules to be configured
+    # and the auto-merge workflow to handle the actual merging
+    ignore:
+      # Ignore specific dependencies that require manual review
+      - dependency-name: "golang.org/x/net"
+        update-types: ["version-update:semver-major"]
+
+    # Allow updates for all dependency types
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+
+    # Review and merge strategy
+    rebase-strategy: "auto"
+
+    # Security-only updates get higher priority
+    pull-request-branch-name:
+      separator: "/"
+
+    # Target specific branches
+    target-branch: "master"

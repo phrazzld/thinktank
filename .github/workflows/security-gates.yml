@@ -7,12 +7,79 @@ on:
   pull_request:
     branches: [ master ]
 
+# Allow issue creation for override tracking
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 # Security scanning jobs - part of Stage 1 Foundation Gates
 jobs:
+  # Check for emergency override labels
+  check-override:
+    name: Check Emergency Override
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      override_active: ${{ steps.override_check.outputs.override_active }}
+      override_reason: ${{ steps.override_check.outputs.override_reason }}
+      bypass_security: ${{ steps.override_check.outputs.bypass_security }}
+    steps:
+      - name: Check for emergency override labels
+        id: override_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = pullRequest.labels.map(label => label.name);
+            console.log('PR Labels:', labels);
+
+            // Check for override labels
+            const overrideLabels = labels.filter(label =>
+              label.includes('emergency-override') ||
+              label.includes('security-override') ||
+              label.includes('bypass-security')
+            );
+
+            const hasOverride = overrideLabels.length > 0;
+            const bypassSecurity = labels.includes('bypass-security') || labels.includes('emergency-override');
+
+            if (hasOverride) {
+              console.log('🚨 Emergency override detected:', overrideLabels);
+
+              // Get override reason from PR body or comments
+              const prBody = pullRequest.body || '';
+              const overrideReason = prBody.includes('OVERRIDE REASON:')
+                ? prBody.split('OVERRIDE REASON:')[1].split('\n')[0].trim()
+                : 'Emergency override - see PR description for details';
+
+              core.setOutput('override_active', 'true');
+              core.setOutput('override_reason', overrideReason);
+              core.setOutput('bypass_security', bypassSecurity.toString());
+
+              // Log the override for audit purposes
+              console.log('Override Details:', {
+                pr: context.issue.number,
+                author: pullRequest.user.login,
+                reason: overrideReason,
+                bypassSecurity: bypassSecurity
+              });
+            } else {
+              core.setOutput('override_active', 'false');
+              core.setOutput('override_reason', '');
+              core.setOutput('bypass_security', 'false');
+            }
   # Secret scanning with TruffleHog
   secret-scan:
     name: Secret Detection Scan
     runs-on: ubuntu-latest
+    needs: [check-override]
+    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,6 +110,8 @@ jobs:
   license-scan:
     name: Dependency License Compliance
     runs-on: ubuntu-latest
+    needs: [check-override]
+    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -110,6 +179,8 @@ jobs:
   sast-scan:
     name: Static Application Security Testing
     runs-on: ubuntu-latest
+    needs: [check-override]
+    if: always() && (needs.check-override.outputs.bypass_security != 'true' || github.event_name == 'push')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -152,3 +223,16 @@ jobs:
           echo "Please review and fix all medium+ severity security issues"
           echo "See gosec-report.json artifact for detailed findings"
           exit 1
+
+  # Create technical debt issue when override is used
+  create-override-issue:
+    name: Create Override Technical Debt Issue
+    uses: ./.github/workflows/create-override-issue.yml
+    needs: [check-override, secret-scan, license-scan, sast-scan]
+    if: always() && needs.check-override.outputs.override_active == 'true' && github.event_name == 'pull_request'
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      override_author: ${{ github.event.pull_request.user.login }}
+      affected_gates: "Security Scan (TruffleHog), License Compliance, SAST Analysis"
+      override_reason: ${{ needs.check-override.outputs.override_reason }}
+      urgency_level: "P1"

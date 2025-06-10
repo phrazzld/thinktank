@@ -143,7 +143,7 @@
         1. Add the override label to a failing PR and confirm it merges. Check the CI artifacts for the audit log.
     - **Depends‑on:** none
 
-- [ ] **T013 · Feature · P3: create automatic tech-debt issue for overrides**
+- [x] **T013 · Feature · P3: create automatic tech-debt issue for overrides**
     - **Context:** Phase 3, Step 3.1: Create automatic follow-up issue creation for technical debt
     - **Action:**
         1. Create an issue template at `.github/ISSUE_TEMPLATE/quality-gate-override.yml`.
@@ -154,7 +154,7 @@
         1. Use the override system and confirm that a corresponding issue is created.
     - **Depends‑on:** T012
 
-- [~] **T014 · Feature · P2: create quality dashboard generation and deployment workflow**
+- [x] **T014 · Feature · P2: create quality dashboard generation and deployment workflow**
     - **Context:** Phase 3, Step 3.2: Create Quality Dashboard
     - **Action:**
         1. Implement a script (`scripts/quality/generate-dashboard.sh`) to collect quality metrics (coverage, lint/test results, etc.) from CI artifacts.
@@ -167,7 +167,7 @@
         1. Navigate to the GitHub Pages URL and verify that it displays quality metrics and historical trends.
     - **Depends‑on:** none
 
-- [ ] **T015 · Chore · P2: configure dependabot for automatic dependency updates**
+- [x] **T015 · Chore · P2: configure dependabot for automatic dependency updates**
     - **Context:** Phase 3, Step 3.3: Implement Automatic Dependency Updates
     - **Action:**
         1. Create `.github/dependabot.yml` to enable version updates for Go modules.

@@ -14,6 +14,12 @@ on:
         default: false
         type: boolean
 
+# Allow issue creation for override tracking
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 # Quality Gate Hierarchy Implementation
 # Stage 1: Foundation Gates (run in parallel)
 #   - lint: Code quality checks (format, vet, golangci-lint)
@@ -26,6 +32,71 @@ on:
 # Special:
 #   - profile: Manual profiling (depends on Stage 1)
 jobs:
+  # Check for emergency override labels
+  check-override:
+    name: Check Emergency Override
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      override_active: ${{ steps.override_check.outputs.override_active }}
+      override_reason: ${{ steps.override_check.outputs.override_reason }}
+      bypass_tests: ${{ steps.override_check.outputs.bypass_tests }}
+      bypass_coverage: ${{ steps.override_check.outputs.bypass_coverage }}
+    steps:
+      - name: Check for emergency override labels
+        id: override_check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const labels = pullRequest.labels.map(label => label.name);
+            console.log('PR Labels:', labels);
+
+            // Check for override labels
+            const overrideLabels = labels.filter(label =>
+              label.includes('emergency-override') ||
+              label.includes('bypass-tests') ||
+              label.includes('bypass-coverage') ||
+              label.includes('critical-hotfix')
+            );
+
+            const hasOverride = overrideLabels.length > 0;
+            const bypassTests = labels.includes('bypass-tests') || labels.includes('emergency-override');
+            const bypassCoverage = labels.includes('bypass-coverage') || labels.includes('emergency-override');
+
+            if (hasOverride) {
+              console.log('🚨 Emergency override detected:', overrideLabels);
+
+              // Get override reason from PR body or comments
+              const prBody = pullRequest.body || '';
+              const overrideReason = prBody.includes('OVERRIDE REASON:')
+                ? prBody.split('OVERRIDE REASON:')[1].split('\n')[0].trim()
+                : 'Emergency override - see PR description for details';
+
+              core.setOutput('override_active', 'true');
+              core.setOutput('override_reason', overrideReason);
+              core.setOutput('bypass_tests', bypassTests.toString());
+              core.setOutput('bypass_coverage', bypassCoverage.toString());
+
+              // Log the override for audit purposes
+              console.log('Override Details:', {
+                pr: context.issue.number,
+                author: pullRequest.user.login,
+                reason: overrideReason,
+                bypassTests: bypassTests,
+                bypassCoverage: bypassCoverage
+              });
+            } else {
+              core.setOutput('override_active', 'false');
+              core.setOutput('override_reason', '');
+              core.setOutput('bypass_tests', 'false');
+              core.setOutput('bypass_coverage', 'false');
+            }
   # Stage 1: Foundation Gates - Code Quality
   lint:
     name: Lint and Format
@@ -283,7 +354,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: [lint, vulnerability-scan]  # Depends on Stage 1 Foundation Gates
+    needs: [check-override, lint, vulnerability-scan]  # Depends on Stage 1 Foundation Gates
+    if: always() && (needs.check-override.outputs.bypass_tests != 'true' || github.event_name == 'push')
     # Note: Security gates (secret-scan, license-scan, sast-scan) run independently in security-gates.yml
     steps:
       # Checkout repository
@@ -401,19 +473,29 @@ jobs:
           path: coverage.out
           retention-days: 14
 
-      # Check coverage threshold
+      # Check coverage threshold (can be bypassed with override)
       - name: Check overall coverage threshold
+        if: github.event_name == 'push' || needs.check-override.outputs.bypass_coverage != 'true'
         run: |
           set -eo pipefail
           # Use dedicated script for checking coverage with 90% quality gate threshold
           ./scripts/check-coverage.sh 90  # Quality gate enforcement at 90% target threshold
 
-      # Check package-specific coverage thresholds
+      # Check package-specific coverage thresholds (can be bypassed with override)
       - name: Check package-specific coverage thresholds
+        if: github.event_name == 'push' || needs.check-override.outputs.bypass_coverage != 'true'
         run: |
           set -eo pipefail
           # This script enforces package-specific thresholds for critical packages
           ./scripts/ci/check-package-specific-coverage.sh
+
+      # Report coverage bypass when override is active
+      - name: Report coverage override
+        if: github.event_name == 'pull_request' && needs.check-override.outputs.bypass_coverage == 'true'
+        run: |
+          echo "⚠️ WARNING: Coverage quality gates bypassed due to emergency override"
+          echo "Reason: ${{ needs.check-override.outputs.override_reason }}"
+          echo "A technical debt issue will be created to track this override"
 
   # Build job for building Go binary
   # Stage 3: Build Verification Gate - runs after Stage 2 Testing completes
@@ -520,3 +602,16 @@ jobs:
           path: |
             *.prof
           retention-days: 7
+
+  # Create technical debt issue when CI override is used
+  create-ci-override-issue:
+    name: Create CI Override Technical Debt Issue
+    uses: ./.github/workflows/create-override-issue.yml
+    needs: [check-override, test]
+    if: always() && needs.check-override.outputs.override_active == 'true' && github.event_name == 'pull_request'
+    with:
+      pr_number: ${{ github.event.pull_request.number }}
+      override_author: ${{ github.event.pull_request.user.login }}
+      affected_gates: "Test Execution, Code Coverage (90% threshold), Package-specific Coverage"
+      override_reason: ${{ needs.check-override.outputs.override_reason }}
+      urgency_level: "P2"

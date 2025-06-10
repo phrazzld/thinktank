@@ -1,0 +1,120 @@
+name: Quality Gate Override - Technical Debt
+description: Automatic issue created when quality gates are bypassed using emergency override
+title: "[TECH DEBT] Quality Gate Override - PR #{{ pull_request_number }}"
+labels: ["technical-debt", "quality-gate-override", "priority-high"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🚨 Quality Gate Override Detected
+
+        This issue was automatically created because quality gates were bypassed using an emergency override mechanism.
+
+        **This represents technical debt that must be addressed.**
+
+  - type: input
+    id: pr_number
+    attributes:
+      label: Pull Request Number
+      description: The PR number where the override was applied
+      placeholder: "#123"
+    validations:
+      required: true
+
+  - type: input
+    id: override_author
+    attributes:
+      label: Override Author
+      description: Who requested/approved the override
+      placeholder: "@username"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: affected_gates
+    attributes:
+      label: Affected Quality Gates
+      description: Which quality gates were bypassed
+      multiple: true
+      options:
+        - Code Coverage (below 90% threshold)
+        - Security Scan (TruffleHog secrets)
+        - License Compliance (dependency licenses)
+        - SAST Analysis (static security analysis)
+        - Build/Compilation
+        - Unit Tests
+        - E2E Tests
+        - Performance Benchmarks
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: urgency
+    attributes:
+      label: Override Urgency
+      description: The business urgency that justified the override
+      options:
+        - Production Incident (P0)
+        - Critical Bug Fix (P1)
+        - Security Hotfix (P1)
+        - Business Critical Feature (P2)
+        - Other (requires explanation)
+    validations:
+      required: true
+
+  - type: textarea
+    id: justification
+    attributes:
+      label: Override Justification
+      description: Detailed explanation of why the override was necessary
+      placeholder: Explain the business context, timeline constraints, and risk assessment that led to this decision
+    validations:
+      required: true
+
+  - type: textarea
+    id: remediation_plan
+    attributes:
+      label: Remediation Plan
+      description: How will the underlying issues be addressed?
+      placeholder: |
+        - [ ] Fix failing tests
+        - [ ] Address security findings
+        - [ ] Improve test coverage
+        - [ ] Update documentation
+        - [ ] Add monitoring/alerting
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: input
+    id: target_resolution
+    attributes:
+      label: Target Resolution Date
+      description: When should this technical debt be resolved?
+      placeholder: "YYYY-MM-DD"
+    validations:
+      required: true
+
+  - type: textarea
+    id: audit_trail
+    attributes:
+      label: Audit Information
+      description: Automatic audit trail (do not edit)
+      placeholder: This section will be populated automatically
+
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 Next Steps
+
+        1. **Immediate**: Ensure the override was properly justified and documented
+        2. **Short-term**: Create specific tasks for addressing each bypassed quality gate
+        3. **Long-term**: Review if process improvements can prevent similar situations
+
+        ## 🔗 Related Links
+
+        - [Quality Gate Documentation](../docs/QUALITY_GATES.md)
+        - [Emergency Override Policy](../docs/EMERGENCY_OVERRIDE_POLICY.md)
+        - [Technical Debt Management](../docs/TECHNICAL_DEBT.md)
