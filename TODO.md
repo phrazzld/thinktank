@@ -48,6 +48,21 @@
         2. Check that no `@latest` remains in workflow files
     - **Depends-on:** none
 
+- [x] **T006 · Bugfix · P1: Fix missing checkout step in Go CI workflow read-config job**
+    - **Context:** `.github/workflows/ci.yml` read-config job uses local action without checking out repository first
+    - **Action:**
+        1. Add `actions/checkout@v4` step as first step in read-config job
+        2. Ensure step is positioned before `uses: ./.github/actions/read-quality-gate-config`
+        3. Use consistent naming pattern with other jobs (`Checkout code`)
+    - **Done-when:**
+        1. read-config job includes checkout step before local action usage
+        2. Go CI workflow can successfully execute read-config job
+        3. Quality gate configuration outputs are properly set for dependent jobs
+    - **Verification:**
+        1. Verify read-config job passes in CI run
+        2. Confirm dependent jobs (lint, test, build) can start properly
+    - **Depends-on:** none
+
 ## HIGH PRIORITY ISSUES (Fix in Next Sprint)
 
 - [x] **T004 · Bugfix · P2: Fix race conditions in benchmark tests**

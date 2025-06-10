@@ -112,6 +112,10 @@ jobs:
       build_enabled: ${{ steps.config.outputs.build_enabled }}
       build_required: ${{ steps.config.outputs.build_required }}
     steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Read quality gate configuration
         id: config
         uses: ./.github/actions/read-quality-gate-config
