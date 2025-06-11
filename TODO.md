@@ -2,7 +2,7 @@
 
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
-- [ ] **CI-FIX-001 · Bugfix · P1: Fix TestLoadInvalidYAML test failure due to configuration fallback behavior**
+- [x] **CI-FIX-001 · Bugfix · P1: Fix TestLoadInvalidYAML test failure due to configuration fallback behavior**
     - **Context:** CI test failure in `TestLoadInvalidYAML` - test expects error when loading invalid YAML, but enhanced fallback logic (E2E-004) now gracefully falls back to default configuration
     - **Root Cause:** Test expectation mismatch with new resilient configuration loading behavior implemented in E2E-004
     - **Error:** `config_test.go:243: Expected error when loading invalid YAML, got nil`
@@ -22,7 +22,7 @@
         3. Confirm test logic aligns with E2E-004 fallback design
     - **Depends-on:** none
 
-- [ ] **CI-FIX-002 · Enhancement · P2: Add comprehensive error scenario testing for configuration loading**
+- [x] **CI-FIX-002 · Enhancement · P2: Add comprehensive error scenario testing for configuration loading**
     - **Context:** Ensure robust error testing coverage after updating TestLoadInvalidYAML to validate fallback behavior
     - **Root Cause:** Need to maintain error scenario coverage while supporting new fallback behavior
     - **Action:**
@@ -41,7 +41,7 @@
         3. Ensure balance between fallback testing and error testing
     - **Depends-on:** CI-FIX-001
 
-- [ ] **CI-FIX-003 · Verification · P1: Validate CI pipeline success after test fixes**
+- [x] **CI-FIX-003 · Verification · P1: Validate CI pipeline success after test fixes**
     - **Context:** Verify that test logic updates resolve CI failures completely
     - **Root Cause:** Ensure test fixes resolve the TestLoadInvalidYAML failure without breaking other tests
     - **Action:**
@@ -61,7 +61,7 @@
         4. Configuration loading behavior works as expected
     - **Depends-on:** CI-FIX-001, CI-FIX-002
 
-- [ ] **CI-FIX-004 · Cleanup · P3: Remove CI analysis temporary files after resolution**
+- [x] **CI-FIX-004 · Cleanup · P3: Remove CI analysis temporary files after resolution**
     - **Context:** Clean up CI failure analysis files after successful test resolution
     - **Action:**
         1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
