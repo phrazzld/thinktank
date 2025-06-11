@@ -2,7 +2,7 @@
 
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
-- [~] **E2E-001 · Bugfix · P1: Fix Docker E2E container configuration for models.yaml**
+- [x] **E2E-001 · Bugfix · P1: Fix Docker E2E container configuration for models.yaml**
     - **Context:** E2E tests fail because Docker container missing models.yaml at `/home/thinktank/.config/thinktank/models.yaml`
     - **Root Cause:** Binary expects user config directory structure, but Docker container doesn't create it
     - **Error:** `Failed to load configuration: configuration file not found at /home/thinktank/.config/thinktank/models.yaml`
