@@ -184,7 +184,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 		t.Errorf("Expected error due to invalid synthesis model, but got nil")
 	} else {
 		// Check that the error message mentions the invalid model
-		if !containsString(err.Error(), invalidSynthesisModel) {
+		if !containsSubstring(err.Error(), invalidSynthesisModel) {
 			t.Errorf("Expected error to mention invalid model '%s', but got: %v",
 				invalidSynthesisModel, err)
 		} else {
@@ -214,7 +214,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	}
 }
 
-// containsString is a helper function to check if a string contains a substring
-func containsString(s, substr string) bool {
+// containsSubstring is a helper function to check if a string contains a substring
+func containsSubstring(s, substr string) bool {
 	return s != "" && substr != "" && len(s) > 0 && len(substr) > 0 && s != substr && strings.Contains(s, substr)
 }

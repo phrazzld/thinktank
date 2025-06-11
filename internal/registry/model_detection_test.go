@@ -24,10 +24,10 @@ func setupTestRegistryWithModels(t *testing.T) *Manager {
 
 	// Add test models
 	registry.models = map[string]ModelDefinition{
-		"gpt-4": {
-			Name:       "gpt-4",
+		"gpt-4.1": {
+			Name:       "gpt-4.1",
 			Provider:   "openai",
-			APIModelID: "gpt-4",
+			APIModelID: "gpt-4.1",
 		},
 		"gemini-pro": {
 			Name:       "gemini-pro",
@@ -59,7 +59,7 @@ func TestGetProviderForModel(t *testing.T) {
 	}{
 		{
 			name:         "OpenAI model",
-			modelName:    "gpt-4",
+			modelName:    "gpt-4.1",
 			wantProvider: "openai",
 			wantErr:      false,
 		},
@@ -116,7 +116,7 @@ func TestIsModelSupported(t *testing.T) {
 	}{
 		{
 			name:      "OpenAI model",
-			modelName: "gpt-4",
+			modelName: "gpt-4.1",
 			want:      true,
 		},
 		{
@@ -158,9 +158,9 @@ func TestGetModelInfo(t *testing.T) {
 	}{
 		{
 			name:         "OpenAI model",
-			modelName:    "gpt-4",
+			modelName:    "gpt-4.1",
 			wantProvider: "openai",
-			wantAPIID:    "gpt-4",
+			wantAPIID:    "gpt-4.1",
 			wantErr:      false,
 		},
 		{
@@ -227,7 +227,7 @@ func TestGetAllModels(t *testing.T) {
 
 	// Check if all test models are in the result
 	expectedModels := map[string]bool{
-		"gpt-4":                              true,
+		"gpt-4.1":                            true,
 		"gemini-pro":                         true,
 		"openrouter/anthropic/claude-3-opus": true,
 	}
@@ -260,7 +260,7 @@ func TestGetModelsForProvider(t *testing.T) {
 		{
 			name:           "OpenAI provider",
 			providerName:   "openai",
-			wantModels:     []string{"gpt-4"},
+			wantModels:     []string{"gpt-4.1"},
 			wantModelCount: 1,
 		},
 		{

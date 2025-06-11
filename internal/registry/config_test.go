@@ -3,7 +3,6 @@ package registry
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/logutil"
@@ -30,7 +29,17 @@ func TestGetConfigPath(t *testing.T) {
 }
 
 // TestLoadConfigFileNotFound tests the Load function when the config file is not found
+// With the enhanced fallback mechanism, this should successfully load default configuration
 func TestLoadConfigFileNotFound(t *testing.T) {
+	// Clear environment variables to ensure clean test
+	envVars := []string{
+		EnvConfigProvider, EnvConfigModel, EnvConfigAPIModelID,
+		EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
+	}
+	for _, envVar := range envVars {
+		os.Unsetenv(envVar)
+	}
+
 	// Create a temporary setup with a non-existent file path
 	tmpPath := filepath.Join(os.TempDir(), "non-existent-file.yaml")
 
@@ -46,15 +55,126 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	}
 	defer func() { loader.GetConfigPath = origGetConfigPath }()
 
-	// Attempt to load the config
-	_, err := loader.Load()
-	if err == nil {
-		t.Fatal("Expected error when config file not found, got nil")
+	// Attempt to load the config - should succeed with fallback to default configuration
+	config, err := loader.Load()
+	if err != nil {
+		t.Fatalf("Expected successful load with default fallback, got error: %v", err)
 	}
 
-	// Check that the error message contains "not found"
-	if !strings.Contains(err.Error(), "not found") {
-		t.Errorf("Error message should indicate file not found, got: %v", err)
+	// Verify that we got a valid default configuration
+	if config == nil {
+		t.Fatal("Expected valid configuration, got nil")
+	}
+
+	// Check that the default configuration has expected structure
+	if len(config.APIKeySources) == 0 {
+		t.Error("Expected API key sources in default configuration")
+	}
+	if len(config.Providers) == 0 {
+		t.Error("Expected providers in default configuration")
+	}
+	if len(config.Models) != 3 {
+		t.Errorf("Expected 3 models in default configuration, got %d", len(config.Models))
+	}
+
+	// Check that it includes expected providers
+	expectedProviders := map[string]bool{"openai": false, "gemini": false, "openrouter": false}
+	for _, provider := range config.Providers {
+		if _, exists := expectedProviders[provider.Name]; exists {
+			expectedProviders[provider.Name] = true
+		}
+	}
+	for providerName, found := range expectedProviders {
+		if !found {
+			t.Errorf("Expected provider '%s' in default configuration", providerName)
+		}
+	}
+}
+
+// TestLoadConfigFromEnvironment tests the Load function using environment variable configuration
+func TestLoadConfigFromEnvironment(t *testing.T) {
+	// Set up environment variables for testing
+	os.Setenv(EnvConfigProvider, "gemini")
+	os.Setenv(EnvConfigModel, "test-gemini-model")
+	os.Setenv(EnvConfigAPIModelID, "gemini-test-api-id")
+	os.Setenv(EnvConfigContextWindow, "500000")
+	os.Setenv(EnvConfigMaxOutput, "32000")
+	os.Setenv(EnvConfigBaseURL, "https://custom-api.example.com")
+
+	// Clean up environment variables after test
+	defer func() {
+		os.Unsetenv(EnvConfigProvider)
+		os.Unsetenv(EnvConfigModel)
+		os.Unsetenv(EnvConfigAPIModelID)
+		os.Unsetenv(EnvConfigContextWindow)
+		os.Unsetenv(EnvConfigMaxOutput)
+		os.Unsetenv(EnvConfigBaseURL)
+	}()
+
+	// Create a temporary setup with a non-existent file path
+	tmpPath := filepath.Join(os.TempDir(), "non-existent-file.yaml")
+
+	// Create a custom loader with an overridden GetConfigPath method
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
+
+	// Mock the GetConfigPath method
+	origGetConfigPath := loader.GetConfigPath
+	loader.GetConfigPath = func() (string, error) {
+		return tmpPath, nil
+	}
+	defer func() { loader.GetConfigPath = origGetConfigPath }()
+
+	// Attempt to load the config - should succeed with environment variable configuration
+	config, err := loader.Load()
+	if err != nil {
+		t.Fatalf("Expected successful load with environment variable configuration, got error: %v", err)
+	}
+
+	// Verify that we got a valid configuration
+	if config == nil {
+		t.Fatal("Expected valid configuration, got nil")
+	}
+
+	// Check that the configuration matches the environment variables
+	if len(config.Models) != 1 {
+		t.Fatalf("Expected exactly 1 model, got %d", len(config.Models))
+	}
+
+	model := config.Models[0]
+	if model.Name != "test-gemini-model" {
+		t.Errorf("Expected model name 'test-gemini-model', got '%s'", model.Name)
+	}
+	if model.Provider != "gemini" {
+		t.Errorf("Expected provider 'gemini', got '%s'", model.Provider)
+	}
+	if model.APIModelID != "gemini-test-api-id" {
+		t.Errorf("Expected API model ID 'gemini-test-api-id', got '%s'", model.APIModelID)
+	}
+	if model.ContextWindow != 500000 {
+		t.Errorf("Expected context window 500000, got %d", model.ContextWindow)
+	}
+	if model.MaxOutputTokens != 32000 {
+		t.Errorf("Expected max output tokens 32000, got %d", model.MaxOutputTokens)
+	}
+
+	// Check provider configuration
+	if len(config.Providers) != 1 {
+		t.Fatalf("Expected exactly 1 provider, got %d", len(config.Providers))
+	}
+
+	provider := config.Providers[0]
+	if provider.Name != "gemini" {
+		t.Errorf("Expected provider name 'gemini', got '%s'", provider.Name)
+	}
+	if provider.BaseURL != "https://custom-api.example.com" {
+		t.Errorf("Expected base URL 'https://custom-api.example.com', got '%s'", provider.BaseURL)
+	}
+
+	// Check API key sources
+	if envVar, exists := config.APIKeySources["gemini"]; !exists || envVar != "GEMINI_API_KEY" {
+		t.Errorf("Expected API key source for gemini to be 'GEMINI_API_KEY', got '%s'", envVar)
 	}
 }
 

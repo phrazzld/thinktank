@@ -29,10 +29,10 @@ func setupTestRegistryWithExtendedModels(t *testing.T) *Manager {
 	// Add test models with various edge cases
 	registry.models = map[string]ModelDefinition{
 		// Regular models
-		"gpt-4": {
-			Name:       "gpt-4",
+		"gpt-4.1": {
+			Name:       "gpt-4.1",
 			Provider:   "openai",
-			APIModelID: "gpt-4",
+			APIModelID: "gpt-4.1",
 		},
 		"gemini-pro": {
 			Name:       "gemini-pro",
@@ -135,7 +135,7 @@ func TestSimilarModelNames(t *testing.T) {
 	}{
 		{
 			name:         "Base model",
-			modelName:    "gpt-4",
+			modelName:    "gpt-4.1",
 			wantProvider: "openai",
 			wantErr:      false,
 		},
@@ -188,8 +188,8 @@ func TestModelInfoProperties(t *testing.T) {
 	}{
 		{
 			name:            "OpenAI model information",
-			modelName:       "gpt-4",
-			wantAPIModelID:  "gpt-4",
+			modelName:       "gpt-4.1",
+			wantAPIModelID:  "gpt-4.1",
 			wantProvider:    "openai",
 			wantContextSize: 8192,
 			wantMaxOutput:   4096,

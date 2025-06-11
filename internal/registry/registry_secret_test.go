@@ -33,7 +33,7 @@ func TestRegistryLoggingNoSecrets(t *testing.T) {
 
 	// Look up a model (shouldn't log any secrets)
 	ctx := context.Background()
-	_, _ = reg.GetModel(ctx, "gpt-4")
+	_, _ = reg.GetModel(ctx, "gpt-4.1")
 	// We don't care if model exists, just checking no secrets logged
 
 	// If no secrets were detected, the test passes
