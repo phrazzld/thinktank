@@ -78,7 +78,7 @@
         2. Test with dummy secret to ensure scan still catches secrets
     - **Depends-on:** none
 
-- [ ] **CI-002 · Infrastructure · P1: Create missing docker/e2e-test.Dockerfile for E2E testing**
+- [x] **CI-002 · Infrastructure · P1: Create missing docker/e2e-test.Dockerfile for E2E testing**
     - **Context:** PR #79 CI failure - Test job fails because `docker/e2e-test.Dockerfile` doesn't exist
     - **Action:**
         1. Create `docker/` directory if it doesn't exist
