@@ -2,6 +2,83 @@
 
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
+- [ ] **CI-FIX-001 · Bugfix · P1: Fix TestLoadInvalidYAML test failure due to configuration fallback behavior**
+    - **Context:** CI test failure in `TestLoadInvalidYAML` - test expects error when loading invalid YAML, but enhanced fallback logic (E2E-004) now gracefully falls back to default configuration
+    - **Root Cause:** Test expectation mismatch with new resilient configuration loading behavior implemented in E2E-004
+    - **Error:** `config_test.go:243: Expected error when loading invalid YAML, got nil`
+    - **Action:**
+        1. Update `TestLoadInvalidYAML` logic to expect successful fallback loading instead of error
+        2. Verify test validates that fallback returns valid default configuration
+        3. Ensure test confirms invalid YAML is not used (fallback behavior working)
+        4. Update test comments to reflect new expected behavior
+    - **Done-when:**
+        1. `TestLoadInvalidYAML` passes by expecting successful fallback loading
+        2. Test validates that default configuration is returned when YAML is invalid
+        3. Test confirms fallback behavior is working as designed
+        4. Local `go test ./internal/registry/` passes
+    - **Verification:**
+        1. Run `go test -v -run TestLoadInvalidYAML ./internal/registry/`
+        2. Run `go test ./internal/registry/` to verify no regression
+        3. Confirm test logic aligns with E2E-004 fallback design
+    - **Depends-on:** none
+
+- [ ] **CI-FIX-002 · Enhancement · P2: Add comprehensive error scenario testing for configuration loading**
+    - **Context:** Ensure robust error testing coverage after updating TestLoadInvalidYAML to validate fallback behavior
+    - **Root Cause:** Need to maintain error scenario coverage while supporting new fallback behavior
+    - **Action:**
+        1. Add test for genuine file permission errors that should fail
+        2. Add test for complete configuration failure scenarios (all fallbacks fail)
+        3. Add test for network/IO errors if applicable
+        4. Ensure error scenarios that should fail are properly covered
+    - **Done-when:**
+        1. New test cases cover legitimate error scenarios
+        2. Test coverage maintains robustness for genuine failure cases
+        3. All error scenario tests pass locally
+        4. Error testing complements fallback behavior testing
+    - **Verification:**
+        1. Run `go test ./internal/registry/ -v` to verify all new tests pass
+        2. Review test coverage for error scenarios
+        3. Ensure balance between fallback testing and error testing
+    - **Depends-on:** CI-FIX-001
+
+- [ ] **CI-FIX-003 · Verification · P1: Validate CI pipeline success after test fixes**
+    - **Context:** Verify that test logic updates resolve CI failures completely
+    - **Root Cause:** Ensure test fixes resolve the TestLoadInvalidYAML failure without breaking other tests
+    - **Action:**
+        1. Commit test logic updates with clear conventional commit message
+        2. Push changes to trigger CI pipeline
+        3. Monitor Test job for successful completion
+        4. Verify no other tests are affected by changes
+    - **Done-when:**
+        1. "Test" job passes with all tests successful
+        2. TestLoadInvalidYAML no longer fails in CI
+        3. No regression in other test cases
+        4. All 14/14 CI checks pass
+    - **Verification:**
+        1. CI Status shows all green checkmarks
+        2. Test job output shows TestLoadInvalidYAML passing
+        3. No other test failures introduced
+        4. Configuration loading behavior works as expected
+    - **Depends-on:** CI-FIX-001, CI-FIX-002
+
+- [ ] **CI-FIX-004 · Cleanup · P3: Remove CI analysis temporary files after resolution**
+    - **Context:** Clean up CI failure analysis files after successful test resolution
+    - **Action:**
+        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
+        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
+        3. Verify no CI analysis artifacts remain in repository
+    - **Done-when:**
+        1. `CI-FAILURE-SUMMARY.md` removed from repository
+        2. `CI-RESOLUTION-PLAN.md` removed from repository
+        3. CI pipeline passing consistently
+    - **Verification:**
+        1. Files no longer present in git status
+        2. No temporary investigation artifacts remain
+        3. Clean repository state maintained
+    - **Depends-on:** CI-FIX-003
+
+## CRITICAL ISSUES (Must Fix Before Merge)
+
 - [x] **E2E-006 · Bugfix · P1: Fix errcheck violations in config_integration_test.go**
     - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for file operations in integration tests
     - **Root Cause:** New integration test file missing error handling for `os.Remove()` and `tmpFile.Close()` calls

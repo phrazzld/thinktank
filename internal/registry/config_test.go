@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -205,7 +206,19 @@ func TestLoadConfigFromEnvironment(t *testing.T) {
 }
 
 // TestLoadInvalidYAML tests the Load function with an invalid YAML file
+// With the enhanced fallback mechanism, this should successfully load default configuration
 func TestLoadInvalidYAML(t *testing.T) {
+	// Clear environment variables to ensure clean test
+	envVars := []string{
+		EnvConfigProvider, EnvConfigModel, EnvConfigAPIModelID,
+		EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
+	}
+	for _, envVar := range envVars {
+		if err := os.Unsetenv(envVar); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+		}
+	}
+
 	// Create a temporary file with invalid YAML
 	tmpFile, err := os.CreateTemp("", "invalid-*.yaml")
 	if err != nil {
@@ -238,14 +251,46 @@ func TestLoadInvalidYAML(t *testing.T) {
 	}
 	defer func() { loader.GetConfigPath = origGetConfigPath }()
 
-	_, err = loader.Load()
-	if err == nil {
-		t.Fatal("Expected error when loading invalid YAML, got nil")
+	// With enhanced fallback behavior, this should succeed by falling back to default configuration
+	config, err := loader.Load()
+	if err != nil {
+		t.Fatalf("Expected successful fallback loading, got error: %v", err)
 	}
 
-	// Check that the error message contains "invalid YAML"
-	if err.Error() == "" {
-		t.Errorf("Error message should indicate invalid YAML: %v", err)
+	// Verify fallback to default configuration
+	if config == nil {
+		t.Fatal("Expected valid configuration after fallback, got nil")
+	}
+
+	// Verify it's using default configuration (not the invalid YAML)
+	if len(config.Models) == 0 {
+		t.Error("Expected default models in fallback configuration")
+	}
+
+	// Check that the default configuration has expected structure
+	if len(config.APIKeySources) == 0 {
+		t.Error("Expected API key sources in default configuration")
+	}
+	if len(config.Providers) == 0 {
+		t.Error("Expected providers in default configuration")
+	}
+
+	// Verify we have the expected number of default models (3)
+	if len(config.Models) != 3 {
+		t.Errorf("Expected 3 models in default configuration, got %d", len(config.Models))
+	}
+
+	// Check that it includes expected providers
+	expectedProviders := map[string]bool{"openai": false, "gemini": false, "openrouter": false}
+	for _, provider := range config.Providers {
+		if _, exists := expectedProviders[provider.Name]; exists {
+			expectedProviders[provider.Name] = true
+		}
+	}
+	for providerName, found := range expectedProviders {
+		if !found {
+			t.Errorf("Expected provider '%s' in default configuration", providerName)
+		}
 	}
 }
 
@@ -423,4 +468,113 @@ models:
 	}
 
 	// Token-related validation was removed in T036E
+}
+
+// TestLoadConfigPathError tests fallback behavior when GetConfigPath fails
+func TestLoadConfigPathError(t *testing.T) {
+	// Clear environment variables to ensure fallback to defaults
+	envVars := []string{
+		EnvConfigProvider, EnvConfigModel, EnvConfigAPIModelID,
+		EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
+	}
+	for _, envVar := range envVars {
+		if err := os.Unsetenv(envVar); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+		}
+	}
+
+	// Create a loader with a failing GetConfigPath method
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
+
+	// Mock GetConfigPath to return an error
+	loader.GetConfigPath = func() (string, error) {
+		return "", fmt.Errorf("simulated config path error: unable to determine home directory")
+	}
+
+	// With enhanced fallback, this should succeed by using default configuration
+	config, err := loader.Load()
+	if err != nil {
+		t.Fatalf("Expected successful fallback to default config when GetConfigPath fails, got error: %v", err)
+	}
+
+	// Verify we got valid default configuration
+	if config == nil {
+		t.Fatal("Expected valid default configuration after fallback")
+	}
+
+	// Verify it's the default configuration structure
+	if len(config.Models) != 3 {
+		t.Errorf("Expected 3 models in default configuration, got %d", len(config.Models))
+	}
+	if len(config.Providers) != 3 {
+		t.Errorf("Expected 3 providers in default configuration, got %d", len(config.Providers))
+	}
+	if len(config.APIKeySources) != 3 {
+		t.Errorf("Expected 3 API key sources in default configuration, got %d", len(config.APIKeySources))
+	}
+}
+
+// TestLoadCompleteEnvironmentOverride tests that environment variables work as complete fallback
+func TestLoadCompleteEnvironmentOverride(t *testing.T) {
+	// Set up complete environment configuration
+	if err := os.Setenv(EnvConfigProvider, "gemini"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigProvider, err)
+	}
+	if err := os.Setenv(EnvConfigModel, "env-override-model"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigModel, err)
+	}
+	if err := os.Setenv(EnvConfigAPIModelID, "gemini-env-test"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigAPIModelID, err)
+	}
+
+	// Clean up environment variables after test
+	defer func() {
+		envVars := []string{
+			EnvConfigProvider, EnvConfigModel, EnvConfigAPIModelID,
+			EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
+		}
+		for _, envVar := range envVars {
+			if err := os.Unsetenv(envVar); err != nil {
+				t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+			}
+		}
+	}()
+
+	// Create a loader with a failing GetConfigPath method
+	loader := &ConfigLoader{
+		Logger: logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel),
+	}
+
+	// Mock GetConfigPath to return an error, forcing environment fallback
+	loader.GetConfigPath = func() (string, error) {
+		return "", fmt.Errorf("simulated config path error")
+	}
+
+	// This should succeed using environment variable fallback
+	config, err := loader.Load()
+	if err != nil {
+		t.Fatalf("Expected successful load with environment fallback, got error: %v", err)
+	}
+
+	// Verify we got environment-based configuration
+	if config == nil {
+		t.Fatal("Expected valid configuration from environment variables")
+	}
+
+	if len(config.Models) != 1 {
+		t.Fatalf("Expected exactly 1 model from environment config, got %d", len(config.Models))
+	}
+
+	model := config.Models[0]
+	if model.Name != "env-override-model" {
+		t.Errorf("Expected model name 'env-override-model', got '%s'", model.Name)
+	}
+	if model.Provider != "gemini" {
+		t.Errorf("Expected provider 'gemini', got '%s'", model.Provider)
+	}
+	if model.APIModelID != "gemini-env-test" {
+		t.Errorf("Expected API model ID 'gemini-env-test', got '%s'", model.APIModelID)
+	}
 }
