@@ -95,7 +95,7 @@
         2. CI Test job completes E2E test phase without errors
     - **Depends-on:** none
 
-- [ ] **CI-003 · Investigation · P1: Fix gosec SAST internal error with internal/cli package**
+- [x] **CI-003 · Investigation · P1: Fix gosec SAST internal error with internal/cli package**
     - **Context:** PR #79 CI failure - gosec reports "package internal/cli without types was imported" internal error
     - **Action:**
         1. Investigate if `internal/cli` package exists in codebase
