@@ -79,6 +79,11 @@ DEBUG-*.md
 *_instructions.txt
 test_output_*.md
 
+# CI analysis and investigation files
+CI-FAILURE-*.md
+CI-RESOLUTION-*.md
+CI-ANALYSIS-*.md
+
 # Ward log files
 .ward-warnings.log
 
