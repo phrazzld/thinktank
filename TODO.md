@@ -63,6 +63,100 @@
         2. Confirm dependent jobs (lint, test, build) can start properly
     - **Depends-on:** none
 
+- [x] **CI-001 · Bugfix · P1: Fix TruffleHog duplicate --fail flag in security-gates.yml**
+    - **Context:** PR #79 CI failure - TruffleHog receives duplicate --fail flag causing "flag 'fail' cannot be repeated" error
+    - **Action:**
+        1. Edit `.github/workflows/security-gates.yml` line 115
+        2. Change `extra_args: --only-verified --fail` to `extra_args: --only-verified`
+        3. Remove duplicate --fail flag (TruffleHog action includes it by default)
+    - **Done-when:**
+        1. Secret Detection Scan job passes without flag conflict errors
+        2. TruffleHog still properly fails on actual secret detection
+        3. Security scanning pipeline fully operational
+    - **Verification:**
+        1. Run Secret Detection Scan job and verify success
+        2. Test with dummy secret to ensure scan still catches secrets
+    - **Depends-on:** none
+
+- [ ] **CI-002 · Infrastructure · P1: Create missing docker/e2e-test.Dockerfile for E2E testing**
+    - **Context:** PR #79 CI failure - Test job fails because `docker/e2e-test.Dockerfile` doesn't exist
+    - **Action:**
+        1. Create `docker/` directory if it doesn't exist
+        2. Create `docker/e2e-test.Dockerfile` with multi-stage Go build
+        3. Include Go environment, dependencies, and thinktank binary
+        4. Optimize for CI execution speed and environment isolation
+    - **Done-when:**
+        1. Docker image builds successfully in CI environment
+        2. Container can execute thinktank binary
+        3. E2E tests run successfully inside container
+        4. Test environment variables properly accessible
+    - **Verification:**
+        1. Local Docker build succeeds: `docker build -f docker/e2e-test.Dockerfile -t thinktank-e2e:latest .`
+        2. CI Test job completes E2E test phase without errors
+    - **Depends-on:** none
+
+- [ ] **CI-003 · Investigation · P1: Fix gosec SAST internal error with internal/cli package**
+    - **Context:** PR #79 CI failure - gosec reports "package internal/cli without types was imported" internal error
+    - **Action:**
+        1. Investigate if `internal/cli` package exists in codebase
+        2. Check for import cycles or missing build constraints
+        3. Test gosec locally with verbose output for debugging
+        4. Fix package structure issues or gosec configuration
+    - **Done-when:**
+        1. gosec completes analysis without internal errors
+        2. SAST report generated successfully (JSON + text formats)
+        3. Security findings properly categorized and actionable
+    - **Verification:**
+        1. Local gosec run: `gosec -fmt json -out gosec-report.json -severity medium ./...`
+        2. CI Static Application Security Testing job passes
+    - **Depends-on:** CI investigation to determine root cause
+
+- [ ] **CI-004 · Verification · P2: Verify Secret Detection Scan effectiveness after TruffleHog fix**
+    - **Context:** Ensure TruffleHog flag fix maintains security scanning effectiveness
+    - **Action:**
+        1. Run Secret Detection Scan job after CI-001 fix
+        2. Test scan with dummy secret to verify detection still works
+        3. Verify JSON and text reports generated correctly
+    - **Done-when:**
+        1. Scan passes on clean code without configuration errors
+        2. Scan properly detects and fails on test secrets
+        3. Security scanning maintains same effectiveness as before
+    - **Verification:**
+        1. CI Secret Detection Scan job shows green status
+        2. Test secret detection triggers proper failure behavior
+    - **Depends-on:** CI-001
+
+- [ ] **CI-005 · Verification · P2: Test Docker E2E build and execution in CI environment**
+    - **Context:** Validate Docker configuration works properly in CI after creating Dockerfile
+    - **Action:**
+        1. Monitor CI Test job after CI-002 implementation
+        2. Verify Docker image builds successfully
+        3. Ensure E2E tests execute properly in container
+        4. Check test output capture and environment variable access
+    - **Done-when:**
+        1. Docker build completes without errors in CI
+        2. E2E tests run successfully inside container
+        3. Test results properly reported back to CI
+    - **Verification:**
+        1. CI Test job passes E2E test phase
+        2. Container execution logs show successful test runs
+    - **Depends-on:** CI-002
+
+- [ ] **CI-006 · Verification · P2: Validate SAST scan completion after package fix**
+    - **Context:** Ensure gosec SAST analysis works properly after resolving internal/cli package issues
+    - **Action:**
+        1. Run Static Application Security Testing job after CI-003 fix
+        2. Verify gosec completes without internal errors
+        3. Check SAST report generation and findings categorization
+    - **Done-when:**
+        1. gosec analysis completes successfully
+        2. SAST reports generated in both JSON and text formats
+        3. Security findings properly actionable and accurate
+    - **Verification:**
+        1. CI SAST job shows successful completion
+        2. Generated reports contain meaningful security analysis
+    - **Depends-on:** CI-003
+
 ## HIGH PRIORITY ISSUES (Fix in Next Sprint)
 
 - [x] **T004 · Bugfix · P2: Fix race conditions in benchmark tests**
@@ -94,3 +188,36 @@
         1. Verify correlation IDs appear in file operation audit logs
         2. Test context deadline propagation through file operations
     - **Depends-on:** none
+
+## MAINTENANCE TASKS (Lower Priority)
+
+- [ ] **CI-007 · Enhancement · P3: Add CI configuration validation to pre-commit hooks**
+    - **Context:** Prevent future CI configuration errors like duplicate flags or missing files
+    - **Action:**
+        1. Create validation script for GitHub Actions workflow files
+        2. Check for common configuration issues (duplicate flags, missing files)
+        3. Add script to pre-commit hooks configuration
+        4. Document validation rules and how to extend them
+    - **Done-when:**
+        1. Pre-commit hook validates workflow syntax and references
+        2. Common configuration errors caught before commit
+        3. Documentation explains validation rules
+    - **Verification:**
+        1. Pre-commit hook catches intentional configuration errors
+        2. Valid configurations pass validation without issues
+    - **Depends-on:** CI-001, CI-002, CI-003
+
+- [ ] **CI-008 · Cleanup · P3: Remove temporary CI analysis files**
+    - **Context:** Clean up analysis files created during CI failure investigation
+    - **Action:**
+        1. Remove CI-FAILURE-SUMMARY.md after issues resolved
+        2. Remove CI-RESOLUTION-PLAN.md after implementation complete
+        3. Update .gitignore if needed to prevent future temporary files
+    - **Done-when:**
+        1. Temporary analysis files removed from repository
+        2. CI issues fully resolved and verified
+        3. No temporary investigation artifacts remain
+    - **Verification:**
+        1. Files no longer present in repository
+        2. All CI jobs passing consistently
+    - **Depends-on:** CI-004, CI-005, CI-006
