@@ -98,7 +98,9 @@ func TestConfigurationLoadingEnvironments(t *testing.T) {
 				EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
 			}
 			for _, envVar := range envVars {
-				os.Unsetenv(envVar)
+				if err := os.Unsetenv(envVar); err != nil {
+					t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+				}
 			}
 
 			var tmpFilePath string
@@ -109,7 +111,11 @@ func TestConfigurationLoadingEnvironments(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
-				defer os.Remove(tmpFile.Name())
+				defer func() {
+					if err := os.Remove(tmpFile.Name()); err != nil {
+						t.Errorf("Warning: Failed to remove temp file: %v", err)
+					}
+				}()
 				tmpFilePath = tmpFile.Name()
 
 				var configContent string
@@ -153,7 +159,9 @@ models:
 				if _, err := tmpFile.WriteString(configContent); err != nil {
 					t.Fatalf("Failed to write config file: %v", err)
 				}
-				tmpFile.Close()
+				if err := tmpFile.Close(); err != nil {
+					t.Errorf("Warning: Failed to close temp file: %v", err)
+				}
 			} else {
 				// Use non-existent file path
 				tmpFilePath = filepath.Join(os.TempDir(), "non-existent-config.yaml")
@@ -162,15 +170,29 @@ models:
 			// Setup environment configuration if needed
 			if tt.setupEnvConfig {
 				if tt.envConfigComplete {
-					os.Setenv(EnvConfigProvider, "openrouter")
-					os.Setenv(EnvConfigModel, "env-test-model")
-					os.Setenv(EnvConfigAPIModelID, "deepseek/deepseek-chat")
-					os.Setenv(EnvConfigContextWindow, "200000")
-					os.Setenv(EnvConfigMaxOutput, "16000")
-					os.Setenv(EnvConfigBaseURL, "https://openrouter.ai/api/v1")
+					if err := os.Setenv(EnvConfigProvider, "openrouter"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigProvider, err)
+					}
+					if err := os.Setenv(EnvConfigModel, "env-test-model"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigModel, err)
+					}
+					if err := os.Setenv(EnvConfigAPIModelID, "deepseek/deepseek-chat"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigAPIModelID, err)
+					}
+					if err := os.Setenv(EnvConfigContextWindow, "200000"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigContextWindow, err)
+					}
+					if err := os.Setenv(EnvConfigMaxOutput, "16000"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigMaxOutput, err)
+					}
+					if err := os.Setenv(EnvConfigBaseURL, "https://openrouter.ai/api/v1"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigBaseURL, err)
+					}
 				} else {
 					// Incomplete env config (missing required fields)
-					os.Setenv(EnvConfigProvider, "gemini")
+					if err := os.Setenv(EnvConfigProvider, "gemini"); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigProvider, err)
+					}
 					// Missing model name and API model ID
 				}
 			}
@@ -178,7 +200,9 @@ models:
 			// Clean up environment variables after test
 			defer func() {
 				for _, envVar := range envVars {
-					os.Unsetenv(envVar)
+					if err := os.Unsetenv(envVar); err != nil {
+						t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+					}
 				}
 			}()
 
@@ -519,18 +543,24 @@ func TestEnvironmentVariableOverrideCombinations(t *testing.T) {
 				EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
 			}
 			for _, envVar := range envVars {
-				os.Unsetenv(envVar)
+				if err := os.Unsetenv(envVar); err != nil {
+					t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+				}
 			}
 
 			// Set test environment variables
 			for key, value := range tt.envVars {
-				os.Setenv(key, value)
+				if err := os.Setenv(key, value); err != nil {
+					t.Errorf("Warning: Failed to set environment variable %s: %v", key, err)
+				}
 			}
 
 			// Clean up after test
 			defer func() {
 				for _, envVar := range envVars {
-					os.Unsetenv(envVar)
+					if err := os.Unsetenv(envVar); err != nil {
+						t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+					}
 				}
 			}()
 
@@ -652,11 +682,15 @@ func TestConfigurationErrorHandling(t *testing.T) {
 				EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
 			}
 			for _, envVar := range envVars {
-				os.Unsetenv(envVar)
+				if err := os.Unsetenv(envVar); err != nil {
+					t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+				}
 			}
 			defer func() {
 				for _, envVar := range envVars {
-					os.Unsetenv(envVar)
+					if err := os.Unsetenv(envVar); err != nil {
+						t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+					}
 				}
 			}()
 
@@ -666,13 +700,19 @@ func TestConfigurationErrorHandling(t *testing.T) {
 				if err != nil {
 					t.Fatalf("Failed to create temp file: %v", err)
 				}
-				defer os.Remove(tmpFile.Name())
+				defer func() {
+					if err := os.Remove(tmpFile.Name()); err != nil {
+						t.Errorf("Warning: Failed to remove temp file: %v", err)
+					}
+				}()
 				tmpFilePath = tmpFile.Name()
 
 				if _, err := tmpFile.WriteString(tt.fileContent); err != nil {
 					t.Fatalf("Failed to write to temp file: %v", err)
 				}
-				tmpFile.Close()
+				if err := tmpFile.Close(); err != nil {
+					t.Errorf("Warning: Failed to close temp file: %v", err)
+				}
 
 				// Set file permissions
 				if err := os.Chmod(tmpFilePath, tt.filePermission); err != nil {

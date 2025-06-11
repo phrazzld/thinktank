@@ -174,20 +174,26 @@ models:
 				"THINKTANK_CONFIG_CONTEXT_WINDOW", "THINKTANK_CONFIG_MAX_OUTPUT", "THINKTANK_CONFIG_BASE_URL",
 			}
 			for _, envVar := range envVarsToClean {
-				os.Unsetenv(envVar)
+				if err := os.Unsetenv(envVar); err != nil {
+					t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+				}
 			}
 
 			// Setup environment variables if specified
 			if tt.setupEnvVars != nil {
 				for key, value := range tt.setupEnvVars {
-					os.Setenv(key, value)
+					if err := os.Setenv(key, value); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", key, err)
+					}
 				}
 			}
 
 			// Clean up environment variables after test
 			defer func() {
 				for _, envVar := range envVarsToClean {
-					os.Unsetenv(envVar)
+					if err := os.Unsetenv(envVar); err != nil {
+						t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+					}
 				}
 			}()
 
@@ -198,13 +204,19 @@ models:
 				if err != nil {
 					t.Fatalf("Failed to create temp config file: %v", err)
 				}
-				defer os.Remove(tmpFile.Name())
+				defer func() {
+					if err := os.Remove(tmpFile.Name()); err != nil {
+						t.Errorf("Warning: Failed to remove temp file: %v", err)
+					}
+				}()
 				configPath = tmpFile.Name()
 
 				if _, err := tmpFile.WriteString(tt.configFileContent); err != nil {
 					t.Fatalf("Failed to write config file: %v", err)
 				}
-				tmpFile.Close()
+				if err := tmpFile.Close(); err != nil {
+					t.Errorf("Warning: Failed to close temp file: %v", err)
+				}
 			} else {
 				// Use non-existent path to simulate missing config file
 				configPath = filepath.Join(os.TempDir(), "non-existent-config.yaml")
@@ -415,19 +427,25 @@ models:
 				"THINKTANK_CONFIG_CONTEXT_WINDOW", "THINKTANK_CONFIG_MAX_OUTPUT", "THINKTANK_CONFIG_BASE_URL",
 			}
 			for _, envVar := range envVarsToClean {
-				os.Unsetenv(envVar)
+				if err := os.Unsetenv(envVar); err != nil {
+					t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+				}
 			}
 
 			// Set up environment variables
 			if scenario.envVars != nil {
 				for key, value := range scenario.envVars {
-					os.Setenv(key, value)
+					if err := os.Setenv(key, value); err != nil {
+						t.Errorf("Warning: Failed to set environment variable %s: %v", key, err)
+					}
 				}
 			}
 
 			defer func() {
 				for _, envVar := range envVarsToClean {
-					os.Unsetenv(envVar)
+					if err := os.Unsetenv(envVar); err != nil {
+						t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+					}
 				}
 			}()
 
@@ -436,12 +454,18 @@ models:
 			if err != nil {
 				t.Fatalf("Failed to create temp file: %v", err)
 			}
-			defer os.Remove(tmpFile.Name())
+			defer func() {
+				if err := os.Remove(tmpFile.Name()); err != nil {
+					t.Errorf("Warning: Failed to remove temp file: %v", err)
+				}
+			}()
 
 			if _, err := tmpFile.WriteString(scenario.configContent); err != nil {
 				t.Fatalf("Failed to write config: %v", err)
 			}
-			tmpFile.Close()
+			if err := tmpFile.Close(); err != nil {
+				t.Errorf("Warning: Failed to close temp file: %v", err)
+			}
 
 			// Create config loader with custom path
 			configLoader := &registry.ConfigLoader{

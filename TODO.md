@@ -2,6 +2,101 @@
 
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
+- [x] **E2E-006 · Bugfix · P1: Fix errcheck violations in config_integration_test.go**
+    - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for file operations in integration tests
+    - **Root Cause:** New integration test file missing error handling for `os.Remove()` and `tmpFile.Close()` calls
+    - **Error:** `internal/integration/config_integration_test.go:201:20: Error return value of 'os.Remove' not checked`
+    - **Action:**
+        1. Add error checking for `os.Remove(tmpFile.Name())` calls in test cleanup
+        2. Add error checking for `tmpFile.Close()` operations
+        3. Use `t.Errorf()` for non-critical cleanup errors to maintain test isolation
+        4. Use appropriate error reporting that doesn't break test flow
+    - **Done-when:**
+        1. All `os.Remove()` calls have error checking with `t.Errorf()` reporting
+        2. All `tmpFile.Close()` calls have error checking with `t.Errorf()` reporting
+        3. Local `golangci-lint run` passes for this file
+        4. Test functionality preserved (all tests still pass)
+    - **Verification:**
+        1. Run `golangci-lint run internal/integration/config_integration_test.go`
+        2. Run `go test ./internal/integration/ -v` to verify tests still pass
+        3. Check no new errcheck violations introduced
+    - **Depends-on:** none
+
+- [~] **E2E-007 · Bugfix · P1: Fix errcheck violations in config_comprehensive_test.go**
+    - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for environment variable operations
+    - **Root Cause:** New comprehensive test file missing error handling for `os.Setenv()` and `os.Unsetenv()` calls
+    - **Error:** `internal/registry/config_comprehensive_test.go:101:16: Error return value of 'os.Unsetenv' not checked`
+    - **Action:**
+        1. Add error checking for all `os.Setenv()` calls in test setup
+        2. Add error checking for all `os.Unsetenv()` calls in test cleanup
+        3. Use `t.Errorf()` for environment variable operation errors
+        4. Implement batch error handling for cleanup operations where appropriate
+    - **Done-when:**
+        1. All `os.Setenv()` calls have error checking with appropriate reporting
+        2. All `os.Unsetenv()` calls have error checking with appropriate reporting
+        3. Local `golangci-lint run` passes for this file
+        4. Test functionality preserved (all tests still pass)
+    - **Verification:**
+        1. Run `golangci-lint run internal/registry/config_comprehensive_test.go`
+        2. Run `go test ./internal/registry/ -v` to verify tests still pass
+        3. Check no new errcheck violations introduced
+    - **Depends-on:** none
+
+- [ ] **E2E-008 · Bugfix · P1: Fix errcheck violations in remaining test files**
+    - **Context:** Address any remaining errcheck violations in config_test.go and other affected files
+    - **Root Cause:** Missing error handling in test file operations and environment cleanup
+    - **Action:**
+        1. Scan all test files in registry package for errcheck violations
+        2. Fix any remaining `os.Remove()`, `tmpFile.Close()`, `os.Setenv()`, `os.Unsetenv()` violations
+        3. Ensure consistent error handling patterns across all test files
+        4. Verify no errcheck violations in core config.go file
+    - **Done-when:**
+        1. All errcheck violations resolved in test files
+        2. Consistent error handling patterns applied
+        3. Local `golangci-lint run` passes for entire codebase
+        4. All tests continue to pass
+    - **Verification:**
+        1. Run `golangci-lint run ./...` locally to check entire codebase
+        2. Run `go test ./...` to verify all tests still pass
+        3. Check CI logs show no errcheck violations
+    - **Depends-on:** E2E-006, E2E-007
+
+- [ ] **E2E-009 · Verification · P1: Validate complete CI pipeline success**
+    - **Context:** Verify that errcheck fixes resolve CI failures completely
+    - **Root Cause:** Ensure both "Lint and Format" and "Test" jobs pass after fixes
+    - **Action:**
+        1. Commit all errcheck violation fixes
+        2. Push changes to trigger CI pipeline
+        3. Monitor both "Lint and Format" and "Test" jobs for success
+        4. Verify no new linting violations introduced
+    - **Done-when:**
+        1. "Lint and Format" job passes with golangci-lint success
+        2. "Test" job passes with all tests successful
+        3. No errcheck violations reported in CI logs
+        4. All 14/14 CI checks pass
+    - **Verification:**
+        1. CI Status shows all green checkmarks
+        2. golangci-lint output shows no errcheck violations
+        3. Test suite completes successfully
+        4. No regression in other CI jobs
+    - **Depends-on:** E2E-008
+
+- [ ] **E2E-010 · Cleanup · P2: Remove CI analysis temporary files**
+    - **Context:** Clean up CI failure analysis files after successful resolution
+    - **Action:**
+        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
+        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
+        3. Verify no CI analysis artifacts remain in repository
+    - **Done-when:**
+        1. `CI-FAILURE-SUMMARY.md` removed from repository
+        2. `CI-RESOLUTION-PLAN.md` removed from repository
+        3. CI pipeline passing consistently
+    - **Verification:**
+        1. Files no longer present in git status
+        2. No temporary investigation artifacts remain
+        3. Clean repository state maintained
+    - **Depends-on:** E2E-009
+
 - [x] **E2E-001 · Bugfix · P1: Fix Docker E2E container configuration for models.yaml**
     - **Context:** E2E tests fail because Docker container missing models.yaml at `/home/thinktank/.config/thinktank/models.yaml`
     - **Root Cause:** Binary expects user config directory structure, but Docker container doesn't create it

@@ -37,7 +37,9 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 		EnvConfigContextWindow, EnvConfigMaxOutput, EnvConfigBaseURL,
 	}
 	for _, envVar := range envVars {
-		os.Unsetenv(envVar)
+		if err := os.Unsetenv(envVar); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", envVar, err)
+		}
 	}
 
 	// Create a temporary setup with a non-existent file path
@@ -94,21 +96,45 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 // TestLoadConfigFromEnvironment tests the Load function using environment variable configuration
 func TestLoadConfigFromEnvironment(t *testing.T) {
 	// Set up environment variables for testing
-	os.Setenv(EnvConfigProvider, "gemini")
-	os.Setenv(EnvConfigModel, "test-gemini-model")
-	os.Setenv(EnvConfigAPIModelID, "gemini-test-api-id")
-	os.Setenv(EnvConfigContextWindow, "500000")
-	os.Setenv(EnvConfigMaxOutput, "32000")
-	os.Setenv(EnvConfigBaseURL, "https://custom-api.example.com")
+	if err := os.Setenv(EnvConfigProvider, "gemini"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigProvider, err)
+	}
+	if err := os.Setenv(EnvConfigModel, "test-gemini-model"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigModel, err)
+	}
+	if err := os.Setenv(EnvConfigAPIModelID, "gemini-test-api-id"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigAPIModelID, err)
+	}
+	if err := os.Setenv(EnvConfigContextWindow, "500000"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigContextWindow, err)
+	}
+	if err := os.Setenv(EnvConfigMaxOutput, "32000"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigMaxOutput, err)
+	}
+	if err := os.Setenv(EnvConfigBaseURL, "https://custom-api.example.com"); err != nil {
+		t.Errorf("Warning: Failed to set environment variable %s: %v", EnvConfigBaseURL, err)
+	}
 
 	// Clean up environment variables after test
 	defer func() {
-		os.Unsetenv(EnvConfigProvider)
-		os.Unsetenv(EnvConfigModel)
-		os.Unsetenv(EnvConfigAPIModelID)
-		os.Unsetenv(EnvConfigContextWindow)
-		os.Unsetenv(EnvConfigMaxOutput)
-		os.Unsetenv(EnvConfigBaseURL)
+		if err := os.Unsetenv(EnvConfigProvider); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigProvider, err)
+		}
+		if err := os.Unsetenv(EnvConfigModel); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigModel, err)
+		}
+		if err := os.Unsetenv(EnvConfigAPIModelID); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigAPIModelID, err)
+		}
+		if err := os.Unsetenv(EnvConfigContextWindow); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigContextWindow, err)
+		}
+		if err := os.Unsetenv(EnvConfigMaxOutput); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigMaxOutput, err)
+		}
+		if err := os.Unsetenv(EnvConfigBaseURL); err != nil {
+			t.Errorf("Warning: Failed to unset environment variable %s: %v", EnvConfigBaseURL, err)
+		}
 	}()
 
 	// Create a temporary setup with a non-existent file path
