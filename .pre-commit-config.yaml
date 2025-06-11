@@ -45,6 +45,12 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: validate-ci-config
+        name: Validate GitHub Actions workflow configuration
+        entry: scripts/validate-ci-config.sh
+        language: script
+        files: ^\.github/workflows/.*\.(yml|yaml)$
+        pass_filenames: false
 
 # Post-commit hooks (run after successful commit)
 -   repo: local
