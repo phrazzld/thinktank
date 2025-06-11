@@ -22,7 +22,7 @@
         3. CI Test job passes E2E test phase
     - **Depends-on:** none
 
-- [ ] **E2E-002 · Verification · P1: Validate E2E tests pass after Docker configuration fix**
+- [~] **E2E-002 · Verification · P1: Validate E2E tests pass after Docker configuration fix**
     - **Context:** Verify that Docker configuration fix resolves CI failure completely
     - **Action:**
         1. Trigger CI run after E2E-001 implementation
