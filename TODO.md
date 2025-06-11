@@ -22,7 +22,7 @@
         3. Check no new errcheck violations introduced
     - **Depends-on:** none
 
-- [~] **E2E-007 · Bugfix · P1: Fix errcheck violations in config_comprehensive_test.go**
+- [x] **E2E-007 · Bugfix · P1: Fix errcheck violations in config_comprehensive_test.go**
     - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for environment variable operations
     - **Root Cause:** New comprehensive test file missing error handling for `os.Setenv()` and `os.Unsetenv()` calls
     - **Error:** `internal/registry/config_comprehensive_test.go:101:16: Error return value of 'os.Unsetenv' not checked`
@@ -42,7 +42,7 @@
         3. Check no new errcheck violations introduced
     - **Depends-on:** none
 
-- [ ] **E2E-008 · Bugfix · P1: Fix errcheck violations in remaining test files**
+- [x] **E2E-008 · Bugfix · P1: Fix errcheck violations in remaining test files**
     - **Context:** Address any remaining errcheck violations in config_test.go and other affected files
     - **Root Cause:** Missing error handling in test file operations and environment cleanup
     - **Action:**
@@ -61,7 +61,7 @@
         3. Check CI logs show no errcheck violations
     - **Depends-on:** E2E-006, E2E-007
 
-- [ ] **E2E-009 · Verification · P1: Validate complete CI pipeline success**
+- [x] **E2E-009 · Verification · P1: Validate complete CI pipeline success**
     - **Context:** Verify that errcheck fixes resolve CI failures completely
     - **Root Cause:** Ensure both "Lint and Format" and "Test" jobs pass after fixes
     - **Action:**
@@ -81,7 +81,7 @@
         4. No regression in other CI jobs
     - **Depends-on:** E2E-008
 
-- [ ] **E2E-010 · Cleanup · P2: Remove CI analysis temporary files**
+- [x] **E2E-010 · Cleanup · P2: Remove CI analysis temporary files**
     - **Context:** Clean up CI failure analysis files after successful resolution
     - **Action:**
         1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
