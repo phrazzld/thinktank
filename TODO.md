@@ -79,7 +79,7 @@
 
 ## ENHANCEMENT TASKS (Future Coverage Improvement)
 
-- [ ] **COV-IMPROVE-001 · Enhancement · P2: Improve test coverage in core business logic packages**
+- [~] **COV-IMPROVE-001 · Enhancement · P2: Improve test coverage in core business logic packages**
     - **Context:** Systematically improve coverage in highest priority packages (modelproc, orchestrator, registry)
     - **Action:**
         1. Add comprehensive unit tests for modelproc package (current: 60.2%, target: 85%)
