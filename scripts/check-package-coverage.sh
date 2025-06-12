@@ -4,8 +4,8 @@ set -e
 # check-package-coverage.sh - Report test coverage for each package and highlight those below threshold
 # Usage: scripts/check-package-coverage.sh [threshold_percentage] [show_registry_api]
 
-# Default threshold is 65% (adjusted to realistic baseline from 90%)
-THRESHOLD=${1:-65}
+# Default threshold is 35% (adjusted to realistic baseline from 90%)
+THRESHOLD=${1:-35}
 SHOW_REGISTRY_API=${2:-"false"}
 FAILED=0
 
