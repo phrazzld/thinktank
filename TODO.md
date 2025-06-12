@@ -42,7 +42,7 @@
         3. Per-package script passes with 70% threshold
     - **Depends-on:** COV-FIX-001
 
-- [~] **COV-FIX-003 · Verification · P1: Validate CI pipeline success after coverage fixes**
+- [x] **COV-FIX-003 · Verification · P1: Validate CI pipeline success after coverage fixes**
     - **Context:** Verify that script fix and threshold adjustment resolve CI coverage failure
     - **Root Cause:** Ensure both script bug fix and threshold adjustment work together
     - **Action:**
