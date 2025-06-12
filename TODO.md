@@ -82,10 +82,15 @@
 - [~] **COV-IMPROVE-001 · Enhancement · P2: Improve test coverage in core business logic packages**
     - **Context:** Systematically improve coverage in highest priority packages (modelproc, orchestrator, registry)
     - **Action:**
-        1. Add comprehensive unit tests for modelproc package (current: 60.2%, target: 85%)
+        1. Add comprehensive unit tests for modelproc package (current: 79.3%, target: 85%)
         2. Enhance orchestrator test coverage (current: 80.9%, target: 90%)
-        3. Improve registry package testing (current: 83.9%, target: 90%)
+        3. Improve registry package testing (current: 83.4%, target: 90%)
         4. Focus on error scenarios and edge cases
+    - **Progress:**
+        1. ✅ Added NewOrchestrator factory tests (0% → 100% coverage)
+        2. ✅ Added registry manager tests: SetGlobalManagerForTesting (0% → 100%), NewManager (66.7% → 100%), Initialize scenarios (45.8% → 54.2%)
+        3. ✅ Overall improvements: orchestrator +6.4%, registry +0.3%
+        4. 🔄 Remaining gaps: modelproc +5.7%, orchestrator +9.1%, registry +6.6%
     - **Done-when:**
         1. modelproc package reaches 85% coverage
         2. orchestrator package reaches 90% coverage
