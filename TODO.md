@@ -1,598 +1,205 @@
-# TODO - Coverage Quality Gate Resolution
+# Todo
 
-## MERGE BLOCKERS (Must Fix Before PR #79 Can Merge)
-
-- [x] **ARCH-FIX-001 · Blocker · P1: Remove duplicate FileWriter implementation missing audit logging**
-    - **Context:** Critical architectural regression and security vulnerability in cmd/thinktank/output.go
-    - **Root Cause:** A duplicate FileWriter implementation was created that bypasses the audit logging system
-    - **Error:** `/cmd/thinktank/output.go` (lines 1-66) implements FileWriter without AuditLogger, creating security gaps
+## Phase 0: Decisions & Setup
+- [x] **T001 · Chore · P1: decide on and document CI test API key management strategy**
+    - **Context:** Open Questions & Dependencies > 1. Test Environment Management
     - **Action:**
-        1. Delete the duplicate implementation files: `cmd/thinktank/output.go` and `cmd/thinktank/output_test.go`
-        2. Update any code in `cmd/thinktank/` to use the canonical FileWriter from `internal/thinktank/filewriter.go`
-        3. Ensure AuditLogger is properly injected when creating FileWriter instances
-        4. Verify all file operations are audit logged by checking audit log output
-    - **Done-when:**
-        1. Only one FileWriter implementation exists (in internal/thinktank/filewriter.go)
-        2. All file write operations generate audit log entries
-        3. Tests use the canonical FileWriter implementation
-        4. No duplicate interface definitions exist
-    - **Verification:**
-        1. Run `grep -r "type FileWriter interface" .` - should only find one in internal/thinktank/interfaces/interfaces.go
-        2. Run the CLI and verify audit logs are generated for file operations
-        3. Ensure all tests pass after removal
-    - **Depends-on:** none
-
-- [x] **CI-FIX-005 · Blocker · P1: Pin staticcheck version in security-gates.yml**
-    - **Context:** CI stability issue - staticcheck using @latest while other tools are version pinned
-    - **Root Cause:** Inconsistent version pinning strategy for CI tools
-    - **Error:** `.github/workflows/security-gates.yml:222` uses `staticcheck@latest`
+        1. Define the strategy for securely managing test API keys in the CI environment (e.g., using repository/organization secrets).
+        2. Document the setup process for developers and the CI configuration.
+        3. Formally confirm the plan's direction of using in-memory mocks for external HTTP APIs, not real provider APIs, in the standard test suite.
+    - **Done‑when:**
+        1. The key management and external service mocking strategy is documented in `TESTING.md` or a similar guide.
+    - **Depends‑on:** none
+- [ ] **T002 · Chore · P1: select and document the property-based testing library**
+    - **Context:** Open Questions & Dependencies > 2. Property-Based Testing Framework
     - **Action:**
-        1. Replace `go install honnef.co/go/tools/cmd/staticcheck@latest` with a specific version
-        2. Use the same version that's proven stable in the project (check other workflows or use v0.5.1)
-        3. Document the version update process in CI documentation
-    - **Done-when:**
-        1. staticcheck is pinned to a specific version like other tools
-        2. CI builds are reproducible with consistent tool versions
-        3. Version is documented for future updates
-    - **Verification:**
-        1. Check that security-gates.yml has no @latest tool installations
-        2. Trigger CI and verify staticcheck runs with pinned version
-        3. No unexpected new linting errors from version changes
-    - **Depends-on:** none
-
-## CRITICAL ISSUES (Must Fix Before Merge)
-
-- [x] **LINT-FIX-001 · Bugfix · P1: Fix errcheck violations in manager_comprehensive_test.go**
-    - **Context:** golangci-lint errcheck violations blocking CI pipeline - 9 missing error checks for OS operations in registry manager tests
-    - **Root Cause:** New comprehensive test file from COV-IMPROVE-002 missing error handling for `os.Chdir()`, `os.Setenv()`, and `os.Unsetenv()` calls
-    - **Error:** `internal/registry/manager_comprehensive_test.go` has 9 errcheck violations on lines 22, 23, 27, 30, 32, 65, 70, 129, 154
+        1. Evaluate Go property-based testing libraries (e.g., rapid, gopter) based on features and ease of integration.
+        2. Choose a library and document the decision with a brief rationale.
+    - **Done‑when:**
+        1. A library is selected and added to `go.mod`.
+        2. The choice is documented in `TESTING.md`.
+    - **Depends‑on:** none
+- [ ] **T003 · Chore · P2: decide and configure CI coverage measurement strategy**
+    - **Context:** Open Questions & Dependencies > 4. Coverage Measurement
     - **Action:**
-        1. Add error checking for all `os.Chdir()` calls using `t.Fatalf()` for critical setup, `t.Errorf()` for cleanup
-        2. Add error checking for all `os.Setenv()` calls using `t.Errorf()` for non-critical environment setup
-        3. Add error checking for all `os.Unsetenv()` calls using `t.Errorf()` for cleanup operations
-        4. Follow established error handling patterns from previous errcheck fixes (E2E-006, E2E-007, E2E-008)
-    - **Done-when:**
-        1. All 9 errcheck violations resolved in manager_comprehensive_test.go
-        2. Error handling uses appropriate `t.Fatalf()` vs `t.Errorf()` based on criticality
-        3. Test functionality preserved - all tests continue to pass
-        4. Local `golangci-lint run internal/registry/manager_comprehensive_test.go` passes
-    - **Verification:**
-        1. Run `golangci-lint run internal/registry/manager_comprehensive_test.go` to verify no errcheck violations
-        2. Run `go test ./internal/registry/ -v` to verify tests still pass
-        3. Check that environment manipulation tests work correctly with error handling
-    - **Depends-on:** none
+        1. Decide whether to exclude test utility packages (e.g., `internal/testutil`) from coverage threshold calculations.
+        2. Configure the CI job to calculate and report coverage according to the decided strategy.
+    - **Done‑when:**
+        1. The coverage measurement strategy is documented.
+        2. The CI configuration is updated to reflect the strategy.
+    - **Depends‑on:** none
 
-- [x] **LINT-FIX-002 · Bugfix · P1: Fix staticcheck violations by removing unnecessary type assertions**
-    - **Context:** golangci-lint staticcheck violations - 2 unnecessary type assertions to the same type
-    - **Root Cause:** Test code performs redundant type assertions where variables are already of the target type
-    - **Error:**
-        - `internal/registry/provider_registry_test.go:22` - `registry.(ProviderRegistry)` assertion unnecessary
-        - `internal/thinktank/orchestrator_factory_test.go:117` - `orchestrator.(thinktank.Orchestrator)` assertion unnecessary
+## Phase 1: Critical Foundations
+- [ ] **T004 · Feature · P0: implement `internal/testutil` package with basic helpers**
+    - **Context:** 1.1 Test Infrastructure Foundation
     - **Action:**
-        1. Remove unnecessary type assertion in provider_registry_test.go line 22
-        2. Remove unnecessary type assertion in orchestrator_factory_test.go line 117
-        3. Verify interface compliance through direct usage rather than explicit assertions
-        4. Ensure test functionality remains intact after removing assertions
-    - **Done-when:**
-        1. Both staticcheck violations resolved
-        2. Type assertion lines removed without breaking test logic
-        3. Interface compliance still verified through test functionality
-        4. Local `golangci-lint run` shows no staticcheck violations for these files
-    - **Verification:**
-        1. Run `golangci-lint run internal/registry/provider_registry_test.go internal/thinktank/orchestrator_factory_test.go`
-        2. Run `go test ./internal/registry/ ./internal/thinktank/ -v` to verify tests still pass
-        3. Confirm interface behavior is still properly tested
-    - **Depends-on:** none
-
-- [x] **LINT-FIX-003 · Verification · P1: Local verification with golangci-lint**
-    - **Context:** Verify all linting violations are resolved before committing fixes
-    - **Root Cause:** Ensure comprehensive fix of all 11 golangci-lint violations identified in CI
+        1. Create the `internal/testutil` package with `integration.go`.
+        2. Add helpers for common test tasks like creating temporary directories/files and ensuring their cleanup via `t.Cleanup`.
+    - **Done‑when:**
+        1. `internal/testutil/integration.go` exists with file/directory helpers.
+        2. Helpers are covered by their own unit tests.
+    - **Depends‑on:** none
+- [ ] **T005 · Feature · P0: implement in-memory HTTP server utility for mocking external APIs**
+    - **Context:** 1.1 Test Infrastructure Foundation > In-memory External System Implementations
     - **Action:**
-        1. Run `golangci-lint run --timeout=5m` on entire codebase to verify clean state
-        2. Run `golangci-lint run` on specific modified files to confirm targeted fixes
-        3. Verify no new linting violations introduced by error handling additions
-        4. Document any remaining violations and ensure they are pre-existing
-    - **Done-when:**
-        1. `golangci-lint run --timeout=5m` passes with no violations in modified files
-        2. All 11 originally identified violations are resolved
-        3. No new errcheck or staticcheck violations introduced
-        4. Clean golangci-lint output for entire codebase or documented exceptions
-    - **Verification:**
-        1. Run `golangci-lint run --timeout=5m` and verify exit code 0
-        2. Run `golangci-lint run internal/registry/ internal/thinktank/` for targeted verification
-        3. Compare output with original CI failure to confirm all issues addressed
-    - **Depends-on:** LINT-FIX-001, LINT-FIX-002
-
-- [x] **LINT-FIX-004 · Integration · P1: Functional verification and commit fixes**
-    - **Context:** Verify test functionality preserved and commit all linting fixes
-    - **Root Cause:** Ensure error handling additions don't break test behavior before committing
+        1. Create a helper function in `internal/testutil/providers.go` that sets up and tears down an `httptest.Server`.
+        2. The helper should allow test functions to easily define handlers for specific API endpoints to simulate provider responses (success, errors, malformed JSON, etc.).
+    - **Done‑when:**
+        1. A test can easily create a mock HTTP server to act as a provider's external API endpoint.
+    - **Depends‑on:** [T004]
+- [ ] **T006 · Feature · P0: implement test data factories for provider configs and API objects**
+    - **Context:** 1.1 Test Infrastructure Foundation > Test data factories for complex structures
     - **Action:**
-        1. Run full test suite to verify no functional regression
-        2. Run specific tests for modified files to confirm error handling works correctly
-        3. Verify test isolation and cleanup behavior still functions properly
-        4. Commit fixes with comprehensive conventional commit message
-    - **Done-when:**
-        1. Full test suite passes: `go test ./...` succeeds
-        2. Modified test files pass: `go test ./internal/registry/ ./internal/thinktank/` succeeds
-        3. Test isolation verified - environment manipulation tests don't affect others
-        4. Changes committed with clear description of fixes applied
-    - **Verification:**
-        1. Run `go test ./...` and verify all tests pass
-        2. Run modified tests in isolation to verify error handling behavior
-        3. Check git commit includes all fixed files with descriptive message
-    - **Depends-on:** LINT-FIX-003
-
-- [x] **LINT-FIX-005 · Monitoring · P1: Monitor CI pipeline success after fixes**
-    - **Context:** Verify CI pipeline passes after pushing linting fixes
-    - **Root Cause:** Ensure all golangci-lint violations resolved and no regression introduced
+        1. Implement a Test Data Builder/Factory pattern within `internal/testutil`.
+        2. Create factories for `ProviderConfig`, API requests (e.g., `ChatCompletionRequest`), and API responses.
+        3. Include methods for creating both valid and invalid data variations (e.g., `InvalidAPIKey()`, `InvalidTemperature()`).
+    - **Done‑when:**
+        1. Factories for core data structures are implemented and available for use in tests.
+    - **Depends‑on:** [T004]
+- [ ] **T007 · Feature · P1: implement `logutil.TestLogger` for structured test logging**
+    - **Context:** Logging & Observability Approach > Test Logging Strategy
     - **Action:**
-        1. Push committed fixes to trigger CI pipeline
-        2. Monitor "Lint and Format" job for successful completion
-        3. Monitor "Test" job for continued test success
-        4. Verify no new linting or test failures introduced
-    - **Done-when:**
-        1. "Lint and Format" job passes with golangci-lint success
-        2. "Test" job completes successfully with all tests passing
-        3. All CI checks pass (target: 11/11 successful)
-        4. No new violations or failures reported in CI logs
-    - **Verification:**
-        1. Check CI status shows all green checkmarks
-        2. Review "Lint and Format" job logs for clean golangci-lint output
-        3. Review "Test" job logs for successful test completion
-    - **Depends-on:** LINT-FIX-004
-
-- [x] **LINT-FIX-006 · Documentation · P3: Document error handling patterns for future development**
-    - **Context:** Prevent similar errcheck violations in future test development
-    - **Root Cause:** Need clear guidelines for error handling in test files to avoid CI failures
+        1. Create a `TestLogger` in a `logutil` package that captures structured logs in memory.
+        2. Implement methods to retrieve logs and assert that no error-level logs were captured during a test.
+        3. Use `t.Cleanup` in the logger's setup function to automatically fail tests that logged an error.
+    - **Done‑when:**
+        1. `logutil.TestLogger` is implemented and available for use in tests.
+    - **Depends‑on:** none
+- [ ] **T008 · Feature · P1: implement secure test configuration and API key handling helper**
+    - **Context:** Security & Configuration Considerations > API Key Management in Tests
     - **Action:**
-        1. Document error handling patterns for test files in development guidelines
-        2. Add examples of proper `t.Fatalf()` vs `t.Errorf()` usage for different scenarios
-        3. Document golangci-lint best practices for test development
-        4. Update pre-commit workflow documentation to include local linting
-    - **Done-when:**
-        1. Error handling patterns documented for test file development
-        2. Examples provided for OS operations, file operations, environment manipulation
-        3. golangci-lint integration documented in development workflow
-        4. Guidelines accessible to future developers
-    - **Verification:**
-        1. Review documentation for completeness and clarity
-        2. Verify examples match actual patterns used in fixed files
-        3. Confirm development workflow includes linting steps
-    - **Depends-on:** LINT-FIX-005
-
-- [x] **LINT-FIX-007 · Cleanup · P3: Remove CI analysis temporary files**
-    - **Context:** Clean up CI failure analysis files after successful resolution
+        1. Implement a `getTestAPIKey` helper function in `internal/testutil` that safely retrieves keys from environment variables.
+        2. The helper must check that the key is a test key (e.g., has a `test-` prefix) and skip the test if not provided.
+    - **Done‑when:**
+        1. `getTestAPIKey` function is implemented and used in provider tests.
+        2. Tests can securely access test-only API keys without hardcoding them.
+    - **Depends‑on:** [T001, T004]
+- [ ] **T009 · Test · P0: add integration tests for `internal/gemini` entry points to 85%+ coverage**
+    - **Context:** 1.2 Provider Entry Points (0% → 85%+)
     - **Action:**
-        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
-        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
-        3. Verify no CI analysis artifacts remain in repository
-    - **Done-when:**
-        1. `CI-FAILURE-SUMMARY.md` removed from repository
-        2. `CI-RESOLUTION-PLAN.md` removed from repository
-        3. CI pipeline passing consistently with all linting violations resolved
-    - **Verification:**
-        1. Files no longer present in git status
-        2. No temporary investigation artifacts remain
-        3. Clean repository state maintained
-    - **Depends-on:** LINT-FIX-005
-
-## CRITICAL ISSUES (Must Fix Before Merge)
-
-- [x] **COV-FIX-001 · Bugfix · P1: Fix per-package coverage script logic bug**
-    - **Context:** Per-package coverage script reports false positive "All packages meet 90% threshold" due to logic flaw in parsing go tool cover output
-    - **Root Cause:** Script searches for package-level "total:" lines that don't exist in `go tool cover -func` output format
-    - **Error:** `check-package-coverage.sh` always reports success regardless of actual per-package coverage
+        1. Add tests for `NewLLMClient`, `Close`, and `GetModelName` using the in-memory HTTP server.
+        2. Add unit tests for pure functions `mapSafetyRatings` and `toProviderSafety`.
+    - **Done‑when:**
+        1. All target functions are tested, achieving at least 85% coverage for their respective files.
+    - **Depends‑on:** [T005, T006]
+- [ ] **T010 · Test · P0: add integration tests for `internal/openai` entry points to 85%+ coverage**
+    - **Context:** 1.2 Provider Entry Points (0% → 85%+)
     - **Action:**
-        1. Fix script logic to calculate per-package coverage from function-level data
-        2. Update awk parsing to aggregate function coverage by package
-        3. Ensure script correctly identifies packages below threshold
-        4. Test script with known low-coverage packages to verify detection
-    - **Done-when:**
-        1. Script correctly identifies packages below threshold
-        2. Script reports accurate per-package coverage percentages
-        3. Local testing shows script catches actual coverage violations
-        4. Script output matches manual coverage analysis
-    - **Verification:**
-        1. Run `./scripts/check-package-coverage.sh 90` and verify it reports failing packages
-        2. Compare script output with `go tool cover -func=coverage.out` analysis
-        3. Test with packages known to be below 90% (fileutil, logutil, openai, gemini)
-    - **Depends-on:** none
-
-- [x] **COV-FIX-002 · Configuration · P1: Adjust coverage threshold to realistic level**
-    - **Context:** Current 90% coverage threshold is too aggressive for codebase state (actual coverage 66.8%)
-    - **Root Cause:** Quality gate set aspirationally rather than based on current coverage baseline
-    - **Error:** 14 of 22 packages below 90% threshold causing CI failure
+        1. Add tests for `createChatCompletion`, `createChatCompletionWithParams`, and `Close` using the in-memory HTTP server.
+    - **Done‑when:**
+        1. All target functions are tested, achieving at least 85% coverage for their respective files.
+    - **Depends‑on:** [T005, T006]
+- [ ] **T011 · Test · P0: add tests for `cmd/thinktank` flag parsing and input validation**
+    - **Context:** 1.3 Core Application Entry Points (0% → 80%+)
     - **Action:**
-        1. Update coverage threshold from 90% to 70% in CI configuration
-        2. Update threshold in check-coverage.sh script call
-        3. Update threshold in check-package-coverage.sh default value
-        4. Document threshold rationale and improvement plan
-    - **Done-when:**
-        1. CI uses 70% threshold for overall coverage check
-        2. Per-package script uses 70% threshold by default
-        3. CI pipeline passes with current coverage levels
-        4. Threshold change documented with improvement roadmap
-    - **Verification:**
-        1. CI coverage check passes with current codebase
-        2. Local `./scripts/check-coverage.sh 70` passes
-        3. Per-package script passes with 70% threshold
-    - **Depends-on:** COV-FIX-001
-
-- [x] **COV-FIX-003 · Verification · P1: Validate CI pipeline success after coverage fixes**
-    - **Context:** Verify that script fix and threshold adjustment resolve CI coverage failure
-    - **Root Cause:** Ensure both script bug fix and threshold adjustment work together
+        1. Add tests for `ParseFlags` and `ValidateInputs` covering valid cases, invalid cases, and edge cases.
+        2. If necessary, refactor `main()` to move core logic into a testable `run()` function that returns an error.
+    - **Done‑when:**
+        1. `ParseFlags` and `ValidateInputs` have at least 80% test coverage.
+    - **Depends‑on:** none
+- [ ] **T012 · Test · P0: add tests for `internal/thinktank` context and dry-run functions**
+    - **Context:** 1.3 Core Application Entry Points (0% → 80%+)
     - **Action:**
-        1. Commit coverage script fix and threshold adjustments
-        2. Push changes to trigger CI pipeline
-        3. Monitor coverage checks for successful completion
-        4. Verify accurate coverage reporting in CI logs
-    - **Done-when:**
-        1. "Test" job passes with updated coverage checks
-        2. Coverage script reports accurate per-package data
-        3. Overall coverage check passes with 70% threshold
-        4. All 14/14 CI checks pass
-    - **Verification:**
-        1. CI Status shows all green checkmarks
-        2. Coverage logs show realistic per-package percentages
-        3. No false positive coverage reporting
-    - **Depends-on:** COV-FIX-001, COV-FIX-002
+        1. Add unit tests for `GatherContext` using a temporary file system created with helpers from `testutil`.
+        2. Add unit tests for `DisplayDryRunInfo` to verify its output format by capturing stdout.
+    - **Done‑when:**
+        1. `GatherContext` and `DisplayDryRunInfo` have at least 80% test coverage.
+    - **Depends‑on:** [T004]
 
-- [x] **COV-FIX-004 · Cleanup · P3: Remove coverage analysis temporary files**
-    - **Context:** Clean up CI coverage failure analysis files after successful resolution
+## Phase 2: Core Business Logic
+- [ ] **T013 · Test · P1: add table-driven tests for `GenerateContent` parameter boundaries**
+    - **Context:** 2.1 Provider Implementation Completion > Parameter boundary testing
     - **Action:**
-        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
-        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
-        3. Verify no coverage analysis artifacts remain in repository
-    - **Done-when:**
-        1. `CI-FAILURE-SUMMARY.md` removed from repository
-        2. `CI-RESOLUTION-PLAN.md` removed from repository
-        3. CI pipeline passing consistently with realistic thresholds
-    - **Verification:**
-        1. Files no longer present in git status
-        2. No temporary investigation artifacts remain
-        3. Clean repository state maintained
-    - **Depends-on:** COV-FIX-003
-
-## ENHANCEMENT TASKS (Future Coverage Improvement)
-
-- [x] **COV-IMPROVE-001 · Enhancement · P2: Improve test coverage in core business logic packages**
-    - **Context:** Systematically improve coverage in highest priority packages (modelproc, registry)
+        1. For each provider, add table-driven tests for the `GenerateContent` method.
+        2. Test boundary conditions for parameters like `temperature` and `maxOutputTokens`, verifying that invalid values return errors.
+    - **Done‑when:**
+        1. Parameter validation for `GenerateContent` is comprehensively tested for all providers.
+    - **Depends‑on:** [T009, T010]
+- [ ] **T014 · Test · P1: add integration tests for `GenerateContent` API error scenarios**
+    - **Context:** 2.1 Provider Implementation Completion > Error scenario testing
     - **Action:**
-        1. Add comprehensive unit tests for modelproc package (current: 79.3%, target: 85%)
-        2. Improve registry package testing (current: 85.3%, target: 90%)
-        3. Focus on error scenarios and edge cases
-    - **Progress:**
-        1. ✅ Added NewOrchestrator factory tests (0% → 100% coverage)
-        2. ✅ Added registry manager tests: SetGlobalManagerForTesting (0% → 100%), NewManager (66.7% → 100%), Initialize scenarios (45.8% → 54.2%)
-        3. ✅ **COMPLETED**: modelproc package comprehensive tests (79.3% → 95.0%, target: 85%)
-        4. ✅ Added Process function error scenarios, response handling, file writing, and SanitizeFilename tests
-        5. ✅ **COMPLETED**: registry package comprehensive tests (85.3% → 95.3%, target: 90%)
-        6. ✅ Added provider registry tests, GetAvailableModels tests, CreateLLMClient error scenarios, Initialize fallback tests
-        7. ✅ **TASK COMPLETE**: Both core packages exceeded targets by significant margins
-    - **Done-when:**
-        1. ✅ modelproc package reaches 85% coverage (achieved: 95.0%, +10% above target)
-        2. ✅ registry package reaches 90% coverage (achieved: 95.3%, +5.3% above target)
-        3. ✅ All new tests pass and maintain existing functionality
-    - **Verification:**
-        1. ✅ Package coverage reports show improved percentages
-        2. ✅ All tests pass locally and in CI
-        3. ✅ No regression in other packages
-    - **Depends-on:** COV-FIX-003
-
-- [x] **COV-IMPROVE-002 · Enhancement · P3: Improve test coverage in infrastructure packages**
-    - **Context:** Enhance coverage in utility and infrastructure packages (fileutil, logutil)
+        1. For each provider, add tests for `GenerateContent` that use the in-memory HTTP server to simulate various API failures (4xx/5xx status codes, malformed JSON, network timeouts).
+    - **Done‑when:**
+        1. API error handling for `GenerateContent` is tested for all providers, ensuring errors are correctly propagated.
+    - **Depends‑on:** [T005, T009, T010]
+- [ ] **T015 · Feature · P2: implement property-based testing utilities and initial tests**
+    - **Context:** 2.1 Provider Implementation Completion > Property-based testing for content processing
     - **Action:**
-        1. Add unit tests for fileutil package (current: 44.0%, target: 75%)
-        2. Improve logutil test coverage (current: 48.4%, target: 70%)
-        3. Add integration tests for logging functionality
-        4. Test error handling and edge cases
-    - **Progress:**
-        1. ✅ **COMPLETED**: fileutil package comprehensive tests (44.0% → 98.5%, target: 75%)
-        2. ✅ Added MockLogger comprehensive tests with all logging methods and context handling
-        3. ✅ **COMPLETED**: logutil package comprehensive tests (48.4% → 76.1%, target: 70%)
-        4. ✅ Fixed BufferLogger slice sharing issue in WithContext method - used pointers for proper sharing
-        5. ✅ Added BufferLogger comprehensive tests with level filtering, context logging, concurrent access
-        6. ✅ Added TestLogger tests, comprehensive logutil package function tests
-        7. ✅ Fixed SecretDetectingLogger test to disable panic behavior for testing
-        8. ✅ **TASK COMPLETE**: Both infrastructure packages exceeded targets by significant margins
-    - **Done-when:**
-        1. ✅ fileutil package reaches 75% coverage (achieved: 98.5%, +23.5% above target)
-        2. ✅ logutil package reaches 70% coverage (achieved: 76.1%, +6.1% above target)
-        3. ✅ Enhanced error scenario testing
-        4. ✅ All utility functions properly tested
-    - **Verification:**
-        1. ✅ Package coverage reports show target percentages exceeded
-        2. ✅ Integration tests validate logging behavior
-        3. ✅ Error scenarios properly covered
-        4. ✅ All tests pass locally and in CI
-    - **Depends-on:** COV-IMPROVE-001
-
-## COMPLETED ISSUES
-
-## CRITICAL ISSUES (Must Fix Before Merge)
-
-- [x] **CI-FIX-001 · Bugfix · P1: Fix TestLoadInvalidYAML test failure due to configuration fallback behavior**
-    - **Context:** CI test failure in `TestLoadInvalidYAML` - test expects error when loading invalid YAML, but enhanced fallback logic (E2E-004) now gracefully falls back to default configuration
-    - **Root Cause:** Test expectation mismatch with new resilient configuration loading behavior implemented in E2E-004
-    - **Error:** `config_test.go:243: Expected error when loading invalid YAML, got nil`
+        1. Add the chosen PBT library to `go.mod` and create helper generators for project types in `internal/testutil/property_testing.go`.
+        2. Write an initial property-based test for a function like `processProviderResponse` to verify invariants (e.g., token counts are non-negative).
+    - **Done‑when:**
+        1. Utilities for property-based testing are available in `internal/testutil`.
+        2. An example property-based test is implemented and passes.
+    - **Depends‑on:** [T002]
+- [ ] **T016 · Test · P1: add tests for `thinktank.Execute` error handling paths**
+    - **Context:** 2.2 Core Logic Implementation > Execute() method error handling
     - **Action:**
-        1. Update `TestLoadInvalidYAML` logic to expect successful fallback loading instead of error
-        2. Verify test validates that fallback returns valid default configuration
-        3. Ensure test confirms invalid YAML is not used (fallback behavior working)
-        4. Update test comments to reflect new expected behavior
-    - **Done-when:**
-        1. `TestLoadInvalidYAML` passes by expecting successful fallback loading
-        2. Test validates that default configuration is returned when YAML is invalid
-        3. Test confirms fallback behavior is working as designed
-        4. Local `go test ./internal/registry/` passes
-    - **Verification:**
-        1. Run `go test -v -run TestLoadInvalidYAML ./internal/registry/`
-        2. Run `go test ./internal/registry/` to verify no regression
-        3. Confirm test logic aligns with E2E-004 fallback design
-    - **Depends-on:** none
-
-- [x] **CI-FIX-002 · Enhancement · P2: Add comprehensive error scenario testing for configuration loading**
-    - **Context:** Ensure robust error testing coverage after updating TestLoadInvalidYAML to validate fallback behavior
-    - **Root Cause:** Need to maintain error scenario coverage while supporting new fallback behavior
+        1. Add tests for the `thinktank.Execute` method that trigger various error conditions, such as provider errors or file I/O errors.
+        2. Verify that the correct errors are returned and logged.
+    - **Done‑when:**
+        1. Key error handling paths in `thinktank.Execute` are covered by tests.
+    - **Depends‑on:** [T012]
+- [ ] **T017 · Test · P1: add tests for `thinktank.Execute` file processing and dry run**
+    - **Context:** 2.2 Core Logic Implementation > Context gathering, Output directory, Dry run
     - **Action:**
-        1. Add test for genuine file permission errors that should fail
-        2. Add test for complete configuration failure scenarios (all fallbacks fail)
-        3. Add test for network/IO errors if applicable
-        4. Ensure error scenarios that should fail are properly covered
-    - **Done-when:**
-        1. New test cases cover legitimate error scenarios
-        2. Test coverage maintains robustness for genuine failure cases
-        3. All error scenario tests pass locally
-        4. Error testing complements fallback behavior testing
-    - **Verification:**
-        1. Run `go test ./internal/registry/ -v` to verify all new tests pass
-        2. Review test coverage for error scenarios
-        3. Ensure balance between fallback testing and error testing
-    - **Depends-on:** CI-FIX-001
+        1. Add tests for the `thinktank.Execute` happy path, using a temporary directory to provide inputs and verify that output files are created correctly.
+        2. Add tests for `thinktank.Execute` with the dry-run flag enabled, verifying correct info is logged and no files are written.
+    - **Done‑when:**
+        1. Core file processing, output management, and dry-run logic in `thinktank.Execute` is tested.
+    - **Depends‑on:** [T004, T012]
 
-- [x] **CI-FIX-003 · Verification · P1: Validate CI pipeline success after test fixes**
-    - **Context:** Verify that test logic updates resolve CI failures completely
-    - **Root Cause:** Ensure test fixes resolve the TestLoadInvalidYAML failure without breaking other tests
+## Phase 3: Integration & Completeness
+- [ ] **T018 · Test · P2: add integration tests for CLI flag parsing edge cases and exit codes**
+    - **Context:** 3.1 CLI Interface Completion
     - **Action:**
-        1. Commit test logic updates with clear conventional commit message
-        2. Push changes to trigger CI pipeline
-        3. Monitor Test job for successful completion
-        4. Verify no other tests are affected by changes
-    - **Done-when:**
-        1. "Test" job passes with all tests successful
-        2. TestLoadInvalidYAML no longer fails in CI
-        3. No regression in other test cases
-        4. All 14/14 CI checks pass
-    - **Verification:**
-        1. CI Status shows all green checkmarks
-        2. Test job output shows TestLoadInvalidYAML passing
-        3. No other test failures introduced
-        4. Configuration loading behavior works as expected
-    - **Depends-on:** CI-FIX-001, CI-FIX-002
-
-- [x] **CI-FIX-004 · Cleanup · P3: Remove CI analysis temporary files after resolution**
-    - **Context:** Clean up CI failure analysis files after successful test resolution
+        1. Using `os/exec` to run the compiled test binary, create tests for the full CLI workflow.
+        2. Test edge cases for flag combinations, invalid inputs, and verify the application exits with the correct status code.
+    - **Done‑when:**
+        1. CLI behavior for various flag combinations and error conditions is tested.
+    - **Depends‑on:** [T011]
+- [ ] **T019 · Test · P2: add tests for `orchestrator` logic**
+    - **Context:** 3.2 Orchestrator Logic
     - **Action:**
-        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
-        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
-        3. Verify no CI analysis artifacts remain in repository
-    - **Done-when:**
-        1. `CI-FAILURE-SUMMARY.md` removed from repository
-        2. `CI-RESOLUTION-PLAN.md` removed from repository
-        3. CI pipeline passing consistently
-    - **Verification:**
-        1. Files no longer present in git status
-        2. No temporary investigation artifacts remain
-        3. Clean repository state maintained
-    - **Depends-on:** CI-FIX-003
-
-## CRITICAL ISSUES (Must Fix Before Merge)
-
-- [x] **E2E-006 · Bugfix · P1: Fix errcheck violations in config_integration_test.go**
-    - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for file operations in integration tests
-    - **Root Cause:** New integration test file missing error handling for `os.Remove()` and `tmpFile.Close()` calls
-    - **Error:** `internal/integration/config_integration_test.go:201:20: Error return value of 'os.Remove' not checked`
+        1. Add unit tests for error classification, model management, and result processing functions in the `orchestrator` package.
+    - **Done‑when:**
+        1. Critical functions in the `orchestrator` package reach at least 90% test coverage.
+    - **Depends‑on:** none
+- [ ] **T020 · Test · P1: implement comprehensive end-to-end workflow integration test**
+    - **Context:** 3.3 Integration Test Suite
     - **Action:**
-        1. Add error checking for `os.Remove(tmpFile.Name())` calls in test cleanup
-        2. Add error checking for `tmpFile.Close()` operations
-        3. Use `t.Errorf()` for non-critical cleanup errors to maintain test isolation
-        4. Use appropriate error reporting that doesn't break test flow
-    - **Done-when:**
-        1. All `os.Remove()` calls have error checking with `t.Errorf()` reporting
-        2. All `tmpFile.Close()` calls have error checking with `t.Errorf()` reporting
-        3. Local `golangci-lint run` passes for this file
-        4. Test functionality preserved (all tests still pass)
-    - **Verification:**
-        1. Run `golangci-lint run internal/integration/config_integration_test.go`
-        2. Run `go test ./internal/integration/ -v` to verify tests still pass
-        3. Check no new errcheck violations introduced
-    - **Depends-on:** none
-
-- [x] **E2E-007 · Bugfix · P1: Fix errcheck violations in config_comprehensive_test.go**
-    - **Context:** golangci-lint errcheck violations blocking CI pipeline - missing error checks for environment variable operations
-    - **Root Cause:** New comprehensive test file missing error handling for `os.Setenv()` and `os.Unsetenv()` calls
-    - **Error:** `internal/registry/config_comprehensive_test.go:101:16: Error return value of 'os.Unsetenv' not checked`
+        1. Implement a test that executes the entire application workflow using real internal components and in-memory implementations for external systems.
+        2. The test should set up a test environment, execute the app, and verify the final observable outcomes (output files, audit logs).
+    - **Done‑when:**
+        1. An end-to-end test validating the primary success path of the application exists and passes.
+    - **Depends‑on:** [T017, T019]
+- [ ] **T021 · Test · P2: add integration test to verify correlation ID propagation**
+    - **Context:** Logging & Observability Approach > Test correlation ID propagation
     - **Action:**
-        1. Add error checking for all `os.Setenv()` calls in test setup
-        2. Add error checking for all `os.Unsetenv()` calls in test cleanup
-        3. Use `t.Errorf()` for environment variable operation errors
-        4. Implement batch error handling for cleanup operations where appropriate
-    - **Done-when:**
-        1. All `os.Setenv()` calls have error checking with appropriate reporting
-        2. All `os.Unsetenv()` calls have error checking with appropriate reporting
-        3. Local `golangci-lint run` passes for this file
-        4. Test functionality preserved (all tests still pass)
-    - **Verification:**
-        1. Run `golangci-lint run internal/registry/config_comprehensive_test.go`
-        2. Run `go test ./internal/registry/ -v` to verify tests still pass
-        3. Check no new errcheck violations introduced
-    - **Depends-on:** none
-
-- [x] **E2E-008 · Bugfix · P1: Fix errcheck violations in remaining test files**
-    - **Context:** Address any remaining errcheck violations in config_test.go and other affected files
-    - **Root Cause:** Missing error handling in test file operations and environment cleanup
+        1. Create an integration test that executes an operation spanning multiple components, injecting a `correlation_id` into the initial context.
+        2. Use the `logutil.TestLogger` to capture all logs and assert that every log entry contains the correct correlation ID.
+    - **Done‑when:**
+        1. Correlation ID propagation is verified by an automated test.
+    - **Depends‑on:** [T007, T020]
+- [ ] **T022 · Chore · P1: document established testing patterns and infrastructure usage**
+    - **Context:** Risk Matrix & Mitigation > 3. Pattern Documentation
     - **Action:**
-        1. Scan all test files in registry package for errcheck violations
-        2. Fix any remaining `os.Remove()`, `tmpFile.Close()`, `os.Setenv()`, `os.Unsetenv()` violations
-        3. Ensure consistent error handling patterns across all test files
-        4. Verify no errcheck violations in core config.go file
-    - **Done-when:**
-        1. All errcheck violations resolved in test files
-        2. Consistent error handling patterns applied
-        3. Local `golangci-lint run` passes for entire codebase
-        4. All tests continue to pass
-    - **Verification:**
-        1. Run `golangci-lint run ./...` locally to check entire codebase
-        2. Run `go test ./...` to verify all tests still pass
-        3. Check CI logs show no errcheck violations
-    - **Depends-on:** E2E-006, E2E-007
-
-- [x] **E2E-009 · Verification · P1: Validate complete CI pipeline success**
-    - **Context:** Verify that errcheck fixes resolve CI failures completely
-    - **Root Cause:** Ensure both "Lint and Format" and "Test" jobs pass after fixes
+        1. Create or update a `TESTING.md` document in the repository.
+        2. Document the core testing principles (no internal mocking) and provide clear examples for using the test infrastructure (`testutil`, data factories, etc.).
+    - **Done‑when:**
+        1. `TESTING.md` is created and populated with patterns established in Phase 1.
+    - **Depends‑on:** [T004, T005, T006]
+- [ ] **T023 · Chore · P1: coordinate with Issue #46 to enforce CI coverage thresholds**
+    - **Context:** External Dependencies > 1. Issue #46
     - **Action:**
-        1. Commit all errcheck violation fixes
-        2. Push changes to trigger CI pipeline
-        3. Monitor both "Lint and Format" and "Test" jobs for success
-        4. Verify no new linting violations introduced
-    - **Done-when:**
-        1. "Lint and Format" job passes with golangci-lint success
-        2. "Test" job passes with all tests successful
-        3. No errcheck violations reported in CI logs
-        4. All 14/14 CI checks pass
-    - **Verification:**
-        1. CI Status shows all green checkmarks
-        2. golangci-lint output shows no errcheck violations
-        3. Test suite completes successfully
-        4. No regression in other CI jobs
-    - **Depends-on:** E2E-008
+        1. Work with the owner of Issue #46 to configure the CI pipeline to fail if overall test coverage drops below 90% or if any critical package is below 90%.
+    - **Done‑when:**
+        1. CI pipeline enforces the 90% coverage target on pull requests.
+    - **Depends‑on:** [T003]
 
-- [x] **E2E-010 · Cleanup · P2: Remove CI analysis temporary files**
-    - **Context:** Clean up CI failure analysis files after successful resolution
-    - **Action:**
-        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
-        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
-        3. Verify no CI analysis artifacts remain in repository
-    - **Done-when:**
-        1. `CI-FAILURE-SUMMARY.md` removed from repository
-        2. `CI-RESOLUTION-PLAN.md` removed from repository
-        3. CI pipeline passing consistently
-    - **Verification:**
-        1. Files no longer present in git status
-        2. No temporary investigation artifacts remain
-        3. Clean repository state maintained
-    - **Depends-on:** E2E-009
-
-- [x] **E2E-001 · Bugfix · P1: Fix Docker E2E container configuration for models.yaml**
-    - **Context:** E2E tests fail because Docker container missing models.yaml at `/home/thinktank/.config/thinktank/models.yaml`
-    - **Root Cause:** Binary expects user config directory structure, but Docker container doesn't create it
-    - **Error:** `Failed to load configuration: configuration file not found at /home/thinktank/.config/thinktank/models.yaml`
-    - **Action:**
-        1. Modify `docker/e2e-test.Dockerfile` to create user config directory structure
-        2. Copy `config/models.yaml` to `/home/thinktank/.config/thinktank/models.yaml`
-        3. Set proper ownership with `chown -R thinktank:thinktank /home/thinktank`
-        4. Position changes after user creation but before switching to thinktank user
-    - **Done-when:**
-        1. Docker image builds successfully with config directory structure
-        2. `models.yaml` accessible to thinktank user in container at expected path
-        3. TestBasicExecution finds "Gathering context" and "Generating plan" outputs
-        4. E2E tests pass without configuration errors
-    - **Verification:**
-        1. Local Docker build: `docker build -f docker/e2e-test.Dockerfile -t thinktank-e2e:latest .`
-        2. Test config access: `docker run --rm thinktank-e2e:latest ls -la /home/thinktank/.config/thinktank/`
-        3. CI Test job passes E2E test phase
-    - **Depends-on:** none
-
-- [x] **E2E-002 · Verification · P1: Validate E2E tests pass after Docker configuration fix**
-    - **Context:** Verify that Docker configuration fix resolves CI failure completely
-    - **Action:**
-        1. Trigger CI run after E2E-001 implementation
-        2. Monitor Test job "Run E2E tests in Docker container" step
-        3. Verify TestBasicExecution passes with expected outputs
-        4. Confirm no exit code 4 configuration errors
-    - **Done-when:**
-        1. All CI checks pass (14/14)
-        2. Test job completes without failures
-        3. E2E test outputs include "Gathering context" and "Generating plan"
-        4. No configuration file not found errors in logs
-    - **Verification:**
-        1. CI Status shows all green checkmarks
-        2. E2E test logs show successful binary execution
-        3. Output file `output/gemini-test-model.md` created as expected
-    - **Depends-on:** E2E-001
-
-## CLEANUP TASKS
-
-- [x] **E2E-003 · Cleanup · P2: Remove temporary CI analysis files**
-    - **Context:** Clean up CI failure analysis files after resolution
-    - **Action:**
-        1. Remove `CI-FAILURE-SUMMARY.md` after E2E tests pass
-        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
-        3. Verify `.gitignore` patterns prevent future CI analysis file commits
-    - **Done-when:**
-        1. Temporary analysis files removed from repository
-        2. CI issues fully resolved and verified
-        3. No temporary investigation artifacts remain
-    - **Verification:**
-        1. Files no longer present in repository
-        2. All CI jobs passing consistently
-    - **Depends-on:** E2E-002
-
-## ENHANCEMENT TASKS (Future Improvements)
-
-- [x] **E2E-004 · Enhancement · P3: Add configuration fallback mechanisms**
-    - **Context:** Make application more resilient for containerized environments
-    - **Action:**
-        1. Add environment variable-based configuration override capability
-        2. Implement default configuration when file missing
-        3. Improve error messages for configuration issues
-        4. Add configuration validation and better diagnostics
-    - **Done-when:**
-        1. Application can run with environment-based config
-        2. Graceful handling when models.yaml missing
-        3. Clear error messages guide users on configuration setup
-        4. Both file-based and env-based config tested
-    - **Verification:**
-        1. Binary runs successfully with env vars instead of file
-        2. Helpful error messages when config invalid or missing
-        3. Backward compatibility maintained with existing config files
-    - **Depends-on:** E2E-002
-
-- [x] **E2E-005 · Testing · P3: Add comprehensive configuration testing**
-    - **Context:** Ensure robust configuration handling across scenarios
-    - **Action:**
-        1. Add tests for missing configuration file scenarios
-        2. Add tests for invalid configuration content
-        3. Add tests for environment variable overrides
-        4. Add tests for configuration loading in different environments
-    - **Done-when:**
-        1. Configuration edge cases covered by tests
-        2. Environment variable configuration tested
-        3. Error handling for config issues validated
-        4. Container vs local config loading tested
-    - **Verification:**
-        1. Test suite covers config loading scenarios
-        2. Tests pass in both local and container environments
-        3. Configuration errors properly caught and handled
-    - **Depends-on:** E2E-004
-
-## IMPLEMENTATION NOTES
-
-### Critical Path
-1. **E2E-001** (Docker fix) → **E2E-002** (Verification) → Merge ready
-2. **E2E-003** (Cleanup) → Post-merge cleanup
-
-### Enhancement Path
-3. **E2E-004** (Config robustness) → **E2E-005** (Testing) → Future releases
-
-### Key Files
-- `docker/e2e-test.Dockerfile` - Primary fix target
-- `config/models.yaml` - Source configuration file
-- `internal/e2e/cli_basic_test.go` - Test validation
-- `.github/workflows/ci.yml` - CI pipeline execution
-
-### Success Criteria
-- ✅ CI shows 14/14 checks passing
-- ✅ E2E tests complete successfully in Docker container
-- ✅ Configuration loading works in container environment
-- ✅ No regression in other test suites
+### Clarifications & Assumptions
+- [ ] **Issue:** Finalize decision on using real vs. mock LLM API calls for specific, non-default integration tests.
+    - **Context:** Open Questions & Dependencies > 3. Integration Test Scope
+    - **Blocking?:** no
+- [ ] **Issue:** Ensure compatibility with upcoming changes from Issue #62 (Testing Infrastructure Overhaul) and #65 (Gordian Simplification).
+    - **Context:** External Dependencies > 2. Issue #62, 3. Issue #65
+    - **Blocking?:** no
