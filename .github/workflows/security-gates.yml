@@ -219,7 +219,7 @@ jobs:
           echo "Installing SAST security analysis tools..."
 
           # Install staticcheck as primary SAST tool
-          go install honnef.co/go/tools/cmd/staticcheck@latest
+          go install honnef.co/go/tools/cmd/staticcheck@v0.5.1
 
           # Install gosec as secondary tool with fallback handling
           go install github.com/securego/gosec/v2/cmd/gosec@v2.18.2
