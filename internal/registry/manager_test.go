@@ -149,12 +149,18 @@ models:
 
 		// Set HOME to our temp directory for the test
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -174,12 +180,18 @@ models:
 
 		// Set HOME to our temp directory for the test
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -228,12 +240,18 @@ models:
 
 		// Set HOME to our temp directory for the test
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 

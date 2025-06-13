@@ -113,11 +113,7 @@ func TestNewOrchestrator(t *testing.T) {
 		t.Fatal("NewOrchestrator returned nil")
 	}
 
-	// Verify it implements the Orchestrator interface
-	_, ok := orchestrator.(thinktank.Orchestrator)
-	if !ok {
-		t.Fatal("NewOrchestrator did not return an object implementing Orchestrator interface")
-	}
+	// NewOrchestrator already returns Orchestrator type, no need to assert
 }
 
 func TestNewOrchestratorWithNilDependencies(t *testing.T) {

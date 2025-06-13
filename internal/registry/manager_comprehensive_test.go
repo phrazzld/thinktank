@@ -19,17 +19,29 @@ func TestInitialize_ErrorScenarios(t *testing.T) {
 
 		// Change to the temp directory so no config files can be found
 		originalWd, _ := os.Getwd()
-		os.Chdir(tempDir)
-		defer os.Chdir(originalWd)
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(originalWd); err != nil {
+				t.Errorf("Failed to restore working directory: %v", err)
+			}
+		}()
 
 		// Set HOME to the temp directory
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -62,12 +74,18 @@ func TestInitialize_ErrorScenarios(t *testing.T) {
 		}
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -121,12 +139,18 @@ func TestInitialize_ErrorScenarios(t *testing.T) {
 		}
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -151,16 +175,28 @@ func TestInstallDefaultConfig_ErrorScenarios(t *testing.T) {
 
 		// Change to an empty directory where no config exists
 		originalWd, _ := os.Getwd()
-		os.Chdir(tempDir)
-		defer os.Chdir(originalWd)
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(originalWd); err != nil {
+				t.Errorf("Failed to restore working directory: %v", err)
+			}
+		}()
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", tempDir)
+		if err := os.Setenv("HOME", tempDir); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 
@@ -198,16 +234,28 @@ func TestInstallDefaultConfig_ErrorScenarios(t *testing.T) {
 		}
 
 		originalWd, _ := os.Getwd()
-		os.Chdir(tempDir)
-		defer os.Chdir(originalWd)
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Failed to change to temp directory: %v", err)
+		}
+		defer func() {
+			if err := os.Chdir(originalWd); err != nil {
+				t.Errorf("Failed to restore working directory: %v", err)
+			}
+		}()
 
 		originalHome := os.Getenv("HOME")
-		os.Setenv("HOME", filepath.Join(readOnlyDir, "subdir")) // Point to non-creatable location
+		if err := os.Setenv("HOME", filepath.Join(readOnlyDir, "subdir")); err != nil {
+			t.Errorf("Failed to set HOME environment variable: %v", err)
+		}
 		defer func() {
 			if originalHome != "" {
-				os.Setenv("HOME", originalHome)
+				if err := os.Setenv("HOME", originalHome); err != nil {
+					t.Errorf("Failed to restore HOME environment variable: %v", err)
+				}
 			} else {
-				os.Unsetenv("HOME")
+				if err := os.Unsetenv("HOME"); err != nil {
+					t.Errorf("Failed to unset HOME environment variable: %v", err)
+				}
 			}
 		}()
 

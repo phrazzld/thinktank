@@ -2,6 +2,142 @@
 
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
+- [x] **LINT-FIX-001 · Bugfix · P1: Fix errcheck violations in manager_comprehensive_test.go**
+    - **Context:** golangci-lint errcheck violations blocking CI pipeline - 9 missing error checks for OS operations in registry manager tests
+    - **Root Cause:** New comprehensive test file from COV-IMPROVE-002 missing error handling for `os.Chdir()`, `os.Setenv()`, and `os.Unsetenv()` calls
+    - **Error:** `internal/registry/manager_comprehensive_test.go` has 9 errcheck violations on lines 22, 23, 27, 30, 32, 65, 70, 129, 154
+    - **Action:**
+        1. Add error checking for all `os.Chdir()` calls using `t.Fatalf()` for critical setup, `t.Errorf()` for cleanup
+        2. Add error checking for all `os.Setenv()` calls using `t.Errorf()` for non-critical environment setup
+        3. Add error checking for all `os.Unsetenv()` calls using `t.Errorf()` for cleanup operations
+        4. Follow established error handling patterns from previous errcheck fixes (E2E-006, E2E-007, E2E-008)
+    - **Done-when:**
+        1. All 9 errcheck violations resolved in manager_comprehensive_test.go
+        2. Error handling uses appropriate `t.Fatalf()` vs `t.Errorf()` based on criticality
+        3. Test functionality preserved - all tests continue to pass
+        4. Local `golangci-lint run internal/registry/manager_comprehensive_test.go` passes
+    - **Verification:**
+        1. Run `golangci-lint run internal/registry/manager_comprehensive_test.go` to verify no errcheck violations
+        2. Run `go test ./internal/registry/ -v` to verify tests still pass
+        3. Check that environment manipulation tests work correctly with error handling
+    - **Depends-on:** none
+
+- [x] **LINT-FIX-002 · Bugfix · P1: Fix staticcheck violations by removing unnecessary type assertions**
+    - **Context:** golangci-lint staticcheck violations - 2 unnecessary type assertions to the same type
+    - **Root Cause:** Test code performs redundant type assertions where variables are already of the target type
+    - **Error:**
+        - `internal/registry/provider_registry_test.go:22` - `registry.(ProviderRegistry)` assertion unnecessary
+        - `internal/thinktank/orchestrator_factory_test.go:117` - `orchestrator.(thinktank.Orchestrator)` assertion unnecessary
+    - **Action:**
+        1. Remove unnecessary type assertion in provider_registry_test.go line 22
+        2. Remove unnecessary type assertion in orchestrator_factory_test.go line 117
+        3. Verify interface compliance through direct usage rather than explicit assertions
+        4. Ensure test functionality remains intact after removing assertions
+    - **Done-when:**
+        1. Both staticcheck violations resolved
+        2. Type assertion lines removed without breaking test logic
+        3. Interface compliance still verified through test functionality
+        4. Local `golangci-lint run` shows no staticcheck violations for these files
+    - **Verification:**
+        1. Run `golangci-lint run internal/registry/provider_registry_test.go internal/thinktank/orchestrator_factory_test.go`
+        2. Run `go test ./internal/registry/ ./internal/thinktank/ -v` to verify tests still pass
+        3. Confirm interface behavior is still properly tested
+    - **Depends-on:** none
+
+- [x] **LINT-FIX-003 · Verification · P1: Local verification with golangci-lint**
+    - **Context:** Verify all linting violations are resolved before committing fixes
+    - **Root Cause:** Ensure comprehensive fix of all 11 golangci-lint violations identified in CI
+    - **Action:**
+        1. Run `golangci-lint run --timeout=5m` on entire codebase to verify clean state
+        2. Run `golangci-lint run` on specific modified files to confirm targeted fixes
+        3. Verify no new linting violations introduced by error handling additions
+        4. Document any remaining violations and ensure they are pre-existing
+    - **Done-when:**
+        1. `golangci-lint run --timeout=5m` passes with no violations in modified files
+        2. All 11 originally identified violations are resolved
+        3. No new errcheck or staticcheck violations introduced
+        4. Clean golangci-lint output for entire codebase or documented exceptions
+    - **Verification:**
+        1. Run `golangci-lint run --timeout=5m` and verify exit code 0
+        2. Run `golangci-lint run internal/registry/ internal/thinktank/` for targeted verification
+        3. Compare output with original CI failure to confirm all issues addressed
+    - **Depends-on:** LINT-FIX-001, LINT-FIX-002
+
+- [ ] **LINT-FIX-004 · Integration · P1: Functional verification and commit fixes**
+    - **Context:** Verify test functionality preserved and commit all linting fixes
+    - **Root Cause:** Ensure error handling additions don't break test behavior before committing
+    - **Action:**
+        1. Run full test suite to verify no functional regression
+        2. Run specific tests for modified files to confirm error handling works correctly
+        3. Verify test isolation and cleanup behavior still functions properly
+        4. Commit fixes with comprehensive conventional commit message
+    - **Done-when:**
+        1. Full test suite passes: `go test ./...` succeeds
+        2. Modified test files pass: `go test ./internal/registry/ ./internal/thinktank/` succeeds
+        3. Test isolation verified - environment manipulation tests don't affect others
+        4. Changes committed with clear description of fixes applied
+    - **Verification:**
+        1. Run `go test ./...` and verify all tests pass
+        2. Run modified tests in isolation to verify error handling behavior
+        3. Check git commit includes all fixed files with descriptive message
+    - **Depends-on:** LINT-FIX-003
+
+- [ ] **LINT-FIX-005 · Monitoring · P1: Monitor CI pipeline success after fixes**
+    - **Context:** Verify CI pipeline passes after pushing linting fixes
+    - **Root Cause:** Ensure all golangci-lint violations resolved and no regression introduced
+    - **Action:**
+        1. Push committed fixes to trigger CI pipeline
+        2. Monitor "Lint and Format" job for successful completion
+        3. Monitor "Test" job for continued test success
+        4. Verify no new linting or test failures introduced
+    - **Done-when:**
+        1. "Lint and Format" job passes with golangci-lint success
+        2. "Test" job completes successfully with all tests passing
+        3. All CI checks pass (target: 11/11 successful)
+        4. No new violations or failures reported in CI logs
+    - **Verification:**
+        1. Check CI status shows all green checkmarks
+        2. Review "Lint and Format" job logs for clean golangci-lint output
+        3. Review "Test" job logs for successful test completion
+    - **Depends-on:** LINT-FIX-004
+
+- [ ] **LINT-FIX-006 · Documentation · P3: Document error handling patterns for future development**
+    - **Context:** Prevent similar errcheck violations in future test development
+    - **Root Cause:** Need clear guidelines for error handling in test files to avoid CI failures
+    - **Action:**
+        1. Document error handling patterns for test files in development guidelines
+        2. Add examples of proper `t.Fatalf()` vs `t.Errorf()` usage for different scenarios
+        3. Document golangci-lint best practices for test development
+        4. Update pre-commit workflow documentation to include local linting
+    - **Done-when:**
+        1. Error handling patterns documented for test file development
+        2. Examples provided for OS operations, file operations, environment manipulation
+        3. golangci-lint integration documented in development workflow
+        4. Guidelines accessible to future developers
+    - **Verification:**
+        1. Review documentation for completeness and clarity
+        2. Verify examples match actual patterns used in fixed files
+        3. Confirm development workflow includes linting steps
+    - **Depends-on:** LINT-FIX-005
+
+- [ ] **LINT-FIX-007 · Cleanup · P3: Remove CI analysis temporary files**
+    - **Context:** Clean up CI failure analysis files after successful resolution
+    - **Action:**
+        1. Remove `CI-FAILURE-SUMMARY.md` after CI passes
+        2. Remove `CI-RESOLUTION-PLAN.md` after implementation complete
+        3. Verify no CI analysis artifacts remain in repository
+    - **Done-when:**
+        1. `CI-FAILURE-SUMMARY.md` removed from repository
+        2. `CI-RESOLUTION-PLAN.md` removed from repository
+        3. CI pipeline passing consistently with all linting violations resolved
+    - **Verification:**
+        1. Files no longer present in git status
+        2. No temporary investigation artifacts remain
+        3. Clean repository state maintained
+    - **Depends-on:** LINT-FIX-005
+
+## CRITICAL ISSUES (Must Fix Before Merge)
+
 - [x] **COV-FIX-001 · Bugfix · P1: Fix per-package coverage script logic bug**
     - **Context:** Per-package coverage script reports false positive "All packages meet 90% threshold" due to logic flaw in parsing go tool cover output
     - **Root Cause:** Script searches for package-level "total:" lines that don't exist in `go tool cover -func` output format

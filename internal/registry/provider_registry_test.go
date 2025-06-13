@@ -18,11 +18,7 @@ func TestNewProviderRegistry(t *testing.T) {
 		t.Fatal("NewProviderRegistry returned nil")
 	}
 
-	// Verify it implements the ProviderRegistry interface
-	_, ok := registry.(ProviderRegistry)
-	if !ok {
-		t.Fatal("NewProviderRegistry did not return an object implementing ProviderRegistry interface")
-	}
+	// NewProviderRegistry already returns ProviderRegistry type, no need to assert
 }
 
 // TestProviderRegistry_RegisterAndGetProvider tests provider registration and retrieval
