@@ -22,7 +22,7 @@
         3. Ensure all tests pass after removal
     - **Depends-on:** none
 
-- [ ] **CI-FIX-005 · Blocker · P1: Pin staticcheck version in security-gates.yml**
+- [x] **CI-FIX-005 · Blocker · P1: Pin staticcheck version in security-gates.yml**
     - **Context:** CI stability issue - staticcheck using @latest while other tools are version pinned
     - **Root Cause:** Inconsistent version pinning strategy for CI tools
     - **Error:** `.github/workflows/security-gates.yml:222` uses `staticcheck@latest`
