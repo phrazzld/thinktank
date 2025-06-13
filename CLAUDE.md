@@ -15,6 +15,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   * Per-package report: `./scripts/check-package-coverage.sh [threshold]`
 * **Format Code:** `go fmt ./...`
 * **Lint Code:** `go vet ./...`
+* **Run golangci-lint:** `golangci-lint run ./...` (catches errcheck, staticcheck, and other violations)
 
 ## Go Style Guidelines
 
@@ -36,6 +37,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **No Secrets in Code:** Use environment variables or designated secret managers
 * **Structured Logging:** Use the project's standard structured logging library
 * **Pre-commit Quality:** All code must pass tests, lint, and format checks
+  * Run `golangci-lint run ./...` before committing to catch violations early
+  * Fix all errcheck violations - never ignore errors with `_`
 * **Cross-Package Testing:** Focus on robust integration tests over unit tests
 * **Test Coverage:** Maintain 90% or higher code coverage for all packages
   * CI will fail if overall coverage drops below 90%

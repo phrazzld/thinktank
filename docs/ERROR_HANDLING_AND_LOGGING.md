@@ -15,6 +15,12 @@ This document describes the standardized approach to error handling and logging 
   - [Correlation IDs](#correlation-ids)
   - [Stream Separation](#stream-separation)
   - [Logging Patterns](#logging-patterns)
+- [Error Handling in Test Files](#error-handling-in-test-files)
+  - [golangci-lint errcheck Compliance](#golangci-lint-errcheck-compliance)
+  - [When to Use t.Fatalf() vs t.Errorf()](#when-to-use-tfatalf-vs-terrorf)
+  - [Common Patterns for Test Error Handling](#common-patterns-for-test-error-handling)
+  - [Pre-commit and CI Integration](#pre-commit-and-ci-integration)
+  - [Best Practices Summary](#best-practices-summary)
 
 ## Error Handling
 
@@ -310,3 +316,171 @@ Follow these practices for effective logging:
    - Full request/response bodies that might contain sensitive data
 
 For proper sanitization of sensitive information, use the `SanitizingLogger` which automatically removes API keys and other sensitive information from log messages.
+
+## Error Handling in Test Files
+
+Test files require special attention to error handling to ensure CI pipeline compliance and proper test behavior. This section outlines best practices for handling errors in Go test files.
+
+### golangci-lint errcheck Compliance
+
+The `errcheck` linter enforces that all error return values are checked. This is particularly important in test files where unchecked errors can lead to false positives or incomplete test coverage.
+
+### When to Use t.Fatalf() vs t.Errorf()
+
+Choose the appropriate error reporting method based on the criticality of the operation:
+
+#### Use `t.Fatalf()` for Critical Setup Operations
+
+Use `t.Fatalf()` when the error prevents the test from continuing meaningfully:
+
+```go
+// Critical setup that must succeed for the test to be valid
+tempDir := t.TempDir()
+configDir := filepath.Join(tempDir, ".config", "thinktank")
+err := os.MkdirAll(configDir, 0755)
+if err != nil {
+    t.Fatalf("Failed to create test config directory: %v", err)
+}
+
+// Changing working directory - critical for test isolation
+originalWd, err := os.Getwd()
+if err != nil {
+    t.Fatalf("Failed to get current working directory: %v", err)
+}
+if err := os.Chdir(tempDir); err != nil {
+    t.Fatalf("Failed to change to temp directory: %v", err)
+}
+```
+
+#### Use `t.Errorf()` for Cleanup Operations
+
+Use `t.Errorf()` for operations that should succeed but won't invalidate the test if they fail:
+
+```go
+// Cleanup in defer - use t.Errorf() to report but not fail the test
+defer func() {
+    if err := os.Chdir(originalWd); err != nil {
+        t.Errorf("Failed to restore working directory: %v", err)
+    }
+}()
+
+// Environment variable restoration
+defer func() {
+    if originalHome != "" {
+        if err := os.Setenv("HOME", originalHome); err != nil {
+            t.Errorf("Failed to restore HOME environment variable: %v", err)
+        }
+    } else {
+        if err := os.Unsetenv("HOME"); err != nil {
+            t.Errorf("Failed to unset HOME environment variable: %v", err)
+        }
+    }
+}()
+```
+
+### Common Patterns for Test Error Handling
+
+#### 1. Environment Variable Manipulation
+
+Always check errors when setting or unsetting environment variables:
+
+```go
+// Save original value
+originalHome := os.Getenv("HOME")
+
+// Set new value with error checking
+if err := os.Setenv("HOME", tempDir); err != nil {
+    t.Errorf("Failed to set HOME environment variable: %v", err)
+}
+
+// Restore in defer with proper error handling
+defer func() {
+    if originalHome != "" {
+        if err := os.Setenv("HOME", originalHome); err != nil {
+            t.Errorf("Failed to restore HOME environment variable: %v", err)
+        }
+    } else {
+        if err := os.Unsetenv("HOME"); err != nil {
+            t.Errorf("Failed to unset HOME environment variable: %v", err)
+        }
+    }
+}()
+```
+
+#### 2. File Operations
+
+Handle file operation errors appropriately:
+
+```go
+// File creation - usually critical
+err := os.WriteFile(configFile, []byte(testConfig), 0644)
+if err != nil {
+    t.Fatalf("Failed to write test config file: %v", err)
+}
+
+// File removal in cleanup - non-critical
+defer func() {
+    if err := os.Remove(tempFile.Name()); err != nil {
+        t.Errorf("Failed to remove temporary file: %v", err)
+    }
+}()
+
+// File closing - should always be checked
+if err := tmpFile.Close(); err != nil {
+    t.Errorf("Failed to close temporary file: %v", err)
+}
+```
+
+#### 3. Directory Operations
+
+Handle directory changes carefully to maintain test isolation:
+
+```go
+// Save current directory
+originalWd, err := os.Getwd()
+if err != nil {
+    t.Fatalf("Failed to get current working directory: %v", err)
+}
+
+// Change directory with error checking
+if err := os.Chdir(tempDir); err != nil {
+    t.Fatalf("Failed to change to temp directory: %v", err)
+}
+
+// Always restore in defer
+defer func() {
+    if err := os.Chdir(originalWd); err != nil {
+        t.Errorf("Failed to restore working directory: %v", err)
+    }
+}()
+```
+
+### Pre-commit and CI Integration
+
+To prevent errcheck violations from reaching CI:
+
+1. **Run golangci-lint locally before committing**:
+   ```bash
+   golangci-lint run ./...
+   ```
+
+2. **Check specific packages after modifications**:
+   ```bash
+   golangci-lint run internal/registry/
+   ```
+
+3. **Fix all errcheck violations before pushing**:
+   - Never suppress errors with `_` unless absolutely necessary
+   - If an error truly can be ignored, document why with a comment
+   - Consider if the operation is actually necessary if the error doesn't matter
+
+### Best Practices Summary
+
+1. **Always check error returns** - Never ignore errors from OS operations, even in tests
+2. **Use appropriate error methods** - `t.Fatalf()` for critical setup, `t.Errorf()` for cleanup
+3. **Maintain test isolation** - Always restore original state (working directory, environment variables)
+4. **Document error handling decisions** - If an error is intentionally ignored, explain why
+5. **Run linters locally** - Catch errcheck violations before they reach CI
+6. **Follow existing patterns** - Consistency across the codebase makes maintenance easier
+
+By following these patterns, you'll avoid common errcheck violations and ensure your tests are robust, maintainable, and CI-compliant.
