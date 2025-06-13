@@ -30,7 +30,7 @@
     - **Depends‑on:** none
 
 ## Phase 1: Critical Foundations
-- [ ] **T004 · Feature · P0: implement `internal/testutil` package with basic helpers**
+- [x] **T004 · Feature · P0: implement `internal/testutil` package with basic helpers**
     - **Context:** 1.1 Test Infrastructure Foundation
     - **Action:**
         1. Create the `internal/testutil` package with `integration.go`.
@@ -39,7 +39,7 @@
         1. `internal/testutil/integration.go` exists with file/directory helpers.
         2. Helpers are covered by their own unit tests.
     - **Depends‑on:** none
-- [ ] **T005 · Feature · P0: implement in-memory HTTP server utility for mocking external APIs**
+- [x] **T005 · Feature · P0: implement in-memory HTTP server utility for mocking external APIs**
     - **Context:** 1.1 Test Infrastructure Foundation > In-memory External System Implementations
     - **Action:**
         1. Create a helper function in `internal/testutil/providers.go` that sets up and tears down an `httptest.Server`.
@@ -47,7 +47,7 @@
     - **Done‑when:**
         1. A test can easily create a mock HTTP server to act as a provider's external API endpoint.
     - **Depends‑on:** [T004]
-- [ ] **T006 · Feature · P0: implement test data factories for provider configs and API objects**
+- [x] **T006 · Feature · P0: implement test data factories for provider configs and API objects**
     - **Context:** 1.1 Test Infrastructure Foundation > Test data factories for complex structures
     - **Action:**
         1. Implement a Test Data Builder/Factory pattern within `internal/testutil`.
@@ -74,7 +74,7 @@
         1. `getTestAPIKey` function is implemented and used in provider tests.
         2. Tests can securely access test-only API keys without hardcoding them.
     - **Depends‑on:** [T001, T004]
-- [ ] **T009 · Test · P0: add integration tests for `internal/gemini` entry points to 85%+ coverage**
+- [x] **T009 · Test · P0: add integration tests for `internal/gemini` entry points to 85%+ coverage**
     - **Context:** 1.2 Provider Entry Points (0% → 85%+)
     - **Action:**
         1. Add tests for `NewLLMClient`, `Close`, and `GetModelName` using the in-memory HTTP server.
@@ -82,7 +82,7 @@
     - **Done‑when:**
         1. All target functions are tested, achieving at least 85% coverage for their respective files.
     - **Depends‑on:** [T005, T006]
-- [ ] **T010 · Test · P0: add integration tests for `internal/openai` entry points to 85%+ coverage**
+- [x] **T010 · Test · P0: add integration tests for `internal/openai` entry points to 85%+ coverage**
     - **Context:** 1.2 Provider Entry Points (0% → 85%+)
     - **Action:**
         1. Add tests for `createChatCompletion`, `createChatCompletionWithParams`, and `Close` using the in-memory HTTP server.

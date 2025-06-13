@@ -379,7 +379,8 @@ func GetErrorCategoryFromMessage(errMsg string) ErrorCategory {
 	// Check for token limit errors
 	if strings.Contains(lowerMsg, "token limit") ||
 		strings.Contains(lowerMsg, "tokens exceeds") ||
-		strings.Contains(lowerMsg, "maximum context length") {
+		strings.Contains(lowerMsg, "maximum context length") ||
+		strings.Contains(lowerMsg, "input too long") {
 		return CategoryInputLimit
 	}
 
