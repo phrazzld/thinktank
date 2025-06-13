@@ -90,7 +90,7 @@ func TestFileWriterContract(t *testing.T) {
 			}
 
 			// Execute test
-			err := fileWriter.SaveToFile(tc.content, tc.outputFile)
+			err := fileWriter.SaveToFile(context.Background(), tc.content, tc.outputFile)
 
 			// Check result
 			if (err != nil) != tc.wantErr {
@@ -139,7 +139,7 @@ func TestFileWriterContract(t *testing.T) {
 		// Write a file
 		outputFile := filepath.Join(tempDir, "audited.txt")
 		content := "Audited content"
-		err := auditedWriter.SaveToFile(content, outputFile)
+		err := auditedWriter.SaveToFile(context.Background(), content, outputFile)
 
 		// Verify write succeeded
 		if err != nil {
@@ -199,7 +199,7 @@ func TestFileWriterContract(t *testing.T) {
 		// Attempt to write a file
 		outputFile := filepath.Join(tempDir, "error.txt")
 		content := "Error content"
-		err := failingWriter.SaveToFile(content, outputFile)
+		err := failingWriter.SaveToFile(context.Background(), content, outputFile)
 
 		// Verify the file was written despite audit error
 		if err != nil {

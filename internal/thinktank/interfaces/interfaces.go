@@ -130,7 +130,7 @@ type ContextGatherer interface {
 // FileWriter defines the interface for file output writing
 type FileWriter interface {
 	// SaveToFile writes content to the specified file
-	SaveToFile(content, outputFile string) error
+	SaveToFile(ctx context.Context, content, outputFile string) error
 }
 
 // AuditLogger defines the interface for writing audit logs

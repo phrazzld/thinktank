@@ -129,6 +129,22 @@ func (r *Registry) GetModel(ctx context.Context, name string) (*ModelDefinition,
 	return &model, nil
 }
 
+// GetAvailableModels returns a slice of available model names
+func (r *Registry) GetAvailableModels(ctx context.Context) ([]string, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	r.logger.DebugContext(ctx, "Getting available models from registry")
+
+	modelNames := make([]string, 0, len(r.models))
+	for name := range r.models {
+		modelNames = append(modelNames, name)
+	}
+
+	r.logger.DebugContext(ctx, "Found %d available models", len(modelNames))
+	return modelNames, nil
+}
+
 // getAvailableModelsList returns a comma-separated list of available models
 func (r *Registry) getAvailableModelsList() string {
 	if len(r.models) == 0 {

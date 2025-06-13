@@ -93,7 +93,7 @@ func (m *mockAPIService) ValidateModelParameter(ctx context.Context, modelName, 
 
 type mockFileWriter struct {
 	writeFileFunc  func(path string, content string) error
-	saveToFileFunc func(content, outputFile string) error
+	saveToFileFunc func(ctx context.Context, content, outputFile string) error
 }
 
 func (m *mockFileWriter) WriteFile(path string, content string) error {
@@ -103,9 +103,9 @@ func (m *mockFileWriter) WriteFile(path string, content string) error {
 	return nil
 }
 
-func (m *mockFileWriter) SaveToFile(content, outputFile string) error {
+func (m *mockFileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	if m.saveToFileFunc != nil {
-		return m.saveToFileFunc(content, outputFile)
+		return m.saveToFileFunc(ctx, content, outputFile)
 	}
 	return nil
 }

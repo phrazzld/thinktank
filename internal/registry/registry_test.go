@@ -110,9 +110,9 @@ func TestLoadConfig(t *testing.T) {
 				},
 				Models: []ModelDefinition{
 					{
-						Name:       "gpt-4",
+						Name:       "gpt-4.1",
 						Provider:   "openai",
-						APIModelID: "gpt-4",
+						APIModelID: "gpt-4.1",
 						Parameters: map[string]ParameterDefinition{
 							"temperature": {Type: "float", Default: 0.7},
 						},
@@ -171,8 +171,8 @@ func TestLoadConfig(t *testing.T) {
 					t.Error("Expected 'openai' provider to be in the map")
 				}
 
-				if _, ok := registry.models["gpt-4"]; !ok {
-					t.Error("Expected 'gpt-4' model to be in the map")
+				if _, ok := registry.models["gpt-4.1"]; !ok {
+					t.Error("Expected 'gpt-4.1' model to be in the map")
 				}
 
 				// Check that a provider with BaseURL was added correctly

@@ -33,7 +33,7 @@ func (m *mockFileWriter) SetupFailure(path string, err error) {
 }
 
 // SaveToFile implements the interfaces.FileWriter interface
-func (m *mockFileWriter) SaveToFile(content, path string) error {
+func (m *mockFileWriter) SaveToFile(ctx context.Context, content, path string) error {
 	if path == m.failPath && m.failErr != nil {
 		return m.failErr
 	}

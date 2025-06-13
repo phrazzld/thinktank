@@ -1,4 +1,4 @@
-package thinktank
+package main
 
 import (
 	"context"

@@ -59,9 +59,17 @@ profile_data/
 
 # Build artifacts
 main
+quality-gates
 
 # Test files
 test.txt
+
+# Log files
+*.log
+override-audit.log
+
+# Dashboard temp files
+docs/quality-dashboard/workflow-runs.json
 
 # Glance files (temporary notes)
 **/glance.md
@@ -70,6 +78,19 @@ test.txt
 DEBUG-*.md
 *_instructions.txt
 test_output_*.md
+
+# CI analysis and investigation files
+CI-FAILURE-*.md
+CI-RESOLUTION-*.md
+CI-ANALYSIS-*.md
+CI-LINT-FAILURE-ANALYSIS.md
+
+# Temporary analysis and synthesis files
+CRITICAL-ANALYSIS-RESULTS.md
+MERGE-BLOCKERS-RESOLVED.md
+REVIEW-CONTEXT.md
+UNIFIED-SYNTHESIS.md
+SYNTHESIS-COMPARISON.md
 
 # Ward log files
 .ward-warnings.log
@@ -81,3 +102,4 @@ docs/prompts
 dev/
 
 **/.claude/settings.local.json
+coverage.out

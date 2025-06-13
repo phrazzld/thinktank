@@ -479,7 +479,7 @@ type BoundaryFileWriter struct {
 }
 
 // SaveToFile writes content to the specified file
-func (w *BoundaryFileWriter) SaveToFile(content, filePath string) error {
+func (w *BoundaryFileWriter) SaveToFile(ctx context.Context, content, filePath string) error {
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
 	if err := w.filesystem.MkdirAll(dir, 0750); err != nil {

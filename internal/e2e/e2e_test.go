@@ -8,10 +8,10 @@ package e2e
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,10 +20,15 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // thinktankBinaryPath stores the path to the compiled binary, set once in TestMain
 var thinktankBinaryPath string
+
+// logger provides structured logging for E2E tests
+var logger logutil.LoggerInterface
 
 const (
 	// Mock API responses
@@ -626,7 +631,15 @@ func findOrBuildBinary() (string, error) {
 	// Build command targeting the main package - explicitly set to the host OS/arch
 	fmt.Printf("Building binary for %s/%s\n", runtime.GOOS, runtime.GOARCH)
 
-	cmd := exec.Command("go", "build", "-o", buildOutput, "github.com/phrazzld/thinktank/cmd/thinktank")
+	// Build with explicit source files to avoid package conflicts with test files
+	sourceFiles := []string{
+		"cmd/thinktank/main.go",
+		"cmd/thinktank/cli.go",
+		"cmd/thinktank/api.go",
+		"cmd/thinktank/output.go",
+	}
+	cmdArgs := append([]string{"build", "-o", buildOutput}, sourceFiles...)
+	cmd := exec.Command("go", cmdArgs...)
 	cmd.Dir = projectRoot // Ensure the build runs from the project root
 
 	// Set appropriate environment variables to ensure binary is built for the current OS
@@ -695,15 +708,19 @@ func isRunningInGitHubActions() bool {
 // TestMain runs once before all tests in the package.
 // It finds or builds the thinktank binary needed for the tests.
 func TestMain(m *testing.M) {
+	// Initialize structured JSON logger for E2E tests with correlation ID support
+	ctx := logutil.WithCorrelationID(context.Background())
+	logger = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel).WithContext(ctx)
+
 	// Check if running in GitHub Actions
 	if isRunningInGitHubActions() {
-		fmt.Println("Running in GitHub Actions environment")
+		logger.InfoContext(ctx, "Running in GitHub Actions environment")
 
 		// In GitHub Actions, we expect the binary to be pre-built and symlinked by the workflow
 		// The binary should be in the project root, not in the current directory
 		projectRoot, err := filepath.Abs("../../") // Go up from internal/e2e to the project root
 		if err != nil {
-			log.Fatalf("FATAL: Failed to get project root path: %v", err)
+			logger.FatalContext(ctx, "Failed to get project root path", "error", err)
 		}
 
 		thinktankBinary := filepath.Join(projectRoot, "thinktank")
@@ -712,24 +729,32 @@ func TestMain(m *testing.M) {
 		}
 
 		thinktankBinaryPath = thinktankBinary
-		fmt.Printf("Using pre-built binary at: %s\n", thinktankBinaryPath)
+		logger.InfoContext(ctx, "Using pre-built binary for E2E tests", "binary_path", thinktankBinaryPath)
 
 		// Verify the binary exists and is executable
 		if _, err := os.Stat(thinktankBinaryPath); err != nil {
-			log.Fatalf("FATAL: Thinktank binary not found at %s: %v", thinktankBinaryPath, err)
+			logger.FatalContext(ctx, "Thinktank binary not found", "binary_path", thinktankBinaryPath, "error", err)
 		}
 	} else {
 		// For local development, find or build the binary
+		logger.InfoContext(ctx, "Running in local development environment")
 		var err error
 		thinktankBinaryPath, err = findOrBuildBinary()
 		if err != nil {
-			// Use log.Fatalf for cleaner exit on failure during setup
-			log.Fatalf("FATAL: Failed to find or build thinktank binary for E2E tests: %v", err)
+			logger.FatalContext(ctx, "Failed to find or build thinktank binary for E2E tests", "error", err)
 		}
 	}
 
 	// Run all tests in the package
+	logger.InfoContext(ctx, "Starting E2E test execution", "binary_path", thinktankBinaryPath)
 	exitCode := m.Run()
+
+	// Log test completion with results
+	if exitCode == 0 {
+		logger.InfoContext(ctx, "E2E tests completed successfully", "exit_code", exitCode)
+	} else {
+		logger.ErrorContext(ctx, "E2E tests completed with failures", "exit_code", exitCode)
+	}
 
 	// Perform any global cleanup here if needed
 	// Note: we don't remove the binary as it might be reused in subsequent test runs

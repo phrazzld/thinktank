@@ -174,6 +174,33 @@ func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
 	return ValidateConfigWithEnv(config, logger, os.Getenv)
 }
 
+// isStandardOpenAIModel checks if a model name corresponds to a standard OpenAI model
+// that requires an OpenAI API key, as opposed to custom models with similar prefixes
+func isStandardOpenAIModel(model string) bool {
+	lowerModel := strings.ToLower(model)
+
+	// Standard OpenAI models
+	standardModels := []string{
+		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini",
+		"gpt-3.5-turbo", "text-davinci-003", "text-davinci-002",
+		"davinci", "curie", "babbage", "ada",
+	}
+
+	// Check for exact matches or standard model patterns
+	for _, standard := range standardModels {
+		if lowerModel == standard || strings.HasPrefix(lowerModel, standard+"-") {
+			return true
+		}
+	}
+
+	// Also check for explicit openai references
+	if strings.Contains(lowerModel, "openai") {
+		return true
+	}
+
+	return false
+}
+
 // ValidateConfigWithEnv checks if the configuration is valid and returns an error if not.
 // This version takes a getenv function for easier testing by allowing environment variables
 // to be mocked.
@@ -222,11 +249,21 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 
 	// Check if any model is OpenAI, Gemini, or OpenRouter
 	for _, model := range config.ModelNames {
-		if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
-			strings.HasPrefix(strings.ToLower(model), "text-") ||
-			strings.Contains(strings.ToLower(model), "openai") {
+		if isStandardOpenAIModel(model) {
 			modelNeedsOpenAIKey = true
 		} else if strings.Contains(strings.ToLower(model), "openrouter") {
+			modelNeedsOpenRouterKey = true
+		} else {
+			// Default to Gemini for any other model
+			modelNeedsGeminiKey = true
+		}
+	}
+
+	// Also check synthesis model if specified
+	if config.SynthesisModel != "" {
+		if isStandardOpenAIModel(config.SynthesisModel) {
+			modelNeedsOpenAIKey = true
+		} else if strings.Contains(strings.ToLower(config.SynthesisModel), "openrouter") {
 			modelNeedsOpenRouterKey = true
 		} else {
 			// Default to Gemini for any other model

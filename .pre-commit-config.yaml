@@ -9,6 +9,18 @@ repos:
     -   id: check-added-large-files
         args: ['--maxkb=500']  # Stricter limit
 
+# Security scanning (secret detection)
+-   repo: https://github.com/trufflesecurity/trufflehog
+    rev: v3.89.0
+    hooks:
+    -   id: trufflehog
+        name: TruffleHog Secret Detection
+        description: Detect hardcoded secrets in code
+        entry: sh -c 'if command -v trufflehog >/dev/null 2>&1; then trufflehog git file://. --since-commit HEAD --only-verified --fail; else echo "⚠️  TruffleHog not installed locally - secret scanning will run in CI"; fi'
+        language: system
+        stages: [pre-commit]
+        always_run: true
+
 # Fast Go checks only
 -   repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
@@ -32,6 +44,12 @@ repos:
         entry: scripts/check-large-files.sh
         language: script
         types: [go]
+        pass_filenames: false
+    -   id: validate-ci-config
+        name: Validate GitHub Actions workflow configuration
+        entry: scripts/validate-ci-config.sh
+        language: script
+        files: ^\.github/workflows/.*\.(yml|yaml)$
         pass_filenames: false
 
 # Post-commit hooks (run after successful commit)

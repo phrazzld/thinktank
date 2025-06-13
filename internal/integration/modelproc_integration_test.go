@@ -425,7 +425,7 @@ type ModelProcFileWriter struct {
 	Files map[string]string
 }
 
-func (m *ModelProcFileWriter) SaveToFile(content, filePath string) error {
+func (m *ModelProcFileWriter) SaveToFile(ctx context.Context, content, filePath string) error {
 	m.Files[filePath] = content
 	return nil
 }

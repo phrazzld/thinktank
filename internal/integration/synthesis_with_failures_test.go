@@ -189,7 +189,7 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	savedFiles := make(map[string]string)
 	var filesMutex sync.Mutex
 	fileWriter := &MockFileWriter{
-		SaveToFileFunc: func(content, filePath string) error {
+		SaveToFileFunc: func(ctx context.Context, content, filePath string) error {
 			// Store the file content for verification with mutex protection
 			filesMutex.Lock()
 			savedFiles[filePath] = content

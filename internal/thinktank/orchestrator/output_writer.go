@@ -102,7 +102,7 @@ func (w *DefaultOutputWriter) SaveIndividualOutputs(
 
 		// Save the output to file
 		contextLogger.DebugContext(ctx, "Saving output for model %s to %s", modelName, outputFilePath)
-		if err := w.fileWriter.SaveToFile(content, outputFilePath); err != nil {
+		if err := w.fileWriter.SaveToFile(ctx, content, outputFilePath); err != nil {
 			contextLogger.ErrorContext(ctx, "Failed to save output for model %s: %v", modelName, err)
 			errorCount++
 		} else {
@@ -149,7 +149,7 @@ func (w *DefaultOutputWriter) SaveSynthesisOutput(
 
 	// Save the synthesis output to file
 	contextLogger.DebugContext(ctx, "Saving synthesis output to %s", outputFilePath)
-	if err := w.fileWriter.SaveToFile(content, outputFilePath); err != nil {
+	if err := w.fileWriter.SaveToFile(ctx, content, outputFilePath); err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to save synthesis output: %v", err)
 		return "", WrapOrchestratorError(
 			ErrOutputFileSaveFailed,

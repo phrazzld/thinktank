@@ -1,0 +1,200 @@
+name: Create Quality Gate Override Issue
+
+# Reusable workflow for creating technical debt issues when overrides are used
+on:
+  workflow_call:
+    inputs:
+      pr_number:
+        description: 'Pull request number where override was used'
+        required: true
+        type: string
+      override_author:
+        description: 'GitHub username who requested the override'
+        required: true
+        type: string
+      affected_gates:
+        description: 'Comma-separated list of bypassed quality gates'
+        required: true
+        type: string
+      override_reason:
+        description: 'Reason/justification for the override'
+        required: true
+        type: string
+      urgency_level:
+        description: 'Business urgency level (P0, P1, P2, etc.)'
+        required: false
+        type: string
+        default: 'P2'
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  create-issue:
+    name: Create Override Technical Debt Issue
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate audit information
+        id: audit
+        run: |
+          # Generate comprehensive audit trail
+          audit_info=$(cat << EOF
+          **Audit Trail:**
+          - **Timestamp**: $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          - **Repository**: ${{ github.repository }}
+          - **Workflow**: ${{ github.workflow }}
+          - **Run ID**: ${{ github.run_id }}
+          - **Triggering Event**: ${{ github.event_name }}
+          - **Branch**: ${{ github.ref_name }}
+          - **Commit SHA**: ${{ github.sha }}
+          - **Actor**: ${{ github.actor }}
+
+          **Override Details:**
+          - **PR Number**: #${{ inputs.pr_number }}
+          - **Override Author**: @${{ inputs.override_author }}
+          - **Affected Gates**: ${{ inputs.affected_gates }}
+          - **Urgency Level**: ${{ inputs.urgency_level }}
+
+          **CI Context:**
+          - **Workflow URL**: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - **PR URL**: ${{ github.server_url }}/${{ github.repository }}/pull/${{ inputs.pr_number }}
+          EOF
+          )
+
+          # Escape for GitHub Actions output
+          audit_info="${audit_info//'%'/'%25'}"
+          audit_info="${audit_info//$'\n'/'%0A'}"
+          audit_info="${audit_info//$'\r'/'%0D'}"
+
+          echo "audit_info=$audit_info" >> $GITHUB_OUTPUT
+
+      - name: Calculate target resolution date
+        id: resolution
+        run: |
+          # Calculate target resolution based on urgency
+          case "${{ inputs.urgency_level }}" in
+            "P0")
+              # Production incident: 3 days
+              target_date=$(date -d "+3 days" '+%Y-%m-%d')
+              ;;
+            "P1")
+              # Critical/Security: 1 week
+              target_date=$(date -d "+7 days" '+%Y-%m-%d')
+              ;;
+            "P2")
+              # Business critical: 2 weeks
+              target_date=$(date -d "+14 days" '+%Y-%m-%d')
+              ;;
+            *)
+              # Default: 2 weeks
+              target_date=$(date -d "+14 days" '+%Y-%m-%d')
+              ;;
+          esac
+
+          echo "target_date=$target_date" >> $GITHUB_OUTPUT
+
+      - name: Create override tracking issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = '${{ inputs.pr_number }}';
+            const overrideAuthor = '${{ inputs.override_author }}';
+            const affectedGates = '${{ inputs.affected_gates }}';
+            const overrideReason = '${{ inputs.override_reason }}';
+            const urgencyLevel = '${{ inputs.urgency_level }}';
+            const auditInfo = '${{ steps.audit.outputs.audit_info }}';
+            const targetDate = '${{ steps.resolution.outputs.target_date }}';
+
+            // Create issue title
+            const title = `[TECH DEBT] Quality Gate Override - PR #${prNumber}`;
+
+            // Create issue body
+            const body = `## 🚨 Quality Gate Override Detected
+
+            This issue was automatically created because quality gates were bypassed using an emergency override mechanism.
+
+            **This represents technical debt that must be addressed.**
+
+            ### Override Details
+
+            - **Pull Request**: #${prNumber}
+            - **Override Author**: @${overrideAuthor}
+            - **Affected Gates**: ${affectedGates}
+            - **Urgency Level**: ${urgencyLevel}
+            - **Target Resolution**: ${targetDate}
+
+            ### Override Justification
+
+            ${overrideReason}
+
+            ### Remediation Plan
+
+            - [ ] Review and address failing quality gates
+            - [ ] Fix any security findings or vulnerabilities
+            - [ ] Improve test coverage if applicable
+            - [ ] Update documentation if needed
+            - [ ] Validate that all quality gates now pass
+            - [ ] Close this technical debt issue
+
+            ### Audit Information
+
+            ${auditInfo}
+
+            ### 📋 Next Steps
+
+            1. **Immediate**: Ensure the override was properly justified and documented
+            2. **Short-term**: Create specific tasks for addressing each bypassed quality gate
+            3. **Long-term**: Review if process improvements can prevent similar situations
+
+            ---
+
+            *This issue was automatically created by the Quality Gate Override system.*
+            *Please address the technical debt by the target resolution date: **${targetDate}***`;
+
+            // Create the issue
+            const issue = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: [
+                'technical-debt',
+                'quality-gate-override',
+                'priority-high',
+                `urgency-${urgencyLevel.toLowerCase()}`
+              ],
+              assignees: [overrideAuthor.replace('@', '')]
+            });
+
+            console.log(`Created override tracking issue: ${issue.data.html_url}`);
+
+            // Comment on the original PR
+            try {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: parseInt(prNumber),
+                body: `🚨 **Quality Gate Override Detected**
+
+                A technical debt issue has been created to track the bypassed quality gates: ${issue.data.html_url}
+
+                **Target Resolution**: ${targetDate}
+
+                Please ensure this technical debt is addressed promptly.`
+              });
+            } catch (error) {
+              console.log(`Failed to comment on PR #${prNumber}: ${error.message}`);
+            }
+
+            return issue.data.number;
+
+      - name: Report issue creation
+        run: |
+          echo "✅ Quality gate override issue created successfully"
+          echo "🔗 Issue URL: ${{ github.server_url }}/${{ github.repository }}/issues"
+          echo "📋 Target resolution: ${{ steps.resolution.outputs.target_date }}"

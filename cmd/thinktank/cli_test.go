@@ -1,5 +1,5 @@
 // Package thinktank provides the command-line interface for the thinktank tool
-package thinktank
+package main
 
 // This file has been refactored into multiple smaller test files for improved maintainability
 // Now tests are organized in separate files:

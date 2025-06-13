@@ -149,11 +149,11 @@ func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *i
 // It adapts the internal FileWriter interface to the interfaces.FileWriter interface
 type FileWriterAdapter struct {
 	// The underlying FileWriter implementation from the internal package
-	FileWriter FileWriter
+	FileWriter interfaces.FileWriter
 }
 
 // SaveToFile delegates to the underlying FileWriter implementation
 // .nocover - pure wrapper method that simply delegates to underlying implementation
-func (f *FileWriterAdapter) SaveToFile(content, outputFile string) error {
-	return f.FileWriter.SaveToFile(content, outputFile)
+func (f *FileWriterAdapter) SaveToFile(ctx context.Context, content, outputFile string) error {
+	return f.FileWriter.SaveToFile(ctx, content, outputFile)
 }

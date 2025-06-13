@@ -1,5 +1,5 @@
 // Package thinktank provides the command-line interface for the thinktank tool
-package thinktank
+package main
 
 import (
 	"flag"

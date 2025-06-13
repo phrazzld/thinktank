@@ -17,8 +17,8 @@ type LogEntry struct {
 // BufferLogger is a simple logger that captures log messages in memory
 // It's useful for tests where you want to capture logs but don't have a testing.T
 type BufferLogger struct {
-	entries       []LogEntry
-	logsMutex     sync.Mutex
+	entries       *[]LogEntry // Use pointer to slice for proper sharing
+	logsMutex     *sync.Mutex // Use pointer to mutex for proper sharing
 	prefix        string
 	level         LogLevel
 	ctx           context.Context
@@ -27,10 +27,13 @@ type BufferLogger struct {
 
 // NewBufferLogger creates a new buffer logger
 func NewBufferLogger(level LogLevel) *BufferLogger {
+	entries := make([]LogEntry, 0)
+	mutex := &sync.Mutex{}
 	return &BufferLogger{
-		entries: []LogEntry{},
-		level:   level,
-		ctx:     context.Background(),
+		entries:   &entries,
+		logsMutex: mutex,
+		level:     level,
+		ctx:       context.Background(),
 	}
 }
 
@@ -101,7 +104,7 @@ func (l *BufferLogger) captureLog(msg string, level string) {
 
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
-	l.entries = append(l.entries, entry)
+	*l.entries = append(*l.entries, entry)
 }
 
 // GetLogs returns all captured log messages
@@ -109,8 +112,8 @@ func (l *BufferLogger) GetLogs() []string {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
 	// Return a copy to avoid race conditions
-	logs := make([]string, len(l.entries))
-	for i, entry := range l.entries {
+	logs := make([]string, len(*l.entries))
+	for i, entry := range *l.entries {
 		// Format the log entry as a string
 		baseLog := fmt.Sprintf("[%s] %s", entry.Level, entry.Message)
 
@@ -139,7 +142,7 @@ func (l *BufferLogger) GetLogsAsString() string {
 func (l *BufferLogger) ClearLogs() {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
-	l.entries = []LogEntry{}
+	*l.entries = (*l.entries)[:0] // Clear slice while preserving capacity
 }
 
 // GetLogEntries returns all captured log entries
@@ -147,8 +150,8 @@ func (l *BufferLogger) GetLogEntries() []LogEntry {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
 	// Return a copy to avoid race conditions
-	entries := make([]LogEntry, len(l.entries))
-	copy(entries, l.entries)
+	entries := make([]LogEntry, len(*l.entries))
+	copy(entries, *l.entries)
 	return entries
 }
 
@@ -220,7 +223,8 @@ func (l *BufferLogger) WithContext(ctx context.Context) LoggerInterface {
 	correlationID := GetCorrelationID(ctx)
 
 	newLogger := &BufferLogger{
-		entries:       l.entries,
+		entries:       l.entries,   // Share the same pointer to entries slice
+		logsMutex:     l.logsMutex, // Share the same pointer to mutex
 		level:         l.level,
 		prefix:        l.prefix,
 		ctx:           ctx,

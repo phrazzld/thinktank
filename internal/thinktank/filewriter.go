@@ -14,13 +14,8 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
-
-// FileWriter defines the interface for file output writing
-type FileWriter interface {
-	// SaveToFile writes content to the specified file
-	SaveToFile(content, outputFile string) error
-}
 
 // fileWriter implements the FileWriter interface
 type fileWriter struct {
@@ -33,7 +28,7 @@ type fileWriter struct {
 // NewFileWriter creates a new FileWriter instance with the specified dependencies.
 // It injects the required logger and audit logger to ensure proper output
 // handling and audit trail generation during file operations.
-func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, dirPermissions, filePermissions os.FileMode) FileWriter {
+func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, dirPermissions, filePermissions os.FileMode) interfaces.FileWriter {
 	return &fileWriter{
 		logger:          logger,
 		auditLogger:     auditLogger,
@@ -46,9 +41,7 @@ func NewFileWriter(logger logutil.LoggerInterface, auditLogger auditlog.AuditLog
 // It ensures proper directory existence, resolves relative paths to absolute paths,
 // and generates appropriate audit log entries for the operation's start and completion.
 // The method handles errors gracefully and ensures they are properly logged.
-func (fw *fileWriter) SaveToFile(content, outputFile string) error {
-	// Create a background context since this interface doesn't accept context
-	ctx := context.Background()
+func (fw *fileWriter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	// Log the start of output saving
 	saveStartTime := time.Now()
 	inputs := map[string]interface{}{
