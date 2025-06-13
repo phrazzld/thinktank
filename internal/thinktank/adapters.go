@@ -149,7 +149,7 @@ func (c *ContextGathererAdapter) DisplayDryRunInfo(ctx context.Context, stats *i
 // It adapts the internal FileWriter interface to the interfaces.FileWriter interface
 type FileWriterAdapter struct {
 	// The underlying FileWriter implementation from the internal package
-	FileWriter FileWriter
+	FileWriter interfaces.FileWriter
 }
 
 // SaveToFile delegates to the underlying FileWriter implementation

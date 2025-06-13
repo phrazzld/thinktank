@@ -15,6 +15,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // APIService defines the interface for API-related operations
@@ -44,18 +45,12 @@ type APIService interface {
 	GetErrorDetails(err error) string
 }
 
-// FileWriter defines the interface for file output writing
-type FileWriter interface {
-	// SaveToFile writes content to the specified file
-	SaveToFile(ctx context.Context, content, outputFile string) error
-}
-
 // ModelProcessor handles all interactions with AI models including initialization,
 // token management, request generation, response processing, and output handling.
 type ModelProcessor struct {
 	// Dependencies
 	apiService  APIService
-	fileWriter  FileWriter
+	fileWriter  interfaces.FileWriter
 	auditLogger auditlog.AuditLogger
 	logger      logutil.LoggerInterface
 	config      *config.CliConfig
@@ -66,7 +61,7 @@ type ModelProcessor struct {
 // This is necessary to avoid import cycles and to handle the multi-model architecture.
 func NewProcessor(
 	apiService APIService,
-	fileWriter FileWriter,
+	fileWriter interfaces.FileWriter,
 	auditLogger auditlog.AuditLogger,
 	logger logutil.LoggerInterface,
 	config *config.CliConfig,

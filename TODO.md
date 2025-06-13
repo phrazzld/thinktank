@@ -1,5 +1,45 @@
 # TODO - Coverage Quality Gate Resolution
 
+## MERGE BLOCKERS (Must Fix Before PR #79 Can Merge)
+
+- [x] **ARCH-FIX-001 · Blocker · P1: Remove duplicate FileWriter implementation missing audit logging**
+    - **Context:** Critical architectural regression and security vulnerability in cmd/thinktank/output.go
+    - **Root Cause:** A duplicate FileWriter implementation was created that bypasses the audit logging system
+    - **Error:** `/cmd/thinktank/output.go` (lines 1-66) implements FileWriter without AuditLogger, creating security gaps
+    - **Action:**
+        1. Delete the duplicate implementation files: `cmd/thinktank/output.go` and `cmd/thinktank/output_test.go`
+        2. Update any code in `cmd/thinktank/` to use the canonical FileWriter from `internal/thinktank/filewriter.go`
+        3. Ensure AuditLogger is properly injected when creating FileWriter instances
+        4. Verify all file operations are audit logged by checking audit log output
+    - **Done-when:**
+        1. Only one FileWriter implementation exists (in internal/thinktank/filewriter.go)
+        2. All file write operations generate audit log entries
+        3. Tests use the canonical FileWriter implementation
+        4. No duplicate interface definitions exist
+    - **Verification:**
+        1. Run `grep -r "type FileWriter interface" .` - should only find one in internal/thinktank/interfaces/interfaces.go
+        2. Run the CLI and verify audit logs are generated for file operations
+        3. Ensure all tests pass after removal
+    - **Depends-on:** none
+
+- [ ] **CI-FIX-005 · Blocker · P1: Pin staticcheck version in security-gates.yml**
+    - **Context:** CI stability issue - staticcheck using @latest while other tools are version pinned
+    - **Root Cause:** Inconsistent version pinning strategy for CI tools
+    - **Error:** `.github/workflows/security-gates.yml:222` uses `staticcheck@latest`
+    - **Action:**
+        1. Replace `go install honnef.co/go/tools/cmd/staticcheck@latest` with a specific version
+        2. Use the same version that's proven stable in the project (check other workflows or use v0.5.1)
+        3. Document the version update process in CI documentation
+    - **Done-when:**
+        1. staticcheck is pinned to a specific version like other tools
+        2. CI builds are reproducible with consistent tool versions
+        3. Version is documented for future updates
+    - **Verification:**
+        1. Check that security-gates.yml has no @latest tool installations
+        2. Trigger CI and verify staticcheck runs with pinned version
+        3. No unexpected new linting errors from version changes
+    - **Depends-on:** none
+
 ## CRITICAL ISSUES (Must Fix Before Merge)
 
 - [x] **LINT-FIX-001 · Bugfix · P1: Fix errcheck violations in manager_comprehensive_test.go**
