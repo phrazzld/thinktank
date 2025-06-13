@@ -744,12 +744,15 @@ func TestLowCoverageFunctions(t *testing.T) {
 	})
 
 	t.Run("NewClient success path", func(t *testing.T) {
-		// This should succeed with validation but fail during genai client creation
-		_, err := NewClient(context.Background(), "test-key", "test-model", "")
+		// This should succeed with validation, creating a mock client for backward compatibility
+		client, err := NewClient(context.Background(), "test-key", "test-model", "")
 
-		// We expect an error due to genai client creation
-		if err == nil {
-			t.Fatal("Expected error during client creation")
+		// We expect success due to mock client creation
+		if err != nil {
+			t.Fatalf("Expected no error during client creation, got: %v", err)
+		}
+		if client == nil {
+			t.Fatal("Expected client to be created, got nil")
 		}
 	})
 

@@ -10,7 +10,7 @@
     - **Done‑when:**
         1. The key management and external service mocking strategy is documented in `TESTING.md` or a similar guide.
     - **Depends‑on:** none
-- [ ] **T002 · Chore · P1: select and document the property-based testing library**
+- [x] **T002 · Chore · P1: select and document the property-based testing library**
     - **Context:** Open Questions & Dependencies > 2. Property-Based Testing Framework
     - **Action:**
         1. Evaluate Go property-based testing libraries (e.g., rapid, gopter) based on features and ease of integration.

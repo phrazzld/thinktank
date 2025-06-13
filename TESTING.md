@@ -209,6 +209,21 @@ func TestSecretHandling(t *testing.T) {
 
 ### 3. Property-Based Testing
 
+#### Library Choice: Rapid
+
+We use **[Rapid](https://github.com/flyingmutant/rapid)** (`pgregory.net/rapid`) for property-based testing.
+
+**Why Rapid was chosen over alternatives like Gopter:**
+
+- **Modern API**: Leverages Go generics for type-safe data generation
+- **Simplicity**: Intuitive API with minimal boilerplate compared to traditional QuickCheck-style libraries
+- **Automatic shrinking**: Intelligently minimizes failing test cases without requiring user configuration
+- **Active maintenance**: Recent releases and ongoing development (v1.2.0, February 2025)
+- **No dependencies**: Clean, minimal footprint aligning with our project values
+- **Performance**: Optimized for quick feedback loops during development
+
+#### Usage Patterns
+
 For algorithmic functions and data processing:
 
 ```go
@@ -216,19 +231,48 @@ import "pgregory.net/rapid"
 
 func TestContentProcessing_Properties(t *testing.T) {
     rapid.Check(t, func(t *rapid.T) {
-        // Generate arbitrary input
+        // Generate arbitrary input using type-safe generators
         content := rapid.String().Draw(t, "content")
         maxLength := rapid.IntRange(1, 1000).Draw(t, "maxLength")
 
         // Process with real implementation
         processed := processContent(content, maxLength)
 
-        // Verify invariants
+        // Verify invariants hold for all generated inputs
         assert.LessOrEqual(t, len(processed), maxLength)
         assert.True(t, strings.Contains(processed, extractKey(content)))
     })
 }
 ```
+
+#### Testing Data Structures
+
+```go
+func TestConfigValidation_Properties(t *testing.T) {
+    rapid.Check(t, func(t *rapid.T) {
+        // Generate arbitrary configuration
+        config := ProviderConfig{
+            Temperature: rapid.Float64Range(0.0, 2.0).Draw(t, "temperature"),
+            MaxTokens:   rapid.IntRange(1, 4096).Draw(t, "maxTokens"),
+            TopP:        rapid.Float64Range(0.0, 1.0).Draw(t, "topP"),
+        }
+
+        // Validate configuration
+        err := validateConfig(config)
+
+        // Assert invariants about validation
+        assert.NoError(t, err) // All generated configs should be valid
+    })
+}
+```
+
+#### When to Use Property-Based Testing
+
+- **Data processing algorithms**: Functions that transform input data
+- **Configuration validation**: Parameter boundary checking
+- **Parsing and serialization**: Round-trip testing for data formats
+- **Mathematical operations**: Numeric calculations with invariants
+- **Text processing**: String manipulation functions
 
 ## Test Categories
 
