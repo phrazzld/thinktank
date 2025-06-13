@@ -7,7 +7,7 @@ toolchain go1.23.7
 require (
 	github.com/google/generative-ai-go v0.19.0
 	github.com/google/uuid v1.6.0
-	github.com/openai/openai-go v0.1.0-beta.10
+	github.com/openai/openai-go v1.5.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/time v0.11.0
 	google.golang.org/api v0.228.0
