@@ -83,6 +83,14 @@ test_output_*.md
 CI-FAILURE-*.md
 CI-RESOLUTION-*.md
 CI-ANALYSIS-*.md
+CI-LINT-FAILURE-ANALYSIS.md
+
+# Temporary analysis and synthesis files
+CRITICAL-ANALYSIS-RESULTS.md
+MERGE-BLOCKERS-RESOLVED.md
+REVIEW-CONTEXT.md
+UNIFIED-SYNTHESIS.md
+SYNTHESIS-COMPARISON.md
 
 # Ward log files
 .ward-warnings.log
