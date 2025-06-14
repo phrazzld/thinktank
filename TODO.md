@@ -1,5 +1,123 @@
 # Todo
 
+## URGENT: CI Resolution Tasks (PR #88)
+- [x] **CI001 · Chore · P0: research and validate alternative property-based testing library**
+    - **Context:** CI failure - pgregory.net/rapid uses forbidden MPL-2.0 license
+    - **Action:**
+        1. Research `github.com/leanovate/gopter` (MIT license) as replacement for `pgregory.net/rapid`
+        2. Verify gopter provides equivalent property-based testing functionality
+        3. Review API compatibility and migration complexity
+        4. Confirm MIT license is in approved allowlist
+    - **Done‑when:**
+        1. Alternative library identified with compatible API and approved license
+        2. Migration approach documented with effort estimate
+    - **Depends‑on:** none
+
+- [ ] **CI002 · Chore · P0: replace problematic dependency with approved alternative**
+    - **Context:** CI failure - license policy violation blocking merge
+    - **Action:**
+        1. Remove `pgregory.net/rapid v1.2.0` from go.mod
+        2. Add `github.com/leanovate/gopter` (or validated alternative) to go.mod
+        3. Run `go mod tidy` to update dependencies
+        4. Verify no MPL-2.0 licenses remain in dependency tree
+    - **Done‑when:**
+        1. `go mod` contains only approved-license dependencies
+        2. License compliance CI check passes
+    - **Depends‑on:** [CI001]
+
+- [ ] **CI003 · Chore · P0: migrate property-based tests to new library**
+    - **Context:** API migration required after dependency replacement
+    - **Action:**
+        1. Update `internal/testutil/property_testing.go` to use new library API
+        2. Migrate all property-based test generators in affected files
+        3. Update import statements across codebase
+        4. Verify all property-based tests continue to pass
+    - **Done‑when:**
+        1. All property-based tests use new library and pass
+        2. No references to old library remain in codebase
+    - **Depends‑on:** [CI002]
+
+- [ ] **CI004 · Chore · P0: fix errcheck violations in integration test files**
+    - **Context:** CI failure - golangci-lint errcheck violations
+    - **Action:**
+        1. Fix `internal/gemini/integration_test.go:32:29` - add error handling to JSON encoding
+        2. Fix `internal/openai/integration_test.go:31:29` - add error handling to JSON encoding
+        3. Use pattern: `if err := json.NewEncoder(w).Encode(response); err != nil { t.Fatalf("failed to encode response: %v", err) }`
+    - **Done‑when:**
+        1. No errcheck violations remain in integration test files
+        2. golangci-lint errcheck passes for entire codebase
+    - **Depends‑on:** none
+
+- [ ] **CI005 · Chore · P0: remove unused test utility functions**
+    - **Context:** CI failure - golangci-lint unused function violations
+    - **Action:**
+        1. Remove `setupMockServer` function from `internal/gemini/integration_test.go:17`
+        2. Remove `createJSONHandler` function from `internal/gemini/integration_test.go:27`
+        3. Remove `createErrorHandler` function from `internal/gemini/integration_test.go:38`
+        4. Verify functions are truly unused before removal
+    - **Done‑when:**
+        1. No unused function violations remain in codebase
+        2. golangci-lint unused passes for entire codebase
+    - **Depends‑on:** none
+
+- [ ] **CI006 · Feature · P0: implement expected error test logger**
+    - **Context:** CI failure - test fails due to expected error logs being treated as failures
+    - **Action:**
+        1. Create `ExpectedErrorTestLogger` in `internal/logutil/test_logger.go`
+        2. Add `ExpectError(pattern string)` method to pre-declare expected error messages
+        3. Modify error detection to ignore declared expected patterns
+        4. Maintain fail-fast behavior for unexpected errors
+    - **Done‑when:**
+        1. Test logger supports expected error pattern declarations
+        2. Expected errors don't cause test failures
+        3. Unexpected errors still cause test failures
+    - **Depends‑on:** none
+
+- [ ] **CI007 · Chore · P0: update failing synthesis test to use expected error patterns**
+    - **Context:** CI failure - TestSynthesisWithModelFailuresFlow fails on expected error logs
+    - **Action:**
+        1. Modify `TestSynthesisWithModelFailuresFlow` in `internal/integration/synthesis_with_failures_test.go`
+        2. Use `ExpectedErrorTestLogger` to declare expected error patterns
+        3. Pre-declare expected error messages: "Generation failed for model model2", "Processing model model2 failed", etc.
+        4. Verify test still validates correct partial failure behavior
+    - **Done‑when:**
+        1. `TestSynthesisWithModelFailuresFlow` passes without suppressing error detection
+        2. Test continues to verify partial failure handling correctly
+    - **Depends‑on:** [CI006]
+
+- [ ] **CI008 · Chore · P0: verify all CI checks pass**
+    - **Context:** Final validation before merge
+    - **Action:**
+        1. Run full local CI simulation: `go test ./...`, `golangci-lint run ./...`, license check
+        2. Push changes and verify all CI jobs pass in GitHub Actions
+        3. Confirm dependency license compliance, lint checks, and test suite
+    - **Done‑when:**
+        1. All CI checks pass: License Compliance ✅, Lint and Format ✅, Test ✅
+        2. PR ready for merge with no quality gate violations
+    - **Depends‑on:** [CI003, CI004, CI005, CI007]
+
+- [ ] **CI009 · Feature · P2: implement proactive license checking**
+    - **Context:** Prevention - avoid future license policy violations
+    - **Action:**
+        1. Add `go-licenses` check to pre-commit hooks in `.pre-commit-config.yaml`
+        2. Create `scripts/check-licenses.sh` for local license validation
+        3. Document license policy and checking process in `DEVELOPMENT.md`
+    - **Done‑when:**
+        1. Pre-commit hooks prevent commits with forbidden licenses
+        2. Developers can check licenses locally before committing
+    - **Depends‑on:** [CI008]
+
+- [ ] **CI010 · Feature · P2: enhance local development workflow**
+    - **Context:** Prevention - catch lint issues before CI
+    - **Action:**
+        1. Add golangci-lint to pre-commit hooks
+        2. Create `make ci-check` target for full local CI simulation
+        3. Update `DEVELOPMENT.md` with local validation workflow
+    - **Done‑when:**
+        1. Pre-commit hooks catch lint violations locally
+        2. Developers can simulate full CI pipeline locally
+    - **Depends‑on:** [CI008]
+
 ## Phase 0: Decisions & Setup
 - [x] **T001 · Chore · P1: decide on and document CI test API key management strategy**
     - **Context:** Open Questions & Dependencies > 1. Test Environment Management
