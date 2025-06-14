@@ -13,7 +13,7 @@
         2. Migration approach documented with effort estimate
     - **Depends‑on:** none
 
-- [ ] **CI002 · Chore · P0: replace problematic dependency with approved alternative**
+- [x] **CI002 · Chore · P0: replace problematic dependency with approved alternative**
     - **Context:** CI failure - license policy violation blocking merge
     - **Action:**
         1. Remove `pgregory.net/rapid v1.2.0` from go.mod
