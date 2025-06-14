@@ -3,6 +3,7 @@ package logutil
 import (
 	"context"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -436,5 +437,193 @@ func TestTestLogger_AutoFailMode(t *testing.T) {
 
 	if !logger.HasErrorLogs() {
 		t.Error("Expected error logs to be captured")
+	}
+}
+
+// TestTestLogger_ExpectError tests the expected error functionality
+func TestTestLogger_ExpectError(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	// Initially no expected patterns
+	if logger.HasUnexpectedErrorLogs() {
+		t.Error("Expected no unexpected error logs initially")
+	}
+
+	// Log an error without declaring it as expected
+	logger.Error("unexpected error message")
+	if !logger.HasUnexpectedErrorLogs() {
+		t.Error("Expected HasUnexpectedErrorLogs to return true for undeclared error")
+	}
+
+	unexpectedErrors := logger.GetUnexpectedErrorLogs()
+	if len(unexpectedErrors) != 1 {
+		t.Errorf("Expected 1 unexpected error, got %d", len(unexpectedErrors))
+	}
+
+	// Clear logs and declare expected error pattern
+	logger.ClearTestLogs()
+	logger.ExpectError("Generation failed for model")
+
+	// Log an error that matches the expected pattern
+	logger.Error("Generation failed for model model1")
+	if logger.HasUnexpectedErrorLogs() {
+		t.Error("Expected no unexpected errors when pattern matches")
+	}
+
+	// All errors should still be captured
+	if !logger.HasErrorLogs() {
+		t.Error("Expected error logs to still be captured")
+	}
+
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 1 {
+		t.Errorf("Expected 1 total error log, got %d", len(errorLogs))
+	}
+
+	// But no unexpected errors
+	unexpectedErrors = logger.GetUnexpectedErrorLogs()
+	if len(unexpectedErrors) != 0 {
+		t.Errorf("Expected 0 unexpected errors with pattern match, got %d", len(unexpectedErrors))
+	}
+}
+
+// TestTestLogger_ExpectErrorMultiplePatterns tests multiple expected error patterns
+func TestTestLogger_ExpectErrorMultiplePatterns(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	// Declare multiple expected patterns
+	logger.ExpectError("Generation failed")
+	logger.ExpectError("Processing model")
+	logger.ExpectError("API rate limit")
+
+	// Log errors matching different patterns
+	logger.Error("Generation failed for model test1")
+	logger.Error("Processing model test2 failed")
+	logger.Error("API rate limit exceeded")
+	logger.Error("Completely unexpected error")
+
+	// Should have 4 total errors
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 4 {
+		t.Errorf("Expected 4 total error logs, got %d", len(errorLogs))
+	}
+
+	// But only 1 unexpected error
+	unexpectedErrors := logger.GetUnexpectedErrorLogs()
+	if len(unexpectedErrors) != 1 {
+		t.Errorf("Expected 1 unexpected error, got %d", len(unexpectedErrors))
+	}
+
+	if !strings.Contains(unexpectedErrors[0], "Completely unexpected error") {
+		t.Errorf("Expected unexpected error to contain 'Completely unexpected error', got: %s", unexpectedErrors[0])
+	}
+}
+
+// TestTestLogger_ExpectErrorSubstringMatching tests substring pattern matching
+func TestTestLogger_ExpectErrorSubstringMatching(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	// Declare a pattern that's a substring
+	logger.ExpectError("failed")
+
+	// Log errors with different formats containing the substring
+	logger.Error("Operation failed")
+	logger.Error("Something failed badly")
+	logger.Error("operation has failed") // lowercase "failed"
+	logger.Error("Processing succeeded") // This should be unexpected
+
+	// Should have 4 total errors
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 4 {
+		t.Errorf("Expected 4 total error logs, got %d", len(errorLogs))
+	}
+
+	// But only 1 unexpected error (the one without "failed")
+	unexpectedErrors := logger.GetUnexpectedErrorLogs()
+	if len(unexpectedErrors) != 1 {
+		t.Errorf("Expected 1 unexpected error, got %d", len(unexpectedErrors))
+	}
+
+	if !strings.Contains(unexpectedErrors[0], "Processing succeeded") {
+		t.Errorf("Expected unexpected error to contain 'Processing succeeded', got: %s", unexpectedErrors[0])
+	}
+}
+
+// TestTestLogger_ExpectErrorThreadSafety tests thread safety of expected error functionality
+func TestTestLogger_ExpectErrorThreadSafety(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	var wg sync.WaitGroup
+	numGoroutines := 10
+	errorsPerGoroutine := 5
+
+	// Start multiple goroutines adding expected patterns and logging errors
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			// Each goroutine adds its own pattern
+			pattern := strings.Join([]string{"pattern", string(rune('A' + id))}, "")
+			logger.ExpectError(pattern)
+
+			// Log some expected and unexpected errors
+			for j := 0; j < errorsPerGoroutine; j++ {
+				if j%2 == 0 {
+					// Expected error
+					logger.Error("%s error %d", pattern, j)
+				} else {
+					// Unexpected error
+					logger.Error("unexpected error from goroutine %d iteration %d", id, j)
+				}
+			}
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Verify counts
+	// errorsPerGoroutine = 5, iterations 0,1,2,3,4
+	// Even iterations (0,2,4) = 3 expected errors per goroutine
+	// Odd iterations (1,3) = 2 unexpected errors per goroutine
+	totalExpectedErrors := numGoroutines * 3   // iterations 0, 2, 4
+	totalUnexpectedErrors := numGoroutines * 2 // iterations 1, 3
+
+	errorLogs := logger.GetErrorLogs()
+	unexpectedErrors := logger.GetUnexpectedErrorLogs()
+
+	totalErrors := totalExpectedErrors + totalUnexpectedErrors
+	if len(errorLogs) != totalErrors {
+		t.Errorf("Expected %d total errors, got %d", totalErrors, len(errorLogs))
+	}
+
+	if len(unexpectedErrors) != totalUnexpectedErrors {
+		t.Errorf("Expected %d unexpected errors, got %d", totalUnexpectedErrors, len(unexpectedErrors))
+	}
+}
+
+// TestTestLogger_ExpectErrorWithContext tests expected error functionality with context methods
+func TestTestLogger_ExpectErrorWithContext(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+	ctx := WithCorrelationID(context.Background())
+
+	logger.ExpectError("context error")
+
+	// Log expected error using context method
+	logger.ErrorContext(ctx, "context error occurred")
+	logger.FatalContext(ctx, "unexpected fatal error")
+
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 2 {
+		t.Errorf("Expected 2 total error logs, got %d", len(errorLogs))
+	}
+
+	unexpectedErrors := logger.GetUnexpectedErrorLogs()
+	if len(unexpectedErrors) != 1 {
+		t.Errorf("Expected 1 unexpected error, got %d", len(unexpectedErrors))
+	}
+
+	if !strings.Contains(unexpectedErrors[0], "unexpected fatal error") {
+		t.Errorf("Expected unexpected error to contain 'unexpected fatal error', got: %s", unexpectedErrors[0])
 	}
 }

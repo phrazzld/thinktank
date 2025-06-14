@@ -11,31 +11,33 @@ import (
 
 // TestLogger is a logger implementation for testing that captures log messages
 type TestLogger struct {
-	t            *testing.T
-	logs         []string
-	errorLogs    []string
-	logsMutex    sync.Mutex
-	prefix       string
-	level        LogLevel
-	autoFailMode bool
+	t                     *testing.T
+	logs                  []string
+	errorLogs             []string
+	logsMutex             sync.Mutex
+	prefix                string
+	level                 LogLevel
+	autoFailMode          bool
+	expectedErrorPatterns []string
 }
 
 // NewTestLogger creates a new test logger
 func NewTestLogger(t *testing.T) *TestLogger {
 	logger := &TestLogger{
-		t:            t,
-		logs:         []string{},
-		errorLogs:    []string{},
-		level:        DebugLevel,
-		autoFailMode: true,
+		t:                     t,
+		logs:                  []string{},
+		errorLogs:             []string{},
+		level:                 DebugLevel,
+		autoFailMode:          true,
+		expectedErrorPatterns: []string{},
 	}
 
 	// Use t.Cleanup to automatically fail tests that logged errors
 	t.Cleanup(func() {
-		if logger.autoFailMode && logger.HasErrorLogs() {
-			errorLogs := logger.GetErrorLogs()
+		if logger.autoFailMode && logger.HasUnexpectedErrorLogs() {
+			unexpectedErrors := logger.GetUnexpectedErrorLogs()
 			t.Errorf("Test failed due to error-level logs captured:\n%s",
-				strings.Join(errorLogs, "\n"))
+				strings.Join(unexpectedErrors, "\n"))
 		}
 	})
 
@@ -45,11 +47,12 @@ func NewTestLogger(t *testing.T) *TestLogger {
 // NewTestLoggerWithoutAutoFail creates a test logger that won't automatically fail on error logs
 func NewTestLoggerWithoutAutoFail(t *testing.T) *TestLogger {
 	return &TestLogger{
-		t:            t,
-		logs:         []string{},
-		errorLogs:    []string{},
-		level:        DebugLevel,
-		autoFailMode: false,
+		t:                     t,
+		logs:                  []string{},
+		errorLogs:             []string{},
+		level:                 DebugLevel,
+		autoFailMode:          false,
+		expectedErrorPatterns: []string{},
 	}
 }
 
@@ -188,6 +191,51 @@ func (l *TestLogger) EnableAutoFail() {
 	l.logsMutex.Lock()
 	defer l.logsMutex.Unlock()
 	l.autoFailMode = true
+}
+
+// ExpectError declares that an error message matching the given pattern is expected
+// and should not cause test failure. Pattern matching uses substring matching.
+func (l *TestLogger) ExpectError(pattern string) {
+	l.logsMutex.Lock()
+	defer l.logsMutex.Unlock()
+	l.expectedErrorPatterns = append(l.expectedErrorPatterns, pattern)
+}
+
+// isExpectedError checks if an error log matches any expected error pattern
+func (l *TestLogger) isExpectedError(errorLog string) bool {
+	for _, pattern := range l.expectedErrorPatterns {
+		if strings.Contains(errorLog, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+// GetUnexpectedErrorLogs returns error logs that don't match expected patterns
+func (l *TestLogger) GetUnexpectedErrorLogs() []string {
+	l.logsMutex.Lock()
+	defer l.logsMutex.Unlock()
+
+	var unexpectedErrors []string
+	for _, errorLog := range l.errorLogs {
+		if !l.isExpectedError(errorLog) {
+			unexpectedErrors = append(unexpectedErrors, errorLog)
+		}
+	}
+	return unexpectedErrors
+}
+
+// HasUnexpectedErrorLogs returns true if any unexpected error logs were captured
+func (l *TestLogger) HasUnexpectedErrorLogs() bool {
+	l.logsMutex.Lock()
+	defer l.logsMutex.Unlock()
+
+	for _, errorLog := range l.errorLogs {
+		if !l.isExpectedError(errorLog) {
+			return true
+		}
+	}
+	return false
 }
 
 // Context-aware logging methods

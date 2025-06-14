@@ -60,7 +60,7 @@
         2. golangci-lint unused passes for entire codebase
     - **Depends‑on:** none
 
-- [ ] **CI006 · Feature · P0: implement expected error test logger**
+- [x] **CI006 · Feature · P0: implement expected error test logger**
     - **Context:** CI failure - test fails due to expected error logs being treated as failures
     - **Action:**
         1. Create `ExpectedErrorTestLogger` in `internal/logutil/test_logger.go`
