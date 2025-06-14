@@ -1,423 +1,614 @@
 # Testing Guide
 
-This document outlines the testing strategy, patterns, and infrastructure for the thinktank project, following our core tenets of testability, simplicity, and maintainability.
+This document describes the established testing patterns, infrastructure, and best practices for the thinktank project.
 
 ## Core Testing Principles
 
 ### 1. No Internal Mocking
-- **Never mock internal components** - only mock external system boundaries
-- Use real implementations for all internal collaborators
-- Mock only: HTTP APIs, file systems, databases, system clock
-- If testing is hard, refactor the code for better testability
 
-### 2. Integration-Focused Testing
-- Prefer integration tests over isolated unit tests
-- Test component interactions with real implementations
-- Focus on observable behavior, not implementation details
-- Test end-to-end workflows whenever possible
+**Fundamental Rule**: We do NOT mock internal components within our application boundaries.
 
-### 3. Behavior-Driven Testing
-- Test what the code should do, not how it does it
-- Verify outcomes and side effects, not internal calls
-- Write tests that survive refactoring
-- Tests should serve as living documentation
+- **Mock only external dependencies**: HTTP APIs, filesystem operations, environment variables
+- **Use real implementations**: For all internal packages and components
+- **Test integration points**: Focus on how components work together, not in isolation
 
-## API Key Management Strategy
+This approach ensures tests validate actual component interactions and catch integration issues.
 
-### Test Environment Security
+### 2. Boundary Testing Pattern
 
-#### 1. Test API Keys in CI/CD
-Our CI pipeline uses **hardcoded test API keys** which is the recommended approach:
-
-```yaml
-# .github/workflows/ci.yml
--e GEMINI_API_KEY=test-api-key \
--e OPENAI_API_KEY=test-api-key \
--e OPENROUTER_API_KEY=test-api-key \
-```
-
-**Why this approach:**
-- ✅ No real API keys exposed in CI logs
-- ✅ No dependency on repository secrets for basic testing
-- ✅ Predictable, deterministic test behavior
-- ✅ No risk of accidental production API usage
-
-#### 2. Local Development API Keys
-For local testing that requires real API integration:
-
-```bash
-# Optional: Set environment variables for manual API testing
-export OPENAI_TEST_KEY=test-openai-key-12345
-export GEMINI_TEST_KEY=test-gemini-key-67890
-export OPENROUTER_TEST_KEY=test-openrouter-key-11111
-
-# Run manual API tests (requires build tag)
-go test -tags=manual_api_test ./internal/e2e/...
-```
-
-**Security Requirements:**
-- Test keys **MUST** have `test-` prefix
-- Never commit real API keys to repository
-- Use dedicated test accounts with usage limits
-- Test keys should have minimal permissions
-
-#### 3. Test API Key Validation
-Use the secure test configuration helper:
+We follow a "boundary testing" approach where external system boundaries are abstracted and mocked:
 
 ```go
-import "github.com/phrazzld/thinktank/internal/testutil"
+// External boundaries that we mock
+type ExternalAPICaller interface {
+    Call(ctx context.Context, request *http.Request) (*http.Response, error)
+}
 
-func TestWithAPIKey(t *testing.T) {
-    // Safely retrieve test API key
-    apiKey := testutil.GetTestAPIKey(t, "OPENAI_TEST_KEY")
+type FilesystemIO interface {
+    ReadFile(path string) ([]byte, error)
+    WriteFile(path string, data []byte, perm int) error
+    // ... other filesystem operations
+}
 
-    // Key will be validated as test-only
-    provider := openai.NewProvider(logger)
-    client, err := provider.CreateClient(ctx, apiKey, "gpt-4", "")
-    // ...
+type EnvironmentProvider interface {
+    GetEnv(key string) string
+    SetEnv(key, value string) error
 }
 ```
 
-### External API Mocking Strategy
+### 3. Test-Driven Development
 
-#### 1. HTTP Test Servers
-For provider testing, use in-memory HTTP servers:
+- Write tests first, make them fail, then implement code to pass
+- Focus on integration and workflow tests over unit tests
+- Maintain 90%+ code coverage across all packages
+
+## Testing Infrastructure
+
+### Overview
+
+The testing infrastructure is located in `/internal/testutil/` and provides:
+
+- **Data Factories**: Builder patterns for creating test data
+- **Mock Implementations**: For external dependencies only
+- **HTTP Mocking**: For testing external API interactions
+- **Filesystem Abstraction**: In-memory filesystem for tests
+- **Integration Utilities**: Temporary files/directories, cleanup
+- **Test Scenarios**: Common test setups and assertions
+
+### Key Components
+
+```text
+internal/testutil/
+├── factories.go          # Data builder patterns
+├── mocklogger.go         # Logger and audit logger mocks
+├── mockregistry.go       # Registry mock (internal interface)
+├── providers.go          # HTTP server mocking utilities
+├── integration.go        # Temporary file/directory utilities
+├── memfs.go             # In-memory filesystem implementation
+├── realfs.go            # Real filesystem implementation
+├── testfixtures.go      # Standard test data constants
+├── testscenarios.go     # Common test scenario helpers
+└── security.go          # Secure API key handling in tests
+```
+
+## Test Data Factories
+
+Use builder patterns to create test data with sensible defaults and easy customization:
+
+### Basic Usage
 
 ```go
-func TestProviderAPI(t *testing.T) {
+// Create a test model with defaults
+model := testutil.NewModelDefinition().Build()
+
+// Customize specific fields
+model := testutil.NewModelDefinition().
+    WithName("custom-model").
+    WithProvider("openai").
+    WithContextWindow(8192).
+    Build()
+
+// Create invalid data for error testing
+model := testutil.NewModelDefinition().
+    InvalidName().  // Sets empty name
+    Build()
+```
+
+### Available Builders
+
+- `ProviderDefinitionBuilder`: For creating provider configurations
+- `ModelDefinitionBuilder`: For creating model configurations
+- `ParameterDefinitionBuilder`: For model parameters
+- `SafetyBuilder`: For safety/content filtering results
+- `ProviderResultBuilder`: For LLM response data
+- `ChatCompletionMessageBuilder`: For chat messages
+- `ChatCompletionRequestBuilder`: For API requests
+- `ChatCompletionResponseBuilder`: For API responses
+
+### Builder Pattern Examples
+
+```go
+// Provider with custom base URL
+provider := testutil.NewProviderDefinition().
+    WithName("custom-provider").
+    WithBaseURL("https://api.custom.example.com/v1").
+    Build()
+
+// Model with Gemini-specific parameters
+model := testutil.NewModelDefinition().
+    WithName("gemini-pro").
+    WithProvider("gemini").
+    WithGeminiParameters().
+    Build()
+
+// LLM response with safety blocking
+response := testutil.NewProviderResult().
+    SafetyBlocked().
+    Build()
+
+// Chat completion request with custom parameters
+request := testutil.NewChatCompletionRequest().
+    WithModel("gpt-4").
+    WithTemperature(0.3).
+    AddMessage(testutil.NewChatCompletionMessage().
+        AsSystem().
+        WithContent("You are a helpful assistant").
+        Build()).
+    Build()
+```
+
+## Mock Implementations
+
+### MockLogger
+
+Implements both `logutil.LoggerInterface` and `auditlog.AuditLogger` interfaces:
+
+```go
+func TestLogging(t *testing.T) {
+    logger := testutil.NewMockLogger()
+
+    // Use logger in your code
+    logger.InfoContext(ctx, "Processing request")
+    logger.ErrorContext(ctx, "Failed to process: %v", err)
+
+    // Verify logging in tests
+    messages := logger.GetInfoMessages()
+    if len(messages) != 1 {
+        t.Errorf("Expected 1 info message, got %d", len(messages))
+    }
+
+    // Check for specific content
+    if !logger.ContainsMessage("Processing request") {
+        t.Error("Expected log message not found")
+    }
+
+    // Verify correlation ID propagation
+    entries := logger.GetLogEntriesByCorrelationID("test-correlation-id")
+    if len(entries) == 0 {
+        t.Error("Expected log entries with correlation ID")
+    }
+}
+```
+
+### MockRegistry
+
+Implements `registry.Registry` interface with configurable behavior:
+
+```go
+func TestWithMockRegistry(t *testing.T) {
+    registry := testutil.NewMockRegistry()
+
+    // Add test data
+    registry.AddModel(testutil.NewModelDefinition().
+        WithName("test-model").
+        WithProvider("test-provider").
+        Build())
+
+    registry.AddProvider(testutil.NewProviderDefinition().
+        WithName("test-provider").
+        Build())
+
+    // Configure error cases
+    registry.SetGetModelError(errors.New("model not found"))
+
+    // Use registry in your code
+    model, err := registry.GetModel(ctx, "test-model")
+
+    // Verify method calls
+    calls := registry.GetMethodCalls("GetModel")
+    if len(calls) != 1 {
+        t.Errorf("Expected 1 GetModel call, got %d", len(calls))
+    }
+}
+```
+
+## HTTP Mocking
+
+For testing external API calls:
+
+```go
+func TestExternalAPI(t *testing.T) {
     // Create mock HTTP server
-    server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        // Simulate provider API responses
-        w.Header().Set("Content-Type", "application/json")
-        w.WriteHeader(http.StatusOK)
-        json.NewEncoder(w).Encode(mockResponse)
-    }))
-    defer server.Close()
+    server := testutil.SetupMockHTTPServer(t)
 
-    // Use real provider implementation with mock server
-    provider := openai.NewProvider(logger)
-    client, err := provider.CreateClient(ctx, "test-api-key", "gpt-4", server.URL)
-
-    // Test real behavior against mock API
-    result, err := client.GenerateContent(ctx, "test prompt", nil)
-    assert.NoError(t, err)
-    assert.NotEmpty(t, result.Content)
-}
-```
-
-#### 2. In-Memory Implementations
-For complex testing scenarios:
-
-```go
-// Example: In-memory provider for integration tests
-type InMemoryProvider struct {
-    responses map[string]*llm.ProviderResult
-    errors    map[string]error
-}
-
-func (p *InMemoryProvider) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-    if err, exists := p.errors[prompt]; exists {
-        return nil, err
-    }
-    if resp, exists := p.responses[prompt]; exists {
-        return resp, nil
-    }
-    return testutil.BasicSuccessResponse, nil
-}
-```
-
-## Test Infrastructure
-
-### 1. Test Utilities (`internal/testutil`)
-
-#### File System Helpers
-```go
-// Create temporary test directories with automatic cleanup
-func setupTestDirectory(t *testing.T) string {
-    dir, err := os.MkdirTemp("", "thinktank-test-*")
-    require.NoError(t, err)
-
-    t.Cleanup(func() {
-        os.RemoveAll(dir)
-    })
-
-    return dir
-}
-```
-
-#### Provider Test Factories
-```go
-// Use standardized test data
-func TestProviderConfig(t *testing.T) {
-    // Valid configuration
-    config := testutil.OpenAIProvider
-
-    // Invalid configurations for error testing
-    invalidConfig := testutil.OpenAIProvider
-    invalidConfig.BaseURL = "invalid-url"
-}
-```
-
-#### Mock Server Utilities
-```go
-// Set up provider mock server
-func setupProviderMockServer(t *testing.T) *httptest.Server {
-    return testutil.NewProviderMockServer(t, testutil.ProviderMockConfig{
-        SuccessResponse: testutil.BasicSuccessResponse,
-        ErrorResponses: map[string]error{
-            "auth-error": testutil.CreateAuthError("openai"),
-        },
-    })
-}
-```
-
-### 2. Test Logging (`internal/logutil`)
-
-#### Structured Test Logging
-```go
-func TestWithLogging(t *testing.T) {
-    logger := logutil.NewTestLogger()
-    logger.SetCorrelationID("test-" + t.Name())
-
-    t.Cleanup(func() {
-        // Verify no error logs during test
-        if logger.HasErrors() {
-            t.Errorf("Test generated error logs: %v", logger.GetErrors())
-        }
-    })
-
-    // Use logger in test...
-}
-```
-
-#### Secret Detection Testing
-```go
-func TestSecretHandling(t *testing.T) {
-    testLogger := logutil.NewBufferLogger(logutil.DebugLevel)
-    secretLogger := logutil.WithSecretDetection(testLogger)
-    secretLogger.SetFailOnSecretDetect(false)
-
-    // Perform operation that should not leak secrets
-    provider.CreateClient(ctx, "test-api-key", "model", "")
-
-    // Verify no secrets were logged
-    if secretLogger.HasDetectedSecrets() {
-        t.Errorf("API key leaked in logs: %v", secretLogger.GetDetectedSecrets())
-    }
-}
-```
-
-### 3. Property-Based Testing
-
-#### Library Choice: Rapid
-
-We use **[Rapid](https://github.com/flyingmutant/rapid)** (`pgregory.net/rapid`) for property-based testing.
-
-**Why Rapid was chosen over alternatives like Gopter:**
-
-- **Modern API**: Leverages Go generics for type-safe data generation
-- **Simplicity**: Intuitive API with minimal boilerplate compared to traditional QuickCheck-style libraries
-- **Automatic shrinking**: Intelligently minimizes failing test cases without requiring user configuration
-- **Active maintenance**: Recent releases and ongoing development (v1.2.0, February 2025)
-- **No dependencies**: Clean, minimal footprint aligning with our project values
-- **Performance**: Optimized for quick feedback loops during development
-
-#### Usage Patterns
-
-For algorithmic functions and data processing:
-
-```go
-import "pgregory.net/rapid"
-
-func TestContentProcessing_Properties(t *testing.T) {
-    rapid.Check(t, func(t *rapid.T) {
-        // Generate arbitrary input using type-safe generators
-        content := rapid.String().Draw(t, "content")
-        maxLength := rapid.IntRange(1, 1000).Draw(t, "maxLength")
-
-        // Process with real implementation
-        processed := processContent(content, maxLength)
-
-        // Verify invariants hold for all generated inputs
-        assert.LessOrEqual(t, len(processed), maxLength)
-        assert.True(t, strings.Contains(processed, extractKey(content)))
-    })
-}
-```
-
-#### Testing Data Structures
-
-```go
-func TestConfigValidation_Properties(t *testing.T) {
-    rapid.Check(t, func(t *rapid.T) {
-        // Generate arbitrary configuration
-        config := ProviderConfig{
-            Temperature: rapid.Float64Range(0.0, 2.0).Draw(t, "temperature"),
-            MaxTokens:   rapid.IntRange(1, 4096).Draw(t, "maxTokens"),
-            TopP:        rapid.Float64Range(0.0, 1.0).Draw(t, "topP"),
-        }
-
-        // Validate configuration
-        err := validateConfig(config)
-
-        // Assert invariants about validation
-        assert.NoError(t, err) // All generated configs should be valid
-    })
-}
-```
-
-#### When to Use Property-Based Testing
-
-- **Data processing algorithms**: Functions that transform input data
-- **Configuration validation**: Parameter boundary checking
-- **Parsing and serialization**: Round-trip testing for data formats
-- **Mathematical operations**: Numeric calculations with invariants
-- **Text processing**: String manipulation functions
-
-## Test Categories
-
-### 1. Unit Tests
-- **Focus**: Pure functions, data processing, algorithms
-- **Mocking**: External dependencies only
-- **Coverage Target**: 90%+ for critical business logic
-
-### 2. Integration Tests
-- **Focus**: Component interactions, workflow testing
-- **Mocking**: HTTP APIs, file system, external services
-- **Coverage Target**: 90%+ for integration paths
-
-### 3. End-to-End Tests
-- **Focus**: Complete application workflows
-- **Execution**: Containerized environment with compiled binary
-- **API Keys**: Test-only keys or mock servers
-
-### 4. Manual API Tests
-- **Purpose**: Validate real provider integration
-- **Execution**: `go test -tags=manual_api_test`
-- **Requirements**: Real test API keys with `test-` prefix
-
-## CI/CD Integration
-
-### Coverage Enforcement
-```bash
-# Overall coverage threshold (current: 35%, target: 90%)
-./scripts/check-coverage.sh 35
-
-# Package-specific coverage enforcement
-./scripts/ci/check-package-specific-coverage.sh
-```
-
-### Quality Gates
-- **Lint**: Code formatting and style checks (required)
-- **Test**: Unit, integration, and coverage validation (required)
-- **Security**: Secret scanning with TruffleHog (required)
-- **Vulnerability**: Dependency scanning with govulncheck (required)
-
-### Emergency Override
-Use emergency override labels for critical hotfixes:
-- `emergency-override`: Bypass all quality gates
-- `bypass-tests`: Skip test execution only
-- `bypass-coverage`: Skip coverage enforcement only
-
-## Security Guidelines
-
-### 1. Secret Detection
-- All tests must pass secret detection validation
-- Use `logutil.WithSecretDetection()` in provider tests
-- Never log raw API keys or sensitive data
-
-### 2. Test Key Management
-- Test keys must have `test-` prefix
-- Use environment variables, never hardcode
-- Implement key validation in test helpers
-- Use minimal permissions for test accounts
-
-### 3. Production Isolation
-- Separate test and production environments completely
-- Never use production keys in any test environment
-- Use mock servers for standard test suites
-- Reserve real API calls for manual integration tests only
-
-## Common Patterns
-
-### Error Scenario Testing
-```go
-func TestErrorHandling(t *testing.T) {
-    tests := []struct {
-        name           string
-        serverResponse func(w http.ResponseWriter, r *http.Request)
-        expectedError  string
-    }{
-        {
-            name: "API key invalid",
-            serverResponse: func(w http.ResponseWriter, r *http.Request) {
-                w.WriteHeader(http.StatusUnauthorized)
-                json.NewEncoder(w).Encode(map[string]string{
-                    "error": "Invalid API key",
-                })
+    // Configure responses
+    server.AddJSONHandler("/v1/chat/completions", 200, map[string]interface{}{
+        "choices": []map[string]interface{}{
+            {
+                "message": map[string]interface{}{
+                    "content": "Test response",
+                },
+                "finish_reason": "stop",
             },
-            expectedError: "Invalid API key",
         },
-        // ... more error scenarios
+    })
+
+    // Configure your client to use server.URL
+    client := createClientWithBaseURL(server.URL)
+
+    // Test your code
+    response, err := client.CreateCompletion(ctx, request)
+    // ... assertions
+}
+```
+
+### HTTP Mock Helpers
+
+```go
+// Standard response helpers
+successResponse := testutil.CreateHTTPSuccessResponse("Test content")
+errorResponse := testutil.CreateHTTPErrorResponse("rate_limit", "Too many requests")
+authErrorResponse := testutil.CreateHTTPAuthErrorResponse()
+
+// Advanced handlers
+server.AddAuthHandler("/secure", "Bearer token123", 200, response)
+server.AddMethodHandler("/api", "POST", 200, response)
+server.AddSlowHandler("/slow", 200, response, func() {
+    time.Sleep(100 * time.Millisecond)
+})
+server.AddMalformedJSONHandler("/broken")  // For error testing
+```
+
+## Filesystem Abstraction
+
+Use `FilesystemIO` interface to make code testable:
+
+### In Production Code
+
+```go
+type MyService struct {
+    fs FilesystemIO
+}
+
+func (s *MyService) SaveOutput(ctx context.Context, path string, content []byte) error {
+    return s.fs.WriteFileWithContext(ctx, path, content, 0644)
+}
+```
+
+### In Tests
+
+```go
+func TestSaveOutput(t *testing.T) {
+    // Use in-memory filesystem
+    fs := testutil.NewMemFS()
+    service := &MyService{fs: fs}
+
+    // Create test directory
+    fs.MkdirAll("/test/output", 0755)
+
+    // Test the service
+    err := service.SaveOutput(ctx, "/test/output/file.txt", []byte("content"))
+    if err != nil {
+        t.Fatalf("Failed to save output: %v", err)
     }
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            server := httptest.NewServer(http.HandlerFunc(tt.serverResponse))
-            defer server.Close()
+    // Verify file was created
+    if !fs.FileExists("/test/output/file.txt") {
+        t.Error("Expected file was not created")
+    }
 
-            // Test with real provider implementation
-            provider := openai.NewProvider(logger)
-            client, err := provider.CreateClient(ctx, "test-api-key", "gpt-4", server.URL)
-            require.NoError(t, err)
-
-            _, err = client.GenerateContent(ctx, "test prompt", nil)
-            assert.Contains(t, err.Error(), tt.expectedError)
-        })
+    // Verify content
+    content, err := fs.ReadFile("/test/output/file.txt")
+    if err != nil {
+        t.Fatalf("Failed to read file: %v", err)
+    }
+    if string(content) != "content" {
+        t.Errorf("Expected 'content', got %q", string(content))
     }
 }
 ```
 
-### Table-Driven Parameter Testing
+### MemFS vs RealFS
+
+- **MemFS**: Use in tests for speed and isolation
+- **RealFS**: Use in production and integration tests that need real filesystem
+
 ```go
-func TestParameterValidation(t *testing.T) {
+// In tests
+fs := testutil.NewMemFS()
+
+// In production
+fs := testutil.NewRealFS()
+
+// Both implement the same FilesystemIO interface
+```
+
+## Integration Testing
+
+### Temporary Resources
+
+```go
+func TestWithTempResources(t *testing.T) {
+    // Create temporary directory
+    tempDir := testutil.SetupTempDir(t, "test-output")
+
+    // Create temporary file
+    tempFile, file := testutil.SetupTempFile(t, "test", ".txt")
+    defer file.Close()
+
+    // Create test files with content
+    files := map[string][]byte{
+        "input.txt":  []byte("test input"),
+        "config.yaml": []byte("key: value"),
+    }
+    createdFiles := testutil.CreateTestFiles(t, tempDir, files)
+
+    // Resources are automatically cleaned up via t.Cleanup()
+}
+```
+
+### Boundary Testing Pattern
+
+```go
+func TestWithBoundaries(t *testing.T) {
+    // Use integration test helper
+    IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
+        // Configure mock external boundaries
+        env.MockFS.MkdirAll("/output", 0755)
+        env.MockAPI.AddJSONHandler("/v1/models", 200, modelsResponse)
+
+        // Set environment variables
+        env.MockEnv.SetEnv("API_KEY", "test-key-123")
+
+        // Run your integration test
+        err := env.Run(ctx, "test instructions")
+        if err != nil {
+            t.Fatalf("Integration test failed: %v", err)
+        }
+
+        // Verify results using boundary mocks
+        files := env.MockFS.GetFileContent()
+        if len(files) == 0 {
+            t.Error("Expected output files to be created")
+        }
+    })
+}
+```
+
+## Context and Correlation ID Handling
+
+### Context Propagation
+
+Always use context in tests to validate proper propagation:
+
+```go
+func TestContextPropagation(t *testing.T) {
+    // Create context with correlation ID
+    ctx := logutil.WithCorrelationID(context.Background(), "test-123")
+
+    // Use in your code
+    result, err := service.ProcessRequest(ctx, request)
+
+    // Verify correlation ID was propagated in logs
+    logger := testutil.NewMockLogger()
+    entries := logger.GetLogEntriesByCorrelationID("test-123")
+    if len(entries) == 0 {
+        t.Error("Expected log entries with correlation ID")
+    }
+}
+```
+
+### Context Deadlines
+
+```go
+func TestContextDeadlines(t *testing.T) {
+    // Create context with timeout
+    ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+    defer cancel()
+
+    // Test that your code respects context cancellation
+    err := service.LongRunningOperation(ctx)
+    if err == nil {
+        t.Error("Expected context deadline exceeded error")
+    }
+    if !errors.Is(err, context.DeadlineExceeded) {
+        t.Errorf("Expected context.DeadlineExceeded, got %v", err)
+    }
+}
+```
+
+## Security in Tests
+
+### API Key Handling
+
+```go
+func TestAPIKeyHandling(t *testing.T) {
+    // Ensure test environment
+    testutil.EnsureTestEnvironment(t)
+
+    // Get test API key (enforces "test-" prefix)
+    apiKey := testutil.GetTestAPIKey(t, "OPENAI_API_KEY")
+
+    // Use in tests
+    client := createClient(apiKey)
+
+    // Verify secure handling
+    if !strings.HasPrefix(apiKey, "test-") {
+        t.Error("API key should have test prefix for safety")
+    }
+}
+```
+
+### Test Configuration Validation
+
+```go
+func TestSecureConfig(t *testing.T) {
+    config := testutil.CreateSecureTestConfig(map[string]string{
+        "api_key": "test-key-123",
+        "base_url": "https://api.test.example.com",
+    })
+
+    // Validate configuration
+    err := testutil.ValidateTestConfiguration(config)
+    if err != nil {
+        t.Fatalf("Test configuration validation failed: %v", err)
+    }
+}
+```
+
+## Common Patterns and Examples
+
+### Table-Driven Tests with Builders
+
+```go
+func TestModelProcessing(t *testing.T) {
     tests := []struct {
-        name        string
-        params      map[string]interface{}
-        expectError bool
-        errorMsg    string
+        name     string
+        model    registry.ModelDefinition
+        wantErr  bool
     }{
         {
-            name:        "Valid temperature",
-            params:      map[string]interface{}{"temperature": 0.7},
-            expectError: false,
+            name: "valid model",
+            model: testutil.NewModelDefinition().
+                WithName("gpt-4").
+                WithProvider("openai").
+                Build(),
+            wantErr: false,
         },
         {
-            name:        "Temperature too high",
-            params:      map[string]interface{}{"temperature": 2.5},
-            expectError: true,
-            errorMsg:    "temperature must be between 0.0 and 2.0",
+            name: "invalid model name",
+            model: testutil.NewModelDefinition().
+                InvalidName().
+                Build(),
+            wantErr: true,
         },
-        // ... more parameter tests
     }
 
     for _, tt := range tests {
         t.Run(tt.name, func(t *testing.T) {
-            provider := setupProvider(t)
-            client := setupClient(t, provider)
-
-            _, err := client.GenerateContent(ctx, "test prompt", tt.params)
-
-            if tt.expectError {
-                assert.Error(t, err)
-                assert.Contains(t, err.Error(), tt.errorMsg)
-            } else {
-                assert.NoError(t, err)
+            err := processor.ProcessModel(ctx, tt.model)
+            if (err != nil) != tt.wantErr {
+                t.Errorf("ProcessModel() error = %v, wantErr %v", err, tt.wantErr)
             }
         })
     }
 }
 ```
+
+### Multi-Provider Testing
+
+```go
+func TestMultiProviderIsolation(t *testing.T) {
+    registry := testutil.NewMockRegistry()
+
+    // Add multiple providers
+    providers := []string{"openai", "gemini", "openrouter"}
+    for _, provider := range providers {
+        registry.AddProvider(testutil.NewProviderDefinition().
+            WithName(provider).
+            Build())
+
+        registry.AddModel(testutil.NewModelDefinition().
+            WithProvider(provider).
+            WithName(provider + "-model").
+            Build())
+    }
+
+    // Test API key isolation
+    for _, provider := range providers {
+        client, err := registry.CreateLLMClient(ctx, "test-"+provider+"-key", provider+"-model")
+        if err != nil {
+            t.Errorf("Failed to create client for %s: %v", provider, err)
+        }
+        // ... test provider-specific behavior
+    }
+}
+```
+
+### Error Scenario Testing
+
+```go
+func TestErrorScenarios(t *testing.T) {
+    scenarios := []struct {
+        name           string
+        setupMock      func(*testutil.MockHTTPServer)
+        expectedError  string
+    }{
+        {
+            name: "rate limit exceeded",
+            setupMock: func(server *testutil.MockHTTPServer) {
+                server.AddJSONHandler("/v1/chat/completions", 429,
+                    testutil.CreateHTTPRateLimitResponse())
+            },
+            expectedError: "rate limit exceeded",
+        },
+        {
+            name: "authentication failed",
+            setupMock: func(server *testutil.MockHTTPServer) {
+                server.AddJSONHandler("/v1/chat/completions", 401,
+                    testutil.CreateHTTPAuthErrorResponse())
+            },
+            expectedError: "authentication",
+        },
+    }
+
+    for _, scenario := range scenarios {
+        t.Run(scenario.name, func(t *testing.T) {
+            testutil.WithMockProvider(t, scenario.setupMock, func(baseURL string) {
+                client := createClientWithBaseURL(baseURL)
+                _, err := client.CreateCompletion(ctx, request)
+
+                if err == nil {
+                    t.Error("Expected error but got none")
+                }
+                if !strings.Contains(err.Error(), scenario.expectedError) {
+                    t.Errorf("Expected error containing %q, got %q",
+                        scenario.expectedError, err.Error())
+                }
+            })
+        })
+    }
+}
+```
+
+## Best Practices
+
+### 1. Test Organization
+
+- Group related tests in the same file
+- Use descriptive test names that explain the scenario
+- Use table-driven tests for multiple similar test cases
+- Use subtests (`t.Run`) to organize complex test scenarios
+
+### 2. Resource Management
+
+- Always use `testutil` helpers for temporary resources
+- Let `t.Cleanup()` handle resource cleanup automatically
+- Don't manually manage temporary files/directories
+
+### 3. Assertion Patterns
+
+```go
+// Good: Specific error checking
+if err == nil {
+    t.Fatal("Expected error but got none")
+}
+if !strings.Contains(err.Error(), "expected message") {
+    t.Errorf("Expected error containing 'expected message', got %q", err.Error())
+}
+
+// Good: Use integration helpers for content verification
+VerifyFileContent(t, env, expectedPath, expectedContent)
+
+// Good: Check mock interactions
+calls := mockRegistry.GetMethodCalls("GetModel")
+if len(calls) != 1 {
+    t.Errorf("Expected 1 GetModel call, got %d", len(calls))
+}
+```
+
+### 4. Context Usage
+
+- Always pass context to functions that accept it
+- Test context cancellation and timeouts
+- Verify correlation ID propagation through the call stack
+
+### 5. Coverage and Quality
+
+- Maintain 90%+ test coverage
+- Test both success and error paths
+- Use builders to test invalid data scenarios
+- Focus on integration tests over isolated unit tests
 
 ## Getting Started
 
@@ -443,17 +634,7 @@ go test -v ./internal/integration/...
 ./internal/e2e/run_e2e_tests.sh -v
 ```
 
-### 3. Run Manual API Tests
-```bash
-# Set test API keys (optional)
-export OPENAI_TEST_KEY=test-openai-key-12345
-export GEMINI_TEST_KEY=test-gemini-key-67890
-
-# Run manual API tests
-go test -tags=manual_api_test -v ./internal/e2e/...
-```
-
-### 4. Check Coverage
+### 3. Check Coverage
 ```bash
 # Check overall coverage
 ./scripts/check-coverage.sh 90
@@ -462,4 +643,4 @@ go test -tags=manual_api_test -v ./internal/e2e/...
 ./scripts/check-package-coverage.sh 90
 ```
 
-This testing guide ensures our codebase maintains high quality while following our core development tenets of testability, simplicity, and maintainability.
+This testing infrastructure ensures reliable, maintainable tests that validate real system behavior while providing fast feedback during development.

@@ -19,7 +19,7 @@
         1. A library is selected and added to `go.mod`.
         2. The choice is documented in `TESTING.md`.
     - **Depends‑on:** none
-- [ ] **T003 · Chore · P2: decide and configure CI coverage measurement strategy**
+- [x] **T003 · Chore · P2: decide and configure CI coverage measurement strategy**
     - **Context:** Open Questions & Dependencies > 4. Coverage Measurement
     - **Action:**
         1. Decide whether to exclude test utility packages (e.g., `internal/testutil`) from coverage threshold calculations.
@@ -56,7 +56,7 @@
     - **Done‑when:**
         1. Factories for core data structures are implemented and available for use in tests.
     - **Depends‑on:** [T004]
-- [ ] **T007 · Feature · P1: implement `logutil.TestLogger` for structured test logging**
+- [x] **T007 · Feature · P1: implement `logutil.TestLogger` for structured test logging**
     - **Context:** Logging & Observability Approach > Test Logging Strategy
     - **Action:**
         1. Create a `TestLogger` in a `logutil` package that captures structured logs in memory.
@@ -65,7 +65,7 @@
     - **Done‑when:**
         1. `logutil.TestLogger` is implemented and available for use in tests.
     - **Depends‑on:** none
-- [ ] **T008 · Feature · P1: implement secure test configuration and API key handling helper**
+- [x] **T008 · Feature · P1: implement secure test configuration and API key handling helper**
     - **Context:** Security & Configuration Considerations > API Key Management in Tests
     - **Action:**
         1. Implement a `getTestAPIKey` helper function in `internal/testutil` that safely retrieves keys from environment variables.
@@ -89,7 +89,7 @@
     - **Done‑when:**
         1. All target functions are tested, achieving at least 85% coverage for their respective files.
     - **Depends‑on:** [T005, T006]
-- [ ] **T011 · Test · P0: add tests for `cmd/thinktank` flag parsing and input validation**
+- [x] **T011 · Test · P0: add tests for `cmd/thinktank` flag parsing and input validation**
     - **Context:** 1.3 Core Application Entry Points (0% → 80%+)
     - **Action:**
         1. Add tests for `ParseFlags` and `ValidateInputs` covering valid cases, invalid cases, and edge cases.
@@ -97,7 +97,7 @@
     - **Done‑when:**
         1. `ParseFlags` and `ValidateInputs` have at least 80% test coverage.
     - **Depends‑on:** none
-- [ ] **T012 · Test · P0: add tests for `internal/thinktank` context and dry-run functions**
+- [x] **T012 · Test · P0: add tests for `internal/thinktank` context and dry-run functions**
     - **Context:** 1.3 Core Application Entry Points (0% → 80%+)
     - **Action:**
         1. Add unit tests for `GatherContext` using a temporary file system created with helpers from `testutil`.
@@ -107,7 +107,7 @@
     - **Depends‑on:** [T004]
 
 ## Phase 2: Core Business Logic
-- [ ] **T013 · Test · P1: add table-driven tests for `GenerateContent` parameter boundaries**
+- [x] **T013 · Test · P1: add table-driven tests for `GenerateContent` parameter boundaries**
     - **Context:** 2.1 Provider Implementation Completion > Parameter boundary testing
     - **Action:**
         1. For each provider, add table-driven tests for the `GenerateContent` method.
@@ -115,14 +115,14 @@
     - **Done‑when:**
         1. Parameter validation for `GenerateContent` is comprehensively tested for all providers.
     - **Depends‑on:** [T009, T010]
-- [ ] **T014 · Test · P1: add integration tests for `GenerateContent` API error scenarios**
+- [x] **T014 · Test · P1: add integration tests for `GenerateContent` API error scenarios**
     - **Context:** 2.1 Provider Implementation Completion > Error scenario testing
     - **Action:**
         1. For each provider, add tests for `GenerateContent` that use the in-memory HTTP server to simulate various API failures (4xx/5xx status codes, malformed JSON, network timeouts).
     - **Done‑when:**
         1. API error handling for `GenerateContent` is tested for all providers, ensuring errors are correctly propagated.
     - **Depends‑on:** [T005, T009, T010]
-- [ ] **T015 · Feature · P2: implement property-based testing utilities and initial tests**
+- [x] **T015 · Feature · P2: implement property-based testing utilities and initial tests**
     - **Context:** 2.1 Provider Implementation Completion > Property-based testing for content processing
     - **Action:**
         1. Add the chosen PBT library to `go.mod` and create helper generators for project types in `internal/testutil/property_testing.go`.
@@ -131,7 +131,7 @@
         1. Utilities for property-based testing are available in `internal/testutil`.
         2. An example property-based test is implemented and passes.
     - **Depends‑on:** [T002]
-- [ ] **T016 · Test · P1: add tests for `thinktank.Execute` error handling paths**
+- [x] **T016 · Test · P1: add tests for `thinktank.Execute` error handling paths**
     - **Context:** 2.2 Core Logic Implementation > Execute() method error handling
     - **Action:**
         1. Add tests for the `thinktank.Execute` method that trigger various error conditions, such as provider errors or file I/O errors.
@@ -139,7 +139,7 @@
     - **Done‑when:**
         1. Key error handling paths in `thinktank.Execute` are covered by tests.
     - **Depends‑on:** [T012]
-- [ ] **T017 · Test · P1: add tests for `thinktank.Execute` file processing and dry run**
+- [x] **T017 · Test · P1: add tests for `thinktank.Execute` file processing and dry run**
     - **Context:** 2.2 Core Logic Implementation > Context gathering, Output directory, Dry run
     - **Action:**
         1. Add tests for the `thinktank.Execute` happy path, using a temporary directory to provide inputs and verify that output files are created correctly.
@@ -149,7 +149,7 @@
     - **Depends‑on:** [T004, T012]
 
 ## Phase 3: Integration & Completeness
-- [ ] **T018 · Test · P2: add integration tests for CLI flag parsing edge cases and exit codes**
+- [x] **T018 · Test · P2: add integration tests for CLI flag parsing edge cases and exit codes**
     - **Context:** 3.1 CLI Interface Completion
     - **Action:**
         1. Using `os/exec` to run the compiled test binary, create tests for the full CLI workflow.
@@ -157,14 +157,14 @@
     - **Done‑when:**
         1. CLI behavior for various flag combinations and error conditions is tested.
     - **Depends‑on:** [T011]
-- [ ] **T019 · Test · P2: add tests for `orchestrator` logic**
+- [x] **T019 · Test · P2: add tests for `orchestrator` logic**
     - **Context:** 3.2 Orchestrator Logic
     - **Action:**
         1. Add unit tests for error classification, model management, and result processing functions in the `orchestrator` package.
     - **Done‑when:**
         1. Critical functions in the `orchestrator` package reach at least 90% test coverage.
     - **Depends‑on:** none
-- [ ] **T020 · Test · P1: implement comprehensive end-to-end workflow integration test**
+- [x] **T020 · Test · P1: implement comprehensive end-to-end workflow integration test**
     - **Context:** 3.3 Integration Test Suite
     - **Action:**
         1. Implement a test that executes the entire application workflow using real internal components and in-memory implementations for external systems.
@@ -172,7 +172,7 @@
     - **Done‑when:**
         1. An end-to-end test validating the primary success path of the application exists and passes.
     - **Depends‑on:** [T017, T019]
-- [ ] **T021 · Test · P2: add integration test to verify correlation ID propagation**
+- [x] **T021 · Test · P2: add integration test to verify correlation ID propagation**
     - **Context:** Logging & Observability Approach > Test correlation ID propagation
     - **Action:**
         1. Create an integration test that executes an operation spanning multiple components, injecting a `correlation_id` into the initial context.
@@ -180,7 +180,7 @@
     - **Done‑when:**
         1. Correlation ID propagation is verified by an automated test.
     - **Depends‑on:** [T007, T020]
-- [ ] **T022 · Chore · P1: document established testing patterns and infrastructure usage**
+- [x] **T022 · Chore · P1: document established testing patterns and infrastructure usage**
     - **Context:** Risk Matrix & Mitigation > 3. Pattern Documentation
     - **Action:**
         1. Create or update a `TESTING.md` document in the repository.
@@ -188,7 +188,7 @@
     - **Done‑when:**
         1. `TESTING.md` is created and populated with patterns established in Phase 1.
     - **Depends‑on:** [T004, T005, T006]
-- [ ] **T023 · Chore · P1: coordinate with Issue #46 to enforce CI coverage thresholds**
+- [x] **T023 · Chore · P1: coordinate with Issue #46 to enforce CI coverage thresholds**
     - **Context:** External Dependencies > 1. Issue #46
     - **Action:**
         1. Work with the owner of Issue #46 to configure the CI pipeline to fail if overall test coverage drops below 90% or if any critical package is below 90%.

@@ -21,7 +21,7 @@ func TestTestLogger_NewTestLogger(t *testing.T) {
 }
 
 func TestTestLogger_BasicLogging(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 
 	// Test Debug
 	logger.Debug("debug message")
@@ -103,7 +103,7 @@ func TestTestLogger_ClearTestLogs(t *testing.T) {
 }
 
 func TestTestLogger_ContextLogging(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 	ctx := context.Background()
 
 	// Test DebugContext
@@ -159,7 +159,7 @@ func TestTestLogger_WithContext(t *testing.T) {
 }
 
 func TestTestLogger_ConcurrentAccess(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 
 	// Test concurrent logging
 	done := make(chan bool, 2)
@@ -206,7 +206,7 @@ func TestTestLogger_EmptyState(t *testing.T) {
 }
 
 func TestTestLogger_MessageFormatting(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 
 	// Test formatted messages
 	logger.Info("formatted message with %s and %d", "string", 123)
@@ -230,7 +230,7 @@ func TestTestLogger_MessageFormatting(t *testing.T) {
 }
 
 func TestTestLogger_LogLevels(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 
 	// Test all log levels are captured
 	logger.Debug("debug level")
@@ -255,7 +255,7 @@ func TestTestLogger_LogLevels(t *testing.T) {
 }
 
 func TestTestLogger_ContextMessageFormatting(t *testing.T) {
-	logger := NewTestLogger(t)
+	logger := NewTestLoggerWithoutAutoFail(t) // Use non-auto-fail version for this test
 	ctx := WithCorrelationID(context.Background())
 
 	// Test context-based formatted messages
@@ -274,5 +274,167 @@ func TestTestLogger_ContextMessageFormatting(t *testing.T) {
 	logs = logger.GetTestLogs()
 	if len(logs) != 2 {
 		t.Errorf("Expected 2 logs, got %d", len(logs))
+	}
+}
+
+// TestTestLogger_ErrorLogCapture tests the new error log capture functionality
+func TestTestLogger_ErrorLogCapture(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	// Initially no error logs
+	if logger.HasErrorLogs() {
+		t.Error("Expected no error logs initially")
+	}
+
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 0 {
+		t.Errorf("Expected 0 error logs initially, got %d", len(errorLogs))
+	}
+
+	// Log some non-error messages
+	logger.Debug("debug message")
+	logger.Info("info message")
+	logger.Warn("warn message")
+
+	// Still no error logs
+	if logger.HasErrorLogs() {
+		t.Error("Expected no error logs after non-error messages")
+	}
+
+	// Log an error
+	logger.Error("error message")
+	if !logger.HasErrorLogs() {
+		t.Error("Expected error logs after Error call")
+	}
+
+	errorLogs = logger.GetErrorLogs()
+	if len(errorLogs) != 1 {
+		t.Errorf("Expected 1 error log, got %d", len(errorLogs))
+	}
+
+	if !strings.Contains(errorLogs[0], "error message") {
+		t.Errorf("Expected error log to contain 'error message', got: %s", errorLogs[0])
+	}
+
+	// Log a fatal message
+	logger.Fatal("fatal message")
+	errorLogs = logger.GetErrorLogs()
+	if len(errorLogs) != 2 {
+		t.Errorf("Expected 2 error logs after Fatal, got %d", len(errorLogs))
+	}
+
+	// Clear error logs
+	logger.ClearErrorLogs()
+	if logger.HasErrorLogs() {
+		t.Error("Expected no error logs after ClearErrorLogs")
+	}
+
+	errorLogs = logger.GetErrorLogs()
+	if len(errorLogs) != 0 {
+		t.Errorf("Expected 0 error logs after clear, got %d", len(errorLogs))
+	}
+}
+
+// TestTestLogger_ErrorLogCaptureWithContext tests error log capture with context methods
+func TestTestLogger_ErrorLogCaptureWithContext(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+	ctx := WithCorrelationID(context.Background())
+
+	// Log context-based error
+	logger.ErrorContext(ctx, "context error message")
+	if !logger.HasErrorLogs() {
+		t.Error("Expected error logs after ErrorContext call")
+	}
+
+	errorLogs := logger.GetErrorLogs()
+	if len(errorLogs) != 1 {
+		t.Errorf("Expected 1 error log, got %d", len(errorLogs))
+	}
+
+	if !strings.Contains(errorLogs[0], "context error message") {
+		t.Errorf("Expected error log to contain 'context error message', got: %s", errorLogs[0])
+	}
+
+	// Log context-based fatal
+	logger.FatalContext(ctx, "context fatal message")
+	errorLogs = logger.GetErrorLogs()
+	if len(errorLogs) != 2 {
+		t.Errorf("Expected 2 error logs after FatalContext, got %d", len(errorLogs))
+	}
+}
+
+// TestTestLogger_ClearTestLogsClearsErrors tests that ClearTestLogs also clears error logs
+func TestTestLogger_ClearTestLogsClearsErrors(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	logger.Info("info message")
+	logger.Error("error message")
+
+	// Verify logs are captured
+	logs := logger.GetTestLogs()
+	errorLogs := logger.GetErrorLogs()
+	if len(logs) != 2 {
+		t.Errorf("Expected 2 total logs, got %d", len(logs))
+	}
+	if len(errorLogs) != 1 {
+		t.Errorf("Expected 1 error log, got %d", len(errorLogs))
+	}
+
+	// Clear all logs
+	logger.ClearTestLogs()
+
+	// Verify both are cleared
+	logs = logger.GetTestLogs()
+	errorLogs = logger.GetErrorLogs()
+	if len(logs) != 0 {
+		t.Errorf("Expected 0 total logs after clear, got %d", len(logs))
+	}
+	if len(errorLogs) != 0 {
+		t.Errorf("Expected 0 error logs after clear, got %d", len(errorLogs))
+	}
+	if logger.HasErrorLogs() {
+		t.Error("Expected HasErrorLogs to return false after clear")
+	}
+}
+
+// TestTestLogger_AssertNoErrorLogs tests the AssertNoErrorLogs functionality
+func TestTestLogger_AssertNoErrorLogs(t *testing.T) {
+	// Use a sub-test to capture the failure
+	t.Run("should_pass_with_no_errors", func(t *testing.T) {
+		logger := NewTestLoggerWithoutAutoFail(t)
+		logger.Info("info message")
+		logger.Warn("warn message")
+
+		// This should not fail the test
+		logger.AssertNoErrorLogs()
+	})
+
+	t.Run("should_fail_with_errors", func(t *testing.T) {
+		// We can't easily test the failure case because it would fail this test
+		// Instead, we'll test that HasErrorLogs returns true when there are errors
+		logger := NewTestLoggerWithoutAutoFail(t)
+		logger.Error("error message")
+
+		if !logger.HasErrorLogs() {
+			t.Error("Expected HasErrorLogs to return true after error")
+		}
+	})
+}
+
+// TestTestLogger_AutoFailMode tests the auto-fail mode control
+func TestTestLogger_AutoFailMode(t *testing.T) {
+	logger := NewTestLoggerWithoutAutoFail(t)
+
+	// Test enabling auto-fail
+	logger.EnableAutoFail()
+	// We can't test actual failure here, but we can test the mode change
+
+	// Test disabling auto-fail
+	logger.DisableAutoFail()
+	// Should be able to log errors without failing
+	logger.Error("test error")
+
+	if !logger.HasErrorLogs() {
+		t.Error("Expected error logs to be captured")
 	}
 }

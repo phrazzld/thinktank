@@ -517,9 +517,9 @@ jobs:
         if: github.event_name == 'push' || needs.check-override.outputs.bypass_coverage != 'true'
         run: |
           set -eo pipefail
-          # Use dedicated script for checking coverage with 35% overall threshold
+          # Use dedicated script for checking coverage with 90% overall threshold
           # Excludes test utilities to focus on business logic coverage
-          ./scripts/check-coverage.sh 35
+          ./scripts/check-coverage.sh 90
 
       # Check package-specific coverage thresholds (can be bypassed with override)
       # Uses strategy defined in docs/COVERAGE_MEASUREMENT_STRATEGY.md

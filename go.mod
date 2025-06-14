@@ -12,6 +12,7 @@ require (
 	golang.org/x/time v0.12.0
 	google.golang.org/api v0.237.0
 	gopkg.in/yaml.v3 v3.0.1
+	pgregory.net/rapid v1.2.0
 )
 
 require (

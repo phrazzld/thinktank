@@ -48,19 +48,19 @@ Coverage calculations **exclude** the following categories:
 
 ### Overall Project Threshold
 
-- **Minimum**: 35% overall coverage
-- **Target**: Gradual improvement toward higher coverage
+- **Minimum**: 90% overall coverage (enforced in CI)
+- **Quality Gate**: Hard requirement for all pull requests
 
 ### Package-Specific Thresholds
 
-Critical packages have higher requirements based on their importance:
+Critical packages have differentiated requirements based on their complexity:
 
 | Package | Threshold | Classification | Rationale |
 |---------|-----------|----------------|-----------|
 | `internal/llm` | 95% | Critical | Core LLM interface and error handling |
 | `internal/providers` | 80% | Critical | Provider abstraction layer |
 | `internal/registry` | 75% | Critical | Model registry and configuration |
-| `internal/thinktank` | 70% | Important | Complex orchestration logic |
+| `internal/thinktank` | 70% | Application | Complex orchestration logic with comprehensive testing |
 
 ## Implementation
 
