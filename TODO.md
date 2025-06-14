@@ -37,7 +37,7 @@
         2. No references to old library remain in codebase
     - **Depends‑on:** [CI002]
 
-- [ ] **CI004 · Chore · P0: fix errcheck violations in integration test files**
+- [x] **CI004 · Chore · P0: fix errcheck violations in integration test files**
     - **Context:** CI failure - golangci-lint errcheck violations
     - **Action:**
         1. Fix `internal/gemini/integration_test.go:32:29` - add error handling to JSON encoding
@@ -48,7 +48,7 @@
         2. golangci-lint errcheck passes for entire codebase
     - **Depends‑on:** none
 
-- [ ] **CI005 · Chore · P0: remove unused test utility functions**
+- [x] **CI005 · Chore · P0: remove unused test utility functions**
     - **Context:** CI failure - golangci-lint unused function violations
     - **Action:**
         1. Remove `setupMockServer` function from `internal/gemini/integration_test.go:17`

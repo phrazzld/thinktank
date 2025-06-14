@@ -2,44 +2,13 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
 
 	genai "github.com/google/generative-ai-go/genai"
 )
-
-// setupMockServer creates an HTTP test server for integration testing
-func setupMockServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
-	t.Helper()
-	server := httptest.NewServer(handler)
-	t.Cleanup(func() {
-		server.Close()
-	})
-	return server
-}
-
-// createJSONHandler creates a handler that returns JSON response
-func createJSONHandler(statusCode int, response interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(statusCode)
-		if response != nil {
-			json.NewEncoder(w).Encode(response)
-		}
-	}
-}
-
-// createErrorHandler creates a handler that returns an HTTP error
-func createErrorHandler(statusCode int, errorMessage string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, errorMessage, statusCode)
-	}
-}
 
 func TestNewLLMClientIntegration(t *testing.T) {
 	t.Run("client creation with invalid API key", func(t *testing.T) {

@@ -28,7 +28,9 @@ func createJSONHandler(statusCode int, response interface{}) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(statusCode)
 		if response != nil {
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, "failed to encode response", http.StatusInternalServerError)
+			}
 		}
 	}
 }
