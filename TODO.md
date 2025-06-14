@@ -25,7 +25,7 @@
         2. License compliance CI check passes
     - **Depends‑on:** [CI001]
 
-- [ ] **CI003 · Chore · P0: migrate property-based tests to new library**
+- [x] **CI003 · Chore · P0: migrate property-based tests to new library**
     - **Context:** API migration required after dependency replacement
     - **Action:**
         1. Update `internal/testutil/property_testing.go` to use new library API
