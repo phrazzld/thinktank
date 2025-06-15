@@ -233,6 +233,14 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	// Create logger
 	logger := logutil.NewTestLogger(t)
 
+	// Declare expected error patterns for model2 failure (this is part of the test scenario)
+	logger.ExpectError("Generation failed for model model2")
+	logger.ExpectError("Error generating content with model model2")
+	logger.ExpectError("Processing model model2 failed")
+	logger.ExpectError("model model2 processing failed")
+	logger.ExpectError("Completed with model errors")
+	logger.ExpectError("API rate limit exceeded")
+
 	// Create mock API caller (boundary mock)
 	mockAPICaller := &MockExternalAPICaller{}
 

@@ -220,6 +220,13 @@ func TestModelProcessorErrorHandling(t *testing.T) {
 	// Declare expected error patterns for this error handling test
 	testLogger.ExpectError("Generation failed for model test-model")
 	testLogger.ExpectError("Error generating content with model test-model")
+	// Additional patterns for specific error scenarios
+	testLogger.ExpectError("invalid API key provided")
+	testLogger.ExpectError("rate limit exceeded")
+	testLogger.ExpectError("content filtered by safety system")
+	testLogger.ExpectError("input exceeds maximum token limit")
+	testLogger.ExpectError("context deadline exceeded")
+	testLogger.ExpectError("clear error message: an underlying error")
 
 	env := setupModelProcTestEnvWithLogger(t, testLogger)
 
