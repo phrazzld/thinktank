@@ -106,6 +106,11 @@ func TestModelProcessorContextPropagation(t *testing.T) {
 func TestModelProcessorContextCancellation(t *testing.T) {
 	// Create a test environment with TestLogger
 	testLogger := logutil.NewTestLogger(t)
+
+	// Declare expected error patterns for context cancellation
+	testLogger.ExpectError("Generation failed for model test-model")
+	testLogger.ExpectError("Error generating content with model test-model")
+
 	env := setupModelProcTestEnvWithLogger(t, testLogger)
 
 	// Create a context with correlation ID that we'll cancel
