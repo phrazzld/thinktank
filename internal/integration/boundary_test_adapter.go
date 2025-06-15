@@ -136,6 +136,14 @@ func NewBoundaryTestEnv(t testing.TB) *BoundaryTestEnv {
 	}
 }
 
+// ExpectError declares that an error message matching the given pattern is expected
+// and should not cause test failure. This method works with TestLogger instances.
+func (env *BoundaryTestEnv) ExpectError(pattern string) {
+	if testLogger, ok := env.Logger.(*logutil.TestLogger); ok {
+		testLogger.ExpectError(pattern)
+	}
+}
+
 // SetupModelResponse configures the mock API caller to return specific responses for a model
 func (env *BoundaryTestEnv) SetupModelResponse(modelName, response string) {
 	env.ModelOutputs[modelName] = response
@@ -483,17 +491,17 @@ func (w *BoundaryFileWriter) SaveToFile(ctx context.Context, content, filePath s
 	// Ensure directory exists
 	dir := filepath.Dir(filePath)
 	if err := w.filesystem.MkdirAll(dir, 0750); err != nil {
-		w.logger.Error("Failed to create directory %s: %v", dir, err)
+		w.logger.ErrorContext(ctx, "Failed to create directory %s: %v", dir, err)
 		return err
 	}
 
 	// Write file
 	if err := w.filesystem.WriteFile(filePath, []byte(content), 0640); err != nil {
-		w.logger.Error("Failed to write file %s: %v", filePath, err)
+		w.logger.ErrorContext(ctx, "Failed to write file %s: %v", filePath, err)
 		return err
 	}
 
-	w.logger.Debug("Successfully wrote file: %s", filePath)
+	w.logger.DebugContext(ctx, "Successfully wrote file: %s", filePath)
 	return nil
 }
 

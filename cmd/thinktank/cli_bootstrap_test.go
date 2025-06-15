@@ -217,8 +217,8 @@ func TestParseFlags_SynthesisModel(t *testing.T) {
 	}{
 		{
 			name:          "Set synthesis model",
-			args:          []string{"--synthesis-model=gpt-4"},
-			expectedModel: "gpt-4",
+			args:          []string{"--synthesis-model=gpt-4.1"},
+			expectedModel: "gpt-4.1",
 			expectError:   false,
 		},
 		{

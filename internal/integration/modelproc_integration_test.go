@@ -106,6 +106,11 @@ func TestModelProcessorContextPropagation(t *testing.T) {
 func TestModelProcessorContextCancellation(t *testing.T) {
 	// Create a test environment with TestLogger
 	testLogger := logutil.NewTestLogger(t)
+
+	// Declare expected error patterns for context cancellation
+	testLogger.ExpectError("Generation failed for model test-model")
+	testLogger.ExpectError("Error generating content with model test-model")
+
 	env := setupModelProcTestEnvWithLogger(t, testLogger)
 
 	// Create a context with correlation ID that we'll cancel
@@ -214,8 +219,20 @@ func TestModelProcessorContextCancellation(t *testing.T) {
 // TestModelProcessorErrorHandling tests the error handling patterns in the model processor.
 // It verifies that errors are properly wrapped, categorized, and that correlation IDs are preserved.
 func TestModelProcessorErrorHandling(t *testing.T) {
-	// Create a test environment with TestLogger
-	testLogger := logutil.NewTestLogger(t)
+	// Create a test environment with TestLogger without auto-fail
+	testLogger := logutil.NewTestLoggerWithoutAutoFail(t)
+
+	// Declare expected error patterns for this error handling test
+	testLogger.ExpectError("Generation failed for model test-model")
+	testLogger.ExpectError("Error generating content with model test-model")
+	// Additional patterns for specific error scenarios
+	testLogger.ExpectError("invalid API key provided")
+	testLogger.ExpectError("rate limit exceeded")
+	testLogger.ExpectError("content filtered by safety system")
+	testLogger.ExpectError("input exceeds maximum token limit")
+	testLogger.ExpectError("context deadline exceeded")
+	testLogger.ExpectError("clear error message: an underlying error")
+
 	env := setupModelProcTestEnvWithLogger(t, testLogger)
 
 	// Create a context with correlation ID

@@ -12,15 +12,15 @@ set -e
 # Package thresholds are defined in this script and documented in coverage-analysis.md.
 # The CI workflow enforces these thresholds by running this script.
 
-# Define the overall threshold (aligned with realistic baseline)
-OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-35}
+# Define the overall threshold (enforced for quality gate compliance)
+OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-80}
 
 # Determine the module path
 MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
 
 # Define package-specific thresholds for quality gate enforcement
-# Critical packages (95% requirement): Core business logic and interfaces
-# Non-critical packages: Lower thresholds during improvement phase
+# All packages maintain high coverage with 80% overall project threshold
+# Critical packages have differentiated requirements based on complexity
 
 # Define package paths
 PKG_THINKTANK="${MODULE_PATH}/internal/thinktank"
@@ -29,20 +29,39 @@ PKG_REGISTRY="${MODULE_PATH}/internal/registry"
 PKG_LLM="${MODULE_PATH}/internal/llm"
 
 # Define thresholds for each package
-# Critical packages with realistic requirements (adjusted to current baseline)
-THRESHOLD_LLM=95          # CRITICAL: Core LLM interface and error handling (already high)
-THRESHOLD_PROVIDERS=80    # CRITICAL: Provider abstraction layer (current: 83.7%)
-THRESHOLD_REGISTRY=75     # CRITICAL: Model registry and configuration (current: 77.8%)
+# Critical packages with high requirements to maintain quality
+THRESHOLD_LLM=95          # CRITICAL: Core LLM interface and error handling
+THRESHOLD_PROVIDERS=80    # CRITICAL: Provider abstraction layer
+THRESHOLD_REGISTRY=75     # CRITICAL: Model registry and configuration
 
-# Non-critical packages with gradual improvement targets
-THRESHOLD_THINKTANK=70    # Complex orchestration - gradual improvement target
+# Application packages maintaining high coverage
+THRESHOLD_THINKTANK=70    # Complex orchestration logic with comprehensive testing
 
 # Function to generate coverage data if not already present
 generate_coverage() {
   echo "Generating coverage data..."
-  # Skip integration and e2e tests as they're slow and have different coverage characteristics
-  PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/")
-  go test -short -coverprofile=coverage.out -covermode=atomic $PACKAGES
+  # Skip packages and files that shouldn't be included in coverage metrics:
+  # - integration and e2e tests (slow and have different coverage characteristics)
+  # - disabled code
+  # - test helper packages and files (testutil, mock implementations, test utilities)
+  PACKAGES=$(go list ./... | \
+    grep -v "${MODULE_PATH}/internal/integration" | \
+    grep -v "${MODULE_PATH}/internal/e2e" | \
+    grep -v "/disabled/" | \
+    grep -v "${MODULE_PATH}/internal/testutil")
+
+  # Run tests and generate coverage profile
+  go test -short -coverprofile=coverage.out.tmp -covermode=atomic $PACKAGES
+
+  # Process coverage file to exclude test helper files by pattern
+  cat coverage.out.tmp | \
+    grep -v "_test_helpers\.go:" | \
+    grep -v "_test_utils\.go:" | \
+    grep -v "mock_.*\.go:" | \
+    grep -v "/mocks\.go:" > coverage.out
+
+  # Cleanup temporary file
+  rm coverage.out.tmp
 }
 
 # Generate coverage if file doesn't exist

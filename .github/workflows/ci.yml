@@ -468,13 +468,25 @@ jobs:
         timeout-minutes: 2
 
       # Generate coverage report with short flag to skip long-running tests
+      # Follows coverage measurement strategy defined in docs/COVERAGE_MEASUREMENT_STRATEGY.md
       - name: Generate coverage report
         run: |
           set -eo pipefail
-          # Use the same coverage generation logic as our check-coverage.sh script
+          # Use the same coverage generation logic as our coverage scripts
+          # Excludes test utility packages (testutil, mock files) to focus on business logic
           MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
-          PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/")
-          go test -short -coverprofile=coverage.out -covermode=atomic $PACKAGES
+          PACKAGES=$(go list ./... | grep -v "${MODULE_PATH}/internal/integration" | grep -v "${MODULE_PATH}/internal/e2e" | grep -v "/disabled/" | grep -v "${MODULE_PATH}/internal/testutil")
+          go test -short -coverprofile=coverage.out.tmp -covermode=atomic $PACKAGES
+
+          # Filter out test helper files from coverage data
+          cat coverage.out.tmp | \
+            grep -v "_test_helpers\.go:" | \
+            grep -v "_test_utils\.go:" | \
+            grep -v "mock_.*\.go:" | \
+            grep -v "/mocks\.go:" > coverage.out
+
+          # Cleanup temporary file
+          rm coverage.out.tmp
         timeout-minutes: 5
 
       # Display coverage summary with per-package details
@@ -500,19 +512,23 @@ jobs:
           retention-days: 14
 
       # Check coverage threshold (can be bypassed with override)
+      # Uses strategy defined in docs/COVERAGE_MEASUREMENT_STRATEGY.md
       - name: Check overall coverage threshold
         if: github.event_name == 'push' || needs.check-override.outputs.bypass_coverage != 'true'
         run: |
           set -eo pipefail
-          # Use dedicated script for checking coverage with 90% quality gate threshold
-          ./scripts/check-coverage.sh 35  # Quality gate enforcement at 35% realistic threshold for overall
+          # Use dedicated script for checking coverage with 80% overall threshold
+          # Excludes test utilities to focus on business logic coverage
+          ./scripts/check-coverage.sh 80
 
       # Check package-specific coverage thresholds (can be bypassed with override)
+      # Uses strategy defined in docs/COVERAGE_MEASUREMENT_STRATEGY.md
       - name: Check package-specific coverage thresholds
         if: github.event_name == 'push' || needs.check-override.outputs.bypass_coverage != 'true'
         run: |
           set -eo pipefail
           # This script enforces package-specific thresholds for critical packages
+          # Excludes test utilities and focuses on business logic coverage
           ./scripts/ci/check-package-specific-coverage.sh
 
       # Report coverage bypass when override is active
