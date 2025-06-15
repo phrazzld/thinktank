@@ -152,8 +152,8 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing models in non-dry-run",
 			args:           []string{"--instructions", instructionsFile, "src/"},
-			expectedExit:   ExitCodeGenericError, // Default model not found in registry
-			stderrContains: "Resource not found",
+			expectedExit:   ExitCodeAuthError, // Default model requires API key in CI
+			stderrContains: "Authentication error",
 		},
 		{
 			name:           "Invalid model name format",
@@ -195,8 +195,8 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing API key for Gemini model",
 			args:           []string{"--instructions", instructionsFile, "--model", "gemini-2.5-pro-preview-03-25", "src/"},
-			expectedExit:   ExitCodeGenericError, // API key required but not provided
-			stderrContains: "Resource not found",
+			expectedExit:   ExitCodeAuthError, // API key required but not provided
+			stderrContains: "Authentication error",
 		},
 		{
 			name:           "Missing API key for OpenAI model",
@@ -207,8 +207,8 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing API key for OpenRouter model",
 			args:           []string{"--instructions", instructionsFile, "--model", "openrouter/deepseek/deepseek-chat-v3-0324", "src/"},
-			expectedExit:   ExitCodeGenericError, // API key missing causes execution failure
-			stderrContains: "Authentication error",
+			expectedExit:   ExitCodeGenericError, // Model not found in CI registry
+			stderrContains: "Resource not found",
 		},
 		{
 			name:           "Mixed flag styles",
