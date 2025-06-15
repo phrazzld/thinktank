@@ -30,6 +30,17 @@ repos:
         exclude: "(internal/e2e/.*|internal/lint/.*)"
     -   id: go-mod-tidy
 
+# Advanced Go linting (matches CI configuration)
+-   repo: local
+    hooks:
+    -   id: golangci-lint
+        name: Run golangci-lint
+        entry: sh -c 'if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run --timeout=5m; else echo "⚠️  golangci-lint not installed locally - linting will run in CI"; fi'
+        language: system
+        types: [go]
+        pass_filenames: false
+        description: Run comprehensive Go linting (matches CI configuration)
+
 # Local fast checks
 -   repo: local
     hooks:

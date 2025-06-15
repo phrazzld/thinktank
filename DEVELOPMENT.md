@@ -133,9 +133,90 @@ GOPROXY=https://proxy.golang.org,direct ./scripts/check-licenses.sh
 - **Tool Issues**: Check the [go-licenses GitHub repository](https://github.com/google/go-licenses)
 - **CI Problems**: Review workflow logs in GitHub Actions
 
-## Development Commands
+## Local Development Workflow
 
-For a complete list of development commands, see `CLAUDE.md` which contains:
+### Quick Setup
+
+```bash
+# Install required development tools
+make install-tools
+
+# Run quick checks before committing
+make quick-check
+
+# Run comprehensive CI simulation before pushing
+make ci-check
+```
+
+### Make Targets
+
+The project includes a comprehensive Makefile for local development that mirrors the CI pipeline:
+
+| Target | Description | Use Case |
+|--------|-------------|----------|
+| `make help` | Show all available targets | Getting started |
+| `make ci-check` | **Full local CI simulation** | Before important pushes |
+| `make quick-check` | Fast checks (format, vet, basic tests) | Before each commit |
+| `make pre-push` | Recommended checks before pushing | Daily development |
+| `make lint` | All linting (format, vet, golangci-lint, pre-commit) | Code quality focus |
+| `make test` | All tests (unit, integration, E2E) | Testing focus |
+| `make coverage` | Coverage analysis (90% threshold) | Coverage verification |
+| `make security-scan` | Security scans (licenses, secrets) | Security focus |
+| `make build` | Build the thinktank binary | Build verification |
+| `make fmt` | Format Go code | Code formatting |
+| `make install-tools` | Install development dependencies | One-time setup |
+
+### Recommended Development Workflow
+
+1. **Daily Development**:
+   ```bash
+   # Before committing changes
+   make quick-check
+   git commit -m "your changes"
+
+   # Before pushing (recommended)
+   make pre-push
+   git push
+   ```
+
+2. **Before Important Pushes**:
+   ```bash
+   # Full CI simulation (matches GitHub Actions exactly)
+   make ci-check
+   git push
+   ```
+
+3. **Troubleshooting**:
+   ```bash
+   # Focus on specific areas
+   make lint          # Just linting issues
+   make test          # Just test failures
+   make coverage      # Just coverage problems
+   make security-scan # Just security issues
+   ```
+
+### Pre-commit Integration
+
+The project uses pre-commit hooks that automatically run when you commit:
+
+- **Fast checks**: File hygiene, Go formatting, basic validation
+- **Security**: Secret detection, license compliance
+- **Advanced linting**: golangci-lint (same version/config as CI)
+
+**Setup pre-commit hooks**:
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+**Manual execution**:
+```bash
+pre-commit run --all-files  # Run all hooks manually
+```
+
+### Development Commands Reference
+
+For additional development commands and detailed CI information, see `CLAUDE.md`:
 
 - Build and test commands
 - Code quality tools (formatting, linting, coverage)

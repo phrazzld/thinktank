@@ -119,7 +119,7 @@
         - ✅ License checking mirrors CI logic with same allowlist and tooling
         - ✅ Tested successfully: 40 packages analyzed, all compliant
 
-- [ ] **CI010 · Feature · P2: enhance local development workflow**
+- [x] **CI010 · Feature · P2: enhance local development workflow**
     - **Context:** Prevention - catch lint issues before CI
     - **Action:**
         1. Add golangci-lint to pre-commit hooks
@@ -129,6 +129,13 @@
         1. Pre-commit hooks catch lint violations locally
         2. Developers can simulate full CI pipeline locally
     - **Depends‑on:** [CI008]
+    - **Status:** Completed successfully:
+        - ✅ Added golangci-lint to pre-commit hooks (v2.1.1, 5m timeout, matches CI)
+        - ✅ Created comprehensive Makefile with 13 targets for local development
+        - ✅ Implemented `make ci-check` that mirrors full GitHub Actions pipeline
+        - ✅ Added convenience targets: quick-check, pre-push, lint, test, coverage, security-scan
+        - ✅ Updated DEVELOPMENT.md with complete local validation workflow guide
+        - ✅ Tested successfully: golangci-lint integrated, make targets working, security scans functional
 
 ## Phase 0: Decisions & Setup
 - [x] **T001 · Chore · P1: decide on and document CI test API key management strategy**
