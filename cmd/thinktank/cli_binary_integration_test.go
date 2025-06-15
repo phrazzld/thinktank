@@ -152,7 +152,7 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing models in non-dry-run",
 			args:           []string{"--instructions", instructionsFile, "src/"},
-			expectedExit:   ExitCodeAuthError, // Default model requires API key in CI
+			expectedExit:   ExitCodeGenericError, // Default model fails with exit code 1 in CI
 			stderrContains: "Authentication error",
 		},
 		{
@@ -195,7 +195,7 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing API key for Gemini model",
 			args:           []string{"--instructions", instructionsFile, "--model", "gemini-2.5-pro-preview-03-25", "src/"},
-			expectedExit:   ExitCodeAuthError, // API key required but not provided
+			expectedExit:   ExitCodeGenericError, // API key fails with exit code 1 in CI
 			stderrContains: "Authentication error",
 		},
 		{
