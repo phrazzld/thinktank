@@ -115,9 +115,24 @@ func (a *OpenAIClientAdapter) GenerateContent(ctx context.Context, prompt string
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	// Validate prompt
+	if prompt == "" {
+		return nil, openai.CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Empty prompt provided",
+			nil,
+			"Please provide a non-empty prompt",
+		)
+	}
+
 	// Apply parameters if provided
 	if len(params) > 0 {
 		a.params = params
+	}
+
+	// Validate parameters before applying them
+	if err := a.validateParameters(); err != nil {
+		return nil, err
 	}
 
 	// We need to convert the generic parameters from the Registry to OpenAI-specific settings
@@ -225,4 +240,79 @@ func (a *OpenAIClientAdapter) GetModelName() string {
 // Close implements the llm.LLMClient interface
 func (a *OpenAIClientAdapter) Close() error {
 	return a.client.Close()
+}
+
+// validateParameters validates parameter values according to OpenAI API requirements
+func (a *OpenAIClientAdapter) validateParameters() error {
+	if a.params == nil {
+		return nil
+	}
+
+	var validationErrors []string
+
+	// Validate temperature (0.0 to 2.0)
+	if temp, exists := a.params["temperature"]; exists {
+		if tempVal, ok := a.getFloatParam("temperature"); ok {
+			if tempVal < 0.0 || tempVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("temperature must be between 0.0 and 2.0, got %v", temp))
+			}
+		}
+	}
+
+	// Validate top_p (0.0 to 1.0)
+	if topP, exists := a.params["top_p"]; exists {
+		if topPVal, ok := a.getFloatParam("top_p"); ok {
+			if topPVal < 0.0 || topPVal > 1.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("top_p must be between 0.0 and 1.0, got %v", topP))
+			}
+		}
+	}
+
+	// Validate max_tokens (must be positive)
+	if maxTokens, exists := a.params["max_tokens"]; exists {
+		if maxTokensVal, ok := a.getIntParam("max_tokens"); ok {
+			if maxTokensVal <= 0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("max_tokens must be positive, got %v", maxTokens))
+			}
+		}
+	}
+
+	// Validate frequency_penalty (-2.0 to 2.0)
+	if penalty, exists := a.params["frequency_penalty"]; exists {
+		if penaltyVal, ok := a.getFloatParam("frequency_penalty"); ok {
+			if penaltyVal < -2.0 || penaltyVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("frequency_penalty must be between -2.0 and 2.0, got %v", penalty))
+			}
+		}
+	}
+
+	// Validate presence_penalty (-2.0 to 2.0)
+	if penalty, exists := a.params["presence_penalty"]; exists {
+		if penaltyVal, ok := a.getFloatParam("presence_penalty"); ok {
+			if penaltyVal < -2.0 || penaltyVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("presence_penalty must be between -2.0 and 2.0, got %v", penalty))
+			}
+		}
+	}
+
+	// If there are validation errors, return them
+	if len(validationErrors) > 0 {
+		if len(validationErrors) == 1 {
+			return openai.CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Invalid parameter: %s", validationErrors[0]),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		} else {
+			return openai.CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Multiple invalid parameters: %s", strings.Join(validationErrors, "; ")),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		}
+	}
+
+	return nil
 }

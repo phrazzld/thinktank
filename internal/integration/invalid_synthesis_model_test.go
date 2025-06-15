@@ -27,6 +27,10 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	// Create logger for the test
 	logger := logutil.NewTestLogger(t)
 
+	// Declare expected error patterns for invalid synthesis model
+	logger.ExpectError("Synthesis failed: failed to initialize synthesis model client")
+	logger.ExpectError("Completed with synthesis error: failed to initialize synthesis model client")
+
 	// Create temp directory for outputs
 	tempDir, err := os.MkdirTemp("", "thinktank-invalid-synthesis-test")
 	if err != nil {

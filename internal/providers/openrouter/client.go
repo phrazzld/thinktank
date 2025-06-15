@@ -115,6 +115,21 @@ type ChatCompletionResponse struct {
 
 // GenerateContent sends a prompt to the LLM and returns the generated content
 func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
+	// Validate prompt
+	if prompt == "" {
+		return nil, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Empty prompt provided",
+			nil,
+			"Please provide a non-empty prompt",
+		)
+	}
+
+	// Validate parameters
+	if err := c.validateParameters(params); err != nil {
+		return nil, err
+	}
+
 	// Create local variables for request parameters instead of modifying receiver fields
 	var temperature, topP, presencePenalty, frequencyPenalty *float32
 	var maxTokens *int32
@@ -472,4 +487,126 @@ func sanitizeURLBasic(url string) string {
 	// For now, we're just returning the URL since we don't have sensitive parts in the URL itself
 	// The auth token is passed via headers, not URL
 	return url
+}
+
+// validateParameters validates parameter values according to OpenRouter API requirements
+func (c *openrouterClient) validateParameters(params map[string]interface{}) error {
+	if params == nil {
+		return nil
+	}
+
+	var validationErrors []string
+
+	// Helper function to extract float parameter
+	getFloatParam := func(name string) (float32, bool) {
+		if val, ok := params[name]; ok {
+			switch v := val.(type) {
+			case float64:
+				return float32(v), true
+			case float32:
+				return v, true
+			case int:
+				return float32(v), true
+			case int32:
+				return float32(v), true
+			case int64:
+				return float32(v), true
+			}
+		}
+		return 0, false
+	}
+
+	// Helper function to extract int parameter
+	getIntParam := func(name string) (int32, bool) {
+		if val, ok := params[name]; ok {
+			switch v := val.(type) {
+			case int:
+				return int32(v), true
+			case int32:
+				return v, true
+			case int64:
+				return int32(v), true
+			case float64:
+				return int32(v), true
+			case float32:
+				return int32(v), true
+			}
+		}
+		return 0, false
+	}
+
+	// Validate temperature (0.0 to 2.0)
+	if temp, exists := params["temperature"]; exists {
+		if tempVal, ok := getFloatParam("temperature"); ok {
+			if tempVal < 0.0 || tempVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("temperature must be between 0.0 and 2.0, got %v", temp))
+			}
+		}
+	}
+
+	// Validate top_p (0.0 to 1.0)
+	if topP, exists := params["top_p"]; exists {
+		if topPVal, ok := getFloatParam("top_p"); ok {
+			if topPVal < 0.0 || topPVal > 1.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("top_p must be between 0.0 and 1.0, got %v", topP))
+			}
+		}
+	}
+
+	// Validate max_tokens (must be positive)
+	if maxTokens, exists := params["max_tokens"]; exists {
+		if maxTokensVal, ok := getIntParam("max_tokens"); ok {
+			if maxTokensVal <= 0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("max_tokens must be positive, got %v", maxTokens))
+			}
+		}
+	}
+
+	// Validate max_output_tokens (must be positive) - alternative parameter name
+	if maxTokens, exists := params["max_output_tokens"]; exists {
+		if maxTokensVal, ok := getIntParam("max_output_tokens"); ok {
+			if maxTokensVal <= 0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("max_output_tokens must be positive, got %v", maxTokens))
+			}
+		}
+	}
+
+	// Validate frequency_penalty (-2.0 to 2.0)
+	if penalty, exists := params["frequency_penalty"]; exists {
+		if penaltyVal, ok := getFloatParam("frequency_penalty"); ok {
+			if penaltyVal < -2.0 || penaltyVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("frequency_penalty must be between -2.0 and 2.0, got %v", penalty))
+			}
+		}
+	}
+
+	// Validate presence_penalty (-2.0 to 2.0)
+	if penalty, exists := params["presence_penalty"]; exists {
+		if penaltyVal, ok := getFloatParam("presence_penalty"); ok {
+			if penaltyVal < -2.0 || penaltyVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("presence_penalty must be between -2.0 and 2.0, got %v", penalty))
+			}
+		}
+	}
+
+	// If there are validation errors, return them
+	if len(validationErrors) > 0 {
+		if len(validationErrors) == 1 {
+			return CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Invalid parameter: %s", validationErrors[0]),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		} else {
+			return CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Multiple invalid parameters: %s", strings.Join(validationErrors, "; ")),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		}
+	}
+
+	return nil
 }

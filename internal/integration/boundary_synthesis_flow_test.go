@@ -72,6 +72,13 @@ func TestBoundarySynthesisWithPartialFailure(t *testing.T) {
 		// Setup the test environment using the standard helper
 		SetupStandardTestEnvironment(t, env, instructions, modelNames, synthesisModel, mockOutputs)
 
+		// Declare expected error patterns for model2 failure (this is part of the test scenario)
+		env.ExpectError("Generation failed for model model2")
+		env.ExpectError("Error generating content with model model2")
+		env.ExpectError("Processing model model2 failed")
+		env.ExpectError("model model2 processing failed")
+		env.ExpectError("Completed with model errors")
+
 		// Configure model2 to fail
 		mockAPICaller := env.APICaller.(*MockExternalAPICaller)
 		originalCallFunc := mockAPICaller.CallLLMAPIFunc

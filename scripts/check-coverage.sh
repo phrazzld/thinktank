@@ -4,8 +4,8 @@ set -e
 # check-coverage.sh - Verify that test coverage meets or exceeds the threshold
 # Usage: scripts/check-coverage.sh [threshold_percentage] [show_registry_api]
 
-# Default threshold is 35% (adjusted to realistic baseline from 90%)
-THRESHOLD=${1:-35}
+# Default threshold is 90% (enforced for quality gate compliance)
+THRESHOLD=${1:-90}
 SHOW_REGISTRY_API=${2:-"false"}
 
 # Determine the module path

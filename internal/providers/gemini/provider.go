@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/phrazzld/thinktank/internal/gemini"
@@ -96,9 +97,24 @@ func (a *GeminiClientAdapter) GenerateContent(ctx context.Context, prompt string
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	// Validate prompt
+	if prompt == "" {
+		return nil, gemini.CreateAPIError(
+			llm.CategoryInvalidRequest,
+			"Empty prompt provided",
+			nil,
+			"Please provide a non-empty prompt",
+		)
+	}
+
 	// Apply parameters if provided
 	if len(params) > 0 {
 		a.params = params
+	}
+
+	// Validate parameters before applying them
+	if err := a.validateParameters(); err != nil {
+		return nil, err
 	}
 
 	// We need to convert the generic parameters from the Registry to Gemini-specific settings
@@ -196,4 +212,70 @@ func (a *GeminiClientAdapter) GetModelName() string {
 // Close implements the llm.LLMClient interface
 func (a *GeminiClientAdapter) Close() error {
 	return a.client.Close()
+}
+
+// validateParameters validates parameter values according to Gemini API requirements
+func (a *GeminiClientAdapter) validateParameters() error {
+	if a.params == nil {
+		return nil
+	}
+
+	var validationErrors []string
+
+	// Validate temperature (0.0 to 2.0)
+	if temp, exists := a.params["temperature"]; exists {
+		if tempVal, ok := a.getFloatParam("temperature"); ok {
+			if tempVal < 0.0 || tempVal > 2.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("temperature must be between 0.0 and 2.0, got %v", temp))
+			}
+		}
+	}
+
+	// Validate top_p (0.0 to 1.0)
+	if topP, exists := a.params["top_p"]; exists {
+		if topPVal, ok := a.getFloatParam("top_p"); ok {
+			if topPVal < 0.0 || topPVal > 1.0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("top_p must be between 0.0 and 1.0, got %v", topP))
+			}
+		}
+	}
+
+	// Validate top_k (must be positive)
+	if topK, exists := a.params["top_k"]; exists {
+		if topKVal, ok := a.getIntParam("top_k"); ok {
+			if topKVal <= 0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("top_k must be positive, got %v", topK))
+			}
+		}
+	}
+
+	// Validate max_output_tokens (must be positive)
+	if maxTokens, exists := a.params["max_output_tokens"]; exists {
+		if maxTokensVal, ok := a.getIntParam("max_output_tokens"); ok {
+			if maxTokensVal <= 0 {
+				validationErrors = append(validationErrors, fmt.Sprintf("max_output_tokens must be positive, got %v", maxTokens))
+			}
+		}
+	}
+
+	// If there are validation errors, return them
+	if len(validationErrors) > 0 {
+		if len(validationErrors) == 1 {
+			return gemini.CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Invalid parameter: %s", validationErrors[0]),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		} else {
+			return gemini.CreateAPIError(
+				llm.CategoryInvalidRequest,
+				fmt.Sprintf("Multiple invalid parameters: %s", strings.Join(validationErrors, "; ")),
+				nil,
+				"Please check the parameter values and ensure they are within valid ranges",
+			)
+		}
+	}
+
+	return nil
 }
