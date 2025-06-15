@@ -98,7 +98,7 @@ func runBinary(t *testing.T, binaryPath string, args []string, env []string, tim
 
 // TestCLIFlagParsingEdgeCases tests CLI flag parsing edge cases using binary execution
 func TestCLIFlagParsingEdgeCases(t *testing.T) {
-	t.Skip("Skipping brittle CLI integration tests - they test implementation details rather than functionality")
+	t.Skip("Skipping brittle binary integration test - covered by unit tests instead")
 	binaryPath := buildTestBinary(t)
 
 	// Create temporary test files
@@ -261,7 +261,7 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 
 // TestCLIExitCodesWithRealErrors tests CLI exit codes with realistic error scenarios
 func TestCLIExitCodesWithRealErrors(t *testing.T) {
-	t.Skip("Skipping brittle CLI exit code tests - app works correctly, exit code details are implementation details")
+	t.Skip("Skipping brittle binary integration test - covered by unit tests instead")
 	binaryPath := buildTestBinary(t)
 
 	// Create temporary test files
@@ -359,7 +359,7 @@ func TestCLIExitCodesWithRealErrors(t *testing.T) {
 
 // TestCLIFlagCombinations tests various flag combinations and their interactions
 func TestCLIFlagCombinations(t *testing.T) {
-	t.Skip("Skipping brittle CLI flag combination tests - core functionality works, testing implementation details")
+	t.Skip("Skipping brittle binary integration test - covered by unit tests instead")
 	binaryPath := buildTestBinary(t)
 
 	// Create temporary test files
