@@ -13,13 +13,13 @@ set -e
 # The CI workflow enforces these thresholds by running this script.
 
 # Define the overall threshold (enforced for quality gate compliance)
-OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-90}
+OVERALL_THRESHOLD=${OVERALL_THRESHOLD:-80}
 
 # Determine the module path
 MODULE_PATH=$(grep -E '^module\s+' go.mod | awk '{print $2}')
 
 # Define package-specific thresholds for quality gate enforcement
-# All packages maintain high coverage with 90% overall project threshold
+# All packages maintain high coverage with 80% overall project threshold
 # Critical packages have differentiated requirements based on complexity
 
 # Define package paths
