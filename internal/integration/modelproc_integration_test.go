@@ -214,8 +214,13 @@ func TestModelProcessorContextCancellation(t *testing.T) {
 // TestModelProcessorErrorHandling tests the error handling patterns in the model processor.
 // It verifies that errors are properly wrapped, categorized, and that correlation IDs are preserved.
 func TestModelProcessorErrorHandling(t *testing.T) {
-	// Create a test environment with TestLogger
-	testLogger := logutil.NewTestLogger(t)
+	// Create a test environment with TestLogger without auto-fail
+	testLogger := logutil.NewTestLoggerWithoutAutoFail(t)
+
+	// Declare expected error patterns for this error handling test
+	testLogger.ExpectError("Generation failed for model test-model")
+	testLogger.ExpectError("Error generating content with model test-model")
+
 	env := setupModelProcTestEnvWithLogger(t, testLogger)
 
 	// Create a context with correlation ID

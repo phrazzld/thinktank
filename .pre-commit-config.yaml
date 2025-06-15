@@ -45,6 +45,13 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
+    -   id: check-licenses
+        name: Check dependency license compliance
+        entry: scripts/check-licenses.sh
+        language: script
+        files: ^(go\.mod|go\.sum)$
+        pass_filenames: false
+        description: Verify all Go dependencies use approved licenses
     -   id: validate-ci-config
         name: Validate GitHub Actions workflow configuration
         entry: scripts/validate-ci-config.sh

@@ -136,6 +136,14 @@ func NewBoundaryTestEnv(t testing.TB) *BoundaryTestEnv {
 	}
 }
 
+// ExpectError declares that an error message matching the given pattern is expected
+// and should not cause test failure. This method works with TestLogger instances.
+func (env *BoundaryTestEnv) ExpectError(pattern string) {
+	if testLogger, ok := env.Logger.(*logutil.TestLogger); ok {
+		testLogger.ExpectError(pattern)
+	}
+}
+
 // SetupModelResponse configures the mock API caller to return specific responses for a model
 func (env *BoundaryTestEnv) SetupModelResponse(modelName, response string) {
 	env.ModelOutputs[modelName] = response
