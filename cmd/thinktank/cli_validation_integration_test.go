@@ -58,7 +58,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-pro"},
+				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
 			},
 			envVars: map[string]string{
 				apiKeyEnvVar: "test-gemini-api-key",
@@ -70,7 +70,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4"},
+				ModelNames:       []string{"gpt-4.1"},
 			},
 			envVars: map[string]string{
 				openaiAPIKeyEnvVar: "test-openai-api-key",
@@ -94,7 +94,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-pro"},
+				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
@@ -105,7 +105,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4"},
+				ModelNames:       []string{"gpt-4.1"},
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
@@ -127,7 +127,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4", "gemini-pro"},
+				ModelNames:       []string{"gpt-4.1", "gemini-2.5-pro-preview-03-25"},
 			},
 			envVars: map[string]string{
 				apiKeyEnvVar:       "test-gemini-api-key",
@@ -151,7 +151,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "",
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-pro"},
+				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
 				DryRun:           false,
 			},
 			envVars: map[string]string{
@@ -165,7 +165,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{}, // No paths provided
-				ModelNames:       []string{"gemini-pro"},
+				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
 				DryRun:           false,
 			},
 			envVars: map[string]string{
@@ -251,7 +251,7 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-pro"},
+			ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
 			SynthesisModel:   "totally-invalid-model-name",
 		}
 
@@ -280,8 +280,8 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-pro"},
-			SynthesisModel:   "gpt-4-turbo", // Valid pattern
+			ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+			SynthesisModel:   "gpt-4.1-turbo", // Valid pattern
 		}
 
 		getenv := func(key string) string {

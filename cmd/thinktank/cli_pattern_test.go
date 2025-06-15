@@ -35,7 +35,7 @@ func TestSynthesisModelPatternValidation(t *testing.T) {
 		},
 		{
 			name:           "GPT model pattern",
-			synthesisModel: "gpt-4",
+			synthesisModel: "gpt-4.1",
 			expectValid:    true,
 		},
 		{

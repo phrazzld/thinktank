@@ -36,8 +36,8 @@ func TestSynthesisModelParsing(t *testing.T) {
 	}{
 		{
 			name:            "With synthesis model",
-			args:            []string{"--instructions", tempFile.Name(), "--synthesis-model", "gpt-4"},
-			expectSynthesis: "gpt-4",
+			args:            []string{"--instructions", tempFile.Name(), "--synthesis-model", "gpt-4.1"},
+			expectSynthesis: "gpt-4.1",
 		},
 		{
 			name:            "With synthesis model using equals sign",
@@ -149,7 +149,7 @@ func TestSynthesisModelValidation(t *testing.T) {
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
 				ModelNames:       []string{"model1"},
-				SynthesisModel:   "gpt-4", // Valid pattern
+				SynthesisModel:   "gpt-4.1", // Valid pattern
 			},
 			expectError: false,
 		},
@@ -292,7 +292,7 @@ func TestInvalidSynthesisModelValidation(t *testing.T) {
 		Paths:            []string{"testfile"},
 		APIKey:           "test-key",
 		ModelNames:       []string{"gemini-1.0-pro"},
-		SynthesisModel:   "gpt-4", // Valid pattern
+		SynthesisModel:   "gpt-4.1", // Valid pattern
 	}
 
 	// Validate the inputs - this should pass the synthesis model check
