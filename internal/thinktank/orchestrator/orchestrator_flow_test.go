@@ -8,6 +8,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
@@ -197,10 +198,14 @@ func TestHandleOutputFlow(t *testing.T) {
 				}
 			}
 
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
 			o := &Orchestrator{
 				logger:           logger,
 				auditLogger:      auditLogger,
 				config:           config,
+				consoleWriter:    consoleWriter,
 				outputWriter:     mockOutputWriter,
 				synthesisService: mockSynthesisService,
 			}

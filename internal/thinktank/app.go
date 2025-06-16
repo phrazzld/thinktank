@@ -33,6 +33,7 @@ func Execute(
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
 	apiService interfaces.APIService,
+	consoleWriter logutil.ConsoleWriter,
 ) (err error) {
 	// Ensure the logger has the context attached
 	// This is important for correlation ID propagation
@@ -171,6 +172,7 @@ func Execute(
 		rateLimiter,
 		cliConfig,
 		logger,
+		consoleWriter,
 	)
 
 	// Run the orchestrator and handle error conversion
@@ -231,6 +233,7 @@ var orchestratorConstructor = func(
 	rateLimiter *ratelimit.RateLimiter,
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
+	consoleWriter logutil.ConsoleWriter,
 ) Orchestrator {
 	return orchestrator.NewOrchestrator(
 		apiService,
@@ -240,6 +243,7 @@ var orchestratorConstructor = func(
 		rateLimiter,
 		config,
 		logger,
+		consoleWriter,
 	)
 }
 
@@ -253,6 +257,7 @@ func GetOrchestratorConstructor() func(
 	rateLimiter *ratelimit.RateLimiter,
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
+	consoleWriter logutil.ConsoleWriter,
 ) Orchestrator {
 	return orchestratorConstructor
 }
@@ -267,6 +272,7 @@ func SetOrchestratorConstructor(constructor func(
 	rateLimiter *ratelimit.RateLimiter,
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
+	consoleWriter logutil.ConsoleWriter,
 ) Orchestrator) {
 	orchestratorConstructor = constructor
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"testing"
@@ -183,4 +184,133 @@ func (tl *testLogger) ErrorContext(ctx context.Context, format string, args ...i
 func (tl *testLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
 func (tl *testLogger) WithContext(ctx context.Context) logutil.LoggerInterface {
 	return tl
+}
+
+// runBenchmark simulates a full processing lifecycle for benchmarking.
+func runBenchmark(b *testing.B, isInteractive, noProgress bool) {
+	cw := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return isInteractive },
+	})
+	cw.SetNoProgress(noProgress)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		cw.StartProcessing(10)
+		for j := 1; j <= 10; j++ {
+			cw.ModelStarted("model", j)
+			if j%3 == 0 {
+				cw.ModelCompleted("model", j, 500*time.Millisecond, errors.New("simulated error"))
+			} else {
+				cw.ModelCompleted("model", j, 1500*time.Millisecond, nil)
+			}
+		}
+		cw.SynthesisStarted()
+		cw.SynthesisCompleted("output/path")
+	}
+}
+
+// BenchmarkConsoleWriterLifecycle benchmarks the full ConsoleWriter lifecycle
+func BenchmarkConsoleWriterLifecycle(b *testing.B) {
+	b.Run("Interactive-WithProgress", func(b *testing.B) {
+		runBenchmark(b, true, false)
+	})
+	b.Run("Interactive-NoProgress", func(b *testing.B) {
+		runBenchmark(b, true, true)
+	})
+	b.Run("CI_Mode", func(b *testing.B) {
+		runBenchmark(b, false, false) // NoProgress is implicit in CI
+	})
+}
+
+// BenchmarkConsoleWriterConcurrent benchmarks concurrent ConsoleWriter operations
+func BenchmarkConsoleWriterConcurrent(b *testing.B) {
+	cw := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return true },
+	})
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			cw.ModelCompleted("concurrent-model", 1, 1*time.Second, nil)
+		}
+	})
+}
+
+// BenchmarkSetupLoggingNew benchmarks the new logging setup with ConsoleWriter
+func BenchmarkSetupLoggingNew(b *testing.B) {
+	benchmarks := []struct {
+		name   string
+		config *config.CliConfig
+	}{
+		{
+			name: "FileLogging",
+			config: &config.CliConfig{
+				LogLevel:  logutil.InfoLevel,
+				Verbose:   false,
+				JsonLogs:  false,
+				OutputDir: "/tmp",
+			},
+		},
+		{
+			name: "StderrLogging_JsonLogs",
+			config: &config.CliConfig{
+				LogLevel:  logutil.InfoLevel,
+				JsonLogs:  true,
+				OutputDir: "/tmp",
+			},
+		},
+		{
+			name: "StderrLogging_Verbose",
+			config: &config.CliConfig{
+				LogLevel:  logutil.DebugLevel,
+				Verbose:   true,
+				OutputDir: "/tmp",
+			},
+		},
+	}
+
+	for _, bm := range benchmarks {
+		b.Run(bm.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_ = SetupLogging(bm.config)
+			}
+		})
+	}
+}
+
+// BenchmarkConsoleWriterMethods benchmarks individual ConsoleWriter methods
+func BenchmarkConsoleWriterMethods(b *testing.B) {
+	cw := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return true },
+	})
+
+	b.Run("StartProcessing", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			cw.StartProcessing(10)
+		}
+	})
+
+	b.Run("ModelCompleted_Success", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			cw.ModelCompleted("test-model", 1, 500*time.Millisecond, nil)
+		}
+	})
+
+	b.Run("ModelCompleted_Error", func(b *testing.B) {
+		testErr := errors.New("benchmark error")
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			cw.ModelCompleted("test-model", 1, 500*time.Millisecond, testErr)
+		}
+	})
+
+	b.Run("StatusMessage", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			cw.StatusMessage("Processing files...")
+		}
+	})
 }

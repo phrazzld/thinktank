@@ -91,7 +91,7 @@ Synthesis complete. Output: output_20240115_120000/
   - Thread-safe implementation with mutex protection
   - Unit tests for environment detection
 
-- [ ] **T003 · Feature · P1**: Add new CLI flags
+- [x] **T003 · Feature · P1**: Add new CLI flags
   - Extend CLI parser for `--quiet`, `--json-logs`, `--no-progress`
   - Update configuration struct
   - Validate flag combinations
@@ -99,17 +99,17 @@ Synthesis complete. Output: output_20240115_120000/
 ### Phase 2: Integration (Week 2)
 **Core Implementation:**
 
-- [ ] **T004 · Refactor · P1**: Update SetupLogging for output routing
+- [x] **T004 · Refactor · P1**: Update SetupLogging for output routing
   - Default: JSON logs to `thinktank.log` file in output directory
   - `--json-logs` or `--debug`: JSON logs to stderr (preserves old behavior)
   - Maintain all existing structured logging
 
-- [ ] **T005 · Feature · P1**: Inject ConsoleWriter into orchestrator
+- [x] **T005 · Feature · P1**: Inject ConsoleWriter into orchestrator
   - Instantiate ConsoleWriter at application entry point
   - Pass through dependency chain to orchestrator
   - Configure based on CLI flags
 
-- [ ] **T006 · Feature · P1**: Implement progress tracking with concurrency safety
+- [x] **T006 · Feature · P1**: Implement progress tracking with concurrency safety
   - Track total model count and current index
   - Calculate and format durations
   - Handle concurrent model updates with mutex protection
@@ -118,7 +118,7 @@ Synthesis complete. Output: output_20240115_120000/
 ### Phase 3: Polish & Validation (Week 3)
 **Quality Assurance:**
 
-- [ ] **T007 · Feature · P1**: Complete orchestrator integration
+- [x] **T007 · Feature · P1**: Complete orchestrator integration
   - Add ConsoleWriter calls at all lifecycle points
   - Implement graceful error display for failed models
   - Maintain existing structured logging calls
@@ -128,7 +128,7 @@ Synthesis complete. Output: output_20240115_120000/
   - Terminal width detection and output formatting
   - Partial failure handling
 
-- [ ] **T009 · Test · P1**: Comprehensive testing
+- [~] **T009 · Test · P1**: Comprehensive testing
   - Integration tests for all flag combinations
   - CI/CD compatibility validation
   - Performance benchmarking (ensure no regression)

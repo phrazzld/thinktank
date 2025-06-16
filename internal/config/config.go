@@ -124,8 +124,11 @@ type CliConfig struct {
 	// Token management field removed as part of T032E
 
 	// Logging
-	LogLevel  logutil.LogLevel
-	SplitLogs bool // Whether to split logs by level (INFO/DEBUG to stdout, WARN/ERROR to stderr)
+	LogLevel   logutil.LogLevel
+	SplitLogs  bool // Whether to split logs by level (INFO/DEBUG to stdout, WARN/ERROR to stderr)
+	Quiet      bool // Suppress console output (errors only)
+	JsonLogs   bool // Show JSON logs on stderr (preserves old behavior)
+	NoProgress bool // Disable progress indicators (show only start/complete)
 
 	// Rate limiting configuration
 	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)

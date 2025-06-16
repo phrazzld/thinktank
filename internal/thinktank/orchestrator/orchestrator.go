@@ -34,6 +34,7 @@ type Orchestrator struct {
 	rateLimiter      *ratelimit.RateLimiter
 	config           *config.CliConfig
 	logger           logutil.LoggerInterface
+	consoleWriter    logutil.ConsoleWriter
 	synthesisService SynthesisService
 	outputWriter     OutputWriter
 	summaryWriter    SummaryWriter
@@ -50,6 +51,7 @@ func NewOrchestrator(
 	rateLimiter *ratelimit.RateLimiter,
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
+	consoleWriter logutil.ConsoleWriter,
 ) *Orchestrator {
 	// Create the output writer
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
@@ -71,6 +73,7 @@ func NewOrchestrator(
 		rateLimiter:      rateLimiter,
 		config:           config,
 		logger:           logger,
+		consoleWriter:    consoleWriter,
 		synthesisService: synthesisService,
 		outputWriter:     outputWriter,
 		summaryWriter:    summaryWriter,
@@ -98,6 +101,9 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 	if err != nil {
 		return err
 	}
+
+	// Welcome message to the user
+	o.consoleWriter.StatusMessage("Starting thinktank processing...")
 
 	// Step 1: Gather file context for the prompt
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
@@ -135,6 +141,11 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 // gatherProjectContext collects relevant files from the project based on configuration.
 func (o *Orchestrator) gatherProjectContext(ctx context.Context) ([]fileutil.FileMeta, *interfaces.ContextStats, error) {
+	// Notify user that context gathering is starting (skip for dry run since it has its own display)
+	if !o.config.DryRun {
+		o.consoleWriter.StatusMessage("Gathering project files...")
+	}
+
 	gatherConfig := interfaces.GatherConfig{
 		Paths:        o.config.Paths,
 		Include:      o.config.Include,
@@ -194,6 +205,9 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
+	// Notify user that individual outputs are being saved
+	o.consoleWriter.StatusMessage("Saving individual model outputs...")
+
 	// Use the OutputWriter to save individual model outputs
 	savedCount, filePaths, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
 	if err != nil {
@@ -203,6 +217,14 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	}
 
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
+
+	// Notify user that individual outputs are complete
+	if o.consoleWriter.IsInteractive() {
+		o.consoleWriter.StatusMessage(fmt.Sprintf("✅ %d individual outputs saved to: %s", savedCount, o.config.OutputDir))
+	} else {
+		o.consoleWriter.StatusMessage(fmt.Sprintf("Individual outputs complete. %d files saved to: %s", savedCount, o.config.OutputDir))
+	}
+
 	return filePaths, nil
 }
 
@@ -222,6 +244,9 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 		contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
 		return "", nil
 	}
+
+	// Report synthesis started
+	o.consoleWriter.SynthesisStarted()
 
 	// Attempt to synthesize results using the SynthesisService
 	contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
@@ -244,6 +269,10 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 	}
 
 	contextLogger.InfoContext(ctx, "Successfully saved synthesis output to %s", outputPath)
+
+	// Report synthesis completed
+	o.consoleWriter.SynthesisCompleted(outputPath)
+
 	return outputPath, nil
 }
 
@@ -312,10 +341,14 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	var wg sync.WaitGroup
 	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
-	// Launch a goroutine for each model
-	for _, modelName := range o.config.ModelNames {
+	// Start progress tracking
+	o.consoleWriter.StartProcessing(len(o.config.ModelNames))
+
+	// Launch a goroutine for each model, passing the index for progress tracking
+	for i, modelName := range o.config.ModelNames {
 		wg.Add(1)
-		go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, &wg, resultChan)
+		// Pass 1-based index for user-friendly display
+		go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, i+1, &wg, resultChan)
 	}
 
 	// Wait for all goroutines to complete
@@ -357,6 +390,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	ctx context.Context,
 	modelName string,
 	stitchedPrompt string,
+	index int,
 	wg *sync.WaitGroup,
 	resultChan chan<- modelResult,
 ) {
@@ -383,11 +417,19 @@ func (o *Orchestrator) processModelWithRateLimit(
 	acquireDuration := time.Since(acquireStart)
 	contextLogger.DebugContext(ctx, "Rate limiter acquired for model %s (waited %v)", modelName, acquireDuration)
 
+	// Report rate limiting delay if significant
+	if acquireDuration > 100*time.Millisecond {
+		o.consoleWriter.ModelRateLimited(modelName, index, acquireDuration)
+	}
+
 	// Release rate limiter when done
 	defer func() {
 		contextLogger.DebugContext(ctx, "Releasing rate limiter for model %s", modelName)
 		o.rateLimiter.Release()
 	}()
+
+	// Report model processing started
+	o.consoleWriter.ModelStarted(modelName, index)
 
 	// Create API service adapter and model processor
 	apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
@@ -399,8 +441,10 @@ func (o *Orchestrator) processModelWithRateLimit(
 		o.config,
 	)
 
-	// Process the model
+	// Process the model and track timing
+	processingStart := time.Now()
 	content, err := processor.Process(ctx, modelName, stitchedPrompt)
+	processingDuration := time.Since(processingStart)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
 		// The error from processor.Process is already an LLMError, but we'll add our own context
@@ -413,6 +457,8 @@ func (o *Orchestrator) processModelWithRateLimit(
 				fmt.Sprintf("model %s processing failed", modelName),
 				llm.CategoryInvalidRequest)
 		}
+		// Report model completion with error
+		o.consoleWriter.ModelCompleted(modelName, index, processingDuration, err)
 		resultChan <- result
 		return
 	}
@@ -421,6 +467,8 @@ func (o *Orchestrator) processModelWithRateLimit(
 	contextLogger.DebugContext(ctx, "Processing model %s completed successfully", modelName)
 	result.content = content
 	result.err = nil
+	// Report successful model completion
+	o.consoleWriter.ModelCompleted(modelName, index, processingDuration, nil)
 	resultChan <- result
 }
 
@@ -547,6 +595,10 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 		if len(modelOutputs) == 0 {
 			returnErr = o.aggregateErrors(modelErrors, len(o.config.ModelNames), 0)
 			contextLogger.ErrorContext(ctx, returnErr.Error())
+
+			// Provide user-facing error message for complete failure
+			o.consoleWriter.StatusMessage("❌ All models failed - no outputs generated")
+
 			return nil, nil, returnErr
 		}
 
@@ -560,6 +612,10 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 		// Log a warning with detailed counts and successful model names
 		contextLogger.WarnContext(ctx, "Some models failed but continuing with synthesis: %d/%d models successful, %d failed. Successful models: %v",
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
+
+		// Provide user-facing message for partial failures
+		o.consoleWriter.StatusMessage(fmt.Sprintf("⚠️  %d/%d models succeeded, continuing with available outputs",
+			len(modelOutputs), len(o.config.ModelNames)))
 
 		// Log individual error details
 		for _, err := range modelErrors {

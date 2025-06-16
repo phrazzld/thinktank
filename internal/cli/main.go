@@ -265,8 +265,13 @@ func Main() {
 	// Initialize APIService using Registry
 	apiService := thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
 
+	// Create and configure ConsoleWriter
+	consoleWriter := logutil.NewConsoleWriter()
+	consoleWriter.SetQuiet(config.Quiet)
+	consoleWriter.SetNoProgress(config.NoProgress)
+
 	// Execute the core application logic
-	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService)
+	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService, consoleWriter)
 	if err != nil {
 		// Check if we're in tolerant mode (partial success is considered ok)
 		if config.PartialSuccessOk && errors.Is(err, thinktank.ErrPartialSuccess) {

@@ -88,6 +88,13 @@ type ConsoleWriter interface {
 	// CI mode: "Synthesis complete. Output: path/to/output"
 	SynthesisCompleted(outputPath string)
 
+	// StatusMessage displays a general status update to the user.
+	// This is used for lifecycle events outside of model processing.
+	//
+	// Interactive mode: "📁 message"
+	// CI mode: "message"
+	StatusMessage(message string)
+
 	// Control Methods
 	// These methods configure the behavior of console output
 
@@ -177,7 +184,8 @@ func detectInteractiveEnvironment(isTerminalFunc func() bool) bool {
 	}
 
 	for _, envVar := range ciVars {
-		if os.Getenv(envVar) == "true" {
+		value := os.Getenv(envVar)
+		if value != "" && (value == "true" || envVar == "JENKINS_URL") {
 			return false
 		}
 	}
@@ -316,6 +324,22 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 		fmt.Printf("✨ Done! Output saved to: %s\n", outputPath)
 	} else {
 		fmt.Printf("Synthesis complete. Output: %s\n", outputPath)
+	}
+}
+
+// StatusMessage displays a general status update to the user
+func (c *consoleWriter) StatusMessage(message string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	if c.isInteractive {
+		fmt.Printf("📁 %s\n", message)
+	} else {
+		fmt.Println(message)
 	}
 }
 

@@ -98,6 +98,9 @@ func TestNewOrchestrator(t *testing.T) {
 	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
 
 	// Test creating orchestrator
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
 	orchestrator := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -106,6 +109,7 @@ func TestNewOrchestrator(t *testing.T) {
 		rateLimiter,
 		config,
 		logger,
+		consoleWriter,
 	)
 
 	// Verify orchestrator was created successfully
@@ -165,6 +169,9 @@ func TestNewOrchestratorWithNilDependencies(t *testing.T) {
 				}
 			}()
 
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
 			orchestrator := thinktank.NewOrchestrator(
 				tc.apiService,
 				tc.contextGatherer,
@@ -173,6 +180,7 @@ func TestNewOrchestratorWithNilDependencies(t *testing.T) {
 				tc.rateLimiter,
 				tc.config,
 				tc.logger,
+				consoleWriter,
 			)
 
 			if !tc.expectPanic && orchestrator == nil {
