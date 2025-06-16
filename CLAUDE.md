@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Run Tests:** `go test ./...`
 * **Run Single Test:** `go test -v -run TestName ./path/to/package`
 * **Run E2E Tests:** `./internal/e2e/run_e2e_tests.sh [-v] [-r TestPattern]`
+* **Race Detection Testing:**
+  * Full suite: `go test -race ./...` (required before committing test changes)
+  * Single package: `go test -race ./path/to/package`
+  * Repeated testing: `go test -race ./... -count=10` (catch intermittent races)
 * **Check Coverage:**
   * Basic: `go test -cover ./...`
   * Detailed: `go test -coverprofile=coverage.out ./...`
