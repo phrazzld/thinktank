@@ -49,6 +49,15 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 | `--partial-success-ok` | Return success code if any model succeeds | `false` |
 | `--log-level` | Logging level (debug,info,warn,error) | `info` |
 
+### Output and Logging Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--quiet`, `-q` | Suppress console output (errors only) | `false` |
+| `--json-logs` | Show JSON logs on stderr (preserves old behavior) | `false` |
+| `--no-progress` | Disable progress indicators (show only start/complete) | `false` |
+| `--verbose` | Enable both console output AND JSON logs to stderr | `false` |
+
 ## Models Setup
 
 1. Create config directory: `mkdir -p ~/.config/thinktank`

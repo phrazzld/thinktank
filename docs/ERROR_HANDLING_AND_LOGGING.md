@@ -190,11 +190,23 @@ func FormatAPIError(err error, statusCode int, responseBody string) *LLMError {
 
 ## Structured Logging
 
-Our logging system provides structured, context-aware logging with support for correlation IDs and log stream separation.
+Our logging system provides structured, context-aware logging with support for correlation IDs and log stream separation. The system now includes a dual-output approach:
+
+- **Console Output**: Clean, human-readable progress and status reporting via ConsoleWriter
+- **Structured Logs**: JSON-formatted logs for debugging and audit trails
+
+### Dual-Output Architecture
+
+The logging system operates on two parallel channels:
+
+1. **ConsoleWriter**: Provides clean, user-facing output to stdout with interactive features
+2. **Structured Logger**: Maintains JSON logs for debugging, auditing, and machine processing
+
+This separation ensures users see clean progress information while maintaining comprehensive structured logging for troubleshooting.
 
 ### LoggerInterface
 
-All logging is done through the `LoggerInterface` defined in `internal/logutil/logutil.go`:
+All structured logging is done through the `LoggerInterface` defined in `internal/logutil/logutil.go`:
 
 ```go
 type LoggerInterface interface {
@@ -252,18 +264,30 @@ id := logutil.GetCorrelationID(ctx)
 
 When using context-aware logging methods, correlation IDs are automatically included in log entries.
 
-### Stream Separation
+### Output Routing and CLI Flags
 
-Our logging system supports separating logs by severity level:
+The logging system provides flexible output routing controlled by CLI flags:
+
+#### Default Behavior
+- **Console Output**: Clean, formatted messages to stdout (via ConsoleWriter)
+- **Structured Logs**: JSON logs saved to `thinktank.log` file in output directory
+
+#### CLI Flag Options
+
+| Flag | Description | Effect |
+|------|-------------|--------|
+| `--quiet`, `-q` | Suppress console output (errors only) | Only error messages shown on console |
+| `--json-logs` | Show JSON logs on stderr | Preserves legacy behavior for scripts |
+| `--no-progress` | Disable progress indicators | Show only start/complete messages |
+| `--verbose` | Enable both console AND JSON logs | Console output + JSON to stderr |
+
+#### Stream Separation
+
+When `--json-logs` or `--verbose` is used, structured logs are sent to stderr with severity-based separation:
 - INFO and DEBUG logs go to STDOUT
 - WARN and ERROR logs go to STDERR
 
-This separation helps with usability in CLI applications. Stream separation can be enabled via configuration:
-
-```go
-// Enable stream separation in the app configuration
-config.SplitLogs = true
-```
+This separation helps with usability in CLI applications and maintains compatibility with existing log processing scripts.
 
 ### Logging Patterns
 
