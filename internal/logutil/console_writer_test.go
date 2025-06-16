@@ -702,30 +702,58 @@ func TestConsoleWriter_QuietModeWithNewMethods(t *testing.T) {
 	})
 	cw.SetQuiet(true)
 
-	methods := []struct {
-		name string
-		call func()
-	}{
-		{
-			name: "ErrorMessage",
-			call: func() { cw.ErrorMessage("test error") },
-		},
-		{
-			name: "WarningMessage",
-			call: func() { cw.WarningMessage("test warning") },
-		},
-		{
-			name: "SuccessMessage",
-			call: func() { cw.SuccessMessage("test success") },
-		},
-	}
+	// Test that errors and warnings are STILL SHOWN in quiet mode (as documented)
+	t.Run("ErrorMessage shows in quiet mode", func(t *testing.T) {
+		output := captureOutput(func() { cw.ErrorMessage("test error") })
+		if output == "" {
+			t.Error("ErrorMessage should produce output in quiet mode (errors are essential)")
+		}
+		if !strings.Contains(output, "test error") {
+			t.Errorf("ErrorMessage output should contain error message, got: %q", output)
+		}
+	})
 
-	for _, method := range methods {
-		t.Run(method.name, func(t *testing.T) {
-			output := captureOutput(method.call)
-			if output != "" {
-				t.Errorf("%s should not produce output in quiet mode, got: %q", method.name, output)
-			}
+	t.Run("WarningMessage shows in quiet mode", func(t *testing.T) {
+		output := captureOutput(func() { cw.WarningMessage("test warning") })
+		if output == "" {
+			t.Error("WarningMessage should produce output in quiet mode (warnings are essential)")
+		}
+		if !strings.Contains(output, "test warning") {
+			t.Errorf("WarningMessage output should contain warning message, got: %q", output)
+		}
+	})
+
+	// Test that success messages are suppressed in quiet mode
+	t.Run("SuccessMessage suppressed in quiet mode", func(t *testing.T) {
+		output := captureOutput(func() { cw.SuccessMessage("test success") })
+		if output != "" {
+			t.Errorf("SuccessMessage should not produce output in quiet mode, got: %q", output)
+		}
+	})
+
+	// Test that ModelCompleted errors are shown in quiet mode
+	t.Run("ModelCompleted error shows in quiet mode", func(t *testing.T) {
+		cw.StartProcessing(1)
+		testErr := fmt.Errorf("model failed")
+		output := captureOutput(func() {
+			cw.ModelCompleted("test-model", 1, time.Millisecond*100, testErr)
 		})
-	}
+		if output == "" {
+			t.Error("ModelCompleted error should produce output in quiet mode (errors are essential)")
+		}
+		if !strings.Contains(output, "model failed") {
+			t.Errorf("ModelCompleted error output should contain error message, got: %q", output)
+		}
+	})
+
+	// Test that ModelCompleted success is suppressed in quiet mode
+	t.Run("ModelCompleted success suppressed in quiet mode", func(t *testing.T) {
+		cw.StartProcessing(1)
+		output := captureOutput(func() {
+			cw.ModelCompleted("test-model", 1, time.Millisecond*100, nil)
+		})
+		if output != "" {
+			t.Errorf("ModelCompleted success should not produce output in quiet mode, got: %q", output)
+		}
+	})
 }

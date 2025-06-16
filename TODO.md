@@ -217,9 +217,18 @@ func SetupLogging(config *Config) (logutil.Logger, error) {
 3. **Debugging**: Use `--debug` for both console + JSON output
 
 ### For Development
-- [ ] **Phase 1**: Implement and test foundation
-- [ ] **Phase 2**: Integrate with orchestrator gradually
-- [ ] **Phase 3**: Polish and validate before release
-- [ ] **Documentation**: Update all examples and troubleshooting guides
+- [x] **Phase 1**: Implement and test foundation
+- [x] **Phase 2**: Integrate with orchestrator gradually
+- [x] **Phase 3**: Polish and validate before release
+- [x] **Documentation**: Update all examples and troubleshooting guides
+
+## Critical Bug Fixes (MERGE BLOCKERS)
+
+- [x] **T011 · Bug · P1**: Fix quiet mode to show errors as documented
+  - **Problem**: Documentation states `--quiet` shows "errors only" but implementation suppresses ALL output including errors
+  - **Impact**: Users miss critical error information in quiet mode, violating documented behavior
+  - **Files**: `internal/logutil/console_writer.go` - `ErrorMessage`, `WarningMessage`, and `ModelCompleted` methods
+  - **Fix**: Remove quiet check from error paths, only suppress non-error output
+  - **Test**: Verify quiet mode shows errors but suppresses success/progress messages
 
 This synthesis represents the collective intelligence of multiple AI models, resolving conflicts and eliminating redundancy while maintaining the strongest insights from each perspective. The result is a clear, actionable roadmap that follows leyline principles and delivers the clean logging experience users need.

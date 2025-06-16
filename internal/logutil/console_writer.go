@@ -295,21 +295,18 @@ func (c *consoleWriter) ModelCompleted(modelName string, index int, duration tim
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.quiet {
-		return
-	}
-
 	durationStr := formatDuration(duration)
 
 	if err != nil {
-		// Always show errors, even in no-progress mode
+		// Errors are essential - always show them even in quiet mode
 		if c.isInteractive {
 			fmt.Printf("[%d/%d] %s: ✗ failed (%s)\n", index, c.modelCount, modelName, err.Error())
 		} else {
 			fmt.Printf("Failed model %d/%d: %s (%s)\n", index, c.modelCount, modelName, err.Error())
 		}
 	} else {
-		if c.noProgress {
+		// Success messages can be suppressed in quiet mode
+		if c.quiet || c.noProgress {
 			return
 		}
 
@@ -520,10 +517,7 @@ func (c *consoleWriter) ErrorMessage(message string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.quiet {
-		return
-	}
-
+	// Errors are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
 
 	if c.isInteractive {
@@ -538,10 +532,7 @@ func (c *consoleWriter) WarningMessage(message string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if c.quiet {
-		return
-	}
-
+	// Warnings are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
 
 	if c.isInteractive {
