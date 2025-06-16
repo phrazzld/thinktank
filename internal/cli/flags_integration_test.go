@@ -51,31 +51,43 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	rOut, wOut, _ := os.Pipe()
 	rErr, wErr, _ := os.Pipe()
 	os.Stdout, os.Stderr = wOut, wErr
+
+	// Use channels to safely communicate captured output
+	stdoutChan := make(chan string, 1)
+	stderrChan := make(chan string, 1)
+
 	wg.Add(2)
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
 				t.Logf("Error copying stdout: %v", err)
 			}
+			wg.Done()
 		}()
 		_, _ = io.Copy(&outBuf, rOut)
-		wg.Done()
+		stdoutChan <- outBuf.String()
 	}()
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
 				t.Logf("Error copying stderr: %v", err)
 			}
+			wg.Done()
 		}()
 		_, _ = io.Copy(&errBuf, rErr)
-		wg.Done()
+		stderrChan <- errBuf.String()
 	}()
-	defer func() {
+
+	// Cleanup function to properly close pipes and collect output
+	cleanup := func() (string, string) {
 		_ = wOut.Close()
 		_ = wErr.Close()
 		wg.Wait()
+		stdout := <-stdoutChan
+		stderr := <-stderrChan
 		os.Stdout, os.Stderr = oldStdout, oldStderr
-	}()
+		return stdout, stderr
+	}
 
 	// --- Setup Test Environment ---
 	tempDir := testutil.SetupTempDir(t, "clitest-")
@@ -89,7 +101,9 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
 	cfg, err := ParseFlagsWithEnv(flagSet, args, os.Getenv)
 	if err != nil {
-		return &cliTestRunner{stderr: errBuf.String()}
+		// For early return, manually cleanup and capture output
+		_, stderr := cleanup()
+		return &cliTestRunner{stderr: stderr}
 	}
 	cfg.OutputDir = tempDir
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
@@ -125,9 +139,11 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 		logFileContent = string(content)
 	}
 
+	// Capture final output
+	stdout, stderr := cleanup()
 	return &cliTestRunner{
-		stdout:  outBuf.String(),
-		stderr:  errBuf.String(),
+		stdout:  stdout,
+		stderr:  stderr,
 		logFile: logFileContent,
 	}
 }
