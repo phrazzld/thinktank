@@ -1,10 +1,10 @@
 ---
 id: dependency-injection-patterns
 last_modified: '2025-06-03'
+version: '0.1.0'
 derived_from: orthogonality
 enforced_by: 'Go interfaces, constructor functions, dependency injection frameworks, code review'
 ---
-
 # Binding: Design Modular Systems Through Go's Interface-Based Dependency Injection
 
 Use Go's interface system and constructor patterns to create loosely coupled, testable components that depend on abstractions rather than concrete implementations. Proper dependency injection enables component independence while maintaining clear boundaries and making testing straightforward.
@@ -922,3 +922,6 @@ func NewOrderServiceForTesting(
 - [extract-common-logic.md](../../core/extract-common-logic.md): Dependency injection enables the extraction and reuse of common logic through shared interfaces and implementations. Components can depend on common abstractions without duplicating functionality or creating tight coupling.
 
 - [orthogonality.md](../../tenets/orthogonality.md): This binding directly implements the orthogonality tenet by using Go's interface system to create independent, composable components. Dependency injection ensures that changes to one component don't ripple through the system, maintaining the independence that orthogonal design requires.
+
+### Language-Specific Analogies
+- [dependency-management](../python/dependency-management.md) - Python equivalent: managing dependencies through virtual environments and explicit dependency injection patterns

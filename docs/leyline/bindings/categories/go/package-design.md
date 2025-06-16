@@ -2,6 +2,7 @@
 derived_from: modularity
 id: package-design
 last_modified: '2025-05-14'
+version: '0.1.0'
 enforced_by: code review & style guides
 ---
 # Binding: Organize Go Code Into Purpose-Driven Packages
@@ -473,6 +474,9 @@ func (s *Service) CheckCredit(userID string, amount decimal.Decimal) bool {
   dependency inversion to manage coupling between packages. By defining interfaces in
   consumer packages rather than implementation packages, you create a more flexible,
   testable system with dependencies pointing in the right direction.
+
+### Language-Specific Analogies
+- [package-structure](../python/package-structure.md) - Python equivalent: organizing code by business domain with src/ layout and clear module boundaries
 
 - [code-size](../../docs/bindings/core/code-size.md): Package design and code size work together to maintain
   manageable units of code. When packages grow too large, they often need to be broken

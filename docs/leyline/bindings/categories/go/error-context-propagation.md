@@ -1,10 +1,10 @@
 ---
 id: error-context-propagation
 last_modified: '2025-06-02'
+version: '0.1.0'
 derived_from: fix-broken-windows
 enforced_by: 'Go error handling patterns, code review, static analysis'
 ---
-
 # Binding: Propagate Error Context Through Go's Error Wrapping Patterns
 
 Use Go's error wrapping mechanisms to preserve context and create clear error chains that enable effective debugging and monitoring. Properly wrapped errors maintain the full context of failure paths while providing actionable information for both developers and operations teams.
