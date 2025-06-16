@@ -3,6 +3,7 @@ package logutil
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -482,5 +483,249 @@ func TestConsoleWriter_ModelQueued(t *testing.T) {
 
 	if output != "" {
 		t.Errorf("ModelQueued should not produce output with noProgress=true, got: %q", output)
+	}
+}
+
+func TestConsoleWriter_TerminalWidth(t *testing.T) {
+	tests := []struct {
+		name           string
+		terminalWidth  int
+		terminalHeight int
+		getTermSizeErr error
+		isTerminal     bool
+		expectedWidth  int
+	}{
+		{
+			name:           "Normal terminal width",
+			terminalWidth:  100,
+			terminalHeight: 30,
+			getTermSizeErr: nil,
+			isTerminal:     true,
+			expectedWidth:  100,
+		},
+		{
+			name:           "Very narrow terminal",
+			terminalWidth:  5,
+			terminalHeight: 30,
+			getTermSizeErr: nil,
+			isTerminal:     true,
+			expectedWidth:  5, // Should be allowed for testing edge cases
+		},
+		{
+			name:           "Very wide terminal",
+			terminalWidth:  200,
+			terminalHeight: 30,
+			getTermSizeErr: nil,
+			isTerminal:     true,
+			expectedWidth:  MaxTerminalWidth, // Should be clamped to maximum
+		},
+		{
+			name:           "Non-terminal environment",
+			terminalWidth:  0,
+			terminalHeight: 0,
+			getTermSizeErr: nil,
+			isTerminal:     false,
+			expectedWidth:  DefaultTerminalWidth,
+		},
+		{
+			name:           "Terminal size detection error",
+			terminalWidth:  0,
+			terminalHeight: 0,
+			getTermSizeErr: fmt.Errorf("cannot detect size"),
+			isTerminal:     true,
+			expectedWidth:  DefaultTerminalWidth,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return tt.isTerminal },
+				GetTermSizeFunc: func() (int, int, error) {
+					return tt.terminalWidth, tt.terminalHeight, tt.getTermSizeErr
+				},
+			})
+
+			width := cw.GetTerminalWidth()
+			if width != tt.expectedWidth {
+				t.Errorf("GetTerminalWidth() = %d, want %d", width, tt.expectedWidth)
+			}
+
+			// Test caching behavior - second call should return same value
+			width2 := cw.GetTerminalWidth()
+			if width2 != width {
+				t.Errorf("GetTerminalWidth() caching failed: first=%d, second=%d", width, width2)
+			}
+		})
+	}
+}
+
+func TestConsoleWriter_FormatMessage(t *testing.T) {
+	tests := []struct {
+		name          string
+		message       string
+		terminalWidth int
+		isInteractive bool
+		expectedMsg   string
+	}{
+		{
+			name:          "Short message fits",
+			message:       "Hello world",
+			terminalWidth: 80,
+			isInteractive: true,
+			expectedMsg:   "Hello world",
+		},
+		{
+			name:          "Long message truncated in interactive mode",
+			message:       "This is a very long message that should be truncated",
+			terminalWidth: 20,
+			isInteractive: true,
+			expectedMsg:   "This is a very lo...", // 20 chars total
+		},
+		{
+			name:          "Long message not truncated in non-interactive mode",
+			message:       "This is a very long message that should not be truncated",
+			terminalWidth: 20,
+			isInteractive: false,
+			expectedMsg:   "This is a very long message that should not be truncated",
+		},
+		{
+			name:          "Very narrow terminal",
+			message:       "Hello",
+			terminalWidth: 3,
+			isInteractive: true,
+			expectedMsg:   "...",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return tt.isInteractive },
+				GetTermSizeFunc: func() (int, int, error) {
+					return tt.terminalWidth, 24, nil
+				},
+			})
+
+			formatted := cw.FormatMessage(tt.message)
+			if formatted != tt.expectedMsg {
+				t.Errorf("FormatMessage() = %q, want %q", formatted, tt.expectedMsg)
+			}
+		})
+	}
+}
+
+func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
+	tests := []struct {
+		name          string
+		method        string
+		message       string
+		isInteractive bool
+		expectedRegex string
+	}{
+		{
+			name:          "Error message interactive",
+			method:        "ErrorMessage",
+			message:       "Something went wrong",
+			isInteractive: true,
+			expectedRegex: `❌ Something went wrong`,
+		},
+		{
+			name:          "Error message non-interactive",
+			method:        "ErrorMessage",
+			message:       "Something went wrong",
+			isInteractive: false,
+			expectedRegex: `ERROR: Something went wrong`,
+		},
+		{
+			name:          "Warning message interactive",
+			method:        "WarningMessage",
+			message:       "This is a warning",
+			isInteractive: true,
+			expectedRegex: `⚠️  This is a warning`,
+		},
+		{
+			name:          "Warning message non-interactive",
+			method:        "WarningMessage",
+			message:       "This is a warning",
+			isInteractive: false,
+			expectedRegex: `WARNING: This is a warning`,
+		},
+		{
+			name:          "Success message interactive",
+			method:        "SuccessMessage",
+			message:       "Operation completed",
+			isInteractive: true,
+			expectedRegex: `✅ Operation completed`,
+		},
+		{
+			name:          "Success message non-interactive",
+			method:        "SuccessMessage",
+			message:       "Operation completed",
+			isInteractive: false,
+			expectedRegex: `SUCCESS: Operation completed`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return tt.isInteractive },
+			})
+
+			var output string
+			switch tt.method {
+			case "ErrorMessage":
+				output = captureOutput(func() {
+					cw.ErrorMessage(tt.message)
+				})
+			case "WarningMessage":
+				output = captureOutput(func() {
+					cw.WarningMessage(tt.message)
+				})
+			case "SuccessMessage":
+				output = captureOutput(func() {
+					cw.SuccessMessage(tt.message)
+				})
+			}
+
+			if !strings.Contains(output, tt.expectedRegex) {
+				t.Errorf("%s output %q does not contain expected pattern %q", tt.method, output, tt.expectedRegex)
+			}
+		})
+	}
+}
+
+func TestConsoleWriter_QuietModeWithNewMethods(t *testing.T) {
+	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return true },
+	})
+	cw.SetQuiet(true)
+
+	methods := []struct {
+		name string
+		call func()
+	}{
+		{
+			name: "ErrorMessage",
+			call: func() { cw.ErrorMessage("test error") },
+		},
+		{
+			name: "WarningMessage",
+			call: func() { cw.WarningMessage("test warning") },
+		},
+		{
+			name: "SuccessMessage",
+			call: func() { cw.SuccessMessage("test success") },
+		},
+	}
+
+	for _, method := range methods {
+		t.Run(method.name, func(t *testing.T) {
+			output := captureOutput(method.call)
+			if output != "" {
+				t.Errorf("%s should not produce output in quiet mode, got: %q", method.name, output)
+			}
+		})
 	}
 }

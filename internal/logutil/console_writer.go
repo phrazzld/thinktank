@@ -15,6 +15,16 @@ import (
 	"golang.org/x/term"
 )
 
+// Terminal width constants
+const (
+	// DefaultTerminalWidth is used when width detection fails or in non-interactive environments
+	DefaultTerminalWidth = 80
+	// MinTerminalWidth is the minimum width we'll format for
+	MinTerminalWidth = 10
+	// MaxTerminalWidth is the maximum width we'll use (for very wide terminals)
+	MaxTerminalWidth = 120
+)
+
 // ConsoleWriter defines an interface for clean, user-facing console output
 // that adapts to different execution environments (interactive vs CI/CD).
 //
@@ -118,6 +128,26 @@ type ConsoleWriter interface {
 	// Returns false for CI environments, non-TTY pipes, or when CI=true is set.
 	// This determination affects which output format is used for all methods.
 	IsInteractive() bool
+
+	// GetTerminalWidth returns the current terminal width in characters.
+	// Returns a default width if detection fails or if not running in a terminal.
+	GetTerminalWidth() int
+
+	// FormatMessage formats a message to fit within the terminal width,
+	// truncating or wrapping as appropriate for the current environment.
+	FormatMessage(message string) string
+
+	// ErrorMessage displays an error message to the user with appropriate formatting.
+	// This provides better visual distinction for error states.
+	ErrorMessage(message string)
+
+	// WarningMessage displays a warning message to the user with appropriate formatting.
+	// This provides better visual distinction for warning states.
+	WarningMessage(message string)
+
+	// SuccessMessage displays a success message to the user with appropriate formatting.
+	// This provides better visual distinction for success states.
+	SuccessMessage(message string)
 }
 
 // consoleWriter is the concrete implementation of ConsoleWriter interface.
@@ -130,9 +160,11 @@ type consoleWriter struct {
 	noProgress    bool       // Whether to suppress detailed progress indicators
 	modelCount    int        // Total number of models to process
 	modelIndex    int        // Current model index (for progress tracking)
+	terminalWidth int        // Cached terminal width, 0 means not detected yet
 
 	// Dependency injection for testing
-	isTerminalFunc func() bool
+	isTerminalFunc  func() bool
+	getTermSizeFunc func() (int, int, error)
 }
 
 // Ensure consoleWriter implements ConsoleWriter interface
@@ -143,8 +175,9 @@ var _ ConsoleWriter = (*consoleWriter)(nil)
 // and configures output accordingly.
 func NewConsoleWriter() ConsoleWriter {
 	return &consoleWriter{
-		isTerminalFunc: defaultIsTerminal,
-		isInteractive:  detectInteractiveEnvironment(defaultIsTerminal),
+		isTerminalFunc:  defaultIsTerminal,
+		getTermSizeFunc: defaultGetTermSize,
+		isInteractive:   detectInteractiveEnvironment(defaultIsTerminal),
 	}
 }
 
@@ -157,15 +190,26 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		isTerminalFunc = defaultIsTerminal
 	}
 
+	getTermSizeFunc := opts.GetTermSizeFunc
+	if getTermSizeFunc == nil {
+		getTermSizeFunc = defaultGetTermSize
+	}
+
 	return &consoleWriter{
-		isTerminalFunc: isTerminalFunc,
-		isInteractive:  detectInteractiveEnvironment(isTerminalFunc),
+		isTerminalFunc:  isTerminalFunc,
+		getTermSizeFunc: getTermSizeFunc,
+		isInteractive:   detectInteractiveEnvironment(isTerminalFunc),
 	}
 }
 
 // defaultIsTerminal uses golang.org/x/term to detect if stdout is a terminal
 func defaultIsTerminal() bool {
 	return term.IsTerminal(int(os.Stdout.Fd()))
+}
+
+// defaultGetTermSize uses golang.org/x/term to get terminal dimensions
+func defaultGetTermSize() (int, int, error) {
+	return term.GetSize(int(os.Stdout.Fd()))
 }
 
 // detectInteractiveEnvironment determines if we're running in an interactive
@@ -336,10 +380,13 @@ func (c *consoleWriter) StatusMessage(message string) {
 		return
 	}
 
+	// Format message to fit terminal width
+	formattedMessage := c.formatMessageForTerminal(message)
+
 	if c.isInteractive {
-		fmt.Printf("📁 %s\n", message)
+		fmt.Printf("📁 %s\n", formattedMessage)
 	} else {
-		fmt.Println(message)
+		fmt.Println(formattedMessage)
 	}
 }
 
@@ -364,6 +411,164 @@ func (c *consoleWriter) IsInteractive() bool {
 	return c.isInteractive
 }
 
+// GetTerminalWidth returns the current terminal width in characters
+func (c *consoleWriter) GetTerminalWidth() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Return cached width if we have it
+	if c.terminalWidth > 0 {
+		return c.terminalWidth
+	}
+
+	// Try to detect terminal width
+	if c.isTerminalFunc() && c.getTermSizeFunc != nil {
+		width, _, err := c.getTermSizeFunc()
+		if err == nil && width > 0 {
+			// Clamp to reasonable bounds, but allow small widths for testing
+			if width < MinTerminalWidth && width >= 3 {
+				// Allow small widths for testing edge cases
+				c.terminalWidth = width
+				return width
+			} else if width < 3 {
+				// Minimum of 3 for "..."
+				width = 3
+			} else if width > MaxTerminalWidth {
+				width = MaxTerminalWidth
+			}
+			c.terminalWidth = width
+			return width
+		}
+	}
+
+	// Fallback to default width
+	c.terminalWidth = DefaultTerminalWidth
+	return DefaultTerminalWidth
+}
+
+// FormatMessage formats a message to fit within the terminal width
+func (c *consoleWriter) FormatMessage(message string) string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	width := c.getTerminalWidthLocked()
+	return c.formatToWidth(message, width)
+}
+
+// formatMessageForTerminal formats a message for terminal display (internal helper)
+// This method assumes the mutex is already held by the caller
+func (c *consoleWriter) formatMessageForTerminal(message string) string {
+	// Get terminal width without acquiring mutex (already held)
+	width := c.getTerminalWidthLocked()
+	return c.formatToWidth(message, width)
+}
+
+// getTerminalWidthLocked returns the terminal width without acquiring mutex
+// This method assumes the mutex is already held by the caller
+func (c *consoleWriter) getTerminalWidthLocked() int {
+	// Return cached width if we have it
+	if c.terminalWidth > 0 {
+		return c.terminalWidth
+	}
+
+	// Try to detect terminal width
+	if c.isTerminalFunc() && c.getTermSizeFunc != nil {
+		width, _, err := c.getTermSizeFunc()
+		if err == nil && width > 0 {
+			// Clamp to reasonable bounds, but allow small widths for testing
+			if width < MinTerminalWidth && width >= 3 {
+				// Allow small widths for testing edge cases
+				c.terminalWidth = width
+				return width
+			} else if width < 3 {
+				// Minimum of 3 for "..."
+				width = 3
+			} else if width > MaxTerminalWidth {
+				width = MaxTerminalWidth
+			}
+			c.terminalWidth = width
+			return width
+		}
+	}
+
+	// Fallback to default width
+	c.terminalWidth = DefaultTerminalWidth
+	return DefaultTerminalWidth
+}
+
+// formatToWidth formats a message to fit within the specified width
+func (c *consoleWriter) formatToWidth(message string, width int) string {
+	// If message fits within terminal width, return as-is
+	if len(message) <= width {
+		return message
+	}
+
+	// In non-interactive mode, don't truncate messages
+	if !c.isInteractive {
+		return message
+	}
+
+	// Truncate message and add ellipsis
+	if width <= 3 {
+		return "..."
+	}
+	return message[:width-3] + "..."
+}
+
+// ErrorMessage displays an error message to the user with appropriate formatting
+func (c *consoleWriter) ErrorMessage(message string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	formattedMessage := c.formatMessageForTerminal(message)
+
+	if c.isInteractive {
+		fmt.Printf("❌ %s\n", formattedMessage)
+	} else {
+		fmt.Printf("ERROR: %s\n", formattedMessage)
+	}
+}
+
+// WarningMessage displays a warning message to the user with appropriate formatting
+func (c *consoleWriter) WarningMessage(message string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	formattedMessage := c.formatMessageForTerminal(message)
+
+	if c.isInteractive {
+		fmt.Printf("⚠️  %s\n", formattedMessage)
+	} else {
+		fmt.Printf("WARNING: %s\n", formattedMessage)
+	}
+}
+
+// SuccessMessage displays a success message to the user with appropriate formatting
+func (c *consoleWriter) SuccessMessage(message string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	formattedMessage := c.formatMessageForTerminal(message)
+
+	if c.isInteractive {
+		fmt.Printf("✅ %s\n", formattedMessage)
+	} else {
+		fmt.Printf("SUCCESS: %s\n", formattedMessage)
+	}
+}
+
 // formatDuration formats a time.Duration into a human-readable string
 // like "1.2s", "850ms", etc.
 func formatDuration(d time.Duration) string {
@@ -378,4 +583,6 @@ func formatDuration(d time.Duration) string {
 type ConsoleWriterOptions struct {
 	// IsTerminalFunc allows injecting custom terminal detection logic for testing
 	IsTerminalFunc func() bool
+	// GetTermSizeFunc allows injecting custom terminal size detection for testing
+	GetTermSizeFunc func() (int, int, error)
 }
