@@ -1,15 +1,12 @@
 package cli
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"flag"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -44,81 +41,55 @@ type cliTestRunner struct {
 // runCliTest executes a simulated CLI run with specified configurations.
 func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) *cliTestRunner {
 	t.Helper()
-	// --- Capture stdout and stderr ---
-	var outBuf, errBuf bytes.Buffer
-	var wg sync.WaitGroup
+
+	// Simplified approach: Use temporary files for output capture
+	// This avoids complex pipe management that can be unreliable in CI
+
+	// Store original stdout/stderr for restoration
 	oldStdout, oldStderr := os.Stdout, os.Stderr
-	rOut, wOut, _ := os.Pipe()
-	rErr, wErr, _ := os.Pipe()
-	os.Stdout, os.Stderr = wOut, wErr
 
-	// Use channels to safely communicate captured output
-	stdoutChan := make(chan string, 1)
-	stderrChan := make(chan string, 1)
+	// Create temporary files for output capture (more reliable than pipes in CI)
+	stdoutFile, err := os.CreateTemp("", "test-stdout-*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create stdout temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(stdoutFile.Name()) }()
+	defer func() { _ = stdoutFile.Close() }()
 
-	wg.Add(2)
-	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				t.Logf("Error copying stdout: %v", err)
-			}
-			wg.Done()
-		}()
-		_, _ = io.Copy(&outBuf, rOut)
-		stdoutChan <- outBuf.String()
-	}()
-	go func() {
-		defer func() {
-			if err := recover(); err != nil {
-				t.Logf("Error copying stderr: %v", err)
-			}
-			wg.Done()
-		}()
-		_, _ = io.Copy(&errBuf, rErr)
-		stderrChan <- errBuf.String()
-	}()
+	stderrFile, err := os.CreateTemp("", "test-stderr-*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create stderr temp file: %v", err)
+	}
+	defer func() { _ = os.Remove(stderrFile.Name()) }()
+	defer func() { _ = stderrFile.Close() }()
 
-	// Cleanup function to properly close pipes and collect output
+	// Redirect stdout/stderr to temp files
+	os.Stdout = stdoutFile
+	os.Stderr = stderrFile
+
+	// Cleanup function
 	cleanup := func() (string, string) {
-		// Close write ends first to signal EOF to readers
-		if err := wOut.Close(); err != nil && !strings.Contains(err.Error(), "file already closed") {
-			t.Logf("Warning: Error closing stdout pipe: %v", err)
-		}
-		if err := wErr.Close(); err != nil && !strings.Contains(err.Error(), "file already closed") {
-			t.Logf("Warning: Error closing stderr pipe: %v", err)
-		}
-
-		// Wait for goroutines with timeout to prevent hanging
-		done := make(chan bool, 1)
-		go func() {
-			wg.Wait()
-			done <- true
-		}()
-
-		select {
-		case <-done:
-			// Normal completion
-		case <-time.After(5 * time.Second):
-			t.Logf("Warning: Timeout waiting for pipe readers to complete")
-		}
-
 		// Restore stdout/stderr first
 		os.Stdout, os.Stderr = oldStdout, oldStderr
 
-		// Collect output with timeout safety
-		var stdout, stderr string
-		select {
-		case stdout = <-stdoutChan:
-		case <-time.After(100 * time.Millisecond):
-			t.Logf("Warning: Timeout reading stdout")
-		}
-		select {
-		case stderr = <-stderrChan:
-		case <-time.After(100 * time.Millisecond):
-			t.Logf("Warning: Timeout reading stderr")
+		// Sync and close files
+		_ = stdoutFile.Sync()
+		_ = stderrFile.Sync()
+		_ = stdoutFile.Close()
+		_ = stderrFile.Close()
+
+		// Read captured output
+		stdoutData, err := os.ReadFile(stdoutFile.Name())
+		if err != nil {
+			t.Logf("Warning: Failed to read stdout capture: %v", err)
 		}
 
-		return stdout, stderr
+		stderrData, err := os.ReadFile(stderrFile.Name())
+		if err != nil {
+			t.Logf("Warning: Failed to read stderr capture: %v", err)
+		}
+
+		return string(stdoutData), string(stderrData)
 	}
 
 	// --- Setup Test Environment ---
@@ -139,6 +110,8 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	}
 	cfg.OutputDir = tempDir
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
+		// Clean up resources before failing
+		cleanup()
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
 
@@ -150,19 +123,34 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	consoleWriter.SetQuiet(cfg.Quiet)
 	consoleWriter.SetNoProgress(cfg.NoProgress)
 
+	// Execute operations with explicit ordering for deterministic output
 	logger.Info("Simulating application start")
-	consoleWriter.StartProcessing(2)
-	consoleWriter.ModelCompleted("model-1", 1, 800*time.Millisecond, nil)
-	consoleWriter.ModelCompleted("model-2", 2, 1200*time.Millisecond, errors.New("simulated error"))
-	logger.Error("An error occurred", "err", "simulated error")
 
-	// Force a flush to ensure all output is captured
+	// Ensure output is written and flushed before proceeding
 	if f, ok := logger.(interface{ Sync() error }); ok {
 		_ = f.Sync()
 	}
 
-	// Ensure proper flushing and synchronization for CI environments
-	time.Sleep(50 * time.Millisecond)
+	consoleWriter.StartProcessing(2)
+
+	// Add small delays between operations to ensure proper ordering in CI
+	time.Sleep(5 * time.Millisecond)
+	consoleWriter.ModelCompleted("model-1", 1, 800*time.Millisecond, nil)
+
+	time.Sleep(5 * time.Millisecond)
+	consoleWriter.ModelCompleted("model-2", 2, 1200*time.Millisecond, errors.New("simulated error"))
+
+	time.Sleep(5 * time.Millisecond)
+	logger.Error("An error occurred", "err", "simulated error")
+
+	// Force comprehensive flushing to ensure all output is captured
+	if f, ok := logger.(interface{ Sync() error }); ok {
+		_ = f.Sync()
+	}
+
+	// Additional synchronization for CI environments - ensure all writes complete
+	// before starting cleanup process
+	time.Sleep(25 * time.Millisecond)
 
 	// --- Read log file if it was created ---
 	var logFileContent string
