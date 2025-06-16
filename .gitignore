@@ -91,6 +91,8 @@ MERGE-BLOCKERS-RESOLVED.md
 REVIEW-CONTEXT.md
 UNIFIED-SYNTHESIS.md
 SYNTHESIS-COMPARISON.md
+TICKET-CONTEXT.md
+execute-instructions.md
 
 # Ward log files
 .ward-warnings.log
