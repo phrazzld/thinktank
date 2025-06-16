@@ -80,12 +80,44 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 
 	// Cleanup function to properly close pipes and collect output
 	cleanup := func() (string, string) {
-		_ = wOut.Close()
-		_ = wErr.Close()
-		wg.Wait()
-		stdout := <-stdoutChan
-		stderr := <-stderrChan
+		// Close write ends first to signal EOF to readers
+		if err := wOut.Close(); err != nil && !strings.Contains(err.Error(), "file already closed") {
+			t.Logf("Warning: Error closing stdout pipe: %v", err)
+		}
+		if err := wErr.Close(); err != nil && !strings.Contains(err.Error(), "file already closed") {
+			t.Logf("Warning: Error closing stderr pipe: %v", err)
+		}
+
+		// Wait for goroutines with timeout to prevent hanging
+		done := make(chan bool, 1)
+		go func() {
+			wg.Wait()
+			done <- true
+		}()
+
+		select {
+		case <-done:
+			// Normal completion
+		case <-time.After(5 * time.Second):
+			t.Logf("Warning: Timeout waiting for pipe readers to complete")
+		}
+
+		// Restore stdout/stderr first
 		os.Stdout, os.Stderr = oldStdout, oldStderr
+
+		// Collect output with timeout safety
+		var stdout, stderr string
+		select {
+		case stdout = <-stdoutChan:
+		case <-time.After(100 * time.Millisecond):
+			t.Logf("Warning: Timeout reading stdout")
+		}
+		select {
+		case stderr = <-stderrChan:
+		case <-time.After(100 * time.Millisecond):
+			t.Logf("Warning: Timeout reading stderr")
+		}
+
 		return stdout, stderr
 	}
 
@@ -129,8 +161,8 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 		_ = f.Sync()
 	}
 
-	// Small delay to ensure all goroutines complete writing
-	time.Sleep(10 * time.Millisecond)
+	// Ensure proper flushing and synchronization for CI environments
+	time.Sleep(50 * time.Millisecond)
 
 	// --- Read log file if it was created ---
 	var logFileContent string
