@@ -235,6 +235,8 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return tc.isInteractive },
+				// Mock environment function to prevent CI detection interference
+				GetEnvFunc: func(key string) string { return "" },
 			})
 			cw.SetQuiet(tc.quiet)
 			cw.SetNoProgress(tc.noProgress)
@@ -322,6 +324,7 @@ func TestDetectInteractiveEnvironment(t *testing.T) {
 func TestConsoleWriter_ConcurrencySafety(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return true },
+		GetEnvFunc:     func(key string) string { return "" },
 	})
 
 	cw.StartProcessing(10)
@@ -353,6 +356,7 @@ func TestConsoleWriter_ConcurrencySafety(t *testing.T) {
 func TestConsoleWriter_SettersAndGetters(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return true },
+		GetEnvFunc:     func(key string) string { return "" },
 	})
 
 	if !cw.IsInteractive() {
@@ -393,6 +397,7 @@ func TestConsoleWriter_SettersAndGetters(t *testing.T) {
 func TestConsoleWriter_NonInteractiveEnvironment(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false },
+		GetEnvFunc:     func(key string) string { return "" },
 	})
 
 	if cw.IsInteractive() {
@@ -466,6 +471,7 @@ func TestNewConsoleWriter_DefaultBehavior(t *testing.T) {
 func TestConsoleWriter_ModelQueued(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return true },
+		GetEnvFunc:     func(key string) string { return "" },
 	})
 
 	output := captureOutput(func() {
@@ -544,6 +550,7 @@ func TestConsoleWriter_TerminalWidth(t *testing.T) {
 				GetTermSizeFunc: func() (int, int, error) {
 					return tt.terminalWidth, tt.terminalHeight, tt.getTermSizeErr
 				},
+				GetEnvFunc: func(key string) string { return "" },
 			})
 
 			width := cw.GetTerminalWidth()
@@ -605,6 +612,7 @@ func TestConsoleWriter_FormatMessage(t *testing.T) {
 				GetTermSizeFunc: func() (int, int, error) {
 					return tt.terminalWidth, 24, nil
 				},
+				GetEnvFunc: func(key string) string { return "" },
 			})
 
 			formatted := cw.FormatMessage(tt.message)
@@ -671,6 +679,7 @@ func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return tt.isInteractive },
+				GetEnvFunc:     func(key string) string { return "" },
 			})
 
 			var output string
@@ -699,6 +708,7 @@ func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
 func TestConsoleWriter_QuietModeWithNewMethods(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return true },
+		GetEnvFunc:     func(key string) string { return "" },
 	})
 	cw.SetQuiet(true)
 

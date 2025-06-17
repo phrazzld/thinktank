@@ -195,10 +195,15 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		getTermSizeFunc = defaultGetTermSize
 	}
 
+	getEnvFunc := opts.GetEnvFunc
+	if getEnvFunc == nil {
+		getEnvFunc = os.Getenv
+	}
+
 	return &consoleWriter{
 		isTerminalFunc:  isTerminalFunc,
 		getTermSizeFunc: getTermSizeFunc,
-		isInteractive:   detectInteractiveEnvironment(isTerminalFunc),
+		isInteractive:   detectInteractiveEnvironmentWithEnv(isTerminalFunc, getEnvFunc),
 	}
 }
 
@@ -215,6 +220,12 @@ func defaultGetTermSize() (int, int, error) {
 // detectInteractiveEnvironment determines if we're running in an interactive
 // environment based on TTY detection and CI environment variables
 func detectInteractiveEnvironment(isTerminalFunc func() bool) bool {
+	return detectInteractiveEnvironmentWithEnv(isTerminalFunc, os.Getenv)
+}
+
+// detectInteractiveEnvironmentWithEnv determines if we're running in an interactive
+// environment based on TTY detection and CI environment variables with injectable env func
+func detectInteractiveEnvironmentWithEnv(isTerminalFunc func() bool, getEnvFunc func(string) string) bool {
 	// Check common CI environment variables
 	ciVars := []string{
 		"CI",
@@ -228,7 +239,7 @@ func detectInteractiveEnvironment(isTerminalFunc func() bool) bool {
 	}
 
 	for _, envVar := range ciVars {
-		value := os.Getenv(envVar)
+		value := getEnvFunc(envVar)
 		if value != "" && (value == "true" || envVar == "JENKINS_URL") {
 			return false
 		}
@@ -576,4 +587,6 @@ type ConsoleWriterOptions struct {
 	IsTerminalFunc func() bool
 	// GetTermSizeFunc allows injecting custom terminal size detection for testing
 	GetTermSizeFunc func() (int, int, error)
+	// GetEnvFunc allows injecting custom environment variable reading for testing
+	GetEnvFunc func(string) string
 }
