@@ -96,6 +96,15 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	tempDir := testutil.SetupTempDir(t, "clitest-")
 	// Set required API key environment variable
 	t.Setenv("OPENAI_API_KEY", "test-key-123")
+
+	// Clear CI environment variables for isolated testing (unless explicitly set in test env)
+	ciVars := []string{"CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION", "GITLAB_CI", "TRAVIS", "CIRCLECI", "JENKINS_URL"}
+	for _, ciVar := range ciVars {
+		if _, exists := env[ciVar]; !exists {
+			t.Setenv(ciVar, "")
+		}
+	}
+
 	for key, val := range env {
 		t.Setenv(key, val)
 	}
@@ -118,7 +127,7 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 	logger := SetupLogging(cfg)
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return isTTY },
-		// Note: CI detection is done automatically via environment variables
+		// Note: CI detection now uses the isolated test environment variables
 	})
 	consoleWriter.SetQuiet(cfg.Quiet)
 	consoleWriter.SetNoProgress(cfg.NoProgress)
