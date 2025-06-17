@@ -19,7 +19,7 @@ export OPENROUTER_API_KEY="your-key"  # For OpenRouter models
 thinktank --instructions task.txt ./my-project
 
 # Multiple models
-thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo ./
+thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
 ```
 
 ## Key Features
@@ -41,7 +41,7 @@ thinktank --instructions task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--model` | Model to use (repeatable) | `gemini-2.5-pro-preview-03-25` |
+| `--model` | Model to use (repeatable) | `gemini-2.5-pro` |
 | `--synthesis-model` | Model to synthesize results from multiple models | None |
 | `--output-dir` | Output directory | Auto-generated timestamp-based name |
 | `--include` | File extensions to include (.go,.md) | All files |
@@ -80,7 +80,7 @@ thinktank --instructions arch-questions.txt --include .go,.md,.yaml ./
 thinktank --instructions questions.txt --output-dir answers ./src
 
 # Using synthesis to combine multiple model outputs
-thinktank --instructions complex-task.txt --model gemini-2.5-pro-exp-03-25 --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
+thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
 
 # Allow partial success (return success code even if some models fail)
 thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
