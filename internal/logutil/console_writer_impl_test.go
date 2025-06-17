@@ -232,6 +232,7 @@ func TestConsoleWriter_OutputModes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return tt.interactive },
+				GetEnvFunc:     func(key string) string { return "" },
 			})
 
 			if writer.IsInteractive() != tt.interactive {
