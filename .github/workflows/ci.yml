@@ -457,9 +457,14 @@ jobs:
           echo "✅ E2E tests completed successfully in containerized environment"
         timeout-minutes: 15
 
-      # Run other tests with race detection
+      # Run CLI tests separately (I/O redirection unreliable with race detection in CI)
+      - name: Run CLI tests (no race detection)
+        run: go test -v -short ./internal/cli/...
+        timeout-minutes: 3
+
+      # Run other tests with race detection (excluding CLI)
       - name: Run other tests with race detection
-        run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/thinktank/internal/integration" | grep -v "github.com/phrazzld/thinktank/internal/e2e")
+        run: go test -v -race -short $(go list ./... | grep -v "github.com/phrazzld/thinktank/internal/integration" | grep -v "github.com/phrazzld/thinktank/internal/e2e" | grep -v "github.com/phrazzld/thinktank/internal/cli")
         timeout-minutes: 8
 
       # Verify secret detection tests are running and passing
