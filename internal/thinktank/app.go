@@ -147,9 +147,9 @@ func Execute(
 	}
 	defer func() { _ = referenceClientLLM.Close() }()
 
-	// Create context gatherer with LLMClient
+	// Create context gatherer with LLMClient and ConsoleWriter
 	// Note: TokenManager was completely removed as part of tasks T032A through T032D
-	contextGatherer := NewContextGatherer(logger, cliConfig.DryRun, referenceClientLLM, auditLogger)
+	contextGatherer := NewContextGatherer(logger, consoleWriter, cliConfig.DryRun, referenceClientLLM, auditLogger)
 	fileWriter := NewFileWriter(logger, auditLogger, cliConfig.DirPermissions, cliConfig.FilePermissions)
 
 	// Create rate limiter from configuration

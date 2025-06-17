@@ -6,11 +6,43 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
+
+// mockConsoleWriter is a simple mock implementation of ConsoleWriter for testing
+type mockConsoleWriter struct {
+	messages []string
+}
+
+func (m *mockConsoleWriter) StartProcessing(modelCount int)           {}
+func (m *mockConsoleWriter) ModelQueued(modelName string, index int)  {}
+func (m *mockConsoleWriter) ModelStarted(modelName string, index int) {}
+func (m *mockConsoleWriter) ModelCompleted(modelName string, index int, duration time.Duration, err error) {
+}
+func (m *mockConsoleWriter) ModelRateLimited(modelName string, index int, delay time.Duration) {}
+func (m *mockConsoleWriter) SynthesisStarted()                                                 {}
+func (m *mockConsoleWriter) SynthesisCompleted(outputPath string)                              {}
+func (m *mockConsoleWriter) StatusMessage(message string) {
+	m.messages = append(m.messages, message)
+}
+func (m *mockConsoleWriter) SetQuiet(quiet bool)                 {}
+func (m *mockConsoleWriter) SetNoProgress(noProgress bool)       {}
+func (m *mockConsoleWriter) IsInteractive() bool                 { return false }
+func (m *mockConsoleWriter) GetTerminalWidth() int               { return 80 }
+func (m *mockConsoleWriter) FormatMessage(message string) string { return message }
+func (m *mockConsoleWriter) ErrorMessage(message string) {
+	m.messages = append(m.messages, "ERROR: "+message)
+}
+func (m *mockConsoleWriter) WarningMessage(message string) {
+	m.messages = append(m.messages, "WARNING: "+message)
+}
+func (m *mockConsoleWriter) SuccessMessage(message string) {
+	m.messages = append(m.messages, "SUCCESS: "+message)
+}
 
 func TestGatherContext(t *testing.T) {
 	tests := []struct {
@@ -114,10 +146,11 @@ func TestGatherContext(t *testing.T) {
 
 			// Create mock dependencies
 			mockLogger := testutil.NewMockLogger()
+			mockConsoleWriter := &mockConsoleWriter{}
 			mockClient := &llm.MockLLMClient{}
 
 			// Create context gatherer
-			gatherer := NewContextGatherer(mockLogger, tt.dryRun, mockClient, mockLogger)
+			gatherer := NewContextGatherer(mockLogger, mockConsoleWriter, tt.dryRun, mockClient, mockLogger)
 
 			// Execute the function
 			ctx := context.Background()
@@ -245,7 +278,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 				ProcessedFiles:      []string{"file1.go", "file2.go", "README.md"},
 			},
 			expectedLogMessages: []string{
-				"Files that would be included in context:",
+				"Dry run results:",
+				"Files that would be included: 3",
 				"1. file1.go",
 				"2. file2.go",
 				"3. README.md",
@@ -266,7 +300,7 @@ func TestDisplayDryRunInfo(t *testing.T) {
 				ProcessedFiles:      []string{},
 			},
 			expectedLogMessages: []string{
-				"Files that would be included in context:",
+				"Dry run results:",
 				"No files matched the current filters",
 				"Context statistics:",
 				"Files: 0",
@@ -285,7 +319,8 @@ func TestDisplayDryRunInfo(t *testing.T) {
 				ProcessedFiles:      []string{"main.go"},
 			},
 			expectedLogMessages: []string{
-				"Files that would be included in context:",
+				"Dry run results:",
+				"Files that would be included: 1",
 				"1. main.go",
 				"Context statistics:",
 				"Files: 1",
@@ -301,10 +336,11 @@ func TestDisplayDryRunInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create mock dependencies
 			mockLogger := testutil.NewMockLogger()
+			mockConsoleWriter := &mockConsoleWriter{}
 			mockClient := &llm.MockLLMClient{}
 
 			// Create context gatherer
-			gatherer := NewContextGatherer(mockLogger, true, mockClient, mockLogger) // dryRun=true
+			gatherer := NewContextGatherer(mockLogger, mockConsoleWriter, true, mockClient, mockLogger) // dryRun=true
 
 			// Execute the function
 			ctx := context.Background()
@@ -316,40 +352,29 @@ func TestDisplayDryRunInfo(t *testing.T) {
 				return
 			}
 
-			// Check that all expected log messages are present
-			allMessages := mockLogger.GetInfoMessages()
-
+			// Check that expected messages are in the console output, not the logger
 			for _, expectedMsg := range tt.expectedLogMessages {
 				found := false
-				for _, actualMsg := range allMessages {
+				for _, actualMsg := range mockConsoleWriter.messages {
 					if strings.Contains(actualMsg, expectedMsg) {
 						found = true
 						break
 					}
 				}
 				if !found {
-					t.Errorf("Expected log message %q not found in logs. All messages: %v", expectedMsg, allMessages)
+					t.Errorf("Expected console message %q not found. All messages: %v", expectedMsg, mockConsoleWriter.messages)
 				}
 			}
 
-			// Verify file listing format for cases with files
-			if tt.stats.ProcessedFilesCount > 0 {
-				for i, file := range tt.stats.ProcessedFiles {
-					expectedFormat := ""
-					for _, msg := range allMessages {
-						if strings.Contains(msg, file) {
-							expectedFormat = msg
-							break
-						}
-					}
-					if expectedFormat == "" {
-						t.Errorf("File %s not found in log messages", file)
-					}
-					// Verify numbering format
-					expectedNumbering := "" + string(rune('1'+i)) + ". " + file
-					if !strings.Contains(expectedFormat, expectedNumbering) {
-						t.Errorf("Expected file format '%s' not found in message '%s'", expectedNumbering, expectedFormat)
-					}
+			// Verify that console messages are used for user output, not structured logs
+			logMessages := mockLogger.GetInfoMessages()
+			for _, msg := range logMessages {
+				// The structured logs should only have debug/info about the operation,
+				// not the actual dry run output shown to users
+				if strings.Contains(msg, "Files that would be included") ||
+					strings.Contains(msg, "Context statistics:") ||
+					strings.Contains(msg, "To generate content") {
+					t.Errorf("User-facing message should not appear in structured logs: %s", msg)
 				}
 			}
 		})
@@ -366,7 +391,8 @@ func TestGatherContext_AuditLogging(t *testing.T) {
 	testutil.CreateTestFile(t, tempDir, "test.go", []byte("package main"))
 
 	// Create context gatherer
-	gatherer := NewContextGatherer(mockLogger, false, mockClient, mockLogger)
+	mockConsoleWriter := &mockConsoleWriter{}
+	gatherer := NewContextGatherer(mockLogger, mockConsoleWriter, false, mockClient, mockLogger)
 
 	// Create config
 	config := GatherConfig{
@@ -463,9 +489,10 @@ func TestGatherContext_AuditLogging(t *testing.T) {
 
 func TestNewContextGatherer(t *testing.T) {
 	mockLogger := testutil.NewMockLogger()
+	mockConsoleWriter := &mockConsoleWriter{}
 	mockClient := &llm.MockLLMClient{}
 
-	gatherer := NewContextGatherer(mockLogger, true, mockClient, mockLogger)
+	gatherer := NewContextGatherer(mockLogger, mockConsoleWriter, true, mockClient, mockLogger)
 
 	if gatherer == nil {
 		t.Fatal("NewContextGatherer should not return nil")
