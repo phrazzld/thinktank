@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -177,6 +179,35 @@ func sanitizeErrorMessage(message string) string {
 	return message
 }
 
+// setupGracefulShutdown sets up signal handling for graceful shutdown on SIGINT (Ctrl+C) and SIGTERM.
+// It returns a context that will be cancelled when an interrupt signal is received.
+func setupGracefulShutdown(ctx context.Context) (context.Context, context.CancelFunc) {
+	// Create a new context for signal handling
+	signalCtx, signalCancel := context.WithCancel(ctx)
+
+	// Create a channel to receive OS signals
+	sigChan := make(chan os.Signal, 1)
+
+	// Register the channel to receive specific signals
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start a goroutine to handle signals
+	go func() {
+		select {
+		case sig := <-sigChan:
+			// User pressed Ctrl+C or sent SIGTERM
+			fmt.Fprintf(os.Stderr, "\n🛑 Received %v signal, shutting down gracefully...\n", sig)
+			signalCancel()
+		case <-signalCtx.Done():
+			// Context was cancelled for another reason, clean up signal handling
+			signal.Stop(sigChan)
+			close(sigChan)
+		}
+	}()
+
+	return signalCtx, signalCancel
+}
+
 // Main is the entry point for the thinktank CLI
 func Main() {
 	// As of Go 1.20, there's no need to seed the global random number generator
@@ -194,6 +225,10 @@ func Main() {
 	rootCtx := context.Background()
 	ctx, cancel := context.WithTimeout(rootCtx, config.Timeout)
 	defer cancel() // Ensure resources are released when Main exits
+
+	// Set up graceful shutdown on interrupt signals
+	ctx, gracefulCancel := setupGracefulShutdown(ctx)
+	defer gracefulCancel() // Ensure graceful cancel is called when Main exits
 
 	// Add correlation ID to the context for tracing
 	correlationID := ""
@@ -265,8 +300,13 @@ func Main() {
 	// Initialize APIService using Registry
 	apiService := thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
 
+	// Create and configure ConsoleWriter
+	consoleWriter := logutil.NewConsoleWriter()
+	consoleWriter.SetQuiet(config.Quiet)
+	consoleWriter.SetNoProgress(config.NoProgress)
+
 	// Execute the core application logic
-	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService)
+	err = thinktank.Execute(ctx, config, logger, auditLogger, apiService, consoleWriter)
 	if err != nil {
 		// Check if we're in tolerant mode (partial success is considered ok)
 		if config.PartialSuccessOk && errors.Is(err, thinktank.ErrPartialSuccess) {

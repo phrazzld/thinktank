@@ -130,10 +130,14 @@ func TestRunIndividualOutputFlow(t *testing.T) {
 			mockLogger := &MockLoggerWithOutputRecorder{}
 
 			// Create orchestrator with test configuration
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
 			orch := &Orchestrator{
-				outputWriter: mockOutputWriter,
-				logger:       mockLogger,
-				config:       &config.CliConfig{OutputDir: tt.outputDir},
+				outputWriter:  mockOutputWriter,
+				logger:        mockLogger,
+				consoleWriter: consoleWriter,
+				config:        &config.CliConfig{OutputDir: tt.outputDir},
 			}
 
 			// Call the method under test

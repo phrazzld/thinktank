@@ -137,6 +137,9 @@ func TestNoSynthesisFlow(t *testing.T) {
 	rateLimiter := ratelimit.NewRateLimiter(cfg.MaxConcurrentRequests, cfg.RateLimitRequestsPerMinute)
 
 	// Create orchestrator
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
 	orch := orchestrator.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -145,6 +148,7 @@ func TestNoSynthesisFlow(t *testing.T) {
 		rateLimiter,
 		cfg,
 		logger,
+		consoleWriter,
 	)
 
 	// Execute the orchestrator

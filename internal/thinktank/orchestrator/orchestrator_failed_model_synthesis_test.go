@@ -7,6 +7,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 )
 
@@ -175,6 +176,9 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 			}
 
 			// Create the orchestrator with specified dependencies
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
 			orch := NewOrchestrator(
 				mockAPIService,
 				mockContextGatherer,
@@ -183,6 +187,7 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 				mockRateLimiter,
 				cfg,
 				logger,
+				consoleWriter,
 			)
 
 			// Create a custom mock synthesis service that tracks calls

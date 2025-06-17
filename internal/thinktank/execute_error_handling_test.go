@@ -97,7 +97,10 @@ func TestExecuteCategorizedLLMErrors(t *testing.T) {
 			mockAPIService.initLLMClientErr = tt.llmError
 
 			// Execute the function
-			err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
+			err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 			// Verify results
 			require.Error(t, err)
@@ -175,12 +178,15 @@ func TestExecuteAuditLogErrors(t *testing.T) {
 			defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 			// Override orchestrator constructor
-			orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+			orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 				return mockOrchestrator
 			}
 
 			// Execute the function
-			err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
+			err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 			// Verify results based on expected behavior
 			if tt.expectError {
@@ -236,7 +242,7 @@ func TestExecuteContextCancellation(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor with context-aware mock
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 		return &ContextAwareMockOrchestrator{}
 	}
 
@@ -250,7 +256,10 @@ func TestExecuteContextCancellation(t *testing.T) {
 	}()
 
 	// Execute the function
-	err := Execute(ctx, cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(ctx, cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify that context cancellation is handled properly
 	require.Error(t, err)
@@ -301,12 +310,15 @@ func TestExecutePartialSuccessError(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 		return mockOrchestrator
 	}
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify that partial success error is properly wrapped
 	require.Error(t, err)
@@ -358,12 +370,15 @@ func TestExecuteAlreadyWrappedPartialSuccess(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 		return mockOrchestrator
 	}
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify that already wrapped error is returned as-is
 	require.Error(t, err)
@@ -403,7 +418,10 @@ func TestSetupOutputDirectoryCreationError(t *testing.T) {
 	mockAPIService := NewMockAPIService()
 
 	// Execute the function (should fail when creating output directory)
-	err = Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err = Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify results
 	require.Error(t, err)
@@ -448,7 +466,10 @@ func TestExecuteNonCategorizedClientError(t *testing.T) {
 	mockAPIService.initLLMClientErr = errors.New("generic client initialization error")
 
 	// Execute the function
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify results - non-categorized errors should be wrapped with ErrContextGatheringFailed
 	require.Error(t, err)

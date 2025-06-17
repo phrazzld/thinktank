@@ -129,6 +129,9 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	rateLimiter := ratelimit.NewRateLimiter(cfg.MaxConcurrentRequests, cfg.RateLimitRequestsPerMinute)
 
 	// Create orchestrator using the real implementation with boundary mocks
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -137,6 +140,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 		rateLimiter,
 		cfg,
 		logger,
+		consoleWriter,
 	)
 
 	// Run the orchestrator
@@ -315,6 +319,9 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	rateLimiter := ratelimit.NewRateLimiter(cfg.MaxConcurrentRequests, cfg.RateLimitRequestsPerMinute)
 
 	// Create orchestrator using the real implementation with boundary mocks
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -323,6 +330,7 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		rateLimiter,
 		cfg,
 		logger,
+		consoleWriter,
 	)
 
 	// Run the orchestrator (expecting partial failure)

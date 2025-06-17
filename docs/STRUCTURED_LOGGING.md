@@ -4,17 +4,32 @@ This document describes how to use structured JSON logging with correlation IDs 
 
 ## Overview
 
-The project uses a comprehensive structured logging system built on Go's `log/slog` package that provides:
+The project uses a dual-output logging system that combines clean console output with comprehensive structured logging:
 
-- **JSON output** for machine-readable logs
-- **Correlation ID support** for tracing request flow
-- **Context-aware logging** methods
-- **Stream separation** (info/debug to stdout, warn/error to stderr)
-- **Structured key-value pairs** for rich log data
+### Console Output (New Default)
+- **Clean, human-readable progress** via ConsoleWriter interface
+- **Interactive features** like emojis and progress indicators (TTY environments)
+- **CI-friendly output** with simple text formatting (non-TTY environments)
+- **User-facing status updates** to stdout
+
+### Structured JSON Logging
+- **Machine-readable logs** built on Go's `log/slog` package
+- **Correlation ID support** for tracing request flow across operations
+- **Context-aware logging** methods with structured key-value pairs
+- **Flexible output routing** based on CLI flags
+
+### Output Routing Modes
+
+| Mode | Console Output | JSON Logs | Use Case |
+|------|----------------|-----------|----------|
+| **Default** | Clean progress to stdout | Saved to `thinktank.log` file | Normal user interaction |
+| **`--quiet`** | Errors only | Saved to `thinktank.log` file | Automated scripts |
+| **`--json-logs`** | Clean progress to stdout | JSON to stderr | Legacy compatibility |
+| **`--verbose`** | Clean progress to stdout | JSON to stderr | Development/debugging |
 
 ## Quick Start
 
-### 1. Import the logging package
+### 1. Import the required packages
 
 ```go
 import (
@@ -24,31 +39,41 @@ import (
 )
 ```
 
-### 2. Create a structured logger
+### 2. Set up dual-output logging
 
 ```go
-// Create a JSON logger that outputs to stderr
+// Create a ConsoleWriter for user-facing output
+consoleWriter := logutil.NewConsoleWriter()
+
+// Create structured logger (output depends on CLI flags)
 logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 
-// Or create a logger with stream separation (info to stdout, errors to stderr)
-logger := logutil.NewSlogLoggerWithStreamSeparationFromLogLevel(
-    os.Stdout, os.Stderr, logutil.InfoLevel)
+// Configure based on CLI flags
+consoleWriter.SetQuiet(config.Quiet)
+consoleWriter.SetNoProgress(config.NoProgress)
 ```
 
-### 3. Create context with correlation ID
+### 3. Use ConsoleWriter for user-facing progress
 
 ```go
-// Generate a new correlation ID
+// Start processing workflow
+consoleWriter.StartProcessing(3)
+
+// Report model progress
+consoleWriter.ModelStarted("gemini-1.5-flash", 1)
+consoleWriter.ModelCompleted("gemini-1.5-flash", 1, duration, nil)
+
+// Report workflow completion
+consoleWriter.SynthesisCompleted("/path/to/output")
+```
+
+### 4. Use structured logging for debugging
+
+```go
+// Create context with correlation ID
 ctx := logutil.WithCorrelationID(context.Background())
 
-// Or use a custom correlation ID
-ctx := logutil.WithCorrelationID(context.Background(), "req-123")
-```
-
-### 4. Log with structured data
-
-```go
-// Use slog.Attr functions for structured key-value pairs
+// Log structured data for debugging/auditing
 logger.InfoContext(ctx, "user operation completed",
     slog.String("user_id", "user123"),
     slog.String("operation", "login"),
@@ -86,9 +111,59 @@ The above logging calls produce JSON output like:
 }
 ```
 
-## Logger Interface
+## ConsoleWriter Interface
 
-All loggers implement the `logutil.LoggerInterface` which provides both context-aware and standard logging methods:
+The `ConsoleWriter` interface provides clean, user-facing console output that adapts to different environments:
+
+```go
+type ConsoleWriter interface {
+    // Progress reporting
+    StartProcessing(modelCount int)
+    ModelStarted(modelName string, index int)
+    ModelCompleted(modelName string, index int, duration time.Duration, err error)
+    ModelRateLimited(modelName string, index int, delay time.Duration)
+
+    // Status updates
+    SynthesisStarted()
+    SynthesisCompleted(outputPath string)
+    StatusMessage(message string)
+
+    // Message formatting
+    ErrorMessage(message string)
+    WarningMessage(message string)
+    SuccessMessage(message string)
+
+    // Control
+    SetQuiet(quiet bool)
+    SetNoProgress(noProgress bool)
+    IsInteractive() bool
+}
+```
+
+### Environment Detection
+
+ConsoleWriter automatically detects the execution environment:
+
+- **Interactive Mode** (TTY + not CI): Rich output with emojis and progress indicators
+- **CI Mode** (non-TTY or CI=true): Simple, parseable text output
+
+```go
+// Interactive mode output
+🚀 Processing 3 models...
+[1/3] gemini-1.5-flash: processing...
+[1/3] gemini-1.5-flash: ✓ completed (0.8s)
+✨ Done! Output saved to: output_20240115_120000/
+
+// CI mode output
+Starting processing with 3 models
+Processing model 1/3: gemini-1.5-flash
+Completed model 1/3: gemini-1.5-flash (0.8s)
+Synthesis complete. Output: output_20240115_120000/
+```
+
+## Structured Logger Interface
+
+All structured loggers implement the `logutil.LoggerInterface` which provides both context-aware and standard logging methods:
 
 ```go
 type LoggerInterface interface {
@@ -301,10 +376,54 @@ func TestUserService_GetUser(t *testing.T) {
 }
 ```
 
-## Migration from Standard Logging
+## Migration Guide
 
-### Before (standard log)
+### Migrating from JSON-Only Logging (Old System)
 
+The previous system only provided structured JSON logs. The new system adds clean console output while maintaining JSON logging.
+
+#### Before (JSON-only)
+```go
+import "log/slog"
+
+// Old: Only JSON output to stderr
+logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
+logger.InfoContext(ctx, "processing model", slog.String("model", "gemini-1.5-flash"))
+```
+
+#### After (Dual-output)
+```go
+import "log/slog"
+
+// New: Clean console output + structured logging
+consoleWriter := logutil.NewConsoleWriter()
+logger := logutil.NewSlogLoggerFromLogLevel(outputDest, logutil.InfoLevel)
+
+// User-facing progress
+consoleWriter.ModelStarted("gemini-1.5-flash", 1)
+
+// Structured logging for debugging
+logger.InfoContext(ctx, "processing model", slog.String("model", "gemini-1.5-flash"))
+```
+
+### Backward Compatibility
+
+Existing scripts that depend on JSON output can use the `--json-logs` flag:
+
+```bash
+# Old behavior: JSON to stderr
+thinktank --json-logs --instructions task.txt ./src
+
+# New default: Clean console + JSON to file
+thinktank --instructions task.txt ./src
+
+# Development: Both console and JSON to stderr
+thinktank --verbose --instructions task.txt ./src
+```
+
+### Migrating from Standard Logging
+
+#### Before (standard log)
 ```go
 import "log"
 
@@ -312,8 +431,7 @@ log.Printf("User %s logged in successfully", userID)
 log.Printf("Error processing request: %v", err)
 ```
 
-### After (structured logging)
-
+#### After (dual-output logging)
 ```go
 import (
     "context"
@@ -322,8 +440,14 @@ import (
 )
 
 ctx := logutil.WithCorrelationID(context.Background())
+consoleWriter := logutil.NewConsoleWriter()
 logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
 
+// User-facing messages
+consoleWriter.SuccessMessage("User logged in successfully")
+consoleWriter.ErrorMessage("Error processing request")
+
+// Structured logs for debugging
 logger.InfoContext(ctx, "user logged in successfully", slog.String("user_id", userID))
 logger.ErrorContext(ctx, "error processing request", slog.String("error", err.Error()))
 ```

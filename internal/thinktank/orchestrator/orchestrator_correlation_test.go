@@ -33,6 +33,9 @@ func TestCorrelationIDPropagation(t *testing.T) {
 	rateLimiter := ratelimit.NewRateLimiter(0, 0)
 
 	// Create the orchestrator
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
 	orchestrator := NewOrchestrator(
 		mockAPIService,
 		mockContextGatherer,
@@ -41,6 +44,7 @@ func TestCorrelationIDPropagation(t *testing.T) {
 		rateLimiter,
 		cfg,
 		logger,
+		consoleWriter,
 	)
 
 	// Run the orchestrator with an empty context

@@ -8,6 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Run Tests:** `go test ./...`
 * **Run Single Test:** `go test -v -run TestName ./path/to/package`
 * **Run E2E Tests:** `./internal/e2e/run_e2e_tests.sh [-v] [-r TestPattern]`
+* **Race Detection Testing:**
+  * Full suite: `go test -race ./...` (required before committing test changes)
+  * Single package: `go test -race ./path/to/package`
+  * Repeated testing: `go test -race ./... -count=10` (catch intermittent races)
 * **Check Coverage:**
   * Basic: `go test -cover ./...`
   * Detailed: `go test -coverprofile=coverage.out ./...`
@@ -35,7 +39,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Conventional Commits:** Follow the spec for automated versioning/changelogs
 * **Write detailed multiline conventional commit messages**
 * **No Secrets in Code:** Use environment variables or designated secret managers
-* **Structured Logging:** Use the project's standard structured logging library
+* **Dual-Output Logging:** Use ConsoleWriter for user-facing output and structured logging for debugging
+  * ConsoleWriter provides clean progress reporting that adapts to TTY vs CI environments
+  * Structured JSON logging maintains comprehensive audit trails with correlation IDs
 * **Pre-commit Quality:** All code must pass tests, lint, and format checks
   * Run `golangci-lint run ./...` before committing to catch violations early
   * Fix all errcheck violations - never ignore errors with `_`

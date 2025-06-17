@@ -171,10 +171,14 @@ func TestRunSynthesisFlow(t *testing.T) {
 			mockLogger := &MockLoggerWithSynthesisRecorder{}
 
 			// Create orchestrator with test configuration
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
 			orch := &Orchestrator{
 				synthesisService: mockSynthesisService,
 				outputWriter:     mockOutputWriter,
 				logger:           mockLogger,
+				consoleWriter:    consoleWriter,
 				config: &config.CliConfig{
 					OutputDir:      tt.outputDir,
 					SynthesisModel: tt.synthesisModel,

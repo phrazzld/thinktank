@@ -57,6 +57,12 @@ func ValidateInputs(config *config.CliConfig, logger logutil.LoggerInterface) er
 // This version takes a getenv function for easier testing
 // Note: The logger passed to this function should already have context attached
 func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterface, getenv func(string) string) error {
+	// Validate flag combinations
+	if config.Quiet && config.Verbose {
+		logger.Error("Cannot use --quiet and --verbose flags together.")
+		return fmt.Errorf("conflicting flags: --quiet and --verbose are mutually exclusive")
+	}
+
 	// Check for instructions file
 	if config.InstructionsFile == "" && !config.DryRun {
 		logger.Error("The required --instructions flag is missing.")
@@ -233,6 +239,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	synthesisModelFlag := flagSet.String("synthesis-model", "", "Optional: Model to use for synthesizing results from multiple models.")
 	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
 	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
+	quietFlag := flagSet.Bool("quiet", false, "Suppress console output (errors only).")
+	jsonLogsFlag := flagSet.Bool("json-logs", false, "Show JSON logs on stderr (preserves old behavior).")
+	noProgressFlag := flagSet.Bool("no-progress", false, "Disable progress indicators (show only start/complete).")
 	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
 	excludeFlag := flagSet.String("exclude", defaultExcludes, "Comma-separated list of file extensions to exclude.")
 	excludeNamesFlag := flagSet.String("exclude-names", defaultExcludeNames, "Comma-separated list of file/dir names to exclude.")
@@ -303,6 +312,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	cfg.AuditLogFile = *auditLogFileFlag
 	cfg.Verbose = *verboseFlag
+	cfg.Quiet = *quietFlag
+	cfg.JsonLogs = *jsonLogsFlag
+	cfg.NoProgress = *noProgressFlag
 	cfg.Include = *includeFlag
 	cfg.Exclude = *excludeFlag
 	cfg.ExcludeNames = *excludeNamesFlag

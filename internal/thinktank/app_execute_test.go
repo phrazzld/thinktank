@@ -49,7 +49,7 @@ func TestExecuteHappyPath(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -59,7 +59,10 @@ func TestExecuteHappyPath(t *testing.T) {
 	}()
 
 	// Execute the function - pass mockAPIService directly
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify results
 	if err != nil {
@@ -137,7 +140,7 @@ func TestExecuteDryRun(t *testing.T) {
 	originalOrchestrator := orchestratorConstructor
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -147,7 +150,10 @@ func TestExecuteDryRun(t *testing.T) {
 	}()
 
 	// Execute the function - pass mockAPIService directly
-	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService)
+	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+		IsTerminalFunc: func() bool { return false }, // CI mode for tests
+	})
+	err := Execute(context.Background(), cliConfig, mockLogger, mockAuditLogger, mockAPIService, consoleWriter)
 
 	// Verify results
 	if err != nil {

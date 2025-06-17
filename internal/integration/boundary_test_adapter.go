@@ -255,6 +255,7 @@ func (env *BoundaryTestEnv) Run(ctx context.Context, instructions string) error 
 		rateLimiter *ratelimit.RateLimiter,
 		config *config.CliConfig,
 		logger logutil.LoggerInterface,
+		consoleWriter logutil.ConsoleWriter,
 	) thinktank.Orchestrator {
 		// Use the injected components from our test environment
 		return thinktank.NewOrchestrator(
@@ -265,11 +266,15 @@ func (env *BoundaryTestEnv) Run(ctx context.Context, instructions string) error 
 			env.RateLimiter,
 			env.Config,
 			env.Logger,
+			consoleWriter,
 		)
 	})
 
 	// Execute the thinktank application
-	return thinktank.Execute(ctx, env.Config, env.Logger, env.AuditLogger, env.APIService)
+	// Create a test ConsoleWriter with quiet mode to avoid test output noise
+	consoleWriter := logutil.NewConsoleWriter()
+	consoleWriter.SetQuiet(true)
+	return thinktank.Execute(ctx, env.Config, env.Logger, env.AuditLogger, env.APIService, consoleWriter)
 }
 
 // BoundaryAPIService implements interfaces.APIService with mocked external boundaries

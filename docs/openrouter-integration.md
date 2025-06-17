@@ -76,7 +76,7 @@ thinktank --instructions task.txt --model openrouter/deepseek/deepseek-r1 ./src
 
 # Compare outputs from multiple providers
 thinktank --instructions task.txt \
-  --model gemini-2.5-pro-preview-03-25 \
+  --model gemini-2.5-pro \
   --model gpt-4-turbo \
   --model openrouter/x-ai/grok-3-beta \
   ./src

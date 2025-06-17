@@ -21,6 +21,7 @@ func NewOrchestrator(
 	rateLimiter *ratelimit.RateLimiter,
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
+	consoleWriter logutil.ConsoleWriter,
 ) Orchestrator {
 	return orchestrator.NewOrchestrator(
 		apiService,
@@ -30,5 +31,6 @@ func NewOrchestrator(
 		rateLimiter,
 		config,
 		logger,
+		consoleWriter,
 	)
 }
