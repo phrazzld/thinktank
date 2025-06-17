@@ -90,9 +90,17 @@ func TestConsoleWriter_EnvironmentDetection(t *testing.T) {
 				}
 			}()
 
-			// Create writer with mocked terminal detection
+			// Create writer with mocked terminal detection and environment variable isolation
 			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 				IsTerminalFunc: tt.mockIsTerminal,
+				GetEnvFunc: func(key string) string {
+					// Return the test-controlled environment variables only
+					if value, exists := tt.envVars[key]; exists {
+						return value
+					}
+					// For all other variables (including real CI vars), return empty
+					return ""
+				},
 			})
 
 			result := writer.IsInteractive()
