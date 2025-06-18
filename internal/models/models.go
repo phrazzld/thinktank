@@ -155,3 +155,18 @@ func ListModelsForProvider(provider string) []string {
 	sort.Strings(models)
 	return models
 }
+
+// GetAPIKeyEnvVar returns the environment variable name for the given provider's API key.
+// Returns an empty string for unknown providers.
+func GetAPIKeyEnvVar(provider string) string {
+	switch provider {
+	case "openai":
+		return "OPENAI_API_KEY"
+	case "gemini":
+		return "GEMINI_API_KEY"
+	case "openrouter":
+		return "OPENROUTER_API_KEY"
+	default:
+		return ""
+	}
+}
