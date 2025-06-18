@@ -43,7 +43,7 @@ Each model is defined with:
 - Context window and max output token limits
 - Default parameters like temperature and top_p
 
-To add new OpenRouter models, edit the `ModelDefinitions` map in `internal/models/models.go`. See [CLAUDE.md](../CLAUDE.md#adding-new-models) for detailed instructions.
+To add new OpenRouter models, edit the `ModelDefinitions` map in `internal/models/models.go`. See [CLAUDE.md](./CLAUDE.md#adding-new-models) for detailed instructions.
 
 ## Usage Examples
 
