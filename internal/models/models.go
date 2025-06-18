@@ -170,3 +170,9 @@ func GetAPIKeyEnvVar(provider string) string {
 		return ""
 	}
 }
+
+// IsModelSupported returns true if the given model name is supported.
+func IsModelSupported(name string) bool {
+	_, exists := ModelDefinitions[name]
+	return exists
+}

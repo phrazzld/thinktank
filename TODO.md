@@ -14,7 +14,7 @@
 - [x] Implement `ListAllModels() []string` that returns sorted slice of all model names from modelDefinitions map
 - [x] Implement `ListModelsForProvider(provider string) []string` that filters and returns models matching given provider
 - [x] Implement `GetAPIKeyEnvVar(provider string) string` with switch statement mapping providers (openai, gemini, openrouter) to environment variables
-- [ ] Implement `IsModelSupported(name string) bool` that checks if model exists in modelDefinitions map
+- [x] Implement `IsModelSupported(name string) bool` that checks if model exists in modelDefinitions map
 
 ### Unit Testing Tasks
 - [ ] Write table-driven test for `GetModelInfo` covering all 7 valid models plus 3 invalid model names with appropriate error assertions
