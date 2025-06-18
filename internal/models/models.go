@@ -1,7 +1,5 @@
 package models
 
-// Imports will be added as functions are implemented
-
 // ModelInfo contains metadata for a single LLM model.
 // This struct replaces the complex registry system with simple hardcoded definitions.
 type ModelInfo struct {
@@ -21,5 +19,94 @@ type ModelInfo struct {
 	DefaultParams map[string]interface{} `json:"default_params"`
 }
 
-// TODO: Implement modelDefinitions map and functions
-// This file will be completed in subsequent tasks
+// ModelDefinitions contains hardcoded metadata for all supported LLM models.
+// This replaces the complex YAML-based registry system with simple, direct access.
+// TODO: Make this private once access functions are implemented
+var ModelDefinitions = map[string]ModelInfo{
+	// OpenAI Models
+	"gpt-4.1": {
+		Provider:        "openai",
+		APIModelID:      "gpt-4.1",
+		ContextWindow:   1000000,
+		MaxOutputTokens: 200000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+	},
+	"o4-mini": {
+		Provider:        "openai",
+		APIModelID:      "o4-mini",
+		ContextWindow:   200000,
+		MaxOutputTokens: 200000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       1.0,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning": map[string]interface{}{
+				"effort": "high",
+			},
+		},
+	},
+
+	// Gemini Models
+	"gemini-2.5-pro": {
+		Provider:        "gemini",
+		APIModelID:      "gemini-2.5-pro",
+		ContextWindow:   1000000,
+		MaxOutputTokens: 65000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+			"top_k":       40,
+		},
+	},
+	"gemini-2.5-flash": {
+		Provider:        "gemini",
+		APIModelID:      "gemini-2.5-flash",
+		ContextWindow:   1000000,
+		MaxOutputTokens: 65000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+			"top_k":       40,
+		},
+	},
+
+	// OpenRouter Models
+	"openrouter/deepseek/deepseek-chat-v3-0324": {
+		Provider:        "openrouter",
+		APIModelID:      "deepseek/deepseek-chat-v3-0324",
+		ContextWindow:   65536,
+		MaxOutputTokens: 8192,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+	},
+	"openrouter/deepseek/deepseek-r1": {
+		Provider:        "openrouter",
+		APIModelID:      "deepseek/deepseek-r1",
+		ContextWindow:   131072,
+		MaxOutputTokens: 33792,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+	},
+	"openrouter/x-ai/grok-3-beta": {
+		Provider:        "openrouter",
+		APIModelID:      "x-ai/grok-3-beta",
+		ContextWindow:   131072,
+		MaxOutputTokens: 131072,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+	},
+}
+
+// TODO: Implement access functions in subsequent tasks

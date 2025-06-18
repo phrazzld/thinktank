@@ -6,7 +6,7 @@
 - [x] Extract current model metadata from `config/models.yaml` and document all 7 models with their exact configuration values including provider, API model ID, context window, max output tokens, and default parameters
 - [x] Create directory structure `internal/models/` with files `models.go`, `models_test.go`, and `doc.go` following Go package conventions
 - [x] Define `ModelInfo` struct in `internal/models/models.go` with fields: Provider (string), APIModelID (string), ContextWindow (int), MaxOutputTokens (int), DefaultParams (map[string]interface{})
-- [ ] Implement hardcoded `modelDefinitions` map[string]ModelInfo with entries for all 7 models: gpt-4.1, o4-mini, gemini-2.5-pro-preview-03-25, and 4 additional models extracted from current registry
+- [x] Implement hardcoded `modelDefinitions` map[string]ModelInfo with entries for all 7 models: gpt-4.1, o4-mini, gemini-2.5-pro, gemini-2.5-flash, and 3 openrouter models extracted from current registry
 
 ### Core Function Implementation
 - [ ] Implement `GetModelInfo(name string) (ModelInfo, error)` that returns model metadata from modelDefinitions map with proper error handling for unknown models
