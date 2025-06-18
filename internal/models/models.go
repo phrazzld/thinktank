@@ -119,3 +119,13 @@ func GetModelInfo(name string) (ModelInfo, error) {
 	}
 	return ModelInfo{}, fmt.Errorf("unknown model: %s", name)
 }
+
+// GetProviderForModel returns the provider name for the given model.
+// Returns an error if the model is not supported.
+func GetProviderForModel(name string) (string, error) {
+	info, err := GetModelInfo(name)
+	if err != nil {
+		return "", err
+	}
+	return info.Provider, nil
+}
