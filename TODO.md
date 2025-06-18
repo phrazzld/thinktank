@@ -9,7 +9,7 @@
 - [x] Implement hardcoded `modelDefinitions` map[string]ModelInfo with entries for all 7 models: gpt-4.1, o4-mini, gemini-2.5-pro, gemini-2.5-flash, and 3 openrouter models extracted from current registry
 
 ### Core Function Implementation
-- [ ] Implement `GetModelInfo(name string) (ModelInfo, error)` that returns model metadata from modelDefinitions map with proper error handling for unknown models
+- [x] Implement `GetModelInfo(name string) (ModelInfo, error)` that returns model metadata from modelDefinitions map with proper error handling for unknown models
 - [ ] Implement `GetProviderForModel(name string) (string, error)` that extracts provider from model info with validation that model exists
 - [ ] Implement `ListAllModels() []string` that returns sorted slice of all model names from modelDefinitions map
 - [ ] Implement `ListModelsForProvider(provider string) []string` that filters and returns models matching given provider

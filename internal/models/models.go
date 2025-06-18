@@ -1,5 +1,7 @@
 package models
 
+import "fmt"
+
 // ModelInfo contains metadata for a single LLM model.
 // This struct replaces the complex registry system with simple hardcoded definitions.
 type ModelInfo struct {
@@ -109,4 +111,11 @@ var ModelDefinitions = map[string]ModelInfo{
 	},
 }
 
-// TODO: Implement access functions in subsequent tasks
+// GetModelInfo returns model metadata for the given model name.
+// Returns an error if the model is not supported.
+func GetModelInfo(name string) (ModelInfo, error) {
+	if info, exists := ModelDefinitions[name]; exists {
+		return info, nil
+	}
+	return ModelInfo{}, fmt.Errorf("unknown model: %s", name)
+}
