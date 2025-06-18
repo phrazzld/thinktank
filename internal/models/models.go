@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // ModelInfo contains metadata for a single LLM model.
 // This struct replaces the complex registry system with simple hardcoded definitions.
@@ -128,4 +131,14 @@ func GetProviderForModel(name string) (string, error) {
 		return "", err
 	}
 	return info.Provider, nil
+}
+
+// ListAllModels returns a sorted slice of all supported model names.
+func ListAllModels() []string {
+	models := make([]string, 0, len(ModelDefinitions))
+	for name := range ModelDefinitions {
+		models = append(models, name)
+	}
+	sort.Strings(models)
+	return models
 }

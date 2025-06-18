@@ -11,7 +11,7 @@
 ### Core Function Implementation
 - [x] Implement `GetModelInfo(name string) (ModelInfo, error)` that returns model metadata from modelDefinitions map with proper error handling for unknown models
 - [x] Implement `GetProviderForModel(name string) (string, error)` that extracts provider from model info with validation that model exists
-- [ ] Implement `ListAllModels() []string` that returns sorted slice of all model names from modelDefinitions map
+- [x] Implement `ListAllModels() []string` that returns sorted slice of all model names from modelDefinitions map
 - [ ] Implement `ListModelsForProvider(provider string) []string` that filters and returns models matching given provider
 - [ ] Implement `GetAPIKeyEnvVar(provider string) string` with switch statement mapping providers (openai, gemini, openrouter) to environment variables
 - [ ] Implement `IsModelSupported(name string) bool` that checks if model exists in modelDefinitions map
