@@ -142,3 +142,16 @@ func ListAllModels() []string {
 	sort.Strings(models)
 	return models
 }
+
+// ListModelsForProvider returns a sorted slice of model names for the given provider.
+// Returns an empty slice if no models are found for the provider.
+func ListModelsForProvider(provider string) []string {
+	var models []string
+	for name, info := range ModelDefinitions {
+		if info.Provider == provider {
+			models = append(models, name)
+		}
+	}
+	sort.Strings(models)
+	return models
+}
