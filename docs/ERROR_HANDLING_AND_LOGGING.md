@@ -490,7 +490,7 @@ To prevent errcheck violations from reaching CI:
 
 2. **Check specific packages after modifications**:
    ```bash
-   golangci-lint run internal/registry/
+   golangci-lint run internal/providers/
    ```
 
 3. **Fix all errcheck violations before pushing**:

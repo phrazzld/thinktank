@@ -9,8 +9,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -31,8 +31,8 @@ func (m *mockAPIService) ValidateModelParameter(ctx context.Context, modelName, 
 	return true, nil
 }
 
-func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
-	return &registry.ModelDefinition{}, nil
+func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
+	return &models.ModelInfo{}, nil
 }
 
 func (m *mockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {

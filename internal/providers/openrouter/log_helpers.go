@@ -27,7 +27,7 @@ func SanitizeURL(urlStr string) string {
 }
 
 // GetBaseURLLogInfo returns a sanitized logging representation of a base URL
-// Similar to registry.getBaseURLLogSuffix but with sanitization
+// Provides a safe way to include URL information in logs
 func GetBaseURLLogInfo(baseURL string) string {
 	if baseURL == "" {
 		return "default base URL"

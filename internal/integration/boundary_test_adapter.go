@@ -18,8 +18,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -351,11 +351,11 @@ func (s *BoundaryAPIService) ValidateModelParameter(ctx context.Context, modelNa
 }
 
 // GetModelDefinition retrieves the model definition
-func (s *BoundaryAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (s *BoundaryAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	// Create a basic model definition
-	return &registry.ModelDefinition{
-		Name:     modelName,
-		Provider: getProviderFromModelName(modelName),
+	return &models.ModelInfo{
+		APIModelID: modelName,
+		Provider:   getProviderFromModelName(modelName),
 	}, nil
 }
 

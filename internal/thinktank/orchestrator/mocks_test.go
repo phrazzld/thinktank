@@ -9,7 +9,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -185,8 +185,8 @@ func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName strin
 }
 
 // GetModelDefinition is a mock implementation
-func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
-	return &registry.ModelDefinition{}, nil
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
+	return &models.ModelInfo{}, nil
 }
 
 // GetModelTokenLimits is a mock implementation
@@ -242,4 +242,29 @@ func (m *MockFileWriter) SaveToFile(ctx context.Context, content, outputFile str
 
 	m.savedFiles[outputFile] = content
 	return nil
+}
+
+// TestOutputWriter is a mock implementation of OutputWriter for testing
+type TestOutputWriter struct {
+	saveIndividualCount int
+	saveIndividualPaths map[string]string
+	saveIndividualError error
+	saveSynthesisPath   string
+	saveSynthesisError  error
+}
+
+// SaveIndividualOutputs is a mock implementation
+func (t *TestOutputWriter) SaveIndividualOutputs(ctx context.Context, modelOutputs map[string]string, outputDir string) (int, map[string]string, error) {
+	if t.saveIndividualError != nil {
+		return 0, nil, t.saveIndividualError
+	}
+	return t.saveIndividualCount, t.saveIndividualPaths, nil
+}
+
+// SaveSynthesisOutput is a mock implementation
+func (t *TestOutputWriter) SaveSynthesisOutput(ctx context.Context, content string, modelName string, outputDir string) (string, error) {
+	if t.saveSynthesisError != nil {
+		return "", t.saveSynthesisError
+	}
+	return t.saveSynthesisPath, nil
 }

@@ -28,11 +28,11 @@ var (
 	// ErrUnsupportedModel indicates an unsupported model was requested
 	ErrUnsupportedModel = errors.New("unsupported model type")
 
-	// ErrModelNotFound indicates a model definition was not found in registry
-	ErrModelNotFound = errors.New("model definition not found in registry")
+	// ErrModelNotFound indicates a model definition was not found in models package
+	ErrModelNotFound = errors.New("model definition not found in models package")
 
-	// ErrProviderNotFound indicates a provider was not found in registry
-	ErrProviderNotFound = errors.New("provider not found in registry")
+	// ErrProviderNotFound indicates a provider was not found in models package
+	ErrProviderNotFound = errors.New("provider not found in models package")
 )
 
 // ErrorCategory represents different categories of errors that can occur when using LLM APIs

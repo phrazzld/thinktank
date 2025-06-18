@@ -1,104 +1,55 @@
 # thinktank Configuration Files
 
-This directory contains default configuration files for the thinktank tool.
+This directory contains documentation for thinktank configuration.
 
-## Models Configuration
+## Model Configuration
 
-The `models.yaml` file defines the LLM providers and models available to the thinktank tool. It includes:
+As of the latest version, thinktank uses hardcoded model definitions in the `internal/models` package. Models are no longer configured via external YAML files, simplifying deployment and ensuring consistency.
 
-- API key environment variable mappings
-- Provider definitions (OpenAI, Gemini, OpenRouter)
-- Model configurations with context sizes and output limits
-- Default parameter settings for each model
+## Supported Models
 
-## Installation
+The following models are built into thinktank:
 
-You can install the configuration files using the provided installation script:
+### OpenAI Models
+- `gpt-4.1` - Latest GPT-4 model with 1M token context window
+- `o4-mini` - Optimized OpenAI model with reasoning capabilities
+
+### Gemini Models
+- `gemini-2.5-pro` - Google's advanced model with 1M token context
+- `gemini-2.5-flash` - Faster Gemini variant with 1M token context
+
+### OpenRouter Models
+- `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek chat model
+- `openrouter/deepseek/deepseek-r1` - DeepSeek reasoning model
+- `openrouter/x-ai/grok-3-beta` - xAI's Grok model
+
+## Setup
+
+No configuration files need to be installed. Simply set the required API keys as environment variables:
 
 ```bash
-./config/install.sh
+export OPENAI_API_KEY="your-openai-api-key"
+export GEMINI_API_KEY="your-gemini-api-key"
+export OPENROUTER_API_KEY="your-openrouter-api-key"
 ```
 
-This will create the necessary directories and copy the configuration files to `~/.config/thinktank/`.
+## Adding New Models
 
-## Manual Installation
+To add new models, modify the `modelDefinitions` map in `internal/models/models.go` and submit a pull request.
 
-If you prefer to install manually:
+## Usage
 
-1. Create the configuration directory:
-   ```bash
-   mkdir -p ~/.config/thinktank
-   ```
+Use thinktank by specifying a model with the `--model` flag:
 
-2. Copy the models.yaml file:
-   ```bash
-   cp config/models.yaml ~/.config/thinktank/models.yaml
-   ```
+```bash
+# Using OpenAI models
+thinktank --model gpt-4.1 --instructions task.md src/
 
-3. Set your API keys as environment variables:
-   ```bash
-   export OPENAI_API_KEY="your-openai-api-key"
-   export GEMINI_API_KEY="your-gemini-api-key"
-   export OPENROUTER_API_KEY="your-openrouter-api-key"
-   ```
+# Using Gemini models
+thinktank --model gemini-2.5-pro --instructions task.md src/
 
-## Customization
-
-You can customize the `models.yaml` file to:
-
-- Add new models as they become available
-- Adjust token limits to match model updates
-- Configure default parameters for each model
-- Add custom API endpoints (for self-hosted models or proxies)
-
-After modifying the configuration, restart thinktank for the changes to take effect.
-
-## Provider-Specific Configuration
-
-### OpenAI
-
-The OpenAI provider uses the `OPENAI_API_KEY` environment variable and supports models like `gpt-4-turbo`, `gpt-4o`, and `gpt-3.5-turbo`. Each model configuration includes:
-
-- Context window size (e.g., 128000 tokens for `gpt-4-turbo`)
-- Maximum output tokens
-- Default parameters like temperature and top_p
-
-### Gemini
-
-The Gemini provider uses the `GEMINI_API_KEY` environment variable and supports models like `gemini-1.5-pro` and `gemini-1.5-flash`. These models have large context windows (up to 1M tokens) and support parameters like temperature, top_p, and top_k.
-
-### OpenRouter
-
-The OpenRouter provider uses the `OPENROUTER_API_KEY` environment variable and provides unified access to models from multiple AI companies through a single API.
-
-#### Model ID Format
-
-OpenRouter model IDs use the format: `provider/model-name`
-
-For example:
-- `openrouter/deepseek/deepseek-r1`
-- `openrouter/x-ai/grok-3-beta`
-- `openrouter/deepseek/deepseek-chat-v3-0324`
-
-In the configuration file, these models are defined with:
-```yaml
-- name: openrouter/deepseek/deepseek-r1
-  provider: openrouter
-  api_model_id: deepseek/deepseek-r1
-  context_window: 131072  # 128k tokens
-  max_output_tokens: 33792
-  parameters:
-    temperature:
-      type: float
-      default: 0.7
+# Using OpenRouter models
+thinktank --model openrouter/deepseek/deepseek-r1 --instructions task.md src/
 ```
 
-The `api_model_id` is the identifier used when making API requests to OpenRouter, which follows the format `provider/model` without the `openrouter/` prefix that's used in the model's name in our configuration.
-
-#### Configuration Notes
-
-- **API Endpoint**: The default OpenRouter API endpoint is `https://openrouter.ai/api/v1`. You can specify a custom endpoint using the `base_url` field in the provider definition.
-- **Context Window**: For each model, specify the appropriate context window and maximum output tokens as provided by OpenRouter.
-- **Parameters**: OpenRouter supports standard parameters like temperature and top_p.
-
-To use OpenRouter models with thinktank, ensure the `OPENROUTER_API_KEY` environment variable is set and reference the models using their full names (e.g., `--model openrouter/deepseek/deepseek-r1`).
+All model parameters (context windows, token limits, default settings) are configured automatically. No additional configuration is required.

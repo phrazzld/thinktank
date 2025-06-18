@@ -14,7 +14,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 )
 
@@ -558,10 +558,10 @@ func (s *testAPIService) GetModelParameters(ctx context.Context, modelName strin
 }
 
 // GetModelDefinition returns a test model definition
-func (s *testAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
-	return &registry.ModelDefinition{
-		Name:     modelName,
-		Provider: "test-provider",
+func (s *testAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
+	return &models.ModelInfo{
+		APIModelID: modelName,
+		Provider:   "test-provider",
 	}, nil
 }
 

@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // TestAPIServiceContractVerification ensures that a correct implementation
@@ -56,7 +56,7 @@ func TestAPIServiceContractVerification(t *testing.T) {
 		},
 
 		// Model parameter functions for testing
-		GetModelParametersFunc: func(modelName string) (map[string]interface{}, error) {
+		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			if modelName == "" {
 				return nil, errors.New("model name required")
 			}
@@ -65,7 +65,7 @@ func TestAPIServiceContractVerification(t *testing.T) {
 			}, nil
 		},
 
-		ValidateModelParameterFunc: func(modelName, paramName string, value interface{}) (bool, error) {
+		ValidateModelParameterFunc: func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 			if modelName == "" || paramName == "" {
 				return false, errors.New("model and parameter names required")
 			}
@@ -192,7 +192,7 @@ func TestAPIServiceContractVerification(t *testing.T) {
 	// Verify parameter-related contracts
 	t.Run("ModelParameters", func(t *testing.T) {
 		// Test GetModelParameters
-		params, err := mockAPI.GetModelParameters("test-model")
+		params, err := mockAPI.GetModelParameters(context.Background(), "test-model")
 		if err != nil {
 			t.Errorf("Expected no error for valid model, got: %v", err)
 		}
@@ -201,13 +201,13 @@ func TestAPIServiceContractVerification(t *testing.T) {
 		}
 
 		// Test GetModelParameters with empty model name
-		_, err = mockAPI.GetModelParameters("")
+		_, err = mockAPI.GetModelParameters(context.Background(), "")
 		if err == nil {
 			t.Errorf("Expected error for empty model name, got nil")
 		}
 
 		// Test ValidateModelParameter
-		valid, err := mockAPI.ValidateModelParameter("test-model", "temperature", 0.5)
+		valid, err := mockAPI.ValidateModelParameter(context.Background(), "test-model", "temperature", 0.5)
 		if err != nil {
 			t.Errorf("Expected no error for valid parameter, got: %v", err)
 		}
@@ -216,7 +216,7 @@ func TestAPIServiceContractVerification(t *testing.T) {
 		}
 
 		// Test ValidateModelParameter with invalid value
-		valid, err = mockAPI.ValidateModelParameter("test-model", "temperature", 1.5)
+		valid, err = mockAPI.ValidateModelParameter(context.Background(), "test-model", "temperature", 1.5)
 		if err == nil {
 			t.Errorf("Expected error for invalid parameter value, got nil")
 		}
@@ -225,7 +225,7 @@ func TestAPIServiceContractVerification(t *testing.T) {
 		}
 
 		// Test ValidateModelParameter with invalid type
-		valid, err = mockAPI.ValidateModelParameter("test-model", "temperature", "not a float")
+		valid, err = mockAPI.ValidateModelParameter(context.Background(), "test-model", "temperature", "not a float")
 		if err == nil {
 			t.Errorf("Expected error for invalid parameter type, got nil")
 		}
@@ -242,10 +242,10 @@ type MockAPIService struct {
 	IsEmptyResponseErrorFunc   func(err error) bool
 	IsSafetyBlockedErrorFunc   func(err error) bool
 	GetErrorDetailsFunc        func(err error) string
-	GetModelParametersFunc     func(modelName string) (map[string]interface{}, error)
-	ValidateModelParameterFunc func(modelName, paramName string, value interface{}) (bool, error)
-	GetModelDefinitionFunc     func(modelName string) (interface{}, error)
-	GetModelTokenLimitsFunc    func(modelName string) (int32, int32, error)
+	GetModelParametersFunc     func(ctx context.Context, modelName string) (map[string]interface{}, error)
+	ValidateModelParameterFunc func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
+	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*models.ModelInfo, error)
+	GetModelTokenLimitsFunc    func(ctx context.Context, modelName string) (int32, int32, error)
 }
 
 // Implement APIService interface
@@ -285,27 +285,27 @@ func (m *MockAPIService) GetErrorDetails(err error) string {
 	return "not implemented"
 }
 
-func (m *MockAPIService) GetModelParameters(modelName string) (map[string]interface{}, error) {
+func (m *MockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	if m.GetModelParametersFunc != nil {
-		return m.GetModelParametersFunc(modelName)
+		return m.GetModelParametersFunc(ctx, modelName)
 	}
 	return nil, errors.New("not implemented")
 }
 
-func (m *MockAPIService) ValidateModelParameter(modelName, paramName string, value interface{}) (bool, error) {
+func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error) {
 	if m.ValidateModelParameterFunc != nil {
-		return m.ValidateModelParameterFunc(modelName, paramName, value)
+		return m.ValidateModelParameterFunc(ctx, modelName, paramName, value)
 	}
 	return false, errors.New("not implemented")
 }
 
-func (m *MockAPIService) GetModelDefinition(modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (m *MockAPIService) GetModelTokenLimits(modelName string) (contextWindow, maxOutputTokens int32, err error) {
+func (m *MockAPIService) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	if m.GetModelTokenLimitsFunc != nil {
-		return m.GetModelTokenLimitsFunc(modelName)
+		return m.GetModelTokenLimitsFunc(ctx, modelName)
 	}
 	return 0, 0, errors.New("not implemented")
 }

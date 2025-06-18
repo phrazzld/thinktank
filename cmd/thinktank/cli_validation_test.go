@@ -7,23 +7,13 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // Import constants directly from the tested file
 
 // TestValidateInputs ensures that the validation function correctly validates all required fields
 func TestValidateInputs(t *testing.T) {
-	// Save the original function to restore later
-	origGetManager := getRegistryManagerForValidation
-	// Override with a function that returns nil to force pattern matching
-	getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-		return nil
-	}
-	// Restore at the end
-	defer func() {
-		getRegistryManagerForValidation = origGetManager
-	}()
 	// Create a test instructions file
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
@@ -37,6 +27,9 @@ func TestValidateInputs(t *testing.T) {
 	}
 	_ = tempFile.Close()
 
+	// Get actual supported models for testing
+	supportedModels := models.ListAllModels()
+
 	tests := []struct {
 		name          string
 		config        *config.CliConfig
@@ -49,7 +42,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
+				ModelNames:       []string{supportedModels[0]}, // Use actual supported model
 			},
 			expectError: false,
 		},
@@ -79,7 +72,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "",                         // Missing
-				ModelNames:       []string{"gemini-1.0-pro"}, // Gemini model requires Gemini API key
+				ModelNames:       []string{"gemini-2.5-pro"}, // Gemini model requires Gemini API key
 			},
 			expectError:   true,
 			errorContains: "gemini API key not set",
@@ -111,7 +104,7 @@ func TestValidateInputs(t *testing.T) {
 				InstructionsFile: "", // Missing allowed in dry run
 				Paths:            []string{"testfile"},
 				APIKey:           "",                         // Missing
-				ModelNames:       []string{"gemini-1.0-pro"}, // Gemini model requires Gemini API key
+				ModelNames:       []string{"gemini-2.5-pro"}, // Gemini model requires Gemini API key
 				DryRun:           true,
 			},
 			expectError:   true,
@@ -144,8 +137,8 @@ func TestValidateInputs(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",        // Gemini key set
-				ModelNames:       []string{"gpt-4"}, // OpenAI model
+				APIKey:           "test-key",          // Gemini key set
+				ModelNames:       []string{"gpt-4.1"}, // OpenAI model
 			},
 			expectError:   true,
 			errorContains: "openAI API key not set",

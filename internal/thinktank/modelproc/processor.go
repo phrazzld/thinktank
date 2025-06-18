@@ -14,7 +14,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -23,13 +23,13 @@ type APIService interface {
 	// InitLLMClient initializes and returns a provider-agnostic LLM client
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 
-	// GetModelParameters retrieves parameter values from the registry for a given model
+	// GetModelParameters retrieves parameter values from the models package for a given model
 	GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error)
 
-	// GetModelDefinition retrieves the full model definition from the registry
-	GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	// GetModelDefinition retrieves the full model definition
+	GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error)
 
-	// GetModelTokenLimits retrieves token limits from the registry for a given model
+	// GetModelTokenLimits retrieves token limits from the models package for a given model
 	GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// ProcessLLMResponse processes a provider-agnostic response and extracts content

@@ -6,7 +6,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -54,7 +54,7 @@ func (a *APIServiceAdapter) GetModelParameters(ctx context.Context, modelName st
 }
 
 // GetModelDefinition delegates to the underlying APIService implementation
-func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	return a.APIService.GetModelDefinition(ctx, modelName)
 }
 

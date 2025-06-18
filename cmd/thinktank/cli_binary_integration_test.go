@@ -159,7 +159,7 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Invalid model name format",
 			args:           []string{"--instructions", instructionsFile, "--model", "invalid model name with spaces", "src/"},
-			expectedExit:   ExitCodeGenericError, // Model not found in registry
+			expectedExit:   ExitCodeGenericError, // Model not found in models
 			stderrContains: "Resource not found",
 		},
 		{
@@ -208,7 +208,7 @@ func TestCLIFlagParsingEdgeCases(t *testing.T) {
 		{
 			name:           "Missing API key for OpenRouter model",
 			args:           []string{"--instructions", instructionsFile, "--model", "openrouter/deepseek/deepseek-chat-v3-0324", "src/"},
-			expectedExit:   ExitCodeGenericError, // Model not found in CI registry
+			expectedExit:   ExitCodeGenericError, // Model not found in models
 			stderrContains: "Resource not found",
 		},
 		{

@@ -12,7 +12,7 @@ Coverage calculations **include** the following:
 
 - **Core business logic packages** (`internal/thinktank`, `internal/llm`, etc.)
 - **Provider implementations** (`internal/providers/*`)
-- **Registry and configuration** (`internal/registry`, `internal/config`)
+- **Configuration** (`internal/config`)
 - **Utility packages** (`internal/fileutil`, `internal/logutil`, etc.)
 - **All production code** in `cmd/` packages
 
@@ -59,7 +59,6 @@ Critical packages have differentiated requirements based on their complexity:
 |---------|-----------|----------------|-----------|
 | `internal/llm` | 95% | Critical | Core LLM interface and error handling |
 | `internal/providers` | 80% | Critical | Provider abstraction layer |
-| `internal/registry` | 75% | Critical | Model registry and configuration |
 | `internal/thinktank` | 70% | Application | Complex orchestration logic with comprehensive testing |
 
 ## Implementation

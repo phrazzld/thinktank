@@ -58,11 +58,52 @@ thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
 | `--no-progress` | Disable progress indicators (show only start/complete) | `false` |
 | `--verbose` | Enable both console output AND JSON logs to stderr | `false` |
 
-## Models Setup
+## Supported Models
 
-1. Create config directory: `mkdir -p ~/.config/thinktank`
-2. Copy default config: `cp config/models.yaml ~/.config/thinktank/`
-3. Customize as needed for different models or custom endpoints
+thinktank supports the following LLM models out of the box:
+
+**OpenAI Models:**
+  - gpt-4.1
+  - o4-mini
+
+**Gemini Models:**
+  - gemini-2.5-flash
+  - gemini-2.5-pro
+
+**OpenRouter Models:**
+  - openrouter/deepseek/deepseek-chat-v3-0324
+  - openrouter/deepseek/deepseek-r1
+  - openrouter/x-ai/grok-3-beta
+
+No additional configuration is needed - simply set the appropriate API key environment variable and use any supported model name with the `--model` flag.
+
+### Adding New Models
+
+To add a new model, edit `internal/models/models.go` directly:
+
+1. Add a new entry to the `ModelDefinitions` map with the model name as key
+2. Provide the required `ModelInfo` struct with:
+   - `Provider`: The provider name (openai, gemini, or openrouter)
+   - `APIModelID`: The actual model ID used in API calls
+   - `ContextWindow`: Maximum input + output tokens
+   - `MaxOutputTokens`: Maximum output tokens
+   - `DefaultParams`: Provider-specific parameters (temperature, top_p, etc.)
+3. Run tests: `go test ./internal/models`
+4. Submit a pull request with your changes
+
+Example:
+```go
+"new-model-name": {
+    Provider:        "openai",
+    APIModelID:      "gpt-5",
+    ContextWindow:   200000,
+    MaxOutputTokens: 50000,
+    DefaultParams: map[string]interface{}{
+        "temperature": 0.7,
+        "top_p":       1.0,
+    },
+},
+```
 
 ## Common Use Cases
 
@@ -190,7 +231,7 @@ The project maintains high test coverage standards to ensure reliability and mai
 
 - **Target Coverage**: 90% overall code coverage
 - **Minimum Threshold**: 75% overall and per-package (enforced in CI)
-- **Registry API**: Special focus on complete coverage for registry API components
+- **Core APIs**: Special focus on complete coverage for core API components
 
 #### Coverage Tools
 
@@ -200,7 +241,7 @@ Several scripts are available to check and validate test coverage:
 |--------|-------------|-------|
 | `check-coverage.sh` | Checks overall coverage against threshold | `./scripts/check-coverage.sh [threshold]` |
 | `check-package-coverage.sh` | Validates per-package coverage | `./scripts/check-package-coverage.sh [threshold]` |
-| `check-registry-coverage.sh` | Reports coverage for registry API components | `./scripts/check-registry-coverage.sh [threshold]` |
+| `check-registry-coverage.sh` | Reports coverage for models package components | `./scripts/check-registry-coverage.sh [threshold]` |
 | `pre-submit-coverage.sh` | Comprehensive pre-submission check | `./scripts/pre-submit-coverage.sh [options]` |
 
 #### Pre-Submission Coverage Validation
@@ -214,7 +255,7 @@ Before submitting code, run the pre-submission coverage check script to ensure y
 # With custom threshold and verbose output
 ./scripts/pre-submit-coverage.sh --threshold 80 --verbose
 
-# Including registry API specific checks
+# Including models package specific checks
 ./scripts/pre-submit-coverage.sh --registry --verbose
 ```
 

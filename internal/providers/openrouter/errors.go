@@ -10,11 +10,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 )
 
-// Registry-related errors
-var (
-	ErrRegistryNotAvailable = errors.New("registry not available")
-)
-
 // APIErrorResponse represents the error structure returned by the OpenRouter API
 type APIErrorResponse struct {
 	Error APIErrorDetail `json:"error"`

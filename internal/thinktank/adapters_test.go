@@ -9,7 +9,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // MockAPIServiceForAdapter is a testing mock for the APIService interface, specifically for adapter tests
@@ -21,7 +21,7 @@ type MockAPIServiceForAdapter struct {
 	GetErrorDetailsFunc        func(err error) string
 	GetModelParametersFunc     func(ctx context.Context, modelName string) (map[string]interface{}, error)
 	ValidateModelParameterFunc func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
-	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*models.ModelInfo, error)
 	GetModelTokenLimitsFunc    func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 
 	// Call tracking fields
@@ -159,7 +159,7 @@ func (m *MockAPIServiceForAdapter) ValidateModelParameter(ctx context.Context, m
 	return true, nil
 }
 
-func (m *MockAPIServiceForAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIServiceForAdapter) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	m.GetModelDefinitionCalls = append(m.GetModelDefinitionCalls, GetModelDefinitionCall{
 		Ctx:       ctx,
 		ModelName: modelName,
@@ -271,7 +271,7 @@ func (m *MockAPIServiceWithoutExtensions) ValidateModelParameter(ctx context.Con
 }
 
 // GetModelDefinition implements interfaces.APIService.GetModelDefinition
-func (m *MockAPIServiceWithoutExtensions) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIServiceWithoutExtensions) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	// Return default values - this method should not be called by adapter tests
 	return nil, errors.New("model definition not available")
 }

@@ -72,3 +72,68 @@ This repo contains the `thinktank` CLI tool itself, which can analyze code using
 3. Example: `thinktank --instructions temp_instructions.txt ./path/to/relevant/files`
 
 The tool works by creating a temporary file with instructions, then analyzing the specified paths. API keys are pre-configured locally.
+
+## Adding New Models
+
+The thinktank project uses a hardcoded model system for simplicity and reliability. To add a new model:
+
+### Process Overview
+
+1. **Add Model Definition:** Edit `internal/models/models.go` and add an entry to the `ModelDefinitions` map
+2. **Run Tests:** Verify all tests pass with `go test ./internal/models` and `go test ./...`
+3. **Submit PR:** Follow standard contribution process with conventional commit messages
+
+### Step-by-Step Instructions
+
+1. **Edit the ModelDefinitions map in `internal/models/models.go`:**
+   ```go
+   "new-model-name": {
+       Provider:        "provider-name",    // openai, gemini, or openrouter
+       APIModelID:      "api-model-id",     // ID used in API calls
+       ContextWindow:   100000,             // Max input + output tokens
+       MaxOutputTokens: 50000,              // Max output tokens
+       DefaultParams: map[string]interface{}{
+           "temperature": 0.7,
+           // ... other provider-specific parameters
+       },
+   },
+   ```
+
+2. **Run comprehensive tests:**
+   ```bash
+   # Test the models package specifically
+   go test ./internal/models
+
+   # Run full test suite
+   go test ./...
+
+   # Check test coverage
+   go test -cover ./internal/models
+   ```
+
+3. **Verify integration:**
+   ```bash
+   # Test with the new model using dry-run
+   go run cmd/thinktank/main.go --model new-model-name --dry-run ./README.md
+   ```
+
+4. **Submit PR with conventional commit:**
+   ```bash
+   git add internal/models/models.go
+   git commit -m "feat: add support for new-model-name
+
+   - Add new-model-name to ModelDefinitions with provider configuration
+   - Includes context window: 100k tokens, max output: 50k tokens
+   - Uses standard provider parameters for optimal performance"
+   ```
+
+### Adding New Providers
+
+To add a completely new provider (beyond openai, gemini, openrouter):
+
+1. Add models with the new provider name to `ModelDefinitions`
+2. Update `GetAPIKeyEnvVar()` function to include the new provider
+3. Ensure client creation logic supports the new provider (outside models package)
+4. Add comprehensive tests for the new provider
+
+For detailed technical documentation, see `internal/models/README.md`.

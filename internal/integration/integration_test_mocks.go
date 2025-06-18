@@ -10,7 +10,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -21,7 +21,7 @@ type MockAPIService struct {
 	InitLLMClientFunc          func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	GetModelParametersFunc     func(ctx context.Context, modelName string) (map[string]interface{}, error)
 	ValidateModelParameterFunc func(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
-	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinitionFunc     func(ctx context.Context, modelName string) (*models.ModelInfo, error)
 	GetModelTokenLimitsFunc    func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 	ProcessLLMResponseFunc     func(result *llm.ProviderResult) (string, error)
 	IsEmptyResponseErrorFunc   func(err error) bool
@@ -50,7 +50,7 @@ func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, 
 	return true, nil
 }
 
-func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	if m.GetModelDefinitionFunc != nil {
 		return m.GetModelDefinitionFunc(ctx, modelName)
 	}
