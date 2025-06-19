@@ -67,7 +67,7 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Why P1:** Essential for professional appearance but not blocking core functionality
 - **Depends‑on:** none
 
-- [ ] ### T005 · Feature · P1: Terminal Width Detection and Layout
+- [x] ### T005 · Feature · P1: Terminal Width Detection and Layout
 - **Context:** Responsive layout is critical for alignment across terminal sizes
 - **Action:**
     1. Create `internal/logutil/layout.go`
