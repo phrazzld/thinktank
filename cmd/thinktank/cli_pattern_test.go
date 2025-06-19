@@ -39,7 +39,7 @@ func TestSynthesisModelDirectValidation(t *testing.T) {
 		},
 		{
 			name:           "Supported OpenRouter model",
-			synthesisModel: "openrouter/deepseek/deepseek-r1",
+			synthesisModel: "openrouter/deepseek/deepseek-r1-0528",
 			expectValid:    true,
 		},
 		{

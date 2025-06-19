@@ -147,7 +147,7 @@ func TestSynthesisModelValidation(t *testing.T) {
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
 				ModelNames:       []string{supportedModels[0]},
-				SynthesisModel:   "openrouter/deepseek/deepseek-r1", // Actual supported model
+				SynthesisModel:   "openrouter/deepseek/deepseek-r1-0528", // Actual supported model
 			},
 			expectError: false,
 		},
