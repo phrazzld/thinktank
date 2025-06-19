@@ -11,7 +11,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // ----- Mock Implementations -----
@@ -266,7 +266,7 @@ func (m *MockAPIService) ValidateModelParameter(ctx context.Context, modelName, 
 	return true, nil
 }
 
-func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (m *MockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	return nil, errors.New("not implemented")
 }
 

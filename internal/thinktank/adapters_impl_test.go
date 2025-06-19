@@ -10,7 +10,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
@@ -321,9 +321,9 @@ func TestAPIServiceAdapter_GetModelDefinition_WithImplementation(t *testing.T) {
 	adapter, mock := setupAPIServiceAdapterTest()
 
 	// Set up expected return values
-	expectedDef := &registry.ModelDefinition{Name: "test-model"}
+	expectedDef := &models.ModelInfo{Provider: "test-provider", APIModelID: "test-model"}
 	expectedErr := errors.New("test error")
-	mock.GetModelDefinitionFunc = func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+	mock.GetModelDefinitionFunc = func(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 		return expectedDef, expectedErr
 	}
 

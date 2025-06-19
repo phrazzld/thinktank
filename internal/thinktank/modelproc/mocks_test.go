@@ -5,7 +5,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/llm"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // Mock implementations
@@ -16,7 +16,7 @@ type mockAPIService struct {
 	initLLMClientFunc        func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 	processLLMResponseFunc   func(result *llm.ProviderResult) (string, error)
 	getModelParametersFunc   func(ctx context.Context, modelName string) (map[string]interface{}, error)
-	getModelDefinitionFunc   func(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	getModelDefinitionFunc   func(ctx context.Context, modelName string) (*models.ModelInfo, error)
 	getModelTokenLimitsFunc  func(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error)
 }
 
@@ -57,7 +57,7 @@ func (m *mockAPIService) ProcessLLMResponse(result *llm.ProviderResult) (string,
 	return result.Content, nil
 }
 
-// Implement the new registry methods
+// Implement the models package methods
 func (m *mockAPIService) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	if m.getModelParametersFunc != nil {
 		return m.getModelParametersFunc(ctx, modelName)
@@ -66,7 +66,7 @@ func (m *mockAPIService) GetModelParameters(ctx context.Context, modelName strin
 	return make(map[string]interface{}), nil
 }
 
-func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (m *mockAPIService) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	if m.getModelDefinitionFunc != nil {
 		return m.getModelDefinitionFunc(ctx, modelName)
 	}

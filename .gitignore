@@ -105,3 +105,5 @@ dev/
 
 **/.claude/settings.local.json
 coverage.out
+*.out.tmp
+coverage.out.tmp

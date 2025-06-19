@@ -14,8 +14,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/testutil"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
@@ -170,10 +170,10 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {
 			return map[string]interface{}{}, nil
 		},
-		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
-			return &registry.ModelDefinition{
-				Name:     modelName,
-				Provider: "test-provider",
+		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*models.ModelInfo, error) {
+			return &models.ModelInfo{
+				APIModelID: modelName,
+				Provider:   "test-provider",
 			}, nil
 		},
 	}

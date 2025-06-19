@@ -60,7 +60,6 @@ func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil
 		Timeout: 120 * time.Second, // 2 minute timeout for potentially long LLM generations
 	}
 
-	// Registry will be injected later if needed
 	// Create and return client
 	return &openrouterClient{
 		apiKey:      apiKey,

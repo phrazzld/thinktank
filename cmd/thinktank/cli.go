@@ -12,7 +12,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // stringSliceFlag is a slice of strings that implements flag.Value interface
@@ -80,60 +80,25 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 	modelNeedsGeminiKey := false
 	modelNeedsOpenRouterKey := false
 
-	// Check models using registry if available
-	regManagerObj := getRegistryManagerForValidation(logger)
-	var regManager *registry.Manager
-	if rm, ok := regManagerObj.(*registry.Manager); ok {
-		regManager = rm
-	}
-
-	// Use registry for provider detection if available
-	if regManager != nil {
-		for _, model := range config.ModelNames {
-			// Use the registry to determine the provider
-			provider, err := regManager.GetProviderForModel(model)
-			if err != nil {
-				// If model not found in registry, fallback to string matching
-				logger.Debug("Model %s not found in registry, using string matching fallback", model)
-				if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
-					strings.HasPrefix(strings.ToLower(model), "text-") ||
-					strings.Contains(strings.ToLower(model), "openai") {
-					modelNeedsOpenAIKey = true
-				} else if strings.Contains(strings.ToLower(model), "openrouter") {
-					modelNeedsOpenRouterKey = true
-				} else {
-					// Default to Gemini for any other model
-					modelNeedsGeminiKey = true
-				}
-				continue
-			}
-
-			// Set flag based on provider
-			switch provider {
-			case "openai":
-				modelNeedsOpenAIKey = true
-			case "openrouter":
-				modelNeedsOpenRouterKey = true
-			case "gemini":
-				modelNeedsGeminiKey = true
-			default:
-				logger.Warn("Unknown provider %s for model %s", provider, model)
-			}
+	// Use models package for provider detection
+	for _, model := range config.ModelNames {
+		provider, err := models.GetProviderForModel(model)
+		if err != nil {
+			logger.Debug("Model %s not found in models package: %v", model, err)
+			// Return validation error for unknown models
+			return fmt.Errorf("unknown model: %s", model)
 		}
-	} else {
-		// Registry not available, use string matching fallback
-		logger.Debug("Registry not available, using string matching fallback for model detection")
-		for _, model := range config.ModelNames {
-			if strings.HasPrefix(strings.ToLower(model), "gpt-") ||
-				strings.HasPrefix(strings.ToLower(model), "text-") ||
-				strings.Contains(strings.ToLower(model), "openai") {
-				modelNeedsOpenAIKey = true
-			} else if strings.Contains(strings.ToLower(model), "openrouter") {
-				modelNeedsOpenRouterKey = true
-			} else {
-				// Default to Gemini for any other model
-				modelNeedsGeminiKey = true
-			}
+
+		// Set flag based on provider
+		switch provider {
+		case "openai":
+			modelNeedsOpenAIKey = true
+		case "openrouter":
+			modelNeedsOpenRouterKey = true
+		case "gemini":
+			modelNeedsGeminiKey = true
+		default:
+			logger.Warn("Unknown provider %s for model %s", provider, model)
 		}
 	}
 
@@ -174,53 +139,15 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 	if config.SynthesisModel != "" {
 		logger.Debug("Validating synthesis model: %s", config.SynthesisModel)
 
-		// Check if synthesis model exists in registry
-		if regManager != nil {
-			// Initialize registry if not already done
-			if err := regManager.Initialize(); err != nil {
-				logger.Error("Failed to initialize registry for synthesis model validation: %v", err)
-				return fmt.Errorf("invalid synthesis model: failed to validate '%s'", config.SynthesisModel)
-			} else {
-				// Check if the model exists in the registry
-				_, err := regManager.GetProviderForModel(config.SynthesisModel)
-				if err != nil {
-					logger.Error("Synthesis model '%s' not found in registry", config.SynthesisModel)
-					return fmt.Errorf("invalid synthesis model: '%s' not found or not supported", config.SynthesisModel)
-				}
-				logger.Debug("Synthesis model '%s' successfully validated", config.SynthesisModel)
-			}
-		} else {
-			// Registry not available, but we still need to validate
-			// Use string matching fallback to determine if this is a likely valid model
-			logger.Warn("Registry not available, cannot properly validate synthesis model '%s'", config.SynthesisModel)
-
-			// Basic model validation based on naming patterns
-			isLikelyValid := false
-			if strings.HasPrefix(strings.ToLower(config.SynthesisModel), "gpt-") ||
-				strings.HasPrefix(strings.ToLower(config.SynthesisModel), "text-") ||
-				strings.HasPrefix(strings.ToLower(config.SynthesisModel), "gemini-") ||
-				strings.HasPrefix(strings.ToLower(config.SynthesisModel), "claude-") ||
-				strings.Contains(strings.ToLower(config.SynthesisModel), "openai") ||
-				strings.Contains(strings.ToLower(config.SynthesisModel), "openrouter/") {
-				isLikelyValid = true
-			}
-
-			if !isLikelyValid {
-				logger.Error("Invalid synthesis model name pattern: '%s'", config.SynthesisModel)
-				return fmt.Errorf("invalid synthesis model: '%s' does not match any known model pattern", config.SynthesisModel)
-			}
-
-			logger.Warn("Synthesis model '%s' appears valid by name pattern, but full validation not possible", config.SynthesisModel)
+		// Check if synthesis model exists in models package
+		if !models.IsModelSupported(config.SynthesisModel) {
+			logger.Error("Synthesis model '%s' not found in supported models", config.SynthesisModel)
+			return fmt.Errorf("invalid synthesis model: '%s' not found or not supported", config.SynthesisModel)
 		}
+		logger.Debug("Synthesis model '%s' successfully validated", config.SynthesisModel)
 	}
 
 	return nil
-}
-
-// getRegistryManagerForValidation returns the registry manager for validation
-// This is a variable to allow for easier testing
-var getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-	return registry.GetGlobalManager(nil)
 }
 
 // ParseFlags handles command line argument parsing and returns the configuration

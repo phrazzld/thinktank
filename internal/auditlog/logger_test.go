@@ -1,9 +1,7 @@
 // Package auditlog provides structured logging for audit purposes
 package auditlog
 
-import (
 // This file has no imports
-)
 
 // This file contains common imports and test utilities for audit logger tests.
 // The actual tests have been split into separate files to improve maintainability:

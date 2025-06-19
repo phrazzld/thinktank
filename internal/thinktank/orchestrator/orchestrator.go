@@ -16,8 +16,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/modelproc"
 	"github.com/phrazzld/thinktank/internal/thinktank/prompt"
@@ -511,19 +511,19 @@ func (a *APIServiceAdapter) GetErrorDetails(err error) string {
 	return a.APIService.GetErrorDetails(err)
 }
 
-// GetModelParameters retrieves parameter values from the registry for a given model.
+// GetModelParameters retrieves parameter values from the models package for a given model.
 // It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) GetModelParameters(ctx context.Context, modelName string) (map[string]interface{}, error) {
 	return a.APIService.GetModelParameters(ctx, modelName)
 }
 
-// GetModelDefinition retrieves the full model definition from the registry.
+// GetModelDefinition retrieves the full model definition.
 // It delegates to the underlying APIService implementation.
-func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+func (a *APIServiceAdapter) GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 	return a.APIService.GetModelDefinition(ctx, modelName)
 }
 
-// GetModelTokenLimits retrieves token limits from the registry for a given model.
+// GetModelTokenLimits retrieves token limits from the models package for a given model.
 // It delegates to the underlying APIService implementation.
 func (a *APIServiceAdapter) GetModelTokenLimits(ctx context.Context, modelName string) (contextWindow, maxOutputTokens int32, err error) {
 	return a.APIService.GetModelTokenLimits(ctx, modelName)

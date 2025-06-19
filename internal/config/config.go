@@ -7,10 +7,11 @@ package config
 
 import (
 	"fmt"
-	"github.com/phrazzld/thinktank/internal/logutil"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
 // Configuration constants

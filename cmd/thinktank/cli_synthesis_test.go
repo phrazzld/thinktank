@@ -9,8 +9,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
-	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // TestSynthesisModelParsing tests that the synthesis model flag is correctly
@@ -85,16 +84,6 @@ func TestSynthesisModelParsing(t *testing.T) {
 
 // TestSynthesisModelValidation tests the validation logic for the synthesis model flag
 func TestSynthesisModelValidation(t *testing.T) {
-	// Save the original function to restore later
-	origGetManager := getRegistryManagerForValidation
-	// Override with a function that returns nil to force pattern matching
-	getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-		return nil
-	}
-	// Restore at the end
-	defer func() {
-		getRegistryManagerForValidation = origGetManager
-	}()
 	// Create a test instructions file
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
@@ -108,12 +97,10 @@ func TestSynthesisModelValidation(t *testing.T) {
 	}
 	_ = tempFile.Close()
 
-	// Store and restore the global manager
-	originalManager := registry.GetGlobalManager(nil)
-	registry.SetGlobalManagerForTesting(nil) // Force pattern matching for this test
-	defer registry.SetGlobalManagerForTesting(originalManager)
+	// Get actual supported models for testing
+	supportedModels := models.ListAllModels()
 
-	// Configure test cases, focusing on empty synthesis model which doesn't require registry mocking
+	// Configure test cases using actual supported models
 	tests := []struct {
 		name          string
 		config        *config.CliConfig
@@ -126,63 +113,64 @@ func TestSynthesisModelValidation(t *testing.T) {
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "", // Empty - should pass validation
+				ModelNames:       []string{supportedModels[0]}, // Use actual supported model
+				SynthesisModel:   "",                           // Empty - should pass validation
 			},
 			expectError: false,
 		},
 		{
-			name: "Valid model pattern - gemini",
+			name: "Valid supported model - gemini",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "gemini-1.0-pro", // Valid pattern
+				ModelNames:       []string{supportedModels[0]},
+				SynthesisModel:   "gemini-2.5-pro", // Actual supported model
 			},
 			expectError: false,
 		},
 		{
-			name: "Valid model pattern - gpt",
+			name: "Valid supported model - gpt",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "gpt-4.1", // Valid pattern
+				ModelNames:       []string{supportedModels[0]},
+				SynthesisModel:   "gpt-4.1", // Actual supported model
 			},
 			expectError: false,
 		},
 		{
-			name: "Valid model pattern - claude",
+			name: "Valid supported openrouter model",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "claude-3", // Valid pattern
+				ModelNames:       []string{supportedModels[0]},
+				SynthesisModel:   "openrouter/deepseek/deepseek-r1-0528", // Actual supported model
 			},
 			expectError: false,
 		},
 		{
-			name: "Valid model pattern - openrouter",
+			name: "Invalid unsupported model",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "openrouter/llama-3", // Valid pattern
+				ModelNames:       []string{supportedModels[0]},
+				SynthesisModel:   "claude-3", // Not in our supported models list
 			},
-			expectError: false,
+			expectError:   true,
+			errorContains: "invalid synthesis model",
 		},
 		{
-			name: "Invalid synthesis model",
+			name: "Another invalid synthesis model",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
 				APIKey:           "test-key",
-				ModelNames:       []string{"model1"},
-				SynthesisModel:   "invalid-model-name", // Invalid pattern
+				ModelNames:       []string{supportedModels[0]},
+				SynthesisModel:   "invalid-model-name", // Invalid model
 			},
 			expectError:   true,
 			errorContains: "invalid synthesis model",
@@ -220,18 +208,8 @@ func TestSynthesisModelValidation(t *testing.T) {
 }
 
 // TestInvalidSynthesisModelValidation tests the validation behavior for invalid synthesis models
-// without using a real registry
+// using the models package for direct validation
 func TestInvalidSynthesisModelValidation(t *testing.T) {
-	// Save the original function to restore later
-	origGetManager := getRegistryManagerForValidation
-	// Override with a function that returns nil to force pattern matching
-	getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-		return nil
-	}
-	// Restore at the end
-	defer func() {
-		getRegistryManagerForValidation = origGetManager
-	}()
 	// Create a test instructions file
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
@@ -245,21 +223,19 @@ func TestInvalidSynthesisModelValidation(t *testing.T) {
 	}
 	_ = tempFile.Close()
 
-	// Store and restore the global manager
-	originalManager := registry.GetGlobalManager(nil)
-	registry.SetGlobalManagerForTesting(nil) // Set to nil to force string pattern matching
-	defer registry.SetGlobalManagerForTesting(originalManager)
-
 	// Create a logger for the test
 	logger := &errorTrackingLogger{}
+
+	// Get a supported model for the test
+	supportedModels := models.ListAllModels()
 
 	// Create a config with an invalid synthesis model
 	invalidConfig := &config.CliConfig{
 		InstructionsFile: tempFile.Name(),
 		Paths:            []string{"testfile"},
 		APIKey:           "test-key",
-		ModelNames:       []string{"gemini-1.0-pro"},
-		SynthesisModel:   "invalid-model-name", // Invalid pattern
+		ModelNames:       []string{supportedModels[0]}, // Use actual supported model
+		SynthesisModel:   "invalid-model-name",         // Invalid model
 	}
 
 	// Mock environment function that returns test keys
@@ -282,24 +258,24 @@ func TestInvalidSynthesisModelValidation(t *testing.T) {
 		t.Error("Expected error to be logged, but no error was logged")
 	}
 
-	// Test with valid synthesis model pattern
+	// Test with valid synthesis model
 	// Reset the logger
 	logger = &errorTrackingLogger{}
 
-	// Create a config with a valid synthesis model pattern
+	// Create a config with a valid synthesis model
 	validConfig := &config.CliConfig{
 		InstructionsFile: tempFile.Name(),
 		Paths:            []string{"testfile"},
 		APIKey:           "test-key",
-		ModelNames:       []string{"gemini-1.0-pro"},
-		SynthesisModel:   "gpt-4.1", // Valid pattern
+		ModelNames:       []string{supportedModels[0]},
+		SynthesisModel:   "gpt-4.1", // Valid supported model
 	}
 
 	// Validate the inputs - this should pass the synthesis model check
 	err = ValidateInputsWithEnv(validConfig, logger, mockGetenv)
 
-	// When registry is nil, pattern-based validation should pass for a valid model name
+	// Should not get synthesis model error for valid model
 	if err != nil && strings.Contains(err.Error(), "invalid synthesis model") {
-		t.Errorf("Got unexpected synthesis model error for valid model pattern: %v", err)
+		t.Errorf("Got unexpected synthesis model error for valid model: %v", err)
 	}
 }

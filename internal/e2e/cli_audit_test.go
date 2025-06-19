@@ -44,7 +44,7 @@ func TestAuditLogging(t *testing.T) {
 	flags.Instructions = instructionsFile
 	flags.OutputDir = outputDir
 	flags.AuditLogFile = auditLogFile
-	flags.Model = []string{"gemini-2.5-pro-preview-03-25"}
+	flags.Model = []string{"gemini-2.5-pro"}
 
 	// Run the thinktank binary
 	stdout, stderr, exitCode, err := env.RunWithFlags(flags, []string{filepath.Join(env.TempDir, "src")})
@@ -56,8 +56,8 @@ func TestAuditLogging(t *testing.T) {
 	VerifyOutput(t, stdout, stderr, exitCode, 0, "")
 
 	// In a test environment with mock API, we'll just log output file status
-	// Use models that are actually defined in the registry
-	outputPath := filepath.Join("output", "gemini-2.5-pro-preview-03-25.md")
+	// Use models that are actually defined in the models package
+	outputPath := filepath.Join("output", "gemini-2.5-pro.md")
 	alternateOutputPath := filepath.Join("output", "o4-mini.md")
 
 	if !(env.FileExists(outputPath) || env.FileExists(alternateOutputPath)) {

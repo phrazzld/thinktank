@@ -14,7 +14,6 @@ import (
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 )
 
@@ -273,17 +272,8 @@ func Main() {
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
 	}
 
-	// Initialize and load the Registry
-	registryManager := registry.GetGlobalManager(logger)
-	if err := registryManager.Initialize(); err != nil {
-		// Use the central error handling mechanism
-		handleError(ctx, err, logger, auditLogger, "initialize_registry")
-	}
-
-	logger.InfoContext(ctx, "Registry initialized successfully")
-	if err := auditLogger.LogOp(ctx, "initialize_registry", "Success", nil, nil, nil); err != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
-	}
+	// Models package is used directly, no initialization required
+	logger.InfoContext(ctx, "Models package ready for use")
 
 	// Validate inputs before proceeding
 	if err := ValidateInputs(config, logger); err != nil {
@@ -297,8 +287,8 @@ func Main() {
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
 	}
 
-	// Initialize APIService using Registry
-	apiService := thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
+	// Initialize APIService using models package
+	apiService := thinktank.NewRegistryAPIService(logger)
 
 	// Create and configure ConsoleWriter
 	consoleWriter := logutil.NewConsoleWriter()

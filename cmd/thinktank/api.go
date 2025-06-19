@@ -4,7 +4,6 @@ package main
 import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -22,8 +21,7 @@ var (
 type APIService = interfaces.APIService
 
 // NewAPIService is a wrapper for the internal one
-// It uses the registry-based implementation for better flexibility
+// It uses the models-based implementation for simplicity
 func NewAPIService(logger logutil.LoggerInterface) APIService {
-	registryManager := registry.GetGlobalManager(logger)
-	return thinktank.NewRegistryAPIService(registryManager.GetRegistry(), logger)
+	return thinktank.NewRegistryAPIService(logger)
 }

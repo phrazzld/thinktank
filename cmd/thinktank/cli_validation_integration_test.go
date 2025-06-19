@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // TestValidateInputsIntegration tests the main ValidateInputs function with real environment variables
@@ -47,6 +48,27 @@ func TestValidateInputsIntegration(t *testing.T) {
 	// Use buffer logger instead of test logger to avoid failing on expected error logs
 	logger := logutil.NewBufferLogger(logutil.InfoLevel)
 
+	// Get actual supported models for testing
+	supportedModels := models.ListAllModels()
+	var geminiModel, openAIModel, openRouterModel string
+	for _, model := range supportedModels {
+		provider, _ := models.GetProviderForModel(model)
+		switch provider {
+		case "gemini":
+			if geminiModel == "" {
+				geminiModel = model
+			}
+		case "openai":
+			if openAIModel == "" {
+				openAIModel = model
+			}
+		case "openrouter":
+			if openRouterModel == "" {
+				openRouterModel = model
+			}
+		}
+	}
+
 	tests := []struct {
 		name          string
 		config        *config.CliConfig
@@ -59,7 +81,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+				ModelNames:       []string{geminiModel},
 			},
 			envVars: map[string]string{
 				apiKeyEnvVar: "test-gemini-api-key",
@@ -71,7 +93,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4.1"},
+				ModelNames:       []string{openAIModel},
 			},
 			envVars: map[string]string{
 				openaiAPIKeyEnvVar: "test-openai-api-key",
@@ -83,7 +105,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"openrouter/model"},
+				ModelNames:       []string{openRouterModel},
 			},
 			envVars: map[string]string{
 				"OPENROUTER_API_KEY": "test-openrouter-api-key",
@@ -95,7 +117,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+				ModelNames:       []string{geminiModel},
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
@@ -106,7 +128,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4.1"},
+				ModelNames:       []string{openAIModel},
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
@@ -117,7 +139,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"openrouter/model"},
+				ModelNames:       []string{openRouterModel},
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
@@ -128,7 +150,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gpt-4.1", "gemini-2.5-pro-preview-03-25"},
+				ModelNames:       []string{openAIModel, geminiModel},
 			},
 			envVars: map[string]string{
 				apiKeyEnvVar:       "test-gemini-api-key",
@@ -152,7 +174,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: "",
 				Paths:            []string{"src/"},
-				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+				ModelNames:       []string{geminiModel},
 				DryRun:           false,
 			},
 			envVars: map[string]string{
@@ -166,7 +188,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{}, // No paths provided
-				ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+				ModelNames:       []string{geminiModel},
 				DryRun:           false,
 			},
 			envVars: map[string]string{
@@ -228,12 +250,6 @@ func TestValidateInputsIntegration(t *testing.T) {
 
 // TestValidateInputsEdgeCases tests additional edge cases to improve ValidateInputsWithEnv coverage
 func TestValidateInputsEdgeCases(t *testing.T) {
-	// Save original registry function
-	originalGetManager := getRegistryManagerForValidation
-	defer func() {
-		getRegistryManagerForValidation = originalGetManager
-	}()
-
 	// Create a temporary instructions file
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
@@ -244,16 +260,11 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 	// Use buffer logger instead of test logger to avoid failing on expected error logs
 	logger := logutil.NewBufferLogger(logutil.InfoLevel)
 
-	t.Run("Synthesis model with invalid pattern", func(t *testing.T) {
-		// No registry manager available
-		getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-			return nil
-		}
-
+	t.Run("Synthesis model with invalid model", func(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
+			ModelNames:       []string{"gemini-2.5-pro"},
 			SynthesisModel:   "totally-invalid-model-name",
 		}
 
@@ -266,36 +277,34 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 
 		err := ValidateInputsWithEnv(config, logger, getenv)
 		if err == nil {
-			t.Error("Expected error for invalid synthesis model pattern")
+			t.Error("Expected error for invalid synthesis model")
 		}
-		if !strings.Contains(err.Error(), "does not match any known model pattern") {
-			t.Errorf("Expected error to contain pattern validation message, got: %v", err)
+		if !strings.Contains(err.Error(), "invalid synthesis model") {
+			t.Errorf("Expected error to contain synthesis model validation message, got: %v", err)
 		}
 	})
 
-	t.Run("Synthesis model with valid pattern but no registry", func(t *testing.T) {
-		// No registry manager available
-		getRegistryManagerForValidation = func(logger logutil.LoggerInterface) interface{} {
-			return nil
-		}
-
+	t.Run("Synthesis model with valid supported model", func(t *testing.T) {
 		config := &config.CliConfig{
 			InstructionsFile: instructionsFile,
 			Paths:            []string{"src/"},
-			ModelNames:       []string{"gemini-2.5-pro-preview-03-25"},
-			SynthesisModel:   "gpt-4.1-turbo", // Valid pattern
+			ModelNames:       []string{"gemini-2.5-pro"},
+			SynthesisModel:   "gpt-4.1", // Valid supported model
 		}
 
 		getenv := func(key string) string {
 			if key == apiKeyEnvVar {
 				return "test-gemini-key"
 			}
+			if key == openaiAPIKeyEnvVar {
+				return "test-openai-key"
+			}
 			return ""
 		}
 
 		err := ValidateInputsWithEnv(config, logger, getenv)
 		if err != nil {
-			t.Errorf("Unexpected error for valid synthesis model pattern: %v", err)
+			t.Errorf("Unexpected error for valid synthesis model: %v", err)
 		}
 	})
 }

@@ -7,7 +7,7 @@ This document explains how thinktank integrates with OpenRouter, a unified gatew
 thinktank supports OpenRouter as a first-class provider alongside OpenAI and Gemini. OpenRouter allows you to access a wide range of models from providers like DeepSeek, Anthropic, xAI (Grok), and others through a single API with a consistent interface.
 
 The OpenRouter integration in thinktank includes:
-- Registry-based model configuration
+- Hardcoded model definitions for reliability and simplicity
 - Uniform API key handling
 - Parameter mapping that preserves model-specific options
 - Comprehensive error handling with helpful suggestions
@@ -31,40 +31,19 @@ The key can also be passed programmatically when creating a new client, but the 
 
 ### Model Configuration
 
-OpenRouter models are defined in `~/.config/thinktank/models.yaml` using the following format:
+OpenRouter models are hardcoded in `internal/models/models.go` for reliability and simplicity. The current supported OpenRouter models include:
 
-```yaml
-- name: openrouter/deepseek/deepseek-r1
-  provider: openrouter
-  api_model_id: deepseek/deepseek-r1
-  parameters:
-    temperature:
-      type: float
-      default: 0.7
-    top_p:
-      type: float
-      default: 0.95
-```
+- `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek Chat model with 65k context
+- `openrouter/deepseek/deepseek-r1` - DeepSeek R1 model with 131k context
+- `openrouter/x-ai/grok-3-beta` - xAI's Grok model with 131k context
 
-Key configuration details:
-- The `name` field uses the `openrouter/{provider}/{model}` format for clarity
-- The `provider` field must be set to `openrouter` to use the OpenRouter provider
-- The `api_model_id` contains the actual model identifier used in API calls (usually `{provider}/{model}`)
-- Parameters are defined as with other providers
+Each model is defined with:
+- Provider set to `openrouter`
+- API model ID for the actual OpenRouter API calls (e.g., `deepseek/deepseek-r1`)
+- Context window and max output token limits
+- Default parameters like temperature and top_p
 
-### Provider Configuration
-
-The OpenRouter provider is defined in the `providers` section of `models.yaml`:
-
-```yaml
-providers:
-  - name: openrouter
-    # Default API endpoint is https://openrouter.ai/api/v1
-    # Uncomment to use a custom API endpoint:
-    # base_url: "https://your-openrouter-proxy.example.com/api/v1"
-```
-
-You can customize the base URL if needed, e.g., for self-hosted proxies.
+To add new OpenRouter models, edit the `ModelDefinitions` map in `internal/models/models.go`. See [CLAUDE.md](./CLAUDE.md#adding-new-models) for detailed instructions.
 
 ## Usage Examples
 
@@ -90,7 +69,7 @@ OpenRouter provides access to many models. Here are some examples included in th
 - `openrouter/deepseek/deepseek-r1` - DeepSeek R1 model with 128k context
 - `openrouter/x-ai/grok-3-beta` - xAI's Grok model with 131k context
 
-You can add more models to your `models.yaml` file by following the same format.
+You can add more models by editing the `ModelDefinitions` map in `internal/models/models.go`.
 
 ## Implementation Details
 
@@ -122,7 +101,7 @@ The OpenRouter client maps the following parameters from thinktank to the OpenRo
 | `frequency_penalty` | `frequency_penalty`      | Range 0.0-2.0, discourages frequent tokens |
 | `max_tokens`        | `max_tokens`             | Maximum generation length |
 
-Parameters can be specified in your `models.yaml` default configuration or passed directly in the request.
+Parameters are defined in the default configuration in `internal/models/models.go` or can be passed directly in the request.
 
 ## Error Handling
 
@@ -162,7 +141,7 @@ Common error types and their resolution:
 ### Model Selection Issues
 - Make sure the model ID follows the correct format (typically `provider/model`)
 - Check that the model is available on OpenRouter
-- Verify the model is defined in your `models.yaml` file
+- Verify the model is defined in `internal/models/models.go`
 
 ### Request Failures
 - Check the error message for specific details

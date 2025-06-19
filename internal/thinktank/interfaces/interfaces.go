@@ -9,12 +9,12 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
-	"github.com/phrazzld/thinktank/internal/registry"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // APIService defines the interface for API-related operations
 // It provides methods for initializing LLM clients, processing responses,
-// handling errors, and accessing model configuration from the registry.
+// handling errors, and accessing model configuration from the models package.
 type APIService interface {
 	// InitLLMClient initializes and returns a provider-agnostic LLM client
 	// Parameters:
@@ -27,7 +27,7 @@ type APIService interface {
 	//   - An error if initialization fails
 	InitLLMClient(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error)
 
-	// GetModelParameters retrieves parameter values from the registry for a given model
+	// GetModelParameters retrieves parameter values from the models package for a given model
 	// It returns a map of parameter name to parameter value, applying defaults from the model definition
 	// Parameters:
 	//   - ctx: The context for the operation
@@ -49,16 +49,16 @@ type APIService interface {
 	//   - An error with details about why validation failed
 	ValidateModelParameter(ctx context.Context, modelName, paramName string, value interface{}) (bool, error)
 
-	// GetModelDefinition retrieves the full model definition from the registry
+	// GetModelDefinition retrieves the full model definition
 	// Parameters:
 	//   - ctx: The context for the operation
 	//   - modelName: The name of the model to get the definition for
 	// Returns:
 	//   - The model definition
 	//   - An error if retrieval fails
-	GetModelDefinition(ctx context.Context, modelName string) (*registry.ModelDefinition, error)
+	GetModelDefinition(ctx context.Context, modelName string) (*models.ModelInfo, error)
 
-	// GetModelTokenLimits retrieves token limits from the registry for a given model
+	// GetModelTokenLimits retrieves token limits from the models package for a given model
 	// Parameters:
 	//   - ctx: The context for the operation
 	//   - modelName: The name of the model to get token limits for

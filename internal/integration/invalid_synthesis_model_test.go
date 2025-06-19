@@ -16,8 +16,8 @@ import (
 	"github.com/phrazzld/thinktank/internal/fileutil"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
-	"github.com/phrazzld/thinktank/internal/registry"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
@@ -102,16 +102,16 @@ func TestInvalidSynthesisModel(t *testing.T) {
 
 			return nil, errors.New("unexpected model")
 		},
-		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*registry.ModelDefinition, error) {
+		GetModelDefinitionFunc: func(ctx context.Context, modelName string) (*models.ModelInfo, error) {
 			// Return error for invalid synthesis model
 			if modelName == invalidSynthesisModel {
-				return nil, fmt.Errorf("model '%s' not found in registry", modelName)
+				return nil, fmt.Errorf("model '%s' not found in models", modelName)
 			}
 
 			// Return definition for valid models
-			return &registry.ModelDefinition{
-				Name:     modelName,
-				Provider: "test-provider",
+			return &models.ModelInfo{
+				APIModelID: modelName,
+				Provider:   "test-provider",
 			}, nil
 		},
 		GetModelParametersFunc: func(ctx context.Context, modelName string) (map[string]interface{}, error) {

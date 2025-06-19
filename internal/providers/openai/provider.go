@@ -135,7 +135,7 @@ func (a *OpenAIClientAdapter) GenerateContent(ctx context.Context, prompt string
 		return nil, err
 	}
 
-	// We need to convert the generic parameters from the Registry to OpenAI-specific settings
+	// We need to convert the generic parameters from the models package to OpenAI-specific settings
 	// We'll try to apply common parameters to the underlying client if it supports them
 
 	// For OpenAI adapter, we use safer type assertions with specific interfaces

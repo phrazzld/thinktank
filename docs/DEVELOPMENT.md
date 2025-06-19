@@ -216,7 +216,7 @@ pre-commit run --all-files  # Run all hooks manually
 
 ### Development Commands Reference
 
-For additional development commands and detailed CI information, see `CLAUDE.md`:
+For additional development commands and detailed CI information, see `./CLAUDE.md`:
 
 - Build and test commands
 - Code quality tools (formatting, linting, coverage)
