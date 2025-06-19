@@ -158,3 +158,38 @@ func TestOrchestratorConstructor(t *testing.T) {
 		t.Error("Expected constructor to be retrievable")
 	}
 }
+
+// TestProcessLLMResponseEdgeCases adds coverage for edge cases
+func TestProcessLLMResponseEdgeCases(t *testing.T) {
+	logger := testutil.NewMockLogger()
+	service := NewRegistryAPIService(logger)
+
+	// Test whitespace-only content
+	result := &llm.ProviderResult{Content: "   \n\t   "}
+	_, err := service.ProcessLLMResponse(result)
+	if err == nil {
+		t.Error("Expected error for whitespace-only content")
+	}
+
+	// Test result with finish reason but empty content
+	result = &llm.ProviderResult{
+		Content:      "",
+		FinishReason: "length",
+	}
+	_, err = service.ProcessLLMResponse(result)
+	if err == nil {
+		t.Error("Expected error for empty content with finish reason")
+	}
+
+	// Test result with safety info
+	result = &llm.ProviderResult{
+		Content: "",
+		SafetyInfo: []llm.Safety{
+			{Category: "harassment", Blocked: true},
+		},
+	}
+	_, err = service.ProcessLLMResponse(result)
+	if err == nil {
+		t.Error("Expected error for blocked content")
+	}
+}

@@ -62,7 +62,18 @@
 
 **Resolution**: 1 line change in `docker/e2e-test.Dockerfile` - removed config file copy operation.
 
-**Status**: ✅ Fixed and pushed, CI running to verify
+**Status**: ✅ Fixed - Docker build now passes
+
+### [x] Fix Coverage Threshold Failure (CI Blocker)
+**Context**: CI failed on coverage threshold check - internal/thinktank package had 68.7% coverage but needed 70%.
+
+**Problem**: Package-specific coverage threshold not met after registry elimination refactoring.
+
+**Solution**: Added comprehensive test coverage for registry API functions.
+
+**Resolution**: Added `registry_api_coverage_test.go` with tests for GetModelDefinition, ProcessLLMResponse, error detection methods, GetModelParameters, GetModelTokenLimits, and orchestrator constructor helpers.
+
+**Status**: ✅ Fixed - Coverage boosted to 73.1%, well above 70% threshold
 
 ---
 
