@@ -12,7 +12,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/models"
 )
 
-// TestCLIValidatesAllSupportedModels verifies that the CLI accepts all 7 supported models
+// TestCLIValidatesAllSupportedModels verifies that the CLI accepts all 15 supported models
 func TestCLIValidatesAllSupportedModels(t *testing.T) {
 	// Create a temporary instructions file
 	tempDir := t.TempDir()
@@ -23,8 +23,8 @@ func TestCLIValidatesAllSupportedModels(t *testing.T) {
 
 	// Get all supported models
 	supportedModels := models.ListAllModels()
-	if len(supportedModels) != 7 {
-		t.Fatalf("Expected 7 supported models, got %d", len(supportedModels))
+	if len(supportedModels) != 15 {
+		t.Fatalf("Expected 15 supported models, got %d", len(supportedModels))
 	}
 
 	// Create a mock logger

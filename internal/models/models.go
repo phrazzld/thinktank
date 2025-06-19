@@ -143,6 +143,29 @@ var ModelDefinitions = map[string]ModelInfo{
 		},
 	},
 
+	"o3": {
+		Provider:        "openai",
+		APIModelID:      "o3",
+		ContextWindow:   200000,
+		MaxOutputTokens: 200000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       1.0,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning": map[string]interface{}{
+				"effort": "high",
+			},
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 200000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
 	// OpenRouter Models
 	"openrouter/deepseek/deepseek-chat-v3-0324": {
 		Provider:        "openrouter",
@@ -159,11 +182,118 @@ var ModelDefinitions = map[string]ModelInfo{
 			"max_tokens":  intConstraint(1, 65536),
 		},
 	},
-	"openrouter/deepseek/deepseek-r1": {
+	"openrouter/deepseek/deepseek-r1-0528": {
 		Provider:        "openrouter",
-		APIModelID:      "deepseek/deepseek-r1",
+		APIModelID:      "deepseek/deepseek-r1-0528",
+		ContextWindow:   128000,
+		MaxOutputTokens: 32768,
+		DefaultParams: map[string]interface{}{
+			"temperature": 1.0,
+			"top_p":       1.0,
+			"stop":        []string{"<｜User｜>", "<｜end▁of▁sentence｜>"},
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 32768),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"top_k":             intConstraint(1, 100),
+		},
+	},
+	"openrouter/deepseek/deepseek-chat-v3-0324:free": {
+		Provider:        "openrouter",
+		APIModelID:      "deepseek/deepseek-chat-v3-0324:free",
+		ContextWindow:   65536,
+		MaxOutputTokens: 8192,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 8192),
+		},
+	},
+	"openrouter/deepseek/deepseek-r1-0528:free": {
+		Provider:        "openrouter",
+		APIModelID:      "deepseek/deepseek-r1-0528:free",
+		ContextWindow:   163840,
+		MaxOutputTokens: 32768,
+		DefaultParams: map[string]interface{}{
+			"temperature": 1.0,
+			"top_p":       1.0,
+			"stop":        []string{"<｜User｜>", "<｜end▁of▁sentence｜>"},
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":        floatConstraint(0.0, 2.0),
+			"top_p":              floatConstraint(0.0, 1.0),
+			"max_tokens":         intConstraint(1, 32768),
+			"frequency_penalty":  floatConstraint(-2.0, 2.0),
+			"presence_penalty":   floatConstraint(-2.0, 2.0),
+			"repetition_penalty": floatConstraint(0.0, 2.0),
+			"top_k":              intConstraint(1, 100),
+		},
+	},
+	"openrouter/meta-llama/llama-3.3-70b-instruct": {
+		Provider:        "openrouter",
+		APIModelID:      "meta-llama/llama-3.3-70b-instruct",
 		ContextWindow:   131072,
-		MaxOutputTokens: 33792,
+		MaxOutputTokens: 4096,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 4096),
+		},
+	},
+	"openrouter/meta-llama/llama-4-maverick": {
+		Provider:        "openrouter",
+		APIModelID:      "meta-llama/llama-4-maverick",
+		ContextWindow:   1048576,
+		MaxOutputTokens: 16384,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.9,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":        floatConstraint(0.0, 2.0),
+			"top_p":              floatConstraint(0.0, 1.0),
+			"max_tokens":         intConstraint(1, 16384),
+			"frequency_penalty":  floatConstraint(-2.0, 2.0),
+			"presence_penalty":   floatConstraint(-2.0, 2.0),
+			"repetition_penalty": floatConstraint(0.0, 2.0),
+			"top_k":              intConstraint(1, 100),
+		},
+	},
+	"openrouter/meta-llama/llama-4-scout": {
+		Provider:        "openrouter",
+		APIModelID:      "meta-llama/llama-4-scout",
+		ContextWindow:   1048576,
+		MaxOutputTokens: 4096,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.9,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":        floatConstraint(0.0, 2.0),
+			"top_p":              floatConstraint(0.0, 1.0),
+			"max_tokens":         intConstraint(1, 4096),
+			"frequency_penalty":  floatConstraint(-2.0, 2.0),
+			"presence_penalty":   floatConstraint(-2.0, 2.0),
+			"repetition_penalty": floatConstraint(0.0, 2.0),
+			"top_k":              intConstraint(1, 100),
+		},
+	},
+	"openrouter/x-ai/grok-3-mini-beta": {
+		Provider:        "openrouter",
+		APIModelID:      "x-ai/grok-3-mini-beta",
+		ContextWindow:   131072,
+		MaxOutputTokens: 131072,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
@@ -187,6 +317,21 @@ var ModelDefinitions = map[string]ModelInfo{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
 			"max_tokens":  intConstraint(1, 131072),
+		},
+	},
+	"openrouter/google/gemma-3-27b-it": {
+		Provider:        "openrouter",
+		APIModelID:      "google/gemma-3-27b-it",
+		ContextWindow:   8192,
+		MaxOutputTokens: 8192,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 8192),
 		},
 	},
 }

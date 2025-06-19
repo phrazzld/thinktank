@@ -53,10 +53,10 @@ func TestGetModelInfo(t *testing.T) {
 			wantError:      false,
 		},
 		{
-			name:           "deepseek-r1 valid model",
-			modelName:      "openrouter/deepseek/deepseek-r1",
+			name:           "deepseek-r1-0528 valid model",
+			modelName:      "openrouter/deepseek/deepseek-r1-0528",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "deepseek/deepseek-r1",
+			wantAPIModelID: "deepseek/deepseek-r1-0528",
 			wantError:      false,
 		},
 		{
@@ -173,8 +173,8 @@ func TestGetProviderForModel(t *testing.T) {
 			wantError:    false,
 		},
 		{
-			name:         "deepseek-r1 provider",
-			modelName:    "openrouter/deepseek/deepseek-r1",
+			name:         "deepseek-r1-0528 provider",
+			modelName:    "openrouter/deepseek/deepseek-r1-0528",
 			wantProvider: "openrouter",
 			wantError:    false,
 		},
@@ -243,10 +243,18 @@ func TestListAllModels(t *testing.T) {
 		"gemini-2.5-flash",
 		"gemini-2.5-pro",
 		"gpt-4.1",
+		"o3",
 		"o4-mini",
 		"openrouter/deepseek/deepseek-chat-v3-0324",
-		"openrouter/deepseek/deepseek-r1",
+		"openrouter/deepseek/deepseek-chat-v3-0324:free",
+		"openrouter/deepseek/deepseek-r1-0528",
+		"openrouter/deepseek/deepseek-r1-0528:free",
+		"openrouter/google/gemma-3-27b-it",
+		"openrouter/meta-llama/llama-3.3-70b-instruct",
+		"openrouter/meta-llama/llama-4-maverick",
+		"openrouter/meta-llama/llama-4-scout",
 		"openrouter/x-ai/grok-3-beta",
+		"openrouter/x-ai/grok-3-mini-beta",
 	}
 
 	// Verify correct number of models
@@ -292,6 +300,7 @@ func TestListModelsForProvider(t *testing.T) {
 			provider: "openai",
 			expectedModels: []string{
 				"gpt-4.1",
+				"o3",
 				"o4-mini",
 			},
 		},
@@ -308,8 +317,15 @@ func TestListModelsForProvider(t *testing.T) {
 			provider: "openrouter",
 			expectedModels: []string{
 				"openrouter/deepseek/deepseek-chat-v3-0324",
-				"openrouter/deepseek/deepseek-r1",
+				"openrouter/deepseek/deepseek-chat-v3-0324:free",
+				"openrouter/deepseek/deepseek-r1-0528",
+				"openrouter/deepseek/deepseek-r1-0528:free",
+				"openrouter/google/gemma-3-27b-it",
+				"openrouter/meta-llama/llama-3.3-70b-instruct",
+				"openrouter/meta-llama/llama-4-maverick",
+				"openrouter/meta-llama/llama-4-scout",
 				"openrouter/x-ai/grok-3-beta",
+				"openrouter/x-ai/grok-3-mini-beta",
 			},
 		},
 		{
@@ -459,8 +475,8 @@ func TestIsModelSupported(t *testing.T) {
 			expectedRes: true,
 		},
 		{
-			name:        "deepseek-r1 supported",
-			modelName:   "openrouter/deepseek/deepseek-r1",
+			name:        "deepseek-r1-0528 supported",
+			modelName:   "openrouter/deepseek/deepseek-r1-0528",
 			expectedRes: true,
 		},
 		{
@@ -537,7 +553,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:      "temperature valid upper bound",
-			modelName: "openrouter/deepseek/deepseek-r1",
+			modelName: "openrouter/deepseek/deepseek-r1-0528",
 			paramName: "temperature",
 			value:     2.0,
 			wantError: false,
@@ -600,7 +616,7 @@ func TestValidateParameter(t *testing.T) {
 		},
 		{
 			name:      "top_p valid upper bound",
-			modelName: "openrouter/deepseek/deepseek-r1",
+			modelName: "openrouter/deepseek/deepseek-r1-0528",
 			paramName: "top_p",
 			value:     1.0,
 			wantError: false,

@@ -10,7 +10,7 @@ import (
 )
 
 // TestRegistryAPIWithModelsPackage verifies that RegistryAPIService works correctly
-// with the new models package for all 7 supported models
+// with the new models package for all 15 supported models
 func TestRegistryAPIWithModelsPackage(t *testing.T) {
 	// Save and restore environment
 	originalAPIKeys := map[string]string{
@@ -50,10 +50,10 @@ func TestRegistryAPIWithModelsPackage(t *testing.T) {
 	service := NewRegistryAPIService(logger)
 	ctx := context.Background()
 
-	// Test all 7 models work with the service
+	// Test all 15 models work with the service
 	allModels := models.ListAllModels()
-	if len(allModels) != 7 {
-		t.Fatalf("Expected 7 models, got %d", len(allModels))
+	if len(allModels) != 15 {
+		t.Fatalf("Expected 15 models, got %d", len(allModels))
 	}
 
 	for _, modelName := range allModels {
@@ -131,18 +131,18 @@ func TestProviderDistribution(t *testing.T) {
 	geminiModels := models.ListModelsForProvider("gemini")
 	openrouterModels := models.ListModelsForProvider("openrouter")
 
-	if len(openaiModels) != 2 {
-		t.Errorf("Expected 2 OpenAI models, got %d", len(openaiModels))
+	if len(openaiModels) != 3 {
+		t.Errorf("Expected 3 OpenAI models, got %d", len(openaiModels))
 	}
 	if len(geminiModels) != 2 {
 		t.Errorf("Expected 2 Gemini models, got %d", len(geminiModels))
 	}
-	if len(openrouterModels) != 3 {
-		t.Errorf("Expected 3 OpenRouter models, got %d", len(openrouterModels))
+	if len(openrouterModels) != 10 {
+		t.Errorf("Expected 10 OpenRouter models, got %d", len(openrouterModels))
 	}
 
 	total := len(openaiModels) + len(geminiModels) + len(openrouterModels)
-	if total != 7 {
-		t.Errorf("Expected total 7 models, got %d", total)
+	if total != 15 {
+		t.Errorf("Expected total 15 models, got %d", total)
 	}
 }
