@@ -53,6 +53,17 @@
 **Estimated Effort**: 4-6 hours
 **Priority**: CRITICAL - Must be completed before merge
 
+### [x] Fix E2E Test Docker Build Failure (CI Blocker)
+**Context**: CI Test job failed because E2E test Dockerfile tried to copy `config/models.yaml` which was removed during registry elimination.
+
+**Problem**: Docker build error: `cp: can't stat '/app/config/models.yaml': No such file or directory`
+
+**Solution**: Removed the unnecessary file copy from Dockerfile since models are now hardcoded in Go code.
+
+**Resolution**: 1 line change in `docker/e2e-test.Dockerfile` - removed config file copy operation.
+
+**Status**: ✅ Fixed and pushed, CI running to verify
+
 ---
 
 ## ✅ POST-MERGE IMPROVEMENTS (Not blocking, can be addressed incrementally)
@@ -72,6 +83,22 @@
 ### [ ] Standardize Log Message Formats
 **Context**: Ensure consistent log message formatting and adequate context across the refactored codebase.
 **Why not blocking**: Logging works. This is about improving consistency and debuggability.
+
+### [ ] Improve Docker Build Validation in CI
+**Context**: Add Docker build verification earlier in CI pipeline to catch configuration mismatches before expensive test execution.
+**Why not blocking**: Current CI structure works, this prevents future similar failures.
+**Implementation**:
+- Move Docker build step earlier in CI pipeline
+- Add smoke test for Docker build after code changes
+- Parallel execution of Docker builds and unit tests
+
+### [ ] Enhance Architectural Change Process Documentation
+**Context**: Create systematic checklist for configuration system changes to prevent cross-component impact misses.
+**Why not blocking**: Current process worked for registry elimination, this improves future reliability.
+**Implementation**:
+- Document dependencies that need updating during refactors
+- Create Architecture Decision Record (ADR) template
+- Establish cross-component impact analysis checklist
 
 ---
 
