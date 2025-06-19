@@ -37,7 +37,7 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Why P0:** Required by all subsequent summary and output functionality
 - **Depends‑on:** none
 
-- [ ] ### T002 · Feature · P0: Update ConsoleWriter Interface
+- [x] ### T002 · Feature · P0: Update ConsoleWriter Interface
 - **Context:** Interface changes create compile-time dependency tracking
 - **Action:**
     1. Update `ConsoleWriter` interface in `internal/logutil/console_writer.go`
@@ -47,7 +47,7 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Why P0:** Blocking change that enables all subsequent development in parallel
 - **Depends‑on:** none
 
-- [ ] ### T003 · Feature · P1: Implement File Size Formatting
+- [x] ### T003 · Feature · P1: Implement File Size Formatting
 - **Context:** Human-readable sizes are essential for professional output
 - **Action:**
     1. Create `internal/logutil/formatting.go`
