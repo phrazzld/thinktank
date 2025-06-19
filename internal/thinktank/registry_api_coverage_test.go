@@ -105,6 +105,40 @@ func TestRegistryAPICoverageBoost(t *testing.T) {
 			t.Error("Expected non-empty details for error")
 		}
 	})
+
+	t.Run("GetModelParameters", func(t *testing.T) {
+		// Test valid model
+		params, err := service.GetModelParameters(ctx, "gpt-4.1")
+		if err != nil {
+			t.Errorf("Expected no error for valid model, got: %v", err)
+		}
+		if params == nil {
+			t.Error("Expected parameters, got nil")
+		}
+
+		// Test invalid model
+		_, err = service.GetModelParameters(ctx, "invalid-model")
+		if err == nil {
+			t.Error("Expected error for invalid model")
+		}
+	})
+
+	t.Run("GetModelTokenLimits", func(t *testing.T) {
+		// Test valid model
+		contextWindow, maxOutput, err := service.GetModelTokenLimits(ctx, "gpt-4.1")
+		if err != nil {
+			t.Errorf("Expected no error for valid model, got: %v", err)
+		}
+		if contextWindow <= 0 || maxOutput <= 0 {
+			t.Errorf("Expected positive token limits, got context=%d, output=%d", contextWindow, maxOutput)
+		}
+
+		// Test invalid model
+		_, _, err = service.GetModelTokenLimits(ctx, "invalid-model")
+		if err == nil {
+			t.Error("Expected error for invalid model")
+		}
+	})
 }
 
 // TestOrchestratorConstructor tests the dependency injection helpers
