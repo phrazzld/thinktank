@@ -213,19 +213,12 @@ func (s *registryAPIService) ValidateModelParameter(ctx context.Context, modelNa
 		return false, llm.Wrap(err, "", fmt.Sprintf("model '%s' not supported", modelName), llm.CategoryInvalidRequest)
 	}
 
-	// Basic validation for temperature parameter
-	if paramName == "temperature" {
-		floatVal, ok := value.(float64)
-		if !ok {
-			return false, fmt.Errorf("parameter 'temperature' must be a float")
-		}
-
-		if floatVal < 0.0 || floatVal > 2.0 {
-			return false, fmt.Errorf("parameter 'temperature' value %.2f must be between 0.0 and 2.0", floatVal)
-		}
+	// Use the comprehensive parameter validation from models package
+	if err := models.ValidateParameter(modelName, paramName, value); err != nil {
+		s.logger.DebugContext(ctx, "Parameter validation failed for model '%s', parameter '%s': %v", modelName, paramName, err)
+		return false, fmt.Errorf("parameter validation failed: %w", err)
 	}
 
-	// For other parameters, accept any value (basic validation only)
 	return true, nil
 }
 

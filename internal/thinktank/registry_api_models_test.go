@@ -117,8 +117,8 @@ func TestRegistryAPIErrorHandling(t *testing.T) {
 
 	// Test parameter validation with invalid values
 	valid, err := service.ValidateModelParameter(ctx, "gpt-4.1", "temperature", 5.0)
-	if err != nil {
-		t.Errorf("Unexpected error: %v", err)
+	if err == nil {
+		t.Error("Expected error for invalid temperature value")
 	}
 	if valid {
 		t.Error("Expected temperature 5.0 to be invalid")

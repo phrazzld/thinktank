@@ -5,6 +5,21 @@ import (
 	"sort"
 )
 
+// ParameterConstraint defines validation rules for a single model parameter
+type ParameterConstraint struct {
+	// Type specifies the expected parameter type ("int", "float", "string")
+	Type string `json:"type"`
+
+	// MinValue is the minimum allowed value for numeric types (optional)
+	MinValue *float64 `json:"min_value,omitempty"`
+
+	// MaxValue is the maximum allowed value for numeric types (optional)
+	MaxValue *float64 `json:"max_value,omitempty"`
+
+	// EnumValues lists allowed string values for string type parameters (optional)
+	EnumValues []string `json:"enum_values,omitempty"`
+}
+
 // ModelInfo contains metadata for a single LLM model.
 // This struct replaces the complex registry system with simple hardcoded definitions.
 type ModelInfo struct {
@@ -22,6 +37,27 @@ type ModelInfo struct {
 
 	// DefaultParams contains provider-specific default parameters (temperature, top_p, etc.)
 	DefaultParams map[string]interface{} `json:"default_params"`
+
+	// ParameterConstraints defines validation rules for each parameter this model supports
+	ParameterConstraints map[string]ParameterConstraint `json:"parameter_constraints"`
+}
+
+// Helper functions for creating parameter constraints
+
+func floatConstraint(min, max float64) ParameterConstraint {
+	return ParameterConstraint{
+		Type:     "float",
+		MinValue: &min,
+		MaxValue: &max,
+	}
+}
+
+func intConstraint(min, max float64) ParameterConstraint {
+	return ParameterConstraint{
+		Type:     "int",
+		MinValue: &min,
+		MaxValue: &max,
+	}
 }
 
 // ModelDefinitions contains hardcoded metadata for all supported LLM models.
@@ -40,6 +76,13 @@ var ModelDefinitions = map[string]ModelInfo{
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
 		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 1000000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
 	},
 	"o4-mini": {
 		Provider:        "openai",
@@ -55,6 +98,13 @@ var ModelDefinitions = map[string]ModelInfo{
 				"effort": "high",
 			},
 		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 200000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
 	},
 
 	// Gemini Models
@@ -68,6 +118,12 @@ var ModelDefinitions = map[string]ModelInfo{
 			"top_p":       0.95,
 			"top_k":       40,
 		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"top_k":             intConstraint(1, 100),
+			"max_output_tokens": intConstraint(1, 65000),
+		},
 	},
 	"gemini-2.5-flash": {
 		Provider:        "gemini",
@@ -78,6 +134,12 @@ var ModelDefinitions = map[string]ModelInfo{
 			"temperature": 0.7,
 			"top_p":       0.95,
 			"top_k":       40,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"top_k":             intConstraint(1, 100),
+			"max_output_tokens": intConstraint(1, 65000),
 		},
 	},
 
@@ -91,6 +153,11 @@ var ModelDefinitions = map[string]ModelInfo{
 			"temperature": 0.7,
 			"top_p":       0.95,
 		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 65536),
+		},
 	},
 	"openrouter/deepseek/deepseek-r1": {
 		Provider:        "openrouter",
@@ -101,6 +168,11 @@ var ModelDefinitions = map[string]ModelInfo{
 			"temperature": 0.7,
 			"top_p":       0.95,
 		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 131072),
+		},
 	},
 	"openrouter/x-ai/grok-3-beta": {
 		Provider:        "openrouter",
@@ -110,6 +182,11 @@ var ModelDefinitions = map[string]ModelInfo{
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 131072),
 		},
 	},
 }
@@ -175,4 +252,118 @@ func GetAPIKeyEnvVar(provider string) string {
 func IsModelSupported(name string) bool {
 	_, exists := ModelDefinitions[name]
 	return exists
+}
+
+// ValidateParameter validates a parameter value against the constraints defined for the given model.
+// Returns an error if the parameter is invalid, nil if valid.
+func ValidateParameter(modelName, paramName string, value interface{}) error {
+	modelInfo, err := GetModelInfo(modelName)
+	if err != nil {
+		return fmt.Errorf("model '%s' not supported: %w", modelName, err)
+	}
+
+	constraint, exists := modelInfo.ParameterConstraints[paramName]
+	if !exists {
+		// Parameter not defined in constraints - accept any value
+		return nil
+	}
+
+	// Validate based on parameter type
+	switch constraint.Type {
+	case "float":
+		return validateFloatParameter(paramName, value, constraint)
+	case "int":
+		return validateIntParameter(paramName, value, constraint)
+	case "string":
+		return validateStringParameter(paramName, value, constraint)
+	default:
+		return fmt.Errorf("parameter '%s' has unknown constraint type '%s'", paramName, constraint.Type)
+	}
+}
+
+func validateFloatParameter(paramName string, value interface{}, constraint ParameterConstraint) error {
+	var floatVal float64
+
+	// Handle different numeric types
+	switch v := value.(type) {
+	case float64:
+		floatVal = v
+	case float32:
+		floatVal = float64(v)
+	case int:
+		floatVal = float64(v)
+	case int32:
+		floatVal = float64(v)
+	case int64:
+		floatVal = float64(v)
+	default:
+		return fmt.Errorf("parameter '%s' must be a numeric value, got %T", paramName, value)
+	}
+
+	// Check bounds
+	if constraint.MinValue != nil && floatVal < *constraint.MinValue {
+		return fmt.Errorf("parameter '%s' value %.2f must be >= %.2f", paramName, floatVal, *constraint.MinValue)
+	}
+	if constraint.MaxValue != nil && floatVal > *constraint.MaxValue {
+		return fmt.Errorf("parameter '%s' value %.2f must be <= %.2f", paramName, floatVal, *constraint.MaxValue)
+	}
+
+	return nil
+}
+
+func validateIntParameter(paramName string, value interface{}, constraint ParameterConstraint) error {
+	var intVal int64
+
+	// Handle different numeric types
+	switch v := value.(type) {
+	case int:
+		intVal = int64(v)
+	case int32:
+		intVal = int64(v)
+	case int64:
+		intVal = v
+	case float64:
+		// Allow float64 that represents whole numbers (common in JSON)
+		if v != float64(int64(v)) {
+			return fmt.Errorf("parameter '%s' must be an integer, got float value %.2f", paramName, v)
+		}
+		intVal = int64(v)
+	case float32:
+		// Allow float32 that represents whole numbers
+		if v != float32(int64(v)) {
+			return fmt.Errorf("parameter '%s' must be an integer, got float value %.2f", paramName, v)
+		}
+		intVal = int64(v)
+	default:
+		return fmt.Errorf("parameter '%s' must be an integer value, got %T", paramName, value)
+	}
+
+	// Check bounds
+	if constraint.MinValue != nil && float64(intVal) < *constraint.MinValue {
+		return fmt.Errorf("parameter '%s' value %d must be >= %.0f", paramName, intVal, *constraint.MinValue)
+	}
+	if constraint.MaxValue != nil && float64(intVal) > *constraint.MaxValue {
+		return fmt.Errorf("parameter '%s' value %d must be <= %.0f", paramName, intVal, *constraint.MaxValue)
+	}
+
+	return nil
+}
+
+func validateStringParameter(paramName string, value interface{}, constraint ParameterConstraint) error {
+	strVal, ok := value.(string)
+	if !ok {
+		return fmt.Errorf("parameter '%s' must be a string, got %T", paramName, value)
+	}
+
+	// Check enum values if specified
+	if len(constraint.EnumValues) > 0 {
+		for _, allowedValue := range constraint.EnumValues {
+			if strVal == allowedValue {
+				return nil
+			}
+		}
+		return fmt.Errorf("parameter '%s' value '%s' must be one of: %v", paramName, strVal, constraint.EnumValues)
+	}
+
+	return nil
 }
