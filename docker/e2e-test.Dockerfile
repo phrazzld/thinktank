@@ -50,9 +50,8 @@ COPY --from=builder /app/thinktank ./thinktank
 # Set proper ownership
 RUN chown -R thinktank:thinktank /app
 
-# Create user configuration directory and copy models.yaml
+# Create user configuration directory
 RUN mkdir -p /home/thinktank/.config/thinktank && \
-    cp /app/config/models.yaml /home/thinktank/.config/thinktank/ && \
     chown -R thinktank:thinktank /home/thinktank
 
 # Switch to non-root user
