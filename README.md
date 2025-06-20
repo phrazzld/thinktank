@@ -149,37 +149,91 @@ The output depends entirely on your instructions, but common use cases include:
 
 Output files are saved in the specified directory (or auto-generated directory) with one file per model. If a synthesis model is specified, an additional file containing the synthesized output will be created with the naming format `<synthesis-model-name>-synthesis.md`.
 
-### Summary Output Format
+### Modern CLI Output Format
 
-At the end of each run, thinktank displays a formatted summary of the execution results:
+thinktank features a modern, clean CLI output design inspired by tools like ripgrep, eza, and bat. The output automatically adapts to your environment (interactive terminals vs CI/automation) and provides clear, scannable results.
+
+#### Interactive Terminal Output
+
+In interactive terminals, thinktank displays Unicode symbols and semantic colors:
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│ Thinktank Execution Summary                                    │
-├────────────────────────────────────────────────────────────────┤
-│ Status: SUCCESS                                                │
-├────────────────────────────────────────────────────────────────┤
-│ Models: 3 total, 3 successful, 0 failed                        │
-├────────────────────────────────────────────────────────────────┤
-│ Synthesis file: path/to/output/synthesis-file.md               │
-├────────────────────────────────────────────────────────────────┤
-│ Successful models: 3 models (model1, model2, model3)           │
-└────────────────────────────────────────────────────────────────┘
+Processing 3 models...
+[1/3] gemini-2.5-pro: ✓ completed (2.3s)
+[2/3] gpt-4.1: ✓ completed (1.8s)
+[3/3] o4-mini: ✗ rate limited
+
+SUMMARY
+───────
+● 3 models processed
+● 2 successful, 1 failed
+● Synthesis: ✓ completed
+● Output directory: ./thinktank_20250619_143022_7841
+
+⚠ Partial success - some models failed
+  ● Success rate: 67% (2/3 models)
+  ● Check failed model details above for specific issues
+
+OUTPUT FILES
+────────────
+  gemini-2.5-pro.md                                                2.4K
+  gpt-4.1.md                                                       3.1K
+  synthesis.md                                                     5.2K
+
+FAILED MODELS
+─────────────
+  o4-mini                                                    rate limited
 ```
 
-The summary includes:
-- **Status**: Overall execution status (SUCCESS, PARTIAL SUCCESS, or FAILED)
-- **Models**: Count of total, successful, and failed models
-- **Synthesis file**: Path to the synthesis output file (if a synthesis model was used)
-- **Successful models**: List of models that completed successfully
-- **Failed models**: List of models that failed (shown only if failures occurred)
-- **Output files**: Individual output file paths (shown when no synthesis model is used)
+#### CI/Automation Output
 
-The summary is color-coded in terminal output:
-- Green for success indicators
-- Yellow for partial success
-- Red for failure indicators
-- Blue for file paths
+In CI environments or when `CI=true`, output uses ASCII alternatives for maximum compatibility:
+
+```
+Processing 3 models...
+Completed model 1/3: gemini-2.5-pro (2.3s)
+Completed model 2/3: gpt-4.1 (1.8s)
+Failed model 3/3: o4-mini (rate limited)
+
+SUMMARY
+-------
+* 3 models processed
+* 2 successful, 1 failed
+* Synthesis: [OK] completed
+* Output directory: ./thinktank_20250619_143022_7841
+
+[!] Partial success - some models failed
+  * Success rate: 67% (2/3 models)
+  * Check failed model details above for specific issues
+
+OUTPUT FILES
+------------
+  gemini-2.5-pro.md                                                2.4K
+  gpt-4.1.md                                                       3.1K
+  synthesis.md                                                     5.2K
+
+FAILED MODELS
+-------------
+  o4-mini                                                    rate limited
+```
+
+#### Key Features
+
+- **Environment Adaptation**: Automatically detects interactive vs CI environments
+- **Unicode Fallback**: Graceful ASCII alternatives when Unicode isn't supported
+- **Semantic Colors**: Green for success, red for errors, yellow for warnings (interactive only)
+- **Responsive Layout**: Adapts to terminal width for optimal readability
+- **Human-Readable Sizes**: File sizes displayed as "2.4K", "1.5M", etc.
+- **Professional Aesthetics**: Clean, scannable output without emoji clutter
+
+#### Output Control Flags
+
+| Flag | Description | Use Case |
+|------|-------------|----------|
+| `--quiet`, `-q` | Suppress console output (errors only) | Scripting, when only caring about exit codes |
+| `--json-logs` | Show JSON logs on stderr | Legacy behavior, structured logging |
+| `--no-progress` | Disable progress indicators | Cleaner output for logs/CI |
+| `--verbose` | Enable detailed logging | Debugging, troubleshooting |
 
 ### Output Directory Naming
 
@@ -221,7 +275,7 @@ This tolerant mode is particularly useful when using multiple models for redunda
 - **No Files Processed**: Check paths and filters with `--dry-run`
 - **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
 - **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
-- **Color Output Issues**: Summary output uses ANSI color codes for terminal display, which may not be suitable for all environments. Redirect to a file for plain text output.
+- **Terminal Compatibility**: Output automatically adapts to your environment. Use `--no-progress` for minimal output or `--json-logs` for structured logging.
 
 ## Development & Contributing
 
@@ -271,6 +325,7 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 ## Learn More
 
+- [Modern CLI Output Format & Rollback Guide](docs/MODERN_CLI_OUTPUT.md)
 - [OpenRouter Integration](docs/openrouter-integration.md)
 - [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
 - [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md)
