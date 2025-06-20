@@ -786,10 +786,28 @@ func (c *consoleWriter) ShowOutputFiles(files []OutputFile) {
 		return
 	}
 
-	// Stub implementation - will be enhanced in later tickets with proper alignment
-	fmt.Printf("OUTPUT FILES\n")
+	layout := c.getLayoutLocked()
+
+	// Display UPPERCASE header with separator line
+	headerText := "OUTPUT FILES"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display files with right-aligned human-readable sizes
 	for _, file := range files {
-		fmt.Printf("  %s (%d bytes)\n", file.Name, file.Size)
+		// Format file size using human-readable format
+		formattedSize := FormatFileSize(file.Size)
+		
+		// Apply colors to filename and size
+		coloredFileName := c.colors.ColorFilePath(file.Name)
+		coloredSize := c.colors.ColorFileSize(formattedSize)
+		
+		// Format with proper right alignment
+		alignedOutput := layout.FormatAlignedText(coloredFileName, coloredSize)
+		fmt.Printf("  %s\n", alignedOutput)
 	}
 }
 
