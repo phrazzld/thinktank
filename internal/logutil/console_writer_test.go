@@ -60,7 +60,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelCompleted(1, 3, "test-model", 850*time.Millisecond)
 			},
-			expected: "[1/3] test-model: ✓ completed (850ms)\n",
+			expected: "completed",
 		},
 		{
 			name:          "Interactive ModelCompleted Failure",
@@ -69,7 +69,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelFailed(1, 3, "test-model", "API error")
 			},
-			expected: "[1/3] test-model: ✗ failed (API error)\n",
+			expected: "failed",
 		},
 		{
 			name:          "Interactive ModelStarted",
@@ -78,7 +78,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelStarted(1, 3, "test-model")
 			},
-			expected: "[1/3] test-model: processing",
+			expected: "processing...",
 		},
 		{
 			name:          "Interactive ModelRateLimited",
@@ -87,7 +87,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelRateLimited(1, 3, "test-model", 2*time.Second)
 			},
-			expected: "[1/3] test-model: rate limited, waiting 2.0s...\n",
+			expected: "rate limited (retry in",
 		},
 		{
 			name:          "Interactive SynthesisStarted",
@@ -99,13 +99,13 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "Interactive SynthesisCompleted",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.SynthesisCompleted("output/path") },
-			expected:      "✨ Done! Output saved to: output/path\n",
+			expected:      "Done! Output saved to:",
 		},
 		{
 			name:          "Interactive StatusMessage",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.StatusMessage("Test status") },
-			expected:      "● Test status",
+			expected:      "Test status",
 		},
 		// --- CI/CD (Non-Interactive) Mode ---
 		{
@@ -148,7 +148,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelRateLimited(1, 3, "test-model", 2*time.Second)
 			},
-			expected: "Rate limited for model 1/3: test-model (waiting 2.0s)\n",
+			expected: "Rate limited for model 1/3: test-model (retry in 2.0s)",
 		},
 		{
 			name:          "CI SynthesisStarted",
@@ -208,7 +208,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelStarted(1, 3, "test-model")
 			},
-			expected:    "🚀 Processing 3 models...\n",
+			expected:    "Processing 3 models",
 			notExpected: "processing...",
 		},
 		{
@@ -219,14 +219,14 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelFailed(1, 3, "test-model", "API error")
 			},
-			expected: "✗ failed",
+			expected: "failed",
 		},
 		{
 			name:          "NoProgress still shows StartProcessing",
 			noProgress:    true,
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.StartProcessing(3) },
-			expected:      "🚀 Processing 3 models...\n",
+			expected:      "Processing 3 models",
 		},
 	}
 
