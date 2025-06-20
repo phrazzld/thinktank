@@ -775,6 +775,58 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 	fmt.Printf("%s Output directory: %s\n",
 		c.colors.ColorSymbol("●"),
 		c.colors.ColorFilePath(summary.OutputDirectory))
+
+	// Add contextual messaging and guidance based on scenarios
+	c.displayScenarioGuidance(summary)
+}
+
+// displayScenarioGuidance provides contextual messaging and actionable next steps
+// based on the processing results (all failed, partial success, etc.)
+func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
+	// Determine the scenario and provide appropriate guidance
+	if summary.SuccessfulModels == 0 && summary.FailedModels > 0 {
+		// All models failed scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n", 
+			c.colors.ColorSymbol("⚠"), 
+			c.colors.ColorWarning("All models failed to process"))
+		fmt.Printf("  %s Check your API keys and network connectivity\n", 
+			c.colors.ColorSymbol("•"))
+		fmt.Printf("  %s Review error details above for specific failure reasons\n", 
+			c.colors.ColorSymbol("•"))
+		fmt.Printf("  %s Verify model names and rate limits with providers\n", 
+			c.colors.ColorSymbol("•"))
+	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
+		// Partial success scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n", 
+			c.colors.ColorSymbol("⚠"), 
+			c.colors.ColorWarning("Partial success - some models failed"))
+		
+		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
+		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n", 
+			c.colors.ColorSymbol("•"),
+			successRate,
+			summary.SuccessfulModels,
+			summary.ModelsProcessed)
+		fmt.Printf("  %s Check failed model details above for specific issues\n", 
+			c.colors.ColorSymbol("•"))
+		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n", 
+			c.colors.ColorSymbol("•"))
+	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
+		// Complete success scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n", 
+			c.colors.ColorSymbol("✓"), 
+			c.colors.ColorSuccess("All models processed successfully"))
+		if summary.SynthesisStatus == "completed" {
+			fmt.Printf("  %s Synthesis completed - check the combined output above\n", 
+				c.colors.ColorSymbol("•"))
+		} else if summary.ModelsProcessed > 1 {
+			fmt.Printf("  %s Individual model outputs saved - see file list above\n", 
+				c.colors.ColorSymbol("•"))
+		}
+	}
 }
 
 // ShowOutputFiles displays the output files section with human-readable sizes
