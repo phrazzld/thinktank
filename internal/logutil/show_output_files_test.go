@@ -18,38 +18,38 @@ func TestShowOutputFiles(t *testing.T) {
 
 	// Create test files with various sizes
 	testFiles := []OutputFile{
-		{Name: "model-output-1.md", Size: 1024},      // Should show as "1.0K"
-		{Name: "model-output-2.md", Size: 4567},      // Should show as "4.5K"
-		{Name: "synthesis.md", Size: 1536000},        // Should show as "1.5M"
+		{Name: "model-output-1.md", Size: 1024}, // Should show as "1.0K"
+		{Name: "model-output-2.md", Size: 4567}, // Should show as "4.5K"
+		{Name: "synthesis.md", Size: 1536000},   // Should show as "1.5M"
 	}
 
 	// Create console writer with test options
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false }, // Non-interactive for cleaner output
+		IsTerminalFunc:  func() bool { return false }, // Non-interactive for cleaner output
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 
 	// Call ShowOutputFiles
 	writer.ShowOutputFiles(testFiles)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify the output contains expected elements
 	expectedElements := []string{
-		"OUTPUT FILES",            // Header
-		"model-output-1.md",      // File name 1
-		"1.0K",                   // Human readable size 1
-		"model-output-2.md",      // File name 2
-		"4.5K",                   // Human readable size 2
-		"synthesis.md",           // File name 3
-		"1.5M",                   // Human readable size 3
+		"OUTPUT FILES",      // Header
+		"model-output-1.md", // File name 1
+		"1.0K",              // Human readable size 1
+		"model-output-2.md", // File name 2
+		"4.5K",              // Human readable size 2
+		"synthesis.md",      // File name 3
+		"1.5M",              // Human readable size 3
 	}
 
 	for _, element := range expectedElements {
@@ -75,20 +75,20 @@ func TestShowOutputFilesEmpty(t *testing.T) {
 
 	// Create console writer
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 
 	// Call ShowOutputFiles with empty slice
 	writer.ShowOutputFiles([]OutputFile{})
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should be empty (no output for empty file list)
@@ -111,9 +111,9 @@ func TestShowOutputFilesQuietMode(t *testing.T) {
 
 	// Create console writer and enable quiet mode
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 	writer.SetQuiet(true)
 
@@ -121,11 +121,11 @@ func TestShowOutputFilesQuietMode(t *testing.T) {
 	writer.ShowOutputFiles(testFiles)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should be empty (quiet mode suppresses output)

@@ -25,31 +25,31 @@ func TestShowFailedModels(t *testing.T) {
 
 	// Create console writer with test options
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false }, // Non-interactive for cleaner output
+		IsTerminalFunc:  func() bool { return false }, // Non-interactive for cleaner output
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 
 	// Call ShowFailedModels
 	writer.ShowFailedModels(failedModels)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify the output contains expected elements
 	expectedElements := []string{
-		"FAILED MODELS",          // Header
-		"gpt-4o",                // Model name 1
-		"rate limited",          // Failure reason 1
-		"claude-3-5-sonnet",     // Model name 2
-		"invalid API key",       // Failure reason 2
-		"gemini-2.5-pro",        // Model name 3
-		"quota exceeded",        // Failure reason 3
+		"FAILED MODELS",     // Header
+		"gpt-4o",            // Model name 1
+		"rate limited",      // Failure reason 1
+		"claude-3-5-sonnet", // Model name 2
+		"invalid API key",   // Failure reason 2
+		"gemini-2.5-pro",    // Model name 3
+		"quota exceeded",    // Failure reason 3
 	}
 
 	for _, element := range expectedElements {
@@ -78,9 +78,9 @@ func TestShowFailedModels(t *testing.T) {
 
 	// Verify that each model line contains both the model name and reason
 	modelReasonPairs := map[string]string{
-		"gpt-4o":             "rate limited",
-		"claude-3-5-sonnet":  "invalid API key", 
-		"gemini-2.5-pro":     "quota exceeded",
+		"gpt-4o":            "rate limited",
+		"claude-3-5-sonnet": "invalid API key",
+		"gemini-2.5-pro":    "quota exceeded",
 	}
 
 	for modelName, expectedReason := range modelReasonPairs {
@@ -108,20 +108,20 @@ func TestShowFailedModelsEmpty(t *testing.T) {
 
 	// Create console writer
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 
 	// Call ShowFailedModels with empty slice
 	writer.ShowFailedModels([]FailedModel{})
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should be empty (no output for empty failed models list)
@@ -144,9 +144,9 @@ func TestShowFailedModelsQuietMode(t *testing.T) {
 
 	// Create console writer and enable quiet mode
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 	writer.SetQuiet(true)
 
@@ -154,11 +154,11 @@ func TestShowFailedModelsQuietMode(t *testing.T) {
 	writer.ShowFailedModels(failedModels)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should be empty (quiet mode suppresses output)
@@ -181,20 +181,20 @@ func TestShowFailedModelsSingleFailure(t *testing.T) {
 
 	// Create console writer
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 
 	// Call ShowFailedModels
 	writer.ShowFailedModels(failedModels)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Verify essential elements are present

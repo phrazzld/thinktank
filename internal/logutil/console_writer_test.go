@@ -2,7 +2,6 @@ package logutil
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -59,7 +58,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 850*time.Millisecond, nil)
+				cw.ModelCompleted(1, 3, "test-model", 850*time.Millisecond)
 			},
 			expected: "[1/3] test-model: ✓ completed (850ms)\n",
 		},
@@ -68,7 +67,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 1200*time.Millisecond, errors.New("API error"))
+				cw.ModelFailed(1, 3, "test-model", "API error")
 			},
 			expected: "[1/3] test-model: ✗ failed (API error)\n",
 		},
@@ -77,7 +76,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelStarted("test-model", 1)
+				cw.ModelStarted(1, 3, "test-model")
 			},
 			expected: "[1/3] test-model: processing...\n",
 		},
@@ -86,7 +85,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelRateLimited("test-model", 1, 2*time.Second)
+				cw.ModelRateLimited(1, 3, "test-model", 2*time.Second)
 			},
 			expected: "[1/3] test-model: rate limited, waiting 2.0s...\n",
 		},
@@ -120,7 +119,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: false,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 1200*time.Millisecond, nil)
+				cw.ModelCompleted(1, 3, "test-model", 1200*time.Millisecond)
 			},
 			expected: "Completed model 1/3: test-model (1.2s)\n",
 		},
@@ -129,7 +128,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: false,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 1200*time.Millisecond, errors.New("API error"))
+				cw.ModelFailed(1, 3, "test-model", "API error")
 			},
 			expected: "Failed model 1/3: test-model (API error)\n",
 		},
@@ -138,7 +137,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: false,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelStarted("test-model", 1)
+				cw.ModelStarted(1, 3, "test-model")
 			},
 			expected: "Processing model 1/3: test-model\n",
 		},
@@ -147,7 +146,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: false,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelRateLimited("test-model", 1, 2*time.Second)
+				cw.ModelRateLimited(1, 3, "test-model", 2*time.Second)
 			},
 			expected: "Rate limited for model 1/3: test-model (waiting 2.0s)\n",
 		},
@@ -181,7 +180,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			quiet: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelStarted("test-model", 1)
+				cw.ModelStarted(1, 3, "test-model")
 			},
 			expected: "",
 		},
@@ -197,7 +196,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 850*time.Millisecond, nil)
+				cw.ModelCompleted(1, 3, "test-model", 850*time.Millisecond)
 			},
 			notExpected: "✓ completed",
 		},
@@ -207,7 +206,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelStarted("test-model", 1)
+				cw.ModelStarted(1, 3, "test-model")
 			},
 			expected:    "🚀 Processing 3 models...\n",
 			notExpected: "processing...",
@@ -218,7 +217,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			isInteractive: true,
 			action: func(cw ConsoleWriter) {
 				cw.StartProcessing(3)
-				cw.ModelCompleted("test-model", 1, 1200*time.Millisecond, errors.New("API error"))
+				cw.ModelFailed(1, 3, "test-model", "API error")
 			},
 			expected: "✗ failed",
 		},
@@ -338,14 +337,14 @@ func TestConsoleWriter_ConcurrencySafety(t *testing.T) {
 			defer wg.Done()
 
 			modelName := "concurrent-model"
-			cw.ModelStarted(modelName, index+1)
+			cw.ModelStarted(index+1, numGoroutines, modelName)
 
 			time.Sleep(1 * time.Millisecond)
 
 			if index%3 == 0 {
-				cw.ModelCompleted(modelName, index+1, 100*time.Millisecond, errors.New("simulated error"))
+				cw.ModelFailed(index+1, numGoroutines, modelName, "simulated error")
 			} else {
-				cw.ModelCompleted(modelName, index+1, 100*time.Millisecond, nil)
+				cw.ModelCompleted(index+1, numGoroutines, modelName, 100*time.Millisecond)
 			}
 		}(i)
 	}
@@ -378,7 +377,7 @@ func TestConsoleWriter_SettersAndGetters(t *testing.T) {
 	cw.SetNoProgress(true)
 	output = captureOutput(func() {
 		cw.StartProcessing(1)
-		cw.ModelStarted("test", 1)
+		cw.ModelStarted(1, 1, "test")
 	})
 	if strings.Contains(output, "processing...") {
 		t.Errorf("Expected no progress output when noProgress=true, got: %q", output)
@@ -387,7 +386,7 @@ func TestConsoleWriter_SettersAndGetters(t *testing.T) {
 	cw.SetNoProgress(false)
 	output = captureOutput(func() {
 		cw.StartProcessing(1)
-		cw.ModelStarted("test", 1)
+		cw.ModelStarted(1, 1, "test")
 	})
 	if !strings.Contains(output, "processing...") {
 		t.Errorf("Expected progress output when noProgress=false, got: %q", output)
@@ -406,7 +405,7 @@ func TestConsoleWriter_NonInteractiveEnvironment(t *testing.T) {
 
 	output := captureOutput(func() {
 		cw.StartProcessing(1)
-		cw.ModelCompleted("test", 1, 500*time.Millisecond, nil)
+		cw.ModelCompleted(1, 1, "test", 500*time.Millisecond)
 		cw.SynthesisStarted()
 		cw.SynthesisCompleted("output/path")
 	})
@@ -744,9 +743,8 @@ func TestConsoleWriter_QuietModeWithNewMethods(t *testing.T) {
 	// Test that ModelCompleted errors are shown in quiet mode
 	t.Run("ModelCompleted error shows in quiet mode", func(t *testing.T) {
 		cw.StartProcessing(1)
-		testErr := fmt.Errorf("model failed")
 		output := captureOutput(func() {
-			cw.ModelCompleted("test-model", 1, time.Millisecond*100, testErr)
+			cw.ModelFailed(1, 1, "test-model", "model failed")
 		})
 		if output == "" {
 			t.Error("ModelCompleted error should produce output in quiet mode (errors are essential)")
@@ -760,7 +758,7 @@ func TestConsoleWriter_QuietModeWithNewMethods(t *testing.T) {
 	t.Run("ModelCompleted success suppressed in quiet mode", func(t *testing.T) {
 		cw.StartProcessing(1)
 		output := captureOutput(func() {
-			cw.ModelCompleted("test-model", 1, time.Millisecond*100, nil)
+			cw.ModelCompleted(1, 1, "test-model", time.Millisecond*100)
 		})
 		if output != "" {
 			t.Errorf("ModelCompleted success should not produce output in quiet mode, got: %q", output)

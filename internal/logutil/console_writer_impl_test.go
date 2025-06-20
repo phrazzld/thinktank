@@ -135,13 +135,12 @@ func TestConsoleWriter_ProgressReporting(t *testing.T) {
 
 	// Test model lifecycle methods
 	writer.ModelQueued("test-model", 1)
-	writer.ModelStarted("test-model", 1)
-	writer.ModelCompleted("test-model", 1, time.Second, nil)
-	writer.ModelRateLimited("test-model", 2, time.Second*2)
+	writer.ModelStarted(1, 3, "test-model")
+	writer.ModelCompleted(1, 3, "test-model", time.Second)
+	writer.ModelRateLimited(2, 3, "test-model", time.Second*2)
 
-	// Test with error
-	testErr := &os.PathError{Op: "test", Path: "test", Err: os.ErrNotExist}
-	writer.ModelCompleted("failed-model", 2, time.Millisecond*500, testErr)
+	// Test with error (use ModelFailed for error scenarios)
+	writer.ModelFailed(2, 3, "failed-model", "test error")
 
 	// Test synthesis methods
 	writer.SynthesisStarted()
@@ -162,12 +161,12 @@ func TestConsoleWriter_ThreadSafety(t *testing.T) {
 
 			modelName := "model-" + string(rune('A'+index))
 			writer.ModelQueued(modelName, index+1)
-			writer.ModelStarted(modelName, index+1)
+			writer.ModelStarted(index+1, 10, modelName)
 
 			// Simulate some processing time
 			time.Sleep(time.Millisecond * 10)
 
-			writer.ModelCompleted(modelName, index+1, time.Millisecond*10, nil)
+			writer.ModelCompleted(index+1, 10, modelName, time.Millisecond*10)
 		}(i)
 	}
 
@@ -191,8 +190,8 @@ func TestConsoleWriter_QuietMode(t *testing.T) {
 
 	// These calls should be suppressed in quiet mode
 	writer.StartProcessing(2)
-	writer.ModelStarted("test-model", 1)
-	writer.ModelCompleted("test-model", 1, time.Second, nil)
+	writer.ModelStarted(1, 2, "test-model")
+	writer.ModelCompleted(1, 2, "test-model", time.Second)
 	writer.SynthesisStarted()
 	writer.SynthesisCompleted("/output")
 
@@ -210,8 +209,8 @@ func TestConsoleWriter_NoProgressMode(t *testing.T) {
 	// These calls should show reduced output in no-progress mode
 	writer.StartProcessing(2)
 	writer.ModelQueued("test-model", 1)
-	writer.ModelStarted("test-model", 1)
-	writer.ModelCompleted("test-model", 1, time.Second, nil)
+	writer.ModelStarted(1, 2, "test-model")
+	writer.ModelCompleted(1, 2, "test-model", time.Second)
 
 	// Synthesis methods should still work
 	writer.SynthesisStarted()
@@ -242,12 +241,12 @@ func TestConsoleWriter_OutputModes(t *testing.T) {
 			// Test full workflow in both modes
 			writer.StartProcessing(2)
 			writer.ModelQueued("model1", 1)
-			writer.ModelStarted("model1", 1)
-			writer.ModelCompleted("model1", 1, time.Millisecond*800, nil)
+			writer.ModelStarted(1, 2, "model1")
+			writer.ModelCompleted(1, 2, "model1", time.Millisecond*800)
 			writer.ModelQueued("model2", 2)
-			writer.ModelRateLimited("model2", 2, time.Second*2)
-			writer.ModelStarted("model2", 2)
-			writer.ModelCompleted("model2", 2, time.Millisecond*1200, nil)
+			writer.ModelRateLimited(2, 2, "model2", time.Second*2)
+			writer.ModelStarted(2, 2, "model2")
+			writer.ModelCompleted(2, 2, "model2", time.Millisecond*1200)
 			writer.SynthesisStarted()
 			writer.SynthesisCompleted("/output/path")
 		})

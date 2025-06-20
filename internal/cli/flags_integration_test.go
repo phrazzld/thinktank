@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -144,10 +143,10 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 
 	// Add small delays between operations to ensure proper ordering in CI
 	time.Sleep(5 * time.Millisecond)
-	consoleWriter.ModelCompleted("model-1", 1, 800*time.Millisecond, nil)
+	consoleWriter.ModelCompleted(1, 2, "model-1", 800*time.Millisecond)
 
 	time.Sleep(5 * time.Millisecond)
-	consoleWriter.ModelCompleted("model-2", 2, 1200*time.Millisecond, errors.New("simulated error"))
+	consoleWriter.ModelFailed(2, 2, "model-2", "simulated error")
 
 	time.Sleep(5 * time.Millisecond)
 	logger.Error("An error occurred", "err", "simulated error")

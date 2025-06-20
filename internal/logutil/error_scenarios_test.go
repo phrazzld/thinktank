@@ -12,10 +12,10 @@ import (
 // display appropriate contextual messaging and actionable guidance
 func TestCompleteErrorScenarioHandling(t *testing.T) {
 	tests := []struct {
-		name              string
-		summaryData       SummaryData
-		expectedMessages  []string
-		notExpectedMsg    []string
+		name             string
+		summaryData      SummaryData
+		expectedMessages []string
+		notExpectedMsg   []string
 	}{
 		{
 			name: "All Models Failed",
@@ -142,20 +142,20 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 
 			// Create console writer with test options
 			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-				IsTerminalFunc: func() bool { return false }, // Non-interactive for cleaner output
+				IsTerminalFunc:  func() bool { return false }, // Non-interactive for cleaner output
 				GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-				GetEnvFunc: func(key string) string { return "" },
+				GetEnvFunc:      func(key string) string { return "" },
 			})
 
 			// Call ShowSummarySection
 			writer.ShowSummarySection(tt.summaryData)
 
 			// Restore stdout and read captured output
-			w.Close()
+			_ = w.Close()
 			os.Stdout = old
-			
+
 			buf := new(bytes.Buffer)
-			buf.ReadFrom(r)
+			_, _ = buf.ReadFrom(r)
 			output := buf.String()
 
 			// Verify expected messages are present
@@ -209,20 +209,20 @@ func TestSuccessRateCalculation(t *testing.T) {
 
 			// Create console writer
 			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-				IsTerminalFunc: func() bool { return false },
+				IsTerminalFunc:  func() bool { return false },
 				GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-				GetEnvFunc: func(key string) string { return "" },
+				GetEnvFunc:      func(key string) string { return "" },
 			})
 
 			// Call ShowSummarySection
 			writer.ShowSummarySection(summaryData)
 
 			// Restore stdout and read captured output
-			w.Close()
+			_ = w.Close()
 			os.Stdout = old
-			
+
 			buf := new(bytes.Buffer)
-			buf.ReadFrom(r)
+			_, _ = buf.ReadFrom(r)
 			output := buf.String()
 
 			// Verify success rate calculation
@@ -252,9 +252,9 @@ func TestScenarioGuidanceQuietMode(t *testing.T) {
 
 	// Create console writer and enable quiet mode
 	writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return false },
+		IsTerminalFunc:  func() bool { return false },
 		GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-		GetEnvFunc: func(key string) string { return "" },
+		GetEnvFunc:      func(key string) string { return "" },
 	})
 	writer.SetQuiet(true)
 
@@ -262,11 +262,11 @@ func TestScenarioGuidanceQuietMode(t *testing.T) {
 	writer.ShowSummarySection(summaryData)
 
 	// Restore stdout and read captured output
-	w.Close()
+	_ = w.Close()
 	os.Stdout = old
-	
+
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(r)
+	_, _ = buf.ReadFrom(r)
 	output := buf.String()
 
 	// Should be empty (quiet mode suppresses all summary output)

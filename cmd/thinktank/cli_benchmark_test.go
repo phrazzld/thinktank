@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"os"
 	"testing"
@@ -199,11 +198,11 @@ func runBenchmark(b *testing.B, isInteractive, noProgress bool) {
 	for i := 0; i < b.N; i++ {
 		cw.StartProcessing(10)
 		for j := 1; j <= 10; j++ {
-			cw.ModelStarted("model", j)
+			cw.ModelStarted(j, 10, "model")
 			if j%3 == 0 {
-				cw.ModelCompleted("model", j, 500*time.Millisecond, errors.New("simulated error"))
+				cw.ModelFailed(j, 10, "model", "simulated error")
 			} else {
-				cw.ModelCompleted("model", j, 1500*time.Millisecond, nil)
+				cw.ModelCompleted(j, 10, "model", 1500*time.Millisecond)
 			}
 		}
 		cw.SynthesisStarted()
@@ -231,7 +230,7 @@ func BenchmarkConsoleWriterConcurrent(b *testing.B) {
 	})
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			cw.ModelCompleted("concurrent-model", 1, 1*time.Second, nil)
+			cw.ModelCompleted(1, 1, "concurrent-model", 1*time.Second)
 		}
 	})
 }
@@ -295,15 +294,14 @@ func BenchmarkConsoleWriterMethods(b *testing.B) {
 	b.Run("ModelCompleted_Success", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			cw.ModelCompleted("test-model", 1, 500*time.Millisecond, nil)
+			cw.ModelCompleted(1, 1, "test-model", 500*time.Millisecond)
 		}
 	})
 
-	b.Run("ModelCompleted_Error", func(b *testing.B) {
-		testErr := errors.New("benchmark error")
+	b.Run("ModelFailed_Error", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			cw.ModelCompleted("test-model", 1, 500*time.Millisecond, testErr)
+			cw.ModelFailed(1, 1, "test-model", "benchmark error")
 		}
 	})
 

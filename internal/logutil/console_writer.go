@@ -760,11 +760,14 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 
 	// Show synthesis status if not skipped
 	if summary.SynthesisStatus != "skipped" {
-		statusText := summary.SynthesisStatus
-		if summary.SynthesisStatus == "completed" {
+		var statusText string
+		switch summary.SynthesisStatus {
+		case "completed":
 			statusText = c.colors.ColorSuccess("✓ completed")
-		} else if summary.SynthesisStatus == "failed" {
+		case "failed":
 			statusText = c.colors.ColorError("✗ failed")
+		default:
+			statusText = summary.SynthesisStatus
 		}
 		fmt.Printf("%s Synthesis: %s\n",
 			c.colors.ColorSymbol("●"),
@@ -787,43 +790,43 @@ func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
 	if summary.SuccessfulModels == 0 && summary.FailedModels > 0 {
 		// All models failed scenario
 		fmt.Println()
-		fmt.Printf("%s %s\n", 
-			c.colors.ColorSymbol("⚠"), 
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol("⚠"),
 			c.colors.ColorWarning("All models failed to process"))
-		fmt.Printf("  %s Check your API keys and network connectivity\n", 
+		fmt.Printf("  %s Check your API keys and network connectivity\n",
 			c.colors.ColorSymbol("•"))
-		fmt.Printf("  %s Review error details above for specific failure reasons\n", 
+		fmt.Printf("  %s Review error details above for specific failure reasons\n",
 			c.colors.ColorSymbol("•"))
-		fmt.Printf("  %s Verify model names and rate limits with providers\n", 
+		fmt.Printf("  %s Verify model names and rate limits with providers\n",
 			c.colors.ColorSymbol("•"))
 	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
 		// Partial success scenario
 		fmt.Println()
-		fmt.Printf("%s %s\n", 
-			c.colors.ColorSymbol("⚠"), 
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol("⚠"),
 			c.colors.ColorWarning("Partial success - some models failed"))
-		
+
 		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
-		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n", 
+		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n",
 			c.colors.ColorSymbol("•"),
 			successRate,
 			summary.SuccessfulModels,
 			summary.ModelsProcessed)
-		fmt.Printf("  %s Check failed model details above for specific issues\n", 
+		fmt.Printf("  %s Check failed model details above for specific issues\n",
 			c.colors.ColorSymbol("•"))
-		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n", 
+		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n",
 			c.colors.ColorSymbol("•"))
 	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
 		// Complete success scenario
 		fmt.Println()
-		fmt.Printf("%s %s\n", 
-			c.colors.ColorSymbol("✓"), 
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol("✓"),
 			c.colors.ColorSuccess("All models processed successfully"))
 		if summary.SynthesisStatus == "completed" {
-			fmt.Printf("  %s Synthesis completed - check the combined output above\n", 
+			fmt.Printf("  %s Synthesis completed - check the combined output above\n",
 				c.colors.ColorSymbol("•"))
 		} else if summary.ModelsProcessed > 1 {
-			fmt.Printf("  %s Individual model outputs saved - see file list above\n", 
+			fmt.Printf("  %s Individual model outputs saved - see file list above\n",
 				c.colors.ColorSymbol("•"))
 		}
 	}
@@ -852,11 +855,11 @@ func (c *consoleWriter) ShowOutputFiles(files []OutputFile) {
 	for _, file := range files {
 		// Format file size using human-readable format
 		formattedSize := FormatFileSize(file.Size)
-		
+
 		// Apply colors to filename and size
 		coloredFileName := c.colors.ColorFilePath(file.Name)
 		coloredSize := c.colors.ColorFileSize(formattedSize)
-		
+
 		// Format with proper right alignment
 		alignedOutput := layout.FormatAlignedText(coloredFileName, coloredSize)
 		fmt.Printf("  %s\n", alignedOutput)
@@ -887,7 +890,7 @@ func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
 		// Apply colors to model name and failure reason
 		coloredModelName := c.colors.ColorModelName(model.Name)
 		coloredReason := c.colors.ColorError(model.Reason)
-		
+
 		// Format with proper right alignment
 		alignedOutput := layout.FormatAlignedText(coloredModelName, coloredReason)
 		fmt.Printf("  %s\n", alignedOutput)
