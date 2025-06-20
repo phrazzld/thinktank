@@ -61,29 +61,35 @@ func CalculateLayout(terminalWidth int) LayoutConfig {
 // calculateNarrowLayout handles terminals with limited width (< 50 chars).
 // Prioritizes essential information with minimal padding.
 func calculateNarrowLayout(width int) LayoutConfig {
+	// Use a sanitized width for calculations but preserve original for TerminalWidth
+	calcWidth := width
+	if calcWidth < 1 {
+		calcWidth = 1
+	}
+
 	// For very narrow terminals, use minimal viable layout
 	minPadding := 1
-	if width < 20 {
+	if calcWidth < 20 {
 		// Extremely narrow - just try to fit something useful
 		return LayoutConfig{
-			TerminalWidth:  width,
-			ModelNameWidth: width/2 - 1,
-			StatusWidth:    width/2 - 1,
-			FileNameWidth:  width/2 - 1,
+			TerminalWidth:  width, // Preserve original width
+			ModelNameWidth: max(1, calcWidth/2-1),
+			StatusWidth:    max(1, calcWidth/2-1),
+			FileNameWidth:  max(1, calcWidth/2-1),
 			FileSizeWidth:  6, // Minimum for "1.2K" format
 			MinPadding:     1,
 		}
 	}
 
 	// Narrow but workable
-	modelNameWidth := (width * 6) / 10 // 60% for model name
-	statusWidth := width - modelNameWidth - minPadding
+	modelNameWidth := (calcWidth * 6) / 10 // 60% for model name
+	statusWidth := calcWidth - modelNameWidth - minPadding
 
 	return LayoutConfig{
-		TerminalWidth:  width,
-		ModelNameWidth: modelNameWidth,
-		StatusWidth:    statusWidth,
-		FileNameWidth:  modelNameWidth, // Reuse for file listings
+		TerminalWidth:  width, // Preserve original width
+		ModelNameWidth: max(1, modelNameWidth),
+		StatusWidth:    max(1, statusWidth),
+		FileNameWidth:  max(1, modelNameWidth), // Reuse for file listings
 		FileSizeWidth:  8,
 		MinPadding:     minPadding,
 	}
@@ -242,4 +248,12 @@ func (lc *LayoutConfig) IsNarrowTerminal() bool {
 // Used to enable enhanced formatting for spacious environments.
 func (lc *LayoutConfig) IsWideTerminal() bool {
 	return lc.TerminalWidth > WideLayoutWidth
+}
+
+// max returns the larger of two integers
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

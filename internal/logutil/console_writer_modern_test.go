@@ -84,10 +84,26 @@ func TestModernConsoleWriter_UnicodeAdaptation(t *testing.T) {
 			}
 
 			// Create console writer with test environment
+			// For Unicode support test, we need to ensure CI variables don't interfere
+			getEnvFunc := os.Getenv
+			if tt.forceUnicodeSupport {
+				getEnvFunc = func(key string) string {
+					// Filter out CI environment variables to allow interactive mode
+					ciVars := []string{"CI", "GITHUB_ACTIONS", "CONTINUOUS_INTEGRATION",
+						"GITLAB_CI", "TRAVIS", "CIRCLECI", "JENKINS_URL", "BUILDKITE"}
+					for _, ciVar := range ciVars {
+						if key == ciVar {
+							return "" // Pretend CI variables don't exist
+						}
+					}
+					return os.Getenv(key) // Return actual value for other vars like LANG
+				}
+			}
+
 			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 				IsTerminalFunc:  func() bool { return tt.isInteractive },
 				GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
-				GetEnvFunc:      os.Getenv,
+				GetEnvFunc:      getEnvFunc,
 			})
 
 			// Test symbol provider selection
