@@ -820,10 +820,25 @@ func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
 		return
 	}
 
-	// Stub implementation - will be enhanced in later tickets with proper alignment
-	fmt.Printf("FAILED MODELS\n")
+	layout := c.getLayoutLocked()
+
+	// Display UPPERCASE header with separator line
+	headerText := "FAILED MODELS"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display failed models with aligned reasons
 	for _, model := range failed {
-		fmt.Printf("  %s: %s\n", model.Name, model.Reason)
+		// Apply colors to model name and failure reason
+		coloredModelName := c.colors.ColorModelName(model.Name)
+		coloredReason := c.colors.ColorError(model.Reason)
+		
+		// Format with proper right alignment
+		alignedOutput := layout.FormatAlignedText(coloredModelName, coloredReason)
+		fmt.Printf("  %s\n", alignedOutput)
 	}
 }
 
