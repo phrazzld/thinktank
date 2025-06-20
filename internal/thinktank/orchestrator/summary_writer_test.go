@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/logutil"
 )
@@ -28,7 +29,37 @@ func (l *SimpleTestLogger) InfoContext(ctx context.Context, format string, args 
 func (l *SimpleTestLogger) WarnContext(ctx context.Context, format string, args ...interface{})  {}
 func (l *SimpleTestLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {}
 func (l *SimpleTestLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
-func (l *SimpleTestLogger) WithContext(ctx context.Context) logutil.LoggerInterface              { return l }
+
+// MockConsoleWriter is a simplified test console writer for unit tests
+type MockConsoleWriter struct{}
+
+func (m *MockConsoleWriter) StartProcessing(modelCount int)                             {}
+func (m *MockConsoleWriter) ModelQueued(modelName string, index int)                    {}
+func (m *MockConsoleWriter) ModelStarted(modelIndex, totalModels int, modelName string) {}
+func (m *MockConsoleWriter) ModelCompleted(modelIndex, totalModels int, modelName string, duration time.Duration) {
+}
+func (m *MockConsoleWriter) ModelFailed(modelIndex, totalModels int, modelName string, reason string) {
+}
+func (m *MockConsoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName string, retryAfter time.Duration) {
+}
+func (m *MockConsoleWriter) ShowProcessingLine(modelName string)                    {}
+func (m *MockConsoleWriter) UpdateProcessingLine(modelName string, status string)   {}
+func (m *MockConsoleWriter) ShowFileOperations(message string)                      {}
+func (m *MockConsoleWriter) ShowSummarySection(summary logutil.SummaryData)         {}
+func (m *MockConsoleWriter) ShowOutputFiles(files []logutil.OutputFile)             {}
+func (m *MockConsoleWriter) ShowFailedModels(failed []logutil.FailedModel)          {}
+func (m *MockConsoleWriter) SynthesisStarted()                                      {}
+func (m *MockConsoleWriter) SynthesisCompleted(outputPath string)                   {}
+func (m *MockConsoleWriter) StatusMessage(message string)                           {}
+func (m *MockConsoleWriter) SetQuiet(quiet bool)                                    {}
+func (m *MockConsoleWriter) SetNoProgress(noProgress bool)                          {}
+func (m *MockConsoleWriter) IsInteractive() bool                                    { return false }
+func (m *MockConsoleWriter) GetTerminalWidth() int                                  { return 80 }
+func (m *MockConsoleWriter) FormatMessage(message string) string                    { return message }
+func (m *MockConsoleWriter) ErrorMessage(message string)                            {}
+func (m *MockConsoleWriter) WarningMessage(message string)                          {}
+func (m *MockConsoleWriter) SuccessMessage(message string)                          {}
+func (l *SimpleTestLogger) WithContext(ctx context.Context) logutil.LoggerInterface { return l }
 
 // stripAnsiColors removes ANSI color codes from a string
 func stripAnsiColors(s string) string {
@@ -78,7 +109,8 @@ func TestStripAnsiColors(t *testing.T) {
 
 func TestGenerateSummary(t *testing.T) {
 	logger := NewSimpleTestLogger()
-	summaryWriter := NewSummaryWriter(logger)
+	consoleWriter := &MockConsoleWriter{}
+	summaryWriter := NewSummaryWriter(logger, consoleWriter)
 
 	tests := []struct {
 		name           string
@@ -176,7 +208,8 @@ func TestGenerateSummary(t *testing.T) {
 
 func TestDisplaySummary(t *testing.T) {
 	logger := NewSimpleTestLogger()
-	summaryWriter := NewSummaryWriter(logger)
+	consoleWriter := &MockConsoleWriter{}
+	summaryWriter := NewSummaryWriter(logger, consoleWriter)
 
 	summary := &ResultsSummary{
 		TotalModels:      3,

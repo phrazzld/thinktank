@@ -57,7 +57,7 @@ func NewOrchestrator(
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
 
 	// Create the summary writer
-	summaryWriter := NewSummaryWriter(logger)
+	summaryWriter := NewSummaryWriter(logger, consoleWriter)
 
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService

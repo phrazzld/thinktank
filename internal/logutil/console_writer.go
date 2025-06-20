@@ -738,14 +738,43 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 		return
 	}
 
-	// Stub implementation - will be enhanced in later tickets with proper formatting
-	fmt.Printf("SUMMARY\n")
-	fmt.Printf("Models processed: %d\n", summary.ModelsProcessed)
-	fmt.Printf("Successful: %d, Failed: %d\n", summary.SuccessfulModels, summary.FailedModels)
+	layout := c.getLayoutLocked()
+
+	// Display UPPERCASE header with separator line
+	headerText := "SUMMARY"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display bullet point statistics
+	fmt.Printf("%s %d models processed\n",
+		c.colors.ColorSymbol("●"),
+		summary.ModelsProcessed)
+
+	fmt.Printf("%s %d successful, %d failed\n",
+		c.colors.ColorSymbol("●"),
+		summary.SuccessfulModels,
+		summary.FailedModels)
+
+	// Show synthesis status if not skipped
 	if summary.SynthesisStatus != "skipped" {
-		fmt.Printf("Synthesis: %s\n", summary.SynthesisStatus)
+		statusText := summary.SynthesisStatus
+		if summary.SynthesisStatus == "completed" {
+			statusText = c.colors.ColorSuccess("✓ completed")
+		} else if summary.SynthesisStatus == "failed" {
+			statusText = c.colors.ColorError("✗ failed")
+		}
+		fmt.Printf("%s Synthesis: %s\n",
+			c.colors.ColorSymbol("●"),
+			statusText)
 	}
-	fmt.Printf("Output directory: %s\n", summary.OutputDirectory)
+
+	// Show output directory
+	fmt.Printf("%s Output directory: %s\n",
+		c.colors.ColorSymbol("●"),
+		c.colors.ColorFilePath(summary.OutputDirectory))
 }
 
 // ShowOutputFiles displays the output files section with human-readable sizes
