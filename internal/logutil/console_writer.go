@@ -209,15 +209,16 @@ type ConsoleWriter interface {
 // It provides clean, human-readable console output that adapts to different
 // execution environments (interactive terminals vs CI/CD pipelines).
 type consoleWriter struct {
-	mu            sync.Mutex   // Protects concurrent access to all fields
-	isInteractive bool         // Whether running in interactive terminal
-	quiet         bool         // Whether to suppress non-essential output
-	noProgress    bool         // Whether to suppress detailed progress indicators
-	modelCount    int          // Total number of models to process
-	modelIndex    int          // Current model index (for progress tracking)
-	terminalWidth int          // Cached terminal width, 0 means not detected yet
-	layout        LayoutConfig // Cached layout configuration
-	colors        *ColorScheme // Color scheme for semantic coloring
+	mu            sync.Mutex      // Protects concurrent access to all fields
+	isInteractive bool            // Whether running in interactive terminal
+	quiet         bool            // Whether to suppress non-essential output
+	noProgress    bool            // Whether to suppress detailed progress indicators
+	modelCount    int             // Total number of models to process
+	modelIndex    int             // Current model index (for progress tracking)
+	terminalWidth int             // Cached terminal width, 0 means not detected yet
+	layout        LayoutConfig    // Cached layout configuration
+	colors        *ColorScheme    // Color scheme for semantic coloring
+	symbols       *SymbolProvider // Unicode/ASCII symbol provider with fallback detection
 
 	// Dependency injection for testing
 	isTerminalFunc  func() bool
@@ -237,6 +238,7 @@ func NewConsoleWriter() ConsoleWriter {
 		getTermSizeFunc: defaultGetTermSize,
 		isInteractive:   isInteractive,
 		colors:          NewColorScheme(isInteractive),
+		symbols:         NewSymbolProvider(isInteractive),
 	}
 }
 
@@ -265,6 +267,7 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		getTermSizeFunc: getTermSizeFunc,
 		isInteractive:   isInteractive,
 		colors:          NewColorScheme(isInteractive),
+		symbols:         NewSymbolProvider(isInteractive),
 	}
 }
 
@@ -373,7 +376,7 @@ func (c *consoleWriter) ModelCompleted(modelIndex, totalModels int, modelName st
 
 	durationStr := c.colors.ColorDuration(formatDuration(duration))
 	coloredModelName := c.colors.ColorModelName(modelName)
-	successSymbol := c.colors.ColorSuccess("✓")
+	successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
 
 	if c.isInteractive {
 		fmt.Printf("[%d/%d] %s: %s completed (%s)\n", modelIndex, totalModels, coloredModelName, successSymbol, durationStr)
@@ -389,7 +392,7 @@ func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName strin
 
 	// Errors are essential - always show them even in quiet mode
 	coloredModelName := c.colors.ColorModelName(modelName)
-	errorSymbol := c.colors.ColorError("✗")
+	errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
 	coloredReason := c.colors.ColorError(reason)
 
 	if c.isInteractive {
@@ -410,7 +413,7 @@ func (c *consoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName 
 
 	retryStr := c.colors.ColorDuration(formatDuration(retryAfter))
 	coloredModelName := c.colors.ColorModelName(modelName)
-	warningSymbol := c.colors.ColorWarning("⚠")
+	warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
 
 	if c.isInteractive {
 		fmt.Printf("[%d/%d] %s: %s rate limited (retry in %s)\n", modelIndex, totalModels, coloredModelName, warningSymbol, retryStr)
@@ -447,7 +450,7 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 	coloredOutputPath := c.colors.ColorFilePath(outputPath)
 
 	if c.isInteractive {
-		successSymbol := c.colors.ColorSuccess("✨")
+		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Sparkles)
 		fmt.Printf("%s Done! Output saved to: %s\n", successSymbol, coloredOutputPath)
 	} else {
 		fmt.Printf("Synthesis complete. Output: %s\n", coloredOutputPath)
@@ -622,7 +625,7 @@ func (c *consoleWriter) ErrorMessage(message string) {
 	coloredMessage := c.colors.ColorError(formattedMessage)
 
 	if c.isInteractive {
-		errorSymbol := c.colors.ColorError("✗")
+		errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
 		fmt.Printf("%s %s\n", errorSymbol, coloredMessage)
 	} else {
 		fmt.Printf("ERROR: %s\n", coloredMessage)
@@ -639,7 +642,7 @@ func (c *consoleWriter) WarningMessage(message string) {
 	coloredMessage := c.colors.ColorWarning(formattedMessage)
 
 	if c.isInteractive {
-		warningSymbol := c.colors.ColorWarning("⚠")
+		warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
 		fmt.Printf("%s %s\n", warningSymbol, coloredMessage)
 	} else {
 		fmt.Printf("WARNING: %s\n", coloredMessage)
@@ -659,7 +662,7 @@ func (c *consoleWriter) SuccessMessage(message string) {
 	coloredMessage := c.colors.ColorSuccess(formattedMessage)
 
 	if c.isInteractive {
-		successSymbol := c.colors.ColorSuccess("✓")
+		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
 		fmt.Printf("%s %s\n", successSymbol, coloredMessage)
 	} else {
 		fmt.Printf("SUCCESS: %s\n", coloredMessage)
@@ -769,11 +772,11 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 
 	// Display bullet point statistics
 	fmt.Printf("%s %d models processed\n",
-		c.colors.ColorSymbol("●"),
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		summary.ModelsProcessed)
 
 	fmt.Printf("%s %d successful, %d failed\n",
-		c.colors.ColorSymbol("●"),
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		summary.SuccessfulModels,
 		summary.FailedModels)
 
@@ -782,20 +785,20 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 		var statusText string
 		switch summary.SynthesisStatus {
 		case "completed":
-			statusText = c.colors.ColorSuccess("✓ completed")
+			statusText = c.colors.ColorSuccess(c.symbols.GetSymbols().Success + " completed")
 		case "failed":
-			statusText = c.colors.ColorError("✗ failed")
+			statusText = c.colors.ColorError(c.symbols.GetSymbols().Error + " failed")
 		default:
 			statusText = summary.SynthesisStatus
 		}
 		fmt.Printf("%s Synthesis: %s\n",
-			c.colors.ColorSymbol("●"),
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 			statusText)
 	}
 
 	// Show output directory
 	fmt.Printf("%s Output directory: %s\n",
-		c.colors.ColorSymbol("●"),
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		c.colors.ColorFilePath(summary.OutputDirectory))
 
 	// Add contextual messaging and guidance based on scenarios
@@ -810,43 +813,43 @@ func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
 		// All models failed scenario
 		fmt.Println()
 		fmt.Printf("%s %s\n",
-			c.colors.ColorSymbol("⚠"),
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
 			c.colors.ColorWarning("All models failed to process"))
 		fmt.Printf("  %s Check your API keys and network connectivity\n",
-			c.colors.ColorSymbol("•"))
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		fmt.Printf("  %s Review error details above for specific failure reasons\n",
-			c.colors.ColorSymbol("•"))
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		fmt.Printf("  %s Verify model names and rate limits with providers\n",
-			c.colors.ColorSymbol("•"))
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
 		// Partial success scenario
 		fmt.Println()
 		fmt.Printf("%s %s\n",
-			c.colors.ColorSymbol("⚠"),
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
 			c.colors.ColorWarning("Partial success - some models failed"))
 
 		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
 		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n",
-			c.colors.ColorSymbol("•"),
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 			successRate,
 			summary.SuccessfulModels,
 			summary.ModelsProcessed)
 		fmt.Printf("  %s Check failed model details above for specific issues\n",
-			c.colors.ColorSymbol("•"))
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n",
-			c.colors.ColorSymbol("•"))
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
 		// Complete success scenario
 		fmt.Println()
 		fmt.Printf("%s %s\n",
-			c.colors.ColorSymbol("✓"),
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Success),
 			c.colors.ColorSuccess("All models processed successfully"))
 		if summary.SynthesisStatus == "completed" {
 			fmt.Printf("  %s Synthesis completed - check the combined output above\n",
-				c.colors.ColorSymbol("•"))
+				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		} else if summary.ModelsProcessed > 1 {
 			fmt.Printf("  %s Individual model outputs saved - see file list above\n",
-				c.colors.ColorSymbol("•"))
+				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		}
 	}
 }

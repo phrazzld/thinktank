@@ -2,6 +2,7 @@ package logutil
 
 import (
 	"os"
+	"strings"
 
 	"golang.org/x/term"
 )
@@ -185,4 +186,97 @@ func defaultIsTerminalForColors() bool {
 // getEnvForColors gets environment variables using os.Getenv
 func getEnvForColors(key string) string {
 	return os.Getenv(key)
+}
+
+// SymbolSet defines the symbols used for different states and UI elements.
+// Provides both Unicode and ASCII alternatives for maximum compatibility.
+type SymbolSet struct {
+	Success    string // ✓ or [OK]
+	Error      string // ✗ or [X]
+	Warning    string // ⚠ or [!]
+	Bullet     string // ● or *
+	Sparkles   string // ✨ or **
+	Processing string // ... or ...
+}
+
+// UnicodeSymbols provides modern Unicode symbols for interactive terminals
+var UnicodeSymbols = SymbolSet{
+	Success:    "✓",
+	Error:      "✗",
+	Warning:    "⚠",
+	Bullet:     "●",
+	Sparkles:   "✨",
+	Processing: "...",
+}
+
+// ASCIISymbols provides ASCII alternatives for limited terminals
+var ASCIISymbols = SymbolSet{
+	Success:    "[OK]",
+	Error:      "[X]",
+	Warning:    "[!]",
+	Bullet:     "*",
+	Sparkles:   "**",
+	Processing: "...",
+}
+
+// SymbolProvider handles Unicode fallback detection and symbol selection
+type SymbolProvider struct {
+	symbols SymbolSet
+}
+
+// NewSymbolProvider creates a symbol provider with Unicode detection
+func NewSymbolProvider(isInteractive bool) *SymbolProvider {
+	// In non-interactive environments, always use ASCII for better compatibility
+	if !isInteractive {
+		return &SymbolProvider{symbols: ASCIISymbols}
+	}
+
+	// For interactive environments, detect Unicode support
+	if supportsUnicode() {
+		return &SymbolProvider{symbols: UnicodeSymbols}
+	}
+
+	return &SymbolProvider{symbols: ASCIISymbols}
+}
+
+// GetSymbols returns the current symbol set
+func (sp *SymbolProvider) GetSymbols() SymbolSet {
+	return sp.symbols
+}
+
+// supportsUnicode detects if the current terminal supports Unicode properly.
+// This is a heuristic approach that checks common indicators.
+func supportsUnicode() bool {
+	// Check locale environment variables for UTF-8 support
+	locale := os.Getenv("LC_ALL")
+	if locale == "" {
+		locale = os.Getenv("LC_CTYPE")
+	}
+	if locale == "" {
+		locale = os.Getenv("LANG")
+	}
+
+	// If locale contains UTF-8, Unicode is likely supported
+	if strings.Contains(strings.ToUpper(locale), "UTF-8") || strings.Contains(strings.ToUpper(locale), "UTF8") {
+		return true
+	}
+
+	// Check terminal type indicators
+	term := os.Getenv("TERM")
+
+	// Modern terminals typically support Unicode
+	modernTerms := []string{"xterm-256color", "screen-256color", "tmux-256color", "alacritty", "kitty"}
+	for _, modernTerm := range modernTerms {
+		if strings.Contains(term, modernTerm) {
+			return true
+		}
+	}
+
+	// Check for Windows Terminal, VS Code terminal, etc.
+	if os.Getenv("WT_SESSION") != "" || os.Getenv("VSCODE_INJECTION") != "" {
+		return true
+	}
+
+	// Conservative fallback: if we can't detect Unicode support, use ASCII
+	return false
 }
