@@ -66,10 +66,10 @@ func NewColorScheme(interactive bool) *ColorScheme {
 		Error:         ansiRed,
 		Duration:      ansiGray,
 		FileSize:      ansiGray,
-		FilePath:      ansiDefault,
+		FilePath:      ansiGray, // Changed to gray for muted appearance
 		SectionHeader: ansiBoldWhite,
 		Separator:     ansiGray,
-		Symbol:        ansiDefault,
+		Symbol:        ansiBlue, // Changed to blue for bullet points
 		Reset:         ansiReset,
 	}
 }

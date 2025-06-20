@@ -219,7 +219,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 
 	// Notify user that individual outputs are complete
-	o.consoleWriter.ShowFileOperations(fmt.Sprintf("Saved %d individual outputs to: %s", savedCount, o.config.OutputDir))
+	o.consoleWriter.ShowFileOperations(fmt.Sprintf("● Outputs saved to: %s", o.config.OutputDir))
 
 	return filePaths, nil
 }
@@ -338,6 +338,7 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
 	// Start progress tracking
+	fmt.Println() // Extra space before processing starts
 	o.consoleWriter.StartProcessing(len(o.config.ModelNames))
 
 	// Launch a goroutine for each model, passing the index for progress tracking

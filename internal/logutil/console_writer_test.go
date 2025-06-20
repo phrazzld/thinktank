@@ -51,7 +51,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "Interactive StartProcessing",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.StartProcessing(3) },
-			expected:      "🚀 Processing 3 models...\n",
+			expected:      "Processing 3 models",
 		},
 		{
 			name:          "Interactive ModelCompleted Success",
@@ -78,7 +78,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 				cw.StartProcessing(3)
 				cw.ModelStarted(1, 3, "test-model")
 			},
-			expected: "[1/3] test-model: processing...\n",
+			expected: "[1/3] test-model: processing",
 		},
 		{
 			name:          "Interactive ModelRateLimited",
@@ -105,7 +105,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "Interactive StatusMessage",
 			isInteractive: true,
 			action:        func(cw ConsoleWriter) { cw.StatusMessage("Test status") },
-			expected:      "📁 Test status\n",
+			expected:      "● Test status",
 		},
 		// --- CI/CD (Non-Interactive) Mode ---
 		{

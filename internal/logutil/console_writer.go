@@ -356,6 +356,11 @@ func (c *consoleWriter) ModelStarted(modelIndex, totalModels int, modelName stri
 		return
 	}
 
+	// Add whitespace before first model processing
+	if modelIndex == 1 {
+		fmt.Println() // Phase separation whitespace
+	}
+
 	coloredModelName := c.colors.ColorModelName(modelName)
 	if c.isInteractive {
 		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
@@ -470,7 +475,8 @@ func (c *consoleWriter) StatusMessage(message string) {
 	formattedMessage := c.formatMessageForTerminal(message)
 
 	if c.isInteractive {
-		fmt.Printf("📁 %s\n", formattedMessage)
+		bulletSymbol := c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet)
+		fmt.Printf("%s %s\n", bulletSymbol, formattedMessage)
 	} else {
 		fmt.Println(formattedMessage)
 	}
@@ -746,6 +752,11 @@ func (c *consoleWriter) ShowFileOperations(message string) {
 		return
 	}
 
+	// Add whitespace before saving operations
+	if strings.HasPrefix(message, "Saving") {
+		fmt.Println() // Phase separation whitespace
+	}
+
 	// Clean, declarative file operation messaging
 	// No special formatting needed - just clear, direct communication
 	fmt.Println(message)
@@ -761,6 +772,10 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 	}
 
 	layout := c.getLayoutLocked()
+
+	// Add whitespace before summary section
+	fmt.Println() // Phase separation whitespace
+	fmt.Println() // Extra space for visual clarity
 
 	// Display UPPERCASE header with separator line
 	headerText := "SUMMARY"

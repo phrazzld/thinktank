@@ -220,7 +220,7 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Verification:** Achieve >90% test coverage for new code
 - **Depends‑on:** [T007-T015]
 
-- [~] ### T017 · Chore · P2: Documentation and Rollback Strategy
+- [x] ### T017 · Chore · P2: Documentation and Rollback Strategy
 - **Context:** Production deployment safety and team knowledge sharing
 - **Action:**
     1. Update documentation to describe new output format
@@ -230,6 +230,84 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Why P2:** Important for team adoption but not blocking deployment
 - **Verification:** Documentation review and rollback testing
 - **Depends‑on:** [T016]
+
+---
+
+## Phase 5: CLI Output Polish
+
+- [x] ### T018.1 · Fix · P1: Remove Folder Emoji from File Discovery
+- **Context:** `📁 Gathering project files...` message contains emoji, violating clean aesthetic
+- **Location:** `internal/thinktank/orchestrator/orchestrator.go` or `internal/logutil/console_writer.go`
+- **Action:** Locate emoji usage in file gathering output, replace with bullet `●` or remove entirely
+- **Verification:** Run thinktank command, confirm no emojis in "Gathering project files" line
+- **Done‑when:** File gathering message uses consistent bullet notation or clean text
+- **Why P1:** Emoji elimination is core requirement for professional aesthetic
+- **Depends‑on:** [T017]
+
+- [x] ### T018.2 · Enhancement · P1: Add Phase Separation Whitespace
+- **Context:** Output phases (init→discovery→processing→output→summary) need breathing room
+- **Location:** `internal/logutil/console_writer.go` - processing flow methods
+- **Action:**
+    1. Add `fmt.Println()` after "Starting thinktank processing..."
+    2. Add `fmt.Println()` before model processing starts
+    3. Add `fmt.Println()` before "Saving outputs..."
+    4. Add `fmt.Println()` before "SUMMARY" section
+- **Verification:** Visual confirmation of clean phase separation
+- **Done‑when:** Each operation phase has clear whitespace boundary
+- **Why P1:** Visual hierarchy is essential for professional CLI experience
+- **Depends‑on:** [T017]
+
+- [x] ### T018.3 · Enhancement · P1: Streamline File Saving Message
+- **Context:** "Saved 1 individual outputs to:" is verbose and inconsistent with bullet style
+- **Location:** `internal/thinktank/orchestrator/summary_writer.go` or file output methods
+- **Action:** Replace with "● Saving outputs to: [path]" format
+- **Verification:** File saving shows clean bullet format
+- **Done‑when:** Output saving message matches bullet style convention
+- **Why P1:** Message consistency critical for professional aesthetic
+- **Depends‑on:** [T017]
+
+- [x] ### T018.4 · Enhancement · P1: Add SUMMARY Section Separator
+- **Context:** SUMMARY header needs visual separator line for hierarchy
+- **Location:** `internal/logutil/console_writer.go` - `ShowSummarySection` method
+- **Action:** Ensure separator line `───────` appears immediately after "SUMMARY" header
+- **Verification:** SUMMARY section has consistent separator formatting
+- **Done‑when:** All summary displays include header separator line
+- **Why P1:** Visual hierarchy essential for summary readability
+- **Depends‑on:** [T017]
+
+- [x] ### T018.5 · Enhancement · P2: Enhance Semantic Color Application
+- **Context:** Color usage should be more strategic and semantic throughout output
+- **Location:** `internal/logutil/colors.go` and `console_writer.go`
+- **Action:**
+    1. Apply green color to all ✓ success symbols
+    2. Apply blue color to all ● bullet points
+    3. Apply muted gray to file paths and directories
+    4. Ensure CI mode strips all colors appropriately
+- **Verification:** Interactive mode shows semantic colors, CI mode shows clean text
+- **Done‑when:** Color scheme is consistent and semantic across all output
+- **Why P2:** Color enhancement improves experience but not blocking
+- **Depends‑on:** [T018.1-T018.4]
+
+- [x] ### T018.6 · Enhancement · P2: Standardize Bullet Point Usage
+- **Context:** Ensure consistent ● symbol usage across all non-status output lines
+- **Location:** All console output methods in `internal/logutil/console_writer.go`
+- **Action:** Audit all output methods, ensure ● is used for informational bullets
+- **Verification:** All non-status output uses consistent bullet notation
+- **Done‑when:** Bullet usage is uniform across entire CLI experience
+- **Why P2:** Consistency polish, important but not blocking
+- **Depends‑on:** [T018.1-T018.4]
+
+- [x] ### T018.7 · Test · P1: Verify Polish Integration
+- **Context:** Ensure all polish changes work together cohesively
+- **Action:**
+    1. Test single model execution for clean flow
+    2. Test multi-model execution for proper spacing
+    3. Test error scenarios maintain formatting
+    4. Test both interactive and CI modes
+- **Verification:** Complete workflow shows polished, professional output
+- **Done‑when:** All execution paths demonstrate improved visual hierarchy
+- **Why P1:** Integration testing essential for deployment readiness
+- **Depends‑on:** [T018.1-T018.6]
 
 ---
 
