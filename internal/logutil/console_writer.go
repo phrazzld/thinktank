@@ -323,7 +323,8 @@ func (c *consoleWriter) StartProcessing(modelCount int) {
 	}
 
 	// Use clean, declarative messaging consistent across environments
-	fmt.Printf("Processing %d models...\n", modelCount)
+	message := fmt.Sprintf("Processing %d models...", modelCount)
+	fmt.Println(c.colors.ColorModelName(message))
 }
 
 // ModelQueued reports that a model has been added to the processing queue
@@ -352,10 +353,11 @@ func (c *consoleWriter) ModelStarted(modelIndex, totalModels int, modelName stri
 		return
 	}
 
+	coloredModelName := c.colors.ColorModelName(modelName)
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, modelName)
+		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
 	} else {
-		fmt.Printf("Processing model %d/%d: %s\n", modelIndex, totalModels, modelName)
+		fmt.Printf("Processing model %d/%d: %s\n", modelIndex, totalModels, coloredModelName)
 	}
 }
 
@@ -369,12 +371,14 @@ func (c *consoleWriter) ModelCompleted(modelIndex, totalModels int, modelName st
 		return
 	}
 
-	durationStr := formatDuration(duration)
+	durationStr := c.colors.ColorDuration(formatDuration(duration))
+	coloredModelName := c.colors.ColorModelName(modelName)
+	successSymbol := c.colors.ColorSuccess("✓")
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: ✓ completed (%s)\n", modelIndex, totalModels, modelName, durationStr)
+		fmt.Printf("[%d/%d] %s: %s completed (%s)\n", modelIndex, totalModels, coloredModelName, successSymbol, durationStr)
 	} else {
-		fmt.Printf("Completed model %d/%d: %s (%s)\n", modelIndex, totalModels, modelName, durationStr)
+		fmt.Printf("Completed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, durationStr)
 	}
 }
 
@@ -384,10 +388,14 @@ func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName strin
 	defer c.mu.Unlock()
 
 	// Errors are essential - always show them even in quiet mode
+	coloredModelName := c.colors.ColorModelName(modelName)
+	errorSymbol := c.colors.ColorError("✗")
+	coloredReason := c.colors.ColorError(reason)
+
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: ✗ failed (%s)\n", modelIndex, totalModels, modelName, reason)
+		fmt.Printf("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredReason)
 	} else {
-		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, modelName, reason)
+		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredReason)
 	}
 }
 
@@ -400,12 +408,14 @@ func (c *consoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName 
 		return
 	}
 
-	retryStr := formatDuration(retryAfter)
+	retryStr := c.colors.ColorDuration(formatDuration(retryAfter))
+	coloredModelName := c.colors.ColorModelName(modelName)
+	warningSymbol := c.colors.ColorWarning("⚠")
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: ⚠ rate limited (retry in %s)\n", modelIndex, totalModels, modelName, retryStr)
+		fmt.Printf("[%d/%d] %s: %s rate limited (retry in %s)\n", modelIndex, totalModels, coloredModelName, warningSymbol, retryStr)
 	} else {
-		fmt.Printf("Rate limited for model %d/%d: %s (retry in %s)\n", modelIndex, totalModels, modelName, retryStr)
+		fmt.Printf("Rate limited for model %d/%d: %s (retry in %s)\n", modelIndex, totalModels, coloredModelName, retryStr)
 	}
 }
 
@@ -434,10 +444,13 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 		return
 	}
 
+	coloredOutputPath := c.colors.ColorFilePath(outputPath)
+
 	if c.isInteractive {
-		fmt.Printf("✨ Done! Output saved to: %s\n", outputPath)
+		successSymbol := c.colors.ColorSuccess("✨")
+		fmt.Printf("%s Done! Output saved to: %s\n", successSymbol, coloredOutputPath)
 	} else {
-		fmt.Printf("Synthesis complete. Output: %s\n", outputPath)
+		fmt.Printf("Synthesis complete. Output: %s\n", coloredOutputPath)
 	}
 }
 
@@ -606,11 +619,13 @@ func (c *consoleWriter) ErrorMessage(message string) {
 
 	// Errors are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorError(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("❌ %s\n", formattedMessage)
+		errorSymbol := c.colors.ColorError("✗")
+		fmt.Printf("%s %s\n", errorSymbol, coloredMessage)
 	} else {
-		fmt.Printf("ERROR: %s\n", formattedMessage)
+		fmt.Printf("ERROR: %s\n", coloredMessage)
 	}
 }
 
@@ -621,11 +636,13 @@ func (c *consoleWriter) WarningMessage(message string) {
 
 	// Warnings are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorWarning(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("⚠️  %s\n", formattedMessage)
+		warningSymbol := c.colors.ColorWarning("⚠")
+		fmt.Printf("%s %s\n", warningSymbol, coloredMessage)
 	} else {
-		fmt.Printf("WARNING: %s\n", formattedMessage)
+		fmt.Printf("WARNING: %s\n", coloredMessage)
 	}
 }
 
@@ -639,11 +656,13 @@ func (c *consoleWriter) SuccessMessage(message string) {
 	}
 
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorSuccess(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("✅ %s\n", formattedMessage)
+		successSymbol := c.colors.ColorSuccess("✓")
+		fmt.Printf("%s %s\n", successSymbol, coloredMessage)
 	} else {
-		fmt.Printf("SUCCESS: %s\n", formattedMessage)
+		fmt.Printf("SUCCESS: %s\n", coloredMessage)
 	}
 }
 
