@@ -635,7 +635,7 @@ func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
 			method:        "ErrorMessage",
 			message:       "Something went wrong",
 			isInteractive: true,
-			expectedRegex: `❌ Something went wrong`,
+			expectedRegex: `Something went wrong`,
 		},
 		{
 			name:          "Error message non-interactive",
@@ -649,7 +649,7 @@ func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
 			method:        "WarningMessage",
 			message:       "This is a warning",
 			isInteractive: true,
-			expectedRegex: `⚠️  This is a warning`,
+			expectedRegex: `This is a warning`,
 		},
 		{
 			name:          "Warning message non-interactive",
@@ -663,7 +663,7 @@ func TestConsoleWriter_ErrorWarningSuccessMessages(t *testing.T) {
 			method:        "SuccessMessage",
 			message:       "Operation completed",
 			isInteractive: true,
-			expectedRegex: `✅ Operation completed`,
+			expectedRegex: `Operation completed`,
 		},
 		{
 			name:          "Success message non-interactive",

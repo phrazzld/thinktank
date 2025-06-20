@@ -28,12 +28,12 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"● 3 models processed",
-				"● 0 successful, 3 failed",
-				"⚠ All models failed to process",
-				"• Check your API keys and network connectivity",
-				"• Review error details above for specific failure reasons",
-				"• Verify model names and rate limits with providers",
+				"* 3 models processed",
+				"* 0 successful, 3 failed",
+				"[!] All models failed to process",
+				"* Check your API keys and network connectivity",
+				"* Review error details above for specific failure reasons",
+				"* Verify model names and rate limits with providers",
 			},
 			notExpectedMsg: []string{
 				"Partial success",
@@ -52,13 +52,13 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"● 5 models processed",
-				"● 3 successful, 2 failed",
-				"● Synthesis: ✓ completed",
-				"⚠ Partial success - some models failed",
-				"• Success rate: 60% (3/5 models)",
-				"• Check failed model details above for specific issues",
-				"• Consider retrying failed models or adjusting configuration",
+				"* 5 models processed",
+				"* 3 successful, 2 failed",
+				"* Synthesis: [OK] completed",
+				"[!] Partial success - some models failed",
+				"* Success rate: 60% (3/5 models)",
+				"* Check failed model details above for specific issues",
+				"* Consider retrying failed models or adjusting configuration",
 			},
 			notExpectedMsg: []string{
 				"All models failed to process",
@@ -76,11 +76,11 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"● 4 models processed",
-				"● 4 successful, 0 failed",
-				"● Synthesis: ✓ completed",
-				"✓ All models processed successfully",
-				"• Synthesis completed - check the combined output above",
+				"* 4 models processed",
+				"* 4 successful, 0 failed",
+				"* Synthesis: [OK] completed",
+				"[OK] All models processed successfully",
+				"* Synthesis completed - check the combined output above",
 			},
 			notExpectedMsg: []string{
 				"All models failed to process",
@@ -99,10 +99,10 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"● 2 models processed",
-				"● 2 successful, 0 failed",
-				"✓ All models processed successfully",
-				"• Individual model outputs saved - see file list above",
+				"* 2 models processed",
+				"* 2 successful, 0 failed",
+				"[OK] All models processed successfully",
+				"* Individual model outputs saved - see file list above",
 			},
 			notExpectedMsg: []string{
 				"All models failed to process",
@@ -121,9 +121,9 @@ func TestCompleteErrorScenarioHandling(t *testing.T) {
 			},
 			expectedMessages: []string{
 				"SUMMARY",
-				"● 1 models processed",
-				"● 1 successful, 0 failed",
-				"✓ All models processed successfully",
+				"* 1 models processed",
+				"* 1 successful, 0 failed",
+				"[OK] All models processed successfully",
 			},
 			notExpectedMsg: []string{
 				"All models failed to process",
@@ -226,7 +226,7 @@ func TestSuccessRateCalculation(t *testing.T) {
 			output := buf.String()
 
 			// Verify success rate calculation
-			expectedSuccessLine := fmt.Sprintf("• Success rate: %s (%d/%d models)", tc.expectedRate, tc.successful, tc.total)
+			expectedSuccessLine := fmt.Sprintf("* Success rate: %s (%d/%d models)", tc.expectedRate, tc.successful, tc.total)
 			if !strings.Contains(output, expectedSuccessLine) {
 				t.Errorf("Expected success rate line %q not found in output:\n%s", expectedSuccessLine, output)
 			}
