@@ -206,7 +206,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
 	// Notify user that individual outputs are being saved
-	o.consoleWriter.StatusMessage("Saving individual model outputs...")
+	o.consoleWriter.ShowFileOperations("Saving individual outputs...")
 
 	// Use the OutputWriter to save individual model outputs
 	savedCount, filePaths, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
@@ -219,7 +219,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 
 	// Notify user that individual outputs are complete
-	o.consoleWriter.StatusMessage(fmt.Sprintf("Saved %d individual outputs to: %s", savedCount, o.config.OutputDir))
+	o.consoleWriter.ShowFileOperations(fmt.Sprintf("Saved %d individual outputs to: %s", savedCount, o.config.OutputDir))
 
 	return filePaths, nil
 }
@@ -415,7 +415,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 
 	// Report rate limiting delay if significant
 	if acquireDuration > 100*time.Millisecond {
-		o.consoleWriter.ModelRateLimited(modelName, index, acquireDuration)
+		o.consoleWriter.ModelRateLimited(index, len(o.config.ModelNames), modelName, acquireDuration)
 	}
 
 	// Release rate limiter when done
@@ -425,7 +425,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	}()
 
 	// Report model processing started
-	o.consoleWriter.ModelStarted(modelName, index)
+	o.consoleWriter.ModelStarted(index, len(o.config.ModelNames), modelName)
 
 	// Create API service adapter and model processor
 	apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
@@ -454,7 +454,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 				llm.CategoryInvalidRequest)
 		}
 		// Report model completion with error
-		o.consoleWriter.ModelCompleted(modelName, index, processingDuration, err)
+		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, err.Error())
 		resultChan <- result
 		return
 	}
@@ -464,7 +464,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	result.content = content
 	result.err = nil
 	// Report successful model completion
-	o.consoleWriter.ModelCompleted(modelName, index, processingDuration, nil)
+	o.consoleWriter.ModelCompleted(index, len(o.config.ModelNames), modelName, processingDuration)
 	resultChan <- result
 }
 

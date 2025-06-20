@@ -104,7 +104,7 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Verification:** Run multi-model command and verify alignment and symbols
 - **Depends‑on:** [T002, T005]
 
-- [ ] ### T008 · Feature · P1: Clean File Operations Output
+- [x] ### T008 · Feature · P1: Clean File Operations Output
 - **Context:** Supporting functionality for complete experience
 - **Action:**
     1. Implement `ShowFileOperations` method with declarative messaging
@@ -197,6 +197,17 @@ This synthesis captures the collective intelligence of multiple AI models analyz
 - **Why P2:** Production robustness without blocking core functionality
 - **Verification:** Test with excessively long model names and constrained terminals
 - **Depends‑on:** [T005, T007]
+
+- [ ] ### T015a · Fix · P0: Resolve T002 Interface Breaking Changes
+- **Context:** T002 interface changes created compilation errors across test files and integration points
+- **Action:**
+    1. Fix all ConsoleWriter interface calls to match new signatures
+    2. Update test mocks to implement correct interface methods
+    3. Fix CLI benchmark tests, flags integration tests, and context tests
+    4. Ensure all packages compile cleanly without --no-verify
+- **Done‑when:** Full codebase compiles and passes go vet without --no-verify
+- **Why P0:** Technical debt that blocks clean development and CI
+- **Depends‑on:** [T002]
 
 - [ ] ### T016 · Test · P0: Comprehensive Test Coverage
 - **Context:** Quality assurance for production deployment

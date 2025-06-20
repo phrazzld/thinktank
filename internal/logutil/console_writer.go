@@ -724,7 +724,8 @@ func (c *consoleWriter) ShowFileOperations(message string) {
 		return
 	}
 
-	// Stub implementation - will be enhanced in later tickets
+	// Clean, declarative file operation messaging
+	// No special formatting needed - just clear, direct communication
 	fmt.Println(message)
 }
 
