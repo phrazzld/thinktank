@@ -530,6 +530,9 @@ func (c *consoleWriter) GetTerminalWidth() int {
 			}
 			c.terminalWidth = width
 			return width
+		} else if err != nil {
+			// Log terminal width detection failure to stderr
+			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
@@ -580,6 +583,9 @@ func (c *consoleWriter) getTerminalWidthLocked() int {
 			}
 			c.terminalWidth = width
 			return width
+		} else if err != nil {
+			// Log terminal width detection failure to stderr
+			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
