@@ -219,11 +219,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 
 	// Notify user that individual outputs are complete
-	if o.consoleWriter.IsInteractive() {
-		o.consoleWriter.StatusMessage(fmt.Sprintf("✅ %d individual outputs saved to: %s", savedCount, o.config.OutputDir))
-	} else {
-		o.consoleWriter.StatusMessage(fmt.Sprintf("Individual outputs complete. %d files saved to: %s", savedCount, o.config.OutputDir))
-	}
+	o.consoleWriter.StatusMessage(fmt.Sprintf("Saved %d individual outputs to: %s", savedCount, o.config.OutputDir))
 
 	return filePaths, nil
 }
@@ -597,7 +593,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 			contextLogger.ErrorContext(ctx, returnErr.Error())
 
 			// Provide user-facing error message for complete failure
-			o.consoleWriter.StatusMessage("❌ All models failed - no outputs generated")
+			o.consoleWriter.StatusMessage("All models failed - no outputs generated")
 
 			return nil, nil, returnErr
 		}
@@ -614,7 +610,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
 
 		// Provide user-facing message for partial failures
-		o.consoleWriter.StatusMessage(fmt.Sprintf("⚠️  %d/%d models succeeded, continuing with available outputs",
+		o.consoleWriter.StatusMessage(fmt.Sprintf("%d/%d models succeeded, continuing with available outputs",
 			len(modelOutputs), len(o.config.ModelNames)))
 
 		// Log individual error details

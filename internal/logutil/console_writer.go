@@ -322,11 +322,8 @@ func (c *consoleWriter) StartProcessing(modelCount int) {
 		return
 	}
 
-	if c.isInteractive {
-		fmt.Printf("🚀 Processing %d models...\n", modelCount)
-	} else {
-		fmt.Printf("Starting processing with %d models\n", modelCount)
-	}
+	// Use clean, declarative messaging consistent across environments
+	fmt.Printf("Processing %d models...\n", modelCount)
 }
 
 // ModelQueued reports that a model has been added to the processing queue
