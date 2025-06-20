@@ -112,7 +112,7 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 			name:          "CI StartProcessing",
 			isInteractive: false,
 			action:        func(cw ConsoleWriter) { cw.StartProcessing(3) },
-			expected:      "Starting processing with 3 models\n",
+			expected:      "Processing 3 models...\n",
 		},
 		{
 			name:          "CI ModelCompleted Success",
@@ -415,7 +415,7 @@ func TestConsoleWriter_NonInteractiveEnvironment(t *testing.T) {
 	}
 
 	expectedStrings := []string{
-		"Starting processing with 1 models",
+		"Processing 1 models...",
 		"Completed model 1/1: test",
 		"Starting synthesis",
 		"Synthesis complete. Output: output/path",
