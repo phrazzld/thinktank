@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"unicode/utf8"
 )
 
 func TestCalculateLayout_NarrowTerminal(t *testing.T) {
@@ -287,8 +288,8 @@ func TestGetSeparatorLine(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := tt.layout.GetSeparatorLine(tt.requestLength)
 
-			if len(result) != tt.expectLength {
-				t.Errorf("Expected length %d, got %d", tt.expectLength, len(result))
+			if utf8.RuneCountInString(result) != tt.expectLength {
+				t.Errorf("Expected length %d, got %d", tt.expectLength, utf8.RuneCountInString(result))
 			}
 
 			// Verify it's all separator characters
