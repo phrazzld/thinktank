@@ -1,141 +1,176 @@
-# TODO: Fix CI Coverage Failure - Immediate Action Required
+# TODO: Fix CI Test Failures - Immediate Action Required
 
-## Critical Path: Restore CI to Passing State
-**Current Coverage**: 78.9% | **Required**: 80.0% | **Gap**: -1.1 percentage points
+## Critical Path: Resolve TestMainConfigurationOptions Failures
 
-**Blocking Issue**: PR #98 cannot merge due to test coverage below quality gate threshold.
-
----
-
-## Phase 1: CLI Package Coverage (38.0% → 80%) - URGENT
-
-### ValidateInputs Function (0.0% coverage)
-- [x] Add test for ValidateInputs wrapper function - verify it calls ValidateInputsWithEnv with os.Getenv
-- [x] Add test for ValidateInputsWithEnv with conflicting --quiet and --verbose flags
-- [x] Add test for ValidateInputsWithEnv with missing --instructions flag when not dry run
-- [x] Add test for ValidateInputsWithEnv with missing input paths
-- [ ] Add test for ValidateInputsWithEnv with unknown model names
-- [ ] Add test for ValidateInputsWithEnv with missing API keys per provider
-
-### ParseFlags Function (98.5% coverage)
-- [x] Add test for ParseFlags wrapper function - verify it calls ParseFlagsWithEnv with os.Args and os.Getenv
-- [x] Add test for ParseFlagsWithEnv with new rate limiting flags (--openai-rate-limit, --gemini-rate-limit, --openrouter-rate-limit)
-- [x] Add test for ParseFlagsWithEnv with --max-concurrent-requests flag
-- [x] Add test for ParseFlagsWithEnv with --rate-limit-requests-per-minute flag
-- [x] Add test for ParseFlagsWithEnv with invalid octal permissions
-
-### Error Handling Functions (Partially completed)
-- [ ] Add test for handleError function with different error types
-- [x] Add test for getFriendlyErrorMessage with LLMError input
-- [x] Add test for getFriendlyErrorMessage with authentication errors
-- [x] Add test for getFriendlyErrorMessage with rate limit errors
-- [x] Add test for getFriendlyErrorMessage with network errors
-- [x] Add test for sanitizeErrorMessage function with secrets removal
-- [ ] Add test for setupGracefulShutdown function
-- [ ] Add test for Main function entry point
+**Current Issue**: PR #98 CI failing due to test flag contamination in subprocess tests
+**Failed Tests**: All 5 subtests in TestMainConfigurationOptions
+**Root Cause**: ParseFlags() tries to parse Go test flags like `-test.run` as application flags
 
 ---
 
-## Phase 2: Models Package Coverage (68.2% → 90.9%) - COMPLETED ✅
+## Phase 1: Implementation - Fix ParseFlags Function (URGENT)
 
-### Rate Limiting Functions (100% coverage) - COMPLETED ✅
-- [x] Add test for GetProviderDefaultRateLimit with "openai" provider
-- [x] Add test for GetProviderDefaultRateLimit with "gemini" provider
-- [x] Add test for GetProviderDefaultRateLimit with "openrouter" provider
-- [x] Add test for GetProviderDefaultRateLimit with unknown provider
-- [x] Add test for GetModelRateLimit with model having RateLimitRPM set
-- [x] Add test for GetModelRateLimit with model without RateLimitRPM
-- [x] Add test for GetModelRateLimit with unknown model
+### Core Fix: Filter Test Flags in ParseFlags
+- [x] **Modify ParseFlags function** in `internal/cli/flags.go` (lines 85-89)
+- [x] **Add test flag filtering logic** before calling ParseFlagsWithEnv
+- [x] **Import strings package** if not already imported
+- [x] **Preserve all existing functionality** - only filter out `-test.*` flags
 
-### Parameter Validation Functions (Partially completed)
-- [x] Add test for validateStringParameter with valid enum values
-- [x] Add test for validateStringParameter with invalid enum values
-- [x] Add test for validateStringParameter with non-enum string constraints
-- [ ] Add test for validateFloatParameter edge cases (missing MinValue/MaxValue branches)
-- [ ] Add test for validateIntParameter edge cases (missing boundary condition branches)
+#### Implementation Details:
+```go
+func ParseFlags() (*config.CliConfig, error) {
+    // Filter out test flags from os.Args
+    var filteredArgs []string
+    for _, arg := range os.Args[1:] {
+        if !strings.HasPrefix(arg, "-test.") {
+            filteredArgs = append(filteredArgs, arg)
+        }
+    }
 
----
+    flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
+    return ParseFlagsWithEnv(flagSet, filteredArgs, os.Getenv)
+}
+```
 
-## STRATEGIC PIVOT: High-Impact Targets (77.8% → 80.0%)
-
-**John Carmack Strategy**: Focus on packages closest to 80% threshold for maximum efficiency.
-
-### Priority 1: internal/providers/openai (79.1% → 94.7%+) - COMPLETED ✅
-**HUGE SUCCESS**: Improved from 79.1% to 94.7% coverage (+15.6 percentage points)
-
-### Priority 2: internal/providers/gemini (76.9% → 97.7%+) - COMPLETED ✅
-**HUGE SUCCESS**: Improved from 76.9% to 97.7% coverage (+20.8 percentage points)
-
-### Priority 3: internal/cli (61.1% → 76.9%+) - COMPLETED ✅
-**MASSIVE SUCCESS**: Improved from 61.1% to 76.9% coverage (+15.8 percentage points)
-Added comprehensive tests for 0% coverage functions: handleError, setupGracefulShutdown, Main
-
-### Priority 4: internal/gemini (77.3% → 78.8%+) - COMPLETED ✅
-**SUCCESS**: Improved from 77.3% to 78.8% coverage (+1.5 percentage points)
-
-### **MASSIVE PROGRESS**: Only 1.1 percentage points to reach 80%!
-
-**Completed Strategic Improvements:**
-- internal/testutil: 74.9% → 84.0% (+9.1 percentage points) ✅
-  - Added comprehensive tests for memfs.go (Error, GetFileContent, GetDirectories, FileExists, DirExists)
-  - Added tests for mocklogger.go (Println, Printf, WithContext, SetLevel, GetLevel, SetVerbose, LogLegacy, LogOpLegacy, Close, ClearAuditRecords, ContainsMessage, GetLogEntries)
-  - Added tests for property_testing.go (TopP, PresencePenalty, FrequencyPenalty, BoundedText)
-  - Added test for providers.go (AddTimeoutHandler)
-
-**Remaining Options for Final 1.1 Points:**
-- Target internal/cli Main function (currently 3.9% coverage) - highest impact potential
-- Target remaining functions in GenerateContent (internal/gemini)
-- Focus on internal/integration package (53.2%) if it contains significant LOC
+### Code Location:
+- **File**: `/Users/phaedrus/Development/thinktank/internal/cli/flags.go`
+- **Function**: `ParseFlags()` (lines 85-89)
+- **Change**: Replace `os.Args[1:]` with `filteredArgs`
 
 ---
 
-## Phase 3: Integration Package Coverage (53.2% → 75%) - DEFERRED
+## Phase 2: Testing & Validation (CRITICAL)
 
-### Boundary Test Adapter Functions (0.0% coverage)
-- [ ] Add test for ValidateModelParameter function
-- [ ] Add test for GetModelDefinition function
-- [ ] Add test for getProviderFromModelName function
-- [ ] Add test for GetModelTokenLimits function
-- [ ] Add test for IsEmptyResponseError function
+### Local Testing
+- [x] **Run individual failing test** to verify fix:
+  ```bash
+  go test -v -run TestMainConfigurationOptions ./internal/cli
+  ```
+- [x] **Run all CLI tests** to ensure no regressions:
+  ```bash
+  go test -v ./internal/cli
+  ```
+- [x] **Verify specific subtests pass**:
+  - [x] main_with_custom_timeout
+  - [x] main_with_rate_limiting
+  - [x] main_with_custom_permissions
+  - [x] main_with_multiple_models
+  - [x] main_with_file_filtering
 
-### Real Boundaries Functions (0.0% coverage)
-- [ ] Add test for real boundary implementations to increase coverage percentage
-- [ ] Add test for error handling paths in real boundaries
+### Edge Case Testing
+- [x] **Test with various test flags** to ensure robust filtering:
+  ```bash
+  go test -v -test.v -test.count=1 ./internal/cli
+  ```
+- [x] **Test production behavior** remains unchanged:
+  ```bash
+  go run cmd/thinktank/main.go --help
+  ```
+
+### Full Test Suite Validation
+- [x] **Run complete test suite** to ensure no regressions:
+  ```bash
+  go test ./...
+  ```
+- [x] **Verify coverage maintained** (should still be 80%+):
+  ```bash
+  go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out | tail -1
+  ```
 
 ---
 
-## Phase 4: Verification & Validation
+## Phase 3: CI Validation (FINAL STEP)
 
-### Coverage Verification
-- [ ] Run `go test -coverprofile=coverage.out ./...` and verify overall coverage ≥ 80%
-- [ ] Run `./scripts/check-coverage.sh 80` and verify it passes
-- [ ] Run `go test ./internal/cli` and verify coverage ≥ 80%
-- [ ] Run `go test ./internal/models` and verify coverage ≥ 80%
-- [ ] Run `go test ./internal/integration` and verify coverage ≥ 75%
+### Pre-Commit Verification
+- [x] **Run linting** to ensure code quality:
+  ```bash
+  golangci-lint run ./...
+  ```
+- [x] **Run formatting** to ensure consistency:
+  ```bash
+  go fmt ./...
+  ```
+- [x] **Run race detection** on affected tests:
+  ```bash
+  go test -race ./internal/cli
+  ```
 
-### CI Pipeline Validation
-- [ ] Push changes and verify CI test job passes
-- [ ] Verify all quality gates pass (lint, build, security scans)
-- [ ] Confirm PR #98 shows green status and is ready for merge
+### Commit and Push
+- [ ] **Create conventional commit** with proper message:
+  ```bash
+  git add internal/cli/flags.go
+  git commit -m "fix: filter test flags in ParseFlags to prevent subprocess test failures
+
+  - Add test flag filtering logic to ParseFlags function
+  - Prevents Go test flags like -test.run from being parsed as application flags
+  - Fixes TestMainConfigurationOptions subprocess test failures
+  - Maintains backward compatibility and production behavior
+
+  Resolves CI test failures in PR #98"
+  ```
+
+### CI Monitoring
+- [ ] **Push changes** and monitor CI pipeline:
+  ```bash
+  git push origin fix/multi-model-reliability
+  ```
+- [ ] **Verify CI test job passes** - specifically check TestMainConfigurationOptions
+- [ ] **Confirm all other CI jobs remain green** (Build, Lint, Security, etc.)
+- [ ] **Validate PR #98 shows green status** and is ready for merge
 
 ---
 
-## Post-Merge Quality Improvements (LOW PRIORITY)
+## Phase 4: Post-Fix Validation (VERIFICATION)
 
-### Performance Optimizations
-- [ ] Tune rate limit alert threshold from 100ms to 500ms for reduced console noise
-- [ ] Add context propagation to getRateLimiterForModel debug logging for better traceability
-- [ ] Add monitoring for modelRateLimiters map growth in production environments
+### Success Criteria Verification
+- [ ] **All 5 TestMainConfigurationOptions subtests pass** ✅
+- [ ] **No regression in other existing tests** ✅
+- [ ] **CI pipeline completes successfully** ✅
+- [ ] **Production functionality remains unaffected** ✅
+- [ ] **Solution is maintainable and future-proof** ✅
+
+### Documentation Updates
+- [ ] **Update CI-FAILURE-SUMMARY.md** with resolution status
+- [ ] **Update CI-RESOLUTION-PLAN.md** with implementation results
+- [ ] **Clean up temporary analysis files** (CI-FAILURE-SUMMARY.md, CI-RESOLUTION-PLAN.md)
 
 ---
 
-## Task Execution Guidelines
+## Risk Mitigation & Rollback Plan
 
-**Priority Order**: Execute Phase 1 → Phase 2 → Phase 3 → Phase 4
-**Success Criteria**: Each phase must achieve its target coverage percentage
-**Atomic Execution**: Each checkbox represents a single, independently testable unit
-**Focus Areas**: Target specific uncovered functions identified by `go tool cover -func=coverage.out`
+### Low-Risk Change Verification
+- ✅ **Change is isolated** to argument preprocessing only
+- ✅ **No impact on core application logic**
+- ✅ **Easy to revert** if issues arise
+- ✅ **Well-defined scope** (only affects test flag handling)
 
-**CRITICAL**: Do not proceed to next phase until current phase achieves target coverage percentage.
+### Rollback Procedure (if needed)
+```bash
+# If issues arise, revert the change:
+git revert <commit-hash>
+git push origin fix/multi-model-reliability
+```
 
-**John Carmack Principle**: Fix the immediate blocking issue with surgical precision, then improve systematically.
+### Alternative Solutions (backup plans)
+1. **Environment-only test approach** - Remove `-test.run` flags entirely
+2. **Test restructuring** - Modify tests to avoid subprocess with test flags
+3. **Build tag approach** - Create test-specific ParseFlags version
+
+---
+
+## Expected Timeline
+
+- **Phase 1 (Implementation)**: 15 minutes
+- **Phase 2 (Testing)**: 30 minutes
+- **Phase 3 (CI Validation)**: 15 minutes
+- **Phase 4 (Verification)**: 10 minutes
+- **Total Estimated Time**: ~1.25 hours
+
+---
+
+## Success Metrics
+
+1. **Primary Goal**: All TestMainConfigurationOptions subtests pass ✅
+2. **Secondary Goal**: No test regressions in full suite ✅
+3. **Tertiary Goal**: CI pipeline green for PR #98 ✅
+4. **Quality Goal**: Solution prevents future test flag issues ✅

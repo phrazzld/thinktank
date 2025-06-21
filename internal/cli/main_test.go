@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 	"time"
 
@@ -438,7 +439,7 @@ func TestMainDryRun(t *testing.T) {
 
 	t.Run("main dry run success", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=dry-run",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -461,7 +462,7 @@ func TestMainDryRun(t *testing.T) {
 		auditFile := tmpDir + "/audit.log"
 
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=audit",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -488,7 +489,7 @@ func TestMainDryRun(t *testing.T) {
 
 	t.Run("main with verbose logging", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=verbose",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -509,7 +510,7 @@ func TestMainDryRun(t *testing.T) {
 
 	t.Run("main with quiet mode", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=quiet",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -641,6 +642,25 @@ func TestMainValidationErrors(t *testing.T) {
 	})
 }
 
+// cleanEnvForSubprocess returns a clean environment without CI variables that could interfere with subprocess tests
+func cleanEnvForSubprocess() []string {
+	var cleanEnv []string
+	ciVars := map[string]bool{
+		"CI": true, "GITHUB_ACTIONS": true, "CONTINUOUS_INTEGRATION": true,
+		"GITLAB_CI": true, "TRAVIS": true, "CIRCLECI": true, "JENKINS_URL": true,
+	}
+
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) == 2 {
+			if !ciVars[parts[0]] {
+				cleanEnv = append(cleanEnv, env)
+			}
+		}
+	}
+	return cleanEnv
+}
+
 // TestMainConfigurationOptions tests various configuration combinations
 func TestMainConfigurationOptions(t *testing.T) {
 	if os.Getenv("TEST_MAIN_CONFIG") != "" {
@@ -713,7 +733,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 
 	t.Run("main with custom timeout", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=timeout",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -734,7 +754,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 
 	t.Run("main with rate limiting", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=ratelimit",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -755,7 +775,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 
 	t.Run("main with custom permissions", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=permissions",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -776,7 +796,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 
 	t.Run("main with multiple models", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=multimodel",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
@@ -797,7 +817,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 
 	t.Run("main with file filtering", func(t *testing.T) {
 		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(os.Environ(),
+		cmd.Env = append(cleanEnvForSubprocess(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=filtering",
 			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
