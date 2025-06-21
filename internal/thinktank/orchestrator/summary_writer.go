@@ -39,13 +39,15 @@ type SummaryWriter interface {
 
 // DefaultSummaryWriter implements the SummaryWriter interface
 type DefaultSummaryWriter struct {
-	logger logutil.LoggerInterface
+	logger        logutil.LoggerInterface
+	consoleWriter logutil.ConsoleWriter
 }
 
 // NewSummaryWriter creates a new SummaryWriter
-func NewSummaryWriter(logger logutil.LoggerInterface) SummaryWriter {
+func NewSummaryWriter(logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) SummaryWriter {
 	return &DefaultSummaryWriter{
-		logger: logger,
+		logger:        logger,
+		consoleWriter: consoleWriter,
 	}
 }
 
@@ -117,12 +119,9 @@ func (w *DefaultSummaryWriter) GenerateSummary(summary *ResultsSummary) string {
 	return sb.String()
 }
 
-// DisplaySummary writes the summary to the appropriate output
+// DisplaySummary writes the summary to the appropriate output using modern clean format
 func (w *DefaultSummaryWriter) DisplaySummary(ctx context.Context, summary *ResultsSummary) {
-	// Generate the summary text
-	summaryText := w.GenerateSummary(summary)
-
-	// Log the summary info
+	// Log the summary info for structured logging
 	w.logger.InfoContext(ctx, "Execution summary: %d total models, %d successful, %d failed",
 		summary.TotalModels, summary.SuccessfulModels, len(summary.FailedModels))
 
@@ -131,8 +130,40 @@ func (w *DefaultSummaryWriter) DisplaySummary(ctx context.Context, summary *Resu
 		w.logger.InfoContext(ctx, "Synthesis output saved to: %s", summary.SynthesisPath)
 	}
 
-	// Print the formatted summary to stdout
-	fmt.Print(summaryText)
+	// Convert to SummaryData format and display using modern clean output
+	summaryData := w.convertToSummaryData(summary)
+	w.consoleWriter.ShowSummarySection(summaryData)
+}
+
+// convertToSummaryData converts ResultsSummary to SummaryData format
+func (w *DefaultSummaryWriter) convertToSummaryData(summary *ResultsSummary) logutil.SummaryData {
+	// Determine synthesis status
+	synthesisStatus := "skipped"
+	if summary.SynthesisPath != "" {
+		synthesisStatus = "completed"
+	}
+
+	// Determine output directory from synthesis path or output paths
+	outputDirectory := ""
+	if summary.SynthesisPath != "" {
+		// Extract directory from synthesis path
+		if idx := strings.LastIndexByte(summary.SynthesisPath, '/'); idx != -1 {
+			outputDirectory = summary.SynthesisPath[:idx+1]
+		}
+	} else if len(summary.OutputPaths) > 0 {
+		// Extract directory from first output path
+		if idx := strings.LastIndexByte(summary.OutputPaths[0], '/'); idx != -1 {
+			outputDirectory = summary.OutputPaths[0][:idx+1]
+		}
+	}
+
+	return logutil.SummaryData{
+		ModelsProcessed:  summary.TotalModels,
+		SuccessfulModels: summary.SuccessfulModels,
+		FailedModels:     len(summary.FailedModels),
+		SynthesisStatus:  synthesisStatus,
+		OutputDirectory:  outputDirectory,
+	}
 }
 
 // Helper functions

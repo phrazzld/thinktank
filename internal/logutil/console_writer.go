@@ -9,6 +9,7 @@ package logutil
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,26 +60,80 @@ type ConsoleWriter interface {
 	ModelQueued(modelName string, index int)
 
 	// ModelStarted reports that processing has begun for a specific model.
-	// The index parameter indicates the model's position in the processing order (1-based).
+	// Parameters follow modern clean output specification with index first.
 	//
 	// This typically displays "[X/N] model-name: processing..." type messages.
-	ModelStarted(modelName string, index int)
+	ModelStarted(modelIndex, totalModels int, modelName string)
 
-	// ModelCompleted reports that processing has finished for a specific model.
-	// The index parameter indicates the model's position in the processing order (1-based).
-	// The duration parameter specifies how long the processing took.
-	// The err parameter indicates whether processing succeeded (nil) or failed (non-nil).
+	// ModelCompleted reports that processing has finished successfully for a specific model.
+	// Parameters follow modern clean output specification with index first.
+	// Duration specifies how long the processing took.
 	//
-	// Success displays: "[X/N] model-name: ✓ completed (1.2s)"
-	// Failure displays: "[X/N] model-name: ✗ failed (error message)"
-	ModelCompleted(modelName string, index int, duration time.Duration, err error)
+	// Displays: "[X/N] model-name: ✓ completed (1.2s)"
+	ModelCompleted(modelIndex, totalModels int, modelName string, duration time.Duration)
+
+	// ModelFailed reports that processing has failed for a specific model.
+	// Parameters follow modern clean output specification with index first.
+	// Reason provides a human-readable explanation of the failure.
+	//
+	// Displays: "[X/N] model-name: ✗ failed (reason)"
+	ModelFailed(modelIndex, totalModels int, modelName string, reason string)
 
 	// ModelRateLimited reports that a model's processing has been delayed due to rate limiting.
-	// The index parameter indicates the model's position in the processing order (1-based).
-	// The delay parameter specifies how long the delay will be.
+	// Parameters follow modern clean output specification with index first.
+	// retryAfter specifies how long the delay will be.
 	//
-	// This displays: "[X/N] model-name: rate limited, waiting 2s..."
-	ModelRateLimited(modelName string, index int, delay time.Duration)
+	// This displays: "[X/N] model-name: ⚠ rate limited (retry in 30s)"
+	ModelRateLimited(modelIndex, totalModels int, modelName string, retryAfter time.Duration)
+
+	// Modern Clean Output Methods
+	// These methods implement the new aligned, professional output format
+
+	// ShowProcessingLine displays an initial processing status line for a model.
+	// Used for the left-aligned model name with right-aligned "processing..." status.
+	//
+	// Displays: "model-name                          processing..."
+	ShowProcessingLine(modelName string)
+
+	// UpdateProcessingLine updates the processing line in-place with final status.
+	// Used to replace "processing..." with final status like "✓ 68.5s" or "✗ rate limited".
+	//
+	// Displays: "model-name                          ✓ 68.5s"
+	UpdateProcessingLine(modelName string, status string)
+
+	// ShowFileOperations displays clean, declarative file operation messages.
+	// Used for messages like "Saving individual outputs..." and "Saved 2 outputs to path".
+	ShowFileOperations(message string)
+
+	// ShowSummarySection displays the main summary section with structured format.
+	// Uses UPPERCASE headers, bullet points, and basic statistics.
+	//
+	// Example:
+	// SUMMARY
+	// ───────
+	// ● 3 models processed
+	// ● 2 successful, 1 failed
+	// ● Output directory: ./path
+	ShowSummarySection(summary SummaryData)
+
+	// ShowOutputFiles displays the output files section with human-readable sizes.
+	// Uses right-aligned file sizes and proper formatting.
+	//
+	// Example:
+	// OUTPUT FILES
+	// ────────────
+	//   gemini-2.5-pro.md                     4.2K
+	//   claude-3-5-sonnet.md                  3.8K
+	ShowOutputFiles(files []OutputFile)
+
+	// ShowFailedModels displays the failed models section when failures occur.
+	// Only displayed when there are actual failures to report.
+	//
+	// Example:
+	// FAILED MODELS
+	// ─────────────
+	//   gpt-4o                                rate limited
+	ShowFailedModels(failed []FailedModel)
 
 	// Status Update Methods
 	// These methods report major workflow milestones
@@ -154,13 +209,16 @@ type ConsoleWriter interface {
 // It provides clean, human-readable console output that adapts to different
 // execution environments (interactive terminals vs CI/CD pipelines).
 type consoleWriter struct {
-	mu            sync.Mutex // Protects concurrent access to all fields
-	isInteractive bool       // Whether running in interactive terminal
-	quiet         bool       // Whether to suppress non-essential output
-	noProgress    bool       // Whether to suppress detailed progress indicators
-	modelCount    int        // Total number of models to process
-	modelIndex    int        // Current model index (for progress tracking)
-	terminalWidth int        // Cached terminal width, 0 means not detected yet
+	mu            sync.Mutex      // Protects concurrent access to all fields
+	isInteractive bool            // Whether running in interactive terminal
+	quiet         bool            // Whether to suppress non-essential output
+	noProgress    bool            // Whether to suppress detailed progress indicators
+	modelCount    int             // Total number of models to process
+	modelIndex    int             // Current model index (for progress tracking)
+	terminalWidth int             // Cached terminal width, 0 means not detected yet
+	layout        LayoutConfig    // Cached layout configuration
+	colors        *ColorScheme    // Color scheme for semantic coloring
+	symbols       *SymbolProvider // Unicode/ASCII symbol provider with fallback detection
 
 	// Dependency injection for testing
 	isTerminalFunc  func() bool
@@ -174,10 +232,13 @@ var _ ConsoleWriter = (*consoleWriter)(nil)
 // It detects whether running in an interactive terminal vs CI/CD environment
 // and configures output accordingly.
 func NewConsoleWriter() ConsoleWriter {
+	isInteractive := detectInteractiveEnvironment(defaultIsTerminal)
 	return &consoleWriter{
 		isTerminalFunc:  defaultIsTerminal,
 		getTermSizeFunc: defaultGetTermSize,
-		isInteractive:   detectInteractiveEnvironment(defaultIsTerminal),
+		isInteractive:   isInteractive,
+		colors:          NewColorScheme(isInteractive),
+		symbols:         NewSymbolProvider(isInteractive),
 	}
 }
 
@@ -200,10 +261,13 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		getEnvFunc = os.Getenv
 	}
 
+	isInteractive := detectInteractiveEnvironmentWithEnv(isTerminalFunc, getEnvFunc)
 	return &consoleWriter{
 		isTerminalFunc:  isTerminalFunc,
 		getTermSizeFunc: getTermSizeFunc,
-		isInteractive:   detectInteractiveEnvironmentWithEnv(isTerminalFunc, getEnvFunc),
+		isInteractive:   isInteractive,
+		colors:          NewColorScheme(isInteractive),
+		symbols:         NewSymbolProvider(isInteractive),
 	}
 }
 
@@ -261,11 +325,9 @@ func (c *consoleWriter) StartProcessing(modelCount int) {
 		return
 	}
 
-	if c.isInteractive {
-		fmt.Printf("🚀 Processing %d models...\n", modelCount)
-	} else {
-		fmt.Printf("Starting processing with %d models\n", modelCount)
-	}
+	// Use clean, declarative messaging consistent across environments
+	message := fmt.Sprintf("Processing %d models...", modelCount)
+	fmt.Println(c.colors.ColorModelName(message))
 }
 
 // ModelQueued reports that a model has been added to the processing queue
@@ -282,7 +344,7 @@ func (c *consoleWriter) ModelQueued(modelName string, index int) {
 }
 
 // ModelStarted reports that processing has begun for a specific model
-func (c *consoleWriter) ModelStarted(modelName string, index int) {
+func (c *consoleWriter) ModelStarted(modelIndex, totalModels int, modelName string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -294,43 +356,59 @@ func (c *consoleWriter) ModelStarted(modelName string, index int) {
 		return
 	}
 
+	// Add whitespace before first model processing
+	if modelIndex == 1 {
+		fmt.Println() // Phase separation whitespace
+	}
+
+	coloredModelName := c.colors.ColorModelName(modelName)
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: processing...\n", index, c.modelCount, modelName)
+		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
 	} else {
-		fmt.Printf("Processing model %d/%d: %s\n", index, c.modelCount, modelName)
+		fmt.Printf("Processing model %d/%d: %s\n", modelIndex, totalModels, coloredModelName)
 	}
 }
 
-// ModelCompleted reports that processing has finished for a specific model
-func (c *consoleWriter) ModelCompleted(modelName string, index int, duration time.Duration, err error) {
+// ModelCompleted reports that processing has finished successfully for a specific model
+func (c *consoleWriter) ModelCompleted(modelIndex, totalModels int, modelName string, duration time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	durationStr := formatDuration(duration)
+	// Success messages can be suppressed in quiet mode
+	if c.quiet || c.noProgress {
+		return
+	}
 
-	if err != nil {
-		// Errors are essential - always show them even in quiet mode
-		if c.isInteractive {
-			fmt.Printf("[%d/%d] %s: ✗ failed (%s)\n", index, c.modelCount, modelName, err.Error())
-		} else {
-			fmt.Printf("Failed model %d/%d: %s (%s)\n", index, c.modelCount, modelName, err.Error())
-		}
+	durationStr := c.colors.ColorDuration(formatDuration(duration))
+	coloredModelName := c.colors.ColorModelName(modelName)
+	successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
+
+	if c.isInteractive {
+		fmt.Printf("[%d/%d] %s: %s completed (%s)\n", modelIndex, totalModels, coloredModelName, successSymbol, durationStr)
 	} else {
-		// Success messages can be suppressed in quiet mode
-		if c.quiet || c.noProgress {
-			return
-		}
+		fmt.Printf("Completed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, durationStr)
+	}
+}
 
-		if c.isInteractive {
-			fmt.Printf("[%d/%d] %s: ✓ completed (%s)\n", index, c.modelCount, modelName, durationStr)
-		} else {
-			fmt.Printf("Completed model %d/%d: %s (%s)\n", index, c.modelCount, modelName, durationStr)
-		}
+// ModelFailed reports that processing has failed for a specific model
+func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName string, reason string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Errors are essential - always show them even in quiet mode
+	coloredModelName := c.colors.ColorModelName(modelName)
+	errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
+	coloredReason := c.colors.ColorError(reason)
+
+	if c.isInteractive {
+		fmt.Printf("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredReason)
+	} else {
+		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredReason)
 	}
 }
 
 // ModelRateLimited reports that a model's processing has been delayed due to rate limiting
-func (c *consoleWriter) ModelRateLimited(modelName string, index int, delay time.Duration) {
+func (c *consoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName string, retryAfter time.Duration) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -338,12 +416,14 @@ func (c *consoleWriter) ModelRateLimited(modelName string, index int, delay time
 		return
 	}
 
-	delayStr := formatDuration(delay)
+	retryStr := c.colors.ColorDuration(formatDuration(retryAfter))
+	coloredModelName := c.colors.ColorModelName(modelName)
+	warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: rate limited, waiting %s...\n", index, c.modelCount, modelName, delayStr)
+		fmt.Printf("[%d/%d] %s: %s rate limited (retry in %s)\n", modelIndex, totalModels, coloredModelName, warningSymbol, retryStr)
 	} else {
-		fmt.Printf("Rate limited for model %d/%d: %s (waiting %s)\n", index, c.modelCount, modelName, delayStr)
+		fmt.Printf("Rate limited for model %d/%d: %s (retry in %s)\n", modelIndex, totalModels, coloredModelName, retryStr)
 	}
 }
 
@@ -372,10 +452,13 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 		return
 	}
 
+	coloredOutputPath := c.colors.ColorFilePath(outputPath)
+
 	if c.isInteractive {
-		fmt.Printf("✨ Done! Output saved to: %s\n", outputPath)
+		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Sparkles)
+		fmt.Printf("%s Done! Output saved to: %s\n", successSymbol, coloredOutputPath)
 	} else {
-		fmt.Printf("Synthesis complete. Output: %s\n", outputPath)
+		fmt.Printf("Synthesis complete. Output: %s\n", coloredOutputPath)
 	}
 }
 
@@ -392,7 +475,8 @@ func (c *consoleWriter) StatusMessage(message string) {
 	formattedMessage := c.formatMessageForTerminal(message)
 
 	if c.isInteractive {
-		fmt.Printf("📁 %s\n", formattedMessage)
+		bulletSymbol := c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet)
+		fmt.Printf("%s %s\n", bulletSymbol, formattedMessage)
 	} else {
 		fmt.Println(formattedMessage)
 	}
@@ -446,6 +530,9 @@ func (c *consoleWriter) GetTerminalWidth() int {
 			}
 			c.terminalWidth = width
 			return width
+		} else if err != nil {
+			// Log terminal width detection failure to stderr
+			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
@@ -496,12 +583,29 @@ func (c *consoleWriter) getTerminalWidthLocked() int {
 			}
 			c.terminalWidth = width
 			return width
+		} else if err != nil {
+			// Log terminal width detection failure to stderr
+			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
 	// Fallback to default width
 	c.terminalWidth = DefaultTerminalWidth
 	return DefaultTerminalWidth
+}
+
+// getLayoutLocked returns the current layout configuration
+// This method assumes the mutex is already held by the caller
+func (c *consoleWriter) getLayoutLocked() LayoutConfig {
+	// Return cached layout if terminal width hasn't changed
+	if c.layout.TerminalWidth == c.getTerminalWidthLocked() && c.layout.TerminalWidth > 0 {
+		return c.layout
+	}
+
+	// Calculate new layout based on current terminal width
+	width := c.getTerminalWidthLocked()
+	c.layout = CalculateLayout(width)
+	return c.layout
 }
 
 // formatToWidth formats a message to fit within the specified width
@@ -530,11 +634,13 @@ func (c *consoleWriter) ErrorMessage(message string) {
 
 	// Errors are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorError(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("❌ %s\n", formattedMessage)
+		errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
+		fmt.Printf("%s %s\n", errorSymbol, coloredMessage)
 	} else {
-		fmt.Printf("ERROR: %s\n", formattedMessage)
+		fmt.Printf("ERROR: %s\n", coloredMessage)
 	}
 }
 
@@ -545,11 +651,13 @@ func (c *consoleWriter) WarningMessage(message string) {
 
 	// Warnings are essential - always show them even in quiet mode
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorWarning(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("⚠️  %s\n", formattedMessage)
+		warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
+		fmt.Printf("%s %s\n", warningSymbol, coloredMessage)
 	} else {
-		fmt.Printf("WARNING: %s\n", formattedMessage)
+		fmt.Printf("WARNING: %s\n", coloredMessage)
 	}
 }
 
@@ -563,11 +671,272 @@ func (c *consoleWriter) SuccessMessage(message string) {
 	}
 
 	formattedMessage := c.formatMessageForTerminal(message)
+	coloredMessage := c.colors.ColorSuccess(formattedMessage)
 
 	if c.isInteractive {
-		fmt.Printf("✅ %s\n", formattedMessage)
+		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
+		fmt.Printf("%s %s\n", successSymbol, coloredMessage)
 	} else {
-		fmt.Printf("SUCCESS: %s\n", formattedMessage)
+		fmt.Printf("SUCCESS: %s\n", coloredMessage)
+	}
+}
+
+// Modern Clean Output Methods
+// These methods implement the modern clean CLI output format with proper
+// alignment, color schemes, and responsive layout.
+
+// ShowProcessingLine displays an initial processing status line for a model
+func (c *consoleWriter) ShowProcessingLine(modelName string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	layout := c.getLayoutLocked()
+
+	// Apply color to model name
+	coloredModelName := c.colors.ColorModelName(modelName)
+
+	// Create processing status
+	processingStatus := "processing..."
+
+	// Format with proper alignment
+	alignedOutput := layout.FormatAlignedText(coloredModelName, processingStatus)
+
+	fmt.Println(alignedOutput)
+}
+
+// UpdateProcessingLine updates the processing line in-place with final status
+func (c *consoleWriter) UpdateProcessingLine(modelName string, status string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	layout := c.getLayoutLocked()
+
+	// Apply color to model name
+	coloredModelName := c.colors.ColorModelName(modelName)
+
+	// Apply semantic coloring to status based on content
+	coloredStatus := c.colorizeStatus(status)
+
+	// Format with proper alignment
+	alignedOutput := layout.FormatAlignedText(coloredModelName, coloredStatus)
+
+	fmt.Println(alignedOutput)
+}
+
+// colorizeStatus applies appropriate colors to status text based on content
+func (c *consoleWriter) colorizeStatus(status string) string {
+	// Determine status type based on Unicode symbols and keywords
+	if strings.Contains(status, "✓") {
+		// Success status - apply success color to the entire status
+		return c.colors.ColorSuccess(status)
+	} else if strings.Contains(status, "✗") {
+		// Error status - apply error color to the entire status
+		return c.colors.ColorError(status)
+	} else if strings.Contains(status, "⚠") {
+		// Warning status (rate limited, etc.) - apply warning color
+		return c.colors.ColorWarning(status)
+	}
+
+	// Default status - no special coloring
+	return status
+}
+
+// ShowFileOperations displays clean, declarative file operation messages
+func (c *consoleWriter) ShowFileOperations(message string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	// Add whitespace before saving operations
+	if strings.HasPrefix(message, "Saving") {
+		fmt.Println() // Phase separation whitespace
+	}
+
+	// Clean, declarative file operation messaging
+	// No special formatting needed - just clear, direct communication
+	fmt.Println(message)
+}
+
+// ShowSummarySection displays the main summary section with structured format
+func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet {
+		return
+	}
+
+	layout := c.getLayoutLocked()
+
+	// Add whitespace before summary section
+	fmt.Println() // Phase separation whitespace
+	fmt.Println() // Extra space for visual clarity
+
+	// Display UPPERCASE header with separator line
+	headerText := "SUMMARY"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display bullet point statistics
+	fmt.Printf("%s %d models processed\n",
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+		summary.ModelsProcessed)
+
+	fmt.Printf("%s %d successful, %d failed\n",
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+		summary.SuccessfulModels,
+		summary.FailedModels)
+
+	// Show synthesis status if not skipped
+	if summary.SynthesisStatus != "skipped" {
+		var statusText string
+		switch summary.SynthesisStatus {
+		case "completed":
+			statusText = c.colors.ColorSuccess(c.symbols.GetSymbols().Success + " completed")
+		case "failed":
+			statusText = c.colors.ColorError(c.symbols.GetSymbols().Error + " failed")
+		default:
+			statusText = summary.SynthesisStatus
+		}
+		fmt.Printf("%s Synthesis: %s\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+			statusText)
+	}
+
+	// Show output directory
+	fmt.Printf("%s Output directory: %s\n",
+		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+		c.colors.ColorFilePath(summary.OutputDirectory))
+
+	// Add contextual messaging and guidance based on scenarios
+	c.displayScenarioGuidance(summary)
+}
+
+// displayScenarioGuidance provides contextual messaging and actionable next steps
+// based on the processing results (all failed, partial success, etc.)
+func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
+	// Determine the scenario and provide appropriate guidance
+	if summary.SuccessfulModels == 0 && summary.FailedModels > 0 {
+		// All models failed scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
+			c.colors.ColorWarning("All models failed to process"))
+		fmt.Printf("  %s Check your API keys and network connectivity\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+		fmt.Printf("  %s Review error details above for specific failure reasons\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+		fmt.Printf("  %s Verify model names and rate limits with providers\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
+		// Partial success scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
+			c.colors.ColorWarning("Partial success - some models failed"))
+
+		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
+		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
+			successRate,
+			summary.SuccessfulModels,
+			summary.ModelsProcessed)
+		fmt.Printf("  %s Check failed model details above for specific issues\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
+		// Complete success scenario
+		fmt.Println()
+		fmt.Printf("%s %s\n",
+			c.colors.ColorSymbol(c.symbols.GetSymbols().Success),
+			c.colors.ColorSuccess("All models processed successfully"))
+		if summary.SynthesisStatus == "completed" {
+			fmt.Printf("  %s Synthesis completed - check the combined output above\n",
+				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+		} else if summary.ModelsProcessed > 1 {
+			fmt.Printf("  %s Individual model outputs saved - see file list above\n",
+				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
+		}
+	}
+}
+
+// ShowOutputFiles displays the output files section with human-readable sizes
+func (c *consoleWriter) ShowOutputFiles(files []OutputFile) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet || len(files) == 0 {
+		return
+	}
+
+	layout := c.getLayoutLocked()
+
+	// Display UPPERCASE header with separator line
+	headerText := "OUTPUT FILES"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display files with right-aligned human-readable sizes
+	for _, file := range files {
+		// Format file size using human-readable format
+		formattedSize := FormatFileSize(file.Size)
+
+		// Apply colors to filename and size
+		coloredFileName := c.colors.ColorFilePath(file.Name)
+		coloredSize := c.colors.ColorFileSize(formattedSize)
+
+		// Format with proper right alignment
+		alignedOutput := layout.FormatAlignedText(coloredFileName, coloredSize)
+		fmt.Printf("  %s\n", alignedOutput)
+	}
+}
+
+// ShowFailedModels displays the failed models section when failures occur
+func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.quiet || len(failed) == 0 {
+		return
+	}
+
+	layout := c.getLayoutLocked()
+
+	// Display UPPERCASE header with separator line
+	headerText := "FAILED MODELS"
+	separatorLength := len(headerText)
+	separatorLine := layout.GetSeparatorLine(separatorLength)
+
+	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
+	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+
+	// Display failed models with aligned reasons
+	for _, model := range failed {
+		// Apply colors to model name and failure reason
+		coloredModelName := c.colors.ColorModelName(model.Name)
+		coloredReason := c.colors.ColorError(model.Reason)
+
+		// Format with proper right alignment
+		alignedOutput := layout.FormatAlignedText(coloredModelName, coloredReason)
+		fmt.Printf("  %s\n", alignedOutput)
 	}
 }
 

@@ -57,7 +57,7 @@ func NewOrchestrator(
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
 
 	// Create the summary writer
-	summaryWriter := NewSummaryWriter(logger)
+	summaryWriter := NewSummaryWriter(logger, consoleWriter)
 
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService
@@ -206,7 +206,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
 
 	// Notify user that individual outputs are being saved
-	o.consoleWriter.StatusMessage("Saving individual model outputs...")
+	o.consoleWriter.ShowFileOperations("Saving individual outputs...")
 
 	// Use the OutputWriter to save individual model outputs
 	savedCount, filePaths, err := o.outputWriter.SaveIndividualOutputs(ctx, modelOutputs, o.config.OutputDir)
@@ -219,11 +219,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
 
 	// Notify user that individual outputs are complete
-	if o.consoleWriter.IsInteractive() {
-		o.consoleWriter.StatusMessage(fmt.Sprintf("✅ %d individual outputs saved to: %s", savedCount, o.config.OutputDir))
-	} else {
-		o.consoleWriter.StatusMessage(fmt.Sprintf("Individual outputs complete. %d files saved to: %s", savedCount, o.config.OutputDir))
-	}
+	o.consoleWriter.ShowFileOperations(fmt.Sprintf("● Outputs saved to: %s", o.config.OutputDir))
 
 	return filePaths, nil
 }
@@ -342,6 +338,7 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
 	// Start progress tracking
+	fmt.Println() // Extra space before processing starts
 	o.consoleWriter.StartProcessing(len(o.config.ModelNames))
 
 	// Launch a goroutine for each model, passing the index for progress tracking
@@ -419,7 +416,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 
 	// Report rate limiting delay if significant
 	if acquireDuration > 100*time.Millisecond {
-		o.consoleWriter.ModelRateLimited(modelName, index, acquireDuration)
+		o.consoleWriter.ModelRateLimited(index, len(o.config.ModelNames), modelName, acquireDuration)
 	}
 
 	// Release rate limiter when done
@@ -429,7 +426,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	}()
 
 	// Report model processing started
-	o.consoleWriter.ModelStarted(modelName, index)
+	o.consoleWriter.ModelStarted(index, len(o.config.ModelNames), modelName)
 
 	// Create API service adapter and model processor
 	apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
@@ -458,7 +455,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 				llm.CategoryInvalidRequest)
 		}
 		// Report model completion with error
-		o.consoleWriter.ModelCompleted(modelName, index, processingDuration, err)
+		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, err.Error())
 		resultChan <- result
 		return
 	}
@@ -468,7 +465,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	result.content = content
 	result.err = nil
 	// Report successful model completion
-	o.consoleWriter.ModelCompleted(modelName, index, processingDuration, nil)
+	o.consoleWriter.ModelCompleted(index, len(o.config.ModelNames), modelName, processingDuration)
 	resultChan <- result
 }
 
@@ -597,7 +594,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 			contextLogger.ErrorContext(ctx, returnErr.Error())
 
 			// Provide user-facing error message for complete failure
-			o.consoleWriter.StatusMessage("❌ All models failed - no outputs generated")
+			o.consoleWriter.StatusMessage("All models failed - no outputs generated")
 
 			return nil, nil, returnErr
 		}
@@ -614,7 +611,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 			len(modelOutputs), len(o.config.ModelNames), len(modelErrors), successfulModels)
 
 		// Provide user-facing message for partial failures
-		o.consoleWriter.StatusMessage(fmt.Sprintf("⚠️  %d/%d models succeeded, continuing with available outputs",
+		o.consoleWriter.StatusMessage(fmt.Sprintf("%d/%d models succeeded, continuing with available outputs",
 			len(modelOutputs), len(o.config.ModelNames)))
 
 		// Log individual error details

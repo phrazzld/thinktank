@@ -18,14 +18,23 @@ type mockConsoleWriter struct {
 	messages []string
 }
 
-func (m *mockConsoleWriter) StartProcessing(modelCount int)           {}
-func (m *mockConsoleWriter) ModelQueued(modelName string, index int)  {}
-func (m *mockConsoleWriter) ModelStarted(modelName string, index int) {}
-func (m *mockConsoleWriter) ModelCompleted(modelName string, index int, duration time.Duration, err error) {
+func (m *mockConsoleWriter) StartProcessing(modelCount int)                             {}
+func (m *mockConsoleWriter) ModelQueued(modelName string, index int)                    {}
+func (m *mockConsoleWriter) ModelStarted(modelIndex, totalModels int, modelName string) {}
+func (m *mockConsoleWriter) ModelCompleted(modelIndex, totalModels int, modelName string, duration time.Duration) {
 }
-func (m *mockConsoleWriter) ModelRateLimited(modelName string, index int, delay time.Duration) {}
-func (m *mockConsoleWriter) SynthesisStarted()                                                 {}
-func (m *mockConsoleWriter) SynthesisCompleted(outputPath string)                              {}
+func (m *mockConsoleWriter) ModelFailed(modelIndex, totalModels int, modelName string, reason string) {
+}
+func (m *mockConsoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName string, retryAfter time.Duration) {
+}
+func (m *mockConsoleWriter) ShowProcessingLine(modelName string)                  {}
+func (m *mockConsoleWriter) UpdateProcessingLine(modelName string, status string) {}
+func (m *mockConsoleWriter) ShowFileOperations(message string)                    {}
+func (m *mockConsoleWriter) ShowSummarySection(summary logutil.SummaryData)       {}
+func (m *mockConsoleWriter) ShowOutputFiles(files []logutil.OutputFile)           {}
+func (m *mockConsoleWriter) ShowFailedModels(failed []logutil.FailedModel)        {}
+func (m *mockConsoleWriter) SynthesisStarted()                                    {}
+func (m *mockConsoleWriter) SynthesisCompleted(outputPath string)                 {}
 func (m *mockConsoleWriter) StatusMessage(message string) {
 	m.messages = append(m.messages, message)
 }

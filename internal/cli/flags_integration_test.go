@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"os"
 	"path/filepath"
@@ -144,10 +143,10 @@ func runCliTest(t *testing.T, args []string, env map[string]string, isTTY bool) 
 
 	// Add small delays between operations to ensure proper ordering in CI
 	time.Sleep(5 * time.Millisecond)
-	consoleWriter.ModelCompleted("model-1", 1, 800*time.Millisecond, nil)
+	consoleWriter.ModelCompleted(1, 2, "model-1", 800*time.Millisecond)
 
 	time.Sleep(5 * time.Millisecond)
-	consoleWriter.ModelCompleted("model-2", 2, 1200*time.Millisecond, errors.New("simulated error"))
+	consoleWriter.ModelFailed(2, 2, "model-2", "simulated error")
 
 	time.Sleep(5 * time.Millisecond)
 	logger.Error("An error occurred", "err", "simulated error")
@@ -199,7 +198,7 @@ func TestCliLoggingCombinations(t *testing.T) {
 			name:            "Default Interactive",
 			flags:           []string{},
 			isTTY:           true,
-			expectInStdout:  []string{"🚀", "✓ completed", "✗ failed"},
+			expectInStdout:  []string{"Processing", "✓", "✗"},
 			expectLogFile:   true,
 			expectInLogFile: []string{`"level":"INFO"`, `"msg":"Simulating application start"`},
 		},
@@ -208,7 +207,7 @@ func TestCliLoggingCombinations(t *testing.T) {
 			flags:             []string{},
 			isTTY:             true,
 			env:               map[string]string{"CI": "true"},
-			expectInStdout:    []string{"Starting processing", "Completed model", "Failed model"},
+			expectInStdout:    []string{"Processing", "Completed model", "Failed model"},
 			expectNotInStdout: []string{"🚀"},
 			expectLogFile:     true,
 		},
@@ -223,7 +222,7 @@ func TestCliLoggingCombinations(t *testing.T) {
 			name:           "JSON Logs flag",
 			flags:          []string{"--json-logs"},
 			isTTY:          true,
-			expectInStdout: []string{"🚀", `"level":"INFO"`, `"msg":"Simulating application start"`},
+			expectInStdout: []string{"Processing", `"level":"INFO"`, `"msg":"Simulating application start"`},
 			expectInStderr: []string{},
 			expectLogFile:  false,
 		},
@@ -231,15 +230,15 @@ func TestCliLoggingCombinations(t *testing.T) {
 			name:              "No Progress flag",
 			flags:             []string{"--no-progress"},
 			isTTY:             true,
-			expectInStdout:    []string{"🚀", "✗ failed"},
-			expectNotInStdout: []string{"✓ completed"},
+			expectInStdout:    []string{"Processing", "✗"},
+			expectNotInStdout: []string{"✓"},
 			expectLogFile:     true,
 		},
 		{
 			name:           "Verbose flag (logs to stdout/stderr with stream separation)",
 			flags:          []string{"--verbose"},
 			isTTY:          true,
-			expectInStdout: []string{"🚀", `"level":"INFO"`},
+			expectInStdout: []string{"Processing", `"level":"INFO"`},
 			expectInStderr: []string{`"level":"ERROR"`},
 			expectLogFile:  false,
 		},
@@ -256,8 +255,8 @@ func TestCliLoggingCombinations(t *testing.T) {
 			name:              "Combined no-progress and json-logs",
 			flags:             []string{"--no-progress", "--json-logs"},
 			isTTY:             true,
-			expectInStdout:    []string{"🚀", "✗ failed", `"level":"INFO"`},
-			expectNotInStdout: []string{"✓ completed"},
+			expectInStdout:    []string{"Processing", "✗", `"level":"INFO"`},
+			expectNotInStdout: []string{"✓"},
 			expectInStderr:    []string{},
 			expectLogFile:     false,
 		},
@@ -266,8 +265,8 @@ func TestCliLoggingCombinations(t *testing.T) {
 			flags:             []string{"--json-logs"},
 			isTTY:             true,
 			env:               map[string]string{"GITHUB_ACTIONS": "true"},
-			expectInStdout:    []string{"Starting processing", "Failed model", `"level":"INFO"`},
-			expectNotInStdout: []string{"🚀", "✓ completed"},
+			expectInStdout:    []string{"Processing", "Failed model", `"level":"INFO"`},
+			expectNotInStdout: []string{"🚀", "✓"},
 			expectInStderr:    []string{},
 			expectLogFile:     false,
 		},
@@ -275,7 +274,7 @@ func TestCliLoggingCombinations(t *testing.T) {
 			name:              "Non-TTY environment",
 			flags:             []string{},
 			isTTY:             false,
-			expectInStdout:    []string{"Starting processing", "Completed model", "Failed model"},
+			expectInStdout:    []string{"Processing", "Completed model", "Failed model"},
 			expectNotInStdout: []string{"🚀"},
 			expectLogFile:     true,
 		},
@@ -343,7 +342,7 @@ func TestCIEnvironmentDetection(t *testing.T) {
 			}
 
 			// Should have plain text output suitable for CI logs
-			if !strings.Contains(res.stdout, "Starting processing") {
+			if !strings.Contains(res.stdout, "Processing") {
 				t.Errorf("CI mode should contain plain text output, got: %s", res.stdout)
 			}
 		})
