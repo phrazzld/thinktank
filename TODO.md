@@ -9,7 +9,7 @@
   - **Effort**: Low (add concurrency limit field)
   - **Priority**: Critical
 
-- [ ] Make ModelDefinitions private
+- [x] Make ModelDefinitions private
   - **Issue**: Currently exported, should be encapsulated
   - **Impact**: Better API design, prevents misuse
   - **Effort**: Low (add accessor functions)

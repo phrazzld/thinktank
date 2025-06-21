@@ -64,10 +64,10 @@ func intConstraint(min, max float64) ParameterConstraint {
 	}
 }
 
-// ModelDefinitions contains hardcoded metadata for all supported LLM models.
+// modelDefinitions contains hardcoded metadata for all supported LLM models.
 // This replaces the complex YAML-based registry system with simple, direct access.
-// TODO: Make this private once access functions are implemented
-var ModelDefinitions = map[string]ModelInfo{
+// Access is provided through public functions like GetModelInfo, ListAllModels, etc.
+var modelDefinitions = map[string]ModelInfo{
 	// OpenAI Models
 	"gpt-4.1": {
 		Provider:        "openai",
@@ -345,7 +345,7 @@ var ModelDefinitions = map[string]ModelInfo{
 // GetModelInfo returns model metadata for the given model name.
 // Returns an error if the model is not supported.
 func GetModelInfo(name string) (ModelInfo, error) {
-	if info, exists := ModelDefinitions[name]; exists {
+	if info, exists := modelDefinitions[name]; exists {
 		return info, nil
 	}
 	return ModelInfo{}, fmt.Errorf("unknown model: %s", name)
@@ -363,8 +363,8 @@ func GetProviderForModel(name string) (string, error) {
 
 // ListAllModels returns a sorted slice of all supported model names.
 func ListAllModels() []string {
-	models := make([]string, 0, len(ModelDefinitions))
-	for name := range ModelDefinitions {
+	models := make([]string, 0, len(modelDefinitions))
+	for name := range modelDefinitions {
 		models = append(models, name)
 	}
 	sort.Strings(models)
@@ -375,7 +375,7 @@ func ListAllModels() []string {
 // Returns an empty slice if no models are found for the provider.
 func ListModelsForProvider(provider string) []string {
 	var models []string
-	for name, info := range ModelDefinitions {
+	for name, info := range modelDefinitions {
 		if info.Provider == provider {
 			models = append(models, name)
 		}
@@ -401,7 +401,7 @@ func GetAPIKeyEnvVar(provider string) string {
 
 // IsModelSupported returns true if the given model name is supported.
 func IsModelSupported(name string) bool {
-	_, exists := ModelDefinitions[name]
+	_, exists := modelDefinitions[name]
 	return exists
 }
 
