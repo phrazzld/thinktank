@@ -64,6 +64,9 @@ quality-gates
 # Test files
 test.txt
 
+# Load testing configuration (contains API keys)
+scripts/load-testing/config.sh
+
 # Log files
 *.log
 override-audit.log

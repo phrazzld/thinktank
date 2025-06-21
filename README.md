@@ -388,12 +388,16 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ### Common Issues
 
-- **Context Length Errors**: Reduce scope with `--include` or use a model with larger context
-- **API Key Issues**: Ensure correct environment variables are set for each provider
-- **No Files Processed**: Check paths and filters with `--dry-run`
-- **Rate Limiting**: See [Rate Limiting & Performance Optimization](#rate-limiting--performance-optimization) for detailed provider-specific guidance
-- **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
-- **Terminal Compatibility**: Output automatically adapts to your environment. Use `--no-progress` for minimal output or `--json-logs` for structured logging.
+For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**.
+
+**Quick fixes for common problems:**
+- **Authentication Errors**: Check API key environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`)
+- **Rate Limiting**: Use `--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit` flags to match your account tier
+- **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories
+- **Network Issues**: Retry the command - most network errors are temporary
+- **Model Failures**: Use `--partial-success-ok` for redundancy when using multiple models
+
+For detailed diagnosis steps, error code references, and provider-specific solutions, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
 ## Development & Contributing
 
@@ -443,6 +447,7 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 ## Learn More
 
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Comprehensive problem diagnosis and solutions
 - [Modern CLI Output Format & Rollback Guide](docs/MODERN_CLI_OUTPUT.md)
 - [OpenRouter Integration](docs/openrouter-integration.md)
 - [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)

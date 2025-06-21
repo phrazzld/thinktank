@@ -47,13 +47,13 @@
 ## Code Quality & Architecture
 
 ### Immediate Improvements
-- [ ] Mock HTTP client in parameter boundary tests
+- [x] Mock HTTP client in parameter boundary tests
   - **Issue**: TODO comment in openrouter parameter_boundary_test.go:398
   - **Impact**: More reliable, faster tests
   - **Effort**: Low (add mock HTTP transport)
   - **Priority**: Low
 
-- [ ] Resolve OpenAI client configuration TODO
+- [x] Resolve OpenAI client configuration TODO
   - **Issue**: TODO comment in openai_client.go:330 about setting configuration
   - **Impact**: Cleaner configuration handling
   - **Effort**: Low (investigate and implement proper setting)
@@ -66,7 +66,7 @@
   - **Effort**: Medium (test infrastructure, CI integration)
   - **Priority**: Medium
 
-- [ ] Create load testing scripts for model reliability
+- [x] Create load testing scripts for model reliability
   - **Issue**: Need to validate performance under various loads
   - **Impact**: Production confidence, performance insights
   - **Effort**: Low (bash scripts using existing CLI)
@@ -82,7 +82,7 @@
   - **Effort**: Low (documentation update)
   - **Priority**: Low
 
-- [ ] Add troubleshooting guide for model failures
+- [x] Add troubleshooting guide for model failures
   - **Issue**: Users can't easily diagnose model-specific issues
   - **Impact**: Reduced support burden, better self-service
   - **Effort**: Low (documentation)
