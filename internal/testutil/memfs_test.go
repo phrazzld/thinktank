@@ -465,6 +465,178 @@ func TestMemFSContextOperations(t *testing.T) {
 	}
 }
 
+// TestMemFSZeroCoverageFunctions tests the functions that currently have 0% coverage
+func TestMemFSZeroCoverageFunctions(t *testing.T) {
+	fs := NewMemFS()
+
+	// Test GetFileContent when empty
+	t.Run("GetFileContent empty filesystem", func(t *testing.T) {
+		content := fs.GetFileContent()
+		if content == nil {
+			t.Fatal("GetFileContent should return non-nil map")
+		}
+		if len(content) != 0 {
+			t.Fatalf("Expected empty map, got %d entries", len(content))
+		}
+	})
+
+	// Create some test files and directories
+	err := fs.MkdirAll("testdir1/subdir", 0750)
+	if err != nil {
+		t.Fatalf("Failed to create directories: %v", err)
+	}
+	err = fs.MkdirAll("testdir2", 0750)
+	if err != nil {
+		t.Fatalf("Failed to create directory: %v", err)
+	}
+
+	testData1 := []byte("test content 1")
+	testData2 := []byte("test content 2")
+	err = fs.WriteFile("testdir1/file1.txt", testData1, 0640)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+	err = fs.WriteFile("testdir1/subdir/file2.txt", testData2, 0640)
+	if err != nil {
+		t.Fatalf("Failed to write file: %v", err)
+	}
+
+	// Test GetFileContent with files
+	t.Run("GetFileContent with files", func(t *testing.T) {
+		content := fs.GetFileContent()
+		if len(content) != 2 {
+			t.Fatalf("Expected 2 files in content, got %d", len(content))
+		}
+
+		// Check file1.txt content
+		if data, ok := content["testdir1/file1.txt"]; !ok {
+			t.Fatal("Expected testdir1/file1.txt in content")
+		} else if string(data) != "test content 1" {
+			t.Fatalf("Expected 'test content 1', got '%s'", string(data))
+		}
+
+		// Check file2.txt content
+		if data, ok := content["testdir1/subdir/file2.txt"]; !ok {
+			t.Fatal("Expected testdir1/subdir/file2.txt in content")
+		} else if string(data) != "test content 2" {
+			t.Fatalf("Expected 'test content 2', got '%s'", string(data))
+		}
+
+		// Verify returned data is a copy (modifying it shouldn't affect the filesystem)
+		content["testdir1/file1.txt"][0] = 'X'
+		originalData, err := fs.ReadFile("testdir1/file1.txt")
+		if err != nil {
+			t.Fatalf("Failed to read original file: %v", err)
+		}
+		if originalData[0] == 'X' {
+			t.Fatal("GetFileContent should return copies of data, not references")
+		}
+	})
+
+	// Test GetDirectories
+	t.Run("GetDirectories", func(t *testing.T) {
+		dirs := fs.GetDirectories()
+		expectedDirs := []string{"testdir1", "testdir1/subdir", "testdir2"}
+
+		if len(dirs) != len(expectedDirs) {
+			t.Fatalf("Expected %d directories, got %d: %v", len(expectedDirs), len(dirs), dirs)
+		}
+
+		// Check that all expected directories are present (dirs should be sorted)
+		for i, expected := range expectedDirs {
+			if dirs[i] != expected {
+				t.Fatalf("Expected directory %s at index %d, got %s", expected, i, dirs[i])
+			}
+		}
+	})
+
+	// Test FileExists
+	t.Run("FileExists", func(t *testing.T) {
+		// Test existing files
+		if !fs.FileExists("testdir1/file1.txt") {
+			t.Fatal("FileExists should return true for existing file")
+		}
+		if !fs.FileExists("testdir1/subdir/file2.txt") {
+			t.Fatal("FileExists should return true for existing file in subdirectory")
+		}
+
+		// Test non-existing files
+		if fs.FileExists("testdir1/nonexistent.txt") {
+			t.Fatal("FileExists should return false for non-existing file")
+		}
+		if fs.FileExists("nonexistent/file.txt") {
+			t.Fatal("FileExists should return false for file in non-existing directory")
+		}
+
+		// Test directories (should return false for directories)
+		if fs.FileExists("testdir1") {
+			t.Fatal("FileExists should return false for directories")
+		}
+		if fs.FileExists("testdir1/subdir") {
+			t.Fatal("FileExists should return false for directories")
+		}
+	})
+
+	// Test DirExists
+	t.Run("DirExists", func(t *testing.T) {
+		// Test existing directories
+		if !fs.DirExists("testdir1") {
+			t.Fatal("DirExists should return true for existing directory")
+		}
+		if !fs.DirExists("testdir1/subdir") {
+			t.Fatal("DirExists should return true for existing subdirectory")
+		}
+		if !fs.DirExists("testdir2") {
+			t.Fatal("DirExists should return true for existing directory")
+		}
+
+		// Test root directory cases
+		if !fs.DirExists(".") {
+			t.Fatal("DirExists should return true for current directory")
+		}
+		if !fs.DirExists("/") {
+			t.Fatal("DirExists should return true for root directory")
+		}
+
+		// Test non-existing directories
+		if fs.DirExists("nonexistent") {
+			t.Fatal("DirExists should return false for non-existing directory")
+		}
+		if fs.DirExists("testdir1/nonexistent") {
+			t.Fatal("DirExists should return false for non-existing subdirectory")
+		}
+
+		// Test files (should return false for files)
+		if fs.DirExists("testdir1/file1.txt") {
+			t.Fatal("DirExists should return false for files")
+		}
+		if fs.DirExists("testdir1/subdir/file2.txt") {
+			t.Fatal("DirExists should return false for files")
+		}
+	})
+}
+
+// TestFileError tests the fileError type that has 0% coverage
+func TestFileError(t *testing.T) {
+	// Test Error method
+	err := &fileError{msg: "test error message"}
+	if err.Error() != "test error message" {
+		t.Fatalf("Expected 'test error message', got '%s'", err.Error())
+	}
+
+	// Test with empty message
+	err = &fileError{msg: ""}
+	if err.Error() != "" {
+		t.Fatalf("Expected empty string, got '%s'", err.Error())
+	}
+
+	// Test that it implements error interface
+	var e error = &fileError{msg: "interface test"}
+	if e.Error() != "interface test" {
+		t.Fatalf("Expected 'interface test', got '%s'", e.Error())
+	}
+}
+
 // Helper function to check if a slice of line numbers contains a specific line
 func containsLine(lines []int, line int) bool {
 	for _, l := range lines {
