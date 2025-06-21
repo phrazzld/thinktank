@@ -27,17 +27,19 @@ import (
 // It depends on various services to perform tasks like interacting with the API,
 // gathering context, writing files, logging audits, and handling rate limits.
 type Orchestrator struct {
-	apiService       interfaces.APIService
-	contextGatherer  interfaces.ContextGatherer
-	fileWriter       interfaces.FileWriter
-	auditLogger      auditlog.AuditLogger
-	rateLimiter      *ratelimit.RateLimiter
-	config           *config.CliConfig
-	logger           logutil.LoggerInterface
-	consoleWriter    logutil.ConsoleWriter
-	synthesisService SynthesisService
-	outputWriter     OutputWriter
-	summaryWriter    SummaryWriter
+	apiService        interfaces.APIService
+	contextGatherer   interfaces.ContextGatherer
+	fileWriter        interfaces.FileWriter
+	auditLogger       auditlog.AuditLogger
+	rateLimiter       *ratelimit.RateLimiter
+	config            *config.CliConfig
+	logger            logutil.LoggerInterface
+	consoleWriter     logutil.ConsoleWriter
+	synthesisService  SynthesisService
+	outputWriter      OutputWriter
+	summaryWriter     SummaryWriter
+	modelRateLimiters map[string]*ratelimit.RateLimiter // Per-model rate limiters for models with specific concurrency limits
+	rateLimiterMutex  sync.RWMutex                      // Protects modelRateLimiters map
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -66,18 +68,63 @@ func NewOrchestrator(
 	}
 
 	return &Orchestrator{
-		apiService:       apiService,
-		contextGatherer:  contextGatherer,
-		fileWriter:       fileWriter,
-		auditLogger:      auditLogger,
-		rateLimiter:      rateLimiter,
-		config:           config,
-		logger:           logger,
-		consoleWriter:    consoleWriter,
-		synthesisService: synthesisService,
-		outputWriter:     outputWriter,
-		summaryWriter:    summaryWriter,
+		apiService:        apiService,
+		contextGatherer:   contextGatherer,
+		fileWriter:        fileWriter,
+		auditLogger:       auditLogger,
+		rateLimiter:       rateLimiter,
+		config:            config,
+		logger:            logger,
+		consoleWriter:     consoleWriter,
+		synthesisService:  synthesisService,
+		outputWriter:      outputWriter,
+		summaryWriter:     summaryWriter,
+		modelRateLimiters: make(map[string]*ratelimit.RateLimiter),
 	}
+}
+
+// getRateLimiterForModel returns the appropriate rate limiter for a specific model.
+// If the model has MaxConcurrentRequests set, it creates/returns a model-specific rate limiter.
+// Otherwise, it returns the global rate limiter.
+func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateLimiter {
+	// Get model info to check for specific concurrency limits
+	modelInfo, err := models.GetModelInfo(modelName)
+	if err != nil {
+		// If we can't get model info, use global rate limiter
+		return o.rateLimiter
+	}
+
+	// If no specific concurrency limit is set, use global rate limiter
+	if modelInfo.MaxConcurrentRequests == nil {
+		return o.rateLimiter
+	}
+
+	// Check if we already have a rate limiter for this model
+	o.rateLimiterMutex.RLock()
+	if limiter, exists := o.modelRateLimiters[modelName]; exists {
+		o.rateLimiterMutex.RUnlock()
+		return limiter
+	}
+	o.rateLimiterMutex.RUnlock()
+
+	// Create a new model-specific rate limiter
+	o.rateLimiterMutex.Lock()
+	defer o.rateLimiterMutex.Unlock()
+
+	// Double-check in case another goroutine created it while we were waiting for the lock
+	if limiter, exists := o.modelRateLimiters[modelName]; exists {
+		return limiter
+	}
+
+	// Create new rate limiter with model-specific concurrency limit
+	// Use the same rate per minute as the global config but with model-specific concurrency
+	modelRateLimiter := ratelimit.NewRateLimiter(
+		*modelInfo.MaxConcurrentRequests,
+		o.config.RateLimitRequestsPerMinute,
+	)
+
+	o.modelRateLimiters[modelName] = modelRateLimiter
+	return modelRateLimiter
 }
 
 // Run executes the main application workflow, representing the core business logic.
@@ -400,10 +447,13 @@ func (o *Orchestrator) processModelWithRateLimit(
 	var result modelResult
 	result.modelName = modelName
 
+	// Get the appropriate rate limiter for this model (model-specific or global)
+	rateLimiter := o.getRateLimiterForModel(modelName)
+
 	// Acquire rate limiting permission
 	contextLogger.DebugContext(ctx, "Attempting to acquire rate limiter for model %s...", modelName)
 	acquireStart := time.Now()
-	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
+	if err := rateLimiter.Acquire(ctx, modelName); err != nil {
 		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
 		result.err = llm.Wrap(err, "orchestrator",
 			fmt.Sprintf("failed to acquire rate limiter for model %s", modelName),
@@ -422,7 +472,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Release rate limiter when done
 	defer func() {
 		contextLogger.DebugContext(ctx, "Releasing rate limiter for model %s", modelName)
-		o.rateLimiter.Release()
+		rateLimiter.Release()
 	}()
 
 	// Report model processing started

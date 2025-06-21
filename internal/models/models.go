@@ -40,6 +40,10 @@ type ModelInfo struct {
 
 	// ParameterConstraints defines validation rules for each parameter this model supports
 	ParameterConstraints map[string]ParameterConstraint `json:"parameter_constraints"`
+
+	// MaxConcurrentRequests limits concurrent requests for this specific model (optional)
+	// If nil, uses global concurrency settings. If set, enforces per-model limit.
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
 }
 
 // Helper functions for creating parameter constraints
@@ -200,6 +204,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
 			"top_k":             intConstraint(1, 100),
 		},
+		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
 	},
 	"openrouter/deepseek/deepseek-chat-v3-0324:free": {
 		Provider:        "openrouter",
@@ -235,6 +240,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"repetition_penalty": floatConstraint(0.0, 2.0),
 			"top_k":              intConstraint(1, 100),
 		},
+		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
 	},
 	"openrouter/meta-llama/llama-3.3-70b-instruct": {
 		Provider:        "openrouter",
