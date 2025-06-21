@@ -84,8 +84,16 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 
 // ParseFlags parses command line flags and returns a CliConfig
 func ParseFlags() (*config.CliConfig, error) {
+	// Filter out test flags from os.Args to prevent issues when running as subprocess from tests
+	var filteredArgs []string
+	for _, arg := range os.Args[1:] {
+		if !strings.HasPrefix(arg, "-test.") {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	return ParseFlagsWithEnv(flagSet, os.Args[1:], os.Getenv)
+	return ParseFlagsWithEnv(flagSet, filteredArgs, os.Getenv)
 }
 
 // ParseFlagsWithEnv parses command line flags with custom environment and flag set
