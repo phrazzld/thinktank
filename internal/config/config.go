@@ -135,6 +135,11 @@ type CliConfig struct {
 	MaxConcurrentRequests      int // Maximum number of concurrent API requests (0 = no limit)
 	RateLimitRequestsPerMinute int // Maximum requests per minute per model (0 = no limit)
 
+	// Provider-specific rate limiting (overrides global rate limit for specific providers)
+	OpenAIRateLimit     int // OpenAI-specific rate limit (0 = use provider default)
+	GeminiRateLimit     int // Gemini-specific rate limit (0 = use provider default)
+	OpenRouterRateLimit int // OpenRouter-specific rate limit (0 = use provider default)
+
 	// Timeout configuration
 	Timeout time.Duration // Global timeout for the entire operation
 
@@ -167,7 +172,40 @@ func NewDefaultCliConfig() *CliConfig {
 		DirPermissions:             DefaultDirPermissions,
 		FilePermissions:            DefaultFilePermissions,
 		PartialSuccessOk:           false, // Default to strict error handling
+		// Provider-specific rate limits default to 0 (use provider defaults)
+		OpenAIRateLimit:     0,
+		GeminiRateLimit:     0,
+		OpenRouterRateLimit: 0,
 	}
+}
+
+// GetProviderRateLimit returns the effective rate limit for a given provider.
+// It checks provider-specific overrides first, then falls back to global rate limit,
+// then finally to provider defaults if both are zero.
+func (c *CliConfig) GetProviderRateLimit(provider string) int {
+	// Check provider-specific override first
+	switch provider {
+	case "openai":
+		if c.OpenAIRateLimit > 0 {
+			return c.OpenAIRateLimit
+		}
+	case "gemini":
+		if c.GeminiRateLimit > 0 {
+			return c.GeminiRateLimit
+		}
+	case "openrouter":
+		if c.OpenRouterRateLimit > 0 {
+			return c.OpenRouterRateLimit
+		}
+	}
+
+	// Fall back to global rate limit if set
+	if c.RateLimitRequestsPerMinute > 0 {
+		return c.RateLimitRequestsPerMinute
+	}
+
+	// Final fallback: use provider default (this will be handled by models package)
+	return 0
 }
 
 // ValidateConfig checks if the configuration is valid and returns an error if not.

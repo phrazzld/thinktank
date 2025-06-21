@@ -398,12 +398,27 @@ func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName strin
 	// Errors are essential - always show them even in quiet mode
 	coloredModelName := c.colors.ColorModelName(modelName)
 	errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
-	coloredReason := c.colors.ColorError(reason)
+
+	// Handle multi-line error messages (like those with suggestions)
+	lines := strings.Split(reason, "\n")
+	firstLine := lines[0]
+	coloredFirstLine := c.colors.ColorError(firstLine)
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredReason)
+		fmt.Printf("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredFirstLine)
 	} else {
-		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredReason)
+		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredFirstLine)
+	}
+
+	// Print additional lines (like suggestions) with proper indentation
+	if len(lines) > 1 {
+		for _, line := range lines[1:] {
+			if strings.TrimSpace(line) != "" {
+				// Use warning color for suggestions to make them less prominent than errors
+				coloredLine := c.colors.ColorWarning(line)
+				fmt.Printf("  %s\n", coloredLine)
+			}
+		}
 	}
 }
 

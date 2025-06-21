@@ -64,6 +64,9 @@ quality-gates
 # Test files
 test.txt
 
+# Load testing configuration (contains API keys)
+scripts/load-testing/config.sh
+
 # Log files
 *.log
 override-audit.log
@@ -84,6 +87,9 @@ CI-FAILURE-*.md
 CI-RESOLUTION-*.md
 CI-ANALYSIS-*.md
 CI-LINT-FAILURE-ANALYSIS.md
+
+# Coverage analysis and mission reports
+COVERAGE-*.md
 
 # Temporary analysis and synthesis files
 CRITICAL-ANALYSIS-RESULTS.md

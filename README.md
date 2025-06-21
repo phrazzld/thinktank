@@ -58,6 +58,124 @@ thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
 | `--no-progress` | Disable progress indicators (show only start/complete) | `false` |
 | `--verbose` | Enable both console output AND JSON logs to stderr | `false` |
 
+## Rate Limiting & Performance Optimization
+
+thinktank provides intelligent rate limiting with provider-specific optimizations to help you get the best performance while staying within API limits.
+
+### Rate Limiting Hierarchy
+
+Rate limits are applied in this priority order:
+1. **Model-specific overrides** (for special models like DeepSeek R1)
+2. **Provider-specific settings** (`--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit`)
+3. **Global rate limit** (`--rate-limit`)
+4. **Provider defaults** (automatic based on typical API capabilities)
+
+### Provider-Specific Defaults & Recommendations
+
+#### OpenAI
+- **Default**: 3000 RPM (optimized for paid accounts)
+- **Free tier**: Use `--openai-rate-limit 20` for Tier 1 accounts
+- **Production**: Most paid accounts can handle the 3000 RPM default
+- **High-volume**: Tier 4+ accounts can use `--openai-rate-limit 10000` or higher
+
+#### Google Gemini
+- **Default**: 60 RPM (balanced for free and paid tiers)
+- **Free tier**: Use `--gemini-rate-limit 15` (aligns with Gemini 1.5 Flash free limit)
+- **Paid tier**: Use `--gemini-rate-limit 1000` for significantly faster processing
+
+#### OpenRouter
+- **Default**: 20 RPM (conservative for mixed model usage)
+- **Free models**: Automatic limit of 20 RPM (cannot be increased)
+- **With $10+ balance**: Most models support higher rates; try `--openrouter-rate-limit 100`
+- **High-volume**: With sufficient balance, use `--openrouter-rate-limit 500`
+
+### Special Model Considerations
+
+Some models have specific rate limits regardless of provider settings:
+- `openrouter/deepseek/deepseek-r1-0528`: Limited to 5 RPM (reasoning model)
+- `openrouter/deepseek/deepseek-r1-0528:free`: Limited to 3 RPM (free tier)
+
+### Common Rate Limiting Scenarios
+
+#### Multi-Provider Usage
+```bash
+# Optimize for mixed providers with different API tiers
+thinktank --instructions task.txt \
+  --model gpt-4.1 --model gemini-2.5-pro --model openrouter/meta-llama/llama-3.3-70b-instruct \
+  --openai-rate-limit 100 \
+  --gemini-rate-limit 1000 \
+  --openrouter-rate-limit 50 \
+  ./src/
+```
+
+#### High-Performance Processing
+```bash
+# For production workloads with paid API tiers
+thinktank --instructions analyze.txt \
+  --model gpt-4.1 --model gemini-2.5-pro \
+  --max-concurrent 10 \
+  --openai-rate-limit 5000 \
+  --gemini-rate-limit 1000 \
+  ./large-codebase/
+```
+
+#### Conservative/Budget Mode
+```bash
+# For free tiers or budget-conscious usage
+thinktank --instructions task.txt \
+  --model gemini-2.5-flash \
+  --max-concurrent 2 \
+  --gemini-rate-limit 15 \
+  ./project/
+```
+
+#### Single Provider Optimization
+```bash
+# OpenAI-only with high-tier account
+thinktank --instructions task.txt \
+  --model gpt-4.1 --model o4-mini \
+  --openai-rate-limit 8000 \
+  --max-concurrent 15 \
+  ./src/
+
+# Gemini-only with paid account
+thinktank --instructions task.txt \
+  --model gemini-2.5-pro --model gemini-2.5-flash \
+  --gemini-rate-limit 1000 \
+  --max-concurrent 8 \
+  ./src/
+```
+
+### Troubleshooting Rate Limits
+
+#### Symptoms of Rate Limiting Issues
+- Models showing "rate limited" in output
+- Long delays between model processing
+- 429 errors in verbose logs
+
+#### Solutions by Provider
+
+**OpenAI 429 Errors:**
+- Reduce `--openai-rate-limit` (try 100-500 for lower tiers)
+- Check your usage tier at [OpenAI Platform](https://platform.openai.com/usage)
+- Consider upgrading your account tier for higher limits
+
+**Gemini Rate Limiting:**
+- Free tier: Reduce `--gemini-rate-limit` to 10-15
+- Paid tier: Check quota at [Google AI Studio](https://makersuite.google.com/)
+- For persistent issues, try `--max-concurrent 3`
+
+**OpenRouter Issues:**
+- Ensure account balance > $10 for higher daily limits
+- Use `--openrouter-rate-limit 10` for conservative usage
+- Check model-specific limits at [OpenRouter Models](https://openrouter.ai/models)
+
+#### General Optimization Tips
+- Start conservative and increase gradually
+- Use `--dry-run` to estimate request volume before processing
+- Monitor actual usage patterns with `--verbose` logging
+- Consider time-based processing for large codebases
+
 ## Supported Models
 
 thinktank supports the following LLM models out of the box:
@@ -270,12 +388,16 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ### Common Issues
 
-- **Context Length Errors**: Reduce scope with `--include` or use a model with larger context
-- **API Key Issues**: Ensure correct environment variables are set for each provider
-- **No Files Processed**: Check paths and filters with `--dry-run`
-- **Rate Limiting**: Adjust `--max-concurrent` (default: 5) and `--rate-limit` (default: 60)
-- **Model Availability**: If one model is unreliable, use `--partial-success-ok` to allow other models to succeed
-- **Terminal Compatibility**: Output automatically adapts to your environment. Use `--no-progress` for minimal output or `--json-logs` for structured logging.
+For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**.
+
+**Quick fixes for common problems:**
+- **Authentication Errors**: Check API key environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`)
+- **Rate Limiting**: Use `--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit` flags to match your account tier
+- **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories
+- **Network Issues**: Retry the command - most network errors are temporary
+- **Model Failures**: Use `--partial-success-ok` for redundancy when using multiple models
+
+For detailed diagnosis steps, error code references, and provider-specific solutions, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
 ## Development & Contributing
 
@@ -325,6 +447,7 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 ## Learn More
 
+- [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Comprehensive problem diagnosis and solutions
 - [Modern CLI Output Format & Rollback Guide](docs/MODERN_CLI_OUTPUT.md)
 - [OpenRouter Integration](docs/openrouter-integration.md)
 - [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)

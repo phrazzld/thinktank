@@ -324,10 +324,18 @@ func applyOpenAIParameters(params *openai.ChatCompletionNewParams, customParams 
 		}
 	}
 
-	// Skip reasoning effort for now
-	// if reasoningEffort, ok := customParams["reasoning_effort"]; ok {
-	// 	if v, ok := reasoningEffort.(string); ok {
-	// 		// TODO: Figure out the right way to set this
-	// 	}
-	// }
+	// Handle reasoning effort parameter for reasoning models (o1, o3, o4-mini)
+	if reasoningEffort, ok := customParams["reasoning_effort"]; ok {
+		if v, ok := reasoningEffort.(string); ok {
+			// Map string values to OpenAI constants
+			switch v {
+			case "low":
+				params.ReasoningEffort = openai.ReasoningEffortLow
+			case "medium":
+				params.ReasoningEffort = openai.ReasoningEffortMedium
+			case "high":
+				params.ReasoningEffort = openai.ReasoningEffortHigh
+			}
+		}
+	}
 }

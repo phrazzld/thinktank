@@ -2,6 +2,7 @@ package openrouter
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/llm"
@@ -9,6 +10,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// createMockClient creates a test client with a mock HTTP transport
+func createMockClient(t *testing.T) *openrouterClient {
+	logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
+
+	// Create mock transport that returns default success responses
+	mockTransport := &MockRoundTripper{}
+
+	// Create HTTP client with mock transport
+	httpClient := &http.Client{
+		Transport: mockTransport,
+	}
+
+	// Create OpenRouter client with mock HTTP client
+	client, err := NewClient("sk-or-test-key", "test/model", "http://mock-endpoint", logger, WithHTTPClient(httpClient))
+	require.NoError(t, err)
+
+	return client
+}
 
 // TestGenerateContentParameterBoundaries tests parameter boundary validation for OpenRouter provider
 func TestGenerateContentParameterBoundaries(t *testing.T) {
@@ -388,37 +408,32 @@ func TestGenerateContentParameterBoundaries(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a test logger
-			logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
-
-			// Create OpenRouter client - we'll need to mock the HTTP transport to avoid actual API calls
-			client, err := NewClient("sk-or-test-key", "test/model", "http://mock-endpoint", logger)
-			require.NoError(t, err)
-
-			// TODO: In a real implementation, we would need to mock the HTTP client
-			// For now, we'll test the parameter validation logic by calling GenerateContent
-			// This test primarily validates that parameters are processed correctly
-
+			// Create client with mock HTTP transport
+			client := createMockClient(t)
 			ctx := context.Background()
 
-			// Note: This will make an actual HTTP request to the mock endpoint
-			// In production tests, we should mock the HTTP transport
-			_, err = client.GenerateContent(ctx, tt.prompt, tt.parameters)
+			// Test parameter validation by calling GenerateContent with mocked HTTP client
+			_, err := client.GenerateContent(ctx, tt.prompt, tt.parameters)
 
 			if tt.expectError {
-				// We expect an error - this could be from parameter validation or network error
+				// We expect an error from parameter validation
 				assert.Error(t, err, "Expected error for test case: %s", tt.name)
 
-				// For now, we're testing that the client handles parameters correctly
-				// Actual parameter validation would need to be implemented in the client
-			} else {
-				// We don't expect a validation error, but may get network errors in tests
-				// In a production test with proper mocking, this would test successful parameter processing
-				if err != nil {
-					// Network errors are expected in this test setup since we're using a mock endpoint
-					// In a real test, we'd mock the HTTP transport to return successful responses
-					t.Logf("Network error expected in test environment: %v", err)
+				// Check that it's the right type of error
+				if tt.errorCategory != llm.CategoryUnknown {
+					assert.True(t, llm.IsCategory(err, tt.errorCategory),
+						"Expected error category %s for test case: %s, got error: %v",
+						tt.errorCategory, tt.name, err)
 				}
+
+				// Check error message contains expected content
+				if tt.errorContains != "" {
+					assert.Contains(t, err.Error(), tt.errorContains,
+						"Expected error to contain '%s' for test case: %s", tt.errorContains, tt.name)
+				}
+			} else {
+				// We don't expect a validation error
+				assert.NoError(t, err, "Unexpected error for test case: %s", tt.name)
 			}
 		})
 	}
@@ -491,22 +506,19 @@ func TestParameterTypeConversion(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
-			client, err := NewClient("sk-or-test-key", "test/model", "http://mock-endpoint", logger)
-			require.NoError(t, err)
-
+			// Create client with mock HTTP transport
+			client := createMockClient(t)
 			ctx := context.Background()
 
-			// Test parameter type conversion by calling GenerateContent
-			// Note: This will result in network errors due to mock endpoint, but tests parameter processing
-			_, err = client.GenerateContent(ctx, "test prompt", tt.parameters)
+			// Test parameter type conversion by calling GenerateContent with mocked HTTP client
+			_, err := client.GenerateContent(ctx, "test prompt", tt.parameters)
 
 			if tt.expectError {
 				require.Error(t, err)
 			} else {
-				// In this test setup, we expect network errors but not parameter type conversion errors
-				// The key is that parameter type conversion should work without panicking
-				t.Logf("Parameter type conversion test completed (network error expected): %v", err)
+				// With proper mocking, we should not get network errors
+				// Parameter type conversion should work without panicking
+				assert.NoError(t, err, "Parameter type conversion should work for test case: %s", tt.name)
 			}
 		})
 	}
@@ -543,22 +555,19 @@ func TestParameterValidationLogic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
-			client, err := NewClient("sk-or-test-key", "test/model", "http://mock-endpoint", logger)
-			require.NoError(t, err)
+			// Create client with mock HTTP transport
+			client := createMockClient(t)
 
 			// Test that parameter processing doesn't cause panics or validation errors
 			// We're testing the internal logic, not the network calls
 			ctx := context.Background()
 
-			// This tests parameter conversion and processing logic
-			_, err = client.GenerateContent(ctx, "test prompt", tt.parameters)
+			// This tests parameter conversion and processing logic with mocked HTTP client
+			_, err := client.GenerateContent(ctx, "test prompt", tt.parameters)
 
-			// We expect network errors in this test setup, but not parameter processing errors
+			// With proper mocking, parameter processing should work without errors or panics
 			// The absence of panics indicates successful parameter type conversion
-			if err != nil {
-				t.Logf("Expected network error in test: %v", err)
-			}
+			assert.NoError(t, err, "Parameter processing should work without errors for test case: %s", tt.name)
 		})
 	}
 }

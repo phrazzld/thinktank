@@ -516,3 +516,253 @@ func TestCreateAPIError(t *testing.T) {
 		})
 	}
 }
+
+func TestParseErrorResponse(t *testing.T) {
+	tests := []struct {
+		name         string
+		responseBody []byte
+		wantMessage  string
+		wantType     string
+		wantCode     string
+		wantParam    string
+	}{
+		{
+			name:         "empty response body",
+			responseBody: []byte{},
+			wantMessage:  "",
+			wantType:     "",
+			wantCode:     "",
+			wantParam:    "",
+		},
+		{
+			name:         "nil response body",
+			responseBody: nil,
+			wantMessage:  "",
+			wantType:     "",
+			wantCode:     "",
+			wantParam:    "",
+		},
+		{
+			name:         "invalid JSON",
+			responseBody: []byte(`{invalid json}`),
+			wantMessage:  "",
+			wantType:     "",
+			wantCode:     "",
+			wantParam:    "",
+		},
+		{
+			name:         "minimal valid error response",
+			responseBody: []byte(`{"error": {"message": "Authentication failed"}}`),
+			wantMessage:  "Authentication failed",
+			wantType:     "",
+			wantCode:     "",
+			wantParam:    "",
+		},
+		{
+			name:         "complete error response",
+			responseBody: []byte(`{"error": {"message": "Invalid parameter value", "type": "invalid_request_error", "code": "invalid_parameter", "param": "temperature"}}`),
+			wantMessage:  "Invalid parameter value",
+			wantType:     "invalid_request_error",
+			wantCode:     "invalid_parameter",
+			wantParam:    "temperature",
+		},
+		{
+			name:         "error response with type and code only",
+			responseBody: []byte(`{"error": {"message": "Rate limit exceeded", "type": "rate_limit_error", "code": "rate_limit_exceeded"}}`),
+			wantMessage:  "Rate limit exceeded",
+			wantType:     "rate_limit_error",
+			wantCode:     "rate_limit_exceeded",
+			wantParam:    "",
+		},
+		{
+			name:         "error response with missing fields",
+			responseBody: []byte(`{"error": {"type": "server_error"}}`),
+			wantMessage:  "",
+			wantType:     "server_error",
+			wantCode:     "",
+			wantParam:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			message, errorType, code, param := ParseErrorResponse(tt.responseBody)
+
+			assert.Equal(t, tt.wantMessage, message, "message mismatch")
+			assert.Equal(t, tt.wantType, errorType, "type mismatch")
+			assert.Equal(t, tt.wantCode, code, "code mismatch")
+			assert.Equal(t, tt.wantParam, param, "param mismatch")
+		})
+	}
+}
+
+func TestFormatErrorDetails(t *testing.T) {
+	tests := []struct {
+		name         string
+		errorMessage string
+		errorType    string
+		errorCode    string
+		errorParam   string
+		wantDetails  string
+	}{
+		{
+			name:         "empty message returns empty",
+			errorMessage: "",
+			errorType:    "invalid_request_error",
+			errorCode:    "invalid_parameter",
+			errorParam:   "temperature",
+			wantDetails:  "",
+		},
+		{
+			name:         "message only",
+			errorMessage: "Authentication failed",
+			errorType:    "",
+			errorCode:    "",
+			errorParam:   "",
+			wantDetails:  "API Error: Authentication failed",
+		},
+		{
+			name:         "message with type",
+			errorMessage: "Invalid request",
+			errorType:    "invalid_request_error",
+			errorCode:    "",
+			errorParam:   "",
+			wantDetails:  "API Error: Invalid request (Type: invalid_request_error)",
+		},
+		{
+			name:         "message with code",
+			errorMessage: "Context length exceeded",
+			errorType:    "",
+			errorCode:    "context_length_exceeded",
+			errorParam:   "",
+			wantDetails:  "API Error: Context length exceeded (Code: context_length_exceeded)",
+		},
+		{
+			name:         "message with param",
+			errorMessage: "Invalid parameter value",
+			errorType:    "",
+			errorCode:    "",
+			errorParam:   "temperature",
+			wantDetails:  "API Error: Invalid parameter value (Param: temperature)",
+		},
+		{
+			name:         "message with type and code",
+			errorMessage: "Rate limit exceeded",
+			errorType:    "rate_limit_error",
+			errorCode:    "rate_limit_exceeded",
+			errorParam:   "",
+			wantDetails:  "API Error: Rate limit exceeded (Type: rate_limit_error) (Code: rate_limit_exceeded)",
+		},
+		{
+			name:         "complete error details",
+			errorMessage: "Invalid parameter value",
+			errorType:    "invalid_request_error",
+			errorCode:    "invalid_parameter",
+			errorParam:   "temperature",
+			wantDetails:  "API Error: Invalid parameter value (Type: invalid_request_error) (Code: invalid_parameter) (Param: temperature)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatErrorDetails(tt.errorMessage, tt.errorType, tt.errorCode, tt.errorParam)
+			assert.Equal(t, tt.wantDetails, result)
+		})
+	}
+}
+
+func TestMapOpenAIErrorToCategory(t *testing.T) {
+	tests := []struct {
+		name         string
+		errorType    string
+		errorCode    string
+		wantCategory llm.ErrorCategory
+	}{
+		// Error type mapping
+		{
+			name:         "authentication error type",
+			errorType:    "authentication_error",
+			errorCode:    "",
+			wantCategory: llm.CategoryAuth,
+		},
+		{
+			name:         "invalid request error type",
+			errorType:    "invalid_request_error",
+			errorCode:    "",
+			wantCategory: llm.CategoryInvalidRequest,
+		},
+		{
+			name:         "rate limit error type",
+			errorType:    "rate_limit_error",
+			errorCode:    "",
+			wantCategory: llm.CategoryRateLimit,
+		},
+		{
+			name:         "server error type",
+			errorType:    "server_error",
+			errorCode:    "",
+			wantCategory: llm.CategoryServer,
+		},
+
+		// Error code mapping
+		{
+			name:         "context length exceeded code",
+			errorType:    "",
+			errorCode:    "context_length_exceeded",
+			wantCategory: llm.CategoryInputLimit,
+		},
+		{
+			name:         "model not found code",
+			errorType:    "",
+			errorCode:    "model_not_found",
+			wantCategory: llm.CategoryNotFound,
+		},
+		{
+			name:         "insufficient quota code",
+			errorType:    "",
+			errorCode:    "insufficient_quota",
+			wantCategory: llm.CategoryInsufficientCredits,
+		},
+		{
+			name:         "content filter code",
+			errorType:    "",
+			errorCode:    "content_filter",
+			wantCategory: llm.CategoryContentFiltered,
+		},
+
+		// Type takes precedence over code
+		{
+			name:         "type overrides code",
+			errorType:    "authentication_error",
+			errorCode:    "context_length_exceeded",
+			wantCategory: llm.CategoryAuth, // Should be auth, not input limit
+		},
+
+		// Unknown cases
+		{
+			name:         "unknown error type",
+			errorType:    "unknown_error_type",
+			errorCode:    "",
+			wantCategory: llm.CategoryUnknown,
+		},
+		{
+			name:         "unknown error code",
+			errorType:    "",
+			errorCode:    "unknown_error_code",
+			wantCategory: llm.CategoryUnknown,
+		},
+		{
+			name:         "empty type and code",
+			errorType:    "",
+			errorCode:    "",
+			wantCategory: llm.CategoryUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := MapOpenAIErrorToCategory(tt.errorType, tt.errorCode)
+			assert.Equal(t, tt.wantCategory, result)
+		})
+	}
+}

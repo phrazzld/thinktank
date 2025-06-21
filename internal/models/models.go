@@ -40,6 +40,14 @@ type ModelInfo struct {
 
 	// ParameterConstraints defines validation rules for each parameter this model supports
 	ParameterConstraints map[string]ParameterConstraint `json:"parameter_constraints"`
+
+	// MaxConcurrentRequests limits concurrent requests for this specific model (optional)
+	// If nil, uses global concurrency settings. If set, enforces per-model limit.
+	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+
+	// RateLimitRPM overrides the provider-specific default rate limit for this model (optional)
+	// If nil, uses provider-specific default rate limits. If set, enforces per-model rate limit.
+	RateLimitRPM *int `json:"rate_limit_rpm,omitempty"`
 }
 
 // Helper functions for creating parameter constraints
@@ -60,10 +68,10 @@ func intConstraint(min, max float64) ParameterConstraint {
 	}
 }
 
-// ModelDefinitions contains hardcoded metadata for all supported LLM models.
+// modelDefinitions contains hardcoded metadata for all supported LLM models.
 // This replaces the complex YAML-based registry system with simple, direct access.
-// TODO: Make this private once access functions are implemented
-var ModelDefinitions = map[string]ModelInfo{
+// Access is provided through public functions like GetModelInfo, ListAllModels, etc.
+var modelDefinitions = map[string]ModelInfo{
 	// OpenAI Models
 	"gpt-4.1": {
 		Provider:        "openai",
@@ -94,9 +102,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"top_p":             1.0,
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
-			"reasoning": map[string]interface{}{
-				"effort": "high",
-			},
+			"reasoning_effort":  "high",
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -104,6 +110,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"max_tokens":        intConstraint(1, 200000),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
 		},
 	},
 
@@ -153,9 +160,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"top_p":             1.0,
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
-			"reasoning": map[string]interface{}{
-				"effort": "high",
-			},
+			"reasoning_effort":  "high",
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -163,6 +168,7 @@ var ModelDefinitions = map[string]ModelInfo{
 			"max_tokens":        intConstraint(1, 200000),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
 		},
 	},
 
@@ -200,6 +206,8 @@ var ModelDefinitions = map[string]ModelInfo{
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
 			"top_k":             intConstraint(1, 100),
 		},
+		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
+		RateLimitRPM:          &[]int{5}[0], // Very low rate limit for this specific model
 	},
 	"openrouter/deepseek/deepseek-chat-v3-0324:free": {
 		Provider:        "openrouter",
@@ -235,6 +243,8 @@ var ModelDefinitions = map[string]ModelInfo{
 			"repetition_penalty": floatConstraint(0.0, 2.0),
 			"top_k":              intConstraint(1, 100),
 		},
+		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
+		RateLimitRPM:          &[]int{3}[0], // Very low rate limit for free tier
 	},
 	"openrouter/meta-llama/llama-3.3-70b-instruct": {
 		Provider:        "openrouter",
@@ -339,7 +349,7 @@ var ModelDefinitions = map[string]ModelInfo{
 // GetModelInfo returns model metadata for the given model name.
 // Returns an error if the model is not supported.
 func GetModelInfo(name string) (ModelInfo, error) {
-	if info, exists := ModelDefinitions[name]; exists {
+	if info, exists := modelDefinitions[name]; exists {
 		return info, nil
 	}
 	return ModelInfo{}, fmt.Errorf("unknown model: %s", name)
@@ -357,8 +367,8 @@ func GetProviderForModel(name string) (string, error) {
 
 // ListAllModels returns a sorted slice of all supported model names.
 func ListAllModels() []string {
-	models := make([]string, 0, len(ModelDefinitions))
-	for name := range ModelDefinitions {
+	models := make([]string, 0, len(modelDefinitions))
+	for name := range modelDefinitions {
 		models = append(models, name)
 	}
 	sort.Strings(models)
@@ -369,7 +379,7 @@ func ListAllModels() []string {
 // Returns an empty slice if no models are found for the provider.
 func ListModelsForProvider(provider string) []string {
 	var models []string
-	for name, info := range ModelDefinitions {
+	for name, info := range modelDefinitions {
 		if info.Provider == provider {
 			models = append(models, name)
 		}
@@ -393,9 +403,41 @@ func GetAPIKeyEnvVar(provider string) string {
 	}
 }
 
+// GetProviderDefaultRateLimit returns the default rate limit (requests per minute) for a given provider.
+// These defaults are based on typical provider capabilities and can be overridden via CLI flags.
+func GetProviderDefaultRateLimit(provider string) int {
+	switch provider {
+	case "openai":
+		return 3000 // OpenAI has high rate limits for paid accounts
+	case "gemini":
+		return 60 // Gemini has moderate rate limits
+	case "openrouter":
+		return 20 // OpenRouter varies by model, conservative default
+	default:
+		return 60 // Conservative fallback for unknown providers
+	}
+}
+
+// GetModelRateLimit returns the effective rate limit for a specific model.
+// Priority: model-specific override > provider default
+func GetModelRateLimit(modelName string) (int, error) {
+	modelInfo, err := GetModelInfo(modelName)
+	if err != nil {
+		return 0, err
+	}
+
+	// If model has a specific rate limit override, use it
+	if modelInfo.RateLimitRPM != nil {
+		return *modelInfo.RateLimitRPM, nil
+	}
+
+	// Otherwise, use provider default
+	return GetProviderDefaultRateLimit(modelInfo.Provider), nil
+}
+
 // IsModelSupported returns true if the given model name is supported.
 func IsModelSupported(name string) bool {
-	_, exists := ModelDefinitions[name]
+	_, exists := modelDefinitions[name]
 	return exists
 }
 
