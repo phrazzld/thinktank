@@ -208,7 +208,7 @@ func TestHandleError(t *testing.T) {
 			}
 
 			// For non-nil errors, use subprocess to test os.Exit behavior
-			cmd := exec.Command(os.Args[0], "-test.run=TestHandleError")
+			cmd := exec.Command(os.Args[0], "-test.run", "TestHandleError")
 			cmd.Env = append(os.Environ(),
 				"TEST_HANDLE_ERROR=1",
 				fmt.Sprintf("TEST_ERROR_TYPE=%s", tt.errorType))
@@ -248,7 +248,7 @@ func TestHandleErrorAuditLogFailure(t *testing.T) {
 		return
 	}
 
-	cmd := exec.Command(os.Args[0], "-test.run=TestHandleErrorAuditLogFailure")
+	cmd := exec.Command(os.Args[0], "-test.run", "TestHandleErrorAuditLogFailure")
 	cmd.Env = append(os.Environ(), "TEST_AUDIT_FAILURE=1")
 
 	err := cmd.Run()
@@ -333,7 +333,7 @@ func TestMainFunction(t *testing.T) {
 	}
 
 	t.Run("main with invalid flags", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainFunction")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainFunction")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_FUNCTION=1")
 		// Add invalid flags that should cause ParseFlags to fail
 		cmd.Args = append(cmd.Args, "--invalid-flag")
@@ -350,7 +350,7 @@ func TestMainFunction(t *testing.T) {
 	})
 
 	t.Run("main with missing required flags", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainFunction")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainFunction")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_FUNCTION=1")
 		// Don't provide required flags like --instructions
 
@@ -437,7 +437,7 @@ func TestMainDryRun(t *testing.T) {
 	}
 
 	t.Run("main dry run success", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainDryRun")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=dry-run",
@@ -460,7 +460,7 @@ func TestMainDryRun(t *testing.T) {
 	t.Run("main with audit logging", func(t *testing.T) {
 		auditFile := tmpDir + "/audit.log"
 
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainDryRun")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=audit",
@@ -487,7 +487,7 @@ func TestMainDryRun(t *testing.T) {
 	})
 
 	t.Run("main with verbose logging", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainDryRun")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=verbose",
@@ -508,7 +508,7 @@ func TestMainDryRun(t *testing.T) {
 	})
 
 	t.Run("main with quiet mode", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainDryRun")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_DRY_RUN=1",
 			"TEST_MODE=quiet",
@@ -564,7 +564,7 @@ func TestMainValidationErrors(t *testing.T) {
 	}
 
 	t.Run("main with missing instructions file", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainValidationErrors")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
 		// Missing --instructions flag
 		cmd.Args = append(cmd.Args, testFile)
@@ -581,7 +581,7 @@ func TestMainValidationErrors(t *testing.T) {
 	})
 
 	t.Run("main with conflicting flags", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainValidationErrors")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
 		// Conflicting --quiet and --verbose flags
 		cmd.Args = append(cmd.Args,
@@ -602,7 +602,7 @@ func TestMainValidationErrors(t *testing.T) {
 	})
 
 	t.Run("main with invalid synthesis model", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainValidationErrors")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
 		// Invalid synthesis model pattern
 		cmd.Args = append(cmd.Args,
@@ -623,7 +623,7 @@ func TestMainValidationErrors(t *testing.T) {
 	})
 
 	t.Run("main with no paths", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainValidationErrors")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
 		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
 		// No file paths provided
 		cmd.Args = append(cmd.Args,
@@ -712,7 +712,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 	}
 
 	t.Run("main with custom timeout", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainConfigurationOptions")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=timeout",
@@ -733,7 +733,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 	})
 
 	t.Run("main with rate limiting", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainConfigurationOptions")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=ratelimit",
@@ -754,7 +754,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 	})
 
 	t.Run("main with custom permissions", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainConfigurationOptions")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=permissions",
@@ -775,7 +775,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 	})
 
 	t.Run("main with multiple models", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainConfigurationOptions")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=multimodel",
@@ -796,7 +796,7 @@ func TestMainConfigurationOptions(t *testing.T) {
 	})
 
 	t.Run("main with file filtering", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run=TestMainConfigurationOptions")
+		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
 		cmd.Env = append(os.Environ(),
 			"TEST_MAIN_CONFIG=1",
 			"TEST_CONFIG_MODE=filtering",
