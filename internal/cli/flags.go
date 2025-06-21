@@ -113,6 +113,11 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, "Maximum number of concurrent API requests (0 = no limit)")
 	rateLimitRPMFlag := flagSet.Int("rate-limit", 60, "Maximum requests per minute (RPM) per model (0 = no limit)")
 
+	// Provider-specific rate limiting flags
+	openaiRateLimitFlag := flagSet.Int("openai-rate-limit", 0, "OpenAI-specific rate limit in RPM (0 = use provider default: 3000)")
+	geminiRateLimitFlag := flagSet.Int("gemini-rate-limit", 0, "Gemini-specific rate limit in RPM (0 = use provider default: 60)")
+	openrouterRateLimitFlag := flagSet.Int("openrouter-rate-limit", 0, "OpenRouter-specific rate limit in RPM (0 = use provider default: 20)")
+
 	// Timeout flag
 	timeoutFlag := flagSet.Duration("timeout", config.DefaultTimeout, "Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
 
@@ -149,6 +154,11 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Store rate limiting configuration
 	cfg.MaxConcurrentRequests = *maxConcurrentFlag
 	cfg.RateLimitRequestsPerMinute = *rateLimitRPMFlag
+
+	// Store provider-specific rate limiting configuration
+	cfg.OpenAIRateLimit = *openaiRateLimitFlag
+	cfg.GeminiRateLimit = *geminiRateLimitFlag
+	cfg.OpenRouterRateLimit = *openrouterRateLimitFlag
 
 	// Store timeout configuration
 	cfg.Timeout = *timeoutFlag

@@ -117,10 +117,31 @@ func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateL
 	}
 
 	// Create new rate limiter with model-specific concurrency limit
-	// Use the same rate per minute as the global config but with model-specific concurrency
+	// Use provider-aware rate limiting for RPM
+
+	// Determine the effective rate limit for this model
+	// Priority: model-specific > provider-specific config > provider default
+	var effectiveRateLimit int
+	if modelInfo.RateLimitRPM != nil {
+		// Model has a specific rate limit override
+		effectiveRateLimit = *modelInfo.RateLimitRPM
+		o.logger.DebugContext(context.Background(), "Using model-specific rate limit for %s: %d RPM", modelName, effectiveRateLimit)
+	} else {
+		// Check provider-specific config, then fall back to provider default
+		configRateLimit := o.config.GetProviderRateLimit(modelInfo.Provider)
+		if configRateLimit > 0 {
+			effectiveRateLimit = configRateLimit
+			o.logger.DebugContext(context.Background(), "Using config rate limit for %s (%s): %d RPM", modelName, modelInfo.Provider, effectiveRateLimit)
+		} else {
+			// Use provider default
+			effectiveRateLimit = models.GetProviderDefaultRateLimit(modelInfo.Provider)
+			o.logger.DebugContext(context.Background(), "Using provider default rate limit for %s (%s): %d RPM", modelName, modelInfo.Provider, effectiveRateLimit)
+		}
+	}
+
 	modelRateLimiter := ratelimit.NewRateLimiter(
 		*modelInfo.MaxConcurrentRequests,
-		o.config.RateLimitRequestsPerMinute,
+		effectiveRateLimit,
 	)
 
 	o.modelRateLimiters[modelName] = modelRateLimiter
@@ -494,18 +515,20 @@ func (o *Orchestrator) processModelWithRateLimit(
 	processingDuration := time.Since(processingStart)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
-		// The error from processor.Process is already an LLMError, but we'll add our own context
-		if catErr, ok := llm.IsCategorizedError(err); ok {
-			result.err = llm.Wrap(err, "orchestrator",
-				fmt.Sprintf("model %s processing failed", modelName),
-				catErr.Category())
+
+		// Preserve the detailed error instead of wrapping with generic message
+		result.err = err
+
+		// Show user-friendly error with suggestions if it's an LLMError
+		var errorMessage string
+		if llmErr, ok := err.(*llm.LLMError); ok {
+			errorMessage = llmErr.UserFacingError()
 		} else {
-			result.err = llm.Wrap(err, "orchestrator",
-				fmt.Sprintf("model %s processing failed", modelName),
-				llm.CategoryInvalidRequest)
+			errorMessage = err.Error()
 		}
-		// Report model completion with error
-		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, err.Error())
+
+		// Report model completion with detailed error
+		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, errorMessage)
 		resultChan <- result
 		return
 	}

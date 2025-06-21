@@ -263,11 +263,12 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Declare expected error patterns for partial failure scenario
-		env.ExpectError("Generation failed for model failing-model")
-		env.ExpectError("Error generating content with model failing-model")
-		env.ExpectError("Processing model failing-model failed")
-		env.ExpectError("model failing-model processing failed")
-		env.ExpectError("Completed with model errors")
+		// Include both legacy error messages from modelproc and new detailed error structure
+		env.ExpectError("Generation failed for model failing-model")         // Legacy from modelproc/processor.go:148
+		env.ExpectError("Error generating content with model failing-model") // Legacy from modelproc/processor.go:152
+		env.ExpectError("output generation failed for model failing-model")  // New detailed error from orchestrator
+		env.ExpectError("Simulated model failure for rate limit testing")    // Part of detailed error chain
+		env.ExpectError("Completed with model errors")                       // Final error summary
 
 		modelNames := []string{"gpt-4o", "failing-model", "claude-3-sonnet"}
 		synthesisModel := "gpt-4o-mini"

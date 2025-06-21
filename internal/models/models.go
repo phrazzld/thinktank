@@ -44,6 +44,10 @@ type ModelInfo struct {
 	// MaxConcurrentRequests limits concurrent requests for this specific model (optional)
 	// If nil, uses global concurrency settings. If set, enforces per-model limit.
 	MaxConcurrentRequests *int `json:"max_concurrent_requests,omitempty"`
+
+	// RateLimitRPM overrides the provider-specific default rate limit for this model (optional)
+	// If nil, uses provider-specific default rate limits. If set, enforces per-model rate limit.
+	RateLimitRPM *int `json:"rate_limit_rpm,omitempty"`
 }
 
 // Helper functions for creating parameter constraints
@@ -205,6 +209,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_k":             intConstraint(1, 100),
 		},
 		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
+		RateLimitRPM:          &[]int{5}[0], // Very low rate limit for this specific model
 	},
 	"openrouter/deepseek/deepseek-chat-v3-0324:free": {
 		Provider:        "openrouter",
@@ -241,6 +246,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_k":              intConstraint(1, 100),
 		},
 		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
+		RateLimitRPM:          &[]int{3}[0], // Very low rate limit for free tier
 	},
 	"openrouter/meta-llama/llama-3.3-70b-instruct": {
 		Provider:        "openrouter",
@@ -397,6 +403,38 @@ func GetAPIKeyEnvVar(provider string) string {
 	default:
 		return ""
 	}
+}
+
+// GetProviderDefaultRateLimit returns the default rate limit (requests per minute) for a given provider.
+// These defaults are based on typical provider capabilities and can be overridden via CLI flags.
+func GetProviderDefaultRateLimit(provider string) int {
+	switch provider {
+	case "openai":
+		return 3000 // OpenAI has high rate limits for paid accounts
+	case "gemini":
+		return 60 // Gemini has moderate rate limits
+	case "openrouter":
+		return 20 // OpenRouter varies by model, conservative default
+	default:
+		return 60 // Conservative fallback for unknown providers
+	}
+}
+
+// GetModelRateLimit returns the effective rate limit for a specific model.
+// Priority: model-specific override > provider default
+func GetModelRateLimit(modelName string) (int, error) {
+	modelInfo, err := GetModelInfo(modelName)
+	if err != nil {
+		return 0, err
+	}
+
+	// If model has a specific rate limit override, use it
+	if modelInfo.RateLimitRPM != nil {
+		return *modelInfo.RateLimitRPM, nil
+	}
+
+	// Otherwise, use provider default
+	return GetProviderDefaultRateLimit(modelInfo.Provider), nil
 }
 
 // IsModelSupported returns true if the given model name is supported.

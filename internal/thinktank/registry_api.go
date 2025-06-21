@@ -159,6 +159,11 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// a type assertion to get the CreateClient method - it's already part of the interface
 	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelInfo.APIModelID, effectiveEndpoint)
 	if err != nil {
+		// Check for OpenRouter errors first (most sophisticated error handling)
+		if apiErr, ok := openrouterprovider.IsOpenRouterError(err); ok {
+			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
+		}
+
 		// Check if it's already an API error with enhanced details from Gemini
 		if apiErr, ok := gemini.IsAPIError(err); ok {
 			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
@@ -376,6 +381,11 @@ func (s *registryAPIService) GetErrorDetails(err error) string {
 	// Handle nil error case
 	if err == nil {
 		return "no error"
+	}
+
+	// Check for OpenRouter errors first (most sophisticated error handling)
+	if apiErr, ok := openrouterprovider.IsOpenRouterError(err); ok {
+		return apiErr.UserFacingError()
 	}
 
 	// Check if it's a Gemini API error with enhanced details
