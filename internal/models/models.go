@@ -102,9 +102,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_p":             1.0,
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
-			"reasoning": map[string]interface{}{
-				"effort": "high",
-			},
+			"reasoning_effort":  "high",
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -112,6 +110,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":        intConstraint(1, 200000),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
 		},
 	},
 
@@ -161,9 +160,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_p":             1.0,
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
-			"reasoning": map[string]interface{}{
-				"effort": "high",
-			},
+			"reasoning_effort":  "high",
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -171,6 +168,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":        intConstraint(1, 200000),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
 		},
 	},
 
