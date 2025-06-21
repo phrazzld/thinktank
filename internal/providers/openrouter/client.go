@@ -32,8 +32,18 @@ type openrouterClient struct {
 	maxTokens        *int32
 }
 
+// ClientOption defines a function that can be used to configure the OpenRouter client
+type ClientOption func(*openrouterClient)
+
+// WithHTTPClient allows setting a custom HTTP client for testing purposes
+func WithHTTPClient(httpClient *http.Client) ClientOption {
+	return func(c *openrouterClient) {
+		c.httpClient = httpClient
+	}
+}
+
 // NewClient creates a new OpenRouter client that implements the llm.LLMClient interface
-func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil.LoggerInterface) (*openrouterClient, error) {
+func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil.LoggerInterface, opts ...ClientOption) (*openrouterClient, error) {
 	// Validate required parameters
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key cannot be empty")
@@ -60,14 +70,21 @@ func NewClient(apiKey string, modelID string, apiEndpoint string, logger logutil
 		Timeout: 120 * time.Second, // 2 minute timeout for potentially long LLM generations
 	}
 
-	// Create and return client
-	return &openrouterClient{
+	// Create client
+	client := &openrouterClient{
 		apiKey:      apiKey,
 		modelID:     modelID,
 		apiEndpoint: apiEndpoint,
 		httpClient:  httpClient,
 		logger:      logger,
-	}, nil
+	}
+
+	// Apply any provided options
+	for _, opt := range opts {
+		opt(client)
+	}
+
+	return client, nil
 }
 
 // ChatCompletionMessage represents a message in the OpenRouter chat API format
