@@ -3,6 +3,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -108,10 +109,23 @@ func TestRunDryRunSuccess(t *testing.T) {
 	mockFileSystem := NewMockFileSystem()
 	mockExitHandler := NewMockExitHandler()
 
+	// Create a real temporary instructions file (since thinktank.Execute reads it directly)
+	tmpFile, err := os.CreateTemp("", "test_instructions_*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temporary instructions file: %v", err)
+	}
+	defer func() { _ = os.Remove(tmpFile.Name()) }()
+	defer func() { _ = tmpFile.Close() }()
+
+	instructionsContent := "Test instructions for the LLM dry run"
+	if _, err := tmpFile.WriteString(instructionsContent); err != nil {
+		t.Fatalf("Failed to write instructions content: %v", err)
+	}
+
 	// Create test configuration for dry-run mode
 	config := &config.CliConfig{
 		DryRun:           true,
-		InstructionsFile: "test_instructions.txt",
+		InstructionsFile: tmpFile.Name(),
 		OutputDir:        "./test_output",
 		Paths:            []string{"test.go"},
 		ModelNames:       []string{"gemini-2.5-pro"},
