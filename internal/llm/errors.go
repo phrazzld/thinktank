@@ -384,18 +384,19 @@ func GetErrorCategoryFromMessage(errMsg string) ErrorCategory {
 		return CategoryInputLimit
 	}
 
+	// Check for cancellation (before network to avoid timeout conflicts)
+	if strings.Contains(lowerMsg, "canceled") ||
+		strings.Contains(lowerMsg, "cancelled") ||
+		strings.Contains(lowerMsg, "deadline exceeded") ||
+		strings.Contains(lowerMsg, "context deadline exceeded") {
+		return CategoryCancelled
+	}
+
 	// Check for network errors
 	if strings.Contains(lowerMsg, "network") ||
 		strings.Contains(lowerMsg, "connection") ||
 		strings.Contains(lowerMsg, "timeout") {
 		return CategoryNetwork
-	}
-
-	// Check for cancellation
-	if strings.Contains(lowerMsg, "canceled") ||
-		strings.Contains(lowerMsg, "cancelled") ||
-		strings.Contains(lowerMsg, "deadline exceeded") {
-		return CategoryCancelled
 	}
 
 	// Check for not found errors

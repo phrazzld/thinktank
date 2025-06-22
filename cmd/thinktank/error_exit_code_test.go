@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/cli"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank"
@@ -28,7 +29,7 @@ func handleTestError(ctx context.Context, err error, logger logutil.LoggerInterf
 		}
 
 		// Just calculate the exit code for testing purposes
-		exitCode := ExitCodeGenericError
+		exitCode := cli.ExitCodeGenericError
 
 		// Check if the error is an LLMError that implements CategorizedError
 		if catErr, ok := llm.IsCategorizedError(err); ok {
@@ -37,37 +38,37 @@ func handleTestError(ctx context.Context, err error, logger logutil.LoggerInterf
 			// Determine exit code based on error category
 			switch category {
 			case llm.CategoryAuth:
-				exitCode = ExitCodeAuthError
+				exitCode = cli.ExitCodeAuthError
 			case llm.CategoryRateLimit:
-				exitCode = ExitCodeRateLimitError
+				exitCode = cli.ExitCodeRateLimitError
 			case llm.CategoryInvalidRequest:
-				exitCode = ExitCodeInvalidRequest
+				exitCode = cli.ExitCodeInvalidRequest
 			case llm.CategoryServer:
-				exitCode = ExitCodeServerError
+				exitCode = cli.ExitCodeServerError
 			case llm.CategoryNetwork:
-				exitCode = ExitCodeNetworkError
+				exitCode = cli.ExitCodeNetworkError
 			case llm.CategoryInputLimit:
-				exitCode = ExitCodeInputError
+				exitCode = cli.ExitCodeInputError
 			case llm.CategoryContentFiltered:
-				exitCode = ExitCodeContentFiltered
+				exitCode = cli.ExitCodeContentFiltered
 			case llm.CategoryInsufficientCredits:
-				exitCode = ExitCodeInsufficientCredits
+				exitCode = cli.ExitCodeInsufficientCredits
 			case llm.CategoryCancelled:
-				exitCode = ExitCodeCancelled
+				exitCode = cli.ExitCodeCancelled
 			}
 		} else if errors.Is(err, thinktank.ErrPartialSuccess) {
 			// Special case for partial success errors
-			exitCode = ExitCodeGenericError
+			exitCode = cli.ExitCodeGenericError
 		} else if errors.Is(err, thinktank.ErrInvalidConfiguration) ||
 			errors.Is(err, thinktank.ErrNoModelsProvided) ||
 			errors.Is(err, thinktank.ErrInvalidInstructions) ||
 			errors.Is(err, thinktank.ErrInvalidOutputDir) ||
 			errors.Is(err, thinktank.ErrInvalidModelName) {
 			// Invalid request sentinel errors
-			exitCode = ExitCodeInvalidRequest
+			exitCode = cli.ExitCodeInvalidRequest
 		} else if errors.Is(err, thinktank.ErrInvalidAPIKey) {
 			// Auth sentinel errors
-			exitCode = ExitCodeAuthError
+			exitCode = cli.ExitCodeAuthError
 		}
 
 		// Set our lastExitCode variable for test verification
@@ -78,7 +79,7 @@ func handleTestError(ctx context.Context, err error, logger logutil.LoggerInterf
 	monkeyPatchedHandleError(ctx, err, logger, auditLogger, operation)
 }
 
-// TestHandleErrorExitCodes checks that handleError assigns the correct exit code
+// TestHandleErrorcli.ExitCodes checks that handleError assigns the correct exit code
 // based on error category
 func TestHandleErrorExitCodes(t *testing.T) {
 	tests := []struct {
@@ -89,57 +90,57 @@ func TestHandleErrorExitCodes(t *testing.T) {
 		{
 			name:         "Auth error",
 			err:          llm.New("test", "AUTH_ERR", 401, "Authentication failed", "req123", errors.New("invalid key"), llm.CategoryAuth),
-			expectedCode: ExitCodeAuthError,
+			expectedCode: cli.ExitCodeAuthError,
 		},
 		{
 			name:         "Rate limit error",
 			err:          llm.New("test", "RATE_LIMIT", 429, "Rate limit exceeded", "req456", errors.New("too many requests"), llm.CategoryRateLimit),
-			expectedCode: ExitCodeRateLimitError,
+			expectedCode: cli.ExitCodeRateLimitError,
 		},
 		{
 			name:         "Invalid request error",
 			err:          llm.New("test", "INVALID_REQ", 400, "Invalid request", "req789", errors.New("bad request"), llm.CategoryInvalidRequest),
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "Server error",
 			err:          llm.New("test", "SERVER_ERR", 500, "Server error", "req101", errors.New("internal server error"), llm.CategoryServer),
-			expectedCode: ExitCodeServerError,
+			expectedCode: cli.ExitCodeServerError,
 		},
 		{
 			name:         "Network error",
 			err:          llm.New("test", "NETWORK_ERR", 0, "Network error", "req112", errors.New("connection failed"), llm.CategoryNetwork),
-			expectedCode: ExitCodeNetworkError,
+			expectedCode: cli.ExitCodeNetworkError,
 		},
 		{
 			name:         "Input limit error",
 			err:          llm.New("test", "INPUT_LIMIT", 413, "Input too large", "req131", errors.New("token limit exceeded"), llm.CategoryInputLimit),
-			expectedCode: ExitCodeInputError,
+			expectedCode: cli.ExitCodeInputError,
 		},
 		{
 			name:         "Content filtered error",
 			err:          llm.New("test", "CONTENT_FILTERED", 400, "Content filtered", "req415", errors.New("content not allowed"), llm.CategoryContentFiltered),
-			expectedCode: ExitCodeContentFiltered,
+			expectedCode: cli.ExitCodeContentFiltered,
 		},
 		{
 			name:         "Insufficient credits error",
 			err:          llm.New("test", "INSUFFICIENT_CREDITS", 402, "Insufficient credits", "req617", errors.New("payment required"), llm.CategoryInsufficientCredits),
-			expectedCode: ExitCodeInsufficientCredits,
+			expectedCode: cli.ExitCodeInsufficientCredits,
 		},
 		{
 			name:         "Cancelled error",
 			err:          llm.New("test", "CANCELLED", 499, "Request cancelled", "req819", errors.New("context cancelled"), llm.CategoryCancelled),
-			expectedCode: ExitCodeCancelled,
+			expectedCode: cli.ExitCodeCancelled,
 		},
 		{
 			name:         "Generic error",
 			err:          errors.New("generic error"),
-			expectedCode: ExitCodeGenericError,
+			expectedCode: cli.ExitCodeGenericError,
 		},
 		{
 			name:         "Partial success error",
 			err:          thinktank.ErrPartialSuccess,
-			expectedCode: ExitCodeGenericError,
+			expectedCode: cli.ExitCodeGenericError,
 		},
 	}
 
@@ -161,23 +162,23 @@ func TestHandleErrorExitCodes(t *testing.T) {
 	}
 }
 
-// TestExitCodeFromLLMErrorCategory tests mapping from LLMError categories to exit codes
+// Testcli.ExitCodeFromLLMErrorCategory tests mapping from LLMError categories to exit codes
 func TestExitCodeFromLLMErrorCategory(t *testing.T) {
 	tests := []struct {
 		category     llm.ErrorCategory
 		expectedCode int
 	}{
-		{llm.CategoryAuth, ExitCodeAuthError},
-		{llm.CategoryRateLimit, ExitCodeRateLimitError},
-		{llm.CategoryInvalidRequest, ExitCodeInvalidRequest},
-		{llm.CategoryServer, ExitCodeServerError},
-		{llm.CategoryNetwork, ExitCodeNetworkError},
-		{llm.CategoryInputLimit, ExitCodeInputError},
-		{llm.CategoryContentFiltered, ExitCodeContentFiltered},
-		{llm.CategoryInsufficientCredits, ExitCodeInsufficientCredits},
-		{llm.CategoryCancelled, ExitCodeCancelled},
-		{llm.CategoryUnknown, ExitCodeGenericError},
-		{llm.CategoryNotFound, ExitCodeGenericError}, // NotFound doesn't have a specific exit code
+		{llm.CategoryAuth, cli.ExitCodeAuthError},
+		{llm.CategoryRateLimit, cli.ExitCodeRateLimitError},
+		{llm.CategoryInvalidRequest, cli.ExitCodeInvalidRequest},
+		{llm.CategoryServer, cli.ExitCodeServerError},
+		{llm.CategoryNetwork, cli.ExitCodeNetworkError},
+		{llm.CategoryInputLimit, cli.ExitCodeInputError},
+		{llm.CategoryContentFiltered, cli.ExitCodeContentFiltered},
+		{llm.CategoryInsufficientCredits, cli.ExitCodeInsufficientCredits},
+		{llm.CategoryCancelled, cli.ExitCodeCancelled},
+		{llm.CategoryUnknown, cli.ExitCodeGenericError},
+		{llm.CategoryNotFound, cli.ExitCodeGenericError}, // NotFound doesn't have a specific exit code
 	}
 
 	for _, tt := range tests {
@@ -212,47 +213,47 @@ func TestThinkTankSentinelErrorHandling(t *testing.T) {
 		{
 			name:         "ErrPartialSuccess",
 			err:          thinktank.ErrPartialSuccess,
-			expectedCode: ExitCodeGenericError,
+			expectedCode: cli.ExitCodeGenericError,
 		},
 		{
 			name:         "ErrInvalidConfiguration",
 			err:          thinktank.ErrInvalidConfiguration,
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "ErrNoModelsProvided",
 			err:          thinktank.ErrNoModelsProvided,
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "ErrInvalidModelName",
 			err:          thinktank.ErrInvalidModelName,
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "ErrInvalidAPIKey",
 			err:          thinktank.ErrInvalidAPIKey,
-			expectedCode: ExitCodeAuthError,
+			expectedCode: cli.ExitCodeAuthError,
 		},
 		{
 			name:         "ErrInvalidInstructions",
 			err:          thinktank.ErrInvalidInstructions,
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "ErrInvalidOutputDir",
 			err:          thinktank.ErrInvalidOutputDir,
-			expectedCode: ExitCodeInvalidRequest,
+			expectedCode: cli.ExitCodeInvalidRequest,
 		},
 		{
 			name:         "ErrContextGatheringFailed",
 			err:          thinktank.ErrContextGatheringFailed,
-			expectedCode: ExitCodeGenericError,
+			expectedCode: cli.ExitCodeGenericError,
 		},
 		{
 			name:         "Wrapped sentinel error",
 			err:          fmt.Errorf("wrapping error: %w", thinktank.ErrInvalidAPIKey),
-			expectedCode: ExitCodeAuthError,
+			expectedCode: cli.ExitCodeAuthError,
 		},
 	}
 
