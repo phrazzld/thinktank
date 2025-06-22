@@ -122,11 +122,18 @@ func TestRunDryRunSuccess(t *testing.T) {
 		t.Fatalf("Failed to write instructions content: %v", err)
 	}
 
+	// Create temporary output directory for test isolation
+	tmpOutputDir, err := os.MkdirTemp("", "test_output_*")
+	if err != nil {
+		t.Fatalf("Failed to create temporary output directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tmpOutputDir) }()
+
 	// Create test configuration for dry-run mode
 	config := &config.CliConfig{
 		DryRun:           true,
 		InstructionsFile: tmpFile.Name(),
-		OutputDir:        "./test_output",
+		OutputDir:        tmpOutputDir,
 		Paths:            []string{"test.go"},
 		ModelNames:       []string{"gemini-2.5-pro"},
 		Timeout:          10 * time.Minute,
