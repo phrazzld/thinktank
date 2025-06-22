@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
+	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/thinktank"
@@ -368,472 +368,101 @@ func TestMainFunction(t *testing.T) {
 	})
 }
 
-// TestMainDryRun tests the Main function with dry-run mode to avoid API calls
-func TestMainDryRun(t *testing.T) {
-	if os.Getenv("TEST_MAIN_DRY_RUN") != "" {
-		// This is the subprocess that will run Main with dry-run
-		// Override os.Args to simulate command line arguments
-		originalArgs := os.Args
-		defer func() { os.Args = originalArgs }()
+// TestValidationErrors tests input validation logic directly
+func TestValidationErrors(t *testing.T) {
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
 
-		// Set up args from environment variables
-		instructionsFile := os.Getenv("TEST_INSTRUCTIONS_FILE")
-		outputDir := os.Getenv("TEST_OUTPUT_DIR")
-		testFile := os.Getenv("TEST_FILE")
-		testMode := os.Getenv("TEST_MODE")
-
-		os.Args = []string{"thinktank"}
-		if instructionsFile != "" {
-			os.Args = append(os.Args, "--instructions", instructionsFile)
-		}
-		if testMode == "dry-run" {
-			os.Args = append(os.Args, "--dry-run")
-		}
-		if testMode == "audit" {
-			auditFile := os.Getenv("TEST_AUDIT_FILE")
-			os.Args = append(os.Args, "--dry-run", "--audit-log-file", auditFile)
-		}
-		if testMode == "verbose" {
-			os.Args = append(os.Args, "--dry-run", "--verbose")
-		}
-		if testMode == "quiet" {
-			os.Args = append(os.Args, "--dry-run", "--quiet")
-		}
-		if outputDir != "" {
-			os.Args = append(os.Args, "--output-dir", outputDir)
-		}
-		if testFile != "" {
-			os.Args = append(os.Args, testFile)
+	t.Run("missing instructions file", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "", // Missing instructions
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{"gemini-2.5-pro"},
+			DryRun:           false,
 		}
 
-		Main()
-		return
-	}
-
-	// Create a temporary instructions file
-	tmpFile, err := os.CreateTemp("", "test_instructions_*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer func() { _ = os.Remove(tmpFile.Name()) }()
-
-	_, err = tmpFile.WriteString("Test instructions")
-	if err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	_ = tmpFile.Close()
-
-	// Create a temporary directory for testing
-	tmpDir, err := os.MkdirTemp("", "test_main_*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	// Create a test file in the directory
-	testFile := tmpDir + "/test.go"
-	err = os.WriteFile(testFile, []byte("package main\n\nfunc main() {}\n"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	t.Run("main dry run success", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_DRY_RUN=1",
-			"TEST_MODE=dry-run",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code for dry run
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success for dry run, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error running dry run: %v", err)
-			}
-		}
+		err := ValidateInputs(config, logger)
+		assert.Error(t, err, "Should return error for missing instructions file")
+		assert.Contains(t, err.Error(), "missing required --instructions flag")
 	})
 
-	t.Run("main with audit logging", func(t *testing.T) {
-		auditFile := tmpDir + "/audit.log"
-
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_DRY_RUN=1",
-			"TEST_MODE=audit",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_AUDIT_FILE="+auditFile,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with audit logging, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with audit logging: %v", err)
-			}
+	t.Run("conflicting flags", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "/some/instructions.md",
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{"gemini-2.5-pro"},
+			Quiet:            true, // Conflicting
+			Verbose:          true, // Conflicting
+			DryRun:           false,
 		}
 
-		// Verify audit log was created
-		if _, err := os.Stat(auditFile); os.IsNotExist(err) {
-			t.Error("Expected audit log file to be created")
-		}
+		err := ValidateInputs(config, logger)
+		assert.Error(t, err, "Should return error for conflicting flags")
+		assert.Contains(t, err.Error(), "conflicting flags: --quiet and --verbose are mutually exclusive")
 	})
 
-	t.Run("main with verbose logging", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_DRY_RUN=1",
-			"TEST_MODE=verbose",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with verbose logging, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with verbose logging: %v", err)
-			}
+	t.Run("invalid synthesis model", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "/some/instructions.md",
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{"gemini-2.5-pro"},
+			SynthesisModel:   "invalid-model-pattern", // Invalid model pattern
+			DryRun:           false,
 		}
+
+		err := ValidateInputs(config, logger)
+		assert.Error(t, err, "Should return error for invalid synthesis model")
+		assert.Contains(t, err.Error(), "invalid synthesis model: 'invalid-model-pattern' does not match any known model pattern")
 	})
 
-	t.Run("main with quiet mode", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainDryRun")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_DRY_RUN=1",
-			"TEST_MODE=quiet",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with quiet mode, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with quiet mode: %v", err)
-			}
+	t.Run("no paths provided", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "/some/instructions.md",
+			Paths:            []string{}, // No paths
+			ModelNames:       []string{"gemini-2.5-pro"},
+			DryRun:           false,
 		}
-	})
-}
 
-// TestMainValidationErrors tests Main function with various validation errors
-func TestMainValidationErrors(t *testing.T) {
-	if os.Getenv("TEST_MAIN_VALIDATION") != "" {
-		// This is the subprocess that will run Main
-		Main()
-		return
-	}
-
-	// Create a temporary instructions file
-	tmpFile, err := os.CreateTemp("", "test_instructions_*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer func() { _ = os.Remove(tmpFile.Name()) }()
-
-	_, err = tmpFile.WriteString("Test instructions")
-	if err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	_ = tmpFile.Close()
-
-	// Create a temporary directory for testing
-	tmpDir, err := os.MkdirTemp("", "test_main_*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	testFile := tmpDir + "/test.go"
-	err = os.WriteFile(testFile, []byte("package main\n\nfunc main() {}\n"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	t.Run("main with missing instructions file", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
-		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
-		// Missing --instructions flag
-		cmd.Args = append(cmd.Args, testFile)
-
-		err := cmd.Run()
-
-		// Should exit with error code for validation failure
-		if exitError, ok := err.(*exec.ExitError); ok {
-			assert.NotEqual(t, 0, exitError.ExitCode(),
-				"Expected non-zero exit code for missing instructions")
-		} else {
-			t.Fatal("Expected command to exit with error code for missing instructions")
-		}
+		err := ValidateInputs(config, logger)
+		assert.Error(t, err, "Should return error for missing paths")
+		assert.Contains(t, err.Error(), "no paths specified")
 	})
 
-	t.Run("main with conflicting flags", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
-		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
-		// Conflicting --quiet and --verbose flags
-		cmd.Args = append(cmd.Args,
-			"--instructions", tmpFile.Name(),
-			"--quiet",
-			"--verbose",
-			testFile)
-
-		err := cmd.Run()
-
-		// Should exit with error code for validation failure
-		if exitError, ok := err.(*exec.ExitError); ok {
-			assert.NotEqual(t, 0, exitError.ExitCode(),
-				"Expected non-zero exit code for conflicting flags")
-		} else {
-			t.Fatal("Expected command to exit with error code for conflicting flags")
+	t.Run("no models in non-dry-run mode", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "/some/instructions.md",
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{}, // No models
+			DryRun:           false,
 		}
+
+		err := ValidateInputs(config, logger)
+		assert.Error(t, err, "Should return error for missing models in non-dry-run mode")
+		assert.Contains(t, err.Error(), "no models specified")
 	})
 
-	t.Run("main with invalid synthesis model", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
-		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
-		// Invalid synthesis model pattern
-		cmd.Args = append(cmd.Args,
-			"--instructions", tmpFile.Name(),
-			"--synthesis-model", "invalid-model-pattern",
-			"--dry-run",
-			testFile)
-
-		err := cmd.Run()
-
-		// Should exit with error code for validation failure
-		if exitError, ok := err.(*exec.ExitError); ok {
-			assert.NotEqual(t, 0, exitError.ExitCode(),
-				"Expected non-zero exit code for invalid synthesis model")
-		} else {
-			t.Fatal("Expected command to exit with error code for invalid synthesis model")
+	t.Run("valid configuration", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "/some/instructions.md",
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{"gemini-2.5-pro"},
+			SynthesisModel:   "gpt-4", // Valid model pattern
+			DryRun:           false,
 		}
+
+		err := ValidateInputs(config, logger)
+		assert.NoError(t, err, "Should not return error for valid configuration")
 	})
 
-	t.Run("main with no paths", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainValidationErrors")
-		cmd.Env = append(os.Environ(), "TEST_MAIN_VALIDATION=1")
-		// No file paths provided
-		cmd.Args = append(cmd.Args,
-			"--instructions", tmpFile.Name())
-
-		err := cmd.Run()
-
-		// Should exit with error code for missing paths
-		if exitError, ok := err.(*exec.ExitError); ok {
-			assert.NotEqual(t, 0, exitError.ExitCode(),
-				"Expected non-zero exit code for missing paths")
-		} else {
-			t.Fatal("Expected command to exit with error code for missing paths")
-		}
-	})
-}
-
-// cleanEnvForSubprocess returns a clean environment without CI variables that could interfere with subprocess tests
-func cleanEnvForSubprocess() []string {
-	var cleanEnv []string
-	ciVars := map[string]bool{
-		"CI": true, "GITHUB_ACTIONS": true, "CONTINUOUS_INTEGRATION": true,
-		"GITLAB_CI": true, "TRAVIS": true, "CIRCLECI": true, "JENKINS_URL": true,
-	}
-
-	for _, env := range os.Environ() {
-		parts := strings.SplitN(env, "=", 2)
-		if len(parts) == 2 {
-			if !ciVars[parts[0]] {
-				cleanEnv = append(cleanEnv, env)
-			}
-		}
-	}
-	return cleanEnv
-}
-
-// TestMainConfigurationOptions tests various configuration combinations
-func TestMainConfigurationOptions(t *testing.T) {
-	if os.Getenv("TEST_MAIN_CONFIG") != "" {
-		// This is the subprocess that will run Main
-		// Override os.Args to simulate command line arguments
-		originalArgs := os.Args
-		defer func() { os.Args = originalArgs }()
-
-		// Set up args from environment variables
-		instructionsFile := os.Getenv("TEST_INSTRUCTIONS_FILE")
-		outputDir := os.Getenv("TEST_OUTPUT_DIR")
-		testFile := os.Getenv("TEST_FILE")
-		configMode := os.Getenv("TEST_CONFIG_MODE")
-
-		os.Args = []string{"thinktank", "--dry-run"}
-		if instructionsFile != "" {
-			os.Args = append(os.Args, "--instructions", instructionsFile)
-		}
-		if outputDir != "" {
-			os.Args = append(os.Args, "--output-dir", outputDir)
+	t.Run("dry run allows missing instructions", func(t *testing.T) {
+		config := &config.CliConfig{
+			InstructionsFile: "", // Missing instructions
+			Paths:            []string{"/some/path"},
+			ModelNames:       []string{}, // No models
+			DryRun:           true,       // Dry run mode allows these
 		}
 
-		// Add mode-specific flags
-		switch configMode {
-		case "timeout":
-			os.Args = append(os.Args, "--timeout", "5s")
-		case "ratelimit":
-			os.Args = append(os.Args, "--rate-limit", "30", "--max-concurrent", "3")
-		case "permissions":
-			os.Args = append(os.Args, "--dir-permissions", "0755", "--file-permissions", "0644")
-		case "multimodel":
-			os.Args = append(os.Args, "--model", "gemini-2.5-pro", "--model", "gemini-2.5-flash")
-		case "filtering":
-			os.Args = append(os.Args, "--include", ".go,.md", "--exclude", ".exe,.bin", "--exclude-names", "node_modules,dist")
-		}
-
-		if testFile != "" {
-			os.Args = append(os.Args, testFile)
-		}
-
-		Main()
-		return
-	}
-
-	// Create a temporary instructions file
-	tmpFile, err := os.CreateTemp("", "test_instructions_*.txt")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-	defer func() { _ = os.Remove(tmpFile.Name()) }()
-
-	_, err = tmpFile.WriteString("Test instructions")
-	if err != nil {
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-	_ = tmpFile.Close()
-
-	// Create a temporary directory for testing
-	tmpDir, err := os.MkdirTemp("", "test_main_*")
-	if err != nil {
-		t.Fatalf("Failed to create temp dir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(tmpDir) }()
-
-	testFile := tmpDir + "/test.go"
-	err = os.WriteFile(testFile, []byte("package main\n\nfunc main() {}\n"), 0644)
-	if err != nil {
-		t.Fatalf("Failed to create test file: %v", err)
-	}
-
-	t.Run("main with custom timeout", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_CONFIG=1",
-			"TEST_CONFIG_MODE=timeout",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with custom timeout, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with custom timeout: %v", err)
-			}
-		}
-	})
-
-	t.Run("main with rate limiting", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_CONFIG=1",
-			"TEST_CONFIG_MODE=ratelimit",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with rate limiting, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with rate limiting: %v", err)
-			}
-		}
-	})
-
-	t.Run("main with custom permissions", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_CONFIG=1",
-			"TEST_CONFIG_MODE=permissions",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with custom permissions, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with custom permissions: %v", err)
-			}
-		}
-	})
-
-	t.Run("main with multiple models", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_CONFIG=1",
-			"TEST_CONFIG_MODE=multimodel",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with multiple models, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with multiple models: %v", err)
-			}
-		}
-	})
-
-	t.Run("main with file filtering", func(t *testing.T) {
-		cmd := exec.Command(os.Args[0], "-test.run", "TestMainConfigurationOptions")
-		cmd.Env = append(cleanEnvForSubprocess(),
-			"TEST_MAIN_CONFIG=1",
-			"TEST_CONFIG_MODE=filtering",
-			"TEST_INSTRUCTIONS_FILE="+tmpFile.Name(),
-			"TEST_OUTPUT_DIR="+tmpDir,
-			"TEST_FILE="+testFile)
-
-		err := cmd.Run()
-
-		// Should exit with success code
-		if err != nil {
-			if exitError, ok := err.(*exec.ExitError); ok {
-				t.Fatalf("Expected success with file filtering, got exit code %d", exitError.ExitCode())
-			} else {
-				t.Fatalf("Unexpected error with file filtering: %v", err)
-			}
-		}
+		err := ValidateInputs(config, logger)
+		assert.NoError(t, err, "Should not return error for missing instructions/models in dry run mode")
 	})
 }
 
