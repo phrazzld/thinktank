@@ -2,6 +2,7 @@ package thinktank_test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -72,6 +73,13 @@ func (m *mockFileWriter) SaveToFile(ctx context.Context, content, outputPath str
 }
 
 func TestNewOrchestrator(t *testing.T) {
+	// Create temporary directory for test isolation
+	tempDir, err := os.MkdirTemp("", "orchestrator_test_*")
+	if err != nil {
+		t.Fatalf("Failed to create temporary directory: %v", err)
+	}
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
 	// Setup test dependencies
 	apiService := &mockAPIService{}
 	contextGatherer := &mockContextGatherer{}
@@ -81,7 +89,7 @@ func TestNewOrchestrator(t *testing.T) {
 	config := &config.CliConfig{
 		ModelNames:       []string{"test-model"},
 		InstructionsFile: "test instructions",
-		OutputDir:        "/tmp/test",
+		OutputDir:        tempDir,
 		DryRun:           false,
 		Verbose:          false,
 		Include:          "",

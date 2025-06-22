@@ -3,6 +3,7 @@ package thinktank
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
@@ -219,14 +220,21 @@ func TestSetupOutputDirectoryEdgeCases(t *testing.T) {
 
 	t.Run("ExistingOutputDir", func(t *testing.T) {
 		// Test with existing output directory - should use it
+		// Create temporary directory for test isolation
+		tempDir, err := os.MkdirTemp("", "test_output_*")
+		if err != nil {
+			t.Fatalf("Failed to create temporary directory: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
 		cliConfig := &config.CliConfig{
-			OutputDir:       "test_output",
+			OutputDir:       tempDir,
 			DirPermissions:  0755,
 			FilePermissions: 0644,
 		}
 		originalDir := cliConfig.OutputDir
 
-		err := setupOutputDirectory(ctx, cliConfig, logger)
+		err = setupOutputDirectory(ctx, cliConfig, logger)
 		if err != nil {
 			t.Errorf("Expected no error for existing output dir, got: %v", err)
 		}
