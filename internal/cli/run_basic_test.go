@@ -4,6 +4,8 @@ package cli
 import (
 	"context"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -93,6 +95,47 @@ func (m *TestMockConsoleWriter) FormatMessage(message string) string            
 func (m *TestMockConsoleWriter) ErrorMessage(message string)                          {}
 func (m *TestMockConsoleWriter) WarningMessage(message string)                        {}
 func (m *TestMockConsoleWriter) SuccessMessage(message string)                        {}
+
+// cleanupTestArtifacts removes any leftover test directories from the current working directory
+// This is a defensive measure to prevent test artifacts from interfering with CI or other tests
+func cleanupTestArtifacts() error {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Find and remove any test_output directories in current directory and subdirectories
+	return filepath.Walk(currentDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil // Skip problematic paths
+		}
+
+		// Only process directories named "test_output" or starting with "test_output_"
+		if info.IsDir() && (info.Name() == "test_output" || strings.HasPrefix(info.Name(), "test_output_")) {
+			// Don't remove if it's a real documentation file or in git
+			if strings.Contains(path, ".git") || strings.HasSuffix(path, ".md") {
+				return nil
+			}
+			_ = os.RemoveAll(path)
+			return filepath.SkipDir // Don't walk into the removed directory
+		}
+		return nil
+	})
+}
+
+// TestMain provides setup and cleanup for all tests in this package
+func TestMain(m *testing.M) {
+	// Cleanup before tests to ensure clean state
+	_ = cleanupTestArtifacts()
+
+	// Run tests
+	code := m.Run()
+
+	// Cleanup after tests to prevent artifacts from remaining
+	_ = cleanupTestArtifacts()
+
+	os.Exit(code)
+}
 
 // TestRunDryRunSuccess tests the Run() function with dry-run mode enabled
 // This replaces the subprocess test "TestMainDryRun/main_dry_run_success"
