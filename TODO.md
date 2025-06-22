@@ -445,6 +445,74 @@ All phases completed successfully:
 
 ---
 
+## 🚨 URGENT: Race Condition in TestMain Cleanup
+
+**Status**: ❌ CI FAILING - Race condition detected in parallel test execution
+**Priority**: CRITICAL - Blocking PR merge
+**Issue**: TestMain cleanup function creates race conditions when multiple test packages run in parallel
+
+### Critical Path Tasks
+
+- [ ] **Remove problematic TestMain function** (IMMEDIATE)
+  - Delete TestMain() and cleanupTestArtifacts() from run_basic_test.go
+  - Remove filepath.Walk() operations that cause concurrent directory access
+  - Eliminate os.RemoveAll() operations that race with other packages
+  - Verify the race condition source is eliminated
+
+- [ ] **Replace with safer cleanup approach** (HIGH PRIORITY)
+  - Keep individual test cleanup (defer os.RemoveAll in TestRunDryRunSuccess)
+  - Remove global directory walking cleanup operations
+  - Use package-scoped cleanup that doesn't interfere with other packages
+  - Ensure each test manages its own temporary directories
+
+- [ ] **Verify race detection passes locally** (HIGH PRIORITY)
+  - Run `go test -race ./internal/cli` to test CLI package specifically
+  - Run `go test -race -short $(go list ./... | grep -v "/internal/integration" | grep -v "/internal/e2e" | grep -v "/internal/cli")` to test other packages
+  - Confirm no race conditions detected in local environment
+  - Test multiple runs to ensure consistency
+
+- [ ] **Validate CI race detection fix** (MEDIUM PRIORITY)
+  - Push changes and monitor CI pipeline execution
+  - Verify "Run other tests with race detection" step passes
+  - Confirm no race conditions detected in CI environment
+  - Check that all test jobs complete successfully
+
+- [ ] **Implement package-specific cleanup (if needed)** (LOW PRIORITY)
+  - Add cleanup only within CLI package scope
+  - Use test-specific temporary directories (already implemented)
+  - Avoid global file system operations that affect other packages
+  - Document safe testing patterns for future contributors
+
+### Technical Details
+
+**Race Condition Root Cause:**
+- `TestMain()` calls `cleanupTestArtifacts()` which uses `filepath.Walk()`
+- Multiple test packages running in parallel cause concurrent directory access
+- `os.RemoveAll()` operations race with each other across packages
+- Working directory access conflicts between parallel TestMain executions
+
+**Resolution Approach:**
+- Remove global cleanup that affects multiple packages
+- Keep individual test cleanup (already safe and working)
+- Use package-scoped operations only
+- Eliminate shared file system traversal operations
+
+### Verification Steps
+
+- [ ] **Local Race Detection Testing**
+  - Run CLI tests with race detection: `go test -race ./internal/cli`
+  - Run other packages with race detection (CI command simulation)
+  - Execute multiple times to ensure consistent results
+  - Verify no "WARNING: DATA RACE" messages appear
+
+- [ ] **CI Pipeline Validation**
+  - Monitor CI execution after pushing race condition fix
+  - Verify "Run other tests with race detection" step passes
+  - Confirm overall Test job completes successfully
+  - Check that coverage generation step also passes (from previous fix)
+
+---
+
 ## Notes
 
 This follows John Carmack's principles:
