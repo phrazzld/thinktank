@@ -431,11 +431,13 @@ All phases completed successfully:
   - ✅ Ensured no test artifacts remain after test completion
   - ✅ Tested locally that no directories are left behind
 
-- [ ] **Review and fix other tests creating output directories** (MEDIUM PRIORITY)
-  - Search for other tests using hardcoded output paths
-  - Check `internal/thinktank/registry_api_coverage_test.go` for similar issues
-  - Check `internal/thinktank/filewriter_test.go` for output directory usage
-  - Standardize all tests to use temporary directories
+- [x] **Review and fix other tests creating output directories** (MEDIUM PRIORITY) ✅ COMPLETED
+  - ✅ Searched for and found tests using hardcoded output paths
+  - ✅ Fixed `internal/thinktank/registry_api_coverage_test.go` to use `os.MkdirTemp()` instead of `"test_output"`
+  - ✅ Fixed `internal/thinktank/filewriter_test.go` to use proper temporary directories instead of `/tmp/filewriter_test`
+  - ✅ Fixed `internal/thinktank/orchestrator_factory_test.go` to use temporary directories instead of `/tmp/test`
+  - ✅ Added proper cleanup with `defer os.RemoveAll()` for all temporary directories
+  - ✅ Standardized all identified tests to use temporary directories with proper cleanup
 
 - [ ] **Enhance CI pipeline for test artifact cleanup** (MEDIUM PRIORITY)
   - Add pre-test cleanup step to remove any leftover test directories
