@@ -385,6 +385,66 @@ All phases completed successfully:
 
 ---
 
+## 🚨 URGENT: CI Permission Denied Fix
+
+**Status**: ❌ CI FAILING - Permission denied error in coverage generation
+**Priority**: CRITICAL - Blocking PR merge
+**Issue**: Test output directories with restrictive permissions preventing `go list ./...` traversal
+
+### Critical Path Tasks
+
+- [ ] **Remove existing test output directories** (IMMEDIATE)
+  - Delete `./internal/cli/test_output` directory and contents
+  - Delete `./internal/thinktank/test_output` directory and contents
+  - Verify no other `test_output` directories exist in project
+  - Test that `go list ./...` works without permission errors
+
+- [ ] **Fix TestRunDryRunSuccess hardcoded output directory** (HIGH PRIORITY)
+  - Replace `OutputDir: "./test_output"` with temporary directory creation
+  - Use `os.CreateTemp("", "test_output_*")` pattern for output directory
+  - Add proper cleanup with `defer os.RemoveAll(tempDir)`
+  - Verify test still passes with temporary directory approach
+
+- [ ] **Add defensive cleanup to CLI test suite** (HIGH PRIORITY)
+  - Add cleanup function to remove any leftover test directories
+  - Run cleanup before and after test execution
+  - Ensure no test artifacts remain after test completion
+  - Test locally that no directories are left behind
+
+- [ ] **Review and fix other tests creating output directories** (MEDIUM PRIORITY)
+  - Search for other tests using hardcoded output paths
+  - Check `internal/thinktank/registry_api_coverage_test.go` for similar issues
+  - Check `internal/thinktank/filewriter_test.go` for output directory usage
+  - Standardize all tests to use temporary directories
+
+- [ ] **Enhance CI pipeline for test artifact cleanup** (MEDIUM PRIORITY)
+  - Add pre-test cleanup step to remove any leftover test directories
+  - Add post-test cleanup as safety measure
+  - Update coverage generation to exclude test output patterns
+  - Test CI pipeline passes with cleanup steps
+
+- [ ] **Update testing guidelines** (LOW PRIORITY)
+  - Document proper temporary directory usage patterns in CLAUDE.md
+  - Add examples of correct test cleanup patterns
+  - Include pre-commit hook to detect hardcoded test paths
+  - Update contributor guidelines for test artifact management
+
+### Verification Steps
+
+- [ ] **Local Testing**
+  - Run `go test ./internal/cli` to ensure tests pass
+  - Run `go list ./...` to verify no permission errors
+  - Run `go test -coverprofile=coverage.out ./...` to test coverage generation
+  - Verify no test directories remain after test execution
+
+- [ ] **CI Validation**
+  - Push changes and verify CI pipeline passes
+  - Confirm coverage generation step completes successfully
+  - Validate all test jobs complete without permission errors
+  - Check that no test artifacts are left in CI environment
+
+---
+
 ## Notes
 
 This follows John Carmack's principles:
