@@ -96,6 +96,28 @@ func ParseFlags() (*config.CliConfig, error) {
 	return ParseFlagsWithEnv(flagSet, filteredArgs, os.Getenv)
 }
 
+// ParseFlagsWithArgs parses command line flags with custom arguments for testing
+// This enables testing the bootstrap logic by injecting custom command line arguments
+func ParseFlagsWithArgs(args []string) (*config.CliConfig, error) {
+	return ParseFlagsWithArgsAndEnv(args, os.Getenv)
+}
+
+// ParseFlagsWithArgsAndEnv parses command line flags with custom arguments and environment for testing
+// This enables testing the bootstrap logic by injecting custom command line arguments and environment access
+func ParseFlagsWithArgsAndEnv(args []string, getenv func(string) string) (*config.CliConfig, error) {
+	// Filter out test flags to prevent issues when running as subprocess from tests
+	var filteredArgs []string
+	for _, arg := range args[1:] { // Skip program name (args[0])
+		if !strings.HasPrefix(arg, "-test.") {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+
+	// Use ContinueOnError for testing so invalid flags return errors instead of exiting
+	flagSet := flag.NewFlagSet(args[0], flag.ContinueOnError)
+	return ParseFlagsWithEnv(flagSet, filteredArgs, getenv)
+}
+
 // ParseFlagsWithEnv parses command line flags with custom environment and flag set
 func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string) string) (*config.CliConfig, error) {
 	cfg := config.NewDefaultCliConfig()

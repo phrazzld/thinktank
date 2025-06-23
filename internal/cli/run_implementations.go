@@ -4,6 +4,7 @@ package cli
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
@@ -69,5 +70,16 @@ func NewProductionRunConfig(ctx context.Context, config *config.CliConfig, logge
 		ConsoleWriter: consoleWriter,
 		FileSystem:    &OSFileSystem{},
 		ExitHandler:   &OSExitHandler{},
+	}
+}
+
+// NewProductionMainConfig creates a MainConfig with production implementations
+func NewProductionMainConfig() *MainConfig {
+	return &MainConfig{
+		FileSystem:  &OSFileSystem{},
+		ExitHandler: &OSExitHandler{},
+		Args:        os.Args,
+		Getenv:      os.Getenv,
+		Now:         time.Now,
 	}
 }

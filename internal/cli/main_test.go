@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,6 +40,8 @@ func (m *mockAuditLogger) LogOpLegacy(operation, status string, inputs map[strin
 func (m *mockAuditLogger) Close() error {
 	return nil
 }
+
+// MockExitHandler is defined in run_mocks.go to avoid duplication
 
 // TestHandleError tests the handleError function with various error types
 // TestHandleError has been converted to direct function tests in error_handling_test.go
@@ -242,6 +245,32 @@ func TestValidationErrors(t *testing.T) {
 
 // Note: TestGetFriendlyErrorMessage already exists in flags_new_test.go
 
+// TestGetExitCodeFromError is defined in error_handling_test.go to avoid duplication
+
+// TestHandleErrorBehavior tests the handleError function's behavior patterns
+// without triggering os.Exit() by using dependency injection
+func TestHandleErrorBehavior(t *testing.T) {
+	t.Run("handleError calls exit handler correctly", func(t *testing.T) {
+		// Create a mock exit handler that captures calls instead of exiting
+		mockExitHandler := NewMockExitHandler()
+		mockLogger := &logutil.TestLogger{}
+		mockAuditLogger := &mockAuditLogger{}
+		ctx := context.Background()
+
+		// Test the pattern that handleError follows
+		err := createLLMError("auth", "authentication failed")
+		expectedExitCode := getExitCodeFromError(err)
+
+		// Simulate what handleError does
+		mockExitHandler.HandleError(ctx, err, mockLogger, mockAuditLogger, "test_operation")
+
+		// Verify the mock captured the expected behavior
+		assert.True(t, mockExitHandler.WasCalled(), "HandleError should have been called")
+		assert.Equal(t, expectedExitCode, mockExitHandler.LastExitCode(), "Should use correct exit code")
+		assert.Contains(t, mockExitHandler.Errors, err, "Should capture the error")
+	})
+}
+
 // TestExitCodes verifies that all exit codes are properly defined
 func TestExitCodes(t *testing.T) {
 	// Test that exit codes are properly defined and unique
@@ -273,5 +302,73 @@ func TestExitCodes(t *testing.T) {
 			t.Errorf("Exit code %d is used by both %s and %s", code, existing, name)
 		}
 		usedCodes[code] = name
+	}
+}
+
+// Helper functions for testing
+
+func createLLMError(category, message string) error {
+	// Import and use the llm package to create proper categorized errors
+	switch category {
+	case "auth":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryAuth,
+		}
+	case "rate_limit":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryRateLimit,
+		}
+	case "invalid_request":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryInvalidRequest,
+		}
+	case "server":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryServer,
+		}
+	case "network":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryNetwork,
+		}
+	case "input_limit":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryInputLimit,
+		}
+	case "content_filtered":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryContentFiltered,
+		}
+	case "insufficient_credits":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryInsufficientCredits,
+		}
+	case "cancelled":
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryCancelled,
+		}
+	default:
+		return &llm.LLMError{
+			Provider:      "test",
+			Message:       message,
+			ErrorCategory: llm.CategoryUnknown,
+		}
 	}
 }

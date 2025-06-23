@@ -40,68 +40,94 @@ const (
 // handleError processes an error, logs it appropriately, and exits the application with the correct exit code.
 // It determines the error category, creates a user-friendly message, and ensures proper logging and audit trail.
 func handleError(ctx context.Context, err error, logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, operation string) {
-	if err == nil {
+	result := processError(ctx, err, logger, auditLogger, operation)
+
+	if !result.ShouldExit {
 		return
+	}
+
+	// Print user-friendly message to stderr
+	fmt.Fprintf(os.Stderr, "Error: %s\n", result.UserMessage)
+
+	// Exit with appropriate code
+	os.Exit(result.ExitCode)
+}
+
+// processError processes an error and returns structured result for testing
+// This extracts the core error processing logic without os.Exit() side effects
+func processError(ctx context.Context, err error, logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, operation string) *ErrorProcessingResult {
+	if err == nil {
+		return &ErrorProcessingResult{
+			ExitCode:    ExitCodeSuccess,
+			UserMessage: "",
+			ShouldExit:  false,
+			AuditLogged: false,
+			AuditError:  nil,
+		}
 	}
 
 	// Log detailed error with context for debugging
 	logger.ErrorContext(ctx, "Error: %v", err)
 
-	// Audit the error
-	logErr := auditLogger.LogOp(ctx, operation, "Failure", nil, nil, err)
-	if logErr != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
+	// Attempt audit logging
+	auditErr := auditLogger.LogOp(ctx, operation, "Failure", nil, nil, err)
+	auditLogged := true
+	if auditErr != nil {
+		logger.ErrorContext(ctx, "Failed to write audit log: %v", auditErr)
 	}
 
-	// Determine error category and appropriate exit code
-	exitCode := ExitCodeGenericError
-	var userMsg string
+	// Determine exit code and user message
+	exitCode := getExitCodeFromError(err)
+	userMessage := generateErrorMessage(err)
+
+	return &ErrorProcessingResult{
+		ExitCode:    exitCode,
+		UserMessage: userMessage,
+		ShouldExit:  true,
+		AuditLogged: auditLogged,
+		AuditError:  auditErr,
+	}
+}
+
+// generateErrorMessage creates a user-friendly error message from any error
+// This is the extracted, pure business logic for error message generation
+func generateErrorMessage(err error) string {
+	if err == nil {
+		return "An unknown error occurred"
+	}
 
 	// Check if the error is an LLMError that implements CategorizedError
 	if catErr, ok := llm.IsCategorizedError(err); ok {
-		category := catErr.Category()
-
-		// Determine exit code based on error category
-		switch category {
-		case llm.CategoryAuth:
-			exitCode = ExitCodeAuthError
-		case llm.CategoryRateLimit:
-			exitCode = ExitCodeRateLimitError
-		case llm.CategoryInvalidRequest:
-			exitCode = ExitCodeInvalidRequest
-		case llm.CategoryServer:
-			exitCode = ExitCodeServerError
-		case llm.CategoryNetwork:
-			exitCode = ExitCodeNetworkError
-		case llm.CategoryInputLimit:
-			exitCode = ExitCodeInputError
-		case llm.CategoryContentFiltered:
-			exitCode = ExitCodeContentFiltered
-		case llm.CategoryInsufficientCredits:
-			exitCode = ExitCodeInsufficientCredits
-		case llm.CategoryCancelled:
-			exitCode = ExitCodeCancelled
-		}
-
 		// Try to get a user-friendly message if it's an LLMError
 		if llmErr, ok := catErr.(*llm.LLMError); ok {
-			userMsg = llmErr.UserFacingError()
+			userMsg := llmErr.UserFacingError()
+
+			// Add category-specific advice for better user experience
+			switch llmErr.ErrorCategory {
+			case llm.CategoryAuth:
+				if userMsg == llmErr.Message {
+					// If UserFacingError() just returns the raw message, enhance it
+					return userMsg + ". Please check your API key and permissions."
+				}
+				return userMsg
+			case llm.CategoryRateLimit:
+				if userMsg == llmErr.Message {
+					return userMsg + ". Please try again later or adjust rate limits."
+				}
+				return userMsg
+			default:
+				return userMsg
+			}
 		} else {
-			userMsg = fmt.Sprintf("%v", err)
+			return err.Error()
 		}
 	} else if errors.Is(err, thinktank.ErrPartialSuccess) {
 		// Special case for partial success errors
-		userMsg = "Some model executions failed, but partial results were generated. Use --partial-success-ok flag to exit with success code in this case."
+		return "Some model executions failed, but partial results were generated. Use --partial-success-ok flag to exit with success code in this case."
 	} else {
 		// Generic error - try to create a user-friendly message
-		userMsg = getFriendlyErrorMessage(err)
+		return getFriendlyErrorMessage(err)
 	}
-
-	// Print user-friendly message to stderr
-	fmt.Fprintf(os.Stderr, "Error: %s\n", userMsg)
-
-	// Exit with appropriate code
-	os.Exit(exitCode)
 }
 
 // getFriendlyErrorMessage creates a user-friendly error message based on the error type
@@ -212,24 +238,29 @@ func setupGracefulShutdown(ctx context.Context) (context.Context, context.Cancel
 	return signalCtx, signalCancel
 }
 
-// Main is the entry point for the thinktank CLI
-func Main() {
+// RunMain executes the main application bootstrap logic with injected dependencies
+// This function contains the extracted bootstrap logic from Main() to enable testing
+func RunMain(mainConfig *MainConfig) *MainResult {
 	// Parse command line flags first to get the timeout value
-	config, err := ParseFlags()
+	// Use the injected Args and Getenv instead of os.Args and os.Getenv for testability
+	config, err := ParseFlagsWithArgsAndEnv(mainConfig.Args, mainConfig.Getenv)
 	if err != nil {
 		// We don't have a logger or context yet, so handle this error specially
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(ExitCodeInvalidRequest) // Use the appropriate exit code for invalid CLI flags
+		// Return error result instead of calling os.Exit() for testability
+		return &MainResult{
+			ExitCode: ExitCodeInvalidRequest,
+			Error:    err,
+		}
 	}
 
 	// Create a base context with timeout
 	rootCtx := context.Background()
 	ctx, cancel := context.WithTimeout(rootCtx, config.Timeout)
-	defer cancel() // Ensure resources are released when Main exits
+	defer cancel() // Ensure resources are released when RunMain exits
 
 	// Set up graceful shutdown on interrupt signals
 	ctx, gracefulCancel := setupGracefulShutdown(ctx)
-	defer gracefulCancel() // Ensure graceful cancel is called when Main exits
+	defer gracefulCancel() // Ensure graceful cancel is called when RunMain exits
 
 	// Add correlation ID to the context for tracing
 	correlationID := ""
@@ -268,9 +299,45 @@ func Main() {
 	runConfig := NewProductionRunConfig(ctx, config, logger, auditLogger, apiService, consoleWriter)
 	result := Run(runConfig)
 
-	// Handle the result
+	// Handle the result - but don't call os.Exit(), return structured result
 	if result.Error != nil && result.ExitCode != ExitCodeSuccess {
-		runConfig.ExitHandler.HandleError(ctx, result.Error, logger, auditLogger, "execution")
+		// For bootstrap function, we need to handle errors differently
+		// Use the injected ExitHandler for side effects (like error logging)
+		// but don't actually exit - return the result instead
+		errorResult := processError(ctx, result.Error, logger, auditLogger, "execution")
+		return &MainResult{
+			ExitCode:  errorResult.ExitCode,
+			Error:     result.Error,
+			RunResult: result,
+		}
+	}
+
+	// Success case - return the run result
+	return &MainResult{
+		ExitCode:  result.ExitCode,
+		Error:     result.Error,
+		RunResult: result,
+	}
+}
+
+// Main is the entry point for the thinktank CLI
+func Main() {
+	// Create production configuration and run
+	mainConfig := NewProductionMainConfig()
+	result := RunMain(mainConfig)
+
+	// Handle the result and exit
+	if result.Error != nil && result.ExitCode != ExitCodeSuccess {
+		// Print user-friendly message to stderr
+		if result.RunResult != nil {
+			// Error occurred during execution phase - use processError for consistent formatting
+			noOpLogger := logutil.NewLogger(logutil.InfoLevel, nil, "")
+			errorResult := processError(context.Background(), result.Error, noOpLogger, auditlog.NewNoOpAuditLogger(), "execution")
+			fmt.Fprintf(os.Stderr, "Error: %s\n", errorResult.UserMessage)
+		} else {
+			// Error occurred during bootstrap phase - simple error output
+			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
+		}
 	}
 
 	// Exit with the determined code

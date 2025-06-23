@@ -3,9 +3,13 @@ package cli
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
+	"time"
 
+	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
+	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/testutil"
 	"github.com/phrazzld/thinktank/internal/thinktank"
 	"github.com/stretchr/testify/assert"
@@ -104,11 +108,20 @@ func TestGetExitCodeFromError(t *testing.T) {
 			expectedCode: ExitCodeCancelled,
 		},
 		{
+			name: "LLMError with CategoryNotFound defaults to generic",
+			err: &llm.LLMError{
+				Provider:      "test",
+				Message:       "Model not found",
+				ErrorCategory: llm.CategoryNotFound,
+			},
+			expectedCode: ExitCodeGenericError,
+		},
+		{
 			name: "LLMError with unknown category defaults to generic",
 			err: &llm.LLMError{
 				Provider:      "test",
 				Message:       "Unknown error",
-				ErrorCategory: llm.CategoryUnknown, // Use valid category that defaults to generic
+				ErrorCategory: llm.CategoryUnknown,
 			},
 			expectedCode: ExitCodeGenericError,
 		},
@@ -131,6 +144,31 @@ func TestGetExitCodeFromError(t *testing.T) {
 			name:         "wrapped context canceled message returns cancelled",
 			err:          errors.New("operation failed: context canceled"),
 			expectedCode: ExitCodeCancelled, // getErrorCategoryFromMessage should catch this
+		},
+		{
+			name:         "wrapped context cancelled (UK spelling) message returns cancelled",
+			err:          errors.New("operation failed: context cancelled"),
+			expectedCode: ExitCodeCancelled,
+		},
+		{
+			name:         "wrapped deadline exceeded message returns cancelled",
+			err:          errors.New("operation failed: deadline exceeded"),
+			expectedCode: ExitCodeCancelled,
+		},
+		{
+			name:         "filesystem error returns generic code",
+			err:          errors.New("file permission denied: /path/to/file"),
+			expectedCode: ExitCodeGenericError,
+		},
+		{
+			name:         "network connection error returns generic code",
+			err:          errors.New("network connection failed: dial tcp timeout"),
+			expectedCode: ExitCodeGenericError,
+		},
+		{
+			name:         "configuration error returns generic code",
+			err:          errors.New("invalid configuration: missing required field"),
+			expectedCode: ExitCodeGenericError,
 		},
 		{
 			name:         "generic error returns generic code",
@@ -419,4 +457,137 @@ func TestHandleErrorAuditLogging(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNewProductionRunConfig tests the production RunConfig factory
+func TestNewProductionRunConfig(t *testing.T) {
+	ctx := context.Background()
+	cliConfig := &config.CliConfig{
+		Timeout:          30 * time.Second,
+		DryRun:           false,
+		Verbose:          false,
+		Quiet:            false,
+		InstructionsFile: "test.md",
+		FilePermissions:  0644,
+		DirPermissions:   0755,
+	}
+	logger := logutil.NewLogger(logutil.InfoLevel, os.Stderr, "[test] ")
+	auditLogger := &TestMockAuditLogger{}
+
+	// Create mock API service that implements the full interface
+	apiService := &TestMockAPIService{} // Use existing mock from run_basic_test.go
+	consoleWriter := &TestMockConsoleWriter{}
+
+	runConfig := NewProductionRunConfig(ctx, cliConfig, logger, auditLogger, apiService, consoleWriter)
+
+	assert.NotNil(t, runConfig)
+	assert.Equal(t, ctx, runConfig.Context)
+	assert.Equal(t, cliConfig, runConfig.Config)
+	assert.Equal(t, logger, runConfig.Logger)
+	assert.Equal(t, auditLogger, runConfig.AuditLogger)
+	assert.Equal(t, apiService, runConfig.APIService)
+	assert.Equal(t, consoleWriter, runConfig.ConsoleWriter)
+	assert.IsType(t, &OSFileSystem{}, runConfig.FileSystem)
+	assert.IsType(t, &OSExitHandler{}, runConfig.ExitHandler)
+}
+
+// TestOSFileSystemMethods tests basic FileSystem interface
+func TestOSFileSystemMethods(t *testing.T) {
+	fs := &OSFileSystem{}
+
+	t.Run("CreateTemp", func(t *testing.T) {
+		// Create temporary file to test CreateTemp method coverage
+		file, err := fs.CreateTemp("", "test_*")
+		if err != nil {
+			t.Fatalf("CreateTemp failed: %v", err)
+		}
+		defer func() { _ = os.Remove(file.Name()) }()
+		defer func() { _ = file.Close() }()
+
+		assert.NotEmpty(t, file.Name())
+		assert.Contains(t, file.Name(), "test_")
+	})
+
+	t.Run("WriteFile and ReadFile", func(t *testing.T) {
+		// Create temp directory for test
+		tempDir, err := os.MkdirTemp("", "osfs_test_*")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
+		testFile := tempDir + "/test.txt"
+		testData := []byte("Hello, World!")
+
+		// Test WriteFile
+		err = fs.WriteFile(testFile, testData, 0644)
+		assert.NoError(t, err)
+
+		// Test ReadFile
+		readData, err := fs.ReadFile(testFile)
+		assert.NoError(t, err)
+		assert.Equal(t, testData, readData)
+	})
+
+	t.Run("MkdirAll", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "mkdir_test_*")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
+		testPath := tempDir + "/nested/directory/structure"
+
+		// Test MkdirAll
+		err = fs.MkdirAll(testPath, 0755)
+		assert.NoError(t, err)
+
+		// Verify directory was created
+		info, err := os.Stat(testPath)
+		assert.NoError(t, err)
+		assert.True(t, info.IsDir())
+	})
+
+	t.Run("Remove", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "remove_test_*")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
+		testFile := tempDir + "/to_remove.txt"
+
+		// Create file to remove
+		err = fs.WriteFile(testFile, []byte("test"), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file: %v", err)
+		}
+
+		// Test Remove
+		err = fs.Remove(testFile)
+		assert.NoError(t, err)
+
+		// Verify file was removed
+		_, err = os.Stat(testFile)
+		assert.True(t, os.IsNotExist(err))
+	})
+
+	t.Run("OpenFile", func(t *testing.T) {
+		tempDir, err := os.MkdirTemp("", "open_test_*")
+		if err != nil {
+			t.Fatalf("Failed to create temp dir: %v", err)
+		}
+		defer func() { _ = os.RemoveAll(tempDir) }()
+
+		testFile := tempDir + "/test_open.txt"
+
+		// Test OpenFile for writing
+		file, err := fs.OpenFile(testFile, os.O_CREATE|os.O_WRONLY, 0644)
+		assert.NoError(t, err)
+		defer func() { _ = file.Close() }()
+
+		// Write some data
+		_, err = file.WriteString("test data")
+		assert.NoError(t, err)
+	})
 }

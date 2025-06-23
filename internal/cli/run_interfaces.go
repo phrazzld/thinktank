@@ -93,3 +93,50 @@ type ExecutionStats struct {
 	// AuditEntriesWritten is the number of audit log entries written
 	AuditEntriesWritten int
 }
+
+// ErrorProcessingResult holds the result of error processing for testing
+// This enables testing error handling logic without os.Exit() side effects
+type ErrorProcessingResult struct {
+	// ExitCode is the exit code that should be used
+	ExitCode int
+
+	// UserMessage is the user-friendly error message to display
+	UserMessage string
+
+	// ShouldExit indicates whether the process should terminate
+	ShouldExit bool
+
+	// AuditLogged indicates whether audit logging was attempted
+	AuditLogged bool
+
+	// AuditError is any error that occurred during audit logging
+	AuditError error
+}
+
+// MainConfig holds all dependencies needed for the RunMain() function
+// This follows the RunConfig pattern but focuses on bootstrap/initialization dependencies
+type MainConfig struct {
+	// System dependencies for bootstrap phase
+	FileSystem  FileSystem
+	ExitHandler ExitHandler
+
+	// Environment and argument access (for testing flag parsing)
+	Args   []string            // Command line arguments (os.Args equivalent)
+	Getenv func(string) string // Environment variable access (os.Getenv equivalent)
+
+	// System operations (for testing signal handling and context setup)
+	Now func() time.Time // Current time (time.Now equivalent)
+}
+
+// MainResult holds the result of the RunMain() function execution
+// This enables testing bootstrap logic by returning status instead of calling os.Exit()
+type MainResult struct {
+	// ExitCode is the exit code that would be passed to os.Exit()
+	ExitCode int
+
+	// Error is the error that caused failure during bootstrap, if any
+	Error error
+
+	// RunResult is the result from the execution phase, if it was reached
+	RunResult *RunResult
+}
