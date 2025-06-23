@@ -77,21 +77,31 @@ func Execute(
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
-	// 3. Read instructions from file
-	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
-	if err != nil {
-		logger.ErrorContext(ctx, "Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+	// 3. Read instructions from file (skip in dry-run mode if no instructions provided)
+	var instructions string
+	if cliConfig.InstructionsFile != "" {
+		instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
+		if err != nil {
+			logger.ErrorContext(ctx, "Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
 
-		// Log the failure to read the instructions file to the audit log
-		inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
-		if logErr := auditLogger.LogOp(ctx, "ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
-			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
+			// Log the failure to read the instructions file to the audit log
+			inputs := map[string]interface{}{"path": cliConfig.InstructionsFile}
+			if logErr := auditLogger.LogOp(ctx, "ReadInstructions", "Failure", inputs, nil, err); logErr != nil {
+				logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
+			}
+
+			return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 		}
-
-		return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
+		instructions = string(instructionsContent)
+		logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
+	} else if cliConfig.DryRun {
+		// In dry-run mode, allow missing instructions
+		instructions = "Dry run mode - no instructions provided"
+		logger.InfoContext(ctx, "Dry run mode: proceeding without instructions file")
+	} else {
+		// This case should not happen due to validation, but handle gracefully
+		return fmt.Errorf("%w: instructions file is required when not in dry-run mode", ErrInvalidInstructions)
 	}
-	instructions := string(instructionsContent)
-	logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
 
 	// Log the successful reading of the instructions file to the audit log
 	if logErr := auditLogger.Log(ctx, auditlog.AuditEntry{
@@ -112,40 +122,45 @@ func Execute(
 	// 4. Use the injected APIService
 
 	// Create a reference client for token counting in context gathering
-	// Pass empty string instead of cliConfig.APIKey to force environment variable lookup
-	// This ensures each provider uses its own API key from the appropriate environment variable
-	referenceClientLLM, err := apiService.InitLLMClient(ctx, "", cliConfig.ModelNames[0], cliConfig.APIEndpoint)
-	if err != nil {
-		// Check if this is a categorized error to provide better error messages
-		if catErr, ok := llm.IsCategorizedError(err); ok {
-			category := catErr.Category()
+	// Skip LLM client initialization in dry-run mode since no API calls will be made
+	var referenceClientLLM llm.LLMClient
+	if !cliConfig.DryRun {
+		// Pass empty string instead of cliConfig.APIKey to force environment variable lookup
+		// This ensures each provider uses its own API key from the appropriate environment variable
+		client, err := apiService.InitLLMClient(ctx, "", cliConfig.ModelNames[0], cliConfig.APIEndpoint)
+		if err != nil {
+			// Check if this is a categorized error to provide better error messages
+			if catErr, ok := llm.IsCategorizedError(err); ok {
+				category := catErr.Category()
 
-			// Log with category information
-			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v (category: %s)",
-				err, category.String())
+				// Log with category information
+				logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v (category: %s)",
+					err, category.String())
 
-			// Use error category to give more specific error messages
-			switch category {
-			case llm.CategoryAuth:
-				return fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
-			case llm.CategoryRateLimit:
-				return fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
-			case llm.CategoryNotFound:
-				return fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
-			case llm.CategoryInputLimit:
-				return fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
-			case llm.CategoryContentFiltered:
-				return fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
-			default:
-				return fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+				// Use error category to give more specific error messages
+				switch category {
+				case llm.CategoryAuth:
+					return fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
+				case llm.CategoryRateLimit:
+					return fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+				case llm.CategoryNotFound:
+					return fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+				case llm.CategoryInputLimit:
+					return fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
+				case llm.CategoryContentFiltered:
+					return fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
+				default:
+					return fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+				}
+			} else {
+				// If not a categorized error, use the standard error handling
+				logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v", err)
+				return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 			}
-		} else {
-			// If not a categorized error, use the standard error handling
-			logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v", err)
-			return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 		}
+		referenceClientLLM = client
+		defer func() { _ = referenceClientLLM.Close() }()
 	}
-	defer func() { _ = referenceClientLLM.Close() }()
 
 	// Create context gatherer with LLMClient and ConsoleWriter
 	// Note: TokenManager was completely removed as part of tasks T032A through T032D

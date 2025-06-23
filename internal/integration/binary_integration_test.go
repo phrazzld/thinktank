@@ -248,7 +248,7 @@ func testCriticalFailurePath(t *testing.T, binaryPath string) {
 		{
 			name:           "invalid_flag",
 			args:           []string{"--invalid-flag"},
-			expectedExit:   2, // Flag parsing error
+			expectedExit:   4, // Flag parsing error -> ExitCodeInvalidRequest
 			stderrContains: "flag provided but not defined",
 		},
 	}

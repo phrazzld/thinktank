@@ -4,6 +4,7 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -115,6 +116,12 @@ func ParseFlagsWithArgsAndEnv(args []string, getenv func(string) string) (*confi
 
 	// Use ContinueOnError for testing so invalid flags return errors instead of exiting
 	flagSet := flag.NewFlagSet(args[0], flag.ContinueOnError)
+
+	// In testing environment, redirect flag usage output to avoid pollution
+	if len(args) > 0 && strings.Contains(args[0], "test") {
+		flagSet.SetOutput(io.Discard)
+	}
+
 	return ParseFlagsWithEnv(flagSet, filteredArgs, getenv)
 }
 
