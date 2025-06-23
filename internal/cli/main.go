@@ -66,14 +66,25 @@ func processError(ctx context.Context, err error, logger logutil.LoggerInterface
 		}
 	}
 
-	// Log detailed error with context for debugging
-	logger.ErrorContext(ctx, "Error: %v", err)
+	// Extract correlation ID from error if available for enhanced logging
+	correlationID := llm.ExtractCorrelationID(err)
 
-	// Attempt audit logging
+	// Log detailed error with context for debugging, including correlation ID if available
+	if correlationID != "" {
+		logger.ErrorContext(ctx, "Error (correlation: %s): %v", correlationID, err)
+	} else {
+		logger.ErrorContext(ctx, "Error: %v", err)
+	}
+
+	// Attempt audit logging with correlation context
 	auditErr := auditLogger.LogOp(ctx, operation, "Failure", nil, nil, err)
 	auditLogged := true
 	if auditErr != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", auditErr)
+		if correlationID != "" {
+			logger.ErrorContext(ctx, "Failed to write audit log (correlation: %s): %v", correlationID, auditErr)
+		} else {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", auditErr)
+		}
 	}
 
 	// Determine exit code and user message

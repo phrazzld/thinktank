@@ -258,6 +258,40 @@ func Wrap(err error, provider string, message string, category ErrorCategory) *L
 	}
 }
 
+// WrapWithCorrelationID wraps an existing error with additional LLM-specific context and correlation ID
+func WrapWithCorrelationID(err error, provider string, message string, category ErrorCategory, correlationID string) *LLMError {
+	if err == nil {
+		return nil
+	}
+
+	// If it's already an LLMError, we can update it
+	var llmErr *LLMError
+	if errors.As(err, &llmErr) {
+		if message != "" {
+			llmErr.Message = message
+		}
+		if provider != "" {
+			llmErr.Provider = provider
+		}
+		if category != CategoryUnknown {
+			llmErr.ErrorCategory = category
+		}
+		if correlationID != "" {
+			llmErr.RequestID = correlationID
+		}
+		return llmErr
+	}
+
+	// Otherwise create a new LLMError
+	return &LLMError{
+		Provider:      provider,
+		Message:       message,
+		Original:      err,
+		ErrorCategory: category,
+		RequestID:     correlationID,
+	}
+}
+
 // IsCategory checks if an error belongs to a specific category
 func IsCategory(err error, category ErrorCategory) bool {
 	if err == nil {
@@ -647,8 +681,16 @@ func ExtractCorrelationID(err error) string {
 		return ""
 	}
 
-	// Traverse the error chain looking for any ContextualError with correlation ID
+	// Traverse the error chain looking for correlation IDs
 	for currentErr := err; currentErr != nil; {
+		// Check for LLMError with RequestID (our simple correlation ID approach)
+		if llmErr, ok := currentErr.(*LLMError); ok {
+			if llmErr.RequestID != "" {
+				return llmErr.RequestID
+			}
+		}
+
+		// Check for ContextualError with correlation ID (complex system)
 		if contextualErr, ok := currentErr.(*ContextualError); ok {
 			if contextualErr.Context.CorrelationID != "" {
 				return contextualErr.Context.CorrelationID
