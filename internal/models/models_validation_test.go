@@ -452,6 +452,7 @@ func TestGetModelRateLimit(t *testing.T) {
 		expectError    bool
 		errorSubstring string
 	}{
+		// Models without specific rate limit override - use provider defaults
 		{
 			name:         "Known model without specific rate limit uses provider default",
 			modelName:    "gemini-2.5-pro",
@@ -465,6 +466,46 @@ func TestGetModelRateLimit(t *testing.T) {
 			expectError:  false,
 		},
 		{
+			name:         "OpenRouter model without specific rate limit uses provider default",
+			modelName:    "openrouter/deepseek/deepseek-chat-v3-0324",
+			expectedRate: 20, // Should use openrouter provider default
+			expectError:  false,
+		},
+		{
+			name:         "Gemini flash model uses provider default",
+			modelName:    "gemini-2.5-flash",
+			expectedRate: 60, // Should use gemini provider default
+			expectError:  false,
+		},
+		{
+			name:         "OpenAI o4-mini model uses provider default",
+			modelName:    "o4-mini",
+			expectedRate: 3000, // Should use openai provider default
+			expectError:  false,
+		},
+		{
+			name:         "OpenAI o3 model uses provider default",
+			modelName:    "o3",
+			expectedRate: 3000, // Should use openai provider default
+			expectError:  false,
+		},
+
+		// Models with specific rate limit overrides
+		{
+			name:         "Model with specific rate limit override (deepseek-r1-0528)",
+			modelName:    "openrouter/deepseek/deepseek-r1-0528",
+			expectedRate: 5, // Should use model-specific override
+			expectError:  false,
+		},
+		{
+			name:         "Model with specific rate limit override (deepseek-r1-0528:free)",
+			modelName:    "openrouter/deepseek/deepseek-r1-0528:free",
+			expectedRate: 3, // Should use model-specific override
+			expectError:  false,
+		},
+
+		// Error cases - invalid model names
+		{
 			name:           "Unknown model returns error",
 			modelName:      "unknown-invalid-model",
 			expectedRate:   0,
@@ -474,6 +515,62 @@ func TestGetModelRateLimit(t *testing.T) {
 		{
 			name:           "Empty model name returns error",
 			modelName:      "",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Malformed model name with special characters",
+			modelName:      "model@#$%",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Similar but incorrect model name",
+			modelName:      "gpt-4.2",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Case-sensitive model name failure",
+			modelName:      "GPT-4.1",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Model name with extra path components",
+			modelName:      "openrouter/deepseek/deepseek-chat-v3-0324/extra",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Model name with missing path components",
+			modelName:      "deepseek-chat-v3-0324",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Model name with leading/trailing whitespace",
+			modelName:      " gpt-4.1 ",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Model name with null characters",
+			modelName:      "gpt-4.1\x00",
+			expectedRate:   0,
+			expectError:    true,
+			errorSubstring: "unknown model",
+		},
+		{
+			name:           "Very long invalid model name",
+			modelName:      strings.Repeat("a", 1000),
 			expectedRate:   0,
 			expectError:    true,
 			errorSubstring: "unknown model",
