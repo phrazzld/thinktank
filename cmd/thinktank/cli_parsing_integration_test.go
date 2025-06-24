@@ -9,7 +9,9 @@ import (
 // TestParseFlags tests the main ParseFlags function with real command line arguments
 // Note: We can only test one case since ParseFlags uses the global flag.CommandLine
 func TestParseFlags(t *testing.T) {
+	// Removed t.Parallel() - modifies global os.Args
 	// Save original os.Args to restore later
+
 	originalArgs := os.Args
 	defer func() { os.Args = originalArgs }()
 

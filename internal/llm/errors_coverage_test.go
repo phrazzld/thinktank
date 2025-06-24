@@ -8,6 +8,7 @@ import (
 
 // Test Error method with nil Original error
 func TestLLMError_Error_NilOriginal(t *testing.T) {
+	t.Parallel()
 	llmErr := &LLMError{
 		Provider:      "test-provider",
 		Message:       "Error message with no original",
@@ -22,6 +23,7 @@ func TestLLMError_Error_NilOriginal(t *testing.T) {
 
 // Additional test for UserFacingError with nil Original error
 func TestLLMError_UserFacingError_NilOriginal(t *testing.T) {
+	t.Parallel()
 	llmErr := &LLMError{
 		Provider:      "test-provider",
 		Message:       "User message with no original",
@@ -37,6 +39,7 @@ func TestLLMError_UserFacingError_NilOriginal(t *testing.T) {
 
 // Additional test for UserFacingError with no suggestion
 func TestLLMError_UserFacingError_NoSuggestion(t *testing.T) {
+	t.Parallel()
 	origErr := errors.New("original error")
 	llmErr := &LLMError{
 		Provider:      "test-provider",
@@ -54,6 +57,7 @@ func TestLLMError_UserFacingError_NoSuggestion(t *testing.T) {
 
 // Comprehensive test for CreateStandardErrorWithMessage
 func TestCreateStandardErrorWithMessage_Comprehensive(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name           string
 		provider       string
@@ -186,6 +190,7 @@ func TestCreateStandardErrorWithMessage_Comprehensive(t *testing.T) {
 
 // Test MockError implementation
 func TestMockError(t *testing.T) {
+	t.Parallel()
 	mockErr := &MockError{
 		Message:       "mock error",
 		ErrorCategory: CategoryAuth,

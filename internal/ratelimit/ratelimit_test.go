@@ -12,7 +12,7 @@ import (
 )
 
 func TestSemaphore(t *testing.T) {
-	t.Parallel() // Run parallel with other test files
+	// Removed t.Parallel() - timing-dependent test with timeouts
 	t.Run("Basic Acquisition and Release", func(t *testing.T) {
 		t.Parallel() // Run subtests in parallel
 		// Create a semaphore with capacity 2
@@ -131,7 +131,7 @@ func TestSemaphore(t *testing.T) {
 }
 
 func TestTokenBucket(t *testing.T) {
-	t.Parallel() // Run parallel with other test files
+	// Removed t.Parallel() - timing-dependent test with rate limiting
 	t.Run("Basic Rate Limiting", func(t *testing.T) {
 		t.Parallel() // Run subtests in parallel
 		// Create a token bucket with 60 RPM (1 per second) and burst of 5

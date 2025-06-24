@@ -12,7 +12,7 @@ import (
 )
 
 func TestConcurrentSafetyProperties(t *testing.T) {
-	t.Parallel()
+	// Removed t.Parallel() - timing-dependent concurrency test
 
 	// Phase 1: Define concurrent operation types and generators
 	t.Run("Property: Semaphore Never Deadlocks Under Concurrent Operations", func(t *testing.T) {

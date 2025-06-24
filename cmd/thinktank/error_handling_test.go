@@ -15,7 +15,9 @@ import (
 // This package should not duplicate internal logic
 
 func TestLLMErrorHandling(t *testing.T) {
-	// Create test LLMErrors with different categories
+	// CPU-bound test: error categorization logic with no I/O dependencies
+	t.Parallel()
+
 	authError := llm.New("test", "AUTH_ERR", 401, "Authentication failed", "req123", errors.New("invalid key"), llm.CategoryAuth)
 	rateLimitError := llm.New("test", "RATE_LIMIT", 429, "Rate limit exceeded", "req456", errors.New("too many requests"), llm.CategoryRateLimit)
 	serverError := llm.New("test", "SERVER_ERR", 500, "Server error", "req789", errors.New("internal server error"), llm.CategoryServer)

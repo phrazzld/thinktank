@@ -8,6 +8,7 @@ import (
 
 // TestCreateStandardErrorWithMessage_DetailHandling tests how details are added to error messages
 func TestCreateStandardErrorWithMessage_DetailHandling(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error message detail handling test
 	original := errors.New("test error")
 	provider := "test-provider"
 

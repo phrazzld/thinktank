@@ -10,7 +10,8 @@ import (
 
 // TestParseFlags_PartialSuccessOk tests parsing of the partial-success-ok flag
 func TestParseFlags_PartialSuccessOk(t *testing.T) {
-	// Create a flag set
+	t.Parallel() // CPU-bound test: flag parsing logic, no I/O dependencies
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // suppress flag error output
 

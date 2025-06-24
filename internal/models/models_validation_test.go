@@ -8,6 +8,7 @@ import (
 )
 
 func TestValidateParameter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		modelName     string
@@ -324,7 +325,10 @@ func TestValidateParameter(t *testing.T) {
 }
 
 func TestParameterConstraints(t *testing.T) {
+	t.Parallel(
 	// Test that all models have parameter constraints defined
+	)
+
 	allModels := ListAllModels()
 
 	for _, modelName := range allModels {
@@ -404,6 +408,7 @@ func TestParameterConstraints(t *testing.T) {
 }
 
 func TestGetProviderDefaultRateLimit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name         string
 		provider     string
@@ -445,6 +450,7 @@ func TestGetProviderDefaultRateLimit(t *testing.T) {
 }
 
 func TestGetModelRateLimit(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		modelName      string

@@ -65,6 +65,7 @@ func TestUserFacingError(t *testing.T) {
 
 // TestDebugInfo tests that LLMError.DebugInfo returns all expected details
 func TestDebugInfo(t *testing.T) {
+	t.Parallel()
 	originalErr := errors.New("original error")
 	llmErr := &llm.LLMError{
 		Provider:      "test-provider",

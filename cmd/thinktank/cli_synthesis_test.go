@@ -15,7 +15,10 @@ import (
 // TestSynthesisModelParsing tests that the synthesis model flag is correctly
 // parsed from command line arguments
 func TestSynthesisModelParsing(t *testing.T) {
+	t.Parallel(
 	// Create a test instructions file
+	)
+
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temporary instructions file: %v", err)
@@ -85,6 +88,7 @@ func TestSynthesisModelParsing(t *testing.T) {
 // TestSynthesisModelValidation tests the validation logic for the synthesis model flag
 func TestSynthesisModelValidation(t *testing.T) {
 	// Create a test instructions file
+
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temporary instructions file: %v", err)
@@ -210,7 +214,10 @@ func TestSynthesisModelValidation(t *testing.T) {
 // TestInvalidSynthesisModelValidation tests the validation behavior for invalid synthesis models
 // using the models package for direct validation
 func TestInvalidSynthesisModelValidation(t *testing.T) {
+	t.Parallel(
 	// Create a test instructions file
+	)
+
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temporary instructions file: %v", err)

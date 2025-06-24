@@ -9,7 +9,9 @@ import (
 // TestErrorHandlingForPartialFailures verifies that errors are properly logged
 // when orchestrator returns partial failure errors
 func TestErrorHandlingForPartialFailures(t *testing.T) {
-	// Create a mock logger to capture error messages
+	// CPU-bound test: error message formatting logic with no I/O dependencies
+	t.Parallel()
+
 	mockLogger := &mockErrorLogger{}
 
 	// Test cases with various error scenarios

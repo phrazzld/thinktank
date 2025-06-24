@@ -14,7 +14,9 @@ import (
 
 // TestCLIValidatesAllSupportedModels verifies that the CLI accepts all 15 supported models
 func TestCLIValidatesAllSupportedModels(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -80,7 +82,9 @@ func TestCLIValidatesAllSupportedModels(t *testing.T) {
 
 // TestCLIValidatesMultipleModels verifies that the CLI accepts multiple models in one command
 func TestCLIValidatesMultipleModels(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -167,7 +171,9 @@ func TestCLIValidatesMultipleModels(t *testing.T) {
 
 // TestCLISynthesisModelValidation verifies synthesis model validation works for all models
 func TestCLISynthesisModelValidation(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -216,7 +222,9 @@ func TestCLISynthesisModelValidation(t *testing.T) {
 
 // TestCLIRejectsInvalidModels verifies that the CLI rejects invalid model names with appropriate errors
 func TestCLIRejectsInvalidModels(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -305,7 +313,9 @@ func TestCLIRejectsInvalidModels(t *testing.T) {
 
 // TestCLIRejectsInvalidSynthesisModels verifies synthesis model validation rejects invalid models
 func TestCLIRejectsInvalidSynthesisModels(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -378,7 +388,9 @@ func TestCLIRejectsInvalidSynthesisModels(t *testing.T) {
 
 // TestCLIAPIKeyValidation verifies that the CLI checks the correct environment variables for each provider
 func TestCLIAPIKeyValidation(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -519,7 +531,9 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 
 // TestCLIMultiProviderAPIKeyValidation tests API key validation with models from multiple providers
 func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
+	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {
@@ -633,6 +647,7 @@ func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 
 // TestCLIAPIKeyEnvironmentVariableNames verifies the correct environment variable names for each provider
 func TestCLIAPIKeyEnvironmentVariableNames(t *testing.T) {
+	// Removed t.Parallel() - uses environment variables
 	testCases := []struct {
 		provider string
 		expected string

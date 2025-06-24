@@ -82,6 +82,7 @@ func handleTestError(ctx context.Context, err error, logger logutil.LoggerInterf
 // TestHandleErrorcli.ExitCodes checks that handleError assigns the correct exit code
 // based on error category
 func TestHandleErrorExitCodes(t *testing.T) {
+	// Removed t.Parallel() - modifies global variable lastExitCode
 	tests := []struct {
 		name         string
 		err          error
@@ -146,6 +147,7 @@ func TestHandleErrorExitCodes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Removed t.Parallel() - modifies global variable lastExitCode
 			// Setup a test context and loggers
 			ctx := context.Background()
 			logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")
@@ -164,6 +166,7 @@ func TestHandleErrorExitCodes(t *testing.T) {
 
 // Testcli.ExitCodeFromLLMErrorCategory tests mapping from LLMError categories to exit codes
 func TestExitCodeFromLLMErrorCategory(t *testing.T) {
+	// Removed t.Parallel() - modifies global variable lastExitCode
 	tests := []struct {
 		category     llm.ErrorCategory
 		expectedCode int
@@ -183,6 +186,7 @@ func TestExitCodeFromLLMErrorCategory(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.category.String(), func(t *testing.T) {
+			// Removed t.Parallel() - modifies global variable lastExitCode
 			// Create an LLM error with the given category
 			err := llm.New("test", "", 0, "test error", "", nil, tt.category)
 
@@ -205,6 +209,7 @@ func TestExitCodeFromLLMErrorCategory(t *testing.T) {
 
 // TestThinkTankSentinelErrorHandling tests exit codes for thinktank-specific sentinel errors
 func TestThinkTankSentinelErrorHandling(t *testing.T) {
+	// Removed t.Parallel() - modifies global variable lastExitCode
 	tests := []struct {
 		name         string
 		err          error
@@ -259,6 +264,7 @@ func TestThinkTankSentinelErrorHandling(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Removed t.Parallel() - modifies global variable lastExitCode
 			// Setup a test context and loggers
 			ctx := context.Background()
 			logger := logutil.NewLogger(logutil.InfoLevel, nil, "[test] ")

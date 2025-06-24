@@ -15,7 +15,9 @@ import (
 
 // TestParseFlags_UnknownFlag tests parsing an unknown flag
 func TestParseFlags_UnknownFlag(t *testing.T) {
+	// Removed t.Parallel() - uses os.Getenv
 	// Create a flag set
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // suppress flag error output
 
@@ -35,7 +37,9 @@ func TestParseFlags_UnknownFlag(t *testing.T) {
 
 // TestParseFlags_InvalidValue tests parsing an invalid value for a flag
 func TestParseFlags_InvalidValue(t *testing.T) {
+	// Removed t.Parallel() - uses os.Getenv
 	// Create a flag set
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // suppress flag error output
 
@@ -85,7 +89,9 @@ func TestParseFlags_InvalidValue(t *testing.T) {
 
 // TestValidateInputs_MissingModels tests validation with missing models
 func TestValidateInputs_MissingModels(t *testing.T) {
+	// Removed t.Parallel() - creates temporary files and uses env
 	// Create a test instructions file
+
 	tmpInstructions, err := os.CreateTemp("", "test-instructions-*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temp instructions file: %v", err)
@@ -124,14 +130,18 @@ func TestValidateInputs_MissingModels(t *testing.T) {
 
 // TestValidateInputs_ConfigPathNotFound tests validation with a missing config path
 func TestValidateInputs_ConfigPathNotFound(t *testing.T) {
+	// Removed t.Parallel() - test uses filesystem operations
 	// Skip this test for now as the ValidateInputs function doesn't
 	// directly check for config file existence - it's handled at initialization
+
 	t.Skip("Skipping test as ValidateInputs doesn't validate config path existence")
 }
 
 // TestParseFlags_Timeout tests parsing of the timeout flag
 func TestParseFlags_Timeout(t *testing.T) {
+	// Removed t.Parallel() - uses mock environment function
 	// Create a flag set
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // suppress flag error output
 
@@ -203,7 +213,9 @@ func TestParseFlags_Timeout(t *testing.T) {
 
 // TestParseFlags_SynthesisModel tests parsing of the synthesis-model flag
 func TestParseFlags_SynthesisModel(t *testing.T) {
+	// Removed t.Parallel() - uses mock environment function
 	// Create a flag set
+
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	fs.SetOutput(io.Discard) // suppress flag error output
 

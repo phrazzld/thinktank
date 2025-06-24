@@ -14,7 +14,8 @@ import (
 
 // TestValidateInputs ensures that the validation function correctly validates all required fields
 func TestValidateInputs(t *testing.T) {
-	// Create a test instructions file
+	// Removed t.Parallel() - uses filesystem operations and temp files
+
 	tempFile, err := os.CreateTemp("", "instructions-*.txt")
 	if err != nil {
 		t.Fatalf("Failed to create temporary instructions file: %v", err)

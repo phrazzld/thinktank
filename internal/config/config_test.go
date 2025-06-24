@@ -10,6 +10,7 @@ import (
 )
 
 func TestNewDefaultCliConfig(t *testing.T) {
+	t.Parallel()
 	cfg := NewDefaultCliConfig()
 
 	// Verify the result is not nil
@@ -93,6 +94,7 @@ func TestNewDefaultCliConfig(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := DefaultConfig()
 
 	// Verify the result is not nil
@@ -221,6 +223,7 @@ func (l *MockLogger) WithContext(ctx context.Context) logutil.LoggerInterface   
 
 // TestValidateConfig tests the ValidateConfig function
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		config        *CliConfig
@@ -505,6 +508,7 @@ func TestValidateConfig(t *testing.T) {
 
 // TestValidateConfigWithEnv tests the injectable getenv functionality
 func TestValidateConfigWithEnv(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		config        *CliConfig
@@ -616,6 +620,7 @@ func TestValidateConfigWithEnv(t *testing.T) {
 
 // TestValidateConfigWithNilConfig tests the specific case of a nil config
 func TestValidateConfigWithNilConfig(t *testing.T) {
+	t.Parallel()
 	logger := &MockLogger{}
 
 	// Attempt to validate a nil config

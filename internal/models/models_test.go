@@ -6,6 +6,7 @@ import (
 )
 
 func TestGetModelInfo(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		modelName      string
@@ -132,6 +133,7 @@ func TestGetModelInfo(t *testing.T) {
 }
 
 func TestGetProviderForModel(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		modelName     string
@@ -236,6 +238,7 @@ func TestGetProviderForModel(t *testing.T) {
 }
 
 func TestListAllModels(t *testing.T) {
+	t.Parallel()
 	models := ListAllModels()
 
 	// Define expected models in alphabetical order
@@ -290,6 +293,7 @@ func TestListAllModels(t *testing.T) {
 }
 
 func TestListModelsForProvider(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		provider       string
@@ -390,6 +394,7 @@ func TestListModelsForProvider(t *testing.T) {
 }
 
 func TestGetAPIKeyEnvVar(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		provider    string
@@ -443,6 +448,7 @@ func TestGetAPIKeyEnvVar(t *testing.T) {
 }
 
 func TestIsModelSupported(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		modelName   string

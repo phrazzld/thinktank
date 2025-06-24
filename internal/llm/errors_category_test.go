@@ -8,6 +8,7 @@ import (
 
 // TestCreateStandardErrorWithMessage_InsufficientCredits specifically tests the InsufficientCredits case
 func TestCreateStandardErrorWithMessage_InsufficientCredits(t *testing.T) {
+	t.Parallel()
 	original := errors.New("test error")
 	provider := "test-provider"
 	details := "test details"

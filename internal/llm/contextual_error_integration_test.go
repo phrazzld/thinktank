@@ -13,6 +13,7 @@ import (
 // This test follows the TDD RED phase - defining what we expect from our
 // enhanced simple error system.
 func TestErrorChainPreservation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name              string
 		originalError     error
@@ -91,6 +92,7 @@ func TestErrorChainPreservation(t *testing.T) {
 // that we want to add to the existing llm.Wrap function.
 // This follows TDD RED phase - test fails until we implement the feature.
 func TestCorrelationIDSupport(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		baseError     error
@@ -137,6 +139,7 @@ func TestCorrelationIDSupport(t *testing.T) {
 // TestCorrelationIDIntegration tests the end-to-end correlation ID functionality
 // from error creation through extraction in logging systems.
 func TestCorrelationIDIntegration(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name                  string
 		createError           func() error
@@ -200,6 +203,7 @@ func TestCorrelationIDIntegration(t *testing.T) {
 // TestProductionErrorPatterns validates that our current production error
 // patterns continue to work exactly as they do today.
 func TestProductionErrorPatterns(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		pattern  func() error
