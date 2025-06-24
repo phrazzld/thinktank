@@ -8,11 +8,11 @@ require (
 	github.com/google/generative-ai-go v0.20.1
 	github.com/google/uuid v1.6.0
 	github.com/leanovate/gopter v0.2.11
-	github.com/openai/openai-go v1.5.0
+	github.com/openai/openai-go v1.6.0
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/term v0.32.0
 	golang.org/x/time v0.12.0
-	google.golang.org/api v0.237.0
+	google.golang.org/api v0.238.0
 )
 
 require (
