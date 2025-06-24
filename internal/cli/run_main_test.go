@@ -378,5 +378,158 @@ func removeDryRunFlag(args []string) []string {
 	return filtered
 }
 
+// TestParseFlagsWithArgs tests the ParseFlagsWithArgs wrapper function
+func TestParseFlagsWithArgs(t *testing.T) {
+	// Create a minimal valid configuration
+	tempDir := t.TempDir()
+	instructionsFile := filepath.Join(tempDir, "instructions.md")
+	require.NoError(t, os.WriteFile(instructionsFile, []byte("Test instructions"), 0644))
+
+	args := []string{
+		"thinktank",
+		"--instructions", instructionsFile,
+		"--model", "gemini-2.5-pro",
+		"--dry-run",
+		tempDir,
+	}
+
+	config, err := ParseFlagsWithArgs(args)
+
+	assert.NoError(t, err, "ParseFlagsWithArgs should succeed with valid arguments")
+	assert.NotNil(t, config, "ParseFlagsWithArgs should return config")
+	assert.Equal(t, instructionsFile, config.InstructionsFile, "Should parse instructions file")
+	assert.Equal(t, []string{"gemini-2.5-pro"}, config.ModelNames, "Should parse model names")
+	assert.True(t, config.DryRun, "Should parse dry-run flag")
+	assert.Equal(t, []string{tempDir}, config.Paths, "Should parse paths")
+}
+
+// TestNewProductionMainConfig tests the production main config factory function
+func TestNewProductionMainConfig(t *testing.T) {
+	config := NewProductionMainConfig()
+
+	assert.NotNil(t, config, "NewProductionMainConfig should return config")
+	assert.NotNil(t, config.FileSystem, "Should have file system")
+	assert.NotNil(t, config.ExitHandler, "Should have exit handler")
+	assert.NotNil(t, config.Args, "Should have args")
+	assert.NotNil(t, config.Getenv, "Should have getenv function")
+	assert.NotNil(t, config.Now, "Should have now function")
+
+	// Test that the functions work
+	envResult := config.Getenv("PATH") // PATH should exist on all systems
+	assert.IsType(t, "", envResult, "Getenv should return string")
+
+	timeResult := config.Now()
+	assert.IsType(t, time.Time{}, timeResult, "Now should return time.Time")
+}
+
+// TestWithAuditLogFile tests the withAuditLogFile helper function comprehensively
+// This function adds --audit-log-file flag before path arguments to ensure proper parsing
+func TestWithAuditLogFile(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		filename string
+		expected []string
+	}{
+		{
+			name:     "insert before first path argument",
+			args:     []string{"thinktank", "--model", "gemini-2.5-pro", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--model", "gemini-2.5-pro", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "handle boolean flag followed by path",
+			args:     []string{"thinktank", "--dry-run", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--dry-run", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "handle multiple boolean flags",
+			args:     []string{"thinktank", "--verbose", "--quiet", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--verbose", "--quiet", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "distinguish flag value from path",
+			args:     []string{"thinktank", "--instructions", "test.md", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--instructions", "test.md", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "handle multiple paths",
+			args:     []string{"thinktank", "--model", "gpt-4", "src/", "docs/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--model", "gpt-4", "--audit-log-file", "/tmp/audit.log", "src/", "docs/"},
+		},
+		{
+			name:     "handle mixed boolean and value flags",
+			args:     []string{"thinktank", "--verbose", "--model", "gpt-4", "--dry-run", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--verbose", "--model", "gpt-4", "--dry-run", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "append when no paths present",
+			args:     []string{"thinktank", "--model", "gpt-4", "--dry-run"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--model", "gpt-4", "--dry-run", "--audit-log-file", "/tmp/audit.log"},
+		},
+		{
+			name:     "handle program name only",
+			args:     []string{"thinktank"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--audit-log-file", "/tmp/audit.log"},
+		},
+		{
+			name:     "handle empty args",
+			args:     []string{},
+			filename: "/tmp/audit.log",
+			expected: []string{"--audit-log-file", "/tmp/audit.log"},
+		},
+		{
+			name:     "handle all boolean flags scenario",
+			args:     []string{"thinktank", "--dry-run", "--verbose", "--quiet", "--json-logs", "--no-progress", "--partial-success-ok"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--dry-run", "--verbose", "--quiet", "--json-logs", "--no-progress", "--partial-success-ok", "--audit-log-file", "/tmp/audit.log"},
+		},
+		{
+			name:     "complex real-world scenario",
+			args:     []string{"thinktank", "--instructions", "prompt.md", "--model", "gemini-2.5-pro", "--output-dir", "/tmp/output", "--verbose", "src/", "docs/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--instructions", "prompt.md", "--model", "gemini-2.5-pro", "--output-dir", "/tmp/output", "--verbose", "--audit-log-file", "/tmp/audit.log", "src/", "docs/"},
+		},
+		{
+			name:     "boolean flag detection accuracy",
+			args:     []string{"thinktank", "--partial-success-ok", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--partial-success-ok", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "single argument after program name",
+			args:     []string{"thinktank", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "handle non-standard boolean flag order",
+			args:     []string{"thinktank", "--json-logs", "--no-progress", "src/"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--json-logs", "--no-progress", "--audit-log-file", "/tmp/audit.log", "src/"},
+		},
+		{
+			name:     "edge case with flag-like path name",
+			args:     []string{"thinktank", "--model", "gpt-4", "--flag-like-directory"},
+			filename: "/tmp/audit.log",
+			expected: []string{"thinktank", "--model", "gpt-4", "--flag-like-directory", "--audit-log-file", "/tmp/audit.log"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := withAuditLogFile(tt.args, tt.filename)
+			assert.Equal(t, tt.expected, result, "withAuditLogFile() should correctly insert audit log flag")
+		})
+	}
+}
+
 // Mock implementations for testing
 // Note: NewMockExitHandler() is already defined in run_mocks.go

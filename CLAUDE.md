@@ -162,6 +162,12 @@ func TestCriticalPathIntegration(t *testing.T) {
 
 Aim for 90% coverage primarily through direct function tests, supplemented by focused integration tests.
 
+**Coverage Best Practices:**
+- **Test helper functions**: Any helper function with substantial logic (>5 lines) should have dedicated tests
+- **Monitor coverage impact**: Adding code without tests can cause CI failures when coverage drops below 80%
+- **Table-driven tests**: Use comprehensive test scenarios for complex helper functions like argument parsing
+- **Edge case coverage**: Test boundary conditions, empty inputs, and malformed data scenarios
+
 ## Security & Vulnerability Scanning
 
 * **Automated Vulnerability Scanning:** All commits and PRs are automatically scanned for vulnerabilities
