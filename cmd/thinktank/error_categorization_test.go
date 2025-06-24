@@ -104,6 +104,7 @@ func TestErrorCategorization(t *testing.T) {
 
 // TestGetErrorCategoryFromStatusCode tests HTTP status code to error category mapping
 func TestGetErrorCategoryFromStatusCode(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		statusCode       int
 		expectedCategory llm.ErrorCategory

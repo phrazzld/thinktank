@@ -53,6 +53,7 @@ TASK-PROMPT.md
 diff.md
 CODE_REVIEW.md
 thinktank_*/
+**/thinktank_*/
 
 # Profiling data
 profile_data/
@@ -60,9 +61,15 @@ profile_data/
 # Build artifacts
 main
 quality-gates
+build/coverage/
+build/test/
+build/tmp/
 
 # Test files
 test.txt
+
+# Load testing configuration (contains API keys)
+scripts/load-testing/config.sh
 
 # Log files
 *.log
@@ -84,6 +91,9 @@ CI-FAILURE-*.md
 CI-RESOLUTION-*.md
 CI-ANALYSIS-*.md
 CI-LINT-FAILURE-ANALYSIS.md
+
+# Coverage analysis and mission reports
+COVERAGE-*.md
 
 # Temporary analysis and synthesis files
 CRITICAL-ANALYSIS-RESULTS.md
@@ -107,6 +117,13 @@ dev/
 coverage.out
 *.out.tmp
 coverage.out.tmp
+*coverage*.out
+*coverage*.html
+baseline.out
+temp.out
+
+# Coverage cache
+.cache/
 
 test-instructions.txt
 

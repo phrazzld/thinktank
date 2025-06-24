@@ -13,7 +13,10 @@ import (
 // TestAPIServiceContractVerification ensures that a correct implementation
 // of the APIService interface meets all contractual expectations.
 func TestAPIServiceContractVerification(t *testing.T) {
+	t.Parallel(
 	// Create a mock implementation of the APIService interface
+	)
+
 	mockAPI := &MockAPIService{
 		// InitLLMClient implementation for testing
 		InitLLMClientFunc: func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {

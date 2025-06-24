@@ -11,6 +11,7 @@ import (
 
 // TestCreateStandardErrorWithMessage tests the creation of user-friendly error messages based on category
 func TestCreateStandardErrorWithMessage(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		provider    string
@@ -184,6 +185,7 @@ func TestFormatAPIError(t *testing.T) {
 
 // TestIsErrorCategoryHelpers tests the various IsXXX helper functions for error categories
 func TestIsErrorCategoryHelpers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -234,7 +236,10 @@ func TestIsErrorCategoryHelpers(t *testing.T) {
 
 // TestIsCategorizedError tests the IsCategorizedError helper function
 func TestIsCategorizedError(t *testing.T) {
+	t.Parallel(
 	// Test with nil error
+	)
+
 	if catErr, ok := llm.IsCategorizedError(nil); ok || catErr != nil {
 		t.Errorf("Expected IsCategorizedError(nil) to return (nil, false), got (%v, %v)", catErr, ok)
 	}
@@ -281,6 +286,7 @@ func TestIsCategorizedError(t *testing.T) {
 
 // TestMockError tests the MockError implementation of CategorizedError
 func TestMockError(t *testing.T) {
+	t.Parallel()
 	mockErr := &llm.MockError{
 		Message:       "test mock error",
 		ErrorCategory: llm.CategoryNetwork,
@@ -310,7 +316,10 @@ func TestMockError(t *testing.T) {
 
 // TestCategorizedErrorConversion tests error wrapping and unwrapping with category preservation
 func TestCategorizedErrorConversion(t *testing.T) {
+	t.Parallel(
 	// Create a base error
+	)
+
 	baseErr := errors.New("base error")
 
 	// Wrap it with the llm.Wrap function

@@ -13,6 +13,7 @@ import (
 // Note: osExit is defined in logutil.go
 
 func TestLogLevelString(t *testing.T) {
+	t.Parallel() // CPU-bound: String formatting test
 	tests := []struct {
 		level    LogLevel
 		expected string
@@ -32,6 +33,7 @@ func TestLogLevelString(t *testing.T) {
 }
 
 func TestLoggerLevelFiltering(t *testing.T) {
+	t.Parallel() // CPU-bound: Logger behavior test with buffer
 	buf := new(bytes.Buffer)
 	logger := NewLogger(InfoLevel, buf, "")
 
@@ -61,6 +63,7 @@ func TestLoggerLevelFiltering(t *testing.T) {
 }
 
 func TestLoggerPrefix(t *testing.T) {
+	t.Parallel() // CPU-bound: Logger prefix test with buffer
 	buf := new(bytes.Buffer)
 	prefix := "TEST: "
 	logger := NewLogger(DebugLevel, buf, prefix)
@@ -81,6 +84,7 @@ func TestLoggerPrefix(t *testing.T) {
 }
 
 func TestLoggerAllLevels(t *testing.T) {
+	t.Parallel() // CPU-bound: Logger level test with buffer
 	buf := new(bytes.Buffer)
 	logger := NewLogger(DebugLevel, buf, "")
 

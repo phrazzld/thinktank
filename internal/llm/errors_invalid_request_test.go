@@ -8,6 +8,7 @@ import (
 
 // TestCreateStandardErrorWithMessage_InvalidRequest specifically tests the InvalidRequest case
 func TestCreateStandardErrorWithMessage_InvalidRequest(t *testing.T) {
+	t.Parallel()
 	original := errors.New("test error")
 	provider := "test-provider"
 	details := "test details"

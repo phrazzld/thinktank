@@ -11,6 +11,7 @@ import (
 // TestExitCodeHandling tests the behavior of exit codes based on the partial-success-ok flag
 // This is a table-driven test that covers different scenarios
 func TestExitCodeHandling(t *testing.T) {
+	t.Parallel()
 	if os.Getenv("GO_TEST_EXIT_CODE_PROCESS") == "1" {
 		// This is the subprocess that will call Main() and exit
 		// We're using a subprocess because we need to test actual os.Exit() behavior

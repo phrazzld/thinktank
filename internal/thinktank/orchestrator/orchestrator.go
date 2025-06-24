@@ -27,17 +27,19 @@ import (
 // It depends on various services to perform tasks like interacting with the API,
 // gathering context, writing files, logging audits, and handling rate limits.
 type Orchestrator struct {
-	apiService       interfaces.APIService
-	contextGatherer  interfaces.ContextGatherer
-	fileWriter       interfaces.FileWriter
-	auditLogger      auditlog.AuditLogger
-	rateLimiter      *ratelimit.RateLimiter
-	config           *config.CliConfig
-	logger           logutil.LoggerInterface
-	consoleWriter    logutil.ConsoleWriter
-	synthesisService SynthesisService
-	outputWriter     OutputWriter
-	summaryWriter    SummaryWriter
+	apiService        interfaces.APIService
+	contextGatherer   interfaces.ContextGatherer
+	fileWriter        interfaces.FileWriter
+	auditLogger       auditlog.AuditLogger
+	rateLimiter       *ratelimit.RateLimiter
+	config            *config.CliConfig
+	logger            logutil.LoggerInterface
+	consoleWriter     logutil.ConsoleWriter
+	synthesisService  SynthesisService
+	outputWriter      OutputWriter
+	summaryWriter     SummaryWriter
+	modelRateLimiters map[string]*ratelimit.RateLimiter // Per-model rate limiters for models with specific concurrency limits
+	rateLimiterMutex  sync.RWMutex                      // Protects modelRateLimiters map
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -66,18 +68,84 @@ func NewOrchestrator(
 	}
 
 	return &Orchestrator{
-		apiService:       apiService,
-		contextGatherer:  contextGatherer,
-		fileWriter:       fileWriter,
-		auditLogger:      auditLogger,
-		rateLimiter:      rateLimiter,
-		config:           config,
-		logger:           logger,
-		consoleWriter:    consoleWriter,
-		synthesisService: synthesisService,
-		outputWriter:     outputWriter,
-		summaryWriter:    summaryWriter,
+		apiService:        apiService,
+		contextGatherer:   contextGatherer,
+		fileWriter:        fileWriter,
+		auditLogger:       auditLogger,
+		rateLimiter:       rateLimiter,
+		config:            config,
+		logger:            logger,
+		consoleWriter:     consoleWriter,
+		synthesisService:  synthesisService,
+		outputWriter:      outputWriter,
+		summaryWriter:     summaryWriter,
+		modelRateLimiters: make(map[string]*ratelimit.RateLimiter),
 	}
+}
+
+// getRateLimiterForModel returns the appropriate rate limiter for a specific model.
+// If the model has MaxConcurrentRequests set, it creates/returns a model-specific rate limiter.
+// Otherwise, it returns the global rate limiter.
+func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateLimiter {
+	// Get model info to check for specific concurrency limits
+	modelInfo, err := models.GetModelInfo(modelName)
+	if err != nil {
+		// If we can't get model info, use global rate limiter
+		return o.rateLimiter
+	}
+
+	// If no specific concurrency limit is set, use global rate limiter
+	if modelInfo.MaxConcurrentRequests == nil {
+		return o.rateLimiter
+	}
+
+	// Check if we already have a rate limiter for this model
+	o.rateLimiterMutex.RLock()
+	if limiter, exists := o.modelRateLimiters[modelName]; exists {
+		o.rateLimiterMutex.RUnlock()
+		return limiter
+	}
+	o.rateLimiterMutex.RUnlock()
+
+	// Create a new model-specific rate limiter
+	o.rateLimiterMutex.Lock()
+	defer o.rateLimiterMutex.Unlock()
+
+	// Double-check in case another goroutine created it while we were waiting for the lock
+	if limiter, exists := o.modelRateLimiters[modelName]; exists {
+		return limiter
+	}
+
+	// Create new rate limiter with model-specific concurrency limit
+	// Use provider-aware rate limiting for RPM
+
+	// Determine the effective rate limit for this model
+	// Priority: model-specific > provider-specific config > provider default
+	var effectiveRateLimit int
+	if modelInfo.RateLimitRPM != nil {
+		// Model has a specific rate limit override
+		effectiveRateLimit = *modelInfo.RateLimitRPM
+		o.logger.DebugContext(context.Background(), "Using model-specific rate limit for %s: %d RPM", modelName, effectiveRateLimit)
+	} else {
+		// Check provider-specific config, then fall back to provider default
+		configRateLimit := o.config.GetProviderRateLimit(modelInfo.Provider)
+		if configRateLimit > 0 {
+			effectiveRateLimit = configRateLimit
+			o.logger.DebugContext(context.Background(), "Using config rate limit for %s (%s): %d RPM", modelName, modelInfo.Provider, effectiveRateLimit)
+		} else {
+			// Use provider default
+			effectiveRateLimit = models.GetProviderDefaultRateLimit(modelInfo.Provider)
+			o.logger.DebugContext(context.Background(), "Using provider default rate limit for %s (%s): %d RPM", modelName, modelInfo.Provider, effectiveRateLimit)
+		}
+	}
+
+	modelRateLimiter := ratelimit.NewRateLimiter(
+		*modelInfo.MaxConcurrentRequests,
+		effectiveRateLimit,
+	)
+
+	o.modelRateLimiters[modelName] = modelRateLimiter
+	return modelRateLimiter
 }
 
 // Run executes the main application workflow, representing the core business logic.
@@ -400,10 +468,13 @@ func (o *Orchestrator) processModelWithRateLimit(
 	var result modelResult
 	result.modelName = modelName
 
+	// Get the appropriate rate limiter for this model (model-specific or global)
+	rateLimiter := o.getRateLimiterForModel(modelName)
+
 	// Acquire rate limiting permission
 	contextLogger.DebugContext(ctx, "Attempting to acquire rate limiter for model %s...", modelName)
 	acquireStart := time.Now()
-	if err := o.rateLimiter.Acquire(ctx, modelName); err != nil {
+	if err := rateLimiter.Acquire(ctx, modelName); err != nil {
 		contextLogger.ErrorContext(ctx, "Rate limiting error for model %s: %v", modelName, err)
 		result.err = llm.Wrap(err, "orchestrator",
 			fmt.Sprintf("failed to acquire rate limiter for model %s", modelName),
@@ -422,7 +493,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Release rate limiter when done
 	defer func() {
 		contextLogger.DebugContext(ctx, "Releasing rate limiter for model %s", modelName)
-		o.rateLimiter.Release()
+		rateLimiter.Release()
 	}()
 
 	// Report model processing started
@@ -444,18 +515,20 @@ func (o *Orchestrator) processModelWithRateLimit(
 	processingDuration := time.Since(processingStart)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Processing model %s failed: %v", modelName, err)
-		// The error from processor.Process is already an LLMError, but we'll add our own context
-		if catErr, ok := llm.IsCategorizedError(err); ok {
-			result.err = llm.Wrap(err, "orchestrator",
-				fmt.Sprintf("model %s processing failed", modelName),
-				catErr.Category())
+
+		// Preserve the detailed error instead of wrapping with generic message
+		result.err = err
+
+		// Show user-friendly error with suggestions if it's an LLMError
+		var errorMessage string
+		if llmErr, ok := err.(*llm.LLMError); ok {
+			errorMessage = llmErr.UserFacingError()
 		} else {
-			result.err = llm.Wrap(err, "orchestrator",
-				fmt.Sprintf("model %s processing failed", modelName),
-				llm.CategoryInvalidRequest)
+			errorMessage = err.Error()
 		}
-		// Report model completion with error
-		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, err.Error())
+
+		// Report model completion with detailed error
+		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, errorMessage)
 		resultChan <- result
 		return
 	}

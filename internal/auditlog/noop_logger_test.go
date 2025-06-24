@@ -8,7 +8,10 @@ import (
 
 // TestNoOpAuditLogger_Log tests the Log method of NoOpAuditLogger
 func TestNoOpAuditLogger_Log(t *testing.T) {
+	t.Parallel(
 	// Create a NoOpAuditLogger
+	)
+
 	logger := NewNoOpAuditLogger()
 
 	// Test Log with various entries
@@ -65,7 +68,10 @@ func TestNoOpAuditLogger_Log(t *testing.T) {
 
 // TestNoOpAuditLogger_Close tests the Close method of NoOpAuditLogger
 func TestNoOpAuditLogger_Close(t *testing.T) {
+	t.Parallel(
 	// Create a NoOpAuditLogger
+	)
+
 	logger := NewNoOpAuditLogger()
 
 	// Close should never return an error

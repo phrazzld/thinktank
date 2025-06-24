@@ -13,6 +13,7 @@ import (
 
 // TestValidationErrors tests error handling for request validation failures
 func TestValidationErrors(t *testing.T) {
+	t.Parallel() // Pure CPU-bound parameter validation test
 	tests := []struct {
 		name                string
 		statusCode          int

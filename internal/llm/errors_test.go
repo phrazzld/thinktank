@@ -10,6 +10,7 @@ import (
 
 // Test the String method of ErrorCategory
 func TestErrorCategory_String(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		category ErrorCategory
 		expected string
@@ -54,6 +55,7 @@ func (e testCategorizedError) Category() ErrorCategory {
 
 // Test that IsCategorizedError correctly identifies a CategorizedError
 func TestIsCategorizedError(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		err      error
@@ -100,7 +102,9 @@ func TestIsCategorizedError(t *testing.T) {
 
 // Test LLMError creation and methods
 func TestLLMError(t *testing.T) {
+	t.Parallel() // Pure CPU-bound logic validation test
 	// Create an LLMError
+
 	origErr := errors.New("something went wrong")
 	llmErr := &LLMError{
 		Provider:      "test-provider",
@@ -158,6 +162,7 @@ func TestLLMError(t *testing.T) {
 
 // Test New function
 func TestNew(t *testing.T) {
+	t.Parallel() // Pure CPU-bound constructor logic test
 	origErr := errors.New("original error")
 	llmErr := New("test-provider", "err-code", 400, "Bad request", "req-123", origErr, CategoryInvalidRequest)
 
@@ -186,6 +191,7 @@ func TestNew(t *testing.T) {
 
 // Test Wrap function
 func TestWrap(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error wrapping logic test
 	t.Run("wrap nil error", func(t *testing.T) {
 		if err := Wrap(nil, "test-provider", "wrapped message", CategoryAuth); err != nil {
 			t.Errorf("Expected Wrap(nil, ...) = nil, got %v", err)
@@ -256,6 +262,7 @@ func TestWrap(t *testing.T) {
 
 // Test error category helper functions (IsAuth, IsRateLimit, etc.)
 func TestErrorCategoryHelpers(t *testing.T) {
+	t.Parallel() // Pure CPU-bound categorization logic test
 	testCases := []struct {
 		name     string
 		err      error
@@ -304,6 +311,7 @@ func TestErrorCategoryHelpers(t *testing.T) {
 
 // Test GetErrorCategoryFromStatusCode
 func TestGetErrorCategoryFromStatusCode(t *testing.T) {
+	t.Parallel() // Pure CPU-bound status code categorization test
 	testCases := []struct {
 		statusCode int
 		expected   ErrorCategory
@@ -332,6 +340,7 @@ func TestGetErrorCategoryFromStatusCode(t *testing.T) {
 
 // Test GetErrorCategoryFromMessage
 func TestGetErrorCategoryFromMessage(t *testing.T) {
+	t.Parallel() // Pure CPU-bound message categorization test
 	testCases := []struct {
 		message  string
 		expected ErrorCategory
@@ -378,6 +387,7 @@ func TestGetErrorCategoryFromMessage(t *testing.T) {
 
 // Test DetectErrorCategory
 func TestDetectErrorCategory(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error detection logic test
 	t.Run("nil error", func(t *testing.T) {
 		if cat := DetectErrorCategory(nil, 0); cat != CategoryUnknown {
 			t.Errorf("Expected DetectErrorCategory(nil, 0) = %v, got %v", CategoryUnknown, cat)
@@ -416,6 +426,7 @@ func TestDetectErrorCategory(t *testing.T) {
 
 // Test CreateStandardErrorWithMessage
 func TestCreateStandardErrorWithMessage(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error creation logic test
 	original := errors.New("original error")
 
 	testCases := []struct {
@@ -481,6 +492,7 @@ func TestCreateStandardErrorWithMessage(t *testing.T) {
 
 // Test FormatAPIError
 func TestFormatAPIError(t *testing.T) {
+	t.Parallel() // Pure CPU-bound API error formatting test
 	t.Run("nil error", func(t *testing.T) {
 		if err := FormatAPIError("test-provider", nil, 0, ""); err != nil {
 			t.Errorf("Expected FormatAPIError(nil) = nil, got %v", err)

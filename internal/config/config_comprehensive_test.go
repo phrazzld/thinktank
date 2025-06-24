@@ -10,6 +10,7 @@ import (
 
 // TestCliConfigValidationScenarios tests comprehensive CLI configuration validation scenarios
 func TestCliConfigValidationScenarios(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		config        *CliConfig
@@ -266,6 +267,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 
 // TestDefaultConfigurationRobustness tests the robustness of default configuration handling
 func TestDefaultConfigurationRobustness(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		configFunc  func() interface{}
@@ -313,7 +315,10 @@ func TestDefaultConfigurationRobustness(t *testing.T) {
 
 // TestConfigurationIsolation tests that configuration instances are properly isolated
 func TestConfigurationIsolation(t *testing.T) {
+	t.Parallel(
 	// Test CLI config isolation
+	)
+
 	config1 := NewDefaultCliConfig()
 	config2 := NewDefaultCliConfig()
 
@@ -380,6 +385,7 @@ func TestConfigurationIsolation(t *testing.T) {
 
 // TestConfigurationEdgeCasesAndBoundaryConditions tests edge cases and boundary conditions
 func TestConfigurationEdgeCasesAndBoundaryConditions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name        string
 		setupFunc   func() *CliConfig

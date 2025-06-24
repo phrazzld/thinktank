@@ -7,6 +7,7 @@ import (
 
 // TestMockLLMClient ensures the mock client correctly implements the LLMClient interface
 func TestMockLLMClient(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	promptText := "Test prompt"
 
@@ -37,6 +38,7 @@ func TestMockLLMClient(t *testing.T) {
 
 // TestMockLLMClientCustom ensures the mock client correctly uses custom implementations
 func TestMockLLMClientCustom(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	promptText := "Test prompt"
 

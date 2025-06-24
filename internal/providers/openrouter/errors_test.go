@@ -13,6 +13,7 @@ import (
 )
 
 func TestParseErrorResponse(t *testing.T) {
+	t.Parallel() // Pure CPU-bound JSON response parsing test
 	tests := []struct {
 		name           string
 		responseBody   []byte
@@ -77,6 +78,7 @@ func TestParseErrorResponse(t *testing.T) {
 }
 
 func TestFormatErrorDetails(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error detail formatting test
 	tests := []struct {
 		name        string
 		errorMsg    string
@@ -123,6 +125,7 @@ func TestFormatErrorDetails(t *testing.T) {
 }
 
 func TestIsOpenRouterError(t *testing.T) {
+	t.Parallel() // Pure CPU-bound error type validation test
 	tests := []struct {
 		name        string
 		err         error
@@ -166,6 +169,7 @@ func TestIsOpenRouterError(t *testing.T) {
 }
 
 func TestFormatAPIErrorFromResponse(t *testing.T) {
+	t.Parallel() // Pure CPU-bound API error formatting test
 	tests := []struct {
 		name         string
 		err          error
@@ -285,6 +289,7 @@ func TestFormatAPIErrorFromResponse(t *testing.T) {
 }
 
 func TestFormatAPIError(t *testing.T) {
+	t.Parallel() // Pure CPU-bound API error formatting test
 	tests := []struct {
 		name          string
 		err           error
@@ -475,6 +480,7 @@ func TestFormatAPIError(t *testing.T) {
 }
 
 func TestCreateAPIError(t *testing.T) {
+	t.Parallel() // Pure CPU-bound API error creation test
 	tests := []struct {
 		name           string
 		category       llm.ErrorCategory

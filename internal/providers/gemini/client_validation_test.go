@@ -16,6 +16,7 @@ import (
 
 // TestParameterValidation tests parameter validation
 func TestParameterValidation(t *testing.T) {
+	t.Parallel() // Pure CPU-bound parameter validation test
 	tests := []struct {
 		name                string
 		parameters          map[string]interface{}

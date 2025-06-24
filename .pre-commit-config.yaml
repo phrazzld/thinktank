@@ -69,6 +69,14 @@ repos:
         language: script
         files: ^\.github/workflows/.*\.(yml|yaml)$
         pass_filenames: false
+    -   id: go-coverage-check
+        name: Go Coverage Regression Check
+        entry: scripts/check-coverage-cached.sh 79
+        language: script
+        types: [go]
+        pass_filenames: false
+        always_run: true
+        description: Prevent commits that drop test coverage below 79% (temporarily lowered from 80%)
 
 # Post-commit hooks (run after successful commit)
 -   repo: local

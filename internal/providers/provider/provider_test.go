@@ -23,6 +23,7 @@ func (m *MockProvider) CreateClient(ctx context.Context, apiKey string, modelID 
 
 // TestProviderInterface verifies that MockProvider satisfies the Provider interface
 func TestProviderInterface(t *testing.T) {
+	t.Parallel() // Pure CPU-bound interface validation test
 	// This is a compile-time check to ensure MockProvider implements Provider
 	var _ Provider = (*MockProvider)(nil)
 

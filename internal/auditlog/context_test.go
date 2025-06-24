@@ -13,7 +13,10 @@ import (
 
 // TestAuditLogger_Context tests the context-aware methods of AuditLogger
 func TestAuditLogger_Context(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -97,7 +100,10 @@ func TestAuditLogger_Context(t *testing.T) {
 
 // TestLogOp_Context tests the context-aware LogOp method
 func TestLogOp_Context(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -165,7 +171,10 @@ func TestLogOp_Context(t *testing.T) {
 
 // TestNoOpAuditLogger_Context tests the context-aware methods of NoOpAuditLogger
 func TestNoOpAuditLogger_Context(t *testing.T) {
+	t.Parallel(
 	// Create a NoOpAuditLogger
+	)
+
 	logger := NewNoOpAuditLogger()
 
 	// Create a context with correlation ID
@@ -189,7 +198,10 @@ func TestNoOpAuditLogger_Context(t *testing.T) {
 
 // TestLogLegacy verifies that the legacy methods work correctly
 func TestLogLegacy(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -251,7 +263,10 @@ func TestLogLegacy(t *testing.T) {
 
 // TestLogOpLegacy verifies that the legacy LogOp method works correctly
 func TestLogOpLegacy(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 

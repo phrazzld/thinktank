@@ -11,7 +11,10 @@ import (
 
 // TestFileAuditLogger_ErrorHandling tests error handling in FileAuditLogger
 func TestFileAuditLogger_ErrorHandling(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary directory
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 

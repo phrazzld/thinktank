@@ -13,7 +13,10 @@ import (
 
 // TestFileAuditLogger_LogOp tests the LogOp method of FileAuditLogger
 func TestFileAuditLogger_LogOp(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -214,7 +217,10 @@ func (e *mockCategorizedError) Category() llm.ErrorCategory {
 
 // TestNoOpAuditLogger_LogOp tests the LogOp method of NoOpAuditLogger
 func TestNoOpAuditLogger_LogOp(t *testing.T) {
+	t.Parallel(
 	// Create a NoOpAuditLogger
+	)
+
 	logger := NewNoOpAuditLogger()
 
 	// Test LogOp with various parameters

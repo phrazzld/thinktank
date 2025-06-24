@@ -644,3 +644,440 @@ go test -v ./internal/integration/...
 ```
 
 This testing infrastructure ensures reliable, maintainable tests that validate real system behavior while providing fast feedback during development.
+
+## Testing CLI Applications: Direct Function vs Subprocess Testing
+
+### The Problem with Subprocess Testing
+
+Traditional CLI testing often relies on subprocess execution:
+
+```go
+// ❌ Avoid: Subprocess testing (fragile, slow, hard to debug)
+func TestMainFunction(t *testing.T) {
+    cmd := exec.Command("./binary", "--flag", "value", "input")
+    cmd.Env = []string{"TEST_ENV=1"}
+    output, err := cmd.CombinedOutput()
+
+    if err != nil {
+        t.Fatalf("Command failed: %v", err)
+    }
+
+    // Hard to test specific error conditions
+    // Difficult to verify internal state
+    // Slow execution due to process creation
+}
+```
+
+**Problems with subprocess testing:**
+- **Fragile**: Dependent on binary compilation, environment setup
+- **Slow**: Process creation overhead (~100-500ms per test)
+- **Hard to debug**: Limited visibility into internal state
+- **Unreliable in CI**: Race conditions, environment dependencies
+- **Limited coverage**: Difficult to test error paths and edge cases
+
+### Solution: Direct Function Testing with Dependency Injection
+
+Extract business logic from `main()` into testable functions with dependency injection:
+
+#### 1. Define Dependency Interfaces
+
+```go
+// FileSystem interface for dependency injection
+type FileSystemInterface interface {
+    CreateTemp(dir, pattern string) (*os.File, error)
+    WriteFile(filename string, data []byte, perm os.FileMode) error
+    ReadFile(filename string) ([]byte, error)
+    Remove(name string) error
+    MkdirAll(path string, perm os.FileMode) error
+    OpenFile(name string, flag int, perm os.FileMode) (*os.File, error)
+}
+
+// ExitHandler interface for testable exit behavior
+type ExitHandler interface {
+    Exit(code int)
+}
+```
+
+#### 2. Create RunConfig/RunResult Pattern
+
+```go
+// RunConfig contains all dependencies for the main application logic
+type RunConfig struct {
+    Context         context.Context
+    Config          *config.CliConfig
+    Logger          logutil.LoggerInterface
+    AuditLogger     auditlog.AuditLogger
+    APIService      APIServiceInterface
+    ConsoleWriter   ConsoleWriterInterface
+    FileSystem      FileSystemInterface
+    ExitHandler     ExitHandler
+    ContextGatherer ContextGathererInterface
+}
+
+// RunResult contains the outcome of running the main logic
+type RunResult struct {
+    ExitCode       int
+    Error          error
+    ExecutionStats ExecutionStats
+}
+
+// ExecutionStats tracks metrics for testing and monitoring
+type ExecutionStats struct {
+    FilesProcessed      int
+    APICalls           int
+    Duration           time.Duration
+    AuditEntriesWritten int
+}
+```
+
+#### 3. Extract Main Logic into Testable Function
+
+```go
+// ✅ Good: Testable Run function with dependency injection
+func Run(cfg *RunConfig) *RunResult {
+    // Business logic with injected dependencies
+    // No direct calls to os.Exit(), os.Getenv(), etc.
+
+    if err := validateConfig(cfg.Config, cfg.Logger); err != nil {
+        return &RunResult{
+            ExitCode: ExitCodeInvalidRequest,
+            Error:    err,
+        }
+    }
+
+    // Use injected dependencies instead of globals
+    files, err := cfg.ContextGatherer.GatherContext(cfg.Context, cfg.Config)
+    if err != nil {
+        return &RunResult{
+            ExitCode: ExitCodeInputError,
+            Error:    err,
+        }
+    }
+
+    // Continue with business logic...
+    return &RunResult{
+        ExitCode: ExitCodeSuccess,
+        ExecutionStats: ExecutionStats{
+            FilesProcessed: len(files),
+            Duration:       time.Since(start),
+        },
+    }
+}
+
+// Thin main() wrapper that sets up dependencies
+func Main() {
+    cfg, err := setupProductionDependencies()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Setup error: %v\n", err)
+        os.Exit(ExitCodeGenericError)
+    }
+
+    result := Run(cfg)
+    if result.Error != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
+    }
+
+    cfg.ExitHandler.Exit(result.ExitCode)
+}
+```
+
+#### 4. Direct Function Testing Examples
+
+```go
+// ✅ Good: Direct function testing with mocked dependencies
+func TestRunDryRunSuccess(t *testing.T) {
+    // Setup mocked dependencies
+    mockFS := &MockFileSystem{
+        Files: make(map[string][]byte),
+        Dirs:  make(map[string]os.FileMode),
+    }
+    mockLogger := &testutil.MockLogger{}
+    mockContextGatherer := &MockContextGatherer{
+        Files: []string{"test.go", "main.go"},
+    }
+
+    cfg := &RunConfig{
+        Context: context.Background(),
+        Config: &config.CliConfig{
+            DryRun:           true,
+            InstructionsFile: "instructions.txt",
+            Paths:           []string{"src/"},
+        },
+        Logger:          mockLogger,
+        FileSystem:      mockFS,
+        ContextGatherer: mockContextGatherer,
+    }
+
+    // Test the business logic directly
+    result := Run(cfg)
+
+    // Verify results
+    assert.Equal(t, ExitCodeSuccess, result.ExitCode)
+    assert.NoError(t, result.Error)
+    assert.Equal(t, 2, result.ExecutionStats.FilesProcessed)
+
+    // Verify no API calls were made in dry-run mode
+    assert.Empty(t, mockContextGatherer.APICalls)
+
+    // Verify logging behavior
+    assert.True(t, mockLogger.ContainsMessage("Dry run mode enabled"))
+}
+
+func TestRunWithInvalidConfig(t *testing.T) {
+    cfg := &RunConfig{
+        Context: context.Background(),
+        Config: &config.CliConfig{
+            // Missing required InstructionsFile
+            Paths: []string{"src/"},
+        },
+        Logger: &testutil.MockLogger{},
+    }
+
+    result := Run(cfg)
+
+    assert.Equal(t, ExitCodeInvalidRequest, result.ExitCode)
+    assert.Error(t, result.Error)
+    assert.Contains(t, result.Error.Error(), "missing required --instructions flag")
+}
+```
+
+### Testing Error Handling with Direct Functions
+
+Extract error handling logic into testable functions:
+
+```go
+// Extract error categorization logic
+func getExitCodeFromError(err error) int {
+    if err == nil {
+        return ExitCodeSuccess
+    }
+
+    if llmErr, ok := err.(*llm.LLMError); ok {
+        switch llmErr.ErrorCategory {
+        case llm.CategoryAuth:
+            return ExitCodeAuthError
+        case llm.CategoryRateLimit:
+            return ExitCodeRateLimitError
+        case llm.CategoryInvalidRequest:
+            return ExitCodeInvalidRequest
+        // ... other categories
+        }
+    }
+
+    return ExitCodeGenericError
+}
+
+// Direct testing of error categorization
+func TestGetExitCodeFromError(t *testing.T) {
+    tests := []struct {
+        name         string
+        err          error
+        expectedCode int
+    }{
+        {
+            name: "LLM auth error",
+            err: &llm.LLMError{
+                Provider:      "test",
+                Message:       "Authentication failed",
+                ErrorCategory: llm.CategoryAuth,
+            },
+            expectedCode: ExitCodeAuthError,
+        },
+        {
+            name: "Rate limit error",
+            err: &llm.LLMError{
+                Provider:      "test",
+                Message:       "Too many requests",
+                ErrorCategory: llm.CategoryRateLimit,
+            },
+            expectedCode: ExitCodeRateLimitError,
+        },
+        {
+            name:         "No error",
+            err:          nil,
+            expectedCode: ExitCodeSuccess,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            code := getExitCodeFromError(tt.err)
+            assert.Equal(t, tt.expectedCode, code)
+        })
+    }
+}
+```
+
+### Testing Flag Parsing Logic
+
+Extract flag parsing from `main()` for direct testing:
+
+```go
+// Testable flag parsing function
+func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string) string) (*config.CliConfig, error) {
+    cfg := config.NewDefaultCliConfig()
+
+    // Define flags...
+    instructionsFileFlag := flagSet.String("instructions", "", "Path to instructions file")
+    // ... other flags
+
+    if err := flagSet.Parse(args); err != nil {
+        return nil, fmt.Errorf("error parsing flags: %w", err)
+    }
+
+    // Set config values from flags
+    cfg.InstructionsFile = *instructionsFileFlag
+    // ... other config values
+
+    return cfg, nil
+}
+
+// Direct testing of flag parsing
+func TestParseFlagsWithEnv(t *testing.T) {
+    tests := []struct {
+        name        string
+        args        []string
+        expectError bool
+        expectedCfg func(*config.CliConfig) bool
+    }{
+        {
+            name: "valid basic flags",
+            args: []string{
+                "--instructions", "/path/to/instructions.md",
+                "--model", "gemini-2.5-pro",
+                "/path/to/input",
+            },
+            expectError: false,
+            expectedCfg: func(cfg *config.CliConfig) bool {
+                return cfg.InstructionsFile == "/path/to/instructions.md" &&
+                       len(cfg.ModelNames) == 1 &&
+                       cfg.ModelNames[0] == "gemini-2.5-pro"
+            },
+        },
+        {
+            name: "invalid flag",
+            args: []string{
+                "--invalid-flag", "value",
+                "/path/to/input",
+            },
+            expectError: true,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
+            mockGetenv := func(key string) string { return "" }
+
+            cfg, err := ParseFlagsWithEnv(flagSet, tt.args, mockGetenv)
+
+            if tt.expectError {
+                assert.Error(t, err)
+                assert.Nil(t, cfg)
+            } else {
+                assert.NoError(t, err)
+                assert.NotNil(t, cfg)
+                if tt.expectedCfg != nil {
+                    assert.True(t, tt.expectedCfg(cfg))
+                }
+            }
+        })
+    }
+}
+```
+
+### Mock Implementations for CLI Testing
+
+```go
+// Production FileSystem implementation
+type OSFileSystem struct{}
+
+func (fs *OSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) error {
+    return os.WriteFile(filename, data, perm)
+}
+
+func (fs *OSFileSystem) ReadFile(filename string) ([]byte, error) {
+    return os.ReadFile(filename)
+}
+
+// ... other methods
+
+// Mock FileSystem for testing
+type MockFileSystem struct {
+    Files map[string][]byte
+    FilePermissions map[string]os.FileMode
+    CallLog []string
+}
+
+func (mfs *MockFileSystem) WriteFile(filename string, data []byte, perm os.FileMode) error {
+    mfs.CallLog = append(mfs.CallLog, fmt.Sprintf("WriteFile(%s, %d bytes, %v)", filename, len(data), perm))
+
+    if mfs.Files == nil {
+        mfs.Files = make(map[string][]byte)
+    }
+    if mfs.FilePermissions == nil {
+        mfs.FilePermissions = make(map[string]os.FileMode)
+    }
+
+    mfs.Files[filename] = data
+    mfs.FilePermissions[filename] = perm
+    return nil
+}
+
+// Helper methods for testing
+func (mfs *MockFileSystem) GetFileContent(filename string) []byte {
+    return mfs.Files[filename]
+}
+
+func (mfs *MockFileSystem) FileExists(filename string) bool {
+    _, exists := mfs.Files[filename]
+    return exists
+}
+```
+
+### Guidelines for Maintaining Testability
+
+#### 1. Architecture Principles
+
+- **Extract main() logic**: Keep `main()` as thin wrapper, move business logic to `Run()`
+- **Use dependency injection**: Accept interfaces for all external dependencies
+- **Return structured results**: Use `RunResult` instead of calling `os.Exit()` directly
+- **Avoid globals**: Pass configuration and dependencies explicitly
+
+#### 2. When Converting Subprocess Tests
+
+```go
+// Before: Subprocess test
+func TestMainValidation(t *testing.T) {
+    cmd := exec.Command("./binary", "--invalid-config")
+    output, err := cmd.CombinedOutput()
+    // Fragile and slow
+}
+
+// After: Direct function test
+func TestValidateInputs(t *testing.T) {
+    cfg := &config.CliConfig{
+        // Invalid configuration
+        InstructionsFile: "", // Missing required field
+    }
+
+    err := ValidateInputs(cfg, &testutil.MockLogger{})
+    assert.Error(t, err)
+    assert.Contains(t, err.Error(), "missing required --instructions flag")
+}
+```
+
+#### 3. Mock Strategy
+
+- **Mock external boundaries**: HTTP APIs, filesystem, environment variables
+- **Use real internal code**: Don't mock your own business logic
+- **Provide mock implementations**: Create mock implementations of your interfaces
+
+#### 4. Test Focus Areas
+
+- **Business logic**: Test all main application flows with mocked dependencies
+- **Error handling**: Test error categorization and message formatting directly
+- **Configuration**: Test flag parsing and validation with various inputs
+- **Integration points**: Use focused integration tests for critical binary execution paths
+
+This approach provides **faster**, **more reliable**, and **more maintainable** tests while ensuring comprehensive coverage of your CLI application's behavior.

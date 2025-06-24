@@ -118,7 +118,10 @@ func verifyAuditEntry(t *testing.T, entry AuditEntry, expectedOperation, expecte
 
 // TestFileAuditLogger_New tests the creation of a new FileAuditLogger
 func TestFileAuditLogger_New(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -179,7 +182,10 @@ func TestFileAuditLogger_New(t *testing.T) {
 
 // TestFileAuditLogger_Log tests the Log method of FileAuditLogger
 func TestFileAuditLogger_Log(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -351,7 +357,10 @@ func TestFileAuditLogger_Log(t *testing.T) {
 
 // TestFileAuditLogger_Close tests the Close method of FileAuditLogger
 func TestFileAuditLogger_Close(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 
@@ -394,7 +403,10 @@ func TestFileAuditLogger_Close(t *testing.T) {
 
 // TestFileAuditLogger_Concurrency tests that FileAuditLogger is safe for concurrent use
 func TestFileAuditLogger_Concurrency(t *testing.T) {
+	t.Parallel(
 	// Setup a temporary file for testing
+	)
+
 	dir := t.TempDir()
 	logPath := filepath.Join(dir, "audit.log")
 

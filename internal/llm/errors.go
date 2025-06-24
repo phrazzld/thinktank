@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // Define sentinel errors for common LLM-related error conditions
@@ -257,6 +258,40 @@ func Wrap(err error, provider string, message string, category ErrorCategory) *L
 	}
 }
 
+// WrapWithCorrelationID wraps an existing error with additional LLM-specific context and correlation ID
+func WrapWithCorrelationID(err error, provider string, message string, category ErrorCategory, correlationID string) *LLMError {
+	if err == nil {
+		return nil
+	}
+
+	// If it's already an LLMError, we can update it
+	var llmErr *LLMError
+	if errors.As(err, &llmErr) {
+		if message != "" {
+			llmErr.Message = message
+		}
+		if provider != "" {
+			llmErr.Provider = provider
+		}
+		if category != CategoryUnknown {
+			llmErr.ErrorCategory = category
+		}
+		if correlationID != "" {
+			llmErr.RequestID = correlationID
+		}
+		return llmErr
+	}
+
+	// Otherwise create a new LLMError
+	return &LLMError{
+		Provider:      provider,
+		Message:       message,
+		Original:      err,
+		ErrorCategory: category,
+		RequestID:     correlationID,
+	}
+}
+
 // IsCategory checks if an error belongs to a specific category
 func IsCategory(err error, category ErrorCategory) bool {
 	if err == nil {
@@ -384,18 +419,19 @@ func GetErrorCategoryFromMessage(errMsg string) ErrorCategory {
 		return CategoryInputLimit
 	}
 
+	// Check for cancellation (before network to avoid timeout conflicts)
+	if strings.Contains(lowerMsg, "canceled") ||
+		strings.Contains(lowerMsg, "cancelled") ||
+		strings.Contains(lowerMsg, "deadline exceeded") ||
+		strings.Contains(lowerMsg, "context deadline exceeded") {
+		return CategoryCancelled
+	}
+
 	// Check for network errors
 	if strings.Contains(lowerMsg, "network") ||
 		strings.Contains(lowerMsg, "connection") ||
 		strings.Contains(lowerMsg, "timeout") {
 		return CategoryNetwork
-	}
-
-	// Check for cancellation
-	if strings.Contains(lowerMsg, "canceled") ||
-		strings.Contains(lowerMsg, "cancelled") ||
-		strings.Contains(lowerMsg, "deadline exceeded") {
-		return CategoryCancelled
 	}
 
 	// Check for not found errors
@@ -537,4 +573,299 @@ func (e *MockError) Error() string {
 // Category implements the CategorizedError interface
 func (e *MockError) Category() ErrorCategory {
 	return e.ErrorCategory
+}
+
+// LayerContext represents contextual information from a specific architectural layer
+type LayerContext struct {
+	Layer         string                 // The architectural layer name (e.g., "api-client", "model-processor")
+	Operation     string                 // The operation being performed when the error occurred
+	Timestamp     time.Time              // When the error occurred
+	Details       map[string]interface{} // Layer-specific details
+	CorrelationID string                 // Unique identifier for tracing this operation
+}
+
+// RecoveryAction represents a specific action that can be taken to recover from an error
+type RecoveryAction struct {
+	Layer   string // The layer responsible for this recovery action
+	Action  string // The specific action to take
+	Details string // Additional details about the action
+}
+
+// RecoveryInformation contains actionable information for error recovery
+type RecoveryInformation struct {
+	UserFacingMessage string           // Message suitable for end users
+	DeveloperDetails  string           // Technical details for developers
+	SuggestedActions  []RecoveryAction // Specific actions that can be taken
+	RetryPossible     bool             // Whether retrying the operation might succeed
+	EstimatedWaitTime time.Duration    // How long to wait before retrying
+	CorrelationID     string           // Correlation ID for tracking
+}
+
+// ContextualError wraps an error with layer-specific context information
+type ContextualError struct {
+	Original error
+	Context  LayerContext
+}
+
+// Error implements the error interface
+func (e *ContextualError) Error() string {
+	return fmt.Sprintf("[%s:%s] %s", e.Context.Layer, e.Context.Operation, e.Original.Error())
+}
+
+// Unwrap returns the original error for error chain traversal
+func (e *ContextualError) Unwrap() error {
+	return e.Original
+}
+
+// Category implements the CategorizedError interface by delegating to the original error
+func (e *ContextualError) Category() ErrorCategory {
+	if catErr, ok := IsCategorizedError(e.Original); ok {
+		return catErr.Category()
+	}
+	return CategoryUnknown
+}
+
+// Ensure ContextualError implements the CategorizedError interface
+var _ CategorizedError = (*ContextualError)(nil)
+
+// Contextual error handling functions - these are stubs that will be implemented in Phase 2
+
+// WrapWithContext wraps an error with layer-specific context
+func WrapWithContext(err error, layer, operation string, details map[string]interface{}, correlationID string) error {
+	if err == nil {
+		return nil
+	}
+
+	context := LayerContext{
+		Layer:         layer,
+		Operation:     operation,
+		Timestamp:     time.Now(),
+		Details:       details,
+		CorrelationID: correlationID,
+	}
+
+	return &ContextualError{
+		Original: err,
+		Context:  context,
+	}
+}
+
+// ExtractLayerContext extracts layer-specific context from an error chain
+func ExtractLayerContext(err error, layerName string) (LayerContext, bool) {
+	if err == nil {
+		return LayerContext{}, false
+	}
+
+	// Traverse the error chain looking for ContextualError with matching layer
+	for currentErr := err; currentErr != nil; {
+		if contextualErr, ok := currentErr.(*ContextualError); ok {
+			if contextualErr.Context.Layer == layerName {
+				return contextualErr.Context, true
+			}
+		}
+
+		// Try to unwrap the error
+		unwrapped := errors.Unwrap(currentErr)
+		if unwrapped == nil {
+			break
+		}
+		currentErr = unwrapped
+	}
+
+	return LayerContext{}, false
+}
+
+// ExtractCorrelationID extracts the correlation ID from an error chain
+func ExtractCorrelationID(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Traverse the error chain looking for correlation IDs
+	for currentErr := err; currentErr != nil; {
+		// Check for LLMError with RequestID (our simple correlation ID approach)
+		if llmErr, ok := currentErr.(*LLMError); ok {
+			if llmErr.RequestID != "" {
+				return llmErr.RequestID
+			}
+		}
+
+		// Check for ContextualError with correlation ID (complex system)
+		if contextualErr, ok := currentErr.(*ContextualError); ok {
+			if contextualErr.Context.CorrelationID != "" {
+				return contextualErr.Context.CorrelationID
+			}
+		}
+
+		// Try to unwrap the error
+		unwrapped := errors.Unwrap(currentErr)
+		if unwrapped == nil {
+			break
+		}
+		currentErr = unwrapped
+	}
+
+	return ""
+}
+
+// ExtractRecoveryInformation extracts recovery information from an error chain
+func ExtractRecoveryInformation(err error) RecoveryInformation {
+	if err == nil {
+		return RecoveryInformation{}
+	}
+
+	// Start with basic recovery info
+	recovery := RecoveryInformation{
+		CorrelationID: ExtractCorrelationID(err),
+	}
+
+	// Check if it's a categorized error and build recovery information
+	if categorizedErr, ok := IsCategorizedError(err); ok {
+		switch categorizedErr.Category() {
+		case CategoryRateLimit:
+			recovery.UserFacingMessage = "Request rate limit exceeded. Please wait and try again."
+			recovery.DeveloperDetails = "OpenAI API rate limit hit. Consider implementing exponential backoff."
+			recovery.SuggestedActions = []RecoveryAction{
+				{Layer: "cli", Action: "wait_and_retry", Details: "Wait 60 seconds before retrying"},
+				{Layer: "orchestrator", Action: "enable_backoff", Details: "Enable exponential backoff in configuration"},
+				{Layer: "model-processor", Action: "reduce_concurrency", Details: "Reduce --max-concurrent flag value"},
+				{Layer: "api-client", Action: "check_quota", Details: "Verify API quota and billing status"},
+			}
+			recovery.RetryPossible = true
+			recovery.EstimatedWaitTime = time.Second * 60
+
+		case CategoryAuth:
+			recovery.UserFacingMessage = "Authentication failed. Please check your API key."
+			recovery.DeveloperDetails = "API authentication failed. Verify environment variables and key validity."
+			recovery.SuggestedActions = []RecoveryAction{
+				{Layer: "cli", Action: "check_api_key", Details: "Verify API key environment variable is set"},
+				{Layer: "api-client", Action: "validate_key", Details: "Test API key with a simple request"},
+			}
+			recovery.RetryPossible = false
+
+		case CategoryNetwork:
+			recovery.UserFacingMessage = "Network error occurred. Please check your connection."
+			recovery.DeveloperDetails = "Network connectivity issue. Check internet connection and API endpoint."
+			recovery.SuggestedActions = []RecoveryAction{
+				{Layer: "cli", Action: "check_connection", Details: "Verify internet connectivity"},
+				{Layer: "api-client", Action: "retry_with_timeout", Details: "Retry with longer timeout"},
+			}
+			recovery.RetryPossible = true
+			recovery.EstimatedWaitTime = time.Second * 30
+
+		default:
+			recovery.UserFacingMessage = "An error occurred. Please try again."
+			recovery.DeveloperDetails = "Unknown error category. Check logs for details."
+			recovery.RetryPossible = true
+		}
+	}
+
+	return recovery
+}
+
+// Layer-specific error wrapping functions for the 4-layer architecture
+
+// WrapAPIClientError wraps an error with API client specific context
+func WrapAPIClientError(err error, provider, operation string, details map[string]interface{}, correlationID string) error {
+	if details == nil {
+		details = make(map[string]interface{})
+	}
+	details["provider"] = provider
+
+	return WrapWithContext(err, "api-client", operation, details, correlationID)
+}
+
+// WrapModelProcessorError wraps an error with model processor specific context
+func WrapModelProcessorError(err error, modelName, operation string, details map[string]interface{}, correlationID string) error {
+	if details == nil {
+		details = make(map[string]interface{})
+	}
+	details["model"] = modelName
+
+	return WrapWithContext(err, "model-processor", operation, details, correlationID)
+}
+
+// WrapOrchestratorError wraps an error with orchestrator specific context
+func WrapOrchestratorError(err error, operation, workflowStage string, details map[string]interface{}, correlationID string) error {
+	if details == nil {
+		details = make(map[string]interface{})
+	}
+	details["workflow_stage"] = workflowStage
+
+	return WrapWithContext(err, "orchestrator", operation, details, correlationID)
+}
+
+// WrapCLIError wraps an error with CLI specific context
+func WrapCLIError(err error, command, operation string, args []string, details map[string]interface{}, correlationID string) error {
+	if details == nil {
+		details = make(map[string]interface{})
+	}
+	details["command"] = command
+	if args != nil {
+		details["args"] = args
+	}
+
+	return WrapWithContext(err, "cli", operation, details, correlationID)
+}
+
+// GetUserFriendlyErrorMessage extracts a user-friendly error message from a contextual error chain
+func GetUserFriendlyErrorMessage(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	// Check if we have recovery information
+	recovery := ExtractRecoveryInformation(err)
+	if recovery.UserFacingMessage != "" {
+		return recovery.UserFacingMessage
+	}
+
+	// Fall back to the error message itself
+	return err.Error()
+}
+
+// GetDeveloperDebugInfo extracts comprehensive debugging information from a contextual error chain
+func GetDeveloperDebugInfo(err error) map[string]interface{} {
+	if err == nil {
+		return nil
+	}
+
+	debugInfo := make(map[string]interface{})
+
+	// Extract correlation ID
+	if correlationID := ExtractCorrelationID(err); correlationID != "" {
+		debugInfo["correlation_id"] = correlationID
+	}
+
+	// Extract layer contexts
+	layers := []string{"cli", "orchestrator", "model-processor", "api-client"}
+	for _, layer := range layers {
+		if context, found := ExtractLayerContext(err, layer); found {
+			debugInfo[layer] = map[string]interface{}{
+				"operation": context.Operation,
+				"timestamp": context.Timestamp,
+				"details":   context.Details,
+			}
+		}
+	}
+
+	// Extract recovery information
+	recovery := ExtractRecoveryInformation(err)
+	if recovery.DeveloperDetails != "" {
+		debugInfo["recovery_info"] = map[string]interface{}{
+			"developer_details":   recovery.DeveloperDetails,
+			"retry_possible":      recovery.RetryPossible,
+			"estimated_wait_time": recovery.EstimatedWaitTime,
+			"suggested_actions":   recovery.SuggestedActions,
+		}
+	}
+
+	// Extract original error information
+	if categorizedErr, ok := IsCategorizedError(err); ok {
+		debugInfo["error_category"] = categorizedErr.Category().String()
+	}
+
+	debugInfo["error_message"] = err.Error()
+
+	return debugInfo
 }

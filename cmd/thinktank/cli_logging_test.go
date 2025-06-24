@@ -106,6 +106,7 @@ func TestSetupLoggingCustom(t *testing.T) {
 // TestSetupLogging tests the main SetupLogging function to ensure it correctly
 // delegates to SetupLoggingCustom with the right parameters
 func TestSetupLogging(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name   string
 		config *config.CliConfig

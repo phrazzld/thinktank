@@ -58,16 +58,15 @@ func TestSaveToFile(t *testing.T) {
 	// Create a file writer with default permissions
 	fileWriter := thinktank.NewFileWriter(logger, auditLogger, 0750, 0640)
 
-	// Create a filesystem abstraction for testing
-	fs := testutil.NewMemFS()
-
-	// Create a temporary directory for testing
-	tempDir := "/tmp/filewriter_test"
-	err := fs.MkdirAll(tempDir, 0750)
+	// Create a real temporary directory for testing
+	tempDir, err := os.MkdirTemp("", "filewriter_test_*")
 	if err != nil {
 		t.Fatalf("Failed to create temporary directory: %v", err)
 	}
-	defer func() { _ = fs.RemoveAll(tempDir) }()
+	defer func() { _ = os.RemoveAll(tempDir) }()
+
+	// Create a filesystem abstraction for testing (used for some test utilities)
+	fs := testutil.NewMemFS()
 
 	// Define test cases
 	tests := []struct {
@@ -87,16 +86,12 @@ func TestSaveToFile(t *testing.T) {
 			wantErr:    false,
 		},
 		{
-			name:       "Valid file path - relative",
+			name:       "Valid file path - relative to temp directory",
 			content:    "Test content with relative path",
-			outputFile: "test_output_relative.md",
+			outputFile: fs.Join(tempDir, "test_output_relative.md"),
 			setupFunc:  func() {},
-			cleanFunc: func() {
-				// Clean up relative path file
-				cwd, _ := os.Getwd()
-				_ = fs.RemoveAll(fs.Join(cwd, "test_output_relative.md"))
-			},
-			wantErr: false,
+			cleanFunc:  func() {},
+			wantErr:    false,
 		},
 		{
 			name:       "Empty content",

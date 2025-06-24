@@ -12,6 +12,7 @@ import (
 )
 
 func TestNewProvider(t *testing.T) {
+	t.Parallel() // CPU-bound: Object creation and type checking
 	// Test with logger
 	logger := logutil.NewLogger(logutil.DebugLevel, nil, "[test] ")
 	provider := NewProvider(logger)
@@ -136,6 +137,7 @@ func TestCreateClient(t *testing.T) {
 }
 
 func TestAdapterParameterHandling(t *testing.T) {
+	t.Parallel() // CPU-bound: Mock-based unit test with no I/O
 	// Create a mock LLM client to verify parameter handling
 	mockClient := &MockLLMClient{
 		modelName: "gpt-3.5-turbo",

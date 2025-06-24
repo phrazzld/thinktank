@@ -14,7 +14,9 @@ import (
 
 // TestValidateInputsIntegration tests the main ValidateInputs function with real environment variables
 func TestValidateInputsIntegration(t *testing.T) {
+	// Removed t.Parallel() - modifies environment variables
 	// Save original environment variables
+
 	originalGeminiKey := os.Getenv(apiKeyEnvVar)
 	originalOpenAIKey := os.Getenv(openaiAPIKeyEnvVar)
 	originalOpenRouterKey := os.Getenv("OPENROUTER_API_KEY")
@@ -250,7 +252,9 @@ func TestValidateInputsIntegration(t *testing.T) {
 
 // TestValidateInputsEdgeCases tests additional edge cases to improve ValidateInputsWithEnv coverage
 func TestValidateInputsEdgeCases(t *testing.T) {
+	// Removed t.Parallel() - uses environment variables
 	// Create a temporary instructions file
+
 	tempDir := t.TempDir()
 	instructionsFile := filepath.Join(tempDir, "instructions.txt")
 	if err := os.WriteFile(instructionsFile, []byte("test instructions"), 0644); err != nil {

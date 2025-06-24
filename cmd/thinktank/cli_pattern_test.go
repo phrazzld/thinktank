@@ -14,6 +14,7 @@ import (
 // using the models package for direct model support validation
 func TestSynthesisModelDirectValidation(t *testing.T) {
 	// Get actual supported models for testing
+
 	supportedModels := models.ListAllModels()
 
 	// Create test cases with actual supported and unsupported models

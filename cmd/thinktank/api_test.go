@@ -78,6 +78,7 @@ func (m *mockAPILogger) WithContext(ctx context.Context) logutil.LoggerInterface
 
 // TestNewAPIService tests the creation of a new APIService
 func TestNewAPIService(t *testing.T) {
+	t.Parallel()
 	logger := &mockAPILogger{}
 
 	// Create a new APIService
@@ -95,7 +96,10 @@ func TestNewAPIService(t *testing.T) {
 // Since we can no longer access internal fields, we'll depend on the
 // public interface behavior to verify correctness
 func TestInitLLMClient(t *testing.T) {
+	t.Parallel(
 	// Define test cases that don't require modifying internals
+	)
+
 	testCases := []struct {
 		name      string
 		apiKey    string
@@ -160,7 +164,10 @@ func TestInitLLMClient(t *testing.T) {
 
 // TestProcessLLMResponse tests the ProcessLLMResponse method of APIService
 func TestProcessLLMResponse(t *testing.T) {
+	t.Parallel(
 	// Define test cases
+	)
+
 	testCases := []struct {
 		name        string
 		result      *llm.ProviderResult
@@ -284,6 +291,7 @@ func TestProcessLLMResponse(t *testing.T) {
 // TestErrorHelperMethods tests the error helper methods
 func TestErrorHelperMethods(t *testing.T) {
 	// Create new service
+
 	logger := &mockAPILogger{}
 	apiService := NewAPIService(logger)
 

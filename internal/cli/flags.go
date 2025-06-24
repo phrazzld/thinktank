@@ -4,6 +4,7 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -84,8 +85,44 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 
 // ParseFlags parses command line flags and returns a CliConfig
 func ParseFlags() (*config.CliConfig, error) {
+	// Filter out test flags from os.Args to prevent issues when running as subprocess from tests
+	var filteredArgs []string
+	for _, arg := range os.Args[1:] {
+		if !strings.HasPrefix(arg, "-test.") {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+
 	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	return ParseFlagsWithEnv(flagSet, os.Args[1:], os.Getenv)
+	return ParseFlagsWithEnv(flagSet, filteredArgs, os.Getenv)
+}
+
+// ParseFlagsWithArgs parses command line flags with custom arguments for testing
+// This enables testing the bootstrap logic by injecting custom command line arguments
+func ParseFlagsWithArgs(args []string) (*config.CliConfig, error) {
+	return ParseFlagsWithArgsAndEnv(args, os.Getenv)
+}
+
+// ParseFlagsWithArgsAndEnv parses command line flags with custom arguments and environment for testing
+// This enables testing the bootstrap logic by injecting custom command line arguments and environment access
+func ParseFlagsWithArgsAndEnv(args []string, getenv func(string) string) (*config.CliConfig, error) {
+	// Filter out test flags to prevent issues when running as subprocess from tests
+	var filteredArgs []string
+	for _, arg := range args[1:] { // Skip program name (args[0])
+		if !strings.HasPrefix(arg, "-test.") {
+			filteredArgs = append(filteredArgs, arg)
+		}
+	}
+
+	// Use ContinueOnError for testing so invalid flags return errors instead of exiting
+	flagSet := flag.NewFlagSet(args[0], flag.ContinueOnError)
+
+	// In testing environment, redirect flag usage output to avoid pollution
+	if len(args) > 0 && strings.Contains(args[0], "test") {
+		flagSet.SetOutput(io.Discard)
+	}
+
+	return ParseFlagsWithEnv(flagSet, filteredArgs, getenv)
 }
 
 // ParseFlagsWithEnv parses command line flags with custom environment and flag set
@@ -112,6 +149,11 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Rate limiting flags
 	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, "Maximum number of concurrent API requests (0 = no limit)")
 	rateLimitRPMFlag := flagSet.Int("rate-limit", 60, "Maximum requests per minute (RPM) per model (0 = no limit)")
+
+	// Provider-specific rate limiting flags
+	openaiRateLimitFlag := flagSet.Int("openai-rate-limit", 0, "OpenAI-specific rate limit in RPM (0 = use provider default: 3000)")
+	geminiRateLimitFlag := flagSet.Int("gemini-rate-limit", 0, "Gemini-specific rate limit in RPM (0 = use provider default: 60)")
+	openrouterRateLimitFlag := flagSet.Int("openrouter-rate-limit", 0, "OpenRouter-specific rate limit in RPM (0 = use provider default: 20)")
 
 	// Timeout flag
 	timeoutFlag := flagSet.Duration("timeout", config.DefaultTimeout, "Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
@@ -149,6 +191,11 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	// Store rate limiting configuration
 	cfg.MaxConcurrentRequests = *maxConcurrentFlag
 	cfg.RateLimitRequestsPerMinute = *rateLimitRPMFlag
+
+	// Store provider-specific rate limiting configuration
+	cfg.OpenAIRateLimit = *openaiRateLimitFlag
+	cfg.GeminiRateLimit = *geminiRateLimitFlag
+	cfg.OpenRouterRateLimit = *openrouterRateLimitFlag
 
 	// Store timeout configuration
 	cfg.Timeout = *timeoutFlag
