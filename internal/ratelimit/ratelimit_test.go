@@ -808,3 +808,164 @@ func TestRateLimiterDeterministic(t *testing.T) {
 		}
 	})
 }
+
+// Benchmark tests for rate limiter performance under various concurrency levels
+// These ensure that coverage improvements don't introduce performance regressions
+
+func BenchmarkRateLimiter(b *testing.B) {
+	b.Run("Semaphore", func(b *testing.B) {
+		b.Run("SingleGoroutine", func(b *testing.B) {
+			sem := NewSemaphore(100) // High capacity to avoid blocking
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = sem.Acquire(ctx)
+					sem.Release()
+				}
+			})
+		})
+
+		b.Run("LowConcurrency", func(b *testing.B) {
+			sem := NewSemaphore(5) // Lower capacity to test contention
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = sem.Acquire(ctx)
+					sem.Release()
+				}
+			})
+		})
+
+		b.Run("HighConcurrency", func(b *testing.B) {
+			sem := NewSemaphore(1) // Very low capacity for maximum contention
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = sem.Acquire(ctx)
+					sem.Release()
+				}
+			})
+		})
+	})
+
+	b.Run("TokenBucket", func(b *testing.B) {
+		b.Run("SingleModel", func(b *testing.B) {
+			tb := NewTokenBucket(60000, 1000) // High rate and burst to avoid blocking
+			ctx := context.Background()
+			modelName := "benchmark-model"
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = tb.Acquire(ctx, modelName)
+				}
+			})
+		})
+
+		b.Run("MultipleModels", func(b *testing.B) {
+			tb := NewTokenBucket(60000, 1000) // High rate and burst to avoid blocking
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				counter := 0
+				for pb.Next() {
+					modelName := "benchmark-model-" + string(rune('0'+counter%10)) // Different models per goroutine
+					counter++
+					_ = tb.Acquire(ctx, modelName)
+				}
+			})
+		})
+
+		b.Run("LimiterCreation", func(b *testing.B) {
+			tb := NewTokenBucket(3600, 60) // Moderate rate
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				counter := 0
+				for pb.Next() {
+					modelName := "benchmark-model-" + string(rune('0'+counter%1000)) // Force limiter creation
+					counter++
+					_ = tb.Acquire(ctx, modelName)
+				}
+			})
+		})
+	})
+
+	b.Run("CombinedRateLimiter", func(b *testing.B) {
+		b.Run("OptimalConditions", func(b *testing.B) {
+			rl := NewRateLimiter(100, 60000) // High concurrency and rate limits
+			ctx := context.Background()
+			modelName := "benchmark-model"
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = rl.Acquire(ctx, modelName)
+					rl.Release()
+				}
+			})
+		})
+
+		b.Run("SemaphoreLimited", func(b *testing.B) {
+			rl := NewRateLimiter(5, 60000) // Low concurrency, high rate
+			ctx := context.Background()
+			modelName := "benchmark-model"
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					_ = rl.Acquire(ctx, modelName)
+					rl.Release()
+				}
+			})
+		})
+
+		b.Run("TokenBucketLimited", func(b *testing.B) {
+			rl := NewRateLimiter(100, 60) // High concurrency, low rate
+			ctx := context.Background()
+
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				counter := 0
+				for pb.Next() {
+					modelName := "benchmark-model-" + string(rune('0'+counter%10)) // Multiple models
+					counter++
+					_ = rl.Acquire(ctx, modelName)
+					rl.Release()
+				}
+			})
+		})
+	})
+
+	b.Run("HelperFunctions", func(b *testing.B) {
+		b.Run("MinFunction", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				result := min(i, i+1)
+				_ = result // Avoid compiler optimization
+			}
+		})
+
+		b.Run("MaxFunction", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				result := max(i, i+1)
+				_ = result // Avoid compiler optimization
+			}
+		})
+
+		b.Run("BurstCalculation", func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				ratePerMin := (i % 1000) + 60 // Vary rate between 60-1060
+				burst := min(max(1, ratePerMin/10), 10)
+				_ = burst // Avoid compiler optimization
+			}
+		})
+	})
+}

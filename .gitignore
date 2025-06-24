@@ -114,6 +114,9 @@ coverage.out
 *.out.tmp
 coverage.out.tmp
 
+# Coverage cache
+.cache/
+
 test-instructions.txt
 
 /docs/leyline/

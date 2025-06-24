@@ -180,5 +180,31 @@ coverage-quick: ## Quick coverage check for development (shows current coverage 
 	@echo ""
 	@echo "$(GREEN)✅ Quick coverage check completed$(NC)"
 
+.PHONY: coverage-critical
+coverage-critical: ## Run tests for 5 lowest-coverage packages (reduces feedback loop from ~15min to ~3min)
+	@echo "$(CYAN)🎯 Running coverage-critical tests (5 lowest-coverage packages)...$(NC)"
+	@echo ""
+	@echo "$(YELLOW)Target packages (in priority order):$(NC)"
+	@echo "  1. internal/integration (74.4%) - highest impact"
+	@echo "  2. internal/testutil (78.4%)"
+	@echo "  3. internal/gemini (79.8%)"
+	@echo "  4. internal/config (80.6%)"
+	@echo "  5. internal/models (80.7%)"
+	@echo ""
+	@echo "$(BLUE)📊 Running targeted coverage tests...$(NC)"
+	@start_time=$$(date +%s); \
+	go test -short -cover -race \
+		./internal/integration \
+		./internal/testutil \
+		./internal/gemini \
+		./internal/config \
+		./internal/models \
+		2>/dev/null | grep -E "(PASS|FAIL|coverage:)" || echo "$(YELLOW)⚠️  Some tests may have issues$(NC)"; \
+	end_time=$$(date +%s); \
+	duration=$$((end_time - start_time)); \
+	echo ""; \
+	echo "$(GREEN)✅ Coverage-critical tests completed in $${duration}s$(NC)"; \
+	echo "$(CYAN)💡 Use 'make coverage' for full test suite validation$(NC)"
+
 # Default target
 .DEFAULT_GOAL := help

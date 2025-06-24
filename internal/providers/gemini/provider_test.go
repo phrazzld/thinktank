@@ -77,12 +77,14 @@ func (m *MockLLMClient) SetMaxOutputTokens(tokens int32) {
 
 // TestGeminiProviderImplementsProviderInterface verifies that GeminiProvider implements the Provider interface
 func TestGeminiProviderImplementsProviderInterface(t *testing.T) {
+	t.Parallel() // CPU-bound: Compile-time interface check
 	// This is a compile-time check to ensure GeminiProvider implements Provider
 	var _ providers.Provider = (*GeminiProvider)(nil)
 }
 
 // TestNewProvider verifies that NewProvider creates a valid GeminiProvider
 func TestNewProvider(t *testing.T) {
+	t.Parallel() // CPU-bound: Object creation and type checking
 	// Create a provider with no logger (should use default)
 	provider := NewProvider(nil)
 
@@ -132,6 +134,7 @@ func TestCreateClient(t *testing.T) {
 
 // TestGeminiClientAdapter verifies that GeminiClientAdapter correctly wraps a client
 func TestGeminiClientAdapter(t *testing.T) {
+	t.Parallel() // CPU-bound: Mock-based unit test with no I/O
 	// Create a mock client
 	mockClient := &MockLLMClient{}
 
