@@ -3,6 +3,7 @@ package cli
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -326,6 +327,44 @@ func withPartialSuccessOk(args []string) []string {
 }
 
 func withAuditLogFile(args []string, filename string) []string {
+	// Flags that don't take values (boolean flags)
+	boolFlags := map[string]bool{
+		"--dry-run":            true,
+		"--verbose":            true,
+		"--quiet":              true,
+		"--json-logs":          true,
+		"--no-progress":        true,
+		"--partial-success-ok": true,
+	}
+
+	// Find the position of the first non-flag argument (path)
+	// We need to insert the audit flag before paths to ensure proper parsing
+	for i, arg := range args {
+		// Skip the program name and check if this is not a flag or flag value
+		if i > 0 && !strings.HasPrefix(arg, "-") {
+			// Check if previous arg was a flag that takes a value
+			if i > 1 && strings.HasPrefix(args[i-1], "-") {
+				// If previous flag is a boolean flag, this is a path
+				if boolFlags[args[i-1]] {
+					// This is the first path argument, insert before it
+					result := make([]string, 0, len(args)+2)
+					result = append(result, args[:i]...)
+					result = append(result, "--audit-log-file", filename)
+					result = append(result, args[i:]...)
+					return result
+				}
+				// Previous was a flag that takes a value, so this is its value, keep looking
+				continue
+			}
+			// This is the first path argument, insert before it
+			result := make([]string, 0, len(args)+2)
+			result = append(result, args[:i]...)
+			result = append(result, "--audit-log-file", filename)
+			result = append(result, args[i:]...)
+			return result
+		}
+	}
+	// No paths found, append at the end
 	return append(args, "--audit-log-file", filename)
 }
 
