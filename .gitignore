@@ -53,6 +53,7 @@ TASK-PROMPT.md
 diff.md
 CODE_REVIEW.md
 thinktank_*/
+**/thinktank_*/
 
 # Profiling data
 profile_data/
@@ -60,6 +61,9 @@ profile_data/
 # Build artifacts
 main
 quality-gates
+build/coverage/
+build/test/
+build/tmp/
 
 # Test files
 test.txt
@@ -113,6 +117,10 @@ dev/
 coverage.out
 *.out.tmp
 coverage.out.tmp
+*coverage*.out
+*coverage*.html
+baseline.out
+temp.out
 
 # Coverage cache
 .cache/
