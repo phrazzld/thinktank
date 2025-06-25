@@ -107,6 +107,11 @@ func generateErrorMessage(err error) string {
 		return "An unknown error occurred"
 	}
 
+	// Check for CLI error first (most specific)
+	if cliErr, ok := IsCLIError(err); ok {
+		return cliErr.UserFacingMessage()
+	}
+
 	// Check if the error is an LLMError that implements CategorizedError
 	if catErr, ok := llm.IsCategorizedError(err); ok {
 		// Try to get a user-friendly message if it's an LLMError

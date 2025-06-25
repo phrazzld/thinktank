@@ -2,6 +2,8 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -249,36 +251,49 @@ func TestParseSimplifiedArgs_EdgeCases(t *testing.T) {
 
 // TestParseSimplifiedArgs_Integration tests the integration with other components
 func TestParseSimplifiedArgs_Integration(t *testing.T) {
+	// Create temporary test files and directories
+	tempDir := t.TempDir()
+	validInstFile := filepath.Join(tempDir, "instructions.md")
+	require.NoError(t, os.WriteFile(validInstFile, []byte("test instructions"), 0644))
+
+	validTargetDir := filepath.Join(tempDir, "src")
+	require.NoError(t, os.Mkdir(validTargetDir, 0755))
+
+	// Set up API key for validation
+	oldGeminiKey := os.Getenv("GEMINI_API_KEY")
+	_ = os.Setenv("GEMINI_API_KEY", "test-key")
+	defer func() { _ = os.Setenv("GEMINI_API_KEY", oldGeminiKey) }()
+
 	t.Run("parsed config should validate", func(t *testing.T) {
-		config, err := ParseSimplifiedArgs([]string{"instructions.md", "src/"})
+		config, err := ParseSimplifiedArgs([]string{validInstFile, validTargetDir})
 		require.NoError(t, err)
 		assert.NoError(t, config.Validate())
 	})
 
 	t.Run("parsed config should convert to CliConfig", func(t *testing.T) {
-		config, err := ParseSimplifiedArgs([]string{"--verbose", "--synthesis", "test.md", "src/"})
+		config, err := ParseSimplifiedArgs([]string{"--verbose", "--synthesis", validInstFile, validTargetDir})
 		require.NoError(t, err)
 
 		cliConfig := config.ToCliConfig()
 		assert.NotNil(t, cliConfig)
-		assert.Equal(t, "test.md", cliConfig.InstructionsFile)
-		assert.Equal(t, []string{"src/"}, cliConfig.Paths)
+		assert.Equal(t, validInstFile, cliConfig.InstructionsFile)
+		assert.Equal(t, []string{validTargetDir}, cliConfig.Paths)
 		assert.True(t, cliConfig.Verbose)
 		assert.NotEmpty(t, cliConfig.SynthesisModel)
 	})
 
 	t.Run("dry-run flag allows empty instructions", func(t *testing.T) {
-		config, err := ParseSimplifiedArgs([]string{"--dry-run", "", "src/"})
+		config, err := ParseSimplifiedArgs([]string{"--dry-run", "", validTargetDir})
 		require.NoError(t, err)
 		assert.True(t, config.HasFlag(FlagDryRun))
 		assert.NoError(t, config.Validate()) // Should validate because dry-run allows empty instructions
 	})
 
 	t.Run("exactly three positional args", func(t *testing.T) {
-		config, err := ParseSimplifiedArgs([]string{"instructions.md", "src/", "extra-arg"})
+		config, err := ParseSimplifiedArgs([]string{validInstFile, validTargetDir, "extra-arg"})
 		require.NoError(t, err)
-		assert.Equal(t, "instructions.md", config.InstructionsFile)
-		assert.Equal(t, "src/", config.TargetPath)
+		assert.Equal(t, validInstFile, config.InstructionsFile)
+		assert.Equal(t, validTargetDir, config.TargetPath)
 		// Extra args are ignored
 	})
 

@@ -7,6 +7,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/phrazzld/thinktank/internal/config"
 )
 
 // ModelInfo represents information about a model and its provider
@@ -108,7 +110,7 @@ func GetAvailableProviders() []string {
 func SelectOptimalModel(availableProviders []string, taskSize int64) string {
 	if len(availableProviders) == 0 {
 		// Fallback to default even without API key for testing/dry-run scenarios
-		return DefaultModel
+		return config.DefaultModel
 	}
 
 	// Create set of available providers for O(1) lookup
@@ -136,7 +138,7 @@ func SelectOptimalModel(availableProviders []string, taskSize int64) string {
 	}
 
 	// Fallback to default if no ranked models available
-	return DefaultModel
+	return config.DefaultModel
 }
 
 // SelectBestModel is the main entry point for model selection

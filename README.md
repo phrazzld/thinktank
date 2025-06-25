@@ -15,6 +15,9 @@ export GEMINI_API_KEY="your-key"  # For Gemini models
 export OPENAI_API_KEY="your-key"  # For OpenAI models
 export OPENROUTER_API_KEY="your-key"  # For OpenRouter models
 
+# Optional: Suppress deprecation warnings for CI/automation
+export THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1
+
 # Basic usage
 thinktank --instructions task.txt ./my-project
 
@@ -396,6 +399,7 @@ For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/T
 - **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories
 - **Network Issues**: Retry the command - most network errors are temporary
 - **Model Failures**: Use `--partial-success-ok` for redundancy when using multiple models
+- **CI/Automation**: Set `THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1` to hide deprecation warnings in automated environments
 
 For detailed diagnosis steps, error code references, and provider-specific solutions, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 

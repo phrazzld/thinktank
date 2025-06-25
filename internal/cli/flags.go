@@ -84,6 +84,7 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 }
 
 // ParseFlags parses command line flags and returns a CliConfig
+// This function now uses the parser router to enable deprecation warnings
 func ParseFlags() (*config.CliConfig, error) {
 	// Filter out test flags from os.Args to prevent issues when running as subprocess from tests
 	var filteredArgs []string
@@ -93,8 +94,24 @@ func ParseFlags() (*config.CliConfig, error) {
 		}
 	}
 
-	flagSet := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	return ParseFlagsWithEnv(flagSet, filteredArgs, os.Getenv)
+	// Use parser router for intelligent routing and deprecation warnings
+	logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
+	router := NewParserRouter(logger)
+
+	// Add the binary name back for router processing
+	routerArgs := append([]string{os.Args[0]}, filteredArgs...)
+	result := router.ParseArguments(routerArgs)
+
+	// Show deprecation warnings to user
+	if result.HasDeprecationWarning() {
+		router.LogDeprecationWarning(result.Deprecation, result.Config)
+	}
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return result.Config, nil
 }
 
 // ParseFlagsWithArgs parses command line flags with custom arguments for testing
@@ -145,6 +162,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
 	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
 	partialSuccessOkFlag := flagSet.Bool("partial-success-ok", false, "Return exit code 0 if any model succeeds and a synthesis file is generated, even if some models fail.")
+	noDeprecationWarningsFlag := flagSet.Bool("no-deprecation-warnings", false, "Suppress deprecation warnings (useful for CI/automation)")
 
 	// Rate limiting flags
 	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, "Maximum number of concurrent API requests (0 = no limit)")
@@ -186,6 +204,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 	cfg.Format = *formatFlag
 	cfg.DryRun = *dryRunFlag
 	cfg.PartialSuccessOk = *partialSuccessOkFlag
+	cfg.SuppressDeprecationWarnings = *noDeprecationWarningsFlag
 	cfg.Paths = flagSet.Args()
 
 	// Store rate limiting configuration

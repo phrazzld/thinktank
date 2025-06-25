@@ -20,7 +20,11 @@ func ParseSimpleArgs() (*SimplifiedConfig, error) {
 // This enables comprehensive testing of the parsing logic without subprocess execution.
 func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	if len(args) < 3 {
-		return nil, fmt.Errorf("usage: %s instructions.txt target_path [flags...]", args[0])
+		binary := "thinktank"
+		if len(args) > 0 {
+			binary = args[0]
+		}
+		return nil, fmt.Errorf("usage: %s instructions.txt target_path [flags...]", binary)
 	}
 
 	config := &SimplifiedConfig{
@@ -90,30 +94,30 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	return config, nil
 }
 
-// ParseResult represents the outcome of argument parsing with structured error handling
-type ParseResult struct {
+// SimpleParseResult represents the outcome of argument parsing with structured error handling
+type SimpleParseResult struct {
 	Config *SimplifiedConfig
 	Error  error
 }
 
 // ParseSimpleArgsWithResult returns a structured result for better error handling patterns.
 // This follows Go's explicit error handling philosophy while providing richer context.
-func ParseSimpleArgsWithResult(args []string) *ParseResult {
+func ParseSimpleArgsWithResult(args []string) *SimpleParseResult {
 	config, err := ParseSimpleArgsWithArgs(args)
-	return &ParseResult{
+	return &SimpleParseResult{
 		Config: config,
 		Error:  err,
 	}
 }
 
 // IsSuccess returns true if parsing succeeded
-func (r *ParseResult) IsSuccess() bool {
+func (r *SimpleParseResult) IsSuccess() bool {
 	return r.Error == nil && r.Config != nil
 }
 
 // MustConfig returns the config or panics if parsing failed.
 // Use this only when you're certain parsing will succeed (e.g., in tests with known-good inputs).
-func (r *ParseResult) MustConfig() *SimplifiedConfig {
+func (r *SimpleParseResult) MustConfig() *SimplifiedConfig {
 	if !r.IsSuccess() {
 		panic(fmt.Sprintf("parsing failed: %v", r.Error))
 	}

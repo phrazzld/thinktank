@@ -2,11 +2,14 @@
 package cli
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"unsafe"
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestSimplifiedConfigSize validates the struct is compact and memory-efficient
@@ -207,37 +210,69 @@ func TestToCliConfig(t *testing.T) {
 	}
 }
 
-// TestValidate validates the O(1) validation logic
+// TestValidate validates the enhanced validation logic
 func TestValidate(t *testing.T) {
+	// Create temporary test files and directories
+	tempDir := t.TempDir()
+	validInstFile := filepath.Join(tempDir, "instructions.md")
+	require.NoError(t, os.WriteFile(validInstFile, []byte("test instructions"), 0644))
+
+	validTargetDir := filepath.Join(tempDir, "src")
+	require.NoError(t, os.Mkdir(validTargetDir, 0755))
+
+	validTargetFile := filepath.Join(tempDir, "main.go")
+	require.NoError(t, os.WriteFile(validTargetFile, []byte("package main"), 0644))
+
+	unreadableFile := filepath.Join(tempDir, "unreadable.txt")
+	require.NoError(t, os.WriteFile(unreadableFile, []byte("test"), 0000))
+
+	unreadableDir := filepath.Join(tempDir, "unreadable_dir")
+	require.NoError(t, os.Mkdir(unreadableDir, 0000))
+
+	// Save and restore environment variables
+	oldGeminiKey := os.Getenv("GEMINI_API_KEY")
+	oldOpenAIKey := os.Getenv("OPENAI_API_KEY")
+	defer func() {
+		_ = os.Setenv("GEMINI_API_KEY", oldGeminiKey)
+		_ = os.Setenv("OPENAI_API_KEY", oldOpenAIKey)
+	}()
+
 	tests := []struct {
 		name    string
 		config  SimplifiedConfig
+		setup   func()
+		cleanup func()
 		wantErr bool
 		errMsg  string
 	}{
 		{
-			name: "valid config",
+			name: "valid config with API key",
 			config: SimplifiedConfig{
-				InstructionsFile: "test.md",
-				TargetPath:       "src/",
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
 				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing instructions file",
+			name: "valid config with file target",
 			config: SimplifiedConfig{
-				InstructionsFile: "",
-				TargetPath:       "src/",
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetFile,
 				Flags:            0x00,
 			},
-			wantErr: true,
-			errMsg:  "instructions file required",
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+			},
+			wantErr: false,
 		},
 		{
 			name: "missing target path",
 			config: SimplifiedConfig{
-				InstructionsFile: "test.md",
+				InstructionsFile: validInstFile,
 				TargetPath:       "",
 				Flags:            0x00,
 			},
@@ -245,11 +280,140 @@ func TestValidate(t *testing.T) {
 			errMsg:  "target path required",
 		},
 		{
+			name: "missing instructions file",
+			config: SimplifiedConfig{
+				InstructionsFile: "",
+				TargetPath:       validTargetDir,
+				Flags:            0x00,
+			},
+			wantErr: true,
+			errMsg:  "instructions file required",
+		},
+		{
 			name: "dry run allows missing instructions",
 			config: SimplifiedConfig{
 				InstructionsFile: "",
-				TargetPath:       "src/",
+				TargetPath:       validTargetDir,
 				Flags:            FlagDryRun,
+			},
+			wantErr: false,
+		},
+		{
+			name: "non-existent target path",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       filepath.Join(tempDir, "non-existent"),
+				Flags:            0x00,
+			},
+			wantErr: true,
+			errMsg:  "target path does not exist",
+		},
+		{
+			name: "non-existent instructions file",
+			config: SimplifiedConfig{
+				InstructionsFile: filepath.Join(tempDir, "missing.md"),
+				TargetPath:       validTargetDir,
+				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+			},
+			wantErr: true,
+			errMsg:  "instructions file does not exist",
+		},
+		{
+			name: "instructions file is directory",
+			config: SimplifiedConfig{
+				InstructionsFile: validTargetDir,
+				TargetPath:       validTargetDir,
+				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+			},
+			wantErr: true,
+			errMsg:  "instructions file is a directory",
+		},
+		{
+			name: "unreadable target file",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       unreadableFile,
+				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+			},
+			wantErr: true,
+			errMsg:  "target file has no read permissions",
+		},
+		{
+			name: "unreadable target directory",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       unreadableDir,
+				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+			},
+			cleanup: func() {
+				// Restore permissions so temp dir can be cleaned up
+				_ = os.Chmod(unreadableDir, 0755)
+			},
+			wantErr: true,
+			errMsg:  "target directory has no read permissions",
+		},
+		{
+			name: "missing API key for default model",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				Flags:            0x00,
+			},
+			setup: func() {
+				_ = os.Unsetenv("GEMINI_API_KEY")
+			},
+			wantErr: true,
+			errMsg:  "API key not set: please set GEMINI_API_KEY",
+		},
+		{
+			name: "synthesis mode requires multiple API keys",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				Flags:            FlagSynthesis,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Unsetenv("OPENAI_API_KEY")
+			},
+			wantErr: true,
+			errMsg:  "API key not set: please set OPENAI_API_KEY",
+		},
+		{
+			name: "synthesis mode with all required keys",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				Flags:            FlagSynthesis,
+			},
+			setup: func() {
+				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENAI_API_KEY", "test-key")
+			},
+			wantErr: false,
+		},
+		{
+			name: "dry run skips API key validation",
+			config: SimplifiedConfig{
+				InstructionsFile: validInstFile,
+				TargetPath:       validTargetDir,
+				Flags:            FlagDryRun,
+			},
+			setup: func() {
+				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENAI_API_KEY")
 			},
 			wantErr: false,
 		},
@@ -257,6 +421,13 @@ func TestValidate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.setup != nil {
+				tt.setup()
+			}
+			if tt.cleanup != nil {
+				defer tt.cleanup()
+			}
+
 			err := tt.config.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -269,3 +440,5 @@ func TestValidate(t *testing.T) {
 		})
 	}
 }
+
+// TestValidatePerformance ensures validation completes within 1ms for typical inputs

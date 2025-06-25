@@ -153,6 +153,12 @@ type CliConfig struct {
 	// and a synthesis file was generated (if synthesis is enabled). When false (default), any model
 	// failure results in a non-zero exit code.
 	PartialSuccessOk bool
+
+	// Warning configuration
+	// SuppressDeprecationWarnings suppresses deprecation warnings in CI/automation environments
+	// where they are not actionable. When true, warnings are logged to debug but not shown to stderr.
+	// Can be set via --no-deprecation-warnings flag or THINKTANK_SUPPRESS_DEPRECATION_WARNINGS env var.
+	SuppressDeprecationWarnings bool
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -161,17 +167,18 @@ type CliConfig struct {
 // by the user.
 func NewDefaultCliConfig() *CliConfig {
 	return &CliConfig{
-		Format:                     DefaultFormat,
-		Exclude:                    DefaultExcludes,
-		ExcludeNames:               DefaultExcludeNames,
-		ModelNames:                 []string{DefaultModel},
-		LogLevel:                   logutil.InfoLevel,
-		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
-		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
-		Timeout:                    DefaultTimeout,
-		DirPermissions:             DefaultDirPermissions,
-		FilePermissions:            DefaultFilePermissions,
-		PartialSuccessOk:           false, // Default to strict error handling
+		Format:                      DefaultFormat,
+		Exclude:                     DefaultExcludes,
+		ExcludeNames:                DefaultExcludeNames,
+		ModelNames:                  []string{DefaultModel},
+		LogLevel:                    logutil.InfoLevel,
+		MaxConcurrentRequests:       DefaultMaxConcurrentRequests,
+		RateLimitRequestsPerMinute:  DefaultRateLimitRequestsPerMinute,
+		Timeout:                     DefaultTimeout,
+		DirPermissions:              DefaultDirPermissions,
+		FilePermissions:             DefaultFilePermissions,
+		PartialSuccessOk:            false, // Default to strict error handling
+		SuppressDeprecationWarnings: false, // Default to showing warnings
 		// Provider-specific rate limits default to 0 (use provider defaults)
 		OpenAIRateLimit:     0,
 		GeminiRateLimit:     0,
@@ -223,9 +230,10 @@ func isStandardOpenAIModel(model string) bool {
 
 	// Standard OpenAI models
 	standardModels := []string{
-		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini",
+		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini", "gpt-4.1",
 		"gpt-3.5-turbo", "text-davinci-003", "text-davinci-002",
 		"davinci", "curie", "babbage", "ada",
+		"o3", "o4-mini",
 	}
 
 	// Check for exact matches or standard model patterns
