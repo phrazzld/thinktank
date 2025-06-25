@@ -36,12 +36,14 @@ func (pm ParsingMode) String() string {
 type ParserRouter struct {
 	logger    logutil.LoggerInterface
 	telemetry *DeprecationTelemetry
+	getenv    func(string) string
 }
 
 // NewParserRouter creates a new parser router with the given logger
 func NewParserRouter(logger logutil.LoggerInterface) *ParserRouter {
 	return &ParserRouter{
 		logger: logger,
+		getenv: os.Getenv,
 	}
 }
 
@@ -49,6 +51,7 @@ func NewParserRouter(logger logutil.LoggerInterface) *ParserRouter {
 func NewParserRouterWithTelemetry(logger logutil.LoggerInterface, enabled bool) *ParserRouter {
 	router := &ParserRouter{
 		logger: logger,
+		getenv: os.Getenv,
 	}
 
 	if enabled {
@@ -56,6 +59,14 @@ func NewParserRouterWithTelemetry(logger logutil.LoggerInterface, enabled bool) 
 	}
 
 	return router
+}
+
+// NewParserRouterWithEnv creates a new parser router with custom environment function
+func NewParserRouterWithEnv(logger logutil.LoggerInterface, getenv func(string) string) *ParserRouter {
+	return &ParserRouter{
+		logger: logger,
+		getenv: getenv,
+	}
 }
 
 // GetTelemetry returns the telemetry collector if enabled, nil otherwise
@@ -175,7 +186,7 @@ func (pr *ParserRouter) parseSimplified(args []string, result *ParseResult) *Par
 
 // parseComplex handles parsing using the existing complex parser
 func (pr *ParserRouter) parseComplex(args []string, result *ParseResult) *ParseResult {
-	config, err := ParseFlagsWithArgsAndEnv(args, os.Getenv)
+	config, err := ParseFlagsWithArgsAndEnv(args, pr.getenv)
 	if err != nil {
 		result.Error = fmt.Errorf("complex parsing failed: %w", err)
 		return result

@@ -139,4 +139,10 @@ type MainResult struct {
 
 	// RunResult is the result from the execution phase, if it was reached
 	RunResult *RunResult
+
+	// ParsingMode indicates which parser was used (for observability)
+	ParsingMode ParsingMode
+
+	// HasDeprecationWarning indicates if deprecation warnings were generated
+	HasDeprecationWarning bool
 }

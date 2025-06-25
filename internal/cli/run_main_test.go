@@ -271,6 +271,120 @@ func TestRunMain_ErrorPropagation(t *testing.T) {
 	})
 }
 
+// TestRunMain_ParserRouterIntegration tests that RunMain uses ParserRouter for intelligent routing
+func TestRunMain_ParserRouterIntegration(t *testing.T) {
+	t.Run("simplified mode works end-to-end", func(t *testing.T) {
+		// Create test environment
+		tempDir := t.TempDir()
+		instructionsFile := filepath.Join(tempDir, "instructions.txt")
+		targetDir := filepath.Join(tempDir, "src")
+
+		require.NoError(t, os.WriteFile(instructionsFile, []byte("Test instructions"), 0644))
+		require.NoError(t, os.MkdirAll(targetDir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(targetDir, "main.go"), []byte("package main\n\nfunc main() {}"), 0644))
+
+		config := createBasicMainConfig(t)
+		// Use simplified mode arguments: instructions target flags
+		config.Args = []string{"thinktank", instructionsFile, targetDir, "--dry-run"}
+
+		result := RunMain(config)
+
+		// Test should pass if ParserRouter is integrated and detects simplified mode
+		assert.Equal(t, ExitCodeSuccess, result.ExitCode, "Simplified mode should work with ParserRouter integration")
+		assert.NoError(t, result.Error)
+		assert.NotNil(t, result.RunResult, "RunResult should be populated on success")
+	})
+
+	t.Run("complex mode continues working", func(t *testing.T) {
+		// Ensure backward compatibility with complex mode
+		config := createValidMainConfig(t) // Uses complex mode args
+
+		result := RunMain(config)
+
+		assert.Equal(t, ExitCodeSuccess, result.ExitCode, "Complex mode should continue working")
+		assert.NoError(t, result.Error)
+	})
+
+	t.Run("deprecation warnings work in complex mode", func(t *testing.T) {
+		// Test that deprecation warnings are properly shown for complex flag usage
+		tempDir := t.TempDir()
+		instructionsFile := filepath.Join(tempDir, "instructions.md")
+		targetDir := filepath.Join(tempDir, "src")
+
+		require.NoError(t, os.WriteFile(instructionsFile, []byte("Test instructions"), 0644))
+		require.NoError(t, os.MkdirAll(targetDir, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(targetDir, "main.go"), []byte("package main\n\nfunc main() {}"), 0644))
+
+		config := createBasicMainConfig(t)
+		// Use complex mode arguments with deprecated --instructions flag
+		config.Args = []string{"thinktank", "--instructions", instructionsFile, "--dry-run", targetDir}
+
+		result := RunMain(config)
+
+		// Should still work but generate deprecation warning
+		assert.Equal(t, ExitCodeSuccess, result.ExitCode, "Complex mode with deprecation should still work")
+		assert.NoError(t, result.Error)
+		// Note: The deprecation warning is logged to stderr, not captured in test result
+		// The warning functionality is tested in the router tests
+	})
+
+	t.Run("observability fields are populated correctly", func(t *testing.T) {
+		testCases := []struct {
+			name                string
+			args                []string
+			expectedMode        ParsingMode
+			expectedDeprecation bool
+		}{
+			{
+				name:                "simplified mode",
+				args:                []string{"thinktank", "instructions.txt", "src", "--dry-run"},
+				expectedMode:        SimplifiedMode,
+				expectedDeprecation: false,
+			},
+			{
+				name:                "complex mode with deprecation",
+				args:                []string{"thinktank", "--instructions", "instructions.txt", "--dry-run", "src"},
+				expectedMode:        ComplexMode,
+				expectedDeprecation: true,
+			},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				tempDir := t.TempDir()
+				instructionsFile := filepath.Join(tempDir, "instructions.txt")
+				targetDir := filepath.Join(tempDir, "src")
+
+				require.NoError(t, os.WriteFile(instructionsFile, []byte("Test instructions"), 0644))
+				require.NoError(t, os.MkdirAll(targetDir, 0755))
+				require.NoError(t, os.WriteFile(filepath.Join(targetDir, "main.go"), []byte("package main\n\nfunc main() {}"), 0644))
+
+				config := createBasicMainConfig(t)
+				// Replace placeholders in args with actual file paths
+				actualArgs := make([]string, len(tc.args))
+				for i, arg := range tc.args {
+					switch arg {
+					case "instructions.txt":
+						actualArgs[i] = instructionsFile
+					case "src":
+						actualArgs[i] = targetDir
+					default:
+						actualArgs[i] = arg
+					}
+				}
+				config.Args = actualArgs
+
+				result := RunMain(config)
+
+				assert.Equal(t, ExitCodeSuccess, result.ExitCode, "Should succeed")
+				assert.NoError(t, result.Error)
+				assert.Equal(t, tc.expectedMode, result.ParsingMode, "Parsing mode should match")
+				assert.Equal(t, tc.expectedDeprecation, result.HasDeprecationWarning, "Deprecation warning status should match")
+			})
+		}
+	})
+}
+
 // Helper functions for test setup
 
 func createBasicMainConfig(t *testing.T) *MainConfig {

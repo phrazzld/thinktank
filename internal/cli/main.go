@@ -257,16 +257,31 @@ func setupGracefulShutdown(ctx context.Context) (context.Context, context.Cancel
 // RunMain executes the main application bootstrap logic with injected dependencies
 // This function contains the extracted bootstrap logic from Main() to enable testing
 func RunMain(mainConfig *MainConfig) *MainResult {
-	// Parse command line flags first to get the timeout value
-	// Use the injected Args and Getenv instead of os.Args and os.Getenv for testability
-	config, err := ParseFlagsWithArgsAndEnv(mainConfig.Args, mainConfig.Getenv)
-	if err != nil {
-		// We don't have a logger or context yet, so handle this error specially
+	// Parse command line flags using intelligent router for simplified/complex mode detection
+	// Use a minimal logger for bootstrap phase
+	var logger logutil.LoggerInterface = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
+	router := NewParserRouterWithEnv(logger, mainConfig.Getenv)
+	parseResult := router.ParseArguments(mainConfig.Args)
+
+	if parseResult.Error != nil {
 		// Return error result instead of calling os.Exit() for testability
 		return &MainResult{
-			ExitCode: ExitCodeInvalidRequest,
-			Error:    err,
+			ExitCode:              ExitCodeInvalidRequest,
+			Error:                 parseResult.Error,
+			ParsingMode:           parseResult.Mode,
+			HasDeprecationWarning: parseResult.HasDeprecationWarning(),
 		}
+	}
+
+	config := parseResult.Config
+
+	// Store parsing information for result tracking
+	parsingMode := parseResult.Mode
+	hasDeprecationWarning := parseResult.HasDeprecationWarning()
+
+	// Handle deprecation warnings in bootstrap phase
+	if hasDeprecationWarning {
+		router.LogDeprecationWarning(parseResult.Deprecation, config)
 	}
 
 	// Create a base context with timeout
@@ -283,7 +298,7 @@ func RunMain(mainConfig *MainConfig) *MainResult {
 	ctx = logutil.WithCorrelationID(ctx, correlationID) // Empty string means generate a new UUID
 
 	// Setup logging early for error reporting with context
-	logger := SetupLogging(config)
+	logger = SetupLogging(config)
 
 	// Initialize the audit logger
 	var auditLogger auditlog.AuditLogger
@@ -322,17 +337,21 @@ func RunMain(mainConfig *MainConfig) *MainResult {
 		// but don't actually exit - return the result instead
 		errorResult := processError(ctx, result.Error, logger, auditLogger, "execution")
 		return &MainResult{
-			ExitCode:  errorResult.ExitCode,
-			Error:     result.Error,
-			RunResult: result,
+			ExitCode:              errorResult.ExitCode,
+			Error:                 result.Error,
+			RunResult:             result,
+			ParsingMode:           parsingMode,
+			HasDeprecationWarning: hasDeprecationWarning,
 		}
 	}
 
 	// Success case - return the run result
 	return &MainResult{
-		ExitCode:  result.ExitCode,
-		Error:     result.Error,
-		RunResult: result,
+		ExitCode:              result.ExitCode,
+		Error:                 result.Error,
+		RunResult:             result,
+		ParsingMode:           parsingMode,
+		HasDeprecationWarning: hasDeprecationWarning,
 	}
 }
 
