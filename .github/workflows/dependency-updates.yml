@@ -1,9 +1,10 @@
+---
 name: Dependency Updates
 
 # Trigger on PRs from Dependabot and manual workflow dispatch
-on:
+"on":
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: ["opened", "synchronize", "reopened"]
   workflow_dispatch:
     inputs:
       force_merge:
@@ -24,7 +25,9 @@ jobs:
   analyze-dependabot-pr:
     name: Analyze Dependabot PR
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]' || github.event_name == 'workflow_dispatch'
+    if: >
+      github.actor == 'dependabot[bot]' ||
+      github.event_name == 'workflow_dispatch'
     outputs:
       is_dependabot: ${{ steps.check.outputs.is_dependabot }}
       is_security_patch: ${{ steps.check.outputs.is_security_patch }}
@@ -63,7 +66,9 @@ jobs:
             if (isDependabot) {
               // Parse Dependabot PR title to determine update type
               // Format: "deps: bump dependency-name from x.y.z to x.y.w"
-              const titleMatch = prTitle.match(/deps: bump (.+) from (.+) to (.+)/);
+              const titleMatch = prTitle.match(
+                /deps: bump (.+) from (.+) to (.+)/
+              );
 
               if (titleMatch) {
                 dependencyName = titleMatch[1];
@@ -74,8 +79,10 @@ jobs:
                 console.log(`Version change: ${fromVersion} → ${toVersion}`);
 
                 // Determine semantic version change type
-                const fromParts = fromVersion.split('.').map(n => parseInt(n) || 0);
-                const toParts = toVersion.split('.').map(n => parseInt(n) || 0);
+                const fromParts = fromVersion.split('.')
+                  .map(n => parseInt(n) || 0);
+                const toParts = toVersion.split('.')
+                  .map(n => parseInt(n) || 0);
 
                 if (toParts[0] > fromParts[0]) {
                   updateType = 'major';
@@ -166,7 +173,10 @@ jobs:
     needs: [analyze-dependabot-pr, run-quality-gates, run-security-gates]
     if: |
       always() &&
-      (needs.analyze-dependabot-pr.outputs.can_auto_merge == 'true' || github.event.inputs.force_merge == 'true') &&
+      (
+        needs.analyze-dependabot-pr.outputs.can_auto_merge == 'true' ||
+        github.event.inputs.force_merge == 'true'
+      ) &&
       needs.run-quality-gates.result == 'success' &&
       needs.run-security-gates.result == 'success'
     steps:
@@ -199,7 +209,8 @@ jobs:
                 ref: pullRequest.head.sha,
               });
 
-              const { data: statuses } = await github.rest.repos.listCommitStatusesForRef({
+              const { data: statuses } = await github.rest.repos
+                .listCommitStatusesForRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: pullRequest.head.sha,
@@ -221,7 +232,8 @@ jobs:
               );
 
               if (failedChecks.length > 0) {
-                console.log('Failed checks detected:', failedChecks.map(c => c.name || c.context));
+                console.log('Failed checks detected:',
+                  failedChecks.map(c => c.name || c.context));
                 core.setFailed('Cannot auto-merge: some checks failed');
                 return;
               }
@@ -230,9 +242,12 @@ jobs:
                 allChecksPassed = true;
                 console.log('All checks completed successfully');
               } else {
-                console.log(`Waiting for ${pendingChecks.length} checks to complete:`,
-                  pendingChecks.map(c => c.name || c.context));
-                await new Promise(resolve => setTimeout(resolve, 30000)); // Wait 30 seconds
+                console.log(
+                  `Waiting for ${pendingChecks.length} checks to complete:`,
+                  pendingChecks.map(c => c.name || c.context)
+                );
+                // Wait 30 seconds
+                await new Promise(resolve => setTimeout(resolve, 30000));
               }
             }
 
@@ -244,10 +259,16 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const updateType = '${{ needs.analyze-dependabot-pr.outputs.update_type }}';
-            const isSecurityPatch = '${{ needs.analyze-dependabot-pr.outputs.is_security_patch }}' === 'true';
-            const dependencyName = '${{ needs.analyze-dependabot-pr.outputs.dependency_name }}';
-            const forceMode = '${{ github.event.inputs.force_merge }}' === 'true';
+            const updateType =
+              '${{ needs.analyze-dependabot-pr.outputs.update_type }}';
+            const isSecurityPatch = (
+              '${{ needs.analyze-dependabot-pr.outputs.is_security_patch }}'
+              === 'true'
+            );
+            const dependencyName =
+              '${{ needs.analyze-dependabot-pr.outputs.dependency_name }}';
+            const forceMode =
+              '${{ github.event.inputs.force_merge }}' === 'true';
 
             console.log('Auto-merge conditions:');
             console.log('- Update type:', updateType);
@@ -268,17 +289,21 @@ jobs:
 
               // Add a comment explaining the auto-merge
               const commentBody = forceMode
-                ? `🤖 **Auto-merge enabled (Administrator Override)**\n\nAll quality gates passed. This PR will be automatically merged.`
+                ? `🤖 **Auto-merge enabled (Administrator Override)**\n\n` +
+                  `All quality gates passed. This PR will be ` +
+                  `automatically merged.`
                 : `🤖 **Auto-merge enabled**\n\n` +
                   `**Dependency Update Details:**\n` +
                   `- Dependency: \`${dependencyName}\`\n` +
                   `- Update Type: ${updateType}\n` +
-                  `- Security Patch: ${isSecurityPatch ? '✅ Yes' : '❌ No'}\n\n` +
+                  `- Security Patch: ` +
+                  `${isSecurityPatch ? '✅ Yes' : '❌ No'}\n\n` +
                   `**Quality Gate Status:**\n` +
                   `- ✅ Code Quality Gates Passed\n` +
                   `- ✅ Security Gates Passed\n` +
                   `- ✅ Test Suite Passed\n\n` +
-                  `This PR is eligible for auto-merge and will be automatically merged since all quality gates passed.`;
+                  `This PR is eligible for auto-merge and will be ` +
+                  `automatically merged since all quality gates passed.`;
 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -297,8 +322,13 @@ jobs:
                   repo: context.repo.repo,
                   pull_number: context.issue.number,
                   merge_method: 'squash',
-                  commit_title: `Auto-merge: ${dependencyName} ${updateType} update`,
-                  commit_message: `Automatically merged ${isSecurityPatch ? 'security ' : ''}${updateType} update for ${dependencyName} after all quality gates passed.`
+                  commit_title:
+                    `Auto-merge: ${dependencyName} ${updateType} update`,
+                  commit_message:
+                    `Automatically merged ` +
+                    `${isSecurityPatch ? 'security ' : ''}` +
+                    `${updateType} update for ${dependencyName} ` +
+                    `after all quality gates passed.`
                 });
 
                 console.log('✅ Manual merge completed successfully');
@@ -312,19 +342,33 @@ jobs:
   report-status:
     name: Report Auto-merge Status
     runs-on: ubuntu-latest
-    needs: [analyze-dependabot-pr, run-quality-gates, run-security-gates, auto-merge]
+    needs:
+      - analyze-dependabot-pr
+      - run-quality-gates
+      - run-security-gates
+      - auto-merge
     if: always() && needs.analyze-dependabot-pr.outputs.is_dependabot == 'true'
     steps:
       - name: Report final status
         uses: actions/github-script@v7
         with:
           script: |
-            const qualityGatesResult = '${{ needs.run-quality-gates.result }}';
-            const securityGatesResult = '${{ needs.run-security-gates.result }}';
-            const autoMergeResult = '${{ needs.auto-merge.result }}';
-            const canAutoMerge = '${{ needs.analyze-dependabot-pr.outputs.can_auto_merge }}' === 'true';
-            const updateType = '${{ needs.analyze-dependabot-pr.outputs.update_type }}';
-            const isSecurityPatch = '${{ needs.analyze-dependabot-pr.outputs.is_security_patch }}' === 'true';
+            const qualityGatesResult =
+              '${{ needs.run-quality-gates.result }}';
+            const securityGatesResult =
+              '${{ needs.run-security-gates.result }}';
+            const autoMergeResult =
+              '${{ needs.auto-merge.result }}';
+            const canAutoMerge = (
+              '${{ needs.analyze-dependabot-pr.outputs.can_auto_merge }}'
+              === 'true'
+            );
+            const updateType =
+              '${{ needs.analyze-dependabot-pr.outputs.update_type }}';
+            const isSecurityPatch = (
+              '${{ needs.analyze-dependabot-pr.outputs.is_security_patch }}'
+              === 'true'
+            );
 
             console.log('=== Dependency Update Workflow Summary ===');
             console.log('Quality Gates:', qualityGatesResult);
@@ -337,42 +381,59 @@ jobs:
             let statusEmoji = '❓';
             let statusMessage = 'Unknown status';
 
-            if (qualityGatesResult === 'success' && securityGatesResult === 'success') {
+            if (qualityGatesResult === 'success' &&
+                securityGatesResult === 'success') {
               if (autoMergeResult === 'success') {
                 statusEmoji = '✅';
                 statusMessage = 'Successfully auto-merged';
               } else if (canAutoMerge) {
                 statusEmoji = '⚠️';
-                statusMessage = 'Quality gates passed but auto-merge failed - requires manual intervention';
+                statusMessage =
+                  'Quality gates passed but auto-merge failed - ' +
+                  'requires manual intervention';
               } else {
                 statusEmoji = '📋';
-                statusMessage = 'Quality gates passed but manual review required due to update type';
+                statusMessage =
+                  'Quality gates passed but manual review ' +
+                  'required due to update type';
               }
             } else {
               statusEmoji = '❌';
-              statusMessage = 'Quality gates failed - manual fixes required';
+              statusMessage =
+                'Quality gates failed - manual fixes required';
             }
 
             console.log(`Final Status: ${statusEmoji} ${statusMessage}`);
 
-            // Create a summary comment if gates failed or auto-merge wasn't attempted
-            if (qualityGatesResult !== 'success' || securityGatesResult !== 'success' ||
+            // Create summary comment if gates failed or auto-merge failed
+            if (qualityGatesResult !== 'success' ||
+                securityGatesResult !== 'success' ||
                 (canAutoMerge && autoMergeResult !== 'success')) {
 
               const commentBody = `## 🤖 Dependency Update Status\n\n` +
                 `${statusEmoji} **${statusMessage}**\n\n` +
                 `**Quality Gate Results:**\n` +
-                `- Code Quality: ${qualityGatesResult === 'success' ? '✅' : '❌'} ${qualityGatesResult}\n` +
-                `- Security Scan: ${securityGatesResult === 'success' ? '✅' : '❌'} ${securityGatesResult}\n\n` +
+                `- Code Quality: ` +
+                `${qualityGatesResult === 'success' ? '✅' : '❌'} ` +
+                `${qualityGatesResult}\n` +
+                `- Security Scan: ` +
+                `${securityGatesResult === 'success' ? '✅' : '❌'} ` +
+                `${securityGatesResult}\n\n` +
                 `**Auto-merge Eligibility:**\n` +
                 `- Update Type: ${updateType}\n` +
-                `- Security Patch: ${isSecurityPatch ? '✅' : '❌'}\n` +
+                `- Security Patch: ` +
+                `${isSecurityPatch ? '✅' : '❌'}\n` +
                 `- Eligible: ${canAutoMerge ? '✅' : '❌'}\n\n` +
-                (qualityGatesResult !== 'success' || securityGatesResult !== 'success'
-                  ? `⚠️ **Action Required:** Please review and fix the failing quality gates before this PR can be merged.`
+                (qualityGatesResult !== 'success' ||
+                 securityGatesResult !== 'success'
+                  ? `⚠️ **Action Required:** Please review and fix the ` +
+                    `failing quality gates before this PR can be merged.`
                   : canAutoMerge && autoMergeResult !== 'success'
-                  ? `⚠️ **Action Required:** Auto-merge failed despite passing quality gates. Please merge manually or investigate the issue.`
-                  : `📋 **Manual Review Required:** This ${updateType} update requires manual review before merging.`);
+                  ? `⚠️ **Action Required:** Auto-merge failed despite ` +
+                    `passing quality gates. Please merge manually or ` +
+                    `investigate the issue.`
+                  : `📋 **Manual Review Required:** This ${updateType} ` +
+                    `update requires manual review before merging.`);
 
               try {
                 await github.rest.issues.createComment({
