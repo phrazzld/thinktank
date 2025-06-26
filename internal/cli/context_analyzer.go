@@ -116,7 +116,7 @@ func (ca *ContextAnalyzer) AnalyzeComplexity(targetPath string) (*AnalysisResult
 	}
 
 	// Perform fresh analysis
-	result, err := ca.performAnalysis(absPath)
+	result, fileModTimes, err := ca.performAnalysis(absPath)
 	if err != nil {
 		return nil, err
 	}
@@ -124,8 +124,8 @@ func (ca *ContextAnalyzer) AnalyzeComplexity(targetPath string) (*AnalysisResult
 	result.AnalysisTime = time.Since(startTime)
 	result.CacheHit = false
 
-	// Cache the result
-	ca.cacheResult(absPath, result)
+	// Cache the result with file modification times
+	ca.cacheResultWithModTimes(absPath, result, fileModTimes)
 
 	return result, nil
 }
@@ -153,11 +153,28 @@ func (ca *ContextAnalyzer) getCachedResult(targetPath string) *AnalysisResult {
 }
 
 // isCacheValid checks if cached entry is still valid
-// For performance, we use a simple time-based heuristic
+// It checks both TTL and file modification times for accuracy
 func (ca *ContextAnalyzer) isCacheValid(targetPath string, entry *CacheEntry) bool {
-	// For tests and rapid development, cache is valid for 30 seconds
-	// In production, this could be made longer
-	return time.Since(entry.Timestamp) < 30*time.Second
+	// Check TTL first for quick exit
+	if time.Since(entry.Timestamp) >= 30*time.Second {
+		return false
+	}
+
+	// Check if any tracked files have been modified
+	for filePath, cachedModTime := range entry.FileModTimes {
+		info, err := os.Stat(filePath)
+		if err != nil {
+			// File deleted or inaccessible - cache is invalid
+			return false
+		}
+
+		if info.ModTime().Unix() != cachedModTime {
+			// File has been modified - cache is invalid
+			return false
+		}
+	}
+
+	return true
 }
 
 // shouldAnalyzeFile determines if a file should be included in analysis
@@ -189,10 +206,10 @@ func (ca *ContextAnalyzer) shouldAnalyzeFile(path string) bool {
 }
 
 // performAnalysis conducts the actual complexity analysis
-func (ca *ContextAnalyzer) performAnalysis(targetPath string) (*AnalysisResult, error) {
+func (ca *ContextAnalyzer) performAnalysis(targetPath string) (*AnalysisResult, map[string]int64, error) {
 	// Verify target path exists
 	if _, err := os.Stat(targetPath); err != nil {
-		return nil, fmt.Errorf("target path does not exist: %w", err)
+		return nil, nil, fmt.Errorf("target path does not exist: %w", err)
 	}
 
 	var totalFiles, totalLines, totalChars int64
@@ -232,7 +249,7 @@ func (ca *ContextAnalyzer) performAnalysis(targetPath string) (*AnalysisResult, 
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory %s: %w", targetPath, err)
+		return nil, nil, fmt.Errorf("failed to walk directory %s: %w", targetPath, err)
 	}
 
 	// Calculate token estimate and complexity
@@ -247,10 +264,7 @@ func (ca *ContextAnalyzer) performAnalysis(targetPath string) (*AnalysisResult, 
 		Complexity:      complexity,
 	}
 
-	// Store file modification times for cache validation
-	ca.storeFileModTimes(targetPath, fileModTimes)
-
-	return result, nil
+	return result, fileModTimes, nil
 }
 
 // analyzeFile efficiently analyzes a single file's metrics
@@ -350,28 +364,24 @@ func (ca *ContextAnalyzer) generateCacheKey(targetPath string) string {
 
 // cacheResult stores analysis result in cache
 func (ca *ContextAnalyzer) cacheResult(targetPath string, result *AnalysisResult) {
+	ca.cacheResultWithModTimes(targetPath, result, nil)
+}
+
+// cacheResultWithModTimes stores analysis result in cache with file modification times
+func (ca *ContextAnalyzer) cacheResultWithModTimes(targetPath string, result *AnalysisResult, fileModTimes map[string]int64) {
 	ca.mu.Lock()
 	defer ca.mu.Unlock()
 
 	cacheKey := ca.generateCacheKey(targetPath)
+
 	entry := &CacheEntry{
-		Result:    *result,
-		Timestamp: time.Now(),
-		PathHash:  cacheKey,
+		Result:       *result,
+		Timestamp:    time.Now(),
+		PathHash:     cacheKey,
+		FileModTimes: fileModTimes,
 	}
 
 	ca.cache[cacheKey] = entry
-}
-
-// storeFileModTimes stores file modification times for cache validation
-func (ca *ContextAnalyzer) storeFileModTimes(targetPath string, modTimes map[string]int64) {
-	ca.mu.Lock()
-	defer ca.mu.Unlock()
-
-	cacheKey := ca.generateCacheKey(targetPath)
-	if entry, exists := ca.cache[cacheKey]; exists {
-		entry.FileModTimes = modTimes
-	}
 }
 
 // ClearCache removes all cached entries

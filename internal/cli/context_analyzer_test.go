@@ -458,3 +458,80 @@ func TestContextAnalyzer_IntegrationWithModelSelector(t *testing.T) {
 		})
 	}
 }
+
+func TestContextAnalyzer_CacheInvalidationOnFileModification(t *testing.T) {
+	analyzer := NewContextAnalyzer(testutil.NewMockLogger())
+	tempDir := t.TempDir()
+
+	// Create a test file
+	testFile := filepath.Join(tempDir, "test.go")
+	originalContent := "package main\n\nfunc main() {}\n"
+	err := os.WriteFile(testFile, []byte(originalContent), 0644)
+	require.NoError(t, err)
+
+	// First analysis - should not be cached
+	result1, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.False(t, result1.CacheHit, "First analysis should not be a cache hit")
+	originalChars := result1.TotalChars
+
+	// Modify the file (within the 30-second TTL window)
+	time.Sleep(time.Second) // Ensure file system timestamp resolution
+	modifiedContent := "package main\n\nfunc main() {\n\t// Added comment\n}\n"
+	err = os.WriteFile(testFile, []byte(modifiedContent), 0644)
+	require.NoError(t, err)
+
+	// Second analysis - cache should be invalidated due to file modification
+	result2, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.False(t, result2.CacheHit, "Cache should be invalidated when file is modified")
+	assert.NotEqual(t, originalChars, result2.TotalChars, "Character count should change")
+}
+
+func TestContextAnalyzer_CacheInvalidationOnFileDeleted(t *testing.T) {
+	analyzer := NewContextAnalyzer(testutil.NewMockLogger())
+	tempDir := t.TempDir()
+
+	// Create a test file
+	testFile := filepath.Join(tempDir, "test.go")
+	originalContent := "package main\n\nfunc main() {}\n"
+	err := os.WriteFile(testFile, []byte(originalContent), 0644)
+	require.NoError(t, err)
+
+	// First analysis - should not be cached
+	result1, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.False(t, result1.CacheHit, "First analysis should not be a cache hit")
+
+	// Delete the file (within the 30-second TTL window)
+	err = os.Remove(testFile)
+	require.NoError(t, err)
+
+	// Second analysis - cache should be invalidated due to file deletion
+	result2, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.False(t, result2.CacheHit, "Cache should be invalidated when file is deleted")
+	assert.Equal(t, int64(0), result2.TotalFiles, "Should find no files after deletion")
+}
+
+func TestContextAnalyzer_CacheValidWhenNoChanges(t *testing.T) {
+	analyzer := NewContextAnalyzer(testutil.NewMockLogger())
+	tempDir := t.TempDir()
+
+	// Create a test file
+	testFile := filepath.Join(tempDir, "test.go")
+	originalContent := "package main\n\nfunc main() {}\n"
+	err := os.WriteFile(testFile, []byte(originalContent), 0644)
+	require.NoError(t, err)
+
+	// First analysis - should not be cached
+	result1, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.False(t, result1.CacheHit, "First analysis should not be a cache hit")
+
+	// Second analysis without any changes (within TTL) - should hit cache
+	result2, err := analyzer.AnalyzeComplexity(tempDir)
+	require.NoError(t, err)
+	assert.True(t, result2.CacheHit, "Second analysis should be a cache hit when no files changed")
+	assert.Equal(t, result1.TotalChars, result2.TotalChars, "Character count should be same")
+}

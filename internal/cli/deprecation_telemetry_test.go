@@ -1,7 +1,10 @@
 package cli
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
 // TestDeprecationTelemetryBasics tests the basic functionality of the telemetry system
@@ -154,7 +157,8 @@ func TestParserRouterWithTelemetry(t *testing.T) {
 	targetDir := createTestDir(t, tempDir, "src")
 
 	// Create router with telemetry enabled
-	router := NewParserRouterWithTelemetry(nil, true)
+	mockLogger := testutil.NewMockLogger()
+	router := NewParserRouterWithTelemetry(mockLogger, true)
 
 	// Parse some arguments that should trigger telemetry
 	testCases := [][]string{
@@ -187,12 +191,26 @@ func TestParserRouterWithTelemetry(t *testing.T) {
 	if stats["complex_flags"] == 0 {
 		t.Error("Expected some complex_flags usage to be recorded")
 	}
+
+	// Verify that parsing was logged (validates that logger was used correctly)
+	logMessages := mockLogger.GetMessages()
+	var foundParsingLog bool
+	for _, msg := range logMessages {
+		if strings.Contains(msg, "Detected parsing mode") || strings.Contains(msg, "parsed using") {
+			foundParsingLog = true
+			break
+		}
+	}
+	if !foundParsingLog {
+		t.Error("Expected to find parsing-related log messages")
+	}
 }
 
 // TestTelemetryDisabledByDefault tests that telemetry doesn't run by default
 func TestTelemetryDisabledByDefault(t *testing.T) {
 	// Create router with default settings (telemetry disabled)
-	router := NewParserRouter(nil)
+	mockLogger := testutil.NewMockLogger()
+	router := NewParserRouter(mockLogger)
 
 	// This should work but not collect telemetry
 	args := []string{"thinktank", "--instructions", "test.txt", "src/"}
@@ -206,6 +224,19 @@ func TestTelemetryDisabledByDefault(t *testing.T) {
 	// Should not have telemetry available
 	if router.GetTelemetry() != nil {
 		t.Error("Expected no telemetry when disabled by default")
+	}
+
+	// Verify that parsing was still logged even with telemetry disabled
+	logMessages := mockLogger.GetMessages()
+	var foundParsingLog bool
+	for _, msg := range logMessages {
+		if strings.Contains(msg, "Detected parsing mode") || strings.Contains(msg, "parsed using") {
+			foundParsingLog = true
+			break
+		}
+	}
+	if !foundParsingLog {
+		t.Error("Expected to find parsing-related log messages even with telemetry disabled")
 	}
 }
 
