@@ -330,14 +330,14 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 		}
 	}
 
-	// API key validation based on model requirements
-	if config.APIKey == "" && modelNeedsGeminiKey {
+	// API key validation based on model requirements (skip in dry run mode)
+	if config.APIKey == "" && modelNeedsGeminiKey && !config.DryRun {
 		logError("%s environment variable not set.", APIKeyEnvVar)
 		return fmt.Errorf("gemini API key not set")
 	}
 
-	// If any OpenAI model is used, check for OpenAI API key
-	if modelNeedsOpenAIKey {
+	// If any OpenAI model is used, check for OpenAI API key (skip in dry run mode)
+	if modelNeedsOpenAIKey && !config.DryRun {
 		openAIKey := getenv(OpenAIAPIKeyEnvVar)
 		if openAIKey == "" {
 			logError("%s environment variable not set.", OpenAIAPIKeyEnvVar)
@@ -345,8 +345,8 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 		}
 	}
 
-	// If any OpenRouter model is used, check for OpenRouter API key
-	if modelNeedsOpenRouterKey {
+	// If any OpenRouter model is used, check for OpenRouter API key (skip in dry run mode)
+	if modelNeedsOpenRouterKey && !config.DryRun {
 		openRouterKey := getenv(OpenRouterAPIKeyEnvVar)
 		if openRouterKey == "" {
 			logError("%s environment variable not set.", OpenRouterAPIKeyEnvVar)

@@ -316,17 +316,16 @@ func TestValidateConfig(t *testing.T) {
 			errorContains: "no paths specified",
 		},
 		{
-			name: "Dry run still requires API key",
+			name: "Dry run skips API key validation",
 			config: &CliConfig{
 				InstructionsFile: "", // Missing but allowed in dry run
 				Paths:            []string{"testfile"},
-				APIKey:           "", // Missing - still required in dry run
+				APIKey:           "", // Missing - now allowed in dry run
 				ModelNames:       []string{"model1"},
 				DryRun:           true,
 			},
-			logger:        &MockLogger{},
-			expectError:   true,
-			errorContains: "API key not set",
+			logger:      &MockLogger{},
+			expectError: false, // API key validation is skipped in dry run
 		},
 		{
 			name: "Dry run allows missing models",

@@ -269,3 +269,19 @@
 - [~] **Test coverage: Maintain 90%+ coverage throughout transition** ⚠️ *Partially achieved: 81.7% overall, core simplified interface well-tested*
 - [x] **Zero breaking changes: All existing functionality preserved** ✅ *Achieved: All existing flags and behavior work via deprecation warnings*
 - [x] **Documentation: Complete migration guide and new user onboarding** ✅ *Achieved: Comprehensive README update with migration guide and examples*
+
+## CRITICAL CI BLOCKERS (Resolution Required)
+
+### PRIMARY ISSUE: Config Adapter API Key Validation Failure
+- [ ] **CRITICAL CI BLOCKER**: Investigate config adapter API key validation failure in dry run mode - Examine `internal/cli/config_adapter.go` ToComplexConfig() method to identify where API key validation is called. The tests expect `DryRun: true` to skip API validation but it's failing with 'gemini API key not set' error. Look for validation calls, environment loading, or API detection that doesn't respect DryRun flag.
+
+- [ ] **CRITICAL CI BLOCKER**: Fix dry run mode to skip API key validation - Based on investigation findings, implement proper DryRun bypass in the validation pipeline. Add conditional logic to skip external API validation when config.DryRun is true. Ensure validation functions check DryRun flag before requiring API keys. Pattern: `if config.DryRun { return validateLocalConfigOnly(config) }`
+
+- [ ] **CRITICAL CI BLOCKER**: Verify DryRun flag propagation through config conversion - Trace the DryRun flag from SimplifiedConfig through ToComplexConfig() to ensure it reaches validation functions. Check that flag is properly set in the resulting ComplexConfig and accessible to validation logic. Fix any missing propagation in the adapter conversion process.
+
+- [ ] **CRITICAL CI BLOCKER**: Test and verify dry run validation fix - Run the failing config adapter tests locally to verify the fix works: TestConfigAdapter_ValidationPipelineIntegration/dry_run_mode_skips_api_validation, TestConfigAdapter_BehaviorRegressionPrevention/dry_run_behavior_preservation, etc. Ensure tests pass without requiring API keys when DryRun is true.
+
+- [ ] **CRITICAL CI BLOCKER**: Verify no regression in normal mode API validation - After implementing dry run bypass, test that normal mode (DryRun: false) still properly validates and requires API keys. Run config adapter tests for normal mode and verify production behavior isn't broken. Both modes must work correctly.
+
+### SECONDARY ISSUE: Workflow File
+- [ ] **CI ISSUE**: Fix dependency-updates.yml workflow file issue - Check `.github/workflows/dependency-updates.yml` for YAML syntax errors or configuration issues causing immediate failure. This is lower priority than the Go CI failure but should be addressed to clean up CI status. Validate workflow file syntax and fix any issues found.
