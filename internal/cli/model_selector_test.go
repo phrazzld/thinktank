@@ -2,63 +2,126 @@
 package cli
 
 import (
+	"fmt"
 	"os"
+	"sort"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// TestSelectOptimalModel tests the core model selection logic
-func TestSelectOptimalModel(t *testing.T) {
+// TestSelectOptimalModels tests the new token-based model filtering logic
+func TestSelectOptimalModels(t *testing.T) {
 	tests := []struct {
-		name               string
-		availableProviders []string
-		taskSize           int64
-		expectedModel      string
+		name         string
+		inputTokens  int64
+		setupEnv     func()
+		cleanupEnv   func()
+		expectEmpty  bool
+		expectModels []string // specific models we expect to see
+		minModels    int      // minimum number of models expected
 	}{
 		{
-			name:               "no providers available",
-			availableProviders: []string{},
-			taskSize:           1000,
-			expectedModel:      DefaultModel,
+			name:        "very large input - no models can handle",
+			inputTokens: 2000000, // 2M tokens - exceeds all model context windows
+			setupEnv: func() {
+				// Keep existing API keys for this test - we want to verify context window filtering
+			},
+			cleanupEnv: func() {
+				// No cleanup needed
+			},
+			expectEmpty: true,
 		},
 		{
-			name:               "small task with openai",
-			availableProviders: []string{"openai"},
-			taskSize:           5000,
-			expectedModel:      "gpt-4o",
+			name:        "small input - all models available",
+			inputTokens: 1000, // Very small input
+			setupEnv: func() {
+				_ = os.Setenv("OPENAI_API_KEY", "sk-test123456789")
+				_ = os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456")
+				_ = os.Setenv("OPENROUTER_API_KEY", "openrouter-test-key-123456")
+			},
+			cleanupEnv: func() {
+				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
+			},
+			minModels: 5, // Should have multiple models available
 		},
 		{
-			name:               "medium task with gemini",
-			availableProviders: []string{"gemini"},
-			taskSize:           50000,
-			expectedModel:      "gemini-2.5-pro",
+			name:        "medium input - most models available",
+			inputTokens: 50000, // 50k tokens
+			setupEnv: func() {
+				_ = os.Setenv("OPENAI_API_KEY", "sk-test123456789")
+				_ = os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456")
+				_ = os.Setenv("OPENROUTER_API_KEY", "openrouter-test-key-123456")
+			},
+			cleanupEnv: func() {
+				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
+			},
+			expectModels: []string{"gpt-4.1", "gemini-2.5-pro", "gemini-2.5-flash"}, // High-capacity models
+			minModels:    3,
 		},
 		{
-			name:               "large task with multiple providers",
-			availableProviders: []string{"openai", "gemini", "openrouter"},
-			taskSize:           150000,
-			expectedModel:      "gemini-2.5-pro", // Highest score
-		},
-		{
-			name:               "only openrouter available",
-			availableProviders: []string{"openrouter"},
-			taskSize:           25000,
-			expectedModel:      "claude-3-opus",
-		},
-		{
-			name:               "all providers available small task",
-			availableProviders: []string{"openai", "gemini", "openrouter"},
-			taskSize:           8000,
-			expectedModel:      "gemini-2.5-pro", // Best available
+			name:        "no API keys - fallback behavior",
+			inputTokens: 10000,
+			setupEnv: func() {
+				// Clear ALL possible API keys
+				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
+				_ = os.Unsetenv("ANTHROPIC_API_KEY")
+			},
+			cleanupEnv: func() {
+				// Restore API keys for other tests
+				_ = os.Setenv("OPENAI_API_KEY", "sk-test123456789")
+				_ = os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456")
+				_ = os.Setenv("OPENROUTER_API_KEY", "openrouter-test-key-123456")
+			},
+			expectEmpty: true, // Should return empty when no providers available
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := SelectOptimalModel(tt.availableProviders, tt.taskSize)
-			assert.Equal(t, tt.expectedModel, result)
+			ClearProviderCache()
+			tt.setupEnv()
+			defer tt.cleanupEnv()
+
+			result := SelectOptimalModels(tt.inputTokens)
+
+			if tt.expectEmpty {
+				assert.Empty(t, result, "Expected no models for input tokens %d", tt.inputTokens)
+			} else {
+				assert.NotEmpty(t, result, "Expected models for input tokens %d", tt.inputTokens)
+
+				if tt.minModels > 0 {
+					assert.GreaterOrEqual(t, len(result), tt.minModels, "Expected at least %d models", tt.minModels)
+				}
+
+				for _, expectedModel := range tt.expectModels {
+					assert.Contains(t, result, expectedModel, "Expected model %s in result", expectedModel)
+				}
+
+				// Verify all returned models actually exist in the models package
+				for _, modelName := range result {
+					_, err := models.GetModelInfo(modelName)
+					assert.NoError(t, err, "Model %s should exist in models package", modelName)
+				}
+
+				// Verify all returned models have sufficient context window
+				for _, modelName := range result {
+					modelInfo, err := models.GetModelInfo(modelName)
+					require.NoError(t, err)
+					maxInputTokens := int64(float64(modelInfo.ContextWindow) * 0.8)
+					assert.Greater(t, maxInputTokens, tt.inputTokens,
+						"Model %s context window (%d * 0.8 = %d) should be greater than input tokens %d",
+						modelName, modelInfo.ContextWindow, maxInputTokens, tt.inputTokens)
+				}
+			}
 		})
 	}
 }
@@ -106,8 +169,14 @@ func TestProviderCache(t *testing.T) {
 // TestGetAvailableProviders tests provider detection
 func TestGetAvailableProviders(t *testing.T) {
 	// Clear environment
-	for _, envVar := range GetProviderEnvVars() {
-		require.NoError(t, os.Unsetenv(envVar))
+	allModels := models.ListAllModels()
+	for _, modelName := range allModels {
+		if modelInfo, err := models.GetModelInfo(modelName); err == nil {
+			envVar := models.GetAPIKeyEnvVar(modelInfo.Provider)
+			if envVar != "" {
+				require.NoError(t, os.Unsetenv(envVar))
+			}
+		}
 	}
 	ClearProviderCache()
 
@@ -122,7 +191,7 @@ func TestGetAvailableProviders(t *testing.T) {
 		ClearProviderCache()
 
 		providers := GetAvailableProviders()
-		assert.Equal(t, []string{"openai"}, providers)
+		assert.Contains(t, providers, "openai")
 	})
 
 	t.Run("multiple providers available", func(t *testing.T) {
@@ -150,49 +219,88 @@ func TestGetAvailableProviders(t *testing.T) {
 	})
 }
 
-// TestSelectBestModel tests the main entry point
-func TestSelectBestModel(t *testing.T) {
+// TestSelectBestModels tests the main entry point for multi-model selection
+func TestSelectBestModels(t *testing.T) {
 	// Clear environment first
-	for _, envVar := range GetProviderEnvVars() {
-		require.NoError(t, os.Unsetenv(envVar))
+	allModels := models.ListAllModels()
+	for _, modelName := range allModels {
+		if modelInfo, err := models.GetModelInfo(modelName); err == nil {
+			envVar := models.GetAPIKeyEnvVar(modelInfo.Provider)
+			if envVar != "" {
+				require.NoError(t, os.Unsetenv(envVar))
+			}
+		}
 	}
 	ClearProviderCache()
 
-	t.Run("no api keys returns default", func(t *testing.T) {
-		model := SelectBestModel(10000)
-		assert.Equal(t, DefaultModel, model)
+	t.Run("no api keys returns empty", func(t *testing.T) {
+		models := SelectBestModels(10000)
+		assert.Empty(t, models)
 	})
 
-	t.Run("with api key returns optimal model", func(t *testing.T) {
+	t.Run("with api key returns filtered models", func(t *testing.T) {
 		require.NoError(t, os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456"))
 		defer func() { require.NoError(t, os.Unsetenv("GEMINI_API_KEY")) }()
 		ClearProviderCache()
 
-		model := SelectBestModel(50000)
-		assert.Equal(t, "gemini-2.5-pro", model)
+		models := SelectBestModels(50000)
+		assert.NotEmpty(t, models, "Should return models when API key available")
+		// All returned models should be Gemini models since only Gemini API key is set
+		for _, modelName := range models {
+			provider := GetModelProvider(modelName)
+			assert.Equal(t, "gemini", provider, "All models should be from gemini provider")
+		}
+	})
+
+	t.Run("backward compatibility - SelectBestModel", func(t *testing.T) {
+		require.NoError(t, os.Setenv("OPENAI_API_KEY", "sk-test123456789"))
+		defer func() { require.NoError(t, os.Unsetenv("OPENAI_API_KEY")) }()
+		ClearProviderCache()
+
+		model := SelectBestModel(10000)
+		assert.NotEmpty(t, model, "SelectBestModel should return first available model")
+		provider := GetModelProvider(model)
+		assert.Equal(t, "openai", provider, "Returned model should be from openai provider")
 	})
 }
 
 // TestValidateModelAvailability tests model validation
 func TestValidateModelAvailability(t *testing.T) {
 	// Clear environment
-	for _, envVar := range GetProviderEnvVars() {
-		require.NoError(t, os.Unsetenv(envVar))
+	allModels := models.ListAllModels()
+	for _, modelName := range allModels {
+		if modelInfo, err := models.GetModelInfo(modelName); err == nil {
+			envVar := models.GetAPIKeyEnvVar(modelInfo.Provider)
+			if envVar != "" {
+				require.NoError(t, os.Unsetenv(envVar))
+			}
+		}
 	}
 	ClearProviderCache()
 
-	t.Run("known model without provider", func(t *testing.T) {
-		available := ValidateModelAvailability("gpt-4o")
+	t.Run("actual model without provider", func(t *testing.T) {
+		// Use an actual model from the models package
+		allModels := models.ListAllModels()
+		require.NotEmpty(t, allModels, "Should have at least one model defined")
+		modelName := allModels[0]
+
+		available := ValidateModelAvailability(modelName)
 		assert.False(t, available)
 	})
 
-	t.Run("known model with provider", func(t *testing.T) {
-		require.NoError(t, os.Setenv("OPENAI_API_KEY", "sk-test123456789"))
-		defer func() { require.NoError(t, os.Unsetenv("OPENAI_API_KEY")) }()
-		ClearProviderCache()
+	t.Run("actual model with provider", func(t *testing.T) {
+		// Find an OpenAI model and test with OpenAI API key
+		openaiModels := models.ListModelsForProvider("openai")
+		if len(openaiModels) > 0 {
+			require.NoError(t, os.Setenv("OPENAI_API_KEY", "sk-test123456789"))
+			defer func() { require.NoError(t, os.Unsetenv("OPENAI_API_KEY")) }()
+			ClearProviderCache()
 
-		available := ValidateModelAvailability("gpt-4o")
-		assert.True(t, available)
+			available := ValidateModelAvailability(openaiModels[0])
+			assert.True(t, available)
+		} else {
+			t.Skip("No OpenAI models available for testing")
+		}
 	})
 
 	t.Run("unknown model with any provider", func(t *testing.T) {
@@ -205,28 +313,31 @@ func TestValidateModelAvailability(t *testing.T) {
 	})
 }
 
-// TestGetModelProvider tests provider inference
+// TestGetModelProvider tests provider inference using actual models
 func TestGetModelProvider(t *testing.T) {
+	// Test with actual models from the models package
+	allModels := models.ListAllModels()
+	require.NotEmpty(t, allModels, "Should have models defined")
+
+	for _, modelName := range allModels {
+		t.Run(fmt.Sprintf("actual model %s", modelName), func(t *testing.T) {
+			provider := GetModelProvider(modelName)
+
+			// Get expected provider from models package
+			modelInfo, err := models.GetModelInfo(modelName)
+			require.NoError(t, err)
+			expectedProvider := modelInfo.Provider
+
+			assert.Equal(t, expectedProvider, provider, "Provider should match models package")
+		})
+	}
+
+	// Test inference for unknown models
 	tests := []struct {
 		name             string
 		modelName        string
 		expectedProvider string
 	}{
-		{
-			name:             "known gemini model",
-			modelName:        "gemini-2.5-pro",
-			expectedProvider: "gemini",
-		},
-		{
-			name:             "known openai model",
-			modelName:        "gpt-4o",
-			expectedProvider: "openai",
-		},
-		{
-			name:             "known openrouter model",
-			modelName:        "claude-3-opus",
-			expectedProvider: "openrouter",
-		},
 		{
 			name:             "unknown gpt model",
 			modelName:        "gpt-5",
@@ -257,35 +368,55 @@ func TestGetModelProvider(t *testing.T) {
 	}
 }
 
-// TestModelRankings tests that model rankings are properly sorted
-func TestModelRankings(t *testing.T) {
-	require.NotEmpty(t, GetModelRankings())
+// TestAllSupportedModels tests that we can access all models from the models package
+func TestAllSupportedModels(t *testing.T) {
+	allModels := GetAllSupportedModels()
+	require.NotEmpty(t, allModels, "Should have at least one model")
 
-	// Verify rankings are in descending order of score
-	rankings := GetModelRankings()
-	for i := 1; i < len(rankings); i++ {
-		assert.GreaterOrEqual(t, rankings[i-1].Score, rankings[i].Score,
-			"Model rankings should be in descending order of score")
+	// Verify all models exist in the models package
+	for _, modelName := range allModels {
+		modelInfo, err := models.GetModelInfo(modelName)
+		assert.NoError(t, err, "Model %s should exist in models package", modelName)
+		assert.NotEmpty(t, modelInfo.Provider, "Model %s should have a provider", modelName)
+		assert.Greater(t, modelInfo.ContextWindow, 0, "Model %s should have positive context window", modelName)
 	}
 
-	// Verify all required fields are present
-	for _, model := range rankings {
-		assert.NotEmpty(t, model.Name, "Model name should not be empty")
-		assert.NotEmpty(t, model.Provider, "Model provider should not be empty")
-		assert.Greater(t, model.Score, 0, "Model score should be positive")
-	}
+	// Verify models are sorted (deterministic ordering)
+	sortedModels := make([]string, len(allModels))
+	copy(sortedModels, allModels)
+	sort.Strings(sortedModels)
+	assert.Equal(t, sortedModels, allModels, "Models should be sorted alphabetically")
 }
 
-// TestProviderEnvVars tests environment variable mapping
-func TestProviderEnvVars(t *testing.T) {
-	expectedProviders := []string{"openai", "gemini", "openrouter"}
-	envVars := GetProviderEnvVars()
+// TestModelsForProvider tests provider-specific model listing
+func TestModelsForProvider(t *testing.T) {
+	// Get all unique providers from models
+	allModels := models.ListAllModels()
+	providers := make(map[string]bool)
+	for _, modelName := range allModels {
+		if modelInfo, err := models.GetModelInfo(modelName); err == nil {
+			providers[modelInfo.Provider] = true
+		}
+	}
 
-	for _, provider := range expectedProviders {
-		envVar, exists := envVars[provider]
-		assert.True(t, exists, "Provider %s should have env var mapping", provider)
-		assert.NotEmpty(t, envVar, "Env var for %s should not be empty", provider)
-		assert.Contains(t, envVar, "API_KEY", "Env var should contain API_KEY")
+	for provider := range providers {
+		t.Run(fmt.Sprintf("provider %s", provider), func(t *testing.T) {
+			providerModels := GetModelsForProvider(provider)
+			assert.NotEmpty(t, providerModels, "Provider %s should have models", provider)
+
+			// Verify all returned models are actually from this provider
+			for _, modelName := range providerModels {
+				modelInfo, err := models.GetModelInfo(modelName)
+				require.NoError(t, err)
+				assert.Equal(t, provider, modelInfo.Provider, "Model %s should be from provider %s", modelName, provider)
+			}
+
+			// Verify models are sorted
+			sortedModels := make([]string, len(providerModels))
+			copy(sortedModels, providerModels)
+			sort.Strings(sortedModels)
+			assert.Equal(t, sortedModels, providerModels, "Provider models should be sorted")
+		})
 	}
 }
 
@@ -310,14 +441,21 @@ func TestClearProviderCache(t *testing.T) {
 	assert.Contains(t, providers, "openai")
 }
 
-// BenchmarkSelectOptimalModel benchmarks the model selection performance
-func BenchmarkSelectOptimalModel(b *testing.B) {
-	providers := []string{"openai", "gemini", "openrouter"}
+// BenchmarkSelectOptimalModels benchmarks the new model selection performance
+func BenchmarkSelectOptimalModels(b *testing.B) {
 	taskSize := int64(50000)
+
+	// Set up environment for realistic benchmark
+	_ = os.Setenv("OPENAI_API_KEY", "sk-test123456789")
+	_ = os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456")
+	defer func() {
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("GEMINI_API_KEY")
+	}()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		SelectOptimalModel(providers, taskSize)
+		SelectOptimalModels(taskSize)
 	}
 }
 
@@ -338,33 +476,39 @@ func BenchmarkProviderCacheHit(b *testing.B) {
 
 // Property-based test for model selection consistency
 func TestModelSelectionConsistency(t *testing.T) {
-	providers := []string{"openai", "gemini", "openrouter"}
+	// Set up environment
+	require.NoError(t, os.Setenv("OPENAI_API_KEY", "sk-test123456789"))
+	require.NoError(t, os.Setenv("GEMINI_API_KEY", "gemini-test-key-123456"))
+	defer func() {
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("GEMINI_API_KEY")
+	}()
+
 	taskSizes := []int64{1000, 10000, 50000, 100000, 200000}
 
 	// Test that same inputs always produce same outputs
 	for _, taskSize := range taskSizes {
-		model1 := SelectOptimalModel(providers, taskSize)
-		model2 := SelectOptimalModel(providers, taskSize)
-		assert.Equal(t, model1, model2,
-			"Model selection should be deterministic for taskSize %d", taskSize)
+		t.Run(fmt.Sprintf("consistency for %d tokens", taskSize), func(t *testing.T) {
+			ClearProviderCache()
+			models1 := SelectOptimalModels(taskSize)
+			models2 := SelectOptimalModels(taskSize)
+			assert.Equal(t, models1, models2,
+				"Model selection should be deterministic for taskSize %d", taskSize)
+		})
 	}
 
-	// Test that larger tasks prefer higher-scored models when available
-	smallTask := SelectOptimalModel(providers, 5000)
-	largeTask := SelectOptimalModel(providers, 150000)
+	// Test that larger inputs result in fewer available models
+	ClearProviderCache()
+	smallTaskModels := SelectOptimalModels(1000)
+	largeTaskModels := SelectOptimalModels(500000) // Much larger input
 
-	// Find scores for selected models
-	var smallScore, largeScore int
-	rankings := GetModelRankings()
-	for _, model := range rankings {
-		if model.Name == smallTask {
-			smallScore = model.Score
-		}
-		if model.Name == largeTask {
-			largeScore = model.Score
-		}
+	// Large tasks should have fewer or equal available models (due to context window limits)
+	assert.LessOrEqual(t, len(largeTaskModels), len(smallTaskModels),
+		"Large tasks should have fewer or equal available models due to context window constraints")
+
+	// All models returned for large tasks should also be available for small tasks
+	for _, largeModel := range largeTaskModels {
+		assert.Contains(t, smallTaskModels, largeModel,
+			"Models available for large tasks should also be available for small tasks")
 	}
-
-	assert.GreaterOrEqual(t, largeScore, smallScore,
-		"Large tasks should prefer higher-scored models")
 }

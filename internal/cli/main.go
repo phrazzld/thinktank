@@ -438,6 +438,28 @@ func Run(runConfig *RunConfig) *RunResult {
 	}
 	stats.AuditEntriesWritten++
 
+	// Perform token-based model filtering
+	// Estimate input token count and filter models based on context window
+	if len(config.Paths) > 0 {
+		// Use the first path as representative for token estimation
+		// This provides a reasonable approximation for multi-path scenarios
+		estimatedTokens, err := AnalyzeTaskComplexityForModelSelection(config.Paths[0])
+		if err != nil {
+			logger.WarnContext(ctx, "Failed to estimate input tokens: %v. Using all configured models.", err)
+		} else {
+			logger.InfoContext(ctx, "Estimated input tokens: %d", estimatedTokens)
+
+			// Filter models based on context window vs input tokens
+			availableModels := SelectBestModels(estimatedTokens)
+			if len(availableModels) > 0 {
+				logger.InfoContext(ctx, "Filtered to %d models with sufficient context: %v", len(availableModels), availableModels)
+				config.ModelNames = availableModels
+			} else {
+				logger.WarnContext(ctx, "No models have sufficient context window. Using configured models: %v", config.ModelNames)
+			}
+		}
+	}
+
 	// Configure ConsoleWriter (using injected dependency)
 	consoleWriter.SetQuiet(config.Quiet)
 	consoleWriter.SetNoProgress(config.NoProgress)

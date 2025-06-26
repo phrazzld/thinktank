@@ -93,11 +93,8 @@ func (ca *ConfigAdapter) applySimplifiedConfigOverrides(cfg *config.CliConfig) {
 	}
 
 	if ca.simplified.HasFlag(FlagSynthesis) {
-		// Note: The synthesis flag handling would need to be implemented
-		// based on the simplified config design
-		// TODO: Implement synthesis model configuration from simplified flags
-		// For now, we just indicate synthesis is requested without specifying model
-		cfg.SynthesisModel = "default-synthesis"
+		// Use gemini-2.5-pro as the default synthesis model for simplified interface
+		cfg.SynthesisModel = "gemini-2.5-pro"
 	}
 }
 
