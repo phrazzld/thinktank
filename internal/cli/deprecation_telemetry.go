@@ -60,14 +60,23 @@ func (dt *DeprecationTelemetry) RecordUsagePattern(pattern string, args []string
 		existing.Count++
 		existing.LastSeen = time.Now()
 	} else {
+		// Use memory pool for argument copying
+		argsCopy := GetArgumentsCopy()
+		if cap(argsCopy) < len(args) {
+			// If pool slice is too small, grow it
+			argsCopy = make([]string, len(args))
+		} else {
+			argsCopy = argsCopy[:len(args)]
+		}
+		copy(argsCopy, args)
+
 		dt.patterns[pattern] = &UsagePattern{
 			Pattern:   pattern,
 			Count:     1,
 			FirstSeen: time.Now(),
 			LastSeen:  time.Now(),
-			Args:      make([]string, len(args)), // Deep copy to avoid mutations
+			Args:      argsCopy,
 		}
-		copy(dt.patterns[pattern].Args, args)
 	}
 }
 
@@ -94,15 +103,24 @@ func (dt *DeprecationTelemetry) GetUsagePatterns() []UsagePattern {
 	// Return defensive copy of pattern data
 	result := make([]UsagePattern, 0, len(dt.patterns))
 	for _, pattern := range dt.patterns {
-		// Create copy with defensive arg slice copy
+		// Use memory pool for defensive arg slice copy
+		argsCopy := GetPatternSlice()
+		if cap(argsCopy) < len(pattern.Args) {
+			// If pool slice is too small, allocate new one
+			argsCopy = make([]string, len(pattern.Args))
+		} else {
+			argsCopy = argsCopy[:len(pattern.Args)]
+		}
+		copy(argsCopy, pattern.Args)
+
+		// Create copy with pooled arg slice
 		patternCopy := UsagePattern{
 			Pattern:   pattern.Pattern,
 			Count:     pattern.Count,
 			FirstSeen: pattern.FirstSeen,
 			LastSeen:  pattern.LastSeen,
-			Args:      make([]string, len(pattern.Args)),
+			Args:      argsCopy,
 		}
-		copy(patternCopy.Args, pattern.Args)
 		result = append(result, patternCopy)
 	}
 

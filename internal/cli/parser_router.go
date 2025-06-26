@@ -9,6 +9,37 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 )
 
+// Pre-allocated package-level variables to avoid repeated allocations
+
+// flagsWithValues contains flags that expect values, preventing their values
+// from being counted as positional arguments during mode detection
+var flagsWithValues = map[string]bool{
+	"--instructions":   true,
+	"--output-dir":     true,
+	"--model":          true,
+	"--include":        true,
+	"--exclude":        true,
+	"--exclude-names":  true,
+	"--confirm-tokens": true,
+	"--log-level":      true,
+	"--audit-log-file": true,
+}
+
+// complexFlags contains the list of complex flags for deprecation detection
+// Pre-allocating to avoid slice creation on every call
+var complexFlags = []string{
+	"--instructions",
+	"--output-dir",
+	"--model",
+	"--include",
+	"--exclude",
+	"--exclude-names",
+	"--confirm-tokens",
+	"--log-level",
+	"--audit-log-file",
+	"--force-overwrite",
+}
+
 // ParsingMode represents the parsing strategy to use for command-line arguments
 type ParsingMode int
 
@@ -170,8 +201,15 @@ func (pr *ParserRouter) parseSimplified(args []string, result *ParseResult) *Par
 		return result
 	}
 
-	// Convert to complex config for compatibility
-	adapter := NewConfigAdapter(simplifiedConfig)
+	// Create base config and apply environment defaults first
+	baseConfig := config.NewDefaultCliConfig()
+	if err := LoadEnvironmentDefaults(baseConfig, pr.getenv); err != nil {
+		result.Error = fmt.Errorf("failed to load environment defaults for simplified config: %w", err)
+		return result
+	}
+
+	// Convert simplified config to complex config with environment-loaded base
+	adapter := NewConfigAdapterWithBase(simplifiedConfig, baseConfig)
 	result.Config = adapter.ToComplexConfig()
 
 	if pr.logger != nil {
@@ -282,11 +320,6 @@ func containsPositionalArgs(args []string) bool {
 
 	// Track flags that expect values to avoid counting their values as positional
 	skipNext := false
-	flagsWithValues := map[string]bool{
-		"--instructions": true, "--output-dir": true, "--model": true,
-		"--include": true, "--exclude": true, "--exclude-names": true,
-		"--confirm-tokens": true, "--log-level": true, "--audit-log-file": true,
-	}
 
 	for i, arg := range processArgs {
 		if skipNext {
@@ -345,12 +378,6 @@ func looksLikeSimplifiedModePattern(args []string) bool {
 
 // containsComplexFlags checks if the arguments contain complex flags
 func containsComplexFlags(args []string) bool {
-	complexFlags := []string{
-		"--instructions", "--output-dir", "--model", "--include", "--exclude",
-		"--exclude-names", "--confirm-tokens", "--log-level", "--audit-log-file",
-		"--force-overwrite",
-	}
-
 	for _, arg := range args {
 		for _, flag := range complexFlags {
 			if arg == flag || strings.HasPrefix(arg, flag+"=") {

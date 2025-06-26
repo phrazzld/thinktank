@@ -84,17 +84,30 @@ func (g *MigrationGuideGenerator) generateSuggestion(pattern UsagePattern) *Migr
 	case containsFlag(pattern.Args, "--instructions"):
 		// Extract the file argument
 		file := extractFlagValue(pattern.Args, "--instructions")
-		suggestion.Suggestion = "thinktank " + file + " target_path"
+		sb := GetStringBuilder()
+		defer PutStringBuilder(sb)
+		sb.WriteString("thinktank ")
+		sb.WriteString(file)
+		sb.WriteString(" target_path")
+		suggestion.Suggestion = sb.String()
 		suggestion.Confidence = ConfidenceHigh
 
 	case containsFlag(pattern.Args, "--model"):
-		model := extractFlagValue(pattern.Args, "--model")
-		suggestion.Suggestion = "thinktank instructions.txt target_path --model " + model
+		model := InternModelName(extractFlagValue(pattern.Args, "--model"))
+		sb := GetStringBuilder()
+		defer PutStringBuilder(sb)
+		sb.WriteString("thinktank instructions.txt target_path --model ")
+		sb.WriteString(model)
+		suggestion.Suggestion = sb.String()
 		suggestion.Confidence = ConfidenceHigh
 
 	case containsFlag(pattern.Args, "--output-dir"):
 		outputDir := extractFlagValue(pattern.Args, "--output-dir")
-		suggestion.Suggestion = "thinktank instructions.txt target_path --output-dir " + outputDir
+		sb := GetStringBuilder()
+		defer PutStringBuilder(sb)
+		sb.WriteString("thinktank instructions.txt target_path --output-dir ")
+		sb.WriteString(outputDir)
+		suggestion.Suggestion = sb.String()
 		suggestion.Confidence = ConfidenceMedium
 
 	default:

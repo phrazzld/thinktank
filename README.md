@@ -10,19 +10,26 @@ git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 go install
 
-# Set required API key(s) for the model(s) you want to use
-export GEMINI_API_KEY="your-key"  # For Gemini models
-export OPENAI_API_KEY="your-key"  # For OpenAI models
-export OPENROUTER_API_KEY="your-key"  # For OpenRouter models
+# Set API key for your preferred model
+export GEMINI_API_KEY="your-key"     # For Gemini models (recommended)
+export OPENAI_API_KEY="your-key"     # For OpenAI models
+export OPENROUTER_API_KEY="your-key" # For OpenRouter models
 
-# Optional: Suppress deprecation warnings for CI/automation
-export THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1
+# Create instructions file
+echo "Analyze this codebase and suggest improvements" > instructions.txt
 
-# Basic usage
-thinktank --instructions task.txt ./my-project
+# Basic usage - Simplified Interface (Recommended)
+thinktank instructions.txt ./my-project
 
-# Multiple models
-thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
+# Preview without API calls
+thinktank instructions.txt ./my-project --dry-run
+
+# Verbose output
+thinktank instructions.txt ./my-project --verbose
+
+# With custom model (using environment variable)
+export THINKTANK_MODEL="gpt-4o"
+thinktank instructions.txt ./my-project
 ```
 
 ## Key Features
@@ -34,10 +41,84 @@ thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
 - **Git-Aware**: Respects .gitignore patterns
 - **Structured Output**: Formats responses based on your specific instructions
 
+## Interface Options
+
+thinktank supports two interfaces for different user needs:
+
+### Simplified Interface (Recommended)
+Perfect for most users. Uses positional arguments for a clean, intuitive experience:
+
+```bash
+# Pattern: thinktank instructions.txt target_path [options]
+thinktank task.md ./src                    # Basic analysis with smart defaults
+thinktank task.md ./src --dry-run          # Preview files and token count
+thinktank task.md ./src --verbose          # With detailed output
+```
+
+### Complex Interface (Advanced/Legacy)
+For advanced users who need extensive configuration. Uses traditional flags:
+
+```bash
+# Pattern: thinktank --instructions file.txt [options] target_path
+thinktank --instructions task.md --model gpt-4o ./src
+```
+
+**💡 Migration Tip**: If you're using the complex interface, simply move the instructions file to the first position to use the simplified interface.
+
+## Migration Guide
+
+### From Complex to Simplified Interface
+
+If you're currently using the complex interface, here's how to migrate to the cleaner simplified interface:
+
+#### Basic Pattern
+```bash
+# Old (Complex Interface)
+thinktank --instructions task.txt ./src
+
+# New (Simplified Interface)
+thinktank task.txt ./src
+```
+
+#### Common Migrations
+| Old Complex Command | New Simplified Command |
+|-------------------|---------------------|
+| `thinktank --instructions task.txt --model gpt-4o ./src` | `export THINKTANK_MODEL="gpt-4o" && thinktank task.txt ./src` |
+| `thinktank --instructions task.txt --dry-run ./src` | `thinktank task.txt ./src --dry-run` |
+| `thinktank --instructions task.txt --verbose ./src` | `thinktank task.txt ./src --verbose` |
+| `thinktank --instructions task.txt --output-dir out ./src` | `export THINKTANK_OUTPUT_DIR="out" && thinktank task.txt ./src` |
+
+#### Environment Variables for Advanced Configuration
+
+For advanced settings, use environment variables instead of complex flags:
+
+```bash
+# Rate limiting
+export THINKTANK_OPENAI_RATE_LIMIT=100
+export THINKTANK_GEMINI_RATE_LIMIT=1000
+
+# Concurrency
+export THINKTANK_MAX_CONCURRENT=5
+
+# Behavior
+export THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1
+
+# Then use simplified interface
+thinktank task.txt ./src
+```
+
+#### Automatic Detection
+
+thinktank automatically detects which interface you're using:
+- **Simplified**: First argument doesn't start with `--` and has `.txt` or `.md` extension
+- **Complex**: First argument starts with `--` (like `--instructions`)
+
+Both interfaces work simultaneously, so you can migrate gradually.
+
 ## Configuration
 
 ### Required
-- **Instructions File**: `--instructions task.txt` (Required except for dry runs)
+- **Instructions File**: Text file with your analysis request (first argument in simplified interface)
 - **API Keys**: Environment variables for each model provider you use
 
 ### Common Options
@@ -103,50 +184,45 @@ Some models have specific rate limits regardless of provider settings:
 #### Multi-Provider Usage
 ```bash
 # Optimize for mixed providers with different API tiers
-thinktank --instructions task.txt \
+thinktank task.txt ./src \
   --model gpt-4.1 --model gemini-2.5-pro --model openrouter/meta-llama/llama-3.3-70b-instruct \
   --openai-rate-limit 100 \
   --gemini-rate-limit 1000 \
-  --openrouter-rate-limit 50 \
-  ./src/
+  --openrouter-rate-limit 50
 ```
 
 #### High-Performance Processing
 ```bash
 # For production workloads with paid API tiers
-thinktank --instructions analyze.txt \
+thinktank analyze.txt ./large-codebase \
   --model gpt-4.1 --model gemini-2.5-pro \
   --max-concurrent 10 \
   --openai-rate-limit 5000 \
-  --gemini-rate-limit 1000 \
-  ./large-codebase/
+  --gemini-rate-limit 1000
 ```
 
 #### Conservative/Budget Mode
 ```bash
 # For free tiers or budget-conscious usage
-thinktank --instructions task.txt \
+thinktank task.txt ./project \
   --model gemini-2.5-flash \
   --max-concurrent 2 \
-  --gemini-rate-limit 15 \
-  ./project/
+  --gemini-rate-limit 15
 ```
 
 #### Single Provider Optimization
 ```bash
 # OpenAI-only with high-tier account
-thinktank --instructions task.txt \
+thinktank task.txt ./src \
   --model gpt-4.1 --model o4-mini \
   --openai-rate-limit 8000 \
-  --max-concurrent 15 \
-  ./src/
+  --max-concurrent 15
 
 # Gemini-only with paid account
-thinktank --instructions task.txt \
+thinktank task.txt ./src \
   --model gemini-2.5-pro --model gemini-2.5-flash \
   --gemini-rate-limit 1000 \
-  --max-concurrent 8 \
-  ./src/
+  --max-concurrent 8
 ```
 
 ### Troubleshooting Rate Limits
@@ -230,21 +306,27 @@ Example:
 
 ```bash
 # Technical planning
-thinktank --instructions feature-plan.txt ./src
+thinktank feature-plan.txt ./src
 
-# Code review
-thinktank --instructions code-review.txt --model gpt-4-turbo ./pull-request
+# Code review with specific model
+export THINKTANK_MODEL="gpt-4o"
+thinktank code-review.txt ./pull-request
 
-# Architecture analysis
-thinktank --instructions arch-questions.txt --include .go,.md,.yaml ./
+# Architecture analysis with file filtering
+export THINKTANK_INCLUDE=".go,.md,.yaml"
+thinktank arch-questions.txt .
 
-# General code questions
-thinktank --instructions questions.txt --output-dir answers ./src
+# General code questions with custom output
+export THINKTANK_OUTPUT_DIR="answers"
+thinktank questions.txt ./src
 
-# Using synthesis to combine multiple model outputs
-thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
+# Multiple model comparison (using complex interface)
+thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4o ./src
 
-# Allow partial success (return success code even if some models fail)
+# Synthesis (combine outputs from multiple models)
+thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4o --synthesis-model gpt-4o ./src
+
+# Partial success mode (continue if some models fail)
 thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
 ```
 
@@ -391,9 +473,34 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ### Common Issues
 
+**Quick Fixes for the Simplified Interface:**
+
+```bash
+# Authentication Error
+echo $GEMINI_API_KEY  # Check if API key is set
+export GEMINI_API_KEY="your-key-here"  # Set it if missing
+
+# Instructions file not found
+ls instructions.txt  # Check file exists
+echo "Analyze this code" > instructions.txt  # Create if missing
+
+# Target path not found
+ls ./my-project  # Check target exists
+thinktank instructions.txt . --dry-run  # Use current directory
+
+# Rate limiting issues
+thinktank instructions.txt ./src --gemini-rate-limit 15  # Reduce rate for free tier
+
+# Input too large
+thinktank instructions.txt ./src --include .go,.md  # Filter file types
+thinktank instructions.txt ./src/specific-folder  # Target specific folder
+```
+
+**Complex Interface Issues:**
+
 For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**.
 
-**Quick fixes for common problems:**
+**Traditional flag-based solutions:**
 - **Authentication Errors**: Check API key environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`)
 - **Rate Limiting**: Use `--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit` flags to match your account tier
 - **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories

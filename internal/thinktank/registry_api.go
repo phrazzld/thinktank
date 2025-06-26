@@ -118,7 +118,7 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// This is the recommended and preferred method for providing API keys
 	envVar := models.GetAPIKeyEnvVar(providerName)
 	if envVar != "" {
-		envApiKey := os.Getenv(envVar)
+		envApiKey := os.Getenv(envVar) // TODO: Replace with cached lookup for startup performance
 		if envApiKey != "" {
 			effectiveApiKey = envApiKey
 			s.logger.DebugContext(ctx, "Using API key from environment variable %s for provider '%s'",

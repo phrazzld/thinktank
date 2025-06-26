@@ -146,35 +146,41 @@ func ParseFlagsWithArgsAndEnv(args []string, getenv func(string) string) (*confi
 func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string) string) (*config.CliConfig, error) {
 	cfg := config.NewDefaultCliConfig()
 
-	// Define flags
-	instructionsFileFlag := flagSet.String("instructions", "", "Path to a file containing the static instructions for the LLM.")
-	outputDirFlag := flagSet.String("output-dir", "", "Directory path to store generated plans (one per model).")
-	synthesisModelFlag := flagSet.String("synthesis-model", "", "Optional: Model to use for synthesizing results from multiple models.")
-	verboseFlag := flagSet.Bool("verbose", false, "Enable verbose logging output (shorthand for --log-level=debug).")
-	logLevelFlag := flagSet.String("log-level", "info", "Set logging level (debug, info, warn, error).")
-	quietFlag := flagSet.Bool("quiet", false, "Suppress console output (errors only).")
-	jsonLogsFlag := flagSet.Bool("json-logs", false, "Show JSON logs on stderr (preserves old behavior).")
-	noProgressFlag := flagSet.Bool("no-progress", false, "Disable progress indicators (show only start/complete).")
-	includeFlag := flagSet.String("include", "", "Comma-separated list of file extensions to include (e.g., .go,.md)")
-	excludeFlag := flagSet.String("exclude", config.DefaultExcludes, "Comma-separated list of file extensions to exclude.")
-	excludeNamesFlag := flagSet.String("exclude-names", config.DefaultExcludeNames, "Comma-separated list of file/dir names to exclude.")
-	formatFlag := flagSet.String("format", config.DefaultFormat, "Format string for each file. Use {path} and {content}.")
-	dryRunFlag := flagSet.Bool("dry-run", false, "Show files that would be included and token count, but don't call the API.")
-	auditLogFileFlag := flagSet.String("audit-log-file", "", "Path to write structured audit logs (JSON Lines). Disabled if empty.")
-	partialSuccessOkFlag := flagSet.Bool("partial-success-ok", false, "Return exit code 0 if any model succeeds and a synthesis file is generated, even if some models fail.")
-	noDeprecationWarningsFlag := flagSet.Bool("no-deprecation-warnings", false, "Suppress deprecation warnings (useful for CI/automation)")
+	// Apply environment variable defaults before parsing CLI flags
+	// This ensures proper precedence: CLI flags > environment > defaults
+	if err := LoadEnvironmentDefaults(cfg, getenv); err != nil {
+		return nil, fmt.Errorf("failed to load environment defaults: %w", err)
+	}
 
-	// Rate limiting flags
-	maxConcurrentFlag := flagSet.Int("max-concurrent", 5, "Maximum number of concurrent API requests (0 = no limit)")
-	rateLimitRPMFlag := flagSet.Int("rate-limit", 60, "Maximum requests per minute (RPM) per model (0 = no limit)")
+	// Define flags with environment-loaded defaults
+	instructionsFileFlag := flagSet.String("instructions", cfg.InstructionsFile, "DEPRECATED: Path to a file containing the static instructions for the LLM. Use positional arguments: thinktank instructions.txt target_path")
+	outputDirFlag := flagSet.String("output-dir", cfg.OutputDir, "Directory path to store generated plans (one per model).")
+	synthesisModelFlag := flagSet.String("synthesis-model", cfg.SynthesisModel, "Optional: Model to use for synthesizing results from multiple models.")
+	verboseFlag := flagSet.Bool("verbose", cfg.Verbose, "Enable verbose logging output (shorthand for --log-level=debug).")
+	logLevelFlag := flagSet.String("log-level", cfg.LogLevel.String(), "Set logging level (debug, info, warn, error).")
+	quietFlag := flagSet.Bool("quiet", cfg.Quiet, "Suppress console output (errors only).")
+	jsonLogsFlag := flagSet.Bool("json-logs", cfg.JsonLogs, "Show JSON logs on stderr (preserves old behavior).")
+	noProgressFlag := flagSet.Bool("no-progress", cfg.NoProgress, "Disable progress indicators (show only start/complete).")
+	includeFlag := flagSet.String("include", cfg.Include, "Comma-separated list of file extensions to include (e.g., .go,.md)")
+	excludeFlag := flagSet.String("exclude", cfg.Exclude, "Comma-separated list of file extensions to exclude.")
+	excludeNamesFlag := flagSet.String("exclude-names", cfg.ExcludeNames, "Comma-separated list of file/dir names to exclude.")
+	formatFlag := flagSet.String("format", cfg.Format, "Format string for each file. Use {path} and {content}.")
+	dryRunFlag := flagSet.Bool("dry-run", cfg.DryRun, "Show files that would be included and token count, but don't call the API.")
+	auditLogFileFlag := flagSet.String("audit-log-file", cfg.AuditLogFile, "Path to write structured audit logs (JSON Lines). Disabled if empty.")
+	partialSuccessOkFlag := flagSet.Bool("partial-success-ok", cfg.PartialSuccessOk, "Return exit code 0 if any model succeeds and a synthesis file is generated, even if some models fail.")
+	noDeprecationWarningsFlag := flagSet.Bool("no-deprecation-warnings", cfg.SuppressDeprecationWarnings, "Suppress deprecation warnings (useful for CI/automation)")
 
-	// Provider-specific rate limiting flags
-	openaiRateLimitFlag := flagSet.Int("openai-rate-limit", 0, "OpenAI-specific rate limit in RPM (0 = use provider default: 3000)")
-	geminiRateLimitFlag := flagSet.Int("gemini-rate-limit", 0, "Gemini-specific rate limit in RPM (0 = use provider default: 60)")
-	openrouterRateLimitFlag := flagSet.Int("openrouter-rate-limit", 0, "OpenRouter-specific rate limit in RPM (0 = use provider default: 20)")
+	// Rate limiting flags with environment-loaded defaults
+	maxConcurrentFlag := flagSet.Int("max-concurrent", cfg.MaxConcurrentRequests, "Maximum number of concurrent API requests (0 = no limit)")
+	rateLimitRPMFlag := flagSet.Int("rate-limit", cfg.RateLimitRequestsPerMinute, "Maximum requests per minute (RPM) per model (0 = no limit)")
 
-	// Timeout flag
-	timeoutFlag := flagSet.Duration("timeout", config.DefaultTimeout, "Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
+	// Provider-specific rate limiting flags with environment-loaded defaults
+	openaiRateLimitFlag := flagSet.Int("openai-rate-limit", cfg.OpenAIRateLimit, "OpenAI-specific rate limit in RPM (0 = use provider default: 3000)")
+	geminiRateLimitFlag := flagSet.Int("gemini-rate-limit", cfg.GeminiRateLimit, "Gemini-specific rate limit in RPM (0 = use provider default: 60)")
+	openrouterRateLimitFlag := flagSet.Int("openrouter-rate-limit", cfg.OpenRouterRateLimit, "OpenRouter-specific rate limit in RPM (0 = use provider default: 20)")
+
+	// Timeout flag with environment-loaded default
+	timeoutFlag := flagSet.Duration("timeout", cfg.Timeout, "Global timeout for the entire operation (e.g., 60s, 2m, 1h)")
 
 	// Permission flags
 	dirPermFlag := flagSet.String("dir-permissions", fmt.Sprintf("%#o", config.DefaultDirPermissions), "Directory creation permissions (octal, e.g., 0750)")
@@ -182,7 +188,9 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
-	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", config.DefaultModel, config.DefaultModel))
+	// Show current default models in help text (could be from environment)
+	defaultModelText := strings.Join(cfg.ModelNames, ",")
+	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", config.DefaultModel, defaultModelText))
 
 	// Parse the flags
 	if err := flagSet.Parse(args); err != nil {
@@ -232,13 +240,12 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		return nil, fmt.Errorf("invalid file permission format: %w", err)
 	}
 
-	// Set model names from the flag, defaulting to a single default model if none provided
+	// Set model names from the flag, keeping environment-loaded defaults if no CLI flag provided
 	if len(*modelFlag) > 0 {
+		// CLI flag provided - override environment defaults
 		cfg.ModelNames = *modelFlag
-	} else {
-		// If no models were specified on the command line, use the default model
-		cfg.ModelNames = []string{config.DefaultModel}
 	}
+	// else: keep the environment-loaded defaults (cfg.ModelNames already set from LoadEnvironmentDefaults)
 
 	// Determine initial log level from flag
 	parsedLogLevel := logutil.InfoLevel // Default
@@ -269,6 +276,32 @@ func parseOctalPermission(permStr string) (os.FileMode, error) {
 		return 0, err
 	}
 	return os.FileMode(n), nil
+}
+
+// DeprecationInfo tracks deprecation information for flags
+type DeprecationInfo struct {
+	Flag          string
+	Message       string
+	Since         string // Version when deprecation started
+	RemovalTarget string // Version when flag will be removed
+}
+
+// deprecatedFlags contains information about deprecated flags
+var deprecatedFlags = map[string]DeprecationInfo{
+	"--instructions": {
+		Flag:          "--instructions",
+		Message:       "The --instructions flag is deprecated. Use positional arguments instead.",
+		Since:         "v1.5.0",
+		RemovalTarget: "v2.0.0",
+	},
+}
+
+// GetDeprecationInfo returns deprecation information for a flag
+func GetDeprecationInfo(flag string) DeprecationInfo {
+	if info, exists := deprecatedFlags[flag]; exists {
+		return info
+	}
+	return DeprecationInfo{}
 }
 
 // SetupLogging configures and returns a logger based on the configuration

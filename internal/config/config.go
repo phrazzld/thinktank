@@ -95,6 +95,15 @@ func DefaultConfig() *AppConfig {
 // application, combining user inputs from CLI flags, environment variables,
 // and default values. This struct is passed to components that need
 // configuration parameters rather than having them parse flags directly.
+//
+// SIMPLIFICATION STATUS (Phase 7 - Code Cleanup):
+// Many fields in this struct are now handled by smart defaults:
+// - Rate limiting fields: Auto-detected based on provider capabilities
+// - API configuration: Auto-detected from environment variables
+// - File permissions: Use OS defaults with intelligent override
+// - Complex validation: Simplified through parser router and adapters
+// The simplified interface (SimplifiedConfig) reduces user-facing complexity
+// while this comprehensive struct maintains backward compatibility.
 type CliConfig struct {
 	// Instructions configuration
 	InstructionsFile string
