@@ -160,11 +160,12 @@ func testCriticalSuccessPath(t *testing.T, binaryPath string) {
 
 	// Run thinktank in dry-run mode to avoid API dependencies
 	// Note: Even dry-run mode requires instructions file and may initialize API clients
+	// Using new simplified CLI format: instructions.txt target_path [flags...]
 	args := []string{
-		"--instructions", instructionsFile,
+		instructionsFile,
+		srcDir,
 		"--output-dir", outputDir,
 		"--dry-run",
-		srcDir,
 	}
 
 	stdout, stderr, exitCode, err := executeBinary(t, binaryPath, args, tempDir, 30*time.Second)
@@ -237,19 +238,19 @@ func testCriticalFailurePath(t *testing.T, binaryPath string) {
 			name:           "no_arguments",
 			args:           []string{},
 			expectedExit:   4, // ExitCodeInvalidRequest
-			stderrContains: "instructions",
+			stderrContains: "usage:",
 		},
 		{
 			name:           "missing_instructions",
 			args:           []string{"src/"},
 			expectedExit:   4, // ExitCodeInvalidRequest
-			stderrContains: "instructions",
+			stderrContains: "usage:",
 		},
 		{
 			name:           "invalid_flag",
-			args:           []string{"--invalid-flag"},
+			args:           []string{"test.txt", "src/", "--invalid-flag"},
 			expectedExit:   4, // Flag parsing error -> ExitCodeInvalidRequest
-			stderrContains: "flag provided but not defined",
+			stderrContains: "unknown flag",
 		},
 	}
 
@@ -296,10 +297,11 @@ func testDryRunIntegration(t *testing.T, binaryPath string) {
 	}
 
 	// Run in dry-run mode with instructions file
+	// Using new simplified CLI format: instructions.txt target_path [flags...]
 	args := []string{
-		"--instructions", instructionsFile,
-		"--dry-run",
+		instructionsFile,
 		srcDir,
+		"--dry-run",
 	}
 
 	stdout, stderr, exitCode, err := executeBinary(t, binaryPath, args, tempDir, 15*time.Second)

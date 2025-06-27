@@ -134,12 +134,12 @@ func TestGetProviderDefaultRateLimitCore(t *testing.T) {
 		{
 			name:     "unknown provider",
 			provider: "unknown",
-			expected: 0,
+			expected: 60,
 		},
 		{
 			name:     "empty provider",
 			provider: "",
-			expected: 0,
+			expected: 60,
 		},
 	}
 
@@ -174,15 +174,16 @@ func TestListModelsForProvider(t *testing.T) {
 			name:     "openrouter provider",
 			provider: "openrouter",
 			expected: []string{
+				"openrouter/deepseek/deepseek-chat-v3-0324",
+				"openrouter/deepseek/deepseek-chat-v3-0324:free",
+				"openrouter/deepseek/deepseek-r1-0528",
+				"openrouter/deepseek/deepseek-r1-0528:free",
+				"openrouter/google/gemma-3-27b-it",
+				"openrouter/meta-llama/llama-3.3-70b-instruct",
 				"openrouter/meta-llama/llama-4-maverick",
 				"openrouter/meta-llama/llama-4-scout",
-				"openrouter/x-ai/grok-3-mini-beta",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
 				"openrouter/x-ai/grok-3-beta",
-				"openrouter/deepseek/deepseek-r1-0528",
-				"openrouter/deepseek/deepseek-chat-v3-0324:free",
-				"openrouter/deepseek/deepseek-chat-v3-0324",
-				"openrouter/google/gemma-3-27b-it",
+				"openrouter/x-ai/grok-3-mini-beta",
 			},
 		},
 		{

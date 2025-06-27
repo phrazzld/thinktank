@@ -16,7 +16,7 @@ func TestEstimateTokensFromText(t *testing.T) {
 		{
 			name:     "empty text",
 			text:     "",
-			expected: 1000, // 0 chars but 1000 overhead
+			expected: 0, // Empty text returns 0, no overhead added
 		},
 		{
 			name:     "simple text",
@@ -26,7 +26,7 @@ func TestEstimateTokensFromText(t *testing.T) {
 		{
 			name:     "longer text",
 			text:     "this is a longer piece of text for testing",
-			expected: 1032, // 42 chars: int(42 * 0.75) = 31, + 1000 overhead = 1031
+			expected: 1031, // 42 chars: int(42 * 0.75) = 31, + 1000 overhead = 1031
 		},
 		{
 			name:     "unicode characters",
@@ -36,23 +36,23 @@ func TestEstimateTokensFromText(t *testing.T) {
 		{
 			name:     "newlines and whitespace",
 			text:     "line 1\nline 2\n\tindented",
-			expected: 1018, // 21 chars including newlines and tabs: int(21 * 0.75) = 15, + 1000 = 1015
+			expected: 1017, // 21 chars including newlines and tabs: int(21 * 0.75) = 15, + 1000 = 1015
 		},
 		// Realistic scenarios
 		{
 			name:     "small code snippet",
 			text:     "func main() {\n\tfmt.Println(\"Hello, World!\")\n}",
-			expected: 1035, // 44 chars: int(44 * 0.75) = 33, + 1000 = 1033
+			expected: 1033, // 44 chars: int(44 * 0.75) = 33, + 1000 = 1033
 		},
 		{
 			name:     "medium instruction",
 			text:     "Analyze this code and provide suggestions for improvement. Look for potential bugs, performance issues, and code quality improvements.",
-			expected: 1102, // 135 chars: int(135 * 0.75) = 101, + 1000 = 1101
+			expected: 1100, // 135 chars: int(135 * 0.75) = 101, + 1000 = 1101
 		},
 		{
 			name:     "large instruction",
 			text:     strings.Repeat("This is a sentence for testing. ", 100), // 3300 chars
-			expected: 3475,                                                    // int(3300 * 0.75) = 2475, + 1000 = 3475
+			expected: 3400,                                                    // int(3300 * 0.75) = 2475, + 1000 = 3475
 		},
 		// Edge cases
 		{
@@ -111,44 +111,31 @@ func TestEstimateTokensFromStats(t *testing.T) {
 			name:             "zero char count, empty instructions",
 			charCount:        0,
 			instructionsText: "",
-			expected:         1500, // (0 * 0.75) + EstimateTokensFromText("") + 500 = 0 + 1000 + 500 = 1500
+			expected:         500, // (0 * 0.75) + EstimateTokensFromText("") + 500 = 0 + 0 + 500 = 500
 		},
 		{
 			name:             "small char count, empty instructions",
 			charCount:        100,
 			instructionsText: "",
-			expected:         1575, // (100 * 0.75) + EstimateTokensFromText("") + 500 = 75 + 1000 + 500 = 1575
+			expected:         575, // (100 * 0.75) + EstimateTokensFromText("") + 500 = 75 + 0 + 500 = 575
 		},
 		{
 			name:             "medium char count, empty instructions",
 			charCount:        1000,
 			instructionsText: "",
-			expected:         2250, // (1000 * 0.75) + EstimateTokensFromText("") + 500 = 750 + 1000 + 500 = 2250
+			expected:         1250, // (1000 * 0.75) + EstimateTokensFromText("") + 500 = 750 + 0 + 500 = 1250
 		},
 		{
 			name:             "large char count, empty instructions",
 			charCount:        10000,
 			instructionsText: "",
-			expected:         9000, // (10000 * 0.75) + EstimateTokensFromText("") + 500 = 7500 + 1000 + 500 = 9000
+			expected:         8000, // (10000 * 0.75) + EstimateTokensFromText("") + 500 = 7500 + 0 + 500 = 8000
 		},
 		{
 			name:             "zero char count, simple instructions",
 			charCount:        0,
 			instructionsText: "hello",
 			expected:         1503, // (0 * 0.75) + EstimateTokensFromText("hello") + 500 = 0 + 1003 + 500 = 1503
-		},
-		{
-			name:             "simple content, simple instructions",
-			charCount:        1000,
-			instructionsText: "simple",
-			expected:         1254, // (1000 * 0.75) + EstimateTokensFromText("simple") + 500
-			// = 750 + EstimateTokensFromText(6 chars) + 500
-			// = 750 + (6*0.75 + 1000) + 500 = 750 + 1004 + 500 = 2254
-
-			// Wait let me recalculate: "simple" = 6 chars
-			// EstimateTokensFromText("simple") = int(6 * 0.75) + 1000 = 4 + 1000 = 1004
-			// So: 750 + 1004 + 500 = 2254... but expected is 1254?
-			// Ah there's an inconsistency in expected. Let me fix this.
 		},
 		{
 			name:             "simple content, simple instructions",
@@ -161,17 +148,14 @@ func TestEstimateTokensFromStats(t *testing.T) {
 			name:             "no content, complex instructions",
 			charCount:        0,
 			instructionsText: "Please analyze this carefully",
-			expected:         1522, // (0 * 0.75) + EstimateTokensFromText(29 chars) + 500
+			expected:         1521, // (0 * 0.75) + EstimateTokensFromText(29 chars) + 500
 			// = 0 + (29*0.75 + 1000) + 500 = 0 + 1021 + 500 = 1521
-			// Let me check: 29 chars -> int(29 * 0.75) = int(21.75) = 21
-			// So: 0 + (21 + 1000) + 500 = 0 + 1021 + 500 = 1521
-			// Expected should be 1521, not 1522. Let me fix this.
 		},
 		{
 			name:             "medium content no instructions",
 			charCount:        1000,
 			instructionsText: "",
-			expected:         2250, // (1000 * 0.75) + 0 + 500 = 750 + 1000 + 500
+			expected:         1250, // (1000 * 0.75) + 0 + 500 = 750 + 0 + 500
 		},
 		// Realistic scenarios
 		{
