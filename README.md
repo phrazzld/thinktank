@@ -27,9 +27,8 @@ thinktank instructions.txt ./my-project --dry-run
 # Verbose output
 thinktank instructions.txt ./my-project --verbose
 
-# With custom model (using environment variable)
-export THINKTANK_MODEL="gpt-4o"
-thinktank instructions.txt ./my-project
+# Force synthesis mode (multiple models + synthesis)
+thinktank instructions.txt ./my-project --synthesis
 ```
 
 ## Key Features
@@ -83,29 +82,10 @@ thinktank task.txt ./src
 #### Common Migrations
 | Old Complex Command | New Simplified Command |
 |-------------------|---------------------|
-| `thinktank --instructions task.txt --model gpt-4o ./src` | `export THINKTANK_MODEL="gpt-4o" && thinktank task.txt ./src` |
+| `thinktank --instructions task.txt --model gpt-4o ./src` | `thinktank task.txt ./src` (uses intelligent model selection) |
 | `thinktank --instructions task.txt --dry-run ./src` | `thinktank task.txt ./src --dry-run` |
 | `thinktank --instructions task.txt --verbose ./src` | `thinktank task.txt ./src --verbose` |
-| `thinktank --instructions task.txt --output-dir out ./src` | `export THINKTANK_OUTPUT_DIR="out" && thinktank task.txt ./src` |
-
-#### Environment Variables for Advanced Configuration
-
-For advanced settings, use environment variables instead of complex flags:
-
-```bash
-# Rate limiting
-export THINKTANK_OPENAI_RATE_LIMIT=100
-export THINKTANK_GEMINI_RATE_LIMIT=1000
-
-# Concurrency
-export THINKTANK_MAX_CONCURRENT=5
-
-# Behavior
-export THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1
-
-# Then use simplified interface
-thinktank task.txt ./src
-```
+| `thinktank --instructions task.txt --output-dir out ./src` | Use complex interface for custom output dirs |
 
 #### Automatic Detection
 
@@ -308,17 +288,14 @@ Example:
 # Technical planning
 thinktank feature-plan.txt ./src
 
-# Code review with specific model
-export THINKTANK_MODEL="gpt-4o"
+# Code review (uses intelligent model selection)
 thinktank code-review.txt ./pull-request
 
-# Architecture analysis with file filtering
-export THINKTANK_INCLUDE=".go,.md,.yaml"
-thinktank arch-questions.txt .
+# Architecture analysis with file filtering (use complex interface)
+thinktank --instructions arch-questions.txt --include ".go,.md,.yaml" .
 
-# General code questions with custom output
-export THINKTANK_OUTPUT_DIR="answers"
-thinktank questions.txt ./src
+# General code questions with custom output (use complex interface)
+thinktank --instructions questions.txt --output-dir answers ./src
 
 # Multiple model comparison (using complex interface)
 thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4o ./src

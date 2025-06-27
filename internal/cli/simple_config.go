@@ -29,10 +29,14 @@ type SimplifiedConfig struct {
 
 // Flag constants for bitwise operations - O(1) validation
 const (
-	FlagDryRun    uint8 = 1 << iota // 0x01
-	FlagVerbose                     // 0x02
-	FlagSynthesis                   // 0x04
-	// 5 bits remaining for future expansion
+	FlagDryRun     uint8 = 1 << iota // 0x01
+	FlagVerbose                      // 0x02
+	FlagSynthesis                    // 0x04
+	FlagDebug                        // 0x08
+	FlagQuiet                        // 0x10
+	FlagJsonLogs                     // 0x20
+	FlagNoProgress                   // 0x40
+	// 1 bit remaining for future expansion
 )
 
 // Smart defaults - applied during parsing/conversion
@@ -242,6 +246,14 @@ func parseOptionalFlags(args []string, config *SimplifiedConfig) ([]string, erro
 			config.SetFlag(FlagVerbose)
 		case arg == "--synthesis":
 			config.SetFlag(FlagSynthesis)
+		case arg == "--debug":
+			config.SetFlag(FlagDebug)
+		case arg == "--quiet":
+			config.SetFlag(FlagQuiet)
+		case arg == "--json-logs":
+			config.SetFlag(FlagJsonLogs)
+		case arg == "--no-progress":
+			config.SetFlag(FlagNoProgress)
 		case arg == "--model":
 			// --model requires a value, but we ignore it for SimplifiedConfig
 			if i+1 >= len(args) {

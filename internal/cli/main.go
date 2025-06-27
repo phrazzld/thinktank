@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -50,19 +49,23 @@ func Main() {
 		osExit(ExitCodeInvalidRequest)
 	}
 
+	// Determine model selection strategy
+	modelNames, synthesisModel := selectModelsForConfig(simplifiedConfig)
+
 	// Convert to MinimalConfig
 	minimalConfig := &config.MinimalConfig{
 		InstructionsFile: simplifiedConfig.InstructionsFile,
 		TargetPaths:      []string{simplifiedConfig.TargetPath},
-		ModelNames:       []string{config.DefaultModel}, // Use smart defaults
-		OutputDir:        "",                            // Will be set by output manager
+		ModelNames:       modelNames,
+		OutputDir:        "", // Will be set by output manager
 		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
 		Verbose:          simplifiedConfig.HasFlag(FlagVerbose),
-		SynthesisModel:   "", // Can be set via env var if needed
+		SynthesisModel:   synthesisModel, // Set by intelligent selection
 		LogLevel:         logutil.InfoLevel,
 		Timeout:          config.DefaultTimeout,
-		Quiet:            false,
-		NoProgress:       false,
+		Quiet:            simplifiedConfig.HasFlag(FlagQuiet),
+		NoProgress:       simplifiedConfig.HasFlag(FlagNoProgress),
+		JsonLogs:         simplifiedConfig.HasFlag(FlagJsonLogs),
 		Format:           config.DefaultFormat,
 		Exclude:          config.DefaultExcludes,
 		ExcludeNames:     config.DefaultExcludeNames,
@@ -74,13 +77,14 @@ func Main() {
 		osExit(ExitCodeInvalidRequest)
 	}
 
-	// If verbose flag is set, upgrade log level
-	if minimalConfig.Verbose {
+	// If verbose or debug flag is set, upgrade log level
+	if minimalConfig.Verbose || simplifiedConfig.HasFlag(FlagDebug) {
 		minimalConfig.LogLevel = logutil.DebugLevel
 	}
 
-	// Create logger
-	logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, minimalConfig.LogLevel)
+	// Create logger with proper routing based on flags
+	logger, loggerWrapper := createLoggerWithRouting(minimalConfig, "")
+	defer func() { _ = loggerWrapper.Close() }()
 
 	// Create context with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), minimalConfig.Timeout)
@@ -104,6 +108,13 @@ func Main() {
 			osExit(ExitCodeGenericError)
 		}
 		minimalConfig.OutputDir = outputDir
+
+		// Now that we have output directory, recreate logger with proper file routing
+		// Close the previous logger wrapper first
+		_ = loggerWrapper.Close()
+		logger, loggerWrapper = createLoggerWithRouting(minimalConfig, outputDir)
+		defer func() { _ = loggerWrapper.Close() }()
+		contextLogger = logger.WithContext(ctx)
 	}
 
 	// Run the application
@@ -114,76 +125,12 @@ func Main() {
 }
 
 // applyEnvironmentVars applies environment variables to MinimalConfig
+// Only handles essential environment variables - API keys are handled elsewhere during validation
 func applyEnvironmentVars(cfg *config.MinimalConfig) error {
-	// Model from environment
-	if model := os.Getenv("THINKTANK_MODEL"); model != "" {
-		cfg.ModelNames = []string{model}
-	}
-
-	// Multiple models from environment (comma-separated)
-	if models := os.Getenv("THINKTANK_MODELS"); models != "" {
-		cfg.ModelNames = strings.Split(models, ",")
-	}
-
-	// Output directory from environment
-	if outputDir := os.Getenv("THINKTANK_OUTPUT_DIR"); outputDir != "" {
-		cfg.OutputDir = outputDir
-	}
-
-	// Synthesis model from environment
-	if synthesisModel := os.Getenv("THINKTANK_SYNTHESIS_MODEL"); synthesisModel != "" {
-		cfg.SynthesisModel = synthesisModel
-	}
-
-	// Boolean flags from environment
-	if dryRun := os.Getenv("THINKTANK_DRY_RUN"); dryRun != "" {
-		cfg.DryRun = parseBool(dryRun)
-	}
-
-	if verbose := os.Getenv("THINKTANK_VERBOSE"); verbose != "" {
-		cfg.Verbose = parseBool(verbose)
-		if cfg.Verbose {
-			cfg.LogLevel = logutil.DebugLevel
-		}
-	}
-
-	if quiet := os.Getenv("THINKTANK_QUIET"); quiet != "" {
-		cfg.Quiet = parseBool(quiet)
-	}
-
-	if noProgress := os.Getenv("THINKTANK_NO_PROGRESS"); noProgress != "" {
-		cfg.NoProgress = parseBool(noProgress)
-	}
-
-	// Timeout from environment
-	if timeout := os.Getenv("THINKTANK_TIMEOUT"); timeout != "" {
-		duration, err := time.ParseDuration(timeout)
-		if err != nil {
-			return fmt.Errorf("invalid timeout value: %w", err)
-		}
-		cfg.Timeout = duration
-	}
-
-	// File patterns from environment
-	if exclude := os.Getenv("THINKTANK_EXCLUDE"); exclude != "" {
-		cfg.Exclude = exclude
-	}
-
-	if excludeNames := os.Getenv("THINKTANK_EXCLUDE_NAMES"); excludeNames != "" {
-		cfg.ExcludeNames = excludeNames
-	}
-
+	// No configuration environment variables - keep it simple!
+	// Use CLI flags for all configuration options.
+	// Environment variables are only for authentication (API keys).
 	return nil
-}
-
-// parseBool parses a boolean value from string
-func parseBool(s string) bool {
-	switch strings.ToLower(s) {
-	case "true", "1", "yes", "on":
-		return true
-	default:
-		return false
-	}
 }
 
 // setupGracefulShutdown sets up signal handling for graceful shutdown
@@ -378,13 +325,16 @@ func createRateLimiter(cfg *config.MinimalConfig) *ratelimit.RateLimiter {
 
 // runDryRun executes a dry run showing what would be processed
 func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions string, logger logutil.LoggerInterface) error {
-	fmt.Println("=== DRY RUN MODE ===")
-	fmt.Printf("Instructions file: %s\n", cfg.InstructionsFile)
-	fmt.Printf("Target paths: %v\n", cfg.TargetPaths)
-	fmt.Printf("Models: %v\n", cfg.ModelNames)
-	fmt.Printf("Output directory: %s\n", cfg.OutputDir)
+	// Respect quiet flag
+	if !cfg.IsQuiet() {
+		fmt.Println("=== DRY RUN MODE ===")
+		fmt.Printf("Instructions file: %s\n", cfg.InstructionsFile)
+		fmt.Printf("Target paths: %v\n", cfg.TargetPaths)
+		fmt.Printf("Models: %v\n", cfg.ModelNames)
+		fmt.Printf("Output directory: %s\n", cfg.OutputDir)
+	}
 
-	if cfg.SynthesisModel != "" {
+	if !cfg.IsQuiet() && cfg.SynthesisModel != "" {
 		fmt.Printf("Synthesis model: %s\n", cfg.SynthesisModel)
 	}
 
@@ -420,22 +370,24 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 	}
 	_ = files // Files list is available if needed
 
-	fmt.Printf("\nFiles that would be processed: %d\n", stats.ProcessedFilesCount)
-	fmt.Printf("Total characters: %d\n", stats.CharCount)
-	fmt.Printf("Total lines: %d\n", stats.LineCount)
+	if !cfg.IsQuiet() {
+		fmt.Printf("\nFiles that would be processed: %d\n", stats.ProcessedFilesCount)
+		fmt.Printf("Total characters: %d\n", stats.CharCount)
+		fmt.Printf("Total lines: %d\n", stats.LineCount)
 
-	// Show first few files
-	if len(stats.ProcessedFiles) > 0 {
-		fmt.Println("\nSample files:")
-		count := 10
-		if len(stats.ProcessedFiles) < count {
-			count = len(stats.ProcessedFiles)
-		}
-		for i := 0; i < count; i++ {
-			fmt.Printf("  - %s\n", stats.ProcessedFiles[i])
-		}
-		if len(stats.ProcessedFiles) > count {
-			fmt.Printf("  ... and %d more files\n", len(stats.ProcessedFiles)-count)
+		// Show first few files
+		if len(stats.ProcessedFiles) > 0 {
+			fmt.Println("\nSample files:")
+			count := 10
+			if len(stats.ProcessedFiles) < count {
+				count = len(stats.ProcessedFiles)
+			}
+			for i := 0; i < count; i++ {
+				fmt.Printf("  - %s\n", stats.ProcessedFiles[i])
+			}
+			if len(stats.ProcessedFiles) > count {
+				fmt.Printf("  ... and %d more files\n", len(stats.ProcessedFiles)-count)
+			}
 		}
 	}
 
@@ -536,6 +488,106 @@ func getExitCode(err error) int {
 	}
 
 	return ExitCodeGenericError
+}
+
+// LoggerWrapper wraps a logger and manages file closure
+type LoggerWrapper struct {
+	logutil.LoggerInterface
+	file *os.File
+}
+
+// Close closes the underlying file if it exists
+func (lw *LoggerWrapper) Close() error {
+	if lw.file != nil {
+		return lw.file.Close()
+	}
+	return nil
+}
+
+// createLoggerWithRouting creates a logger with proper output routing based on CLI flags
+func createLoggerWithRouting(cfg *config.MinimalConfig, outputDir string) (logutil.LoggerInterface, *LoggerWrapper) {
+	// Determine where JSON logs should go
+	shouldShowJsonLogsOnConsole := cfg.ShouldShowJsonLogs() || cfg.IsVerbose()
+
+	if shouldShowJsonLogsOnConsole {
+		// Legacy behavior: JSON logs to stderr (console)
+		logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, cfg.GetLogLevel())
+		return logger, &LoggerWrapper{LoggerInterface: logger, file: nil}
+	} else {
+		// Default behavior: JSON logs to file
+		var logFilePath string
+		if outputDir != "" {
+			logFilePath = filepath.Join(outputDir, "thinktank.log")
+		} else {
+			// Use current directory as fallback for temporary logging
+			logFilePath = "thinktank.log"
+		}
+
+		if logFile, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); err == nil {
+			logger := logutil.NewSlogLoggerFromLogLevel(logFile, cfg.GetLogLevel())
+			return logger, &LoggerWrapper{LoggerInterface: logger, file: logFile}
+		}
+
+		// Fallback to stderr if file creation fails
+		logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, cfg.GetLogLevel())
+		return logger, &LoggerWrapper{LoggerInterface: logger, file: nil}
+	}
+}
+
+// selectModelsForConfig intelligently selects models based on config flags and input size estimation.
+// Returns the list of model names and an optional synthesis model.
+func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string) {
+	// Check if synthesis flag is explicitly set
+	forceSynthesis := simplifiedConfig.HasFlag(FlagSynthesis)
+
+	// Try to estimate input size by reading the instructions file
+	var estimatedTokens int
+	if instructionsContent, err := os.ReadFile(simplifiedConfig.InstructionsFile); err == nil {
+		// For initial estimation, use just the instructions file
+		// We'll refine this later when we have actual file content
+		estimatedTokens = models.EstimateTokensFromText(string(instructionsContent))
+
+		// Add a rough estimate for the target file(s)
+		// This is conservative - we'll get exact numbers during context gathering
+		const averageFileEstimate = 10000 // ~10K tokens for typical files
+		estimatedTokens += averageFileEstimate
+	} else {
+		// Fallback estimate if we can't read instructions
+		estimatedTokens = 15000 // Conservative fallback
+	}
+
+	// Get available providers (those with API keys set)
+	availableProviders := models.GetAvailableProviders()
+	if len(availableProviders) == 0 {
+		// No API keys available, fall back to default model
+		return []string{config.DefaultModel}, ""
+	}
+
+	// Select models that can handle the estimated input size
+	selectedModels := models.SelectModelsForInput(estimatedTokens, availableProviders)
+
+	// Determine synthesis behavior
+	var synthesisModel string
+
+	// Use synthesis if:
+	// 1. Multiple models are selected, OR
+	// 2. --synthesis flag is explicitly set
+	if len(selectedModels) > 1 || forceSynthesis {
+		// Always use gemini-2.5-pro as the default synthesis model for predictable behavior
+		synthesisModel = "gemini-2.5-pro"
+	}
+
+	// If no models were selected (shouldn't happen with safety margins), fall back to default
+	if len(selectedModels) == 0 {
+		return []string{config.DefaultModel}, ""
+	}
+
+	// If only one model and no forced synthesis, use single model mode
+	if len(selectedModels) == 1 && !forceSynthesis {
+		return selectedModels, ""
+	}
+
+	return selectedModels, synthesisModel
 }
 
 // getUserMessage returns a user-friendly error message

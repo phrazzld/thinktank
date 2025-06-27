@@ -287,35 +287,6 @@ func TestGetUserMessage(t *testing.T) {
 	}
 }
 
-func TestParseBool(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected bool
-	}{
-		{"true", "true", true},
-		{"1", "1", true},
-		{"yes", "yes", true},
-		{"on", "on", true},
-		{"false", "false", false},
-		{"0", "0", false},
-		{"no", "no", false},
-		{"off", "off", false},
-		{"empty", "", false},
-		{"invalid", "invalid", false},
-		{"mixed case", "TRUE", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := parseBool(tt.input)
-			if result != tt.expected {
-				t.Errorf("parseBool(%s) = %v, want %v", tt.input, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestSetupGracefulShutdown(t *testing.T) {
 	logger := logutil.NewSlogLoggerFromLogLevel(nil, logutil.InfoLevel)
 	ctx := context.Background()

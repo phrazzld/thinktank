@@ -27,6 +27,7 @@ type MinimalConfig struct {
 	Timeout    time.Duration    // Global timeout for operation
 	Quiet      bool             // Suppress non-error output
 	NoProgress bool             // Disable progress indicators
+	JsonLogs   bool             // Show JSON logs on stderr (preserves old behavior)
 
 	// File handling (using smart defaults)
 	Format       string // Format string for file content
@@ -67,6 +68,7 @@ type ConfigInterface interface {
 	GetTimeout() time.Duration
 	IsQuiet() bool
 	ShouldShowProgress() bool
+	ShouldShowJsonLogs() bool
 
 	// File handling
 	GetFormat() string
@@ -87,6 +89,7 @@ func (m *MinimalConfig) GetLogLevel() logutil.LogLevel { return m.LogLevel }
 func (m *MinimalConfig) GetTimeout() time.Duration     { return m.Timeout }
 func (m *MinimalConfig) IsQuiet() bool                 { return m.Quiet }
 func (m *MinimalConfig) ShouldShowProgress() bool      { return !m.NoProgress }
+func (m *MinimalConfig) ShouldShowJsonLogs() bool      { return m.JsonLogs }
 func (m *MinimalConfig) GetFormat() string             { return m.Format }
 func (m *MinimalConfig) GetExclude() string            { return m.Exclude }
 func (m *MinimalConfig) GetExcludeNames() string       { return m.ExcludeNames }
@@ -104,6 +107,7 @@ func (c *CliConfig) GetLogLevel() logutil.LogLevel { return c.LogLevel }
 func (c *CliConfig) GetTimeout() time.Duration     { return c.Timeout }
 func (c *CliConfig) IsQuiet() bool                 { return c.Quiet }
 func (c *CliConfig) ShouldShowProgress() bool      { return !c.NoProgress }
+func (c *CliConfig) ShouldShowJsonLogs() bool      { return c.JsonLogs }
 func (c *CliConfig) GetFormat() string             { return c.Format }
 func (c *CliConfig) GetExclude() string            { return c.Exclude }
 func (c *CliConfig) GetExcludeNames() string       { return c.ExcludeNames }

@@ -47,6 +47,18 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 		case arg == "--synthesis":
 			config.SetFlag(FlagSynthesis)
 
+		case arg == "--debug":
+			config.SetFlag(FlagDebug)
+
+		case arg == "--quiet":
+			config.SetFlag(FlagQuiet)
+
+		case arg == "--json-logs":
+			config.SetFlag(FlagJsonLogs)
+
+		case arg == "--no-progress":
+			config.SetFlag(FlagNoProgress)
+
 		case arg == "--model":
 			// --model flag requires a value
 			if i+1 >= len(args) {
