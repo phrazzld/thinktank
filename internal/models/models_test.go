@@ -263,3 +263,381 @@ func BenchmarkListModelsForProvider(b *testing.B) {
 		ListModelsForProvider(provider)
 	}
 }
+
+func TestIsModelSupported(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name      string
+		modelName string
+		expected  bool
+	}{
+		{
+			name:      "valid OpenAI model",
+			modelName: "gpt-4.1",
+			expected:  true,
+		},
+		{
+			name:      "valid Gemini model",
+			modelName: "gemini-2.5-pro",
+			expected:  true,
+		},
+		{
+			name:      "valid OpenRouter model",
+			modelName: "openrouter/meta-llama/llama-4-maverick",
+			expected:  true,
+		},
+		{
+			name:      "invalid model",
+			modelName: "invalid-model",
+			expected:  false,
+		},
+		{
+			name:      "empty model name",
+			modelName: "",
+			expected:  false,
+		},
+		{
+			name:      "case sensitive check",
+			modelName: "GPT-4.1",
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := IsModelSupported(tt.modelName)
+			if result != tt.expected {
+				t.Errorf("IsModelSupported(%q) = %v, want %v", tt.modelName, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValidateFloatParameter(t *testing.T) {
+	t.Parallel()
+	constraint := ParameterConstraint{
+		Type:     "float",
+		MinValue: func() *float64 { v := 0.0; return &v }(),
+		MaxValue: func() *float64 { v := 2.0; return &v }(),
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases
+		{
+			name:        "valid float64",
+			paramName:   "temperature",
+			value:       1.0,
+			expectError: false,
+		},
+		{
+			name:        "valid float32",
+			paramName:   "temperature",
+			value:       float32(1.5),
+			expectError: false,
+		},
+		{
+			name:        "valid int",
+			paramName:   "temperature",
+			value:       1,
+			expectError: false,
+		},
+		{
+			name:        "valid int32",
+			paramName:   "temperature",
+			value:       int32(1),
+			expectError: false,
+		},
+		{
+			name:        "valid int64",
+			paramName:   "temperature",
+			value:       int64(1),
+			expectError: false,
+		},
+		{
+			name:        "at minimum boundary",
+			paramName:   "temperature",
+			value:       0.0,
+			expectError: false,
+		},
+		{
+			name:        "at maximum boundary",
+			paramName:   "temperature",
+			value:       2.0,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-numeric type",
+			paramName:     "temperature",
+			value:         "not_a_number",
+			expectError:   true,
+			errorContains: "must be a numeric value",
+		},
+		{
+			name:          "below minimum",
+			paramName:     "temperature",
+			value:         -0.1,
+			expectError:   true,
+			errorContains: "must be >= 0.00",
+		},
+		{
+			name:          "above maximum",
+			paramName:     "temperature",
+			value:         2.1,
+			expectError:   true,
+			errorContains: "must be <= 2.00",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateFloatParameter(tt.paramName, tt.value, constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateFloatParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateFloatParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateFloatParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
+
+func TestValidateIntParameter(t *testing.T) {
+	t.Parallel()
+	constraint := ParameterConstraint{
+		Type:     "int",
+		MinValue: func() *float64 { v := 1.0; return &v }(),
+		MaxValue: func() *float64 { v := 1000.0; return &v }(),
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases
+		{
+			name:        "valid int",
+			paramName:   "max_tokens",
+			value:       500,
+			expectError: false,
+		},
+		{
+			name:        "valid int32",
+			paramName:   "max_tokens",
+			value:       int32(500),
+			expectError: false,
+		},
+		{
+			name:        "valid int64",
+			paramName:   "max_tokens",
+			value:       int64(500),
+			expectError: false,
+		},
+		{
+			name:        "valid float64 whole number",
+			paramName:   "max_tokens",
+			value:       500.0,
+			expectError: false,
+		},
+		{
+			name:        "valid float32 whole number",
+			paramName:   "max_tokens",
+			value:       float32(500.0),
+			expectError: false,
+		},
+		{
+			name:        "at minimum boundary",
+			paramName:   "max_tokens",
+			value:       1,
+			expectError: false,
+		},
+		{
+			name:        "at maximum boundary",
+			paramName:   "max_tokens",
+			value:       1000,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-numeric type",
+			paramName:     "max_tokens",
+			value:         "not_a_number",
+			expectError:   true,
+			errorContains: "must be an integer value",
+		},
+		{
+			name:          "float64 with decimal",
+			paramName:     "max_tokens",
+			value:         500.5,
+			expectError:   true,
+			errorContains: "must be an integer",
+		},
+		{
+			name:          "float32 with decimal",
+			paramName:     "max_tokens",
+			value:         float32(500.5),
+			expectError:   true,
+			errorContains: "must be an integer",
+		},
+		{
+			name:          "below minimum",
+			paramName:     "max_tokens",
+			value:         0,
+			expectError:   true,
+			errorContains: "must be >= 1",
+		},
+		{
+			name:          "above maximum",
+			paramName:     "max_tokens",
+			value:         1001,
+			expectError:   true,
+			errorContains: "must be <= 1000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateIntParameter(tt.paramName, tt.value, constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateIntParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateIntParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateIntParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
+
+func TestValidateStringParameter(t *testing.T) {
+	t.Parallel()
+	constraintWithEnum := ParameterConstraint{
+		Type:       "string",
+		EnumValues: []string{"low", "medium", "high"},
+	}
+	constraintWithoutEnum := ParameterConstraint{
+		Type: "string",
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		constraint    ParameterConstraint
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases with enum
+		{
+			name:        "valid enum value - low",
+			paramName:   "priority",
+			value:       "low",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		{
+			name:        "valid enum value - medium",
+			paramName:   "priority",
+			value:       "medium",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		{
+			name:        "valid enum value - high",
+			paramName:   "priority",
+			value:       "high",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		// Valid cases without enum
+		{
+			name:        "any string value when no enum",
+			paramName:   "description",
+			value:       "any description",
+			constraint:  constraintWithoutEnum,
+			expectError: false,
+		},
+		{
+			name:        "empty string when no enum",
+			paramName:   "description",
+			value:       "",
+			constraint:  constraintWithoutEnum,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-string type",
+			paramName:     "priority",
+			value:         123,
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name:          "invalid enum value",
+			paramName:     "priority",
+			value:         "invalid",
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be one of",
+		},
+		{
+			name:          "case sensitive enum check",
+			paramName:     "priority",
+			value:         "Low",
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be one of",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateStringParameter(tt.paramName, tt.value, tt.constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateStringParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateStringParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateStringParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
