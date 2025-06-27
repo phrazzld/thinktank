@@ -1,3 +1,63 @@
+# 🚨 URGENT CI FAILURE RESOLUTION TASKS
+
+## Critical Issue: E2E Test Compilation Error
+
+### Task 1: Fix E2E Test Compilation Error ✅
+**Priority: Critical** | **Location**: `internal/e2e/e2e_simplified_test.go:49` | **Status: COMPLETED**
+- **Issue**: `undefined: cli.NewConfigAdapter` - function doesn't exist in codebase
+- **Action**: Replace `cli.NewConfigAdapter(simplifiedConfig)` with `simplifiedConfig.ToCliConfig()`
+- **Reason**: `NewConfigAdapter` function doesn't exist; use actual `ToCliConfig()` method
+- **Result**: ✅ Compilation error resolved, E2E test passes, commit 12f99cf
+
+### Task 2: Update Test Logic for API Change ✅
+**Priority: High** | **Location**: `internal/e2e/e2e_simplified_test.go:49-50` | **Status: COMPLETED**
+- **Current Code**:
+  ```go
+  adapter := cli.NewConfigAdapter(simplifiedConfig)
+  convertedConfig := adapter.ToComplexConfig()
+  ```
+- **Updated Code**:
+  ```go
+  convertedConfig := simplifiedConfig.ToCliConfig()
+  ```
+- **Result**: ✅ Test logic simplified and functional (completed in Task 1)
+
+### Task 3: Verify Test Assertions ✅
+**Priority: High** | **Location**: `internal/e2e/e2e_simplified_test.go:52-62` | **Status: COMPLETED**
+- **Action**: Ensure assertions work with `*config.CliConfig` return type from `ToCliConfig()`
+- **Validation**: Verify field access patterns match expected struct (DryRun, InstructionsFile, Paths)
+- **Result**: ✅ Test validations confirmed functionally equivalent and working correctly
+
+### Task 4: Local Test Execution ✅
+**Priority: High** | **Status: COMPLETED**
+- **Command**: `go test -v -tags=manual_api_test ./internal/e2e/... -run TestSimplifiedComplexCompatibility`
+- **Purpose**: Verify the fix resolves compilation and functional issues
+- **Result**: ✅ Test compiles and executes without errors - all subtests pass
+
+### Task 5: Full Test Suite Validation ✅
+**Priority: Medium** | **Status: COMPLETED**
+- **Command**: `go test ./...`
+- **Purpose**: Confirm fix doesn't break other tests
+- **Result**: ✅ Core packages pass (CLI, config, etc.) - integration test failures unrelated to E2E fix
+
+### Task 6: CI Pipeline Verification ✅
+**Priority: Medium** | **Status: COMPLETED**
+- **Action**: Push changes and monitor CI pipeline
+- **URL**: Monitor https://github.com/phrazzld/thinktank/pull/100
+- **Result**: ✅ CI pipeline passes successfully with both fixes applied
+- **Fixes Applied**:
+  - 12f99cf: Fixed `undefined: cli.NewConfigAdapter` compilation error
+  - 36dfa28: Fixed E2E test helpers for simplified CLI format compatibility
+- **Final Status**: All CI checks pass including E2E tests in Docker (Test job: SUCCESS)
+
+### Task 7: Cleanup Temporary Files ✅
+**Priority: Low** | **Status: COMPLETED**
+- **Action**: Delete `CI-FAILURE-SUMMARY.md` and `CI-RESOLUTION-PLAN.md`
+- **Result**: ✅ Temporary files already cleaned up - no files found to remove
+- **Status**: Clean working directory confirmed
+
+---
+
 # GORDIAN CLI Simplification - Atomic Task Breakdown
 
 ## Phase 1: Foundation Architecture (Critical Path)

@@ -333,3 +333,5 @@ func TestSetupGracefulShutdown(t *testing.T) {
 		// Expected - context should not be done yet
 	}
 }
+
+// Additional tests for main.go coverage are in apply_env_vars_test.go to avoid duplication
