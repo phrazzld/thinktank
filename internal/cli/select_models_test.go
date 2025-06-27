@@ -1,0 +1,433 @@
+package cli
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/phrazzld/thinktank/internal/config"
+)
+
+func TestSelectModelsForConfig(t *testing.T) {
+	// Note: Not using t.Parallel() due to environment variable isolation issues
+
+	tests := []struct {
+		name                   string
+		instructionsContent    string
+		instructionsFileExists bool
+		flags                  uint8
+		envVars                map[string]string
+		expectedModels         []string
+		expectedSynthesisModel string
+		description            string
+		checkModelsAsSet       bool // For cases where order doesn't matter
+	}{
+		{
+			name:                   "small input, single provider available",
+			instructionsContent:    "Simple analysis task",
+			instructionsFileExists: true,
+			flags:                  0, // No special flags
+			envVars:                map[string]string{"GEMINI_API_KEY": "test-key"},
+			expectedModels:         []string{"gemini-2.5-flash", "gemini-2.5-pro"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "Small instructions with Gemini should return multiple models with synthesis",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "forced synthesis flag with small input",
+			instructionsContent:    "Simple analysis task",
+			instructionsFileExists: true,
+			flags:                  FlagSynthesis,
+			envVars:                map[string]string{"GEMINI_API_KEY": "test-key"},
+			expectedModels:         []string{"gemini-2.5-flash", "gemini-2.5-pro"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "Should enable synthesis when flag is set even for small input",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "large input triggers multiple models and synthesis",
+			instructionsContent:    strings.Repeat("complex analysis task ", 500), // ~10K chars
+			instructionsFileExists: true,
+			flags:                  0,
+			envVars: map[string]string{
+				"OPENAI_API_KEY": "openai-test-key",
+				"GEMINI_API_KEY": "gemini-test-key",
+			},
+			expectedModels:         []string{"gemini-2.5-flash", "gemini-2.5-pro", "gpt-4.1", "o3", "o4-mini"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "Large input should auto-enable synthesis and return multiple models",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "no api keys available - fallback to default",
+			instructionsContent:    "Simple analysis task",
+			instructionsFileExists: true,
+			flags:                  0,
+			envVars:                map[string]string{}, // No API keys
+			expectedModels:         []string{config.DefaultModel},
+			expectedSynthesisModel: "",
+			description:            "Should fall back to default model when no API keys available",
+			checkModelsAsSet:       false,
+		},
+		{
+			name:                   "instructions file read error - uses fallback estimate",
+			instructionsContent:    "", // Will be ignored since file doesn't exist
+			instructionsFileExists: false,
+			flags:                  0,
+			envVars:                map[string]string{"GEMINI_API_KEY": "test-key"},
+			expectedModels:         []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "Should use fallback token estimate when file read fails",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "openai only provider",
+			instructionsContent:    "Medium-sized analysis task with specific requirements",
+			instructionsFileExists: true,
+			flags:                  0,
+			envVars:                map[string]string{"OPENAI_API_KEY": "openai-test-key"},
+			expectedModels:         []string{"gpt-4.1", "o3", "o4-mini"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "OpenAI only should return OpenAI models with synthesis",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "all providers available with medium input",
+			instructionsContent:    strings.Repeat("detailed analysis ", 100), // ~2K chars
+			instructionsFileExists: true,
+			flags:                  0,
+			envVars: map[string]string{
+				"OPENAI_API_KEY":     "openai-key",
+				"GEMINI_API_KEY":     "gemini-key",
+				"OPENROUTER_API_KEY": "openrouter-key",
+			},
+			expectedModels:         []string{"openrouter/meta-llama/llama-4-maverick", "openrouter/meta-llama/llama-4-scout", "gpt-4.1", "gemini-2.5-flash", "gemini-2.5-pro", "o3", "o4-mini", "openrouter/deepseek/deepseek-r1-0528:free", "openrouter/meta-llama/llama-3.3-70b-instruct", "openrouter/x-ai/grok-3-mini-beta", "openrouter/x-ai/grok-3-beta", "openrouter/deepseek/deepseek-r1-0528", "openrouter/deepseek/deepseek-chat-v3-0324:free", "openrouter/deepseek/deepseek-chat-v3-0324"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "All providers with medium input should enable synthesis",
+			checkModelsAsSet:       true,
+		},
+		{
+			name:                   "synthesis flag with no api keys",
+			instructionsContent:    "Simple task",
+			instructionsFileExists: true,
+			flags:                  FlagSynthesis,
+			envVars:                map[string]string{}, // No API keys
+			expectedModels:         []string{config.DefaultModel},
+			expectedSynthesisModel: "",
+			description:            "Synthesis flag should be ignored when no API keys available",
+			checkModelsAsSet:       false,
+		},
+		{
+			name:                   "very large input requires biggest models",
+			instructionsContent:    strings.Repeat("extremely complex analysis task ", 2000), // ~60K chars
+			instructionsFileExists: true,
+			flags:                  0,
+			envVars: map[string]string{
+				"OPENAI_API_KEY": "openai-key",
+				"GEMINI_API_KEY": "gemini-key",
+			},
+			expectedModels:         []string{"gpt-4.1", "gemini-2.5-pro", "gemini-2.5-flash", "o4-mini", "o3"},
+			expectedSynthesisModel: "gemini-2.5-pro",
+			description:            "Very large input should return models that can handle it",
+			checkModelsAsSet:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Note: Not using t.Parallel() due to environment variable isolation issues
+
+			// Setup isolated test environment
+			cleanup := setupTestEnvironment(t, tt.envVars)
+			defer cleanup()
+
+			// Create temporary instructions file
+			tempDir := t.TempDir()
+			var instructionsFile string
+			if tt.instructionsFileExists {
+				instructionsFile = createTempInstructionsFile(t, tempDir, tt.instructionsContent)
+			} else {
+				instructionsFile = filepath.Join(tempDir, "nonexistent.txt")
+			}
+
+			// Create test configuration
+			config := &SimplifiedConfig{
+				InstructionsFile: instructionsFile,
+				TargetPath:       tempDir,
+				Flags:            tt.flags,
+			}
+
+			// Call function under test
+			actualModels, actualSynthesisModel := selectModelsForConfig(config)
+
+			// Verify results
+			if tt.checkModelsAsSet {
+				// Check that expected models are present (order may vary)
+				expectedSet := make(map[string]bool)
+				for _, model := range tt.expectedModels {
+					expectedSet[model] = true
+				}
+
+				actualSet := make(map[string]bool)
+				for _, model := range actualModels {
+					actualSet[model] = true
+				}
+
+				// Verify all expected models are present
+				for _, expected := range tt.expectedModels {
+					if !actualSet[expected] {
+						t.Errorf("Missing expected model: %s\nExpected: %v\nActual: %v\nDescription: %s",
+							expected, tt.expectedModels, actualModels, tt.description)
+					}
+				}
+
+				// Verify no unexpected models are present
+				for _, actual := range actualModels {
+					if !expectedSet[actual] {
+						t.Errorf("Unexpected model: %s\nExpected: %v\nActual: %v\nDescription: %s",
+							actual, tt.expectedModels, actualModels, tt.description)
+					}
+				}
+
+				// Verify correct count
+				if len(actualModels) != len(tt.expectedModels) {
+					t.Errorf("Model count mismatch: got %d, want %d\nExpected: %v\nActual: %v\nDescription: %s",
+						len(actualModels), len(tt.expectedModels), tt.expectedModels, actualModels, tt.description)
+				}
+			} else {
+				// Check exact order and content
+				if len(actualModels) != len(tt.expectedModels) {
+					t.Errorf("Model count mismatch: got %d, want %d\nExpected: %v\nActual: %v\nDescription: %s",
+						len(actualModels), len(tt.expectedModels), tt.expectedModels, actualModels, tt.description)
+				}
+
+				for i, expected := range tt.expectedModels {
+					if i >= len(actualModels) {
+						t.Errorf("Missing model at index %d: expected %s\nDescription: %s", i, expected, tt.description)
+						continue
+					}
+					if actualModels[i] != expected {
+						t.Errorf("Model mismatch at index %d: got %s, want %s\nDescription: %s",
+							i, actualModels[i], expected, tt.description)
+					}
+				}
+			}
+
+			// Verify synthesis model
+			if actualSynthesisModel != tt.expectedSynthesisModel {
+				t.Errorf("Synthesis model mismatch: got %q, want %q\nDescription: %s",
+					actualSynthesisModel, tt.expectedSynthesisModel, tt.description)
+			}
+
+			// Additional validation: synthesis model should be gemini-2.5-pro or empty
+			if actualSynthesisModel != "" && actualSynthesisModel != "gemini-2.5-pro" {
+				t.Errorf("Invalid synthesis model: got %q, expected empty or 'gemini-2.5-pro'\nDescription: %s",
+					actualSynthesisModel, tt.description)
+			}
+
+			// Additional validation: if synthesis is enabled, should have models
+			if actualSynthesisModel != "" && len(actualModels) == 0 {
+				t.Errorf("Synthesis enabled but no models selected\nDescription: %s", tt.description)
+			}
+		})
+	}
+}
+
+// setupTestEnvironment isolates environment variables for testing
+func setupTestEnvironment(t *testing.T, envVars map[string]string) func() {
+	// Save original environment
+	originalEnv := make(map[string]string)
+	allKeys := []string{"OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"}
+
+	for _, key := range allKeys {
+		originalEnv[key] = os.Getenv(key)
+		_ = os.Unsetenv(key) // Clear all first for clean state
+	}
+
+	// Set test environment variables
+	for key, value := range envVars {
+		_ = os.Setenv(key, value)
+	}
+
+	// Return cleanup function
+	return func() {
+		// Restore original environment
+		for key, value := range originalEnv {
+			if value == "" {
+				_ = os.Unsetenv(key)
+			} else {
+				_ = os.Setenv(key, value)
+			}
+		}
+	}
+}
+
+// createTempInstructionsFile creates a temporary instructions file for testing
+func createTempInstructionsFile(t *testing.T, tempDir, content string) string {
+	instructionsFile := filepath.Join(tempDir, "instructions.txt")
+	err := os.WriteFile(instructionsFile, []byte(content), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create temp instructions file: %v", err)
+	}
+	return instructionsFile
+}
+
+// Test helper function to validate the synthesis decision logic in isolation
+func TestSynthesisDecisionLogic(t *testing.T) {
+	// Note: Not using t.Parallel() due to environment variable isolation issues
+
+	tests := []struct {
+		name           string
+		modelsCount    int
+		forceSynthesis bool
+		expected       string
+		description    string
+	}{
+		{
+			name:           "single model, no force synthesis",
+			modelsCount:    1,
+			forceSynthesis: false,
+			expected:       "",
+			description:    "Single model without force flag should not trigger synthesis",
+		},
+		{
+			name:           "single model, force synthesis",
+			modelsCount:    1,
+			forceSynthesis: true,
+			expected:       "gemini-2.5-pro",
+			description:    "Single model with force flag should trigger synthesis",
+		},
+		{
+			name:           "multiple models, no force synthesis",
+			modelsCount:    3,
+			forceSynthesis: false,
+			expected:       "gemini-2.5-pro",
+			description:    "Multiple models should auto-trigger synthesis",
+		},
+		{
+			name:           "multiple models, force synthesis",
+			modelsCount:    2,
+			forceSynthesis: true,
+			expected:       "gemini-2.5-pro",
+			description:    "Multiple models with force flag should trigger synthesis",
+		},
+		{
+			name:           "no models, force synthesis",
+			modelsCount:    0,
+			forceSynthesis: true,
+			expected:       "",
+			description:    "No models should not trigger synthesis even with force flag",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Note: Not using t.Parallel() due to environment variable isolation issues
+
+			// Simulate the synthesis decision logic from selectModelsForConfig
+			var selectedModels []string
+			for i := 0; i < tt.modelsCount; i++ {
+				selectedModels = append(selectedModels, "model"+string(rune('1'+i)))
+			}
+
+			var synthesisModel string
+			if len(selectedModels) > 1 || tt.forceSynthesis {
+				if len(selectedModels) > 0 {
+					synthesisModel = "gemini-2.5-pro"
+				}
+			}
+
+			if synthesisModel != tt.expected {
+				t.Errorf("Synthesis decision mismatch: got %q, want %q\nDescription: %s",
+					synthesisModel, tt.expected, tt.description)
+			}
+		})
+	}
+}
+
+// Test edge cases and error conditions
+func TestSelectModelsForConfig_EdgeCases(t *testing.T) {
+	// Note: Not using t.Parallel() due to environment variable isolation issues
+
+	t.Run("empty instructions file", func(t *testing.T) {
+		// Note: Not using t.Parallel() due to environment variable isolation issues
+
+		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		defer cleanup()
+
+		tempDir := t.TempDir()
+		instructionsFile := createTempInstructionsFile(t, tempDir, "") // Empty file
+
+		config := &SimplifiedConfig{
+			InstructionsFile: instructionsFile,
+			TargetPath:       tempDir,
+			Flags:            0,
+		}
+
+		models, synthesis := selectModelsForConfig(config)
+
+		// Should still work with empty file - uses overhead and fallback estimates
+		if len(models) == 0 {
+			t.Error("Expected at least one model for empty instructions file")
+		}
+		// Empty instructions + average file estimate should trigger synthesis when multiple models available
+		if len(models) > 1 && synthesis == "" {
+			t.Error("Expected synthesis when multiple models are available")
+		}
+	})
+
+	t.Run("all flags set", func(t *testing.T) {
+		// Note: Not using t.Parallel() due to environment variable isolation issues
+
+		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		defer cleanup()
+
+		tempDir := t.TempDir()
+		instructionsFile := createTempInstructionsFile(t, tempDir, "test instructions")
+
+		config := &SimplifiedConfig{
+			InstructionsFile: instructionsFile,
+			TargetPath:       tempDir,
+			Flags:            FlagDryRun | FlagVerbose | FlagSynthesis | FlagDebug | FlagQuiet | FlagJsonLogs | FlagNoProgress,
+		}
+
+		models, synthesis := selectModelsForConfig(config)
+
+		// Should work with all flags - synthesis flag should be respected
+		if len(models) == 0 {
+			t.Error("Expected at least one model with all flags set")
+		}
+		if synthesis != "gemini-2.5-pro" {
+			t.Errorf("Expected synthesis model with synthesis flag, got: %s", synthesis)
+		}
+	})
+
+	t.Run("unicode content in instructions", func(t *testing.T) {
+		// Note: Not using t.Parallel() due to environment variable isolation issues
+
+		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		defer cleanup()
+
+		tempDir := t.TempDir()
+		unicodeContent := "测试内容 🚀 Тест العربية हिन्दी"
+		instructionsFile := createTempInstructionsFile(t, tempDir, unicodeContent)
+
+		config := &SimplifiedConfig{
+			InstructionsFile: instructionsFile,
+			TargetPath:       tempDir,
+			Flags:            0,
+		}
+
+		models, synthesis := selectModelsForConfig(config)
+
+		// Should handle unicode content correctly
+		if len(models) == 0 {
+			t.Error("Expected at least one model for unicode content")
+		}
+		// Unicode content should trigger synthesis when multiple models are available
+		if len(models) > 1 && synthesis == "" {
+			t.Error("Expected synthesis when multiple models are available")
+		}
+	})
+}

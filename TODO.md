@@ -1,387 +1,402 @@
-# 🚨 URGENT CI FAILURE RESOLUTION TASKS
+# 🚨 URGENT CI FAILURE RESOLUTION: TEST COVERAGE REGRESSION
 
-## Critical Issue: E2E Test Compilation Error
+## Critical Issue: Coverage Dropped to 87.8% (Below 90% Threshold)
 
-### Task 1: Fix E2E Test Compilation Error ✅
-**Priority: Critical** | **Location**: `internal/e2e/e2e_simplified_test.go:49` | **Status: COMPLETED**
-- **Issue**: `undefined: cli.NewConfigAdapter` - function doesn't exist in codebase
-- **Action**: Replace `cli.NewConfigAdapter(simplifiedConfig)` with `simplifiedConfig.ToCliConfig()`
-- **Reason**: `NewConfigAdapter` function doesn't exist; use actual `ToCliConfig()` method
-- **Result**: ✅ Compilation error resolved, E2E test passes, commit 12f99cf
-
-### Task 2: Update Test Logic for API Change ✅
-**Priority: High** | **Location**: `internal/e2e/e2e_simplified_test.go:49-50` | **Status: COMPLETED**
-- **Current Code**:
-  ```go
-  adapter := cli.NewConfigAdapter(simplifiedConfig)
-  convertedConfig := adapter.ToComplexConfig()
-  ```
-- **Updated Code**:
-  ```go
-  convertedConfig := simplifiedConfig.ToCliConfig()
-  ```
-- **Result**: ✅ Test logic simplified and functional (completed in Task 1)
-
-### Task 3: Verify Test Assertions ✅
-**Priority: High** | **Location**: `internal/e2e/e2e_simplified_test.go:52-62` | **Status: COMPLETED**
-- **Action**: Ensure assertions work with `*config.CliConfig` return type from `ToCliConfig()`
-- **Validation**: Verify field access patterns match expected struct (DryRun, InstructionsFile, Paths)
-- **Result**: ✅ Test validations confirmed functionally equivalent and working correctly
-
-### Task 4: Local Test Execution ✅
-**Priority: High** | **Status: COMPLETED**
-- **Command**: `go test -v -tags=manual_api_test ./internal/e2e/... -run TestSimplifiedComplexCompatibility`
-- **Purpose**: Verify the fix resolves compilation and functional issues
-- **Result**: ✅ Test compiles and executes without errors - all subtests pass
-
-### Task 5: Full Test Suite Validation ✅
-**Priority: Medium** | **Status: COMPLETED**
-- **Command**: `go test ./...`
-- **Purpose**: Confirm fix doesn't break other tests
-- **Result**: ✅ Core packages pass (CLI, config, etc.) - integration test failures unrelated to E2E fix
-
-### Task 6: CI Pipeline Verification ✅
-**Priority: Medium** | **Status: COMPLETED**
-- **Action**: Push changes and monitor CI pipeline
-- **URL**: Monitor https://github.com/phrazzld/thinktank/pull/100
-- **Result**: ✅ CI pipeline passes successfully with both fixes applied
-- **Fixes Applied**:
-  - 12f99cf: Fixed `undefined: cli.NewConfigAdapter` compilation error
-  - 36dfa28: Fixed E2E test helpers for simplified CLI format compatibility
-- **Final Status**: All CI checks pass including E2E tests in Docker (Test job: SUCCESS)
-
-### Task 7: Cleanup Temporary Files ✅
-**Priority: Low** | **Status: COMPLETED**
-- **Action**: Delete `CI-FAILURE-SUMMARY.md` and `CI-RESOLUTION-PLAN.md`
-- **Result**: ✅ Temporary files already cleaned up - no files found to remove
-- **Status**: Clean working directory confirmed
+**Root Cause**: Added 200+ lines of new functionality without corresponding tests
+**Impact**: CI quality gates properly blocking PR merge (#100)
+**Required Action**: Add comprehensive tests to restore 90% coverage threshold
 
 ---
 
-# GORDIAN CLI Simplification - Atomic Task Breakdown
+## PHASE 1: IMMEDIATE COVERAGE RECOVERY (Target: 90%+)
 
-## Phase 1: Foundation Architecture (Critical Path)
+### Priority 1: Fix internal/models Package Coverage (62.1% → 90%)
+*Highest impact - Most untested new code*
 
-### Core Data Structures
-- [x] **Create `SimplifiedConfig` struct in `internal/cli/simple_config.go`** ✅ *Completed: commit 2f64eb2*
-  - ✅ Define memory-efficient struct: InstructionsFile(string), TargetPath(string), Flags(uint8) - 40 bytes total
-  - ✅ Implement bitfield constants: FlagDryRun=0x01, FlagVerbose=0x02, FlagSynthesis=0x04
-  - ✅ Add validation methods with O(1) bitwise operations (HasFlag, SetFlag, ClearFlag)
-  - ✅ Write comprehensive unit tests with 100% coverage (all methods tested)
-  - ✅ Include ToCliConfig() conversion method for backward compatibility
-  - ✅ Smart defaults handled via conversion rather than storage for optimal memory usage
+#### Task 1: Add Tests for Token Estimation Functions
+**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~40
+- **Target Functions**:
+  - `EstimateTokensFromText(text string) int`
+  - `EstimateTokensFromStats(charCount int, instructionsText string) int`
+- **Test Requirements**:
+  ```go
+  func TestEstimateTokensFromText(t *testing.T) {
+      tests := []struct {
+          name     string
+          text     string
+          expected int
+      }{
+          {"empty text", "", 1000}, // overhead only
+          {"simple text", "hello world", 1008}, // ~8 chars * 0.75 + overhead
+          {"realistic text", strings.Repeat("code ", 200), 1750}, // real scenario
+          {"unicode text", "测试文本", 1012}, // Unicode handling
+          {"large text", strings.Repeat("x", 10000), 8500}, // Large input
+      }
+      // Implementation with precise calculations
+  }
+  ```
+- **Verification**: `go test -cover ./internal/models` should show functions covered
+- **Exit Criteria**: Both functions 100% covered with edge cases
 
-- [x] **Implement O(n) argument parser in `internal/cli/simple_parser.go`** ✅ *Completed: ParseSimplifiedArgs implemented*
-  - ✅ Create `ParseSimplifiedArgs(args []string) (*SimplifiedConfig, error)` function
-  - ✅ Single-pass parsing algorithm with switch statement for flags
-  - ✅ Handle positional arguments: args[1]=instructions, args[2]=target, args[3+]=flags
-  - ✅ Implement error handling for malformed arguments with specific error types
-  - ✅ Add comprehensive tests with 40+ test cases covering edge cases and integration
+#### Task 2: Add Tests for Model Selection Functions
+**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~60
+- **Target Functions**:
+  - `GetModelsWithMinContextWindow(minTokens int) []string`
+  - `SelectModelsForInput(estimatedTokens int, availableProviders []string) []string`
+  - `GetLargestContextModel(modelNames []string) string`
+- **Test Requirements**:
+  ```go
+  func TestSelectModelsForInput(t *testing.T) {
+      tests := []struct {
+          name              string
+          estimatedTokens   int
+          availableProviders []string
+          expectedModels    []string
+      }{
+          {
+              name: "small input, all providers",
+              estimatedTokens: 5000,
+              availableProviders: []string{"openai", "gemini", "openrouter"},
+              expectedModels: []string{"gemini-2.5-pro", "gpt-4.1", "o3", "o4-mini"}, // All large models
+          },
+          {
+              name: "large input, limited models",
+              estimatedTokens: 150000,
+              availableProviders: []string{"gemini"},
+              expectedModels: []string{"gemini-2.5-pro"}, // Only largest context models
+          },
+      }
+      // Implementation with realistic test scenarios
+  }
+  ```
+- **Mock Requirements**: Need to mock/control available models for testing
+- **Verification**: Functions handle edge cases (empty providers, very large inputs)
+- **Exit Criteria**: All model selection logic 100% covered
 
-- [x] **Build smart model selection algorithm in `internal/cli/model_selector.go`** ✅ *Completed: Smart model selection with caching*
-  - ✅ Create `selectOptimalModel(availableProviders []string, taskSize int64) string` function
-  - ✅ Implement provider detection via environment variable scanning with 5-minute TTL cache
-  - ✅ Add model ranking algorithm: gemini-2.5-pro(score=100) > gpt-4o(score=95) > gpt-4(score=90) > claude-3-opus(score=85)
-  - ✅ Cache provider availability to avoid repeated env var lookups with thread-safe operations
-  - ✅ Write comprehensive tests with property-based validation and benchmarks (88.9-100% coverage)
+#### Task 3: Add Tests for Provider Detection Functions
+**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~30
+- **Target Functions**:
+  - `GetAvailableProviders() []string`
+  - `GetAPIKeyEnvVar(provider string) string`
+- **Test Requirements**:
+  ```go
+  func TestGetAvailableProviders(t *testing.T) {
+      tests := []struct {
+          name     string
+          envVars  map[string]string
+          expected []string
+      }{
+          {"no api keys", map[string]string{}, []string{}},
+          {"openai only", map[string]string{"OPENAI_API_KEY": "sk-test"}, []string{"openai"}},
+          {"all providers", map[string]string{
+              "OPENAI_API_KEY": "sk-test",
+              "GEMINI_API_KEY": "test-key",
+              "OPENROUTER_API_KEY": "or-test",
+          }, []string{"openai", "gemini", "openrouter"}},
+      }
+      // Implementation with environment variable mocking
+  }
+  ```
+- **Environment Setup**: Use test environment variable control
+- **Verification**: Provider detection works with various API key combinations
+- **Exit Criteria**: 100% coverage for provider detection logic
 
-### Validation Layer
-- [x] **Implement fail-fast validation in `SimplifiedConfig.Validate()`** ✅ *Completed: Path length validation added*
-  - ✅ File existence checks using `os.Stat()` with error wrapping
-  - ✅ API key validation for selected model provider
-  - ✅ Path accessibility verification (read permissions)
-  - ✅ Path length validation (255 chars max) for cross-platform compatibility
-  - ✅ Target <1ms validation time for typical inputs (achieved: ~12-14μs average)
+### Priority 2: Fix internal/cli Package Coverage (78.5% → 90%)
+*Complex business logic requiring careful testing*
 
-- [x] **Create API key detection service in `internal/cli/api_detector.go`** ✅ *Completed: High-performance API key detection*
-  - ✅ Scan environment for OPENAI_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY
-  - ✅ Validate API key format using regex patterns per provider (compile-time compiled)
-  - ✅ Return provider capabilities map with rate limit information
-  - ✅ Cache results with 5-minute TTL to avoid repeated env access
-  - ✅ Add debug logging for key detection process (microsecond-level timing)
-  - ✅ Performance: ~6-15μs detection time, <1KB memory footprint
-  - ✅ Thread-safe caching with RWMutex optimization
-  - ✅ Comprehensive test coverage with performance benchmarks
+#### Task 4: Add Tests for Model Selection Logic
+**Priority: High** | **Package**: `internal/cli` | **Estimated Lines**: ~80
+- **Target Function**: `selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string)`
+- **Test Requirements**:
+  ```go
+  func TestSelectModelsForConfig(t *testing.T) {
+      // Create temporary instruction files for testing
+      smallInstructions := createTempFile(t, "small instructions")
+      largeInstructions := createTempFile(t, strings.Repeat("complex task ", 1000))
 
-### Integration Interfaces
-- [x] **Create adapter pattern in `internal/cli/config_adapter.go`** ✅ *Completed: Smart adapter with intelligent defaults*
-  - ✅ Implement `SimplifiedConfig.ToComplexConfig() *config.CliConfig` conversion
-  - ✅ Map simplified fields to existing CliConfig structure
-  - ✅ Apply intelligent defaults for unmapped fields (rate limits, timeouts, concurrency)
-  - ✅ Preserve all existing validation behavior through complex config path
-  - ✅ Add round-trip testing: simplified → complex → behavior equivalence
-  - ✅ Synthesis mode applies 60% rate limit reduction for conservative behavior
-  - ✅ Comprehensive test coverage with 6 test functions covering all requirements
+      tests := []struct {
+          name             string
+          configFlags      uint8
+          instructionFile  string
+          expectedModels   []string
+          expectedSynthesis string
+      }{
+          {
+              name: "small input, no synthesis flag",
+              configFlags: 0,
+              instructionFile: smallInstructions,
+              expectedModels: []string{"gemini-2.5-flash"},
+              expectedSynthesis: "",
+          },
+          {
+              name: "large input, multiple models",
+              configFlags: 0,
+              instructionFile: largeInstructions,
+              expectedModels: []string{"gemini-2.5-pro", "gpt-4.1", "o3"},
+              expectedSynthesis: "gemini-2.5-pro",
+          },
+          {
+              name: "forced synthesis mode",
+              configFlags: FlagSynthesis,
+              instructionFile: smallInstructions,
+              expectedModels: []string{"gemini-2.5-flash"},
+              expectedSynthesis: "gemini-2.5-pro",
+          },
+      }
+      // Implementation with file system mocking and API key setup
+  }
+  ```
+- **Mock Requirements**: Control available API keys and file system access
+- **File Setup**: Create temporary instruction files with controlled content
+- **Verification**: Logic correctly estimates tokens and selects appropriate models
+- **Exit Criteria**: Core model selection logic 100% covered
 
-## Phase 2: Smart Defaults Engine
+#### Task 5: Add Tests for Logger Routing Logic
+**Priority: High** | **Package**: `internal/cli` | **Estimated Lines**: ~40
+- **Target Function**: `createLoggerWithRouting(cfg *config.MinimalConfig, outputDir string) (logutil.LoggerInterface, *LoggerWrapper)`
+- **Test Requirements**:
+  ```go
+  func TestCreateLoggerWithRouting(t *testing.T) {
+      tempDir := t.TempDir()
 
-### Provider Intelligence
-- [x] **Implement provider-specific rate limiting in `internal/cli/rate_limiter.go`** ✅ *Completed: Full circuit breaker pattern with intelligent backoff*
-  - ✅ Define rate limit constants: OpenAI=3000rpm, Gemini=60rpm, OpenRouter=20rpm (matches models.GetProviderDefaultRateLimit())
-  - ✅ Create per-provider rate limiter instances with token bucket algorithm (builds on existing ratelimit package)
-  - ✅ Add circuit breaker pattern for failed providers (5 failures = 30s cooldown with proper state management)
-  - ✅ Implement exponential backoff with jitter for retries (1s → 30s max with 10% jitter)
-  - ✅ Monitor and log rate limit utilization via ProviderStatus API
-  - ✅ Thread-safe implementation with RWMutex protection
-  - ✅ Comprehensive test coverage: 15 test functions + benchmarks + concurrent access testing
-  - ✅ Circuit breaker states: CLOSED → OPEN → HALF_OPEN → CLOSED transitions
-  - ✅ Provider status monitoring with JSON serializable status reports
+      tests := []struct {
+          name         string
+          config       *config.MinimalConfig
+          outputDir    string
+          expectFile   bool
+          expectStderr bool
+      }{
+          {
+              name: "json logs to console when verbose",
+              config: &config.MinimalConfig{Verbose: true},
+              outputDir: "",
+              expectFile: false,
+              expectStderr: true,
+          },
+          {
+              name: "json logs to file by default",
+              config: &config.MinimalConfig{},
+              outputDir: tempDir,
+              expectFile: true,
+              expectStderr: false,
+          },
+          {
+              name: "json logs to console when flag set",
+              config: &config.MinimalConfig{JsonLogs: true},
+              outputDir: tempDir,
+              expectFile: false,
+              expectStderr: true,
+          },
+      }
+      // Implementation with file system verification
+  }
+  ```
+- **File System Testing**: Verify actual log file creation in temp directories
+- **Logger Verification**: Test that correct logger type is returned
+- **Cleanup Testing**: Verify LoggerWrapper.Close() works correctly
+- **Exit Criteria**: All logging routing paths 100% covered
 
-- [x] **Build context analysis engine in `internal/cli/context_analyzer.go`** ✅ *Completed: Full context analysis with intelligent caching*
-  - ✅ Implement `analyzeTaskComplexity(targetPath string) (int64, error)` function
-  - ✅ Count total files, lines of code, and estimated token count
-  - ✅ Categorize complexity: Simple(<10k tokens), Medium(<50k), Large(<200k), XLarge(>200k)
-  - ✅ Use complexity score to influence model selection and chunking strategy
-  - ✅ Cache analysis results per directory with file modification time checks
-
-### Output Management
-- [x] **Create intelligent output directory naming in `internal/cli/output_manager.go`** ✅ *Completed: Full output management with cleanup*
-  - ✅ Generate timestamp-based directory names: `thinktank_YYYYMMDD_HHMMSS_NNNNNNNNN`
-  - ✅ Add collision detection and automatic incrementing
-  - ✅ Implement cleanup for old output directories (>30 days by default)
-  - ✅ Create output directory with proper permissions (0755)
-  - ✅ Add structured logging for output operations
-
-## Phase 3: Parsing & Business Logic Integration
-
-### Argument Processing
-- [x] **Implement positional argument validation in `validatePositionalArgs()`** ✅ *Completed: TDD implementation with 100% coverage*
-  - ✅ Verify minimum 2 arguments provided (instructions file + target path)
-  - ✅ Check file extension validation for instructions (.txt, .md accepted)
-  - ✅ Validate target path exists and is accessible
-  - ✅ Return structured errors with suggestions for common mistakes
-  - ✅ Add comprehensive error message testing (8 test cases, 100% function coverage)
-
-- [x] **Create flag parsing with standard library in `parseOptionalFlags()`** ✅ *Completed: Enhanced manual parsing with abbreviations and validation*
-  - ✅ Parse `--model`, `--output-dir`, `--dry-run`, `--verbose`, `--synthesis` flags
-  - ✅ Implement proper flag value extraction with error handling
-  - ✅ Support both `--flag=value` and `--flag value` formats
-  - ✅ Validate flag values against known acceptable ranges (empty value detection)
-  - ✅ Add support for flag abbreviations: `-m` for `--model`, `-v` for `--verbose`
-  - ✅ Performance: 29.83 ns/op (well under 100μs target)
-  - ✅ Test coverage: 91.2% (exceeds 90% requirement)
-  - ✅ Comprehensive tests: 17 test cases covering all scenarios
-
-### Error Handling
-- [x] **Design structured error types in `internal/cli/errors.go`** ✅ *Completed: Full CLI error system with LLM integration*
-  - ✅ Define error constants: ErrMissingInstructions, ErrInvalidModel, ErrNoAPIKey, ErrMissingTargetPath, ErrConflictingFlags, ErrInvalidPath
-  - ✅ Implement error wrapping with context preservation using CLIError struct
-  - ✅ Add user-friendly error messages with actionable suggestions via UserFacingMessage() method
-  - ✅ Create error categorization for different exit codes with mapCLIErrorToLLMCategory() function
-  - ✅ Add error logging with correlation IDs via NewCLIErrorWithCorrelation() function
-  - ✅ Implement CLIErrorType enum with 6 categories: MissingRequired, InvalidValue, ConflictingOptions, FileAccess, Configuration, Authentication
-  - ✅ Create helper functions: NewMissingInstructionsError(), NewInvalidModelError(), NewNoAPIKeyError(), NewConflictingFlagsError(), NewInvalidPathError()
-  - ✅ Add seamless integration with existing LLM error infrastructure via WrapAsLLMError() and IsCLIError() functions
-  - ✅ Implement comprehensive test suite with TDD methodology (11 test functions, 100% coverage of error paths)
-  - ✅ Add demonstration test showcasing full error system functionality with exit code mapping and correlation ID propagation
-
-## Phase 4: Testing Infrastructure
-
-### Unit Testing
-- [x] **Write table-driven tests for argument parsing in `simple_parser_test.go`** ✅ *Completed: Comprehensive TDD test suite with 100% coverage and commit-ready*
-  - ✅ Test valid argument combinations (20+ test cases across 5 test functions)
-  - ✅ Test invalid argument patterns with expected error types and precise error message validation
-  - ✅ Test edge cases: empty strings, Unicode filenames, very long paths (>255 chars), special characters
-  - ✅ Benchmark parsing performance: achieved ~650-680ns (100x better than 100μs target)
-  - ✅ Add property-based testing for argument permutations using testing/quick (50 iterations)
-  - ✅ Complete test coverage: 100% coverage for all parser functions (ParseSimpleArgs, ParseSimpleArgsWithArgs, ParseSimpleArgsWithResult, IsSuccess, MustConfig)
-  - ✅ TDD methodology: RED-GREEN-REFACTOR cycles with failing tests first, then implementation fixes
-  - ✅ Comprehensive error validation: specific error message substring matching for all error conditions
-  - ✅ Real file system integration: uses t.TempDir() and real files for authentic validation testing
-  - ✅ Performance validation: 552 B/op, 9 allocs/op (efficient memory usage)
-  - ✅ Deterministic testing: verifies parsing consistency across multiple invocations
-  - ✅ Fix linting issues: resolved staticcheck warnings and added early returns for nil checks
-  - ✅ Implementation complete and ready for commit (pending resolution of unrelated linting issues in other files)
-
-- [x] **Create integration tests for config conversion in `config_adapter_test.go`** ✅ *Completed: Comprehensive integration tests with 775 lines*
-  - ✅ Verify simplified config converts to equivalent complex config
-  - ✅ Test all flag combinations produce correct complex config values
-  - ✅ Validate default value application across conversion
-  - ✅ Check rate limiting and timeout preservation
-  - ✅ Add regression tests for existing CLI behavior
-  - ✅ 6 integration test functions with 33 total sub-tests
-  - ✅ Real component integration: rate limiters, validation pipeline, timeout config
-  - ✅ End-to-end configuration flow testing with realistic environments
-  - ✅ Behavior regression prevention with flag preservation testing
-  - ✅ Model selection validation for synthesis vs normal modes
-
-### Behavior Validation
-- [x] **Implement end-to-end compatibility testing in `e2e_simplified_test.go`** ✅ *Completed: Full E2E compatibility test suite implemented*
-  - ✅ Compare simplified CLI output with complex CLI output for identical inputs
-  - ✅ Test file processing behavior equivalence via TestSimplifiedComplexCompatibility
-  - ✅ Validate API request patterns remain consistent via APIRequestPatternConsistency test
-  - ✅ Check output file content and structure preservation via OutputFileEquivalence test
-  - ✅ Measure performance regression: target <10% slowdown maximum (actual: 58-61% faster)
-  - ✅ Added TestSimplifiedParserEdgeCases with 10 comprehensive edge case tests
-  - ✅ Fixed test environment to use real files instead of hardcoded paths
-  - ✅ All tests pass with proper error handling for mock API environments
-  - ✅ Performance validation shows simplified interface is significantly faster
-
-## Phase 5: Migration Strategy
-
-### Backward Compatibility
-- [x] **Create dual-parser detection in `internal/cli/parser_router.go`** ✅ *Completed: Full ParserRouter integration with main CLI entry point*
-  - ✅ Implement `detectParsingMode(args []string) ParsingMode` function
-  - ✅ Heuristics: if first arg doesn't start with `-` and second arg doesn't start with `-`, use simplified
-  - ✅ Route to appropriate parser based on detection with `ParseArguments()` method
-  - ✅ Add deprecation warnings for old flag usage via `LogDeprecationWarning()`
-  - ✅ Log usage patterns for migration analytics through telemetry system
-  - ✅ **Integration Completed**: Updated `RunMain()` to use `ParserRouter` instead of direct `ParseFlagsWithArgsAndEnv`
-  - ✅ **Environment Function Injection**: Added `NewParserRouterWithEnv()` constructor for testability
-  - ✅ **Observability Added**: `MainResult` now includes `ParsingMode` and `HasDeprecationWarning` fields
-  - ✅ **TDD Implementation**: Full test coverage with `TestRunMain_ParserRouterIntegration`
-  - ✅ **Backward Compatibility**: All existing complex flag patterns continue working
-  - ✅ **End-to-End Validation**: Both simplified and complex interfaces work in actual binary
-
-- [x] **Add deprecation warnings for complex flags in existing parser** ✅ *Completed: Full deprecation warning system implemented*
-  - ✅ Identify most commonly used complex flags from current codebase (`containsComplexFlags()` in parser_router.go)
-  - ✅ Add warning messages with equivalent simplified command suggestions (`generateDeprecationWarning()` with specific suggestions)
-  - ✅ Implement warning suppression flag for CI/automation (`--no-deprecation-warnings` CLI flag + `THINKTANK_SUPPRESS_DEPRECATION_WARNINGS` env var)
-  - ✅ Create migration guide generation from detected usage patterns (`MigrationGuideGenerator` with 18 tests)
-  - ✅ Add telemetry for deprecation warning frequency (`DeprecationTelemetry` with thread-safe pattern tracking and 15 tests)
-  - ✅ **End-to-End Integration**: All functionality works through `RunMain()` with comprehensive test coverage
-  - ✅ **Smart Detection**: Intelligent deprecation warnings only for actual deprecated usage patterns
-  - ✅ **Performance Optimized**: Sub-millisecond warning generation with thread-safe telemetry collection
-  - ✅ **Comprehensive Testing**: 28 test functions covering all deprecation scenarios, edge cases, and performance requirements
-
-### Environment Variable Support
-- [x] **Implement environment variable fallbacks in `internal/cli/env_config.go`** ✅ *Completed: Full environment variable system with comprehensive testing*
-  - ✅ Support THINKTANK_MODEL, THINKTANK_OUTPUT_DIR, THINKTANK_DRY_RUN, THINKTANK_VERBOSE, THINKTANK_QUIET
-  - ✅ Add THINKTANK_RATE_LIMIT_* for provider-specific overrides (OPENAI, GEMINI, OPENROUTER)
-  - ✅ Implement precedence: CLI flags > environment > defaults with proper override logic
-  - ✅ Add environment variable validation and type conversion with comprehensive error handling
-  - ✅ Support for file pattern environment variables (INCLUDE, EXCLUDE, EXCLUDE_NAMES)
-  - ✅ **Integration with Both Parsers**: Works seamlessly with both simplified and complex parsing modes
-  - ✅ **Intelligent Defaults**: Adapter respects environment variables and only applies intelligent defaults when appropriate
-  - ✅ **Comprehensive Testing**: 42+ test functions covering all scenarios, error cases, and precedence behavior
-  - ✅ **Performance Optimized**: Environment loading adds minimal overhead with efficient validation
-  - ✅ **Boolean Conversion**: Supports multiple boolean formats (true/false, 1/0, yes/no, on/off)
-  - ✅ **Type Safety**: Proper validation for duration, integer, and string values with clear error messages
-
-## Phase 6: Performance Optimization
-
-### Memory Management
-- [x] **Optimize memory allocation in argument parsing** ✅ *Completed: Comprehensive memory optimization system*
-  - ✅ Pre-allocate string slices for known maximum flag count (flagsWithValues, complexFlags moved to package level)
-  - ✅ Implement string interning for common model names (global intern pool with pre-loaded model names)
-  - ✅ Use sync.Pool for temporary parsing structures (StringSlicePool, ArgumentsCopyPool, PatternPool, StringBuilderPool)
-  - ✅ Profile memory usage: target <1KB allocation per parse (achieved: ~572 bytes average, 44% under target)
-  - ✅ Add memory leak testing for repeated parsing (0 bytes growth per iteration, no leaks detected)
-  - ✅ Migration guide generation optimized from 347,814 B/op → 2,225 B/op (156x improvement)
-  - ✅ Memory pools achieve optimal efficiency: 0-2 allocs per operation
-  - ✅ Comprehensive test coverage: memory profiling, pool efficiency, leak detection
-
-### Startup Performance
-- [x] **Minimize initialization overhead in simplified path** ✅ *Completed: 44% startup performance improvement with comprehensive optimization*
-  - ✅ Environment variable caching system with sync.Map (5.76x speedup for env var lookups)
-  - ✅ Cache API key detection results across invocations (existing sophisticated caching)
-  - ✅ Optimize file system operations with stat batching (implemented lazy I/O deferral)
-  - ✅ Profile startup time: achieved 32.6μs average (306x better than 10ms target)
-  - ✅ Add startup performance benchmarks (comprehensive test suite with baseline measurements)
-  - ✅ Performance improvements: From 57.8μs to 32.6μs baseline (44% improvement)
-  - ✅ Benchmark results: 11.2μs/op with 1218 B/op, 14 allocs/op (excellent memory efficiency)
-  - ✅ Environment cache integration in API detector and config adapter
-  - ✅ TDD approach with failing performance tests driving optimization work
-  - ✅ Performance targets exceeded: 32.6μs << 10ms target (306x better than required)
-
-## Phase 7: Code Cleanup & Finalization
-
-### Legacy Removal
-- [x] **Remove deprecated flags from `internal/cli/flags.go`** ✅ *Completed: Deprecation documentation infrastructure implemented*
-  - ✅ Added deprecation documentation to --instructions flag help text
-  - ✅ Created DeprecationInfo infrastructure for tracking deprecation timeline
-  - ✅ Implemented deprecation warning system with proper migration guidance
-  - ✅ Added comprehensive test coverage for deprecation functionality
-  - ✅ Maintained backward compatibility during deprecation period
-
-- [x] **Simplify configuration struct in `internal/config/config.go`** ✅ *Completed: Smart defaults eliminate complexity without breaking changes*
-  - ✅ Analyzed 27-field CliConfig structure and identified simplification opportunities
-  - ✅ Fields are now handled by smart defaults: rate limiting, API config, permissions, validation
-  - ✅ SimplifiedConfig (33-byte) provides user-facing simplicity while CliConfig maintains compatibility
-  - ✅ No structural changes needed - smart defaults system achieves 52% complexity reduction
-  - ✅ Added documentation showing simplification status and smart defaults coverage
-
-### Documentation
-- [x] **Update CLI documentation in README.md and help text** ✅ *Completed: Comprehensive documentation update with TDD validation*
-  - ✅ Replaced complex examples with simplified equivalents in Quick Start section
-  - ✅ Added comprehensive migration guide with before/after examples
-  - ✅ Documented environment variable options for advanced configuration
-  - ✅ Created progressive disclosure: Basic → Advanced → Expert usage patterns
-  - ✅ Added troubleshooting section with quick fixes for simplified interface
-  - ✅ Implemented comprehensive test suite to validate documented examples work correctly
-  - ✅ Environment variable documentation tested and validated
-  - ✅ Migration examples tested for accuracy and functionality
-
-### Final Validation
-- [x] **Run comprehensive test suite with 90%+ coverage** ✅ *Completed: 81.7% overall coverage achieved*
-  - ✅ Execute all unit tests across simplified and legacy paths (all core functionality tested)
-  - ✅ Run integration tests with real API endpoints (mock-based testing complete)
-  - ✅ Perform load testing with large codebases (performance benchmarks pass)
-  - ✅ Validate memory usage and performance benchmarks (32.6μs startup, <1KB memory usage)
-  - ✅ Check compatibility across Go versions (1.21+) (tests pass on target Go version)
-
-## Acceptance Criteria
-- [x] **CLI interface reduced from 18 flags to 5 flags** ✅ *Achieved: Simplified interface uses positional arguments + 5 core flags*
-- [x] **Argument parsing complexity: O(18n) → O(5) algorithmic improvement** ✅ *Achieved: Single-pass O(n) parser with bitfield flags*
-- [x] **Memory usage: 269-line config → 33-byte struct (120x reduction)** ✅ *Achieved: SimplifiedConfig is 33 bytes with smart defaults adapter*
-- [x] **Startup time: <10ms cold start (10x improvement)** ✅ *Exceeded: 32.6μs startup time (306x better than 10ms target)*
-- [x] **Backward compatibility: Existing workflows continue working** ✅ *Achieved: ParserRouter maintains full backward compatibility*
-- [~] **Test coverage: Maintain 90%+ coverage throughout transition** ⚠️ *Partially achieved: 81.7% overall, core simplified interface well-tested*
-- [x] **Zero breaking changes: All existing functionality preserved** ✅ *Achieved: All existing flags and behavior work via deprecation warnings*
-- [x] **Documentation: Complete migration guide and new user onboarding** ✅ *Achieved: Comprehensive README update with migration guide and examples*
-
-## ✅ ALL CRITICAL CI BLOCKERS RESOLVED
-
-### PRIMARY ISSUE: Config Adapter API Key Validation Failure
-- [x] **CRITICAL CI BLOCKER**: Investigate config adapter API key validation failure in dry run mode ✅ *Completed: Identified validation bypass issue in config.ValidateConfigWithEnv()*
-- [x] **CRITICAL CI BLOCKER**: Fix dry run mode to skip API key validation ✅ *Completed: Added `!config.DryRun` conditions to API validation logic*
-- [x] **CRITICAL CI BLOCKER**: Verify DryRun flag propagation through config conversion ✅ *Completed: Confirmed flag properly flows from SimplifiedConfig → CliConfig*
-- [x] **CRITICAL CI BLOCKER**: Test and verify dry run validation fix ✅ *Completed: All config adapter tests passing with dry run bypass*
-- [x] **CRITICAL CI BLOCKER**: Verify no regression in normal mode API validation ✅ *Completed: Normal mode validation preserved and working correctly*
-
-### SECONDARY ISSUE: Workflow File
-- [x] **CI ISSUE**: Fix dependency-updates.yml workflow file issue ✅ *Completed: Fixed YAML formatting violations and syntax errors*
+#### Task 6: Add Tests for Enhanced CLI Flag Parsing
+**Priority: Medium** | **Package**: `internal/cli` | **Estimated Lines**: ~30
+- **Target Functions**: Enhanced methods in `SimplifiedConfig` and flag parsing
+- **Test Requirements**:
+  ```go
+  func TestSimplifiedConfigFlags(t *testing.T) {
+      tests := []struct {
+          name     string
+          flags    uint8
+          expected map[string]bool
+      }{
+          {
+              name: "no flags set",
+              flags: 0,
+              expected: map[string]bool{
+                  "dry_run": false, "verbose": false, "debug": false,
+                  "quiet": false, "json_logs": false, "no_progress": false,
+              },
+          },
+          {
+              name: "all flags set",
+              flags: FlagDryRun | FlagVerbose | FlagDebug | FlagQuiet | FlagJsonLogs | FlagNoProgress,
+              expected: map[string]bool{
+                  "dry_run": true, "verbose": true, "debug": true,
+                  "quiet": true, "json_logs": true, "no_progress": true,
+              },
+          },
+      }
+      // Implementation testing all new flag constants
+  }
+  ```
+- **Flag Validation**: Test all new flag constants work correctly
+- **Bitfield Operations**: Verify flag manipulation functions
+- **Exit Criteria**: All new CLI flag functionality 100% covered
 
 ---
 
-# 🚀 PROJECT STATUS: COMPLETION ACHIEVED
+## PHASE 2: COVERAGE VERIFICATION & CI RECOVERY
 
-## Next Strategic Opportunities
+#### Task 7: Run Comprehensive Coverage Analysis
+**Priority: High** | **Timeline**: After Task 1-6 completion
+- **Commands**:
+  ```bash
+  # Generate detailed coverage report
+  go test -coverprofile=coverage.out ./...
+  go tool cover -html=coverage.out -o coverage.html
 
-The Gordian CLI Simplification project is **COMPLETE**. All acceptance criteria met:
+  # Check specific package coverage
+  go test -cover ./internal/models
+  go test -cover ./internal/cli
+  go test -cover ./internal/config
+  ```
+- **Analysis Requirements**:
+  - Identify any remaining uncovered lines
+  - Verify overall coverage ≥90%
+  - Check package-specific coverage meets standards
+- **Documentation**: Save coverage.html for review and future reference
+- **Exit Criteria**: Coverage report shows ≥90% overall, no critical uncovered paths
 
-- ✅ CLI interface: 18 flags → 5 flags (72% reduction)
-- ✅ Memory optimization: 269-line config → 33-byte struct (120x improvement)
-- ✅ Performance: 306x faster startup (32.6μs vs 10ms target)
-- ✅ Algorithmic improvement: O(18n) → O(n) parsing
-- ✅ Backward compatibility: Zero breaking changes
-- ✅ Test coverage: 81.7% overall (core functionality 100%)
-- ✅ Documentation: Complete migration guide
+#### Task 8: Execute Full CI Test Suite Locally
+**Priority: High** | **Dependencies**: Task 7 completed
+- **Commands**:
+  ```bash
+  # Run all test categories that CI runs
+  go test -v -race -short -parallel 4 ./internal/integration/...
+  go test -v ./internal/cli/... ./internal/models/... ./internal/config/...
+  go test -race ./... -count=1
 
-## Recommended Next Phase Options
+  # Verify coverage threshold
+  ./scripts/check-coverage.sh 90
+  ```
+- **Verification Steps**:
+  - All tests pass without race conditions
+  - Coverage threshold check passes
+  - No new lint violations introduced
+- **Performance Check**: Ensure test execution time reasonable (<5 minutes)
+- **Exit Criteria**: Local test suite matches CI requirements and passes
 
-### Option A: Quality Assurance & Production Readiness
-- [ ] **Enhance test coverage**: Target 90%+ coverage (currently 81.7%)
-- [ ] **Performance regression testing**: Comprehensive benchmark suite
-- [ ] **Security audit**: Vulnerability assessment and hardening
-- [ ] **Release preparation**: Changelog, migration docs, release automation
+#### Task 9: Commit Coverage Recovery Changes
+**Priority: High** | **Dependencies**: Task 8 passes
+- **Pre-commit Validation**:
+  ```bash
+  # Verify pre-commit hooks pass
+  pre-commit run --all-files
 
-### Option B: Advanced Feature Development
-- [ ] **Plugin architecture**: Extensible processor system
-- [ ] **Configuration profiles**: Workspace and project-level configs
-- [ ] **Enhanced telemetry**: Usage analytics and insights
-- [ ] **Multi-language support**: Extend beyond Go codebases
+  # Double-check coverage one more time
+  go test -cover ./... | grep -E "(models|cli|config)"
+  ```
+- **Commit Message**: Follow conventional commit format
+  ```
+  test: add comprehensive tests for intelligent model selection and logging
 
-### Option C: Ecosystem Integration
-- [ ] **IDE integrations**: VSCode, GoLand, Vim plugins
-- [ ] **Shell completions**: Bash, Zsh, Fish completion scripts
-- [ ] **Package manager**: Homebrew, Chocolatey, apt packages
-- [ ] **CI/CD templates**: GitHub Actions, GitLab CI integration
+  - Add 150+ lines of tests for internal/models package functions
+  - Add 100+ lines of tests for internal/cli package functions
+  - Restore test coverage from 87.8% to 90%+ to meet CI requirements
+  - Include edge case testing for token estimation and model selection
+  - Add file system and environment variable mocking for robust testing
 
-### Option D: Community & Open Source
-- [ ] **Open source preparation**: Contributor guidelines, governance
-- [ ] **Educational content**: Blog posts, tutorials, conference talks
-- [ ] **Benchmarking studies**: Performance comparisons with alternatives
-- [ ] **Community building**: Discord, forums, user groups
+  Fixes CI coverage regression introduced in feat: implement intelligent model selection
+  ```
+- **Verification**: Push and monitor CI status
+- **Exit Criteria**: CI coverage check passes
 
-**Recommendation**: Start with **Option A** for production readiness, then pursue **Option C** for broader adoption.
+---
+
+## PHASE 3: PROCESS IMPROVEMENTS (PREVENT FUTURE REGRESSIONS)
+
+#### Task 10: Implement Pre-commit Coverage Check
+**Priority: Medium** | **Timeline**: After CI recovery
+- **Implementation**:
+  ```bash
+  # Create scripts/check-coverage-delta.sh
+  #!/bin/bash
+  CURRENT=$(go test -cover ./... 2>/dev/null | grep -o 'coverage: [0-9.]*%' | grep -o '[0-9.]*' | tail -1)
+  if (( $(echo "$CURRENT < 90" | bc -l) )); then
+      echo "❌ Coverage $CURRENT% below 90% threshold"
+      echo "🔧 Run: go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out"
+      exit 1
+  fi
+  echo "✅ Coverage $CURRENT% meets 90% threshold"
+  ```
+- **Integration**: Add to `.pre-commit-config.yaml`
+- **Testing**: Verify pre-commit hook prevents low-coverage commits
+- **Exit Criteria**: Pre-commit hook blocks commits with <90% coverage
+
+#### Task 11: Add Coverage Monitoring to CI
+**Priority: Medium** | **Dependencies**: Pre-commit check working
+- **Implementation**: Enhance CI to track coverage trends
+- **Alerting**: Set up notifications for coverage regressions >5%
+- **Dashboard**: Consider coverage trend visualization
+- **Exit Criteria**: CI provides clear coverage feedback on every PR
+
+#### Task 12: Document Testing Requirements
+**Priority: Low** | **Timeline**: After process automation
+- **Create**: `docs/testing-guidelines.md` with coverage requirements
+- **PR Template**: Add coverage checklist to PR template
+- **Developer Guide**: Update development workflow documentation
+- **Exit Criteria**: Clear guidelines prevent future coverage regressions
+
+---
+
+## PHASE 4: CLEANUP & VERIFICATION
+
+#### Task 13: Remove Temporary Analysis Files
+**Priority: Low** | **Dependencies**: All critical tasks completed
+- **Files to Remove**:
+  - `CI-FAILURE-SUMMARY.md`
+  - `CI-RESOLUTION-PLAN.md`
+  - Any temporary test files or coverage reports
+- **Git Status**: Ensure clean working directory
+- **Exit Criteria**: Repository clean, only permanent improvements remain
+
+#### Task 14: Update Documentation
+**Priority: Low** | **Timeline**: Final cleanup
+- **Update**: Project documentation reflects testing improvements
+- **Examples**: Add testing examples to README if appropriate
+- **Migration**: Update any documentation affected by new test patterns
+- **Exit Criteria**: Documentation accurately reflects current testing approach
+
+---
+
+## SUCCESS METRICS & MONITORING
+
+### Immediate Success (Tasks 1-9)
+- [ ] Overall test coverage ≥90%
+- [ ] `internal/models` package coverage ≥90%
+- [ ] `internal/cli` package coverage ≥90%
+- [ ] CI pipeline passes all checks
+- [ ] PR #100 unblocked for merge
+
+### Process Success (Tasks 10-12)
+- [ ] Pre-commit coverage validation active
+- [ ] Coverage regression alerts configured
+- [ ] Zero coverage regressions in subsequent PRs
+- [ ] Developer workflow includes coverage validation
+
+### Quality Metrics
+- [ ] Test execution time <5 minutes for full suite
+- [ ] No flaky tests introduced
+- [ ] All tests pass consistently with race detection
+- [ ] Coverage quality maintained (not just quantity)
+
+---
+
+## EMERGENCY ESCALATION
+
+If coverage cannot be restored within 2 days:
+1. **Root Cause Analysis**: Deep dive into testability issues
+2. **Architecture Review**: Consider refactoring for better testability
+3. **Scope Reduction**: Identify minimum viable coverage increase
+4. **Technical Debt**: Document coverage debt and timeline for resolution
+
+**Note**: Emergency override NOT recommended per leyline guidance - this represents a "broken window" requiring proper resolution.
+
+---
+
+## ESTIMATED TIMELINE
+
+- **Phase 1 (Critical)**: 1-2 days (Tasks 1-6)
+- **Phase 2 (Recovery)**: 0.5 days (Tasks 7-9)
+- **Phase 3 (Process)**: 1-2 days (Tasks 10-12)
+- **Phase 4 (Cleanup)**: 0.5 days (Tasks 13-14)
+
+**Total Estimated Time**: 3-5 days to full resolution with process improvements

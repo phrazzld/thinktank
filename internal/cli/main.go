@@ -499,7 +499,9 @@ type LoggerWrapper struct {
 // Close closes the underlying file if it exists
 func (lw *LoggerWrapper) Close() error {
 	if lw.file != nil {
-		return lw.file.Close()
+		err := lw.file.Close()
+		lw.file = nil // Make Close idempotent
+		return err
 	}
 	return nil
 }
