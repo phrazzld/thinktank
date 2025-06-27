@@ -1,4 +1,4 @@
-// Package cli provides the command-line interface logic for the thinktank tool
+// Package cli provides the simplified command-line interface logic for the thinktank tool
 package cli
 
 import (
@@ -7,20 +7,24 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"regexp"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/phrazzld/thinktank/internal/auditlog"
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
-	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
+
+// Variable to allow mocking os.Exit in tests
+var osExit = os.Exit
 
 // Exit codes for different error types
 const (
@@ -37,513 +41,452 @@ const (
 	ExitCodeCancelled           = 10
 )
 
-// handleError processes an error, logs it appropriately, and exits the application with the correct exit code.
-// It determines the error category, creates a user-friendly message, and ensures proper logging and audit trail.
-func handleError(ctx context.Context, err error, logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, operation string) {
-	result := processError(ctx, err, logger, auditLogger, operation)
-
-	if !result.ShouldExit {
-		return
+// Main is the entry point for the thinktank CLI
+func Main() {
+	// Parse simplified arguments directly
+	simplifiedConfig, err := ParseSimpleArgs()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		osExit(ExitCodeInvalidRequest)
 	}
 
-	// Print user-friendly message to stderr
-	fmt.Fprintf(os.Stderr, "Error: %s\n", result.UserMessage)
+	// Convert to MinimalConfig
+	minimalConfig := &config.MinimalConfig{
+		InstructionsFile: simplifiedConfig.InstructionsFile,
+		TargetPaths:      []string{simplifiedConfig.TargetPath},
+		ModelNames:       []string{config.DefaultModel}, // Use smart defaults
+		OutputDir:        "",                            // Will be set by output manager
+		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
+		Verbose:          simplifiedConfig.HasFlag(FlagVerbose),
+		SynthesisModel:   "", // Can be set via env var if needed
+		LogLevel:         logutil.InfoLevel,
+		Timeout:          config.DefaultTimeout,
+		Quiet:            false,
+		NoProgress:       false,
+		Format:           config.DefaultFormat,
+		Exclude:          config.DefaultExcludes,
+		ExcludeNames:     config.DefaultExcludeNames,
+	}
 
-	// Exit with appropriate code
-	os.Exit(result.ExitCode)
-}
+	// Apply environment variables
+	if err := applyEnvironmentVars(minimalConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		osExit(ExitCodeInvalidRequest)
+	}
 
-// processError processes an error and returns structured result for testing
-// This extracts the core error processing logic without os.Exit() side effects
-func processError(ctx context.Context, err error, logger logutil.LoggerInterface, auditLogger auditlog.AuditLogger, operation string) *ErrorProcessingResult {
-	if err == nil {
-		return &ErrorProcessingResult{
-			ExitCode:    ExitCodeSuccess,
-			UserMessage: "",
-			ShouldExit:  false,
-			AuditLogged: false,
-			AuditError:  nil,
+	// If verbose flag is set, upgrade log level
+	if minimalConfig.Verbose {
+		minimalConfig.LogLevel = logutil.DebugLevel
+	}
+
+	// Create logger
+	logger := logutil.NewSlogLoggerFromLogLevel(os.Stderr, minimalConfig.LogLevel)
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), minimalConfig.Timeout)
+	defer cancel()
+
+	// Setup graceful shutdown
+	ctx = setupGracefulShutdown(ctx, logger)
+
+	// Add correlation ID
+	correlationID := uuid.New().String()
+	ctx = logutil.WithCorrelationID(ctx, correlationID)
+	contextLogger := logger.WithContext(ctx)
+
+	// Create output directory if not set
+	if minimalConfig.OutputDir == "" {
+		outputManager := NewOutputManager(contextLogger)
+		outputDir, err := outputManager.CreateOutputDirectory("", 0755)
+		if err != nil {
+			contextLogger.ErrorContext(ctx, "Failed to create output directory: %v", err)
+			fmt.Fprintf(os.Stderr, "Error: Failed to create output directory: %v\n", err)
+			osExit(ExitCodeGenericError)
 		}
+		minimalConfig.OutputDir = outputDir
 	}
 
-	// Extract correlation ID from error if available for enhanced logging
-	correlationID := llm.ExtractCorrelationID(err)
-
-	// Log detailed error with context for debugging, including correlation ID if available
-	if correlationID != "" {
-		logger.ErrorContext(ctx, "Error (correlation: %s): %v", correlationID, err)
-	} else {
-		logger.ErrorContext(ctx, "Error: %v", err)
-	}
-
-	// Attempt audit logging with correlation context
-	auditErr := auditLogger.LogOp(ctx, operation, "Failure", nil, nil, err)
-	auditLogged := true
-	if auditErr != nil {
-		if correlationID != "" {
-			logger.ErrorContext(ctx, "Failed to write audit log (correlation: %s): %v", correlationID, auditErr)
-		} else {
-			logger.ErrorContext(ctx, "Failed to write audit log: %v", auditErr)
-		}
-	}
-
-	// Determine exit code and user message
-	exitCode := getExitCodeFromError(err)
-	userMessage := generateErrorMessage(err)
-
-	return &ErrorProcessingResult{
-		ExitCode:    exitCode,
-		UserMessage: userMessage,
-		ShouldExit:  true,
-		AuditLogged: auditLogged,
-		AuditError:  auditErr,
-	}
-}
-
-// generateErrorMessage creates a user-friendly error message from any error
-// This is the extracted, pure business logic for error message generation
-func generateErrorMessage(err error) string {
-	if err == nil {
-		return "An unknown error occurred"
-	}
-
-	// Check for CLI error first (most specific)
-	if cliErr, ok := IsCLIError(err); ok {
-		return cliErr.UserFacingMessage()
-	}
-
-	// Check if the error is an LLMError that implements CategorizedError
-	if catErr, ok := llm.IsCategorizedError(err); ok {
-		// Try to get a user-friendly message if it's an LLMError
-		if llmErr, ok := catErr.(*llm.LLMError); ok {
-			userMsg := llmErr.UserFacingError()
-
-			// Add category-specific advice for better user experience
-			switch llmErr.ErrorCategory {
-			case llm.CategoryAuth:
-				if userMsg == llmErr.Message {
-					// If UserFacingError() just returns the raw message, enhance it
-					return userMsg + ". Please check your API key and permissions."
-				}
-				return userMsg
-			case llm.CategoryRateLimit:
-				if userMsg == llmErr.Message {
-					return userMsg + ". Please try again later or adjust rate limits."
-				}
-				return userMsg
-			default:
-				return userMsg
-			}
-		} else {
-			return err.Error()
-		}
-	} else if errors.Is(err, thinktank.ErrPartialSuccess) {
-		// Special case for partial success errors
-		return "Some model executions failed, but partial results were generated. Use --partial-success-ok flag to exit with success code in this case."
-	} else {
-		// Generic error - try to create a user-friendly message
-		return getFriendlyErrorMessage(err)
+	// Run the application
+	err = runApplication(ctx, minimalConfig, contextLogger)
+	if err != nil {
+		handleError(ctx, err, contextLogger)
 	}
 }
 
-// getFriendlyErrorMessage creates a user-friendly error message based on the error type
-func getFriendlyErrorMessage(err error) string {
-	if err == nil {
-		return "An unknown error occurred"
+// applyEnvironmentVars applies environment variables to MinimalConfig
+func applyEnvironmentVars(cfg *config.MinimalConfig) error {
+	// Model from environment
+	if model := os.Getenv("THINKTANK_MODEL"); model != "" {
+		cfg.ModelNames = []string{model}
 	}
 
-	// Check for common error patterns and provide friendly messages
-	errMsg := err.Error()
-	lowerMsg := strings.ToLower(errMsg)
-
-	// Common error patterns
-	switch {
-	case strings.Contains(lowerMsg, "api key"), strings.Contains(lowerMsg, "auth"), strings.Contains(lowerMsg, "unauthorized"):
-		return "Authentication error: Please check your API key and permissions"
-
-	case strings.Contains(lowerMsg, "rate limit"), strings.Contains(lowerMsg, "too many requests"):
-		return "Rate limit exceeded: Too many requests. Please try again later or adjust rate limits."
-
-	case strings.Contains(lowerMsg, "timeout"), strings.Contains(lowerMsg, "deadline exceeded"), strings.Contains(lowerMsg, "timed out"):
-		return "Operation timed out. Consider using a longer timeout with the --timeout flag."
-
-	case strings.Contains(lowerMsg, "not found"):
-		return "Resource not found. Please check that the specified file paths or models exist."
-
-	case strings.Contains(lowerMsg, "file"):
-		if strings.Contains(lowerMsg, "permission") {
-			return "File permission error: Please check file permissions and try again."
-		}
-		return "File error: " + sanitizeErrorMessage(errMsg)
-
-	case strings.Contains(lowerMsg, "flag"), strings.Contains(lowerMsg, "usage"), strings.Contains(lowerMsg, "help"):
-		return "Invalid command line arguments. Use --help to see usage instructions."
-
-	case strings.Contains(lowerMsg, "context"):
-		if strings.Contains(lowerMsg, "canceled") || strings.Contains(lowerMsg, "cancelled") {
-			return "Operation was cancelled. This might be due to timeout or user interruption."
-		}
-		return "Context error: " + sanitizeErrorMessage(errMsg)
-
-	case strings.Contains(lowerMsg, "network"), strings.Contains(lowerMsg, "connection"):
-		return "Network error: Please check your internet connection and try again."
+	// Multiple models from environment (comma-separated)
+	if models := os.Getenv("THINKTANK_MODELS"); models != "" {
+		cfg.ModelNames = strings.Split(models, ",")
 	}
 
-	// If we can't identify a specific error type, just sanitize the original message
-	return sanitizeErrorMessage(errMsg)
+	// Output directory from environment
+	if outputDir := os.Getenv("THINKTANK_OUTPUT_DIR"); outputDir != "" {
+		cfg.OutputDir = outputDir
+	}
+
+	// Synthesis model from environment
+	if synthesisModel := os.Getenv("THINKTANK_SYNTHESIS_MODEL"); synthesisModel != "" {
+		cfg.SynthesisModel = synthesisModel
+	}
+
+	// Boolean flags from environment
+	if dryRun := os.Getenv("THINKTANK_DRY_RUN"); dryRun != "" {
+		cfg.DryRun = parseBool(dryRun)
+	}
+
+	if verbose := os.Getenv("THINKTANK_VERBOSE"); verbose != "" {
+		cfg.Verbose = parseBool(verbose)
+		if cfg.Verbose {
+			cfg.LogLevel = logutil.DebugLevel
+		}
+	}
+
+	if quiet := os.Getenv("THINKTANK_QUIET"); quiet != "" {
+		cfg.Quiet = parseBool(quiet)
+	}
+
+	if noProgress := os.Getenv("THINKTANK_NO_PROGRESS"); noProgress != "" {
+		cfg.NoProgress = parseBool(noProgress)
+	}
+
+	// Timeout from environment
+	if timeout := os.Getenv("THINKTANK_TIMEOUT"); timeout != "" {
+		duration, err := time.ParseDuration(timeout)
+		if err != nil {
+			return fmt.Errorf("invalid timeout value: %w", err)
+		}
+		cfg.Timeout = duration
+	}
+
+	// File patterns from environment
+	if exclude := os.Getenv("THINKTANK_EXCLUDE"); exclude != "" {
+		cfg.Exclude = exclude
+	}
+
+	if excludeNames := os.Getenv("THINKTANK_EXCLUDE_NAMES"); excludeNames != "" {
+		cfg.ExcludeNames = excludeNames
+	}
+
+	return nil
 }
 
-// sanitizeErrorMessage removes or masks sensitive information from error messages
-// This is an additional layer beyond the sanitizing logger
-func sanitizeErrorMessage(message string) string {
-	// List of patterns to redact with corresponding replacements
-	var redactedMsg string
-
-	// API keys - OpenAI and all sk- patterns
-	redactedMsg = "[REDACTED]"
-	message = regexp.MustCompile(`sk[-_][a-zA-Z0-9]{16,}`).ReplaceAllString(message, redactedMsg)
-
-	// API keys - Gemini and all key- patterns
-	redactedMsg = "[REDACTED]"
-	message = regexp.MustCompile(`key[-_][a-zA-Z0-9]{16,}`).ReplaceAllString(message, redactedMsg)
-
-	// Long alphanumeric strings that might be API keys
-	redactedMsg = "[REDACTED]"
-	message = regexp.MustCompile(`[a-zA-Z0-9]{32,}`).ReplaceAllString(message, redactedMsg)
-
-	// URLs with credentials
-	redactedMsg = "[REDACTED]"
-	message = regexp.MustCompile(`https?://[^:]+:[^@]+@[^/]+`).ReplaceAllString(message, redactedMsg)
-
-	// Environment variables with secrets
-	redactedMsg = "[REDACTED]"
-	message = regexp.MustCompile(`GEMINI_API_KEY=.*`).ReplaceAllString(message, redactedMsg)
-	message = regexp.MustCompile(`OPENAI_API_KEY=.*`).ReplaceAllString(message, redactedMsg)
-	message = regexp.MustCompile(`OPENROUTER_API_KEY=.*`).ReplaceAllString(message, redactedMsg)
-	message = regexp.MustCompile(`API_KEY=.*`).ReplaceAllString(message, redactedMsg)
-
-	return message
+// parseBool parses a boolean value from string
+func parseBool(s string) bool {
+	switch strings.ToLower(s) {
+	case "true", "1", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
-// setupGracefulShutdown sets up signal handling for graceful shutdown on SIGINT (Ctrl+C) and SIGTERM.
-// It returns a context that will be cancelled when an interrupt signal is received.
-func setupGracefulShutdown(ctx context.Context) (context.Context, context.CancelFunc) {
-	// Create a new context for signal handling
-	signalCtx, signalCancel := context.WithCancel(ctx)
+// setupGracefulShutdown sets up signal handling for graceful shutdown
+func setupGracefulShutdown(ctx context.Context, logger logutil.LoggerInterface) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
 
-	// Create a channel to receive OS signals
 	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Register the channel to receive specific signals
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start a goroutine to handle signals
 	go func() {
 		select {
 		case sig := <-sigChan:
-			// User pressed Ctrl+C or sent SIGTERM
-			fmt.Fprintf(os.Stderr, "\n🛑 Received %v signal, shutting down gracefully...\n", sig)
-			signalCancel()
-		case <-signalCtx.Done():
-			// Context was cancelled for another reason, clean up signal handling
-			signal.Stop(sigChan)
-			close(sigChan)
+			logger.InfoContext(ctx, "Received signal %v, initiating graceful shutdown", sig)
+			fmt.Fprintln(os.Stderr, "\nReceived interrupt signal. Shutting down gracefully...")
+			cancel()
+		case <-ctx.Done():
+			// Context cancelled by other means
 		}
 	}()
 
-	return signalCtx, signalCancel
+	return ctx
 }
 
-// RunMain executes the main application bootstrap logic with injected dependencies
-// This function contains the extracted bootstrap logic from Main() to enable testing
-func RunMain(mainConfig *MainConfig) *MainResult {
-	// Parse command line flags using intelligent router for simplified/complex mode detection
-	// Use a minimal logger for bootstrap phase
-	var logger logutil.LoggerInterface = logutil.NewSlogLoggerFromLogLevel(os.Stderr, logutil.InfoLevel)
-	router := NewParserRouterWithEnv(logger, mainConfig.Getenv)
-	parseResult := router.ParseArguments(mainConfig.Args)
-
-	if parseResult.Error != nil {
-		// Return error result instead of calling os.Exit() for testability
-		return &MainResult{
-			ExitCode:              ExitCodeInvalidRequest,
-			Error:                 parseResult.Error,
-			ParsingMode:           parseResult.Mode,
-			HasDeprecationWarning: parseResult.HasDeprecationWarning(),
-		}
+// runApplication executes the core application logic with MinimalConfig
+func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface) error {
+	// Validate configuration
+	if err := validateConfig(cfg); err != nil {
+		return err
 	}
 
-	config := parseResult.Config
-
-	// Store parsing information for result tracking
-	parsingMode := parseResult.Mode
-	hasDeprecationWarning := parseResult.HasDeprecationWarning()
-
-	// Handle deprecation warnings in bootstrap phase
-	if hasDeprecationWarning {
-		router.LogDeprecationWarning(parseResult.Deprecation, config)
-	}
-
-	// Create a base context with timeout
-	rootCtx := context.Background()
-	ctx, cancel := context.WithTimeout(rootCtx, config.Timeout)
-	defer cancel() // Ensure resources are released when RunMain exits
-
-	// Set up graceful shutdown on interrupt signals
-	ctx, gracefulCancel := setupGracefulShutdown(ctx)
-	defer gracefulCancel() // Ensure graceful cancel is called when RunMain exits
-
-	// Add correlation ID to the context for tracing
-	correlationID := ""
-	ctx = logutil.WithCorrelationID(ctx, correlationID) // Empty string means generate a new UUID
-
-	// Setup logging early for error reporting with context
-	logger = SetupLogging(config)
-
-	// Initialize the audit logger
+	// Create audit logger
 	var auditLogger auditlog.AuditLogger
-	if config.AuditLogFile != "" {
-		fileLogger, err := auditlog.NewFileAuditLogger(config.AuditLogFile, logger)
-		if err != nil {
-			// Log error and fall back to NoOp implementation using context-aware method
-			logger.ErrorContext(ctx, "Failed to initialize file audit logger: %v. Audit logging disabled.", err)
-			auditLogger = auditlog.NewNoOpAuditLogger()
-		} else {
-			auditLogger = fileLogger
-			logger.InfoContext(ctx, "Audit logging enabled to file: %s", config.AuditLogFile)
-		}
-	} else {
+	if cfg.DryRun {
+		// In dry run mode, use no-op audit logger
 		auditLogger = auditlog.NewNoOpAuditLogger()
-		logger.DebugContext(ctx, "Audit logging is disabled")
-	}
-
-	// Ensure the audit logger is properly closed when the application exits
-	defer func() { _ = auditLogger.Close() }()
-
-	// Initialize APIService using models package
-	apiService := thinktank.NewRegistryAPIService(logger)
-
-	// Create and configure ConsoleWriter
-	consoleWriter := logutil.NewConsoleWriter()
-
-	// Create production dependencies and run
-	runConfig := NewProductionRunConfig(ctx, config, logger, auditLogger, apiService, consoleWriter)
-	result := Run(runConfig)
-
-	// Handle the result - but don't call os.Exit(), return structured result
-	if result.Error != nil && result.ExitCode != ExitCodeSuccess {
-		// For bootstrap function, we need to handle errors differently
-		// Use the injected ExitHandler for side effects (like error logging)
-		// but don't actually exit - return the result instead
-		errorResult := processError(ctx, result.Error, logger, auditLogger, "execution")
-		return &MainResult{
-			ExitCode:              errorResult.ExitCode,
-			Error:                 result.Error,
-			RunResult:             result,
-			ParsingMode:           parsingMode,
-			HasDeprecationWarning: hasDeprecationWarning,
+	} else {
+		// Use file audit logger writing to a log file
+		auditLogPath := filepath.Join(cfg.OutputDir, "audit.jsonl")
+		var err error
+		auditLogger, err = auditlog.NewFileAuditLogger(auditLogPath, logger)
+		if err != nil {
+			return fmt.Errorf("failed to create audit logger: %w", err)
 		}
 	}
 
-	// Success case - return the run result
-	return &MainResult{
-		ExitCode:              result.ExitCode,
-		Error:                 result.Error,
-		RunResult:             result,
-		ParsingMode:           parsingMode,
-		HasDeprecationWarning: hasDeprecationWarning,
-	}
-}
-
-// Main is the entry point for the thinktank CLI
-func Main() {
-	// Create production configuration and run
-	mainConfig := NewProductionMainConfig()
-	result := RunMain(mainConfig)
-
-	// Handle the result and exit
-	if result.Error != nil && result.ExitCode != ExitCodeSuccess {
-		// Print user-friendly message to stderr
-		if result.RunResult != nil {
-			// Error occurred during execution phase - use processError for consistent formatting
-			noOpLogger := logutil.NewLogger(logutil.InfoLevel, nil, "")
-			errorResult := processError(context.Background(), result.Error, noOpLogger, auditlog.NewNoOpAuditLogger(), "execution")
-			fmt.Fprintf(os.Stderr, "Error: %s\n", errorResult.UserMessage)
-		} else {
-			// Error occurred during bootstrap phase - simple error output
-			fmt.Fprintf(os.Stderr, "Error: %v\n", result.Error)
-		}
-	}
-
-	// Exit with the determined code
-	os.Exit(result.ExitCode)
-}
-
-// Run executes the core application business logic with injected dependencies
-// This function contains the extracted business logic from Main() to enable testing
-func Run(runConfig *RunConfig) *RunResult {
-	startTime := time.Now()
-	stats := &ExecutionStats{}
-
-	// Use the injected context
-	ctx := runConfig.Context
-	config := runConfig.Config
-	logger := runConfig.Logger
-	auditLogger := runConfig.AuditLogger
-	apiService := runConfig.APIService
-	consoleWriter := runConfig.ConsoleWriter
-
-	// Ensure context is attached to logger
-	logger = logger.WithContext(ctx)
+	// Log start
 	logger.InfoContext(ctx, "Starting thinktank - AI-assisted content generation tool")
 
-	// Get correlation ID from context for logging
-	currentCorrelationID := logutil.GetCorrelationID(ctx)
-
-	// Log first audit entry with correlation ID
-	if err := auditLogger.Log(ctx, auditlog.AuditEntry{
-		Operation: "application_start",
-		Status:    "InProgress",
-		Inputs: map[string]interface{}{
-			"correlation_id": currentCorrelationID,
-		},
-		Message: "Application starting",
-	}); err != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
-	}
-	stats.AuditEntriesWritten++
-
-	// Models package is used directly, no initialization required
-	logger.InfoContext(ctx, "Models package ready for use")
-
-	// Validate inputs before proceeding
-	if err := ValidateInputs(config, logger); err != nil {
-		// Use the central error handling mechanism with input validation errors
-		// These are considered invalid requests
-		err = llm.Wrap(err, "thinktank", "Invalid input configuration", llm.CategoryInvalidRequest)
-
-		// Instead of calling handleError which would exit, determine exit code and return
-		exitCode := getExitCodeFromError(err)
-		stats.Duration = time.Since(startTime)
-
-		return &RunResult{
-			ExitCode: exitCode,
-			Error:    err,
-			Stats:    stats,
-		}
-	}
-
-	if err := auditLogger.LogOp(ctx, "validate_inputs", "Success", nil, nil, nil); err != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
-	}
-	stats.AuditEntriesWritten++
-
-	// Perform token-based model filtering
-	// Estimate input token count and filter models based on context window
-	if len(config.Paths) > 0 {
-		// Use the first path as representative for token estimation
-		// This provides a reasonable approximation for multi-path scenarios
-		estimatedTokens, err := AnalyzeTaskComplexityForModelSelection(config.Paths[0])
-		if err != nil {
-			logger.WarnContext(ctx, "Failed to estimate input tokens: %v. Using all configured models.", err)
-		} else {
-			logger.InfoContext(ctx, "Estimated input tokens: %d", estimatedTokens)
-
-			// Filter models based on context window vs input tokens
-			availableModels := SelectBestModels(estimatedTokens)
-			if len(availableModels) > 0 {
-				logger.InfoContext(ctx, "Filtered to %d models with sufficient context: %v", len(availableModels), availableModels)
-				config.ModelNames = availableModels
-			} else {
-				logger.WarnContext(ctx, "No models have sufficient context window. Using configured models: %v", config.ModelNames)
-			}
-		}
-	}
-
-	// Configure ConsoleWriter (using injected dependency)
-	consoleWriter.SetQuiet(config.Quiet)
-	consoleWriter.SetNoProgress(config.NoProgress)
-
-	// Execute the core application logic
-	var err error
-	if runConfig.ContextGatherer != nil {
-		// For testing: use custom ContextGatherer when provided
-		err = executeWithCustomContextGatherer(ctx, config, logger, auditLogger, apiService, consoleWriter, runConfig.ContextGatherer)
-	} else {
-		// Normal production execution
-		err = thinktank.Execute(ctx, config, logger, auditLogger, apiService, consoleWriter)
-	}
+	// Read instructions
+	instructionsContent, err := os.ReadFile(cfg.InstructionsFile)
 	if err != nil {
-		// Check if we're in tolerant mode (partial success is considered ok)
-		if config.PartialSuccessOk && errors.Is(err, thinktank.ErrPartialSuccess) {
-			logger.InfoContext(ctx, "Partial success accepted due to --partial-success-ok flag")
-			if logErr := auditLogger.Log(ctx, auditlog.AuditEntry{
-				Operation: "partial_success_exit",
-				Status:    "Success",
-				Inputs: map[string]interface{}{
-					"reason": "tolerant_mode_enabled",
-				},
-				Message: "Exiting with success code despite partial failure",
-			}); logErr != nil {
-				logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
-			}
-			stats.AuditEntriesWritten++
+		return fmt.Errorf("failed to read instructions file: %w", err)
+	}
+	instructions := string(instructionsContent)
 
-			// Return success for partial success in tolerant mode
-			stats.Duration = time.Since(startTime)
-			return &RunResult{
-				ExitCode: ExitCodeSuccess,
-				Error:    nil,
-				Stats:    stats,
-			}
+	// In dry run mode, just show what would be processed
+	if cfg.DryRun {
+		return runDryRun(ctx, cfg, instructions, logger)
+	}
+
+	// Create necessary services
+	consoleWriter := logutil.NewConsoleWriter()
+
+	// Create registry API service that works with multiple providers
+	apiService := thinktank.NewRegistryAPIService(logger)
+
+	// Create a dummy LLM client for context gatherer (it's only needed for dry run)
+	// In non-dry-run mode, the orchestrator will handle the actual client creation
+	var dummyClient llm.LLMClient
+	if cfg.DryRun {
+		dummyClient = &llm.MockLLMClient{}
+	}
+
+	// Create context gatherer with all required parameters
+	contextGatherer := thinktank.NewContextGatherer(logger, consoleWriter, cfg.DryRun, dummyClient, auditLogger)
+
+	// Create file writer
+	fileWriter := thinktank.NewFileWriter(logger, auditLogger, 0755, 0644)
+
+	// Create rate limiter with smart defaults based on provider
+	rateLimiter := createRateLimiter(cfg)
+
+	// Create adapter config that implements the interface expected by orchestrator
+	// This is temporary until we update orchestrator to use ConfigInterface
+	adapterConfig := createAdapterConfig(cfg)
+
+	// Create orchestrator with adapters for type compatibility
+	orch := orchestrator.NewOrchestrator(
+		apiService,
+		&thinktank.ContextGathererAdapter{ContextGatherer: contextGatherer},
+		fileWriter,
+		auditLogger,
+		rateLimiter,
+		adapterConfig,
+		logger,
+		consoleWriter,
+	)
+
+	// Run orchestrator
+	return orch.Run(ctx, instructions)
+}
+
+// validateConfig validates the minimal configuration
+func validateConfig(cfg *config.MinimalConfig) error {
+	if cfg.InstructionsFile == "" {
+		return fmt.Errorf("instructions file is required")
+	}
+
+	if len(cfg.TargetPaths) == 0 {
+		return fmt.Errorf("at least one target path is required")
+	}
+
+	// Check if instructions file exists
+	if _, err := os.Stat(cfg.InstructionsFile); err != nil {
+		return fmt.Errorf("instructions file not found: %w", err)
+	}
+
+	// Check if target paths exist
+	for _, path := range cfg.TargetPaths {
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("target path not found: %s", path)
 		}
+	}
 
-		// For all other error types, determine exit code and return
-		exitCode := getExitCodeFromError(err)
-		stats.Duration = time.Since(startTime)
-
-		return &RunResult{
-			ExitCode: exitCode,
-			Error:    err,
-			Stats:    stats,
+	// Validate API keys based on models
+	for _, model := range cfg.ModelNames {
+		provider := getProviderForModel(model)
+		apiKey := getAPIKeyForProvider(provider)
+		if apiKey == "" && !cfg.DryRun {
+			return fmt.Errorf("%s API key not set for model %s", provider, model)
 		}
 	}
 
-	// Log successful completion
-	if err := auditLogger.LogOp(ctx, "execution", "Success", nil, nil, nil); err != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
-	}
-	stats.AuditEntriesWritten++
+	return nil
+}
 
-	if err := auditLogger.Log(ctx, auditlog.AuditEntry{
-		Operation: "application_end",
-		Status:    "Success",
-		Inputs: map[string]interface{}{
-			"status": "success",
-		},
-		Message: "Application completed successfully",
-	}); err != nil {
-		logger.ErrorContext(ctx, "Failed to write audit log: %v", err)
+// getProviderForModel returns the provider for a given model name
+func getProviderForModel(model string) string {
+	modelInfo, err := models.GetModelInfo(model)
+	if err != nil {
+		// Default to gemini for unknown models
+		if strings.Contains(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "o3") {
+			return "openai"
+		}
+		if strings.Contains(strings.ToLower(model), "openrouter") {
+			return "openrouter"
+		}
+		return "gemini"
 	}
-	stats.AuditEntriesWritten++
+	return modelInfo.Provider
+}
 
-	// Success case
-	stats.Duration = time.Since(startTime)
-	return &RunResult{
-		ExitCode: ExitCodeSuccess,
-		Error:    nil,
-		Stats:    stats,
+// getAPIKeyForProvider returns the API key for a given provider
+func getAPIKeyForProvider(provider string) string {
+	switch provider {
+	case "openai":
+		return os.Getenv(config.OpenAIAPIKeyEnvVar)
+	case "openrouter":
+		return os.Getenv(config.OpenRouterAPIKeyEnvVar)
+	case "gemini":
+		return os.Getenv(config.APIKeyEnvVar)
+	default:
+		return os.Getenv(config.APIKeyEnvVar)
 	}
 }
 
-// getExitCodeFromError determines the appropriate exit code for an error
-// This extracts the exit code determination logic from handleError for testability
-func getExitCodeFromError(err error) int {
+// createRateLimiter creates a rate limiter with smart defaults based on provider
+func createRateLimiter(cfg *config.MinimalConfig) *ratelimit.RateLimiter {
+	// Determine rate limits based on primary model provider
+	if len(cfg.ModelNames) == 0 {
+		return ratelimit.NewRateLimiter(5, 60) // Default
+	}
+
+	primaryModel := cfg.ModelNames[0]
+	modelInfo, err := models.GetModelInfo(primaryModel)
+	if err != nil {
+		// Use conservative defaults
+		return ratelimit.NewRateLimiter(5, 60)
+	}
+
+	// Use provider-specific defaults
+	rpm := 60 // Default
+	switch modelInfo.Provider {
+	case "openai":
+		rpm = 3000
+	case "openrouter":
+		rpm = 20
+	}
+
+	return ratelimit.NewRateLimiter(5, rpm)
+}
+
+// runDryRun executes a dry run showing what would be processed
+func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions string, logger logutil.LoggerInterface) error {
+	fmt.Println("=== DRY RUN MODE ===")
+	fmt.Printf("Instructions file: %s\n", cfg.InstructionsFile)
+	fmt.Printf("Target paths: %v\n", cfg.TargetPaths)
+	fmt.Printf("Models: %v\n", cfg.ModelNames)
+	fmt.Printf("Output directory: %s\n", cfg.OutputDir)
+
+	if cfg.SynthesisModel != "" {
+		fmt.Printf("Synthesis model: %s\n", cfg.SynthesisModel)
+	}
+
+	// Create console writer and dummy client for dry run
+	consoleWriter := logutil.NewConsoleWriter()
+	dummyClient := &llm.MockLLMClient{}
+	noOpAuditLogger := auditlog.NewNoOpAuditLogger()
+
+	// Create context gatherer to show what files would be processed
+	contextGatherer := thinktank.NewContextGatherer(logger, consoleWriter, true, dummyClient, noOpAuditLogger)
+
+	// Create app config for context gathering
+	appConfig := &config.AppConfig{
+		Format: cfg.Format,
+		Excludes: config.ExcludeConfig{
+			Extensions: cfg.Exclude,
+			Names:      cfg.ExcludeNames,
+		},
+	}
+
+	// Gather context
+	// Create gather config
+	gatherConfig := thinktank.GatherConfig{
+		Paths:        cfg.TargetPaths,
+		Format:       appConfig.Format,
+		Exclude:      appConfig.Excludes.Extensions,
+		ExcludeNames: appConfig.Excludes.Names,
+	}
+
+	files, stats, err := contextGatherer.GatherContext(ctx, gatherConfig)
+	if err != nil {
+		return fmt.Errorf("failed to gather context: %w", err)
+	}
+	_ = files // Files list is available if needed
+
+	fmt.Printf("\nFiles that would be processed: %d\n", stats.ProcessedFilesCount)
+	fmt.Printf("Total characters: %d\n", stats.CharCount)
+	fmt.Printf("Total lines: %d\n", stats.LineCount)
+
+	// Show first few files
+	if len(stats.ProcessedFiles) > 0 {
+		fmt.Println("\nSample files:")
+		count := 10
+		if len(stats.ProcessedFiles) < count {
+			count = len(stats.ProcessedFiles)
+		}
+		for i := 0; i < count; i++ {
+			fmt.Printf("  - %s\n", stats.ProcessedFiles[i])
+		}
+		if len(stats.ProcessedFiles) > count {
+			fmt.Printf("  ... and %d more files\n", len(stats.ProcessedFiles)-count)
+		}
+	}
+
+	return nil
+}
+
+// createAdapterConfig creates a temporary adapter that makes MinimalConfig work with current orchestrator
+// This will be removed once orchestrator is updated to use ConfigInterface
+func createAdapterConfig(cfg *config.MinimalConfig) *config.CliConfig {
+	return &config.CliConfig{
+		InstructionsFile: cfg.InstructionsFile,
+		Paths:            cfg.TargetPaths,
+		ModelNames:       cfg.ModelNames,
+		OutputDir:        cfg.OutputDir,
+		DryRun:           cfg.DryRun,
+		Verbose:          cfg.Verbose,
+		SynthesisModel:   cfg.SynthesisModel,
+		LogLevel:         cfg.LogLevel,
+		Quiet:            cfg.Quiet,
+		NoProgress:       cfg.NoProgress,
+		Format:           cfg.Format,
+		Exclude:          cfg.Exclude,
+		ExcludeNames:     cfg.ExcludeNames,
+		Timeout:          cfg.Timeout,
+		// Set smart defaults for other fields
+		MaxConcurrentRequests:      5,
+		RateLimitRequestsPerMinute: 60,
+		DirPermissions:             0755,
+		FilePermissions:            0644,
+		PartialSuccessOk:           false,
+	}
+}
+
+// handleError processes an error and exits with appropriate code
+func handleError(ctx context.Context, err error, logger logutil.LoggerInterface) {
+	exitCode := getExitCode(err)
+	userMessage := getUserMessage(err)
+
+	logger.ErrorContext(ctx, "Application error: %v", err)
+	fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage)
+
+	osExit(exitCode)
+}
+
+// getExitCode returns appropriate exit code for an error
+func getExitCode(err error) int {
 	if err == nil {
 		return ExitCodeSuccess
 	}
 
-	// Check for LLM errors with specific categories (handles wrapped errors)
+	// Check for specific error types
 	var llmErr *llm.LLMError
 	if errors.As(err, &llmErr) {
 		switch llmErr.ErrorCategory {
@@ -570,88 +513,61 @@ func getExitCodeFromError(err error) int {
 		}
 	}
 
-	// Check for partial success error
-	if errors.Is(err, thinktank.ErrPartialSuccess) {
-		return ExitCodeGenericError
+	// Check for CLI errors
+	if cliErr, ok := IsCLIError(err); ok {
+		switch cliErr.Type {
+		case CLIErrorAuthentication:
+			return ExitCodeAuthError
+		case CLIErrorInvalidValue, CLIErrorMissingRequired:
+			return ExitCodeInvalidRequest
+		default:
+			return ExitCodeGenericError
+		}
 	}
 
-	// Check for context cancellation errors (fallback for wrapped errors)
+	// Check for context errors
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return ExitCodeCancelled
 	}
 
-	// Check error message for cancellation patterns (last resort)
-	errMsg := err.Error()
-	if llm.GetErrorCategoryFromMessage(errMsg) == llm.CategoryCancelled {
-		return ExitCodeCancelled
+	// Check for partial success
+	if errors.Is(err, thinktank.ErrPartialSuccess) {
+		return ExitCodeGenericError
 	}
 
-	// Default to generic error for unknown error types
 	return ExitCodeGenericError
 }
 
-// executeWithCustomContextGatherer executes the core application logic with a custom ContextGatherer
-// This is used for testing file filtering behavior by injecting a mock ContextGatherer
-func executeWithCustomContextGatherer(
-	ctx context.Context,
-	cliConfig *config.CliConfig,
-	logger logutil.LoggerInterface,
-	auditLogger auditlog.AuditLogger,
-	apiService interfaces.APIService,
-	consoleWriter logutil.ConsoleWriter,
-	contextGatherer interfaces.ContextGatherer,
-) error {
-	// Ensure the logger has the context attached
-	logger = logger.WithContext(ctx)
-
-	// Setup output directory (replicated from app.go setupOutputDirectory function)
-	if cliConfig.OutputDir == "" {
-		// Generate a unique timestamped run name (simplified for testing)
-		runName := fmt.Sprintf("thinktank_test_%d", time.Now().Unix())
-		cliConfig.OutputDir = runName
-		logger.InfoContext(ctx, "Generated output directory: %s", cliConfig.OutputDir)
+// getUserMessage returns a user-friendly error message
+func getUserMessage(err error) string {
+	if err == nil {
+		return "An unknown error occurred"
 	}
 
-	// Ensure output directory exists
-	if err := os.MkdirAll(cliConfig.OutputDir, cliConfig.DirPermissions); err != nil {
-		logger.ErrorContext(ctx, "Failed to create output directory %s: %v", cliConfig.OutputDir, err)
-		return fmt.Errorf("failed to create output directory %s: %v", cliConfig.OutputDir, err)
+	// Check for CLI errors first
+	if cliErr, ok := IsCLIError(err); ok {
+		return cliErr.UserFacingMessage()
 	}
 
-	// Read instructions file (replicated from app.go)
-	instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
-	if err != nil {
-		logger.ErrorContext(ctx, "Failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
-		return fmt.Errorf("failed to read instructions file %s: %v", cliConfig.InstructionsFile, err)
+	// Check for LLM errors
+	var llmErr *llm.LLMError
+	if errors.As(err, &llmErr) {
+		return llmErr.UserFacingError()
 	}
-	instructions := string(instructionsContent)
-	logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
 
-	// Create file writer
-	fileWriter := thinktank.NewFileWriter(logger, auditLogger, cliConfig.DirPermissions, cliConfig.FilePermissions)
+	// Check for context errors
+	if errors.Is(err, context.Canceled) {
+		return "Operation was cancelled"
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return "Operation timed out"
+	}
 
-	// Create rate limiter from configuration
-	rateLimiter := ratelimit.NewRateLimiter(
-		cliConfig.MaxConcurrentRequests,
-		cliConfig.RateLimitRequestsPerMinute,
-	)
+	// Check for partial success
+	if errors.Is(err, thinktank.ErrPartialSuccess) {
+		return "Some model executions failed, but partial results were generated"
+	}
 
-	// Create adapters for the interfaces (same pattern as normal Execute)
-	apiServiceAdapter := &thinktank.APIServiceAdapter{APIService: apiService}
-	fileWriterAdapter := &thinktank.FileWriterAdapter{FileWriter: fileWriter}
-
-	// Create orchestrator with custom context gatherer (pass directly, no adapter needed)
-	orch := orchestrator.NewOrchestrator(
-		apiServiceAdapter,
-		contextGatherer, // Pass the contextGatherer directly - it implements interfaces.ContextGatherer
-		fileWriterAdapter,
-		auditLogger,
-		rateLimiter,
-		cliConfig,
-		logger,
-		consoleWriter,
-	)
-
-	// Run the orchestrator with the instructions
-	return orch.Run(ctx, instructions)
+	// Return the error as-is
+	return err.Error()
 }

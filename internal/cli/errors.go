@@ -23,9 +23,6 @@ var (
 	// ErrMissingTargetPath indicates that the target path is missing
 	ErrMissingTargetPath = NewCLIError(CLIErrorMissingRequired, "target path required", "specify a file or directory to analyze")
 
-	// ErrConflictingFlags indicates that mutually exclusive flags were used together
-	ErrConflictingFlags = NewCLIError(CLIErrorConflictingOptions, "conflicting flags specified", "use only one of the conflicting options")
-
 	// ErrInvalidPath indicates that a specified path is invalid or inaccessible
 	ErrInvalidPath = NewCLIError(CLIErrorFileAccess, "invalid path specified", "ensure the path exists and is accessible")
 )
@@ -39,9 +36,6 @@ const (
 
 	// CLIErrorInvalidValue indicates invalid flag or argument values
 	CLIErrorInvalidValue
-
-	// CLIErrorConflictingOptions indicates mutually exclusive options were used together
-	CLIErrorConflictingOptions
 
 	// CLIErrorFileAccess indicates file or directory access issues
 	CLIErrorFileAccess
@@ -153,7 +147,7 @@ func mapCLIErrorToLLMCategory(errType CLIErrorType) llm.ErrorCategory {
 	switch errType {
 	case CLIErrorAuthentication:
 		return llm.CategoryAuth
-	case CLIErrorMissingRequired, CLIErrorInvalidValue, CLIErrorConflictingOptions:
+	case CLIErrorMissingRequired, CLIErrorInvalidValue:
 		return llm.CategoryInvalidRequest
 	case CLIErrorFileAccess:
 		return llm.CategoryInputLimit
@@ -201,17 +195,6 @@ func NewNoAPIKeyError(provider string) error {
 		fmt.Sprintf("no API key available for %s provider", provider),
 		fmt.Sprintf("set the %s environment variable with your API key", envVar),
 		"API key validation",
-	)
-	return WrapAsLLMError(cliErr)
-}
-
-// NewConflictingFlagsError creates an error for mutually exclusive flags
-func NewConflictingFlagsError(flag1, flag2 string) error {
-	cliErr := NewCLIErrorWithContext(
-		CLIErrorConflictingOptions,
-		fmt.Sprintf("conflicting flags: %s and %s cannot be used together", flag1, flag2),
-		fmt.Sprintf("use either %s or %s, but not both", flag1, flag2),
-		"flag validation",
 	)
 	return WrapAsLLMError(cliErr)
 }
