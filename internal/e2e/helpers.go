@@ -26,12 +26,12 @@ func main() {
 
 // CreateStandardArgsWithPaths creates a standard set of command-line arguments
 func CreateStandardArgsWithPaths(instructionsFile, outputDir, sourcePath string) []string {
-	// Create arguments
+	// Create arguments using the simplified CLI format: instructions.txt target_path [flags...]
 	return []string{
-		"--instructions", instructionsFile,
+		instructionsFile,
+		sourcePath,
 		"--output-dir", outputDir,
 		"--model", "gemini-2.5-pro",
-		sourcePath,
 	}
 }
 
