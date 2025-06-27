@@ -46,8 +46,7 @@ func TestSimplifiedComplexCompatibility(t *testing.T) {
 		}
 
 		// Convert to complex config
-		adapter := cli.NewConfigAdapter(simplifiedConfig)
-		convertedConfig := adapter.ToComplexConfig()
+		convertedConfig := simplifiedConfig.ToCliConfig()
 
 		// Verify essential equivalence
 		if !convertedConfig.DryRun {
