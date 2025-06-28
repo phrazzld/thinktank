@@ -20,6 +20,17 @@ func ParseSimpleArgs() (*SimplifiedConfig, error) {
 // This enables comprehensive testing of the parsing logic without subprocess execution.
 // Supports multiple target paths: thinktank instructions.txt path1 path2 [flags...]
 func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
+	// Check for help flag early (handle empty args gracefully)
+	if len(args) > 1 {
+		for _, arg := range args[1:] {
+			if arg == "--help" || arg == "-h" {
+				return &SimplifiedConfig{
+					Flags: FlagHelp,
+				}, nil
+			}
+		}
+	}
+
 	if len(args) < 3 {
 		binary := "thinktank"
 		if len(args) > 0 {
@@ -42,6 +53,9 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 
 		// Check if this is a flag
 		switch {
+		case arg == "--help" || arg == "-h":
+			flags |= FlagHelp
+
 		case arg == "--dry-run":
 			flags |= FlagDryRun
 
@@ -106,6 +120,13 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 		}
 	}
 
+	// If help is requested, bypass validation
+	if flags&FlagHelp != 0 {
+		return &SimplifiedConfig{
+			Flags: flags,
+		}, nil
+	}
+
 	// Validate we have the required positional arguments
 	if instructionsFile == "" {
 		return nil, fmt.Errorf("instructions file required")
@@ -124,9 +145,12 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 		Flags:            flags,
 	}
 
-	// Validate the parsed configuration
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+	// Skip validation if help is requested
+	if !config.HelpRequested() {
+		// Validate the parsed configuration
+		if err := config.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid configuration: %w", err)
+		}
 	}
 
 	return config, nil

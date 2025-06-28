@@ -35,7 +35,7 @@ const (
 	FlagQuiet                        // 0x10
 	FlagJsonLogs                     // 0x20
 	FlagNoProgress                   // 0x40
-	// 1 bit remaining for future expansion
+	FlagHelp                         // 0x80 - Last available bit
 )
 
 // Smart defaults - applied during parsing/conversion
@@ -57,6 +57,11 @@ func (s *SimplifiedConfig) SetFlag(flag uint8) {
 // ClearFlag clears a flag using bitwise AND NOT - O(1) operation
 func (s *SimplifiedConfig) ClearFlag(flag uint8) {
 	s.Flags &^= flag
+}
+
+// HelpRequested returns true if the help flag is set
+func (s *SimplifiedConfig) HelpRequested() bool {
+	return s.HasFlag(FlagHelp)
 }
 
 // Validate performs essential validation with fail-fast behavior.
@@ -200,6 +205,8 @@ func parseOptionalFlags(args []string, config *SimplifiedConfig) ([]string, erro
 				i++ // Skip the model value - ignored in SimplifiedConfig
 			case "-v":
 				config.SetFlag(FlagVerbose)
+			case "-h":
+				config.SetFlag(FlagHelp)
 			default:
 				return nil, fmt.Errorf("unknown flag: %s", arg)
 			}

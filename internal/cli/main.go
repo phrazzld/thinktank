@@ -46,7 +46,14 @@ func Main() {
 	simplifiedConfig, err := ParseSimpleArgs()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		fmt.Fprintln(os.Stderr, "\nRun 'thinktank --help' for usage information.")
 		osExit(ExitCodeInvalidRequest)
+	}
+
+	// Handle help request
+	if simplifiedConfig.HelpRequested() {
+		PrintHelpToStdout()
+		osExit(ExitCodeSuccess)
 	}
 
 	// Determine model selection strategy
