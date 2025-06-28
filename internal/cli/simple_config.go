@@ -64,10 +64,13 @@ func (s *SimplifiedConfig) ClearFlag(flag uint8) {
 // Uses lazy evaluation to minimize syscalls and API key checks.
 func (s *SimplifiedConfig) Validate() error {
 	// 1. Path length validation first - O(1) check to prevent filesystem errors (~0.001ms)
-	// Use 255 as a conservative limit that works across all filesystems
+	// Check individual paths, not the combined string
 	const maxPathLength = 255
-	if len(s.TargetPath) > maxPathLength {
-		return fmt.Errorf("target path too long (max %d characters): %d characters", maxPathLength, len(s.TargetPath))
+	targetPaths := strings.Fields(s.TargetPath)
+	for _, path := range targetPaths {
+		if len(path) > maxPathLength {
+			return fmt.Errorf("target path too long (max %d characters): %s (%d characters)", maxPathLength, path, len(path))
+		}
 	}
 
 	if s.InstructionsFile != "" && len(s.InstructionsFile) > maxPathLength {
