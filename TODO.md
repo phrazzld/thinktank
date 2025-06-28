@@ -2,11 +2,13 @@
 
 ## Phase 1: Core Token Counting Infrastructure
 
-- [ ] **Create TokenCountingService struct** in `internal/thinktank/token_counting.go`
-  - Define interface with methods: `CountTokensFromContext(ctx, instructions, files) (int, error)`
-  - Add method `GetCompatibleModels(estimatedTokens int, availableProviders []string) (compatible, skipped []ModelWithReason)`
-  - Include structured result types: `ModelWithReason{Name string, Reason string, ContextWindow int}`
-  - Add audit logging for all token counting operations with correlation IDs
+- [x] **Create TokenCountingService struct** in `internal/thinktank/token_counting.go`
+  - ✅ Define interface with methods: `CountTokens(ctx, req) (result, error)`
+  - ✅ Include structured result types: `TokenCountingRequest`, `TokenCountingResult`, `FileContent`
+  - ✅ Implement using existing models.EstimateTokensFromText() for consistency
+  - ✅ Add comprehensive table-driven tests with parallel execution
+  - 🔄 TODO: Add model filtering method `GetCompatibleModels()`
+  - 🔄 TODO: Add audit logging for all token counting operations with correlation IDs
 
 - [ ] **Implement accurate token counting algorithm** in TokenCountingService
   - Replace estimation with precise counting: instructions text + file content + formatting overhead
