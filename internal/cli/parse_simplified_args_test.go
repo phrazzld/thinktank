@@ -270,18 +270,6 @@ func TestParseSimplifiedArgs_Integration(t *testing.T) {
 		assert.NoError(t, config.Validate())
 	})
 
-	t.Run("parsed config should convert to CliConfig", func(t *testing.T) {
-		config, err := ParseSimplifiedArgs([]string{"--verbose", "--synthesis", validInstFile, validTargetDir})
-		require.NoError(t, err)
-
-		cliConfig := config.ToCliConfig()
-		assert.NotNil(t, cliConfig)
-		assert.Equal(t, validInstFile, cliConfig.InstructionsFile)
-		assert.Equal(t, []string{validTargetDir}, cliConfig.Paths)
-		assert.True(t, cliConfig.Verbose)
-		assert.NotEmpty(t, cliConfig.SynthesisModel)
-	})
-
 	t.Run("dry-run flag allows empty instructions", func(t *testing.T) {
 		config, err := ParseSimplifiedArgs([]string{"--dry-run", "", validTargetDir})
 		require.NoError(t, err)

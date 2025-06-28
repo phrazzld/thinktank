@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/models"
 )
 
@@ -58,34 +57,6 @@ func (s *SimplifiedConfig) SetFlag(flag uint8) {
 // ClearFlag clears a flag using bitwise AND NOT - O(1) operation
 func (s *SimplifiedConfig) ClearFlag(flag uint8) {
 	s.Flags &^= flag
-}
-
-// ToCliConfig converts SimplifiedConfig to the full CliConfig for compatibility.
-// This is where the "smart defaults" magic happens - O(1) expansion.
-func (s *SimplifiedConfig) ToCliConfig() *config.CliConfig {
-	cfg := config.NewDefaultCliConfig()
-
-	// Set the essentials from simplified config
-	cfg.InstructionsFile = s.InstructionsFile
-	cfg.Paths = []string{s.TargetPath}
-
-	// Apply flags with bitwise operations - O(1)
-	cfg.DryRun = s.HasFlag(FlagDryRun)
-	cfg.Verbose = s.HasFlag(FlagVerbose)
-
-	// Smart model selection based on synthesis flag
-	if s.HasFlag(FlagSynthesis) {
-		// Use multiple models for synthesis
-		cfg.ModelNames = []string{"gemini-2.5-pro", "gpt-4.1"}
-		cfg.SynthesisModel = "gemini-2.5-pro"
-		cfg.OutputDir = "synthesis-output"
-	} else {
-		// Single model for normal operation
-		cfg.ModelNames = []string{DefaultModel}
-		cfg.OutputDir = DefaultOutputDir
-	}
-
-	return cfg
 }
 
 // Validate performs essential validation with fail-fast behavior.

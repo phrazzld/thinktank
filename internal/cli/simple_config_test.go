@@ -7,7 +7,6 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -125,89 +124,6 @@ func TestFlagConstants(t *testing.T) {
 	assert.Equal(t, uint8(0x00), FlagDryRun&FlagVerbose, "Flags should be mutually exclusive")
 	assert.Equal(t, uint8(0x00), FlagDryRun&FlagSynthesis, "Flags should be mutually exclusive")
 	assert.Equal(t, uint8(0x00), FlagVerbose&FlagSynthesis, "Flags should be mutually exclusive")
-}
-
-// TestToCliConfig validates conversion from SimplifiedConfig to CliConfig
-func TestToCliConfig(t *testing.T) {
-	tests := []struct {
-		name     string
-		simple   SimplifiedConfig
-		validate func(*testing.T, *config.CliConfig)
-	}{
-		{
-			name: "basic conversion",
-			simple: SimplifiedConfig{
-				InstructionsFile: "instructions.md",
-				TargetPath:       "./src",
-				Flags:            0x00,
-			},
-			validate: func(t *testing.T, cfg *config.CliConfig) {
-				assert.Equal(t, "instructions.md", cfg.InstructionsFile)
-				assert.Equal(t, []string{"./src"}, cfg.Paths)
-				assert.False(t, cfg.DryRun)
-				assert.False(t, cfg.Verbose)
-				assert.Equal(t, []string{DefaultModel}, cfg.ModelNames)
-				assert.Equal(t, DefaultOutputDir, cfg.OutputDir)
-			},
-		},
-		{
-			name: "with dry run flag",
-			simple: SimplifiedConfig{
-				InstructionsFile: "test.md",
-				TargetPath:       "./code",
-				Flags:            FlagDryRun,
-			},
-			validate: func(t *testing.T, cfg *config.CliConfig) {
-				assert.True(t, cfg.DryRun)
-				assert.False(t, cfg.Verbose)
-			},
-		},
-		{
-			name: "with verbose flag",
-			simple: SimplifiedConfig{
-				InstructionsFile: "test.md",
-				TargetPath:       "./code",
-				Flags:            FlagVerbose,
-			},
-			validate: func(t *testing.T, cfg *config.CliConfig) {
-				assert.False(t, cfg.DryRun)
-				assert.True(t, cfg.Verbose)
-			},
-		},
-		{
-			name: "with synthesis flag",
-			simple: SimplifiedConfig{
-				InstructionsFile: "test.md",
-				TargetPath:       "./code",
-				Flags:            FlagSynthesis,
-			},
-			validate: func(t *testing.T, cfg *config.CliConfig) {
-				assert.NotEmpty(t, cfg.SynthesisModel, "Should set synthesis model")
-				assert.Greater(t, len(cfg.ModelNames), 1, "Should use multiple models for synthesis")
-			},
-		},
-		{
-			name: "with multiple flags",
-			simple: SimplifiedConfig{
-				InstructionsFile: "test.md",
-				TargetPath:       "./code",
-				Flags:            FlagVerbose | FlagSynthesis,
-			},
-			validate: func(t *testing.T, cfg *config.CliConfig) {
-				assert.True(t, cfg.Verbose)
-				assert.NotEmpty(t, cfg.SynthesisModel)
-				assert.Greater(t, len(cfg.ModelNames), 1)
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			cfg := tt.simple.ToCliConfig()
-			assert.NotNil(t, cfg, "ToCliConfig should not return nil")
-			tt.validate(t, cfg)
-		})
-	}
 }
 
 // TestValidate validates the enhanced validation logic
