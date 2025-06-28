@@ -18,46 +18,50 @@ func ParseSimpleArgs() (*SimplifiedConfig, error) {
 
 // ParseSimpleArgsWithArgs parses arguments with dependency injection for testing.
 // This enables comprehensive testing of the parsing logic without subprocess execution.
+// Supports multiple target paths: thinktank instructions.txt path1 path2 [flags...]
 func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	if len(args) < 3 {
 		binary := "thinktank"
 		if len(args) > 0 {
 			binary = args[0]
 		}
-		return nil, fmt.Errorf("usage: %s instructions.txt target_path [flags...]", binary)
+		return nil, fmt.Errorf("usage: %s instructions.txt target_path... [flags...]", binary)
 	}
 
-	config := &SimplifiedConfig{
-		InstructionsFile: args[1],
-		TargetPath:       args[2],
-		Flags:            0,
-	}
+	// First pass: separate positional args from flags
+	var instructionsFile string
+	var targetPaths []string
+	flags := uint8(0)
 
-	// Single pass through remaining arguments - O(n) time complexity
-	for i := 3; i < len(args); i++ {
+	// Track if we've seen the instructions file
+	seenInstructions := false
+
+	// Single pass through all arguments - O(n) time complexity
+	for i := 1; i < len(args); i++ {
 		arg := args[i]
 
+		// Check if this is a flag
 		switch {
 		case arg == "--dry-run":
-			config.SetFlag(FlagDryRun)
+			flags |= FlagDryRun
 
 		case arg == "--verbose":
-			config.SetFlag(FlagVerbose)
+			flags |= FlagVerbose
 
 		case arg == "--synthesis":
-			config.SetFlag(FlagSynthesis)
+			flags |= FlagSynthesis
 
 		case arg == "--debug":
-			config.SetFlag(FlagDebug)
+			flags |= FlagDebug
 
 		case arg == "--quiet":
-			config.SetFlag(FlagQuiet)
+			flags |= FlagQuiet
 
 		case arg == "--json-logs":
-			config.SetFlag(FlagJsonLogs)
+			flags |= FlagJsonLogs
 
 		case arg == "--no-progress":
-			config.SetFlag(FlagNoProgress)
+			flags |= FlagNoProgress
 
 		case arg == "--model":
 			// --model flag requires a value
@@ -65,8 +69,6 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 				return nil, fmt.Errorf("--model flag requires a value")
 			}
 			i++ // Skip the model value - we use smart default in ToCliConfig()
-			// Note: The specific model is handled by ToCliConfig() for now
-			// This maintains the 33-byte SimplifiedConfig constraint
 
 		case arg == "--output-dir":
 			// --output-dir flag requires a value
@@ -74,7 +76,6 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 				return nil, fmt.Errorf("--output-dir flag requires a value")
 			}
 			i++ // Skip the output dir value - we use smart default in ToCliConfig()
-			// Note: The specific output dir is handled by ToCliConfig() for now
 
 		case strings.HasPrefix(arg, "--model="):
 			// Handle --model=value format
@@ -82,7 +83,6 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			if value == "" {
 				return nil, fmt.Errorf("--model flag requires a non-empty value")
 			}
-			// Value stored implicitly - handled by ToCliConfig()
 
 		case strings.HasPrefix(arg, "--output-dir="):
 			// Handle --output-dir=value format
@@ -90,12 +90,38 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			if value == "" {
 				return nil, fmt.Errorf("--output-dir flag requires a non-empty value")
 			}
-			// Value stored implicitly - handled by ToCliConfig()
 
-		default:
+		case strings.HasPrefix(arg, "--"):
 			// Unknown flag - fail fast with clear error message
 			return nil, fmt.Errorf("unknown flag: %s", arg)
+
+		default:
+			// This is a positional argument
+			if !seenInstructions {
+				instructionsFile = arg
+				seenInstructions = true
+			} else {
+				targetPaths = append(targetPaths, arg)
+			}
 		}
+	}
+
+	// Validate we have the required positional arguments
+	if instructionsFile == "" {
+		return nil, fmt.Errorf("instructions file required")
+	}
+	if len(targetPaths) == 0 {
+		return nil, fmt.Errorf("at least one target path required")
+	}
+
+	// Join multiple paths with spaces for SimplifiedConfig
+	// This maintains the 33-byte struct while supporting multiple paths
+	targetPath := strings.Join(targetPaths, " ")
+
+	config := &SimplifiedConfig{
+		InstructionsFile: instructionsFile,
+		TargetPath:       targetPath,
+		Flags:            flags,
 	}
 
 	// Validate the parsed configuration

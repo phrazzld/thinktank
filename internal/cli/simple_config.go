@@ -306,9 +306,17 @@ func validatePositionalArgs(instructionsFile, targetPath string) error {
 		return fmt.Errorf("instructions file required: specify a .txt or .md file with analysis instructions")
 	}
 
-	// 2. Target path validation - filesystem checks first
-	if err := validateTargetPathAccess(targetPath); err != nil {
-		return err
+	// 2. Target path validation - validate each path if multiple
+	targetPaths := strings.Fields(targetPath)
+	if len(targetPaths) == 0 {
+		return fmt.Errorf("no target paths found after parsing")
+	}
+
+	// Validate each target path
+	for _, path := range targetPaths {
+		if err := validateTargetPathAccess(path); err != nil {
+			return err
+		}
 	}
 
 	// 3. Instructions file validation - filesystem checks first (directory check before extension)

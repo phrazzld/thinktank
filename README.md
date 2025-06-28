@@ -45,9 +45,14 @@ thinktank instructions.txt ./my-project --synthesis
 thinktank uses a simplified interface designed for clarity and ease of use:
 
 ```bash
-# Pattern: thinktank instructions.txt target_path [options]
+# Pattern: thinktank instructions.txt target_path... [options]
 thinktank task.md ./src                    # Basic analysis with smart defaults
 thinktank task.md ./src --dry-run          # Preview files and token count
+
+# NEW: Multiple target paths
+thinktank task.md file1.go file2.go       # Analyze specific files
+thinktank task.md src/ tests/ docs/       # Analyze multiple directories
+thinktank task.md main.go src/ tests/     # Mix files and directories
 thinktank task.md ./src --verbose          # With detailed output
 thinktank task.md ./src --synthesis        # Force multi-model analysis
 ```

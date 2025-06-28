@@ -312,9 +312,11 @@ Implementing **provider-specific accurate tokenizers** to replace 0.75 tokens/ch
 
 ### CLI Usability Improvements
 
-- [ ] **Support multiple target paths in CLI**
+- [x] **Support multiple target paths in CLI** ✅ COMPLETED
   - Allow arbitrary number of target directories/files: `thinktank instructions.md file1.ts file2.ts dir1/ dir2/`
   - Update SimplifiedConfig to accept multiple target paths instead of single TargetPath
   - Modify ParseSimpleArgs to handle variable number of targets after flags
   - Update validation logic to check all target paths exist
   - Ensure context gathering works with multiple disparate file/directory targets
+  - Implementation note: Paths are joined with spaces in SimplifiedConfig.TargetPath
+  - Limitation: Individual paths cannot contain spaces when using multiple paths

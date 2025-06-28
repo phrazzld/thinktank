@@ -55,7 +55,7 @@ func Main() {
 	// Convert to MinimalConfig
 	minimalConfig := &config.MinimalConfig{
 		InstructionsFile: simplifiedConfig.InstructionsFile,
-		TargetPaths:      []string{simplifiedConfig.TargetPath},
+		TargetPaths:      strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
 		ModelNames:       modelNames,
 		OutputDir:        "", // Will be set by output manager
 		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
