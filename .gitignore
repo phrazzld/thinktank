@@ -129,3 +129,12 @@ test-instructions.txt
 
 /docs/leyline/
 *.out
+
+# AI Model Synthesis files (temporary analysis)
+AI_MODEL_SYNTHESIS.md
+*_SYNTHESIS.md
+
+# Additional temporary files
+main
+*.tmp
+.artifacts/

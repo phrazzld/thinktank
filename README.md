@@ -454,12 +454,25 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 ## Learn More
 
+### User Documentation
 - [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Comprehensive problem diagnosis and solutions
-- [Modern CLI Output Format & Rollback Guide](docs/MODERN_CLI_OUTPUT.md)
-- [OpenRouter Integration](docs/openrouter-integration.md)
-- [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
-- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md)
-- Detailed configuration options: `thinktank --help`
+- [OpenRouter Integration](docs/openrouter-integration.md) - Using OpenRouter models
+
+### Developer Documentation
+- [Documentation Overview](docs/README.md) - Documentation organization and structure
+- [Development Guide](docs/DEVELOPMENT.md) - Setup and development guidelines
+- [Modern CLI Output Format](docs/MODERN_CLI_OUTPUT.md) - CLI output design
+- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md) - Error handling patterns
+- [Simple Parser Design](docs/simple-parser-design.md) - CLI parser architecture
+- [Testing Documentation](docs/testing/) - Testing strategies and methodologies
+- [Coverage Analysis](docs/coverage/) - Test coverage analysis and tools
+
+### Operations & Quality
+- [Quality Dashboard](docs/quality-dashboard/) - Quality metrics and monitoring
+- [Security Documentation](docs/security/) - Security roadmap and scanning
+- [Operations Docs](docs/operations/) - Performance, quality gates, and operations
+
+For detailed configuration options, run: `thinktank --help`
 
 ## License
 
