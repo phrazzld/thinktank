@@ -40,60 +40,31 @@ thinktank instructions.txt ./my-project --synthesis
 - **Git-Aware**: Respects .gitignore patterns
 - **Structured Output**: Formats responses based on your specific instructions
 
-## Interface Options
+## Interface
 
-thinktank supports two interfaces for different user needs:
-
-### Simplified Interface (Recommended)
-Perfect for most users. Uses positional arguments for a clean, intuitive experience:
+thinktank uses a simplified interface designed for clarity and ease of use:
 
 ```bash
 # Pattern: thinktank instructions.txt target_path [options]
 thinktank task.md ./src                    # Basic analysis with smart defaults
 thinktank task.md ./src --dry-run          # Preview files and token count
 thinktank task.md ./src --verbose          # With detailed output
+thinktank task.md ./src --synthesis        # Force multi-model analysis
 ```
 
-### Complex Interface (Advanced/Legacy)
-For advanced users who need extensive configuration. Uses traditional flags:
+## Available Options
 
-```bash
-# Pattern: thinktank --instructions file.txt [options] target_path
-thinktank --instructions task.md --model gpt-4o ./src
-```
+The simplified interface supports these flags:
 
-**💡 Migration Tip**: If you're using the complex interface, simply move the instructions file to the first position to use the simplified interface.
-
-## Migration Guide
-
-### From Complex to Simplified Interface
-
-If you're currently using the complex interface, here's how to migrate to the cleaner simplified interface:
-
-#### Basic Pattern
-```bash
-# Old (Complex Interface)
-thinktank --instructions task.txt ./src
-
-# New (Simplified Interface)
-thinktank task.txt ./src
-```
-
-#### Common Migrations
-| Old Complex Command | New Simplified Command |
-|-------------------|---------------------|
-| `thinktank --instructions task.txt --model gpt-4o ./src` | `thinktank task.txt ./src` (uses intelligent model selection) |
-| `thinktank --instructions task.txt --dry-run ./src` | `thinktank task.txt ./src --dry-run` |
-| `thinktank --instructions task.txt --verbose ./src` | `thinktank task.txt ./src --verbose` |
-| `thinktank --instructions task.txt --output-dir out ./src` | Use complex interface for custom output dirs |
-
-#### Automatic Detection
-
-thinktank automatically detects which interface you're using:
-- **Simplified**: First argument doesn't start with `--` and has `.txt` or `.md` extension
-- **Complex**: First argument starts with `--` (like `--instructions`)
-
-Both interfaces work simultaneously, so you can migrate gradually.
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--dry-run` | Preview files and token count without API calls | `thinktank task.txt ./src --dry-run` |
+| `--verbose` | Enable detailed output and logging | `thinktank task.txt ./src --verbose` |
+| `--synthesis` | Force multi-model analysis with synthesis | `thinktank task.txt ./src --synthesis` |
+| `--debug` | Enable debug-level logging | `thinktank task.txt ./src --debug` |
+| `--quiet` | Suppress console output (errors only) | `thinktank task.txt ./src --quiet` |
+| `--json-logs` | Show JSON logs on stderr | `thinktank task.txt ./src --json-logs` |
+| `--no-progress` | Disable progress indicators | `thinktank task.txt ./src --no-progress` |
 
 ## Configuration
 
@@ -101,26 +72,22 @@ Both interfaces work simultaneously, so you can migrate gradually.
 - **Instructions File**: Text file with your analysis request (first argument in simplified interface)
 - **API Keys**: Environment variables for each model provider you use
 
-### Common Options
+### Model Selection
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--model` | Model to use (repeatable) | `gemini-2.5-pro` |
-| `--synthesis-model` | Model to synthesize results from multiple models | None |
-| `--output-dir` | Output directory | Auto-generated timestamp-based name |
-| `--include` | File extensions to include (.go,.md) | All files |
-| `--dry-run` | Preview without API calls | `false` |
-| `--partial-success-ok` | Return success code if any model succeeds | `false` |
-| `--log-level` | Logging level (debug,info,warn,error) | `info` |
+thinktank uses intelligent model selection based on your input size and available API keys:
 
-### Output and Logging Options
+- **Small inputs**: Single fast model (e.g., `gemini-2.5-flash`)
+- **Large inputs**: Multiple high-capacity models with automatic synthesis
+- **With `--synthesis` flag**: Always uses multiple models with synthesis
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--quiet`, `-q` | Suppress console output (errors only) | `false` |
-| `--json-logs` | Show JSON logs on stderr (preserves old behavior) | `false` |
-| `--no-progress` | Disable progress indicators (show only start/complete) | `false` |
-| `--verbose` | Enable both console output AND JSON logs to stderr | `false` |
+### Output Directory
+
+Output files are automatically saved to timestamped directories:
+```
+thinktank_YYYYMMDD_HHMMSS_NNNN
+```
+
+Example: `thinktank_20250627_143022_7841`
 
 ## Rate Limiting & Performance Optimization
 
@@ -161,48 +128,19 @@ Some models have specific rate limits regardless of provider settings:
 
 ### Common Rate Limiting Scenarios
 
-#### Multi-Provider Usage
+#### Basic Usage Examples
 ```bash
-# Optimize for mixed providers with different API tiers
-thinktank task.txt ./src \
-  --model gpt-4.1 --model gemini-2.5-pro --model openrouter/meta-llama/llama-3.3-70b-instruct \
-  --openai-rate-limit 100 \
-  --gemini-rate-limit 1000 \
-  --openrouter-rate-limit 50
-```
+# Default intelligent selection (automatic rate limiting)
+thinktank task.txt ./src
 
-#### High-Performance Processing
-```bash
-# For production workloads with paid API tiers
-thinktank analyze.txt ./large-codebase \
-  --model gpt-4.1 --model gemini-2.5-pro \
-  --max-concurrent 10 \
-  --openai-rate-limit 5000 \
-  --gemini-rate-limit 1000
-```
+# Verbose output for troubleshooting
+thinktank task.txt ./src --verbose
 
-#### Conservative/Budget Mode
-```bash
-# For free tiers or budget-conscious usage
-thinktank task.txt ./project \
-  --model gemini-2.5-flash \
-  --max-concurrent 2 \
-  --gemini-rate-limit 15
-```
+# Force synthesis mode for complex analysis
+thinktank task.txt ./src --synthesis
 
-#### Single Provider Optimization
-```bash
-# OpenAI-only with high-tier account
-thinktank task.txt ./src \
-  --model gpt-4.1 --model o4-mini \
-  --openai-rate-limit 8000 \
-  --max-concurrent 15
-
-# Gemini-only with paid account
-thinktank task.txt ./src \
-  --model gemini-2.5-pro --model gemini-2.5-flash \
-  --gemini-rate-limit 1000 \
-  --max-concurrent 8
+# Preview what would be processed
+thinktank task.txt ./src --dry-run
 ```
 
 ### Troubleshooting Rate Limits
@@ -291,29 +229,23 @@ thinktank feature-plan.txt ./src
 # Code review (uses intelligent model selection)
 thinktank code-review.txt ./pull-request
 
-# Architecture analysis with file filtering (use complex interface)
-thinktank --instructions arch-questions.txt --include ".go,.md,.yaml" .
+# Architecture analysis
+thinktank arch-questions.txt .
 
-# General code questions with custom output (use complex interface)
-thinktank --instructions questions.txt --output-dir answers ./src
+# Complex analysis with synthesis
+thinktank complex-task.txt ./src --synthesis
 
-# Multiple model comparison (using complex interface)
-thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4o ./src
-
-# Synthesis (combine outputs from multiple models)
-thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4o --synthesis-model gpt-4o ./src
-
-# Partial success mode (continue if some models fail)
-thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
+# Debugging with verbose output
+thinktank debug-task.txt ./problematic-code --verbose --debug
 ```
 
 ### Synthesis Feature
 
-The synthesis feature allows you to combine outputs from multiple models into a single coherent response. When you specify multiple models with `--model` and set a synthesis model with `--synthesis-model`, thinktank will:
+The synthesis feature automatically combines outputs from multiple models into a single coherent response. When you use the `--synthesis` flag or have large inputs that trigger multi-model analysis, thinktank will:
 
-1. Process your instructions with each specified primary model
+1. Process your instructions with multiple appropriate models
 2. Save individual model outputs as usual
-3. Send all model outputs to the synthesis model
+3. Send all model outputs to a synthesis model
 4. Generate a final synthesized output that combines insights from all models
 
 This is particularly useful for complex tasks where different models might have complementary strengths, or when you want to obtain a consensus view across multiple AI systems.
@@ -450,7 +382,7 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ### Common Issues
 
-**Quick Fixes for the Simplified Interface:**
+**Quick Fixes:**
 
 ```bash
 # Authentication Error
@@ -465,27 +397,14 @@ echo "Analyze this code" > instructions.txt  # Create if missing
 ls ./my-project  # Check target exists
 thinktank instructions.txt . --dry-run  # Use current directory
 
-# Rate limiting issues
-thinktank instructions.txt ./src --gemini-rate-limit 15  # Reduce rate for free tier
+# Too much output
+thinktank instructions.txt ./src --quiet  # Suppress console output
 
-# Input too large
-thinktank instructions.txt ./src --include .go,.md  # Filter file types
-thinktank instructions.txt ./src/specific-folder  # Target specific folder
+# Need more detail
+thinktank instructions.txt ./src --verbose --debug  # Enable detailed logging
 ```
 
-**Complex Interface Issues:**
-
 For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**.
-
-**Traditional flag-based solutions:**
-- **Authentication Errors**: Check API key environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`)
-- **Rate Limiting**: Use `--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit` flags to match your account tier
-- **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories
-- **Network Issues**: Retry the command - most network errors are temporary
-- **Model Failures**: Use `--partial-success-ok` for redundancy when using multiple models
-- **CI/Automation**: Set `THINKTANK_SUPPRESS_DEPRECATION_WARNINGS=1` to hide deprecation warnings in automated environments
-
-For detailed diagnosis steps, error code references, and provider-specific solutions, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
 ## Development & Contributing
 
