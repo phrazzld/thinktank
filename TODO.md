@@ -1,402 +1,150 @@
-# 🚨 URGENT CI FAILURE RESOLUTION: TEST COVERAGE REGRESSION
+# Token Counting System Implementation TODO
 
-## Critical Issue: Coverage Dropped to 87.8% (Below 90% Threshold)
+## Phase 1: Core Token Counting Infrastructure
 
-**Root Cause**: Added 200+ lines of new functionality without corresponding tests
-**Impact**: CI quality gates properly blocking PR merge (#100)
-**Required Action**: Add comprehensive tests to restore 90% coverage threshold
+- [ ] **Create TokenCountingService struct** in `internal/thinktank/token_counting.go`
+  - Define interface with methods: `CountTokensFromContext(ctx, instructions, files) (int, error)`
+  - Add method `GetCompatibleModels(estimatedTokens int, availableProviders []string) (compatible, skipped []ModelWithReason)`
+  - Include structured result types: `ModelWithReason{Name string, Reason string, ContextWindow int}`
+  - Add audit logging for all token counting operations with correlation IDs
 
----
+- [ ] **Implement accurate token counting algorithm** in TokenCountingService
+  - Replace estimation with precise counting: instructions text + file content + formatting overhead
+  - Add safety margin calculation (20% buffer for output tokens as per current code)
+  - Implement character-to-token conversion using existing `EstimateTokensFromText()` for consistency
+  - Add validation: return error if input is empty or context gathering fails
 
-## PHASE 1: IMMEDIATE COVERAGE RECOVERY (Target: 90%+)
+- [ ] **Add comprehensive logging to TokenCountingService**
+  - Log total input character count, estimated tokens, and safety margin applied
+  - Log each model evaluation: name, context window, compatibility decision, reason if skipped
+  - Use structured logging with fields: `{"component": "token_counting", "total_tokens": X, "compatible_models": Y, "skipped_models": Z}`
+  - Include correlation ID in all log entries for traceability
 
-### Priority 1: Fix internal/models Package Coverage (62.1% → 90%)
-*Highest impact - Most untested new code*
+## Phase 2: Model Selection Enhancement
 
-#### Task 1: Add Tests for Token Estimation Functions
-**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~40
-- **Target Functions**:
-  - `EstimateTokensFromText(text string) int`
-  - `EstimateTokensFromStats(charCount int, instructionsText string) int`
-- **Test Requirements**:
-  ```go
-  func TestEstimateTokensFromText(t *testing.T) {
-      tests := []struct {
-          name     string
-          text     string
-          expected int
-      }{
-          {"empty text", "", 1000}, // overhead only
-          {"simple text", "hello world", 1008}, // ~8 chars * 0.75 + overhead
-          {"realistic text", strings.Repeat("code ", 200), 1750}, // real scenario
-          {"unicode text", "测试文本", 1012}, // Unicode handling
-          {"large text", strings.Repeat("x", 10000), 8500}, // Large input
-      }
-      // Implementation with precise calculations
-  }
-  ```
-- **Verification**: `go test -cover ./internal/models` should show functions covered
-- **Exit Criteria**: Both functions 100% covered with edge cases
+- [ ] **Update selectModelsForConfig() in internal/cli/main.go**
+  - Replace `models.SelectModelsForInput()` call with new TokenCountingService integration
+  - Add context gathering before model selection to get accurate file content for token counting
+  - Create GatherConfig from SimplifiedConfig and call contextGatherer.GatherContext()
+  - Pass actual token count (not estimate) to model selection logic
 
-#### Task 2: Add Tests for Model Selection Functions
-**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~60
-- **Target Functions**:
-  - `GetModelsWithMinContextWindow(minTokens int) []string`
-  - `SelectModelsForInput(estimatedTokens int, availableProviders []string) []string`
-  - `GetLargestContextModel(modelNames []string) string`
-- **Test Requirements**:
-  ```go
-  func TestSelectModelsForInput(t *testing.T) {
-      tests := []struct {
-          name              string
-          estimatedTokens   int
-          availableProviders []string
-          expectedModels    []string
-      }{
-          {
-              name: "small input, all providers",
-              estimatedTokens: 5000,
-              availableProviders: []string{"openai", "gemini", "openrouter"},
-              expectedModels: []string{"gemini-2.5-pro", "gpt-4.1", "o3", "o4-mini"}, // All large models
-          },
-          {
-              name: "large input, limited models",
-              estimatedTokens: 150000,
-              availableProviders: []string{"gemini"},
-              expectedModels: []string{"gemini-2.5-pro"}, // Only largest context models
-          },
-      }
-      // Implementation with realistic test scenarios
-  }
-  ```
-- **Mock Requirements**: Need to mock/control available models for testing
-- **Verification**: Functions handle edge cases (empty providers, very large inputs)
-- **Exit Criteria**: All model selection logic 100% covered
+- [ ] **Implement model filtering with detailed logging**
+  - Log start of model selection: `"Starting model selection with X estimated tokens from Y files"`
+  - For each available model: log context window size and compatibility decision
+  - For compatible models: `"Model {name} (context: {window}) - COMPATIBLE for {tokens} tokens"`
+  - For skipped models: `"Model {name} (context: {window}) - SKIPPED: input too large ({tokens} > {window})"`
+  - Log final selection: `"Selected {count} compatible models: {names}"`
 
-#### Task 3: Add Tests for Provider Detection Functions
-**Priority: Critical** | **Package**: `internal/models` | **Estimated Lines**: ~30
-- **Target Functions**:
-  - `GetAvailableProviders() []string`
-  - `GetAPIKeyEnvVar(provider string) string`
-- **Test Requirements**:
-  ```go
-  func TestGetAvailableProviders(t *testing.T) {
-      tests := []struct {
-          name     string
-          envVars  map[string]string
-          expected []string
-      }{
-          {"no api keys", map[string]string{}, []string{}},
-          {"openai only", map[string]string{"OPENAI_API_KEY": "sk-test"}, []string{"openai"}},
-          {"all providers", map[string]string{
-              "OPENAI_API_KEY": "sk-test",
-              "GEMINI_API_KEY": "test-key",
-              "OPENROUTER_API_KEY": "or-test",
-          }, []string{"openai", "gemini", "openrouter"}},
-      }
-      // Implementation with environment variable mocking
-  }
-  ```
-- **Environment Setup**: Use test environment variable control
-- **Verification**: Provider detection works with various API key combinations
-- **Exit Criteria**: 100% coverage for provider detection logic
+- [ ] **Add error handling for token counting failures**
+  - If context gathering fails during model selection, fall back to estimation-based selection
+  - Log fallback: `"Token counting failed, using estimation: {error}"`
+  - Ensure model selection never fails completely due to token counting issues
+  - Add integration test covering the fallback scenario
 
-### Priority 2: Fix internal/cli Package Coverage (78.5% → 90%)
-*Complex business logic requiring careful testing*
+## Phase 3: Orchestrator Logging Enhancement
 
-#### Task 4: Add Tests for Model Selection Logic
-**Priority: High** | **Package**: `internal/cli` | **Estimated Lines**: ~80
-- **Target Function**: `selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string)`
-- **Test Requirements**:
-  ```go
-  func TestSelectModelsForConfig(t *testing.T) {
-      // Create temporary instruction files for testing
-      smallInstructions := createTempFile(t, "small instructions")
-      largeInstructions := createTempFile(t, strings.Repeat("complex task ", 1000))
+- [ ] **Enhance processModelsWithErrorHandling() logging**
+  - Add log entry at start: `"Processing {count} models with {tokens} total input tokens"`
+  - Log each model processing attempt before calling processor.Process()
+  - Format: `"Attempting model {name} ({index}/{total}) - context window: {window}, estimated processing time: {time}"`
+  - Include model-specific rate limiting information in attempt logs
 
-      tests := []struct {
-          name             string
-          configFlags      uint8
-          instructionFile  string
-          expectedModels   []string
-          expectedSynthesis string
-      }{
-          {
-              name: "small input, no synthesis flag",
-              configFlags: 0,
-              instructionFile: smallInstructions,
-              expectedModels: []string{"gemini-2.5-flash"},
-              expectedSynthesis: "",
-          },
-          {
-              name: "large input, multiple models",
-              configFlags: 0,
-              instructionFile: largeInstructions,
-              expectedModels: []string{"gemini-2.5-pro", "gpt-4.1", "o3"},
-              expectedSynthesis: "gemini-2.5-pro",
-          },
-          {
-              name: "forced synthesis mode",
-              configFlags: FlagSynthesis,
-              instructionFile: smallInstructions,
-              expectedModels: []string{"gemini-2.5-flash"},
-              expectedSynthesis: "gemini-2.5-pro",
-          },
-      }
-      // Implementation with file system mocking and API key setup
-  }
-  ```
-- **Mock Requirements**: Control available API keys and file system access
-- **File Setup**: Create temporary instruction files with controlled content
-- **Verification**: Logic correctly estimates tokens and selects appropriate models
-- **Exit Criteria**: Core model selection logic 100% covered
+- [ ] **Add token context to model processing logs**
+  - Modify processModelWithRateLimit() to log token efficiency metrics
+  - Log: `"Model {name} processing: {input_tokens} input + {output_tokens} output = {total}/{context_window} ({percentage}% utilization)"`
+  - Add output token estimation and actual usage tracking if available from LLM responses
+  - Log processing completion with token utilization summary
 
-#### Task 5: Add Tests for Logger Routing Logic
-**Priority: High** | **Package**: `internal/cli` | **Estimated Lines**: ~40
-- **Target Function**: `createLoggerWithRouting(cfg *config.MinimalConfig, outputDir string) (logutil.LoggerInterface, *LoggerWrapper)`
-- **Test Requirements**:
-  ```go
-  func TestCreateLoggerWithRouting(t *testing.T) {
-      tempDir := t.TempDir()
+- [ ] **Enhance structured logging output**
+  - Add token counting fields to thinktank.log: `{"input_tokens": X, "selected_models": Y, "skipped_models": Z}`
+  - Update audit.jsonl with token counting decisions: operation type "model_selection" with token details
+  - Ensure all token-related logs include correlation ID for request tracing
+  - Add log aggregation summary at end: `"Token counting summary: {input_tokens} total, {compatible_count} compatible models, {skipped_count} skipped"`
 
-      tests := []struct {
-          name         string
-          config       *config.MinimalConfig
-          outputDir    string
-          expectFile   bool
-          expectStderr bool
-      }{
-          {
-              name: "json logs to console when verbose",
-              config: &config.MinimalConfig{Verbose: true},
-              outputDir: "",
-              expectFile: false,
-              expectStderr: true,
-          },
-          {
-              name: "json logs to file by default",
-              config: &config.MinimalConfig{},
-              outputDir: tempDir,
-              expectFile: true,
-              expectStderr: false,
-          },
-          {
-              name: "json logs to console when flag set",
-              config: &config.MinimalConfig{JsonLogs: true},
-              outputDir: tempDir,
-              expectFile: false,
-              expectStderr: true,
-          },
-      }
-      // Implementation with file system verification
-  }
-  ```
-- **File System Testing**: Verify actual log file creation in temp directories
-- **Logger Verification**: Test that correct logger type is returned
-- **Cleanup Testing**: Verify LoggerWrapper.Close() works correctly
-- **Exit Criteria**: All logging routing paths 100% covered
+## Phase 4: Integration & Error Handling
 
-#### Task 6: Add Tests for Enhanced CLI Flag Parsing
-**Priority: Medium** | **Package**: `internal/cli` | **Estimated Lines**: ~30
-- **Target Functions**: Enhanced methods in `SimplifiedConfig` and flag parsing
-- **Test Requirements**:
-  ```go
-  func TestSimplifiedConfigFlags(t *testing.T) {
-      tests := []struct {
-          name     string
-          flags    uint8
-          expected map[string]bool
-      }{
-          {
-              name: "no flags set",
-              flags: 0,
-              expected: map[string]bool{
-                  "dry_run": false, "verbose": false, "debug": false,
-                  "quiet": false, "json_logs": false, "no_progress": false,
-              },
-          },
-          {
-              name: "all flags set",
-              flags: FlagDryRun | FlagVerbose | FlagDebug | FlagQuiet | FlagJsonLogs | FlagNoProgress,
-              expected: map[string]bool{
-                  "dry_run": true, "verbose": true, "debug": true,
-                  "quiet": true, "json_logs": true, "no_progress": true,
-              },
-          },
-      }
-      // Implementation testing all new flag constants
-  }
-  ```
-- **Flag Validation**: Test all new flag constants work correctly
-- **Bitfield Operations**: Verify flag manipulation functions
-- **Exit Criteria**: All new CLI flag functionality 100% covered
+- [ ] **Update CLI flow to use new token counting**
+  - Modify main.go to create TokenCountingService instance with proper dependencies
+  - Pass context, logger, and contextGatherer to TokenCountingService constructor
+  - Update error handling to propagate token counting errors appropriately
+  - Ensure dry-run mode shows token counting information without API calls
 
----
+- [ ] **Add configuration for token counting behavior**
+  - Add optional CLI flag `--token-safety-margin` (default 20%) for output buffer
+  - Add environment variable `THINKTANK_TOKEN_SAFETY_MARGIN` support
+  - Document token counting behavior in help text and configuration
+  - Add validation: safety margin must be between 0% and 50%
 
-## PHASE 2: COVERAGE VERIFICATION & CI RECOVERY
+- [ ] **Implement graceful degradation**
+  - If TokenCountingService fails, fall back to existing estimation-based selection
+  - Log degradation: `"Token counting service unavailable, using fallback estimation"`
+  - Ensure all existing functionality continues to work if new service fails
+  - Add circuit breaker pattern to prevent repeated token counting failures
 
-#### Task 7: Run Comprehensive Coverage Analysis
-**Priority: High** | **Timeline**: After Task 1-6 completion
-- **Commands**:
-  ```bash
-  # Generate detailed coverage report
-  go test -coverprofile=coverage.out ./...
-  go tool cover -html=coverage.out -o coverage.html
+## Phase 5: Testing & Validation
 
-  # Check specific package coverage
-  go test -cover ./internal/models
-  go test -cover ./internal/cli
-  go test -cover ./internal/config
-  ```
-- **Analysis Requirements**:
-  - Identify any remaining uncovered lines
-  - Verify overall coverage ≥90%
-  - Check package-specific coverage meets standards
-- **Documentation**: Save coverage.html for review and future reference
-- **Exit Criteria**: Coverage report shows ≥90% overall, no critical uncovered paths
+- [ ] **Add unit tests for TokenCountingService**
+  - Test accurate token counting with various input sizes and file types
+  - Test model compatibility decisions with different context window scenarios
+  - Test logging output format and structured log field presence
+  - Test error handling: empty input, context gathering failures, invalid models
 
-#### Task 8: Execute Full CI Test Suite Locally
-**Priority: High** | **Dependencies**: Task 7 completed
-- **Commands**:
-  ```bash
-  # Run all test categories that CI runs
-  go test -v -race -short -parallel 4 ./internal/integration/...
-  go test -v ./internal/cli/... ./internal/models/... ./internal/config/...
-  go test -race ./... -count=1
+- [ ] **Add integration tests for model selection flow**
+  - Test end-to-end: CLI input → token counting → model selection → logging output
+  - Verify models are correctly skipped and logged when input exceeds context window
+  - Test with multiple providers and different model combinations
+  - Validate correlation ID propagation through all log entries
 
-  # Verify coverage threshold
-  ./scripts/check-coverage.sh 90
-  ```
-- **Verification Steps**:
-  - All tests pass without race conditions
-  - Coverage threshold check passes
-  - No new lint violations introduced
-- **Performance Check**: Ensure test execution time reasonable (<5 minutes)
-- **Exit Criteria**: Local test suite matches CI requirements and passes
+- [ ] **Add regression tests for existing functionality**
+  - Ensure existing model selection behavior unchanged when token counting succeeds
+  - Verify dry-run mode continues to work with new token counting
+  - Test synthesis flow still works with filtered model list
+  - Validate all CLI flags and configuration options still function
 
-#### Task 9: Commit Coverage Recovery Changes
-**Priority: High** | **Dependencies**: Task 8 passes
-- **Pre-commit Validation**:
-  ```bash
-  # Verify pre-commit hooks pass
-  pre-commit run --all-files
+- [ ] **Performance validation**
+  - Benchmark token counting performance with large file sets (>100 files, >1MB total)
+  - Ensure token counting doesn't significantly slow down CLI startup
+  - Add timeout protection: token counting must complete within 30 seconds or fallback
+  - Memory usage validation: token counting shouldn't increase memory footprint >20%
 
-  # Double-check coverage one more time
-  go test -cover ./... | grep -E "(models|cli|config)"
-  ```
-- **Commit Message**: Follow conventional commit format
-  ```
-  test: add comprehensive tests for intelligent model selection and logging
+## Phase 6: Documentation & Cleanup
 
-  - Add 150+ lines of tests for internal/models package functions
-  - Add 100+ lines of tests for internal/cli package functions
-  - Restore test coverage from 87.8% to 90%+ to meet CI requirements
-  - Include edge case testing for token estimation and model selection
-  - Add file system and environment variable mocking for robust testing
+- [ ] **Update logging documentation**
+  - Document new log fields and their meanings in docs/STRUCTURED_LOGGING.md
+  - Add examples of token counting log output and interpretation
+  - Update troubleshooting guide with token counting failure scenarios
+  - Add section on token counting best practices and configuration
 
-  Fixes CI coverage regression introduced in feat: implement intelligent model selection
-  ```
-- **Verification**: Push and monitor CI status
-- **Exit Criteria**: CI coverage check passes
+- [ ] **Code cleanup and optimization**
+  - Remove any redundant token estimation code that's been replaced
+  - Ensure consistent error message formatting across token counting features
+  - Add comprehensive inline documentation for TokenCountingService public methods
+  - Run golangci-lint and address any new warnings introduced
 
----
+- [ ] **Validation checklist**
+  - [ ] All TASK.md requirements implemented: ✓ input token counting, ✓ model filtering, ✓ attempt logging, ✓ skip logging
+  - [ ] Logging integration: ✓ modern logging system, ✓ structured logs, ✓ audit file updates
+  - [ ] Backward compatibility: ✓ existing CLI behavior preserved, ✓ all tests pass
+  - [ ] Performance: ✓ no significant CLI slowdown, ✓ memory usage acceptable
+  - [ ] Error handling: ✓ graceful fallbacks, ✓ clear error messages, ✓ no crashes
 
-## PHASE 3: PROCESS IMPROVEMENTS (PREVENT FUTURE REGRESSIONS)
+## Acceptance Criteria
 
-#### Task 10: Implement Pre-commit Coverage Check
-**Priority: Medium** | **Timeline**: After CI recovery
-- **Implementation**:
-  ```bash
-  # Create scripts/check-coverage-delta.sh
-  #!/bin/bash
-  CURRENT=$(go test -cover ./... 2>/dev/null | grep -o 'coverage: [0-9.]*%' | grep -o '[0-9.]*' | tail -1)
-  if (( $(echo "$CURRENT < 90" | bc -l) )); then
-      echo "❌ Coverage $CURRENT% below 90% threshold"
-      echo "🔧 Run: go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out"
-      exit 1
-  fi
-  echo "✅ Coverage $CURRENT% meets 90% threshold"
-  ```
-- **Integration**: Add to `.pre-commit-config.yaml`
-- **Testing**: Verify pre-commit hook prevents low-coverage commits
-- **Exit Criteria**: Pre-commit hook blocks commits with <90% coverage
+**Must Have:**
+1. Input token count accurately calculated from instructions + all processed files
+2. Models with insufficient context window logged as skipped with clear reason
+3. Each model processing attempt logged with token context information
+4. All token counting decisions visible in structured logs (thinktank.log, audit.jsonl)
+5. Zero regressions in existing functionality
 
-#### Task 11: Add Coverage Monitoring to CI
-**Priority: Medium** | **Dependencies**: Pre-commit check working
-- **Implementation**: Enhance CI to track coverage trends
-- **Alerting**: Set up notifications for coverage regressions >5%
-- **Dashboard**: Consider coverage trend visualization
-- **Exit Criteria**: CI provides clear coverage feedback on every PR
+**Should Have:**
+1. Configurable safety margin for token counting
+2. Performance impact <500ms additional CLI startup time
+3. Graceful fallback to estimation if token counting fails
+4. Comprehensive test coverage >90% for new code
 
-#### Task 12: Document Testing Requirements
-**Priority: Low** | **Timeline**: After process automation
-- **Create**: `docs/testing-guidelines.md` with coverage requirements
-- **PR Template**: Add coverage checklist to PR template
-- **Developer Guide**: Update development workflow documentation
-- **Exit Criteria**: Clear guidelines prevent future coverage regressions
-
----
-
-## PHASE 4: CLEANUP & VERIFICATION
-
-#### Task 13: Remove Temporary Analysis Files
-**Priority: Low** | **Dependencies**: All critical tasks completed
-- **Files to Remove**:
-  - `CI-FAILURE-SUMMARY.md`
-  - `CI-RESOLUTION-PLAN.md`
-  - Any temporary test files or coverage reports
-- **Git Status**: Ensure clean working directory
-- **Exit Criteria**: Repository clean, only permanent improvements remain
-
-#### Task 14: Update Documentation
-**Priority: Low** | **Timeline**: Final cleanup
-- **Update**: Project documentation reflects testing improvements
-- **Examples**: Add testing examples to README if appropriate
-- **Migration**: Update any documentation affected by new test patterns
-- **Exit Criteria**: Documentation accurately reflects current testing approach
-
----
-
-## SUCCESS METRICS & MONITORING
-
-### Immediate Success (Tasks 1-9)
-- [ ] Overall test coverage ≥90%
-- [ ] `internal/models` package coverage ≥90%
-- [ ] `internal/cli` package coverage ≥90%
-- [ ] CI pipeline passes all checks
-- [ ] PR #100 unblocked for merge
-
-### Process Success (Tasks 10-12)
-- [ ] Pre-commit coverage validation active
-- [ ] Coverage regression alerts configured
-- [ ] Zero coverage regressions in subsequent PRs
-- [ ] Developer workflow includes coverage validation
-
-### Quality Metrics
-- [ ] Test execution time <5 minutes for full suite
-- [ ] No flaky tests introduced
-- [ ] All tests pass consistently with race detection
-- [ ] Coverage quality maintained (not just quantity)
-
----
-
-## EMERGENCY ESCALATION
-
-If coverage cannot be restored within 2 days:
-1. **Root Cause Analysis**: Deep dive into testability issues
-2. **Architecture Review**: Consider refactoring for better testability
-3. **Scope Reduction**: Identify minimum viable coverage increase
-4. **Technical Debt**: Document coverage debt and timeline for resolution
-
-**Note**: Emergency override NOT recommended per leyline guidance - this represents a "broken window" requiring proper resolution.
-
----
-
-## ESTIMATED TIMELINE
-
-- **Phase 1 (Critical)**: 1-2 days (Tasks 1-6)
-- **Phase 2 (Recovery)**: 0.5 days (Tasks 7-9)
-- **Phase 3 (Process)**: 1-2 days (Tasks 10-12)
-- **Phase 4 (Cleanup)**: 0.5 days (Tasks 13-14)
-
-**Total Estimated Time**: 3-5 days to full resolution with process improvements
+**Could Have:**
+1. Token utilization metrics in processing logs
+2. Advanced token counting algorithms for different file types
+3. Token counting cache for repeated operations
+4. Integration with external token counting services
