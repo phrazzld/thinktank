@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/leanovate/gopter v0.2.11
 	github.com/openai/openai-go v1.6.0
+	github.com/pkoukk/tiktoken-go v0.1.7
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/term v0.32.0
 	golang.org/x/time v0.12.0
@@ -23,6 +24,7 @@ require (
 	cloud.google.com/go/compute/metadata v0.7.0 // indirect
 	cloud.google.com/go/longrunning v0.6.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect

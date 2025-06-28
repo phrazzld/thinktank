@@ -1,152 +1,320 @@
-# Token Counting System Implementation TODO
+# Accurate Token Counting System Implementation TODO
 
-## Phase 1: Core Token Counting Infrastructure
+## Executive Summary
 
-- [x] **Create TokenCountingService struct** in `internal/thinktank/token_counting.go`
-  - ✅ Define interface with methods: `CountTokens(ctx, req) (result, error)`
-  - ✅ Include structured result types: `TokenCountingRequest`, `TokenCountingResult`, `FileContent`
-  - ✅ Implement using existing models.EstimateTokensFromText() for consistency
-  - ✅ Add comprehensive table-driven tests with parallel execution
-  - 🔄 TODO: Add model filtering method `GetCompatibleModels()`
-  - 🔄 TODO: Add audit logging for all token counting operations with correlation IDs
+Implementing **provider-specific accurate tokenizers** to replace 0.75 tokens/character estimation that can be 25-100% wrong for non-English text and code. This will provide 90%+ accuracy improvement for intelligent model selection decisions.
 
-- [ ] **Implement accurate token counting algorithm** in TokenCountingService
-  - Replace estimation with precise counting: instructions text + file content + formatting overhead
-  - Add safety margin calculation (20% buffer for output tokens as per current code)
-  - Implement character-to-token conversion using existing `EstimateTokensFromText()` for consistency
-  - Add validation: return error if input is empty or context gathering fails
+**High-Impact Priority**: OpenAI (tiktoken) → Gemini (SentencePiece) → OpenRouter (estimation/GPT-4o)
 
-- [ ] **Add comprehensive logging to TokenCountingService**
-  - Log total input character count, estimated tokens, and safety margin applied
-  - Log each model evaluation: name, context window, compatibility decision, reason if skipped
-  - Use structured logging with fields: `{"component": "token_counting", "total_tokens": X, "compatible_models": Y, "skipped_models": Z}`
-  - Include correlation ID in all log entries for traceability
+---
 
-## Phase 2: Model Selection Enhancement
+## Phase 1: OpenAI Accurate Tokenization (HIGH IMPACT)
 
-- [ ] **Update selectModelsForConfig() in internal/cli/main.go**
+### 1.1 Add Tiktoken Dependency & Core Implementation
+
+- [ ] **Add tiktoken-go dependency**
+  - Add `github.com/pkoukk/tiktoken-go` to go.mod (preferred for caching mechanism)
+  - Alternative: `github.com/tiktoken-go/tokenizer` (pure Go, embedded vocabularies)
+  - Research decision: pkoukk supports chat message counting + caching, tiktoken-go is pure Go
+  - Add dependency with `go get github.com/pkoukk/tiktoken-go`
+
+- [ ] **Create OpenAI tokenizer interface**
+  - Define `OpenAITokenizer` interface in `internal/thinktank/tokenizers/`
+  - Implement lazy loading to avoid 4MB vocabulary initialization at startup
+  - Support model-specific encodings: `cl100k_base` (GPT-4), `o200k_base` (GPT-4o), `p50k_base` (Codex)
+  - Add error handling for unsupported model encodings
+
+- [ ] **Implement AccurateTokenCounter interface**
+  ```go
+  type AccurateTokenCounter interface {
+      CountTokens(ctx context.Context, text string, modelName string) (int, error)
+      SupportsModel(modelName string) bool
+      GetEncoding(modelName string) (string, error)
+  }
+  ```
+
+### 1.2 Integration with TokenCountingService
+
+- [ ] **Update TokenCountingService for provider-aware counting**
+  - Modify `countInstructionTokens()` to use tiktoken for OpenAI models (gpt-4.1, o4-mini, o3)
+  - Modify `countFileTokens()` to use tiktoken for OpenAI models
+  - Keep estimation fallback for unsupported providers
+  - Add provider detection logic based on model name
+
+- [ ] **Add comprehensive tiktoken testing**
+  - Test accuracy against known OpenAI token counts from OpenAI tokenizer playground
+  - Test performance with large inputs (>100KB text)
+  - Test memory usage and initialization overhead
+  - Compare tiktoken vs estimation accuracy with real-world examples
+  - Add benchmark tests: `BenchmarkTiktokenVsEstimation`
+
+### 1.3 Expected Accuracy Improvements
+
+- **English code/text**: 95%+ accuracy (vs ~75% current estimation)
+- **Non-English text**: 90%+ accuracy (vs 25-50% current estimation)
+- **Mixed content**: 85%+ accuracy (vs highly variable current)
+
+---
+
+## Phase 2: Gemini Accurate Tokenization (MEDIUM IMPACT)
+
+### 2.1 Add SentencePiece Dependency
+
+- [ ] **Add go-sentencepiece dependency**
+  - Add `github.com/eliben/go-sentencepiece` to go.mod
+  - Research: Specifically designed for Gemini/Gemma models, extensively tested vs official SentencePiece
+  - Handles BPE tokenization used by Gemini models (same tokenizer as proprietary Gemini family)
+
+- [ ] **Create Gemini tokenizer implementation**
+  - Implement `GeminiTokenizer` in `internal/thinktank/tokenizers/`
+  - Support both gemini-2.5-pro and gemini-2.5-flash (both 1M context models)
+  - Add lazy loading and caching for tokenizer model files
+  - Handle SentencePiece protobuf configuration files
+
+### 2.2 Integration & Testing
+
+- [ ] **Update TokenCountingService for Gemini**
+  - Add Gemini tokenizer to provider-aware counting logic
+  - Test with Gemini-specific content and compare against Google's token counting API
+  - Validate that "1 token ≈ 4 characters" rule breaks down correctly for non-English
+
+---
+
+## Phase 3: Provider-Aware Architecture (MEDIUM IMPACT)
+
+### 3.1 Unified Tokenizer Architecture
+
+- [ ] **Create ProviderTokenCounter struct**
+  ```go
+  type ProviderTokenCounter struct {
+      tiktoken      *OpenAITokenizer     // For OpenAI models
+      sentencePiece *GeminiTokenizer     // For Gemini models
+      fallback      *EstimationCounter   // For unsupported models
+      logger        logutil.LoggerInterface
+  }
+  ```
+
+- [ ] **Implement provider detection logic**
+  - Use existing `models.GetModelInfo()` to get provider for model name
+  - Route to appropriate tokenizer based on provider: openai → tiktoken, gemini → SentencePiece, openrouter → estimation
+  - Add comprehensive logging for tokenizer selection decisions
+
+### 3.2 Safety Margins & Validation
+
+- [ ] **Add configurable safety margins**
+  - Add CLI flag `--token-safety-margin` (default 20% for output buffer)
+  - Add environment variable `THINKTANK_TOKEN_SAFETY_MARGIN` support
+  - Validation: safety margin must be between 0% and 50%
+  - Apply safety margin to context window calculations for model filtering
+
+- [ ] **Implement robust input validation**
+  - Return clear errors for empty input or context gathering failures
+  - Add timeout protection: token counting must complete within 30 seconds or fallback
+  - Validate model name exists in model definitions before tokenization
+
+---
+
+## Phase 4: Model Filtering & Selection Enhancement (HIGH IMPACT)
+
+### 4.1 Accurate Model Filtering
+
+- [ ] **Add GetCompatibleModels method to TokenCountingService**
+  ```go
+  GetCompatibleModels(ctx context.Context, estimatedTokens int, availableProviders []string) (compatible, skipped []ModelWithReason, err error)
+
+  type ModelWithReason struct {
+      Name string
+      Provider string
+      ContextWindow int
+      IsCompatible bool
+      Reason string // "sufficient_context", "insufficient_context", "provider_unavailable", "tokenizer_unavailable"
+      TokenizerUsed string // "tiktoken", "sentencepiece", "estimation"
+  }
+  ```
+
+- [ ] **Replace estimation-based model selection**
+  - Update `selectModelsForConfig()` in `internal/cli/main.go`
   - Replace `models.SelectModelsForInput()` call with new TokenCountingService integration
-  - Add context gathering before model selection to get accurate file content for token counting
-  - Create GatherConfig from SimplifiedConfig and call contextGatherer.GatherContext()
+  - Add context gathering before model selection to get accurate file content
   - Pass actual token count (not estimate) to model selection logic
 
-- [ ] **Implement model filtering with detailed logging**
-  - Log start of model selection: `"Starting model selection with X estimated tokens from Y files"`
-  - For each available model: log context window size and compatibility decision
-  - For compatible models: `"Model {name} (context: {window}) - COMPATIBLE for {tokens} tokens"`
-  - For skipped models: `"Model {name} (context: {window}) - SKIPPED: input too large ({tokens} > {window})"`
-  - Log final selection: `"Selected {count} compatible models: {names}"`
+### 4.2 Comprehensive Logging
 
-- [ ] **Add error handling for token counting failures**
-  - If context gathering fails during model selection, fall back to estimation-based selection
-  - Log fallback: `"Token counting failed, using estimation: {error}"`
-  - Ensure model selection never fails completely due to token counting issues
-  - Add integration test covering the fallback scenario
+- [ ] **Add detailed model filtering logs**
+  - Log start: `"Starting model selection with X accurate tokens from Y files using {tokenizer}"`
+  - For each model: `"Model {name} ({provider}, context: {window}) - {COMPATIBLE|SKIPPED}: {reason}"`
+  - For skipped: `"Model {name} - SKIPPED: input {tokens} tokens > context window {window} tokens"`
+  - Log final selection: `"Selected {count} compatible models: {names} (accuracy: {accurateCount} accurate, {estimatedCount} estimated)"`
 
-## Phase 3: Orchestrator Logging Enhancement
+---
 
-- [ ] **Enhance processModelsWithErrorHandling() logging**
-  - Add log entry at start: `"Processing {count} models with {tokens} total input tokens"`
-  - Log each model processing attempt before calling processor.Process()
-  - Format: `"Attempting model {name} ({index}/{total}) - context window: {window}, estimated processing time: {time}"`
-  - Include model-specific rate limiting information in attempt logs
+## Phase 5: Graceful Degradation & Error Handling (HIGH IMPORTANCE)
 
-- [ ] **Add token context to model processing logs**
-  - Modify processModelWithRateLimit() to log token efficiency metrics
-  - Log: `"Model {name} processing: {input_tokens} input + {output_tokens} output = {total}/{context_window} ({percentage}% utilization)"`
-  - Add output token estimation and actual usage tracking if available from LLM responses
-  - Log processing completion with token utilization summary
+### 5.1 Fallback Mechanisms
 
-- [ ] **Enhance structured logging output**
-  - Add token counting fields to thinktank.log: `{"input_tokens": X, "selected_models": Y, "skipped_models": Z}`
-  - Update audit.jsonl with token counting decisions: operation type "model_selection" with token details
-  - Ensure all token-related logs include correlation ID for request tracing
-  - Add log aggregation summary at end: `"Token counting summary: {input_tokens} total, {compatible_count} compatible models, {skipped_count} skipped"`
+- [ ] **Implement comprehensive fallback strategy**
+  - If tokenizer initialization fails → fall back to estimation
+  - If tokenizer.CountTokens() fails → fall back to estimation
+  - If context gathering fails → fall back to instruction-only estimation
+  - Log all fallbacks: `"Accurate tokenization failed for {provider}, using estimation: {error}"`
 
-## Phase 4: Integration & Error Handling
+- [ ] **Add circuit breaker pattern**
+  - Track tokenizer failure rates per provider
+  - Temporarily disable problematic tokenizers and fall back to estimation
+  - Reset circuit breaker after successful operations
+  - Monitor and alert on high fallback rates
 
-- [ ] **Update CLI flow to use new token counting**
-  - Modify main.go to create TokenCountingService instance with proper dependencies
-  - Pass context, logger, and contextGatherer to TokenCountingService constructor
-  - Update error handling to propagate token counting errors appropriately
-  - Ensure dry-run mode shows token counting information without API calls
+### 5.2 Performance Safeguards
 
-- [ ] **Add configuration for token counting behavior**
-  - Add optional CLI flag `--token-safety-margin` (default 20%) for output buffer
-  - Add environment variable `THINKTANK_TOKEN_SAFETY_MARGIN` support
-  - Document token counting behavior in help text and configuration
-  - Add validation: safety margin must be between 0% and 50%
+- [ ] **Add performance monitoring**
+  - Benchmark tokenizer initialization time (target: <100ms for tiktoken, <50ms for SentencePiece)
+  - Monitor memory usage increase (target: <20MB for vocabularies)
+  - Add timeout protection for large inputs (>1MB text)
+  - Implement streaming tokenization for very large inputs
 
-- [ ] **Implement graceful degradation**
-  - If TokenCountingService fails, fall back to existing estimation-based selection
-  - Log degradation: `"Token counting service unavailable, using fallback estimation"`
-  - Ensure all existing functionality continues to work if new service fails
-  - Add circuit breaker pattern to prevent repeated token counting failures
+---
 
-## Phase 5: Testing & Validation
+## Phase 6: Integration & CLI Enhancement (MEDIUM IMPACT)
 
-- [ ] **Add unit tests for TokenCountingService**
-  - Test accurate token counting with various input sizes and file types
-  - Test model compatibility decisions with different context window scenarios
-  - Test logging output format and structured log field presence
-  - Test error handling: empty input, context gathering failures, invalid models
+### 6.1 CLI Integration
 
-- [ ] **Add integration tests for model selection flow**
-  - Test end-to-end: CLI input → token counting → model selection → logging output
-  - Verify models are correctly skipped and logged when input exceeds context window
+- [ ] **Update CLI flow for accurate tokenization**
+  - Modify main.go to create TokenCountingService with provider tokenizers
+  - Pass tokenizer dependencies (logger, model definitions) to service constructor
+  - Ensure dry-run mode shows accurate token counting information
+  - Add tokenizer status to dry-run output: `"Using accurate tokenization: OpenAI (tiktoken), Gemini (SentencePiece)"`
+
+### 6.2 Enhanced Error Handling
+
+- [ ] **Improve error propagation**
+  - Wrap tokenizer errors with context about which provider/model failed
+  - Include tokenizer type in error messages for debugging
+  - Add integration test covering all fallback scenarios
+  - Ensure model selection never fails completely due to tokenization issues
+
+---
+
+## Phase 7: Orchestrator Logging Enhancement (LOW IMPACT)
+
+### 7.1 Token Context in Processing Logs
+
+- [ ] **Add token metrics to model processing**
+  - Enhance `processModelsWithErrorHandling()` to log: `"Processing {count} models with {tokens} total input tokens (accuracy: {method})"`
+  - Log per-model attempt: `"Attempting model {name} ({index}/{total}) - context: {window} tokens, input: {tokens} tokens, utilization: {percentage}%"`
+  - Include tokenizer method in processing logs
+
+### 7.2 Structured Logging Enhancement
+
+- [ ] **Update audit and structured logs**
+  - Add token counting fields to thinktank.log: `{"input_tokens": X, "tokenizer_method": "tiktoken", "selected_models": Y, "skipped_models": Z}`
+  - Update audit.jsonl with tokenizer information in model_selection operations
+  - Add correlation ID to all tokenizer-related log entries
+  - Summary log: `"Token counting summary: {tokens} tokens, {method} accuracy, {compatible} compatible, {skipped} skipped"`
+
+---
+
+## Phase 8: Testing & Validation (CRITICAL)
+
+### 8.1 Accuracy Testing
+
+- [ ] **Comprehensive accuracy validation**
+  - Test against OpenAI tokenizer playground for OpenAI models
+  - Test against Google's Count Tokens API for Gemini models
+  - Create test corpus: English, Spanish, Japanese, Chinese, code (Go, Python, JavaScript)
+  - Measure accuracy improvement: estimation vs tiktoken vs SentencePiece
+  - Target: >90% accuracy for supported models, graceful fallback for others
+
+### 8.2 Performance Testing
+
+- [ ] **Benchmark tokenizer performance**
+  - Large file sets: >100 files, >1MB total content
+  - Startup time impact: <500ms additional CLI startup time
+  - Memory usage: <50MB for all tokenizer vocabularies combined
+  - Concurrent tokenization: thread safety and performance
+  - Add load tests: 1000 concurrent tokenization requests
+
+### 8.3 Integration Testing
+
+- [ ] **End-to-end validation**
+  - Test CLI: input → accurate token counting → correct model selection → processing
+  - Verify models correctly skipped when input exceeds context window
   - Test with multiple providers and different model combinations
-  - Validate correlation ID propagation through all log entries
+  - Validate correlation ID propagation through all tokenizer operations
+  - Test dry-run mode shows accurate tokenization status
 
-- [ ] **Add regression tests for existing functionality**
-  - Ensure existing model selection behavior unchanged when token counting succeeds
-  - Verify dry-run mode continues to work with new token counting
-  - Test synthesis flow still works with filtered model list
-  - Validate all CLI flags and configuration options still function
+---
 
-- [ ] **Performance validation**
-  - Benchmark token counting performance with large file sets (>100 files, >1MB total)
-  - Ensure token counting doesn't significantly slow down CLI startup
-  - Add timeout protection: token counting must complete within 30 seconds or fallback
-  - Memory usage validation: token counting shouldn't increase memory footprint >20%
+## Phase 9: OpenRouter Strategy (LOW PRIORITY)
 
-## Phase 6: Documentation & Cleanup
+### 9.1 OpenRouter Approach
 
-- [ ] **Update logging documentation**
-  - Document new log fields and their meanings in docs/STRUCTURED_LOGGING.md
-  - Add examples of token counting log output and interpretation
-  - Update troubleshooting guide with token counting failure scenarios
-  - Add section on token counting best practices and configuration
+- [ ] **Implement OpenRouter normalized tokenization**
+  - Continue using estimation or implement GPT-4o tokenizer for OpenRouter models
+  - Rationale: OpenRouter normalizes via GPT-4o anyway, exact tokenizer less critical
+  - Consider: `tiktoken-go` with `cl100k_base` encoding for GPT-4o compatibility
+  - Research: OpenRouter's actual tokenization approach for billing vs model selection
 
-- [ ] **Code cleanup and optimization**
-  - Remove any redundant token estimation code that's been replaced
-  - Ensure consistent error message formatting across token counting features
-  - Add comprehensive inline documentation for TokenCountingService public methods
-  - Run golangci-lint and address any new warnings introduced
+---
 
-- [ ] **Validation checklist**
-  - [ ] All TASK.md requirements implemented: ✓ input token counting, ✓ model filtering, ✓ attempt logging, ✓ skip logging
-  - [ ] Logging integration: ✓ modern logging system, ✓ structured logs, ✓ audit file updates
-  - [ ] Backward compatibility: ✓ existing CLI behavior preserved, ✓ all tests pass
-  - [ ] Performance: ✓ no significant CLI slowdown, ✓ memory usage acceptable
-  - [ ] Error handling: ✓ graceful fallbacks, ✓ clear error messages, ✓ no crashes
+## Phase 10: Documentation & Cleanup (MEDIUM IMPORTANCE)
 
-## Acceptance Criteria
+### 10.1 Documentation Updates
 
-**Must Have:**
-1. Input token count accurately calculated from instructions + all processed files
-2. Models with insufficient context window logged as skipped with clear reason
-3. Each model processing attempt logged with token context information
-4. All token counting decisions visible in structured logs (thinktank.log, audit.jsonl)
-5. Zero regressions in existing functionality
+- [ ] **Update all documentation**
+  - Document tokenizer selection logic in docs/STRUCTURED_LOGGING.md
+  - Add tokenization troubleshooting guide
+  - Document accuracy improvements and when fallbacks occur
+  - Add configuration examples for token safety margins
+  - Update CLI help text with tokenization information
 
-**Should Have:**
-1. Configurable safety margin for token counting
-2. Performance impact <500ms additional CLI startup time
-3. Graceful fallback to estimation if token counting fails
-4. Comprehensive test coverage >90% for new code
+### 10.2 Code Cleanup
 
-**Could Have:**
-1. Token utilization metrics in processing logs
-2. Advanced token counting algorithms for different file types
-3. Token counting cache for repeated operations
-4. Integration with external token counting services
+- [ ] **Optimize and clean implementation**
+  - Remove redundant estimation code only after accurate tokenizers proven stable
+  - Ensure consistent error message formatting across all tokenizers
+  - Add comprehensive inline documentation for all tokenizer interfaces
+  - Run golangci-lint and address warnings
+  - Consider extracting tokenizers to separate package if complexity grows
+
+---
+
+## Success Metrics & Acceptance Criteria
+
+### **Must Have (P0)**
+1. **Accuracy**: >90% token count accuracy for OpenAI and Gemini models vs <75% current estimation
+2. **Reliability**: Model selection correctly filters based on actual context requirements
+3. **Performance**: <500ms additional CLI startup time, <50MB memory overhead
+4. **Fallback**: Graceful degradation to estimation maintains 100% compatibility
+5. **Zero Regressions**: All existing functionality continues to work
+
+### **Should Have (P1)**
+1. **Coverage**: OpenAI and Gemini models use accurate tokenization, others use estimation
+2. **Observability**: Clear logging shows which tokenizer used for each operation
+3. **Configurability**: Token safety margin configurable via CLI and environment
+4. **Testing**: >90% test coverage for all tokenizer code paths
+
+### **Could Have (P2)**
+1. **Advanced Features**: Token utilization metrics, caching, streaming tokenization
+2. **Additional Providers**: Anthropic Claude tokenizer, more OpenRouter model support
+3. **Performance Optimization**: Tokenizer result caching, parallel tokenization
+
+### **Key Risk Mitigations**
+- **Dependency Risk**: Both tiktoken-go and go-sentencepiece are mature, well-maintained
+- **Performance Risk**: Lazy loading + caching + timeouts prevent startup/runtime issues
+- **Complexity Risk**: Clean interfaces + comprehensive fallbacks + extensive testing
+- **Compatibility Risk**: Gradual rollout with estimation fallback ensures no breaking changes
+
+**Expected Outcome**: Dramatically more accurate model selection enabling the thinktank CLI to intelligently choose models that can actually handle the user's input, especially for non-English content and large codebases.
+
+---
+
+## Miscellaneous
+
+### CLI Usability Improvements
+
+- [ ] **Support multiple target paths in CLI**
+  - Allow arbitrary number of target directories/files: `thinktank instructions.md file1.ts file2.ts dir1/ dir2/`
+  - Update SimplifiedConfig to accept multiple target paths instead of single TargetPath
+  - Modify ParseSimpleArgs to handle variable number of targets after flags
+  - Update validation logic to check all target paths exist
+  - Ensure context gathering works with multiple disparate file/directory targets
