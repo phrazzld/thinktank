@@ -10,16 +10,25 @@ git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 go install
 
-# Set required API key(s) for the model(s) you want to use
-export GEMINI_API_KEY="your-key"  # For Gemini models
-export OPENAI_API_KEY="your-key"  # For OpenAI models
-export OPENROUTER_API_KEY="your-key"  # For OpenRouter models
+# Set API key for your preferred model
+export GEMINI_API_KEY="your-key"     # For Gemini models (recommended)
+export OPENAI_API_KEY="your-key"     # For OpenAI models
+export OPENROUTER_API_KEY="your-key" # For OpenRouter models
 
-# Basic usage
-thinktank --instructions task.txt ./my-project
+# Create instructions file
+echo "Analyze this codebase and suggest improvements" > instructions.txt
 
-# Multiple models
-thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
+# Basic usage - Simplified Interface (Recommended)
+thinktank instructions.txt ./my-project
+
+# Preview without API calls
+thinktank instructions.txt ./my-project --dry-run
+
+# Verbose output
+thinktank instructions.txt ./my-project --verbose
+
+# Force synthesis mode (multiple models + synthesis)
+thinktank instructions.txt ./my-project --synthesis
 ```
 
 ## Key Features
@@ -31,32 +40,54 @@ thinktank --instructions task.txt --model gemini-2.5-pro --model gpt-4-turbo ./
 - **Git-Aware**: Respects .gitignore patterns
 - **Structured Output**: Formats responses based on your specific instructions
 
+## Interface
+
+thinktank uses a simplified interface designed for clarity and ease of use:
+
+```bash
+# Pattern: thinktank instructions.txt target_path [options]
+thinktank task.md ./src                    # Basic analysis with smart defaults
+thinktank task.md ./src --dry-run          # Preview files and token count
+thinktank task.md ./src --verbose          # With detailed output
+thinktank task.md ./src --synthesis        # Force multi-model analysis
+```
+
+## Available Options
+
+The simplified interface supports these flags:
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--dry-run` | Preview files and token count without API calls | `thinktank task.txt ./src --dry-run` |
+| `--verbose` | Enable detailed output and logging | `thinktank task.txt ./src --verbose` |
+| `--synthesis` | Force multi-model analysis with synthesis | `thinktank task.txt ./src --synthesis` |
+| `--debug` | Enable debug-level logging | `thinktank task.txt ./src --debug` |
+| `--quiet` | Suppress console output (errors only) | `thinktank task.txt ./src --quiet` |
+| `--json-logs` | Show JSON logs on stderr | `thinktank task.txt ./src --json-logs` |
+| `--no-progress` | Disable progress indicators | `thinktank task.txt ./src --no-progress` |
+
 ## Configuration
 
 ### Required
-- **Instructions File**: `--instructions task.txt` (Required except for dry runs)
+- **Instructions File**: Text file with your analysis request (first argument in simplified interface)
 - **API Keys**: Environment variables for each model provider you use
 
-### Common Options
+### Model Selection
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--model` | Model to use (repeatable) | `gemini-2.5-pro` |
-| `--synthesis-model` | Model to synthesize results from multiple models | None |
-| `--output-dir` | Output directory | Auto-generated timestamp-based name |
-| `--include` | File extensions to include (.go,.md) | All files |
-| `--dry-run` | Preview without API calls | `false` |
-| `--partial-success-ok` | Return success code if any model succeeds | `false` |
-| `--log-level` | Logging level (debug,info,warn,error) | `info` |
+thinktank uses intelligent model selection based on your input size and available API keys:
 
-### Output and Logging Options
+- **Small inputs**: Single fast model (e.g., `gemini-2.5-flash`)
+- **Large inputs**: Multiple high-capacity models with automatic synthesis
+- **With `--synthesis` flag**: Always uses multiple models with synthesis
 
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--quiet`, `-q` | Suppress console output (errors only) | `false` |
-| `--json-logs` | Show JSON logs on stderr (preserves old behavior) | `false` |
-| `--no-progress` | Disable progress indicators (show only start/complete) | `false` |
-| `--verbose` | Enable both console output AND JSON logs to stderr | `false` |
+### Output Directory
+
+Output files are automatically saved to timestamped directories:
+```
+thinktank_YYYYMMDD_HHMMSS_NNNN
+```
+
+Example: `thinktank_20250627_143022_7841`
 
 ## Rate Limiting & Performance Optimization
 
@@ -97,53 +128,19 @@ Some models have specific rate limits regardless of provider settings:
 
 ### Common Rate Limiting Scenarios
 
-#### Multi-Provider Usage
+#### Basic Usage Examples
 ```bash
-# Optimize for mixed providers with different API tiers
-thinktank --instructions task.txt \
-  --model gpt-4.1 --model gemini-2.5-pro --model openrouter/meta-llama/llama-3.3-70b-instruct \
-  --openai-rate-limit 100 \
-  --gemini-rate-limit 1000 \
-  --openrouter-rate-limit 50 \
-  ./src/
-```
+# Default intelligent selection (automatic rate limiting)
+thinktank task.txt ./src
 
-#### High-Performance Processing
-```bash
-# For production workloads with paid API tiers
-thinktank --instructions analyze.txt \
-  --model gpt-4.1 --model gemini-2.5-pro \
-  --max-concurrent 10 \
-  --openai-rate-limit 5000 \
-  --gemini-rate-limit 1000 \
-  ./large-codebase/
-```
+# Verbose output for troubleshooting
+thinktank task.txt ./src --verbose
 
-#### Conservative/Budget Mode
-```bash
-# For free tiers or budget-conscious usage
-thinktank --instructions task.txt \
-  --model gemini-2.5-flash \
-  --max-concurrent 2 \
-  --gemini-rate-limit 15 \
-  ./project/
-```
+# Force synthesis mode for complex analysis
+thinktank task.txt ./src --synthesis
 
-#### Single Provider Optimization
-```bash
-# OpenAI-only with high-tier account
-thinktank --instructions task.txt \
-  --model gpt-4.1 --model o4-mini \
-  --openai-rate-limit 8000 \
-  --max-concurrent 15 \
-  ./src/
-
-# Gemini-only with paid account
-thinktank --instructions task.txt \
-  --model gemini-2.5-pro --model gemini-2.5-flash \
-  --gemini-rate-limit 1000 \
-  --max-concurrent 8 \
-  ./src/
+# Preview what would be processed
+thinktank task.txt ./src --dry-run
 ```
 
 ### Troubleshooting Rate Limits
@@ -227,31 +224,28 @@ Example:
 
 ```bash
 # Technical planning
-thinktank --instructions feature-plan.txt ./src
+thinktank feature-plan.txt ./src
 
-# Code review
-thinktank --instructions code-review.txt --model gpt-4-turbo ./pull-request
+# Code review (uses intelligent model selection)
+thinktank code-review.txt ./pull-request
 
 # Architecture analysis
-thinktank --instructions arch-questions.txt --include .go,.md,.yaml ./
+thinktank arch-questions.txt .
 
-# General code questions
-thinktank --instructions questions.txt --output-dir answers ./src
+# Complex analysis with synthesis
+thinktank complex-task.txt ./src --synthesis
 
-# Using synthesis to combine multiple model outputs
-thinktank --instructions complex-task.txt --model gemini-2.5-pro --model gpt-4-turbo --synthesis-model gpt-4-turbo ./src
-
-# Allow partial success (return success code even if some models fail)
-thinktank --instructions task.txt --model model1 --model model2 --partial-success-ok ./src
+# Debugging with verbose output
+thinktank debug-task.txt ./problematic-code --verbose --debug
 ```
 
 ### Synthesis Feature
 
-The synthesis feature allows you to combine outputs from multiple models into a single coherent response. When you specify multiple models with `--model` and set a synthesis model with `--synthesis-model`, thinktank will:
+The synthesis feature automatically combines outputs from multiple models into a single coherent response. When you use the `--synthesis` flag or have large inputs that trigger multi-model analysis, thinktank will:
 
-1. Process your instructions with each specified primary model
+1. Process your instructions with multiple appropriate models
 2. Save individual model outputs as usual
-3. Send all model outputs to the synthesis model
+3. Send all model outputs to a synthesis model
 4. Generate a final synthesized output that combines insights from all models
 
 This is particularly useful for complex tasks where different models might have complementary strengths, or when you want to obtain a consensus view across multiple AI systems.
@@ -388,16 +382,29 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ### Common Issues
 
+**Quick Fixes:**
+
+```bash
+# Authentication Error
+echo $GEMINI_API_KEY  # Check if API key is set
+export GEMINI_API_KEY="your-key-here"  # Set it if missing
+
+# Instructions file not found
+ls instructions.txt  # Check file exists
+echo "Analyze this code" > instructions.txt  # Create if missing
+
+# Target path not found
+ls ./my-project  # Check target exists
+thinktank instructions.txt . --dry-run  # Use current directory
+
+# Too much output
+thinktank instructions.txt ./src --quiet  # Suppress console output
+
+# Need more detail
+thinktank instructions.txt ./src --verbose --debug  # Enable detailed logging
+```
+
 For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)**.
-
-**Quick fixes for common problems:**
-- **Authentication Errors**: Check API key environment variables (`OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`)
-- **Rate Limiting**: Use `--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit` flags to match your account tier
-- **Input Too Large**: Use `--include` or `--exclude` flags to filter files, or target specific directories
-- **Network Issues**: Retry the command - most network errors are temporary
-- **Model Failures**: Use `--partial-success-ok` for redundancy when using multiple models
-
-For detailed diagnosis steps, error code references, and provider-specific solutions, see the [Troubleshooting Guide](docs/TROUBLESHOOTING.md).
 
 ## Development & Contributing
 
@@ -447,12 +454,25 @@ See `./scripts/pre-submit-coverage.sh --help` for additional options.
 
 ## Learn More
 
+### User Documentation
 - [Troubleshooting Guide](docs/TROUBLESHOOTING.md) - Comprehensive problem diagnosis and solutions
-- [Modern CLI Output Format & Rollback Guide](docs/MODERN_CLI_OUTPUT.md)
-- [OpenRouter Integration](docs/openrouter-integration.md)
-- [Development Philosophy](docs/DEVELOPMENT_PHILOSOPHY.md)
-- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md)
-- Detailed configuration options: `thinktank --help`
+- [OpenRouter Integration](docs/openrouter-integration.md) - Using OpenRouter models
+
+### Developer Documentation
+- [Documentation Overview](docs/README.md) - Documentation organization and structure
+- [Development Guide](docs/DEVELOPMENT.md) - Setup and development guidelines
+- [Modern CLI Output Format](docs/MODERN_CLI_OUTPUT.md) - CLI output design
+- [Error Handling and Logging Standards](docs/ERROR_HANDLING_AND_LOGGING.md) - Error handling patterns
+- [Simple Parser Design](docs/simple-parser-design.md) - CLI parser architecture
+- [Testing Documentation](docs/testing/) - Testing strategies and methodologies
+- [Coverage Analysis](docs/coverage/) - Test coverage analysis and tools
+
+### Operations & Quality
+- [Quality Dashboard](docs/quality-dashboard/) - Quality metrics and monitoring
+- [Security Documentation](docs/security/) - Security roadmap and scanning
+- [Operations Docs](docs/operations/) - Performance, quality gates, and operations
+
+For detailed configuration options, run: `thinktank --help`
 
 ## License
 

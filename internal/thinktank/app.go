@@ -120,6 +120,7 @@ func Execute(
 	}
 
 	// 4. Use the injected APIService
+	// Note: Token-based model filtering is now handled in the CLI layer to avoid import cycles
 
 	// Create a reference client for token counting in context gathering
 	// Skip LLM client initialization in dry-run mode since no API calls will be made

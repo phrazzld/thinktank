@@ -95,6 +95,15 @@ func DefaultConfig() *AppConfig {
 // application, combining user inputs from CLI flags, environment variables,
 // and default values. This struct is passed to components that need
 // configuration parameters rather than having them parse flags directly.
+//
+// SIMPLIFICATION STATUS (Phase 7 - Code Cleanup):
+// Many fields in this struct are now handled by smart defaults:
+// - Rate limiting fields: Auto-detected based on provider capabilities
+// - API configuration: Auto-detected from environment variables
+// - File permissions: Use OS defaults with intelligent override
+// - Complex validation: Simplified through parser router and adapters
+// The simplified interface (SimplifiedConfig) reduces user-facing complexity
+// while this comprehensive struct maintains backward compatibility.
 type CliConfig struct {
 	// Instructions configuration
 	InstructionsFile string
@@ -153,6 +162,12 @@ type CliConfig struct {
 	// and a synthesis file was generated (if synthesis is enabled). When false (default), any model
 	// failure results in a non-zero exit code.
 	PartialSuccessOk bool
+
+	// Warning configuration
+	// SuppressDeprecationWarnings suppresses deprecation warnings in CI/automation environments
+	// where they are not actionable. When true, warnings are logged to debug but not shown to stderr.
+	// Can be set via --no-deprecation-warnings flag or THINKTANK_SUPPRESS_DEPRECATION_WARNINGS env var.
+	SuppressDeprecationWarnings bool
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -161,17 +176,18 @@ type CliConfig struct {
 // by the user.
 func NewDefaultCliConfig() *CliConfig {
 	return &CliConfig{
-		Format:                     DefaultFormat,
-		Exclude:                    DefaultExcludes,
-		ExcludeNames:               DefaultExcludeNames,
-		ModelNames:                 []string{DefaultModel},
-		LogLevel:                   logutil.InfoLevel,
-		MaxConcurrentRequests:      DefaultMaxConcurrentRequests,
-		RateLimitRequestsPerMinute: DefaultRateLimitRequestsPerMinute,
-		Timeout:                    DefaultTimeout,
-		DirPermissions:             DefaultDirPermissions,
-		FilePermissions:            DefaultFilePermissions,
-		PartialSuccessOk:           false, // Default to strict error handling
+		Format:                      DefaultFormat,
+		Exclude:                     DefaultExcludes,
+		ExcludeNames:                DefaultExcludeNames,
+		ModelNames:                  []string{DefaultModel},
+		LogLevel:                    logutil.InfoLevel,
+		MaxConcurrentRequests:       DefaultMaxConcurrentRequests,
+		RateLimitRequestsPerMinute:  DefaultRateLimitRequestsPerMinute,
+		Timeout:                     DefaultTimeout,
+		DirPermissions:              DefaultDirPermissions,
+		FilePermissions:             DefaultFilePermissions,
+		PartialSuccessOk:            false, // Default to strict error handling
+		SuppressDeprecationWarnings: false, // Default to showing warnings
 		// Provider-specific rate limits default to 0 (use provider defaults)
 		OpenAIRateLimit:     0,
 		GeminiRateLimit:     0,
@@ -223,9 +239,10 @@ func isStandardOpenAIModel(model string) bool {
 
 	// Standard OpenAI models
 	standardModels := []string{
-		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini",
+		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini", "gpt-4.1",
 		"gpt-3.5-turbo", "text-davinci-003", "text-davinci-002",
 		"davinci", "curie", "babbage", "ada",
+		"o3", "o4-mini",
 	}
 
 	// Check for exact matches or standard model patterns
@@ -313,14 +330,14 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 		}
 	}
 
-	// API key validation based on model requirements
-	if config.APIKey == "" && modelNeedsGeminiKey {
+	// API key validation based on model requirements (skip in dry run mode)
+	if config.APIKey == "" && modelNeedsGeminiKey && !config.DryRun {
 		logError("%s environment variable not set.", APIKeyEnvVar)
 		return fmt.Errorf("gemini API key not set")
 	}
 
-	// If any OpenAI model is used, check for OpenAI API key
-	if modelNeedsOpenAIKey {
+	// If any OpenAI model is used, check for OpenAI API key (skip in dry run mode)
+	if modelNeedsOpenAIKey && !config.DryRun {
 		openAIKey := getenv(OpenAIAPIKeyEnvVar)
 		if openAIKey == "" {
 			logError("%s environment variable not set.", OpenAIAPIKeyEnvVar)
@@ -328,8 +345,8 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 		}
 	}
 
-	// If any OpenRouter model is used, check for OpenRouter API key
-	if modelNeedsOpenRouterKey {
+	// If any OpenRouter model is used, check for OpenRouter API key (skip in dry run mode)
+	if modelNeedsOpenRouterKey && !config.DryRun {
 		openRouterKey := getenv(OpenRouterAPIKeyEnvVar)
 		if openRouterKey == "" {
 			logError("%s environment variable not set.", OpenRouterAPIKeyEnvVar)

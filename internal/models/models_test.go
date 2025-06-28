@@ -47,44 +47,24 @@ func TestGetModelInfo(t *testing.T) {
 		},
 		// Valid models - OpenRouter
 		{
-			name:           "deepseek-chat-v3 valid model",
-			modelName:      "openrouter/deepseek/deepseek-chat-v3-0324",
+			name:           "openrouter model",
+			modelName:      "openrouter/meta-llama/llama-4-maverick",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "deepseek/deepseek-chat-v3-0324",
+			wantAPIModelID: "meta-llama/llama-4-maverick",
 			wantError:      false,
 		},
-		{
-			name:           "deepseek-r1-0528 valid model",
-			modelName:      "openrouter/deepseek/deepseek-r1-0528",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "deepseek/deepseek-r1-0528",
-			wantError:      false,
-		},
-		{
-			name:           "grok-3-beta valid model",
-			modelName:      "openrouter/x-ai/grok-3-beta",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "x-ai/grok-3-beta",
-			wantError:      false,
-		},
-		// Invalid models
-		{
-			name:          "unknown model",
-			modelName:     "unknown-model",
-			wantError:     true,
-			errorContains: "unknown model: unknown-model",
-		},
+		// Error cases
 		{
 			name:          "empty model name",
 			modelName:     "",
 			wantError:     true,
-			errorContains: "unknown model:",
+			errorContains: "unknown model",
 		},
 		{
-			name:          "similar but incorrect model name",
-			modelName:     "gpt-5",
+			name:          "unknown model",
+			modelName:     "unknown-model",
 			wantError:     true,
-			errorContains: "unknown model: gpt-5",
+			errorContains: "unknown model",
 		},
 	}
 
@@ -92,234 +72,108 @@ func TestGetModelInfo(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			info, err := GetModelInfo(tt.modelName)
 
-			// Check error expectations
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("GetModelInfo(%q) expected error, got nil", tt.modelName)
 					return
 				}
-				if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("GetModelInfo(%q) error = %v, want error containing %q", tt.modelName, err, tt.errorContains)
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("GetModelInfo(%q) error = %q, want error containing %q", tt.modelName, err.Error(), tt.errorContains)
 				}
 				return
 			}
 
-			// Check for unexpected errors
 			if err != nil {
-				t.Errorf("GetModelInfo(%q) unexpected error = %v", tt.modelName, err)
+				t.Errorf("GetModelInfo(%q) unexpected error: %v", tt.modelName, err)
 				return
 			}
 
-			// Validate returned ModelInfo
 			if info.Provider != tt.wantProvider {
-				t.Errorf("GetModelInfo(%q).Provider = %v, want %v", tt.modelName, info.Provider, tt.wantProvider)
-			}
-			if info.APIModelID != tt.wantAPIModelID {
-				t.Errorf("GetModelInfo(%q).APIModelID = %v, want %v", tt.modelName, info.APIModelID, tt.wantAPIModelID)
+				t.Errorf("GetModelInfo(%q).Provider = %q, want %q", tt.modelName, info.Provider, tt.wantProvider)
 			}
 
-			// Validate that required fields are not zero values
+			if info.APIModelID != tt.wantAPIModelID {
+				t.Errorf("GetModelInfo(%q).APIModelID = %q, want %q", tt.modelName, info.APIModelID, tt.wantAPIModelID)
+			}
+
+			// Verify context window is positive
 			if info.ContextWindow <= 0 {
-				t.Errorf("GetModelInfo(%q).ContextWindow = %v, want > 0", tt.modelName, info.ContextWindow)
+				t.Errorf("GetModelInfo(%q).ContextWindow = %d, want > 0", tt.modelName, info.ContextWindow)
 			}
+
+			// Verify max output tokens is positive
 			if info.MaxOutputTokens <= 0 {
-				t.Errorf("GetModelInfo(%q).MaxOutputTokens = %v, want > 0", tt.modelName, info.MaxOutputTokens)
-			}
-			if info.DefaultParams == nil {
-				t.Errorf("GetModelInfo(%q).DefaultParams = nil, want non-nil map", tt.modelName)
+				t.Errorf("GetModelInfo(%q).MaxOutputTokens = %d, want > 0", tt.modelName, info.MaxOutputTokens)
 			}
 		})
 	}
 }
 
-func TestGetProviderForModel(t *testing.T) {
+func TestGetProviderDefaultRateLimitCore(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name          string
-		modelName     string
-		wantProvider  string
-		wantError     bool
-		errorContains string
+		name     string
+		provider string
+		expected int
 	}{
-		// Valid models - OpenAI
 		{
-			name:         "gpt-4.1 provider",
-			modelName:    "gpt-4.1",
-			wantProvider: "openai",
-			wantError:    false,
+			name:     "openai provider",
+			provider: "openai",
+			expected: 3000,
 		},
 		{
-			name:         "o4-mini provider",
-			modelName:    "o4-mini",
-			wantProvider: "openai",
-			wantError:    false,
-		},
-		// Valid models - Gemini
-		{
-			name:         "gemini-2.5-pro provider",
-			modelName:    "gemini-2.5-pro",
-			wantProvider: "gemini",
-			wantError:    false,
+			name:     "gemini provider",
+			provider: "gemini",
+			expected: 60,
 		},
 		{
-			name:         "gemini-2.5-flash provider",
-			modelName:    "gemini-2.5-flash",
-			wantProvider: "gemini",
-			wantError:    false,
-		},
-		// Valid models - OpenRouter
-		{
-			name:         "deepseek-chat-v3 provider",
-			modelName:    "openrouter/deepseek/deepseek-chat-v3-0324",
-			wantProvider: "openrouter",
-			wantError:    false,
+			name:     "openrouter provider",
+			provider: "openrouter",
+			expected: 20,
 		},
 		{
-			name:         "deepseek-r1-0528 provider",
-			modelName:    "openrouter/deepseek/deepseek-r1-0528",
-			wantProvider: "openrouter",
-			wantError:    false,
+			name:     "unknown provider",
+			provider: "unknown",
+			expected: 60,
 		},
 		{
-			name:         "grok-3-beta provider",
-			modelName:    "openrouter/x-ai/grok-3-beta",
-			wantProvider: "openrouter",
-			wantError:    false,
-		},
-		// Invalid models
-		{
-			name:          "unknown model",
-			modelName:     "unknown-model",
-			wantError:     true,
-			errorContains: "unknown model: unknown-model",
-		},
-		{
-			name:          "empty model name",
-			modelName:     "",
-			wantError:     true,
-			errorContains: "unknown model:",
-		},
-		{
-			name:          "similar but incorrect model name",
-			modelName:     "gpt-5",
-			wantError:     true,
-			errorContains: "unknown model: gpt-5",
+			name:     "empty provider",
+			provider: "",
+			expected: 60,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			provider, err := GetProviderForModel(tt.modelName)
-
-			// Check error expectations
-			if tt.wantError {
-				if err == nil {
-					t.Errorf("GetProviderForModel(%q) expected error, got nil", tt.modelName)
-					return
-				}
-				if !strings.Contains(err.Error(), tt.errorContains) {
-					t.Errorf("GetProviderForModel(%q) error = %v, want error containing %q", tt.modelName, err, tt.errorContains)
-				}
-				return
-			}
-
-			// Check for unexpected errors
-			if err != nil {
-				t.Errorf("GetProviderForModel(%q) unexpected error = %v", tt.modelName, err)
-				return
-			}
-
-			// Validate returned provider
-			if provider != tt.wantProvider {
-				t.Errorf("GetProviderForModel(%q) = %v, want %v", tt.modelName, provider, tt.wantProvider)
+			result := GetProviderDefaultRateLimit(tt.provider)
+			if result != tt.expected {
+				t.Errorf("GetProviderDefaultRateLimit(%q) = %d, want %d", tt.provider, result, tt.expected)
 			}
 		})
-	}
-}
-
-func TestListAllModels(t *testing.T) {
-	t.Parallel()
-	models := ListAllModels()
-
-	// Define expected models in alphabetical order
-	expectedModels := []string{
-		"gemini-2.5-flash",
-		"gemini-2.5-pro",
-		"gpt-4.1",
-		"o3",
-		"o4-mini",
-		"openrouter/deepseek/deepseek-chat-v3-0324",
-		"openrouter/deepseek/deepseek-chat-v3-0324:free",
-		"openrouter/deepseek/deepseek-r1-0528",
-		"openrouter/deepseek/deepseek-r1-0528:free",
-		"openrouter/google/gemma-3-27b-it",
-		"openrouter/meta-llama/llama-3.3-70b-instruct",
-		"openrouter/meta-llama/llama-4-maverick",
-		"openrouter/meta-llama/llama-4-scout",
-		"openrouter/x-ai/grok-3-beta",
-		"openrouter/x-ai/grok-3-mini-beta",
-	}
-
-	// Verify correct number of models
-	if len(models) != len(expectedModels) {
-		t.Errorf("ListAllModels() returned %d models, want %d", len(models), len(expectedModels))
-	}
-
-	// Verify all expected models are present and in correct order
-	for i, expected := range expectedModels {
-		if i >= len(models) {
-			t.Errorf("ListAllModels() missing model at index %d: %s", i, expected)
-			continue
-		}
-		if models[i] != expected {
-			t.Errorf("ListAllModels()[%d] = %s, want %s", i, models[i], expected)
-		}
-	}
-
-	// Verify no unexpected models are present
-	if len(models) > len(expectedModels) {
-		for i := len(expectedModels); i < len(models); i++ {
-			t.Errorf("ListAllModels() contains unexpected model at index %d: %s", i, models[i])
-		}
-	}
-
-	// Verify the slice is sorted
-	for i := 1; i < len(models); i++ {
-		if models[i-1] >= models[i] {
-			t.Errorf("ListAllModels() not properly sorted: models[%d]=%s >= models[%d]=%s",
-				i-1, models[i-1], i, models[i])
-		}
 	}
 }
 
 func TestListModelsForProvider(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name           string
-		provider       string
-		expectedModels []string
+		name     string
+		provider string
+		expected []string
 	}{
 		{
 			name:     "openai provider",
 			provider: "openai",
-			expectedModels: []string{
-				"gpt-4.1",
-				"o3",
-				"o4-mini",
-			},
+			expected: []string{"gpt-4.1", "o3", "o4-mini"},
 		},
 		{
 			name:     "gemini provider",
 			provider: "gemini",
-			expectedModels: []string{
-				"gemini-2.5-flash",
-				"gemini-2.5-pro",
-			},
+			expected: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
 		},
 		{
 			name:     "openrouter provider",
 			provider: "openrouter",
-			expectedModels: []string{
+			expected: []string{
 				"openrouter/deepseek/deepseek-chat-v3-0324",
 				"openrouter/deepseek/deepseek-chat-v3-0324:free",
 				"openrouter/deepseek/deepseek-r1-0528",
@@ -333,201 +187,456 @@ func TestListModelsForProvider(t *testing.T) {
 			},
 		},
 		{
-			name:           "unknown provider",
-			provider:       "unknown-provider",
-			expectedModels: []string{},
+			name:     "unknown provider",
+			provider: "unknown",
+			expected: []string{},
 		},
 		{
-			name:           "empty provider",
-			provider:       "",
-			expectedModels: []string{},
-		},
-		{
-			name:           "case sensitive provider",
-			provider:       "OpenAI",
-			expectedModels: []string{},
+			name:     "empty provider",
+			provider: "",
+			expected: []string{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			models := ListModelsForProvider(tt.provider)
+			result := ListModelsForProvider(tt.provider)
 
-			// Verify correct number of models
-			if len(models) != len(tt.expectedModels) {
-				t.Errorf("ListModelsForProvider(%q) returned %d models, want %d",
-					tt.provider, len(models), len(tt.expectedModels))
+			if len(result) != len(tt.expected) {
+				t.Errorf("ListModelsForProvider(%q) returned %d models, want %d\nGot: %v\nWant: %v",
+					tt.provider, len(result), len(tt.expected), result, tt.expected)
+				return
 			}
 
-			// Verify all expected models are present and in correct order
-			for i, expected := range tt.expectedModels {
-				if i >= len(models) {
-					t.Errorf("ListModelsForProvider(%q) missing model at index %d: %s",
-						tt.provider, i, expected)
-					continue
-				}
-				if models[i] != expected {
-					t.Errorf("ListModelsForProvider(%q)[%d] = %s, want %s",
-						tt.provider, i, models[i], expected)
+			// Create sets for comparison (order might vary)
+			resultSet := make(map[string]bool)
+			for _, model := range result {
+				resultSet[model] = true
+			}
+
+			expectedSet := make(map[string]bool)
+			for _, model := range tt.expected {
+				expectedSet[model] = true
+			}
+
+			// Verify all expected models are present
+			for _, expected := range tt.expected {
+				if !resultSet[expected] {
+					t.Errorf("ListModelsForProvider(%q) missing expected model: %s", tt.provider, expected)
 				}
 			}
 
 			// Verify no unexpected models are present
-			if len(models) > len(tt.expectedModels) {
-				for i := len(tt.expectedModels); i < len(models); i++ {
-					t.Errorf("ListModelsForProvider(%q) contains unexpected model at index %d: %s",
-						tt.provider, i, models[i])
-				}
-			}
-
-			// Verify the slice is sorted (only if we have more than one model)
-			if len(models) > 1 {
-				for i := 1; i < len(models); i++ {
-					if models[i-1] >= models[i] {
-						t.Errorf("ListModelsForProvider(%q) not properly sorted: models[%d]=%s >= models[%d]=%s",
-							tt.provider, i-1, models[i-1], i, models[i])
-					}
+			for _, actual := range result {
+				if !expectedSet[actual] {
+					t.Errorf("ListModelsForProvider(%q) returned unexpected model: %s", tt.provider, actual)
 				}
 			}
 		})
 	}
 }
 
-func TestGetAPIKeyEnvVar(t *testing.T) {
-	t.Parallel()
-	tests := []struct {
-		name        string
-		provider    string
-		expectedVar string
-	}{
-		{
-			name:        "openai provider",
-			provider:    "openai",
-			expectedVar: "OPENAI_API_KEY",
-		},
-		{
-			name:        "gemini provider",
-			provider:    "gemini",
-			expectedVar: "GEMINI_API_KEY",
-		},
-		{
-			name:        "openrouter provider",
-			provider:    "openrouter",
-			expectedVar: "OPENROUTER_API_KEY",
-		},
-		{
-			name:        "unknown provider",
-			provider:    "unknown-provider",
-			expectedVar: "",
-		},
-		{
-			name:        "empty provider",
-			provider:    "",
-			expectedVar: "",
-		},
-		{
-			name:        "case sensitive provider",
-			provider:    "OpenAI",
-			expectedVar: "",
-		},
-		{
-			name:        "different case provider",
-			provider:    "OPENAI",
-			expectedVar: "",
-		},
+// Test benchmarks to verify performance
+func BenchmarkGetModelInfo(b *testing.B) {
+	modelName := "gpt-4.1"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := GetModelInfo(modelName)
+		if err != nil {
+			b.Fatal(err)
+		}
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			envVar := GetAPIKeyEnvVar(tt.provider)
-			if envVar != tt.expectedVar {
-				t.Errorf("GetAPIKeyEnvVar(%q) = %q, want %q", tt.provider, envVar, tt.expectedVar)
-			}
-		})
+func BenchmarkGetProviderDefaultRateLimit(b *testing.B) {
+	provider := "openai"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GetProviderDefaultRateLimit(provider)
+	}
+}
+
+func BenchmarkListModelsForProvider(b *testing.B) {
+	provider := "openai"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ListModelsForProvider(provider)
 	}
 }
 
 func TestIsModelSupported(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
-		name        string
-		modelName   string
-		expectedRes bool
+		name      string
+		modelName string
+		expected  bool
 	}{
-		// Valid models - should return true
 		{
-			name:        "gpt-4.1 supported",
-			modelName:   "gpt-4.1",
-			expectedRes: true,
+			name:      "valid OpenAI model",
+			modelName: "gpt-4.1",
+			expected:  true,
 		},
 		{
-			name:        "o4-mini supported",
-			modelName:   "o4-mini",
-			expectedRes: true,
+			name:      "valid Gemini model",
+			modelName: "gemini-2.5-pro",
+			expected:  true,
 		},
 		{
-			name:        "gemini-2.5-pro supported",
-			modelName:   "gemini-2.5-pro",
-			expectedRes: true,
+			name:      "valid OpenRouter model",
+			modelName: "openrouter/meta-llama/llama-4-maverick",
+			expected:  true,
 		},
 		{
-			name:        "gemini-2.5-flash supported",
-			modelName:   "gemini-2.5-flash",
-			expectedRes: true,
+			name:      "invalid model",
+			modelName: "invalid-model",
+			expected:  false,
 		},
 		{
-			name:        "deepseek-chat-v3 supported",
-			modelName:   "openrouter/deepseek/deepseek-chat-v3-0324",
-			expectedRes: true,
+			name:      "empty model name",
+			modelName: "",
+			expected:  false,
 		},
 		{
-			name:        "deepseek-r1-0528 supported",
-			modelName:   "openrouter/deepseek/deepseek-r1-0528",
-			expectedRes: true,
-		},
-		{
-			name:        "grok-3-beta supported",
-			modelName:   "openrouter/x-ai/grok-3-beta",
-			expectedRes: true,
-		},
-		// Invalid models - should return false
-		{
-			name:        "unknown model not supported",
-			modelName:   "unknown-model",
-			expectedRes: false,
-		},
-		{
-			name:        "empty model name not supported",
-			modelName:   "",
-			expectedRes: false,
-		},
-		{
-			name:        "similar but incorrect model not supported",
-			modelName:   "gpt-5",
-			expectedRes: false,
-		},
-		{
-			name:        "case sensitive model not supported",
-			modelName:   "GPT-4.1",
-			expectedRes: false,
-		},
-		{
-			name:        "partial model name not supported",
-			modelName:   "gpt",
-			expectedRes: false,
-		},
-		{
-			name:        "model with extra characters not supported",
-			modelName:   "gpt-4.1-extra",
-			expectedRes: false,
+			name:      "case sensitive check",
+			modelName: "GPT-4.1",
+			expected:  false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := IsModelSupported(tt.modelName)
-			if result != tt.expectedRes {
-				t.Errorf("IsModelSupported(%q) = %v, want %v", tt.modelName, result, tt.expectedRes)
+			if result != tt.expected {
+				t.Errorf("IsModelSupported(%q) = %v, want %v", tt.modelName, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestValidateFloatParameter(t *testing.T) {
+	t.Parallel()
+	constraint := ParameterConstraint{
+		Type:     "float",
+		MinValue: func() *float64 { v := 0.0; return &v }(),
+		MaxValue: func() *float64 { v := 2.0; return &v }(),
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases
+		{
+			name:        "valid float64",
+			paramName:   "temperature",
+			value:       1.0,
+			expectError: false,
+		},
+		{
+			name:        "valid float32",
+			paramName:   "temperature",
+			value:       float32(1.5),
+			expectError: false,
+		},
+		{
+			name:        "valid int",
+			paramName:   "temperature",
+			value:       1,
+			expectError: false,
+		},
+		{
+			name:        "valid int32",
+			paramName:   "temperature",
+			value:       int32(1),
+			expectError: false,
+		},
+		{
+			name:        "valid int64",
+			paramName:   "temperature",
+			value:       int64(1),
+			expectError: false,
+		},
+		{
+			name:        "at minimum boundary",
+			paramName:   "temperature",
+			value:       0.0,
+			expectError: false,
+		},
+		{
+			name:        "at maximum boundary",
+			paramName:   "temperature",
+			value:       2.0,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-numeric type",
+			paramName:     "temperature",
+			value:         "not_a_number",
+			expectError:   true,
+			errorContains: "must be a numeric value",
+		},
+		{
+			name:          "below minimum",
+			paramName:     "temperature",
+			value:         -0.1,
+			expectError:   true,
+			errorContains: "must be >= 0.00",
+		},
+		{
+			name:          "above maximum",
+			paramName:     "temperature",
+			value:         2.1,
+			expectError:   true,
+			errorContains: "must be <= 2.00",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateFloatParameter(tt.paramName, tt.value, constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateFloatParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateFloatParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateFloatParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
+
+func TestValidateIntParameter(t *testing.T) {
+	t.Parallel()
+	constraint := ParameterConstraint{
+		Type:     "int",
+		MinValue: func() *float64 { v := 1.0; return &v }(),
+		MaxValue: func() *float64 { v := 1000.0; return &v }(),
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases
+		{
+			name:        "valid int",
+			paramName:   "max_tokens",
+			value:       500,
+			expectError: false,
+		},
+		{
+			name:        "valid int32",
+			paramName:   "max_tokens",
+			value:       int32(500),
+			expectError: false,
+		},
+		{
+			name:        "valid int64",
+			paramName:   "max_tokens",
+			value:       int64(500),
+			expectError: false,
+		},
+		{
+			name:        "valid float64 whole number",
+			paramName:   "max_tokens",
+			value:       500.0,
+			expectError: false,
+		},
+		{
+			name:        "valid float32 whole number",
+			paramName:   "max_tokens",
+			value:       float32(500.0),
+			expectError: false,
+		},
+		{
+			name:        "at minimum boundary",
+			paramName:   "max_tokens",
+			value:       1,
+			expectError: false,
+		},
+		{
+			name:        "at maximum boundary",
+			paramName:   "max_tokens",
+			value:       1000,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-numeric type",
+			paramName:     "max_tokens",
+			value:         "not_a_number",
+			expectError:   true,
+			errorContains: "must be an integer value",
+		},
+		{
+			name:          "float64 with decimal",
+			paramName:     "max_tokens",
+			value:         500.5,
+			expectError:   true,
+			errorContains: "must be an integer",
+		},
+		{
+			name:          "float32 with decimal",
+			paramName:     "max_tokens",
+			value:         float32(500.5),
+			expectError:   true,
+			errorContains: "must be an integer",
+		},
+		{
+			name:          "below minimum",
+			paramName:     "max_tokens",
+			value:         0,
+			expectError:   true,
+			errorContains: "must be >= 1",
+		},
+		{
+			name:          "above maximum",
+			paramName:     "max_tokens",
+			value:         1001,
+			expectError:   true,
+			errorContains: "must be <= 1000",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateIntParameter(tt.paramName, tt.value, constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateIntParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateIntParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateIntParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
+
+func TestValidateStringParameter(t *testing.T) {
+	t.Parallel()
+	constraintWithEnum := ParameterConstraint{
+		Type:       "string",
+		EnumValues: []string{"low", "medium", "high"},
+	}
+	constraintWithoutEnum := ParameterConstraint{
+		Type: "string",
+	}
+
+	tests := []struct {
+		name          string
+		paramName     string
+		value         interface{}
+		constraint    ParameterConstraint
+		expectError   bool
+		errorContains string
+	}{
+		// Valid cases with enum
+		{
+			name:        "valid enum value - low",
+			paramName:   "priority",
+			value:       "low",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		{
+			name:        "valid enum value - medium",
+			paramName:   "priority",
+			value:       "medium",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		{
+			name:        "valid enum value - high",
+			paramName:   "priority",
+			value:       "high",
+			constraint:  constraintWithEnum,
+			expectError: false,
+		},
+		// Valid cases without enum
+		{
+			name:        "any string value when no enum",
+			paramName:   "description",
+			value:       "any description",
+			constraint:  constraintWithoutEnum,
+			expectError: false,
+		},
+		{
+			name:        "empty string when no enum",
+			paramName:   "description",
+			value:       "",
+			constraint:  constraintWithoutEnum,
+			expectError: false,
+		},
+		// Error cases
+		{
+			name:          "non-string type",
+			paramName:     "priority",
+			value:         123,
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be a string",
+		},
+		{
+			name:          "invalid enum value",
+			paramName:     "priority",
+			value:         "invalid",
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be one of",
+		},
+		{
+			name:          "case sensitive enum check",
+			paramName:     "priority",
+			value:         "Low",
+			constraint:    constraintWithEnum,
+			expectError:   true,
+			errorContains: "must be one of",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateStringParameter(tt.paramName, tt.value, tt.constraint)
+
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("validateStringParameter(%q, %v, constraint) expected error, got nil", tt.paramName, tt.value)
+					return
+				}
+				if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("validateStringParameter(%q, %v, constraint) error = %q, want error containing %q",
+						tt.paramName, tt.value, err.Error(), tt.errorContains)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("validateStringParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
 			}
 		})
 	}

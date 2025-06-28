@@ -316,17 +316,16 @@ func TestValidateConfig(t *testing.T) {
 			errorContains: "no paths specified",
 		},
 		{
-			name: "Dry run still requires API key",
+			name: "Dry run skips API key validation",
 			config: &CliConfig{
 				InstructionsFile: "", // Missing but allowed in dry run
 				Paths:            []string{"testfile"},
-				APIKey:           "", // Missing - still required in dry run
+				APIKey:           "", // Missing - now allowed in dry run
 				ModelNames:       []string{"model1"},
 				DryRun:           true,
 			},
-			logger:        &MockLogger{},
-			expectError:   true,
-			errorContains: "API key not set",
+			logger:      &MockLogger{},
+			expectError: false, // API key validation is skipped in dry run
 		},
 		{
 			name: "Dry run allows missing models",
@@ -639,5 +638,137 @@ func TestValidateConfigWithNilConfig(t *testing.T) {
 	// Verify error is logged
 	if !logger.ErrorCalled {
 		t.Error("Expected error to be logged, but no error was logged")
+	}
+}
+
+// TestGetProviderRateLimit tests the GetProviderRateLimit method
+func TestGetProviderRateLimit(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		config   *CliConfig
+		provider string
+		expected int
+	}{
+		{
+			name: "OpenAI provider with specific limit",
+			config: &CliConfig{
+				OpenAIRateLimit: 3000,
+			},
+			provider: "openai",
+			expected: 3000,
+		},
+		{
+			name: "Gemini provider with specific limit",
+			config: &CliConfig{
+				GeminiRateLimit: 60,
+			},
+			provider: "gemini",
+			expected: 60,
+		},
+		{
+			name: "OpenRouter provider with specific limit",
+			config: &CliConfig{
+				OpenRouterRateLimit: 20,
+			},
+			provider: "openrouter",
+			expected: 20,
+		},
+		{
+			name: "OpenAI provider falls back to global rate limit",
+			config: &CliConfig{
+				OpenAIRateLimit:            0, // Not set
+				RateLimitRequestsPerMinute: 100,
+			},
+			provider: "openai",
+			expected: 100,
+		},
+		{
+			name: "Gemini provider falls back to global rate limit",
+			config: &CliConfig{
+				GeminiRateLimit:            0, // Not set
+				RateLimitRequestsPerMinute: 150,
+			},
+			provider: "gemini",
+			expected: 150,
+		},
+		{
+			name: "OpenRouter provider falls back to global rate limit",
+			config: &CliConfig{
+				OpenRouterRateLimit:        0, // Not set
+				RateLimitRequestsPerMinute: 200,
+			},
+			provider: "openrouter",
+			expected: 200,
+		},
+		{
+			name: "Unknown provider falls back to global rate limit",
+			config: &CliConfig{
+				RateLimitRequestsPerMinute: 75,
+			},
+			provider: "unknown-provider",
+			expected: 75,
+		},
+		{
+			name:   "No rate limits set - returns 0",
+			config: &CliConfig{
+				// All rate limits are 0
+			},
+			provider: "openai",
+			expected: 0,
+		},
+		{
+			name: "Provider-specific limit overrides global",
+			config: &CliConfig{
+				OpenAIRateLimit:            2500,
+				RateLimitRequestsPerMinute: 100, // Should be ignored
+			},
+			provider: "openai",
+			expected: 2500,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.config.GetProviderRateLimit(tt.provider)
+			if result != tt.expected {
+				t.Errorf("GetProviderRateLimit(%s) = %d, want %d", tt.provider, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestIsStandardOpenAIModel tests the isStandardOpenAIModel helper function
+func TestIsStandardOpenAIModel(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		model    string
+		expected bool
+	}{
+		{"gpt-4", "gpt-4", true},
+		{"gpt-4-turbo", "gpt-4-turbo", true},
+		{"gpt-4o", "gpt-4o", true},
+		{"gpt-4o-mini", "gpt-4o-mini", true},
+		{"gpt-4.1", "gpt-4.1", true},
+		{"gpt-3.5-turbo", "gpt-3.5-turbo", true},
+		{"o3", "o3", true},
+		{"o4-mini", "o4-mini", true},
+		{"case insensitive", "GPT-4", true},
+		{"case insensitive 2", "O3", true},
+		{"prefix match", "gpt-4-custom", true},
+		{"gemini model", "gemini-1.5-pro", false},
+		{"openrouter model", "openrouter/gpt-4", false},
+		{"custom model", "custom-model", false},
+		{"empty string", "", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isStandardOpenAIModel(tt.model)
+			if result != tt.expected {
+				t.Errorf("isStandardOpenAIModel(%s) = %v, want %v", tt.model, result, tt.expected)
+			}
+		})
 	}
 }

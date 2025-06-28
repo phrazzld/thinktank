@@ -2,6 +2,7 @@ package models
 
 import (
 	"fmt"
+	"os"
 	"sort"
 )
 
@@ -386,6 +387,140 @@ func ListModelsForProvider(provider string) []string {
 	}
 	sort.Strings(models)
 	return models
+}
+
+// EstimateTokensFromText provides a rough estimation of token count from text.
+// Uses a conservative approximation where 1 token ≈ 1.33 characters.
+// This estimation works reasonably well across different tokenizers.
+func EstimateTokensFromText(text string) int {
+	if text == "" {
+		return 0
+	}
+	// Conservative estimation: 1 token per 1.33 characters (or 0.75 tokens per character)
+	charCount := len(text)
+	estimatedTokens := int(float64(charCount) * 0.75)
+
+	// Add a small buffer for typical instruction overhead
+	const instructionOverhead = 1000
+	return estimatedTokens + instructionOverhead
+}
+
+// EstimateTokensFromStats estimates tokens from ContextStats.
+// Includes the character count plus estimated instruction and formatting overhead.
+func EstimateTokensFromStats(charCount int, instructionsText string) int {
+	// Estimate tokens from the content
+	contentTokens := int(float64(charCount) * 0.75)
+
+	// Add instruction tokens
+	instructionTokens := EstimateTokensFromText(instructionsText)
+
+	// Add formatting overhead (file paths, markdown formatting, etc.)
+	const formatOverhead = 500
+
+	return contentTokens + instructionTokens + formatOverhead
+}
+
+// GetModelsWithMinContextWindow returns models that have at least the specified context window.
+// Results are sorted by context window size in descending order (largest first).
+func GetModelsWithMinContextWindow(minTokens int) []string {
+	type modelWithContext struct {
+		name          string
+		contextWindow int
+	}
+
+	var candidates []modelWithContext
+	for name, info := range modelDefinitions {
+		if info.ContextWindow >= minTokens {
+			candidates = append(candidates, modelWithContext{
+				name:          name,
+				contextWindow: info.ContextWindow,
+			})
+		}
+	}
+
+	// Sort by context window size (largest first)
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].contextWindow > candidates[j].contextWindow
+	})
+
+	// Extract model names
+	result := make([]string, len(candidates))
+	for i, candidate := range candidates {
+		result[i] = candidate.name
+	}
+
+	return result
+}
+
+// GetAvailableProviders returns a list of providers for which API keys are available.
+// Checks environment variables for each provider's API key.
+func GetAvailableProviders() []string {
+	var providers []string
+
+	providerEnvVars := map[string]string{
+		"openai":     "OPENAI_API_KEY",
+		"gemini":     "GEMINI_API_KEY",
+		"openrouter": "OPENROUTER_API_KEY",
+	}
+
+	for provider, envVar := range providerEnvVars {
+		if os.Getenv(envVar) != "" {
+			providers = append(providers, provider)
+		}
+	}
+
+	return providers
+}
+
+// SelectModelsForInput intelligently selects models based on estimated input size and available API keys.
+// Returns models that can handle the input size, filtered by available providers.
+// Results are sorted by context window size (largest first).
+func SelectModelsForInput(estimatedTokens int, availableProviders []string) []string {
+	// Add safety margin - reserve 20% of context window for output and overhead
+	safetyFactor := 1.25
+	requiredContextWindow := int(float64(estimatedTokens) * safetyFactor)
+
+	// Get all models with sufficient context window
+	candidateModels := GetModelsWithMinContextWindow(requiredContextWindow)
+
+	// Filter by available providers
+	availableProviderSet := make(map[string]bool)
+	for _, provider := range availableProviders {
+		availableProviderSet[provider] = true
+	}
+
+	var filteredModels []string
+	for _, modelName := range candidateModels {
+		if info, exists := modelDefinitions[modelName]; exists {
+			if availableProviderSet[info.Provider] {
+				filteredModels = append(filteredModels, modelName)
+			}
+		}
+	}
+
+	return filteredModels
+}
+
+// GetLargestContextModel returns the model with the largest context window from the given list.
+// Returns empty string if the list is empty or no models are found.
+func GetLargestContextModel(modelNames []string) string {
+	if len(modelNames) == 0 {
+		return ""
+	}
+
+	largestModel := ""
+	largestContext := 0
+
+	for _, modelName := range modelNames {
+		if info, exists := modelDefinitions[modelName]; exists {
+			if info.ContextWindow > largestContext {
+				largestContext = info.ContextWindow
+				largestModel = modelName
+			}
+		}
+	}
+
+	return largestModel
 }
 
 // GetAPIKeyEnvVar returns the environment variable name for the given provider's API key.
