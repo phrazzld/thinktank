@@ -2,29 +2,67 @@
 
 ## URGENT: CI Failure Resolution (CRITICAL PRIORITY)
 
-### Test Model Definition Issues
+### TestBoundarySynthesisFlowNew Content Mismatch
 
-- [ ] **Add test models (model1, model2, model3) to ModelDefinitions map in internal/models/models.go**
-  - Root cause: Integration tests use undefined test models in hardcoded model system
-  - Add model1, model2, model3 with "test" provider and appropriate context windows
-  - Configure with sufficient context window to support 100 token test inputs
+- [ ] **Examine TestBoundarySynthesisFlowNew test failure with debugger to trace execution flow**
+  - Root cause: Test expects individual model output but receives synthesized content instead
+  - Set breakpoints to identify where synthesis content is generated vs individual model content
+  - Trace file path construction and output writer delegation logic
 
-- [ ] **Configure test models with appropriate context windows and parameters for integration tests**
-  - Set context windows > 200 tokens to support test scenarios with safety margins
-  - Use "test" provider to avoid real API calls
-  - Add appropriate default parameters for test scenarios
+- [ ] **Read and analyze boundary_synthesis_flow_new_test.go to understand expected vs actual behavior**
+  - Review test setup and mock provider configuration
+  - Understand what content each model should generate individually
+  - Identify synthesis vs individual mode trigger conditions
 
-- [ ] **Run failing integration tests locally to verify fix (TestNoSynthesisFlow, TestSynthesisWithModelFailuresFlow)**
-  - Execute: `go test ./internal/integration -v -run "TestNoSynthesisFlow|TestSynthesisWithModelFailuresFlow"`
-  - Verify both tests pass with new model definitions
+- [ ] **Run failing test locally with debug logging to identify where synthesis content is generated**
+  - Execute: `go test ./internal/integration -v -run "TestBoundarySynthesisFlowNew"`
+  - Add debug logging to show file structure and content generation paths
+  - Verify which output writer is being used (individual vs synthesis)
 
-- [ ] **Run full test suite to ensure no regressions: go test ./...**
-  - Ensure all existing tests continue to pass
-  - Verify no breaking changes introduced by test model additions
+- [ ] **Check orchestrator output writer delegation logic for individual vs synthesis mode routing**
+  - Examine how the orchestrator decides between individual and synthesis output
+  - Verify file path construction for individual model outputs
+  - Check if recent token counting changes affected output routing
 
-- [ ] **Add documentation comments to test models indicating they are for testing only**
-  - Mark test models clearly with comments explaining their purpose
-  - Document that they should not be used in production
+- [ ] **Verify mock provider responses in test setup correctly map models to individual content**
+  - Ensure gpt-4.1 mock response generates expected "Output from Model 2" content
+  - Check that synthesis mode is not accidentally triggered during test
+  - Validate mock response mapping to correct models
+
+- [ ] **Inspect file path construction logic for individual model outputs vs synthesis outputs**
+  - Review how output file names and paths are generated
+  - Check if token counting changes affected file naming logic
+  - Ensure individual model files are created in correct locations
+
+- [ ] **Add debug logging to show actual file structure generated during test execution**
+  - Log which files are created and their content types
+  - Add assertions to verify expected files exist before content verification
+  - Include debug output showing synthesis vs individual mode decisions
+
+- [ ] **Create minimal reproduction test to isolate gpt-4.1 content mismatch issue**
+  - Strip away complexity to focus only on the content generation failure
+  - Test single model output generation in isolation
+  - Verify the bug reproduces consistently
+
+- [ ] **Fix root cause of synthesis content being generated instead of individual model output**
+  - Apply fix based on diagnostic findings
+  - Ensure proper routing between individual and synthesis output modes
+  - Maintain backward compatibility for existing synthesis functionality
+
+- [ ] **Run TestBoundarySynthesisFlowNew locally to verify fix resolves content mismatch**
+  - Confirm test passes with expected individual model content
+  - Verify no other integration tests are broken by the fix
+  - Test both individual and synthesis modes work correctly
+
+- [ ] **Run full integration test suite to ensure no regressions introduced by fix**
+  - Execute: `go test ./internal/integration -v`
+  - Verify all boundary tests continue to pass
+  - Check that synthesis functionality still works when expected
+
+- [ ] **Add unit tests for output routing logic to prevent future synthesis vs individual regressions**
+  - Create tests specifically for output writer delegation logic
+  - Add boundary tests for synthesis vs individual mode switching
+  - Include file path construction validation tests
 
 - [ ] **Clean up temporary CI analysis files (CI-FAILURE-SUMMARY.md, CI-RESOLUTION-PLAN.md)**
   - Remove temporary analysis files after resolution is complete

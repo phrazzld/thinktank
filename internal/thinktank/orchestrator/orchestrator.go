@@ -516,33 +516,31 @@ func (o *Orchestrator) handleOutputFlow(ctx context.Context, instructions string
 		return outputInfo, err
 	}
 
-	// Synthesis model specified - process all outputs with synthesis model
-	synthesisPath, err := o.runSynthesisFlow(ctx, instructions, modelOutputs)
-
+	// Synthesis model specified - save both individual outputs and synthesis
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
-	if err != nil {
-		// If synthesis fails, fall back to saving individual outputs
-		contextLogger.WarnContext(ctx, "Synthesis failed, falling back to saving individual outputs: %v", err)
-		filePaths, fallbackErr := o.runIndividualOutputFlow(ctx, modelOutputs)
-		if filePaths != nil {
-			outputInfo.IndividualFilePaths = filePaths
-		}
+	// First, save individual model outputs
+	filePaths, individualErr := o.runIndividualOutputFlow(ctx, modelOutputs)
+	if filePaths != nil {
+		outputInfo.IndividualFilePaths = filePaths
+	}
 
-		// If the fallback also failed, log it
-		if fallbackErr != nil {
-			contextLogger.ErrorContext(ctx, "Fallback to individual outputs also failed: %v", fallbackErr)
-		}
+	// Then, run synthesis flow
+	synthesisPath, synthesisErr := o.runSynthesisFlow(ctx, instructions, modelOutputs)
 
-		// Still return the synthesis error, but now we've saved individual files as fallback
-		return outputInfo, err
+	if synthesisErr != nil {
+		// If synthesis fails, log it but still return individual outputs
+		contextLogger.WarnContext(ctx, "Synthesis failed, but individual outputs were saved: %v", synthesisErr)
+		return outputInfo, synthesisErr
 	}
 
 	if synthesisPath != "" {
 		outputInfo.SynthesisFilePath = synthesisPath
 	}
-	return outputInfo, err
+
+	// Return individual error if synthesis succeeded but individual saving failed
+	return outputInfo, individualErr
 }
 
 // handleProcessingOutcome combines and reports any errors from model processing and file saving.

@@ -78,15 +78,18 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Configure mock API caller to return appropriate responses
 	mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// For synthesis model
-		if modelName == synthesisModel {
+		// Check if this is a synthesis call by looking for synthesis prompt structure
+		isSynthesisCall := strings.Contains(prompt, "<instructions>") && strings.Contains(prompt, "<model_outputs>")
+
+		// For synthesis calls (regardless of model name)
+		if isSynthesisCall {
 			return &llm.ProviderResult{
 				Content:      synthesisOutput,
 				FinishReason: "stop",
 			}, nil
 		}
 
-		// For regular models
+		// For regular individual model calls
 		if content, ok := mockOutputs[modelName]; ok {
 			return &llm.ProviderResult{
 				Content:      content,
@@ -241,11 +244,11 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	// Create logger
 	logger := logutil.NewTestLogger(t)
 
-	// Declare expected error patterns for gpt-4o failure (this is part of the test scenario)
-	logger.ExpectError("Generation failed for model gpt-4o")
-	logger.ExpectError("Error generating content with model gpt-4o")
-	logger.ExpectError("Processing model gpt-4o failed")
-	logger.ExpectError("model gpt-4o processing failed")
+	// Declare expected error patterns for gpt-4.1 failure (this is part of the test scenario)
+	logger.ExpectError("Generation failed for model gpt-4.1")
+	logger.ExpectError("Error generating content with model gpt-4.1")
+	logger.ExpectError("Processing model gpt-4.1 failed")
+	logger.ExpectError("model gpt-4.1 processing failed")
 	logger.ExpectError("Completed with model errors")
 	logger.ExpectError("API rate limit exceeded")
 
@@ -263,20 +266,23 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Configure mock API caller to return appropriate responses
 	mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// Simulate gpt-4o failing
+		// Check if this is a synthesis call by looking for synthesis prompt structure
+		isSynthesisCall := strings.Contains(prompt, "<instructions>") && strings.Contains(prompt, "<model_outputs>")
+
+		// For synthesis calls (regardless of model name)
+		if isSynthesisCall {
+			return &llm.ProviderResult{
+				Content:      synthesisOutput,
+				FinishReason: "stop",
+			}, nil
+		}
+
+		// Simulate gpt-4.1 failing for individual model calls only
 		if modelName == "gpt-4.1" {
 			return nil, &llm.MockError{
 				Message:       "API rate limit exceeded",
 				ErrorCategory: llm.CategoryRateLimit,
 			}
-		}
-
-		// For synthesis model
-		if modelName == synthesisModel {
-			return &llm.ProviderResult{
-				Content:      synthesisOutput,
-				FinishReason: "stop",
-			}, nil
 		}
 
 		// For regular models
@@ -361,8 +367,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		t.Logf("Synthesis file was correctly created despite the failure")
 	}
 
-	// Verify that model1 and model3 output files were created
-	successfulModels := []string{"model1", "model3"}
+	// Verify that o4-mini and gemini-2.5-pro output files were created
+	successfulModels := []string{"o4-mini", "gemini-2.5-pro"}
 	for _, modelName := range successfulModels {
 		expectedFilePath := filepath.Join(outputDir, modelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
@@ -373,13 +379,13 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		}
 	}
 
-	// Verify model2 file was NOT created
-	failedModelPath := filepath.Join(outputDir, "model2.md")
+	// Verify gpt-4.1 file was NOT created
+	failedModelPath := filepath.Join(outputDir, "gpt-4.1.md")
 	_, modelStatErr := os.Stat(failedModelPath)
 	if !os.IsNotExist(modelStatErr) {
-		t.Errorf("File for failed model2 should not exist, but it does")
+		t.Errorf("File for failed gpt-4.1 should not exist, but it does")
 	} else {
-		t.Logf("Correctly verified that failed model2 has no output file")
+		t.Logf("Correctly verified that failed gpt-4.1 has no output file")
 	}
 }
 
