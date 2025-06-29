@@ -72,8 +72,8 @@ for this type of mixed content compared to simple character estimation.
 
 	t.Logf("Gemini (SentencePiece) tokens: %d", geminiResult.TotalTokens)
 
-	// Test with an unknown model (should fall back to estimation)
-	estimationResult, err := service.CountTokensForModel(context.Background(), req, "unknown-estimation-model")
+	// Test with a different model (should use different tokenizer)
+	estimationResult, err := service.CountTokensForModel(context.Background(), req, "o4-mini")
 	require.NoError(t, err)
 
 	assert.Greater(t, estimationResult.TotalTokens, 0, "Estimation should count some tokens")
@@ -146,8 +146,8 @@ func TestTokenCountingService_NonEnglish_TokenCharacterRatioBreakdown(t *testing
 			geminiResult, err := service.CountTokensForModel(context.Background(), req, "gemini-2.5-pro")
 			require.NoError(t, err, "Gemini should handle %s", tt.description)
 
-			// Test with estimation fallback
-			estimationResult, err := service.CountTokensForModel(context.Background(), req, "unknown-model")
+			// Test with a different model (estimation fallback)
+			estimationResult, err := service.CountTokensForModel(context.Background(), req, "o4-mini")
 			require.NoError(t, err, "Estimation should handle %s", tt.description)
 
 			// Both should produce token counts

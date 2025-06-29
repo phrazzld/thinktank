@@ -127,13 +127,13 @@ func TestTokenCountingService_CheckModelCompatibility_ErrorPaths(t *testing.T) {
 		logShouldContain string
 	}{
 		{
-			name: "Unknown model falls back to estimation",
+			name: "Unknown model returns error",
 			setupService: func() TokenCountingService {
 				return NewTokenCountingService()
 			},
 			model:            "unknown-model-xyz",
-			expectError:      false,
-			expectFallback:   true,
+			expectError:      true,
+			expectFallback:   false,
 			logShouldContain: "",
 		},
 		{
@@ -143,7 +143,7 @@ func TestTokenCountingService_CheckModelCompatibility_ErrorPaths(t *testing.T) {
 				failingManager := &MockFailingTokenizerManager{ShouldFailAll: true}
 				return NewTokenCountingServiceWithManagerAndLogger(failingManager, mockLogger)
 			},
-			model:            "gpt-4",
+			model:            "gpt-4.1",
 			expectError:      false,
 			expectFallback:   true,
 			logShouldContain: "falling back to estimation",
@@ -156,7 +156,7 @@ func TestTokenCountingService_CheckModelCompatibility_ErrorPaths(t *testing.T) {
 				manager := &MockTokenizerManagerWithFailingTokenizer{}
 				return NewTokenCountingServiceWithManagerAndLogger(manager, mockLogger)
 			},
-			model:            "gpt-4",
+			model:            "gpt-4.1",
 			expectError:      false,
 			expectFallback:   true,
 			logShouldContain: "falling back to estimation",

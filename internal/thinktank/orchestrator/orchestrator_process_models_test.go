@@ -206,12 +206,18 @@ func TestProcessModelsWithErrorHandling_LogsTokenContext(t *testing.T) {
 	ctx := context.Background()
 	_, _, _ = orch.processModelsWithErrorHandling(ctx, "test prompt", mockLogger)
 
-	// Verify processing summary log is present
-	assert.Contains(t, mockLogger.Messages, "Processing 2 models with 1500 total input tokens (accuracy: tiktoken)")
+	// Verify analysis summary log is present (behavior changed - now analyzes first, then filters)
+	assert.Contains(t, mockLogger.Messages, "Analyzing 2 models with 1500 total input tokens (accuracy: tiktoken)")
 
-	// Verify per-model attempt logs are present
-	assert.Contains(t, mockLogger.Messages, "Attempting model gpt-4 (1/2) - input: 1500 tokens")
-	assert.Contains(t, mockLogger.Messages, "Attempting model claude-3 (2/2) - input: 1500 tokens")
+	// Verify that models with unknown info are skipped (new safety behavior)
+	assert.Contains(t, mockLogger.Messages, "Skipping model gpt-4 (1/2) - unable to get model info: unknown model: gpt-4")
+	assert.Contains(t, mockLogger.Messages, "Skipping model claude-3 (2/2) - unable to get model info: unknown model: claude-3")
+
+	// Verify that incompatible models are properly logged
+	assert.Contains(t, mockLogger.Messages, "Skipped 2 incompatible models: [gpt-4 claude-3]")
+
+	// Verify that no compatible models results in appropriate error
+	assert.Contains(t, mockLogger.Messages, "no models are compatible with input size of 1,500 tokens")
 }
 
 // Helper function to create test orchestrator with dependencies

@@ -114,7 +114,7 @@ func processRequest(r *http.Request) (*DataResponse, error) {
 	openaiResult, err := service.CountTokensForModel(context.Background(), TokenCountingRequest{
 		Instructions: instructions,
 		Files:        files,
-	}, "gpt-4")
+	}, "gpt-4.1")
 
 	require.NoError(t, err)
 	assert.Greater(t, openaiResult.TotalTokens, 0)

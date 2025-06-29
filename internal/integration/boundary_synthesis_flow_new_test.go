@@ -41,8 +41,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	instructions := "Test instructions for synthesis"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"model1", "model2", "model3"}
-	synthesisModel := "synthesis-model"
+	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
+	synthesisModel := "gpt-4.1"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -68,9 +68,9 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"model1": "# Output from Model 1\n\nThis is test output from model1.",
-		"model2": "# Output from Model 2\n\nThis is test output from model2.",
-		"model3": "# Output from Model 3\n\nThis is test output from model3.",
+		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gpt-4.1":        "# Output from Model 2\n\nThis is test output from gpt-4o.",
+		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
 	}
 
 	// Expected synthesis output
@@ -219,8 +219,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	instructions := "Test instructions for synthesis with failures"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"model1", "model2", "model3"}
-	synthesisModel := "synthesis-model"
+	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
+	synthesisModel := "gpt-4.1"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -241,11 +241,11 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	// Create logger
 	logger := logutil.NewTestLogger(t)
 
-	// Declare expected error patterns for model2 failure (this is part of the test scenario)
-	logger.ExpectError("Generation failed for model model2")
-	logger.ExpectError("Error generating content with model model2")
-	logger.ExpectError("Processing model model2 failed")
-	logger.ExpectError("model model2 processing failed")
+	// Declare expected error patterns for gpt-4o failure (this is part of the test scenario)
+	logger.ExpectError("Generation failed for model gpt-4o")
+	logger.ExpectError("Error generating content with model gpt-4o")
+	logger.ExpectError("Processing model gpt-4o failed")
+	logger.ExpectError("model gpt-4o processing failed")
 	logger.ExpectError("Completed with model errors")
 	logger.ExpectError("API rate limit exceeded")
 
@@ -254,8 +254,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"model1": "# Output from Model 1\n\nThis is test output from model1.",
-		"model3": "# Output from Model 3\n\nThis is test output from model3.",
+		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
 	}
 
 	// Expected synthesis output
@@ -263,8 +263,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Configure mock API caller to return appropriate responses
 	mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// Simulate model2 failing
-		if modelName == "model2" {
+		// Simulate gpt-4o failing
+		if modelName == "gpt-4.1" {
 			return nil, &llm.MockError{
 				Message:       "API rate limit exceeded",
 				ErrorCategory: llm.CategoryRateLimit,

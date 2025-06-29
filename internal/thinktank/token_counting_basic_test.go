@@ -131,7 +131,7 @@ func TestTokenCountingService_CountTokensForModel(t *testing.T) {
 	}{
 		{
 			name:         "Valid OpenAI model",
-			model:        "gpt-4",
+			model:        "o4-mini",
 			instructions: "Write tests",
 			files: []interfaces.FileContent{
 				{Path: "test.txt", Content: "test content"},
@@ -149,7 +149,7 @@ func TestTokenCountingService_CountTokensForModel(t *testing.T) {
 		},
 		{
 			name:         "Empty content",
-			model:        "gpt-4",
+			model:        "o4-mini",
 			instructions: "",
 			files:        []interfaces.FileContent{},
 			expectError:  false,
@@ -188,9 +188,10 @@ func TestTokenCountingService_CountTokensForModel_InvalidModel(t *testing.T) {
 		Files:        []interfaces.FileContent{},
 	}, "nonexistent-model")
 
-	// Should not error - should fall back to estimation
-	assert.NoError(t, err)
-	assert.NotNil(t, result)
+	// Should error for unknown model
+	assert.Error(t, err)
+	// Result should be zero when error occurs
+	assert.Equal(t, 0, result.TotalTokens)
 }
 
 func TestTokenCountingService_CountTokensForModel_TokenizerFallback(t *testing.T) {
@@ -207,7 +208,7 @@ func TestTokenCountingService_CountTokensForModel_TokenizerFallback(t *testing.T
 		Files: []interfaces.FileContent{
 			{Path: "test.go", Content: "package main\nfunc main() {}"},
 		},
-	}, "gpt-4")
+	}, "o4-mini")
 
 	// Should not error - should gracefully fall back to estimation
 	assert.NoError(t, err)
@@ -239,14 +240,14 @@ func TestTokenCountingService_CountTokensForModel_EdgeCases(t *testing.T) {
 	}{
 		{
 			name:         "Very long instructions",
-			model:        "gpt-4",
+			model:        "o4-mini",
 			instructions: strings.Repeat("This is a very long instruction. ", 1000),
 			files:        []interfaces.FileContent{},
 			description:  "Should handle long instructions",
 		},
 		{
 			name:         "Very long file content",
-			model:        "gpt-4",
+			model:        "o4-mini",
 			instructions: "Process this",
 			files: []interfaces.FileContent{
 				{
@@ -274,7 +275,7 @@ func TestTokenCountingService_CountTokensForModel_EdgeCases(t *testing.T) {
 		},
 		{
 			name:         "Unicode content",
-			model:        "gpt-4",
+			model:        "o4-mini",
 			instructions: "分析这个代码 🚀",
 			files: []interfaces.FileContent{
 				{Path: "unicode.txt", Content: "Hello 世界! 🌍 This has émojis and ñoñ-ASCII characters."},
