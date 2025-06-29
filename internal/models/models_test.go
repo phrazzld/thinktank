@@ -187,6 +187,11 @@ func TestListModelsForProvider(t *testing.T) {
 			},
 		},
 		{
+			name:     "test provider",
+			provider: "test",
+			expected: []string{"model1", "model2", "model3", "synthesis-model"},
+		},
+		{
 			name:     "unknown provider",
 			provider: "unknown",
 			expected: []string{},
@@ -637,6 +642,70 @@ func TestValidateStringParameter(t *testing.T) {
 
 			if err != nil {
 				t.Errorf("validateStringParameter(%q, %v, constraint) unexpected error: %v", tt.paramName, tt.value, err)
+			}
+		})
+	}
+}
+
+// TestTestModelsExist verifies that test models required by integration tests are supported
+// This test drives the requirement to add test models to the ModelDefinitions map
+func TestTestModelsExist(t *testing.T) {
+	t.Parallel()
+	testModels := []struct {
+		name     string
+		model    string
+		provider string
+	}{
+		{
+			name:     "model1 for integration tests",
+			model:    "model1",
+			provider: "test",
+		},
+		{
+			name:     "model2 for integration tests",
+			model:    "model2",
+			provider: "test",
+		},
+		{
+			name:     "model3 for integration tests",
+			model:    "model3",
+			provider: "test",
+		},
+		{
+			name:     "synthesis-model for integration tests",
+			model:    "synthesis-model",
+			provider: "test",
+		},
+	}
+
+	for _, tt := range testModels {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test model should be supported
+			if !IsModelSupported(tt.model) {
+				t.Errorf("Test model %s should be supported for integration tests", tt.model)
+			}
+
+			// Test model should have correct provider and basic properties
+			info, err := GetModelInfo(tt.model)
+			if err != nil {
+				t.Errorf("GetModelInfo(%s) failed: %v", tt.model, err)
+				return
+			}
+
+			if info.Provider != tt.provider {
+				t.Errorf("GetModelInfo(%s).Provider = %s, want %s", tt.model, info.Provider, tt.provider)
+			}
+
+			// Test models should have sufficient context for test scenarios (100 tokens + safety margin)
+			minRequiredContext := 200 // Conservative minimum for test scenarios
+			if info.ContextWindow < minRequiredContext {
+				t.Errorf("GetModelInfo(%s).ContextWindow = %d, want >= %d for test scenarios",
+					tt.model, info.ContextWindow, minRequiredContext)
+			}
+
+			// Test models should have positive output token limits
+			if info.MaxOutputTokens <= 0 {
+				t.Errorf("GetModelInfo(%s).MaxOutputTokens = %d, want > 0", tt.model, info.MaxOutputTokens)
 			}
 		})
 	}

@@ -1,3 +1,36 @@
+# TODO List
+
+## URGENT: CI Failure Resolution (CRITICAL PRIORITY)
+
+### Test Model Definition Issues
+
+- [ ] **Add test models (model1, model2, model3) to ModelDefinitions map in internal/models/models.go**
+  - Root cause: Integration tests use undefined test models in hardcoded model system
+  - Add model1, model2, model3 with "test" provider and appropriate context windows
+  - Configure with sufficient context window to support 100 token test inputs
+
+- [ ] **Configure test models with appropriate context windows and parameters for integration tests**
+  - Set context windows > 200 tokens to support test scenarios with safety margins
+  - Use "test" provider to avoid real API calls
+  - Add appropriate default parameters for test scenarios
+
+- [ ] **Run failing integration tests locally to verify fix (TestNoSynthesisFlow, TestSynthesisWithModelFailuresFlow)**
+  - Execute: `go test ./internal/integration -v -run "TestNoSynthesisFlow|TestSynthesisWithModelFailuresFlow"`
+  - Verify both tests pass with new model definitions
+
+- [ ] **Run full test suite to ensure no regressions: go test ./...**
+  - Ensure all existing tests continue to pass
+  - Verify no breaking changes introduced by test model additions
+
+- [ ] **Add documentation comments to test models indicating they are for testing only**
+  - Mark test models clearly with comments explaining their purpose
+  - Document that they should not be used in production
+
+- [ ] **Clean up temporary CI analysis files (CI-FAILURE-SUMMARY.md, CI-RESOLUTION-PLAN.md)**
+  - Remove temporary analysis files after resolution is complete
+
+---
+
 # Accurate Token Counting System Implementation TODO
 
 ## Executive Summary

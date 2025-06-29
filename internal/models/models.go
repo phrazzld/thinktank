@@ -345,6 +345,69 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":  intConstraint(1, 8192),
 		},
 	},
+
+	// Test models for integration testing only
+	// These models are used by integration tests to simulate various scenarios
+	"model1": {
+		Provider:        "test",
+		APIModelID:      "test-model-1",
+		ContextWindow:   1000,
+		MaxOutputTokens: 500,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 500),
+		},
+	},
+	"model2": {
+		Provider:        "test",
+		APIModelID:      "test-model-2",
+		ContextWindow:   1000,
+		MaxOutputTokens: 500,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 500),
+		},
+	},
+	"model3": {
+		Provider:        "test",
+		APIModelID:      "test-model-3",
+		ContextWindow:   1000,
+		MaxOutputTokens: 500,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 500),
+		},
+	},
+	"synthesis-model": {
+		Provider:        "test",
+		APIModelID:      "test-synthesis-model",
+		ContextWindow:   2000,
+		MaxOutputTokens: 1000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 1000),
+		},
+	},
 }
 
 // GetModelInfo returns model metadata for the given model name.
@@ -525,6 +588,7 @@ func GetLargestContextModel(modelNames []string) string {
 
 // GetAPIKeyEnvVar returns the environment variable name for the given provider's API key.
 // Returns an empty string for unknown providers.
+// The "test" provider is used for integration testing and doesn't require an API key.
 func GetAPIKeyEnvVar(provider string) string {
 	switch provider {
 	case "openai":
@@ -533,6 +597,8 @@ func GetAPIKeyEnvVar(provider string) string {
 		return "GEMINI_API_KEY"
 	case "openrouter":
 		return "OPENROUTER_API_KEY"
+	case "test":
+		return "" // Test provider doesn't require API key
 	default:
 		return ""
 	}

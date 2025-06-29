@@ -50,14 +50,24 @@ func TestRegistryAPIWithModelsPackage(t *testing.T) {
 	service := NewRegistryAPIService(logger)
 	ctx := context.Background()
 
-	// Test all 15 models work with the service
+	// Test all models work with the service (15 production + 4 test)
 	allModels := models.ListAllModels()
-	if len(allModels) != 15 {
-		t.Fatalf("Expected 15 models, got %d", len(allModels))
+	if len(allModels) != 19 {
+		t.Fatalf("Expected 19 models (15 production + 4 test), got %d", len(allModels))
 	}
 
 	for _, modelName := range allModels {
 		t.Run(modelName, func(t *testing.T) {
+			// Skip test models - they don't work with real API services
+			provider, err := models.GetProviderForModel(modelName)
+			if err != nil {
+				t.Errorf("Failed to get provider for %s: %v", modelName, err)
+				return
+			}
+			if provider == "test" {
+				t.Skipf("Skipping test model %s - not for use with real API services", modelName)
+			}
+
 			// Test InitLLMClient
 			client, err := service.InitLLMClient(ctx, "", modelName, "")
 			if err != nil {
@@ -130,6 +140,7 @@ func TestProviderDistribution(t *testing.T) {
 	openaiModels := models.ListModelsForProvider("openai")
 	geminiModels := models.ListModelsForProvider("gemini")
 	openrouterModels := models.ListModelsForProvider("openrouter")
+	testModels := models.ListModelsForProvider("test")
 
 	if len(openaiModels) != 3 {
 		t.Errorf("Expected 3 OpenAI models, got %d", len(openaiModels))
@@ -140,9 +151,12 @@ func TestProviderDistribution(t *testing.T) {
 	if len(openrouterModels) != 10 {
 		t.Errorf("Expected 10 OpenRouter models, got %d", len(openrouterModels))
 	}
+	if len(testModels) != 4 {
+		t.Errorf("Expected 4 test models, got %d", len(testModels))
+	}
 
-	total := len(openaiModels) + len(geminiModels) + len(openrouterModels)
-	if total != 15 {
-		t.Errorf("Expected total 15 models, got %d", total)
+	total := len(openaiModels) + len(geminiModels) + len(openrouterModels) + len(testModels)
+	if total != 19 {
+		t.Errorf("Expected total 19 models (15 production + 4 test), got %d", total)
 	}
 }
