@@ -256,6 +256,7 @@ func (env *BoundaryTestEnv) Run(ctx context.Context, instructions string) error 
 		config *config.CliConfig,
 		logger logutil.LoggerInterface,
 		consoleWriter logutil.ConsoleWriter,
+		tokenCountingService interfaces.TokenCountingService,
 	) thinktank.Orchestrator {
 		// Use the injected components from our test environment
 		return thinktank.NewOrchestrator(
@@ -267,6 +268,7 @@ func (env *BoundaryTestEnv) Run(ctx context.Context, instructions string) error 
 			env.Config,
 			env.Logger,
 			consoleWriter,
+			tokenCountingService,
 		)
 	})
 

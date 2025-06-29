@@ -9,6 +9,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // TestSynthesizeResultsWithFailedModels verifies that the orchestrator
@@ -179,6 +180,11 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return false }, // CI mode for tests
 			})
+			// Create a simple mock token counting service
+			mockTokenService := &MockTokenCountingService{
+				CountTokensResult: interfaces.TokenCountingResult{TotalTokens: 100},
+			}
+
 			orch := NewOrchestrator(
 				mockAPIService,
 				mockContextGatherer,
@@ -188,6 +194,7 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 				cfg,
 				logger,
 				consoleWriter,
+				mockTokenService,
 			)
 
 			// Create a custom mock synthesis service that tracks calls

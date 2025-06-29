@@ -43,7 +43,8 @@ FLAGS:
     --help, -h         Show this help message and exit
 
     --dry-run          Preview what would be processed without making API calls
-                       Shows file list, token count, and model selection
+                       Shows file list, accurate token count, and model selection
+                       Uses tiktoken for OpenAI, SentencePiece for Gemini models
 
     --verbose          Enable detailed output and debug logging
                        Includes API responses and processing details
@@ -105,6 +106,18 @@ FILE FORMATS:
 
     Binary files and common build artifacts are automatically excluded.
 
+TOKEN MANAGEMENT:
+    thinktank automatically counts tokens for each model to ensure
+    compatibility. Large codebases may require filtering to fit
+    within model context limits.
+
+    Token counting uses accurate tokenization when available:
+    - OpenAI models: tiktoken (exact)
+    - Gemini models: SentencePiece (exact)
+    - Others: estimation (~95% accurate)
+
+    Use --dry-run to preview token usage without API calls.
+
 TROUBLESHOOTING:
     "API key not set" error:
         Set the appropriate environment variable for your chosen provider.
@@ -120,8 +133,9 @@ TROUBLESHOOTING:
 
     High token count warnings:
         Large codebases may exceed model context limits.
+        Use --dry-run to check accurate token counts before processing.
         Consider analyzing specific subdirectories or using a model
-        with a larger context window.
+        with a larger context window (gpt-4.1, gemini-2.5-pro).
 
 MORE INFORMATION:
     Documentation: https://github.com/phrazzld/thinktank

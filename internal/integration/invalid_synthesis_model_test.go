@@ -173,6 +173,8 @@ func TestInvalidSynthesisModel(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a simple token counting service for testing
+	tokenCountingService := &SimpleTokenCountingService{}
 	orch := orchestrator.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -182,6 +184,7 @@ func TestInvalidSynthesisModel(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Execute the orchestrator - expect it to fail due to invalid synthesis model
@@ -225,4 +228,22 @@ func TestInvalidSynthesisModel(t *testing.T) {
 // containsSubstring is a helper function to check if a string contains a substring
 func containsSubstring(s, substr string) bool {
 	return s != "" && substr != "" && len(s) > 0 && len(substr) > 0 && s != substr && strings.Contains(s, substr)
+}
+
+// SimpleTokenCountingService is a minimal mock for integration testing
+type SimpleTokenCountingService struct{}
+
+func (s *SimpleTokenCountingService) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	return interfaces.TokenCountingResult{TotalTokens: 150}, nil
+}
+
+func (s *SimpleTokenCountingService) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{TotalTokens: 150},
+		ModelName:           modelName,
+	}, nil
+}
+
+func (s *SimpleTokenCountingService) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	return []interfaces.ModelCompatibility{}, nil
 }

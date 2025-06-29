@@ -72,6 +72,23 @@ func (m *mockFileWriter) SaveToFile(ctx context.Context, content, outputPath str
 	return nil
 }
 
+type mockTokenCountingService struct{}
+
+func (m *mockTokenCountingService) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	return interfaces.TokenCountingResult{TotalTokens: 100}, nil
+}
+
+func (m *mockTokenCountingService) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{TotalTokens: 100},
+		ModelName:           modelName,
+	}, nil
+}
+
+func (m *mockTokenCountingService) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	return []interfaces.ModelCompatibility{}, nil
+}
+
 func TestNewOrchestrator(t *testing.T) {
 	// Create temporary directory for test isolation
 	tempDir, err := os.MkdirTemp("", "orchestrator_test_*")
@@ -109,6 +126,7 @@ func TestNewOrchestrator(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	tokenCountingService := &mockTokenCountingService{}
 	orchestrator := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -118,6 +136,7 @@ func TestNewOrchestrator(t *testing.T) {
 		config,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Verify orchestrator was created successfully
@@ -180,6 +199,7 @@ func TestNewOrchestratorWithNilDependencies(t *testing.T) {
 			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return false }, // CI mode for tests
 			})
+			tokenCountingService := &mockTokenCountingService{}
 			orchestrator := thinktank.NewOrchestrator(
 				tc.apiService,
 				tc.contextGatherer,
@@ -189,6 +209,7 @@ func TestNewOrchestratorWithNilDependencies(t *testing.T) {
 				tc.config,
 				tc.logger,
 				consoleWriter,
+				tokenCountingService,
 			)
 
 			if !tc.expectPanic && orchestrator == nil {

@@ -178,7 +178,7 @@ func TestExecuteAuditLogErrors(t *testing.T) {
 			defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 			// Override orchestrator constructor
-			orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
+			orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
 				return mockOrchestrator
 			}
 
@@ -242,7 +242,7 @@ func TestExecuteContextCancellation(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor with context-aware mock
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
 		return &ContextAwareMockOrchestrator{}
 	}
 
@@ -310,7 +310,7 @@ func TestExecutePartialSuccessError(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
 		return mockOrchestrator
 	}
 
@@ -370,7 +370,7 @@ func TestExecuteAlreadyWrappedPartialSuccess(t *testing.T) {
 	defer func() { orchestratorConstructor = originalNewOrchestrator }()
 
 	// Override orchestrator constructor
-	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter) Orchestrator {
+	orchestratorConstructor = func(apiService interfaces.APIService, contextGatherer interfaces.ContextGatherer, fileWriter interfaces.FileWriter, auditLogger auditlog.AuditLogger, rateLimiter *ratelimit.RateLimiter, config *config.CliConfig, logger logutil.LoggerInterface, consoleWriter logutil.ConsoleWriter, tokenCountingService interfaces.TokenCountingService) Orchestrator {
 		return mockOrchestrator
 	}
 

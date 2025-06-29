@@ -492,6 +492,129 @@ thinktank --verbose --instructions task.txt ./project | ts '[%Y-%m-%d %H:%M:%S]'
 
 ---
 
+## Tokenization Issues
+
+### Symptoms
+- "Tokenizer initialization failed" messages
+- Inconsistent token count estimates between runs
+- Models selected that can't handle input size
+- Performance degradation during token counting
+
+### Quick Solutions
+
+#### Tokenizer Fallback to Estimation
+```bash
+# Check which tokenizer is being used
+thinktank instructions.txt ./project --dry-run --verbose
+
+# Look for logs like:
+# "Using tiktoken for OpenAI models"
+# "Falling back to estimation for model: model-name"
+```
+
+**Common Causes:**
+- Missing tokenizer dependencies (rare - bundled with binary)
+- Circuit breaker triggered due to repeated failures
+- Network issues preventing tokenizer initialization
+
+**Solutions:**
+```bash
+# Clear any cached tokenizer state
+thinktank instructions.txt ./project --dry-run  # Fresh tokenizer initialization
+
+# Force reinitialization by waiting for circuit breaker reset (30 seconds)
+sleep 30 && thinktank instructions.txt ./project --dry-run
+```
+
+#### Inaccurate Model Selection
+```bash
+# Verify model compatibility with accurate counts
+thinktank instructions.txt ./large-project --dry-run
+
+# Check output for:
+# "Compatible models: gpt-4.1 (180K tokens), gemini-2.5-pro (200K tokens)"
+# "Skipped models: o4-mini (exceeds 128K context limit)"
+```
+
+**Token Count Accuracy by Provider:**
+| Provider | Accuracy | Method |
+|----------|----------|--------|
+| OpenAI   | 99%+     | tiktoken |
+| Gemini   | 99%+     | SentencePiece |
+| Others   | ~75%     | Estimation |
+
+### Advanced Tokenization Diagnostics
+
+#### Circuit Breaker Errors
+
+**Symptoms:**
+- "Circuit breaker open" in logs
+- Consistent fallback to estimation
+- Recently working tokenizers suddenly unavailable
+
+**Diagnosis:**
+```bash
+# Enable debug logging to see circuit breaker state
+thinktank instructions.txt ./project --debug --dry-run 2>&1 | grep -i circuit
+
+# Look for:
+# "Circuit breaker OPEN for provider: openai"
+# "Circuit breaker HALF_OPEN for provider: gemini"
+```
+
+**Recovery:**
+```bash
+# Wait for automatic recovery (30 seconds)
+sleep 30
+
+# Or restart the process to reset circuit breakers
+# Circuit breakers are per-process, not persistent
+```
+
+**Prevention:**
+- Ensure stable network connectivity
+- Monitor system resources (memory, CPU)
+- Check for conflicting tokenizer processes
+
+#### Performance Issues
+
+**Large Input Sets:**
+```bash
+# For projects with >100MB of files
+thinktank instructions.txt ./huge-project --include .go,.md --exclude vendor,node_modules
+
+# Use streaming tokenization automatically enabled for large inputs
+# Monitor memory usage: tokenization should stay under 50MB additional
+```
+
+**Repeated Token Counting:**
+```bash
+# Token counts are cached per-session
+# Identical input + model = cached result
+
+# Clear cache between runs if needed:
+# (Cache is automatic and memory-only)
+```
+
+### Provider-Specific Issues
+
+#### OpenAI Tokenization
+- **Issue**: tiktoken encoding errors
+- **Cause**: Unsupported model variant
+- **Solution**: Check model name spelling, use supported models (gpt-4.1, o4-mini)
+
+#### Gemini Tokenization
+- **Issue**: SentencePiece initialization failures
+- **Cause**: Rare bundling issue or memory constraints
+- **Solution**: Falls back to estimation automatically, no action needed
+
+#### OpenRouter Tokenization
+- **Issue**: High variance in token count estimates
+- **Cause**: Uses estimation by design (OpenRouter normalizes internally)
+- **Solution**: Expected behavior, estimates are sufficient for filtering
+
+---
+
 ## Getting Help
 
 ### Information to Include in Bug Reports

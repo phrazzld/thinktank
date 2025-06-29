@@ -17,8 +17,8 @@ func TestTokenizerManager_SupportsProvider(t *testing.T) {
 		supported bool
 	}{
 		{"openai", true},
-		{"gemini", false},     // Not yet implemented
-		{"openrouter", false}, // Not yet implemented
+		{"gemini", true},     // Adding SentencePiece support
+		{"openrouter", true}, // OpenRouter normalization to o200k_base
 		{"unknown", false},
 	}
 
@@ -46,10 +46,17 @@ func TestTokenizerManager_GetTokenizer(t *testing.T) {
 	require.NoError(t, err)
 	assert.Same(t, tokenizer, tokenizer2, "Should return cached tokenizer")
 
-	// Test unsupported provider
-	_, err = manager.GetTokenizer("gemini")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not yet implemented")
+	// Test Gemini provider (now supported)
+	geminiTokenizer, err := manager.GetTokenizer("gemini")
+	require.NoError(t, err)
+	assert.NotNil(t, geminiTokenizer)
+	assert.IsType(t, &GeminiTokenizer{}, geminiTokenizer)
+
+	// Test OpenRouter provider (should return OpenRouter tokenizer)
+	openrouterTokenizer, err := manager.GetTokenizer("openrouter")
+	require.NoError(t, err)
+	assert.NotNil(t, openrouterTokenizer)
+	assert.IsType(t, &OpenRouterTokenizer{}, openrouterTokenizer)
 
 	// Test unknown provider
 	_, err = manager.GetTokenizer("unknown")

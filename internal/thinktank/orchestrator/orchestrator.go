@@ -27,19 +27,20 @@ import (
 // It depends on various services to perform tasks like interacting with the API,
 // gathering context, writing files, logging audits, and handling rate limits.
 type Orchestrator struct {
-	apiService        interfaces.APIService
-	contextGatherer   interfaces.ContextGatherer
-	fileWriter        interfaces.FileWriter
-	auditLogger       auditlog.AuditLogger
-	rateLimiter       *ratelimit.RateLimiter
-	config            *config.CliConfig
-	logger            logutil.LoggerInterface
-	consoleWriter     logutil.ConsoleWriter
-	synthesisService  SynthesisService
-	outputWriter      OutputWriter
-	summaryWriter     SummaryWriter
-	modelRateLimiters map[string]*ratelimit.RateLimiter // Per-model rate limiters for models with specific concurrency limits
-	rateLimiterMutex  sync.RWMutex                      // Protects modelRateLimiters map
+	apiService           interfaces.APIService
+	contextGatherer      interfaces.ContextGatherer
+	fileWriter           interfaces.FileWriter
+	auditLogger          auditlog.AuditLogger
+	rateLimiter          *ratelimit.RateLimiter
+	config               *config.CliConfig
+	logger               logutil.LoggerInterface
+	consoleWriter        logutil.ConsoleWriter
+	synthesisService     SynthesisService
+	outputWriter         OutputWriter
+	summaryWriter        SummaryWriter
+	tokenCountingService interfaces.TokenCountingService
+	modelRateLimiters    map[string]*ratelimit.RateLimiter // Per-model rate limiters for models with specific concurrency limits
+	rateLimiterMutex     sync.RWMutex                      // Protects modelRateLimiters map
 }
 
 // NewOrchestrator creates a new instance of the Orchestrator.
@@ -54,32 +55,31 @@ func NewOrchestrator(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 	consoleWriter logutil.ConsoleWriter,
+	tokenCountingService interfaces.TokenCountingService,
 ) *Orchestrator {
 	// Create the output writer
 	outputWriter := NewOutputWriter(fileWriter, auditLogger, logger)
-
 	// Create the summary writer
 	summaryWriter := NewSummaryWriter(logger, consoleWriter)
-
 	// Create a synthesis service only if synthesis model is specified
 	var synthesisService SynthesisService
 	if config.SynthesisModel != "" {
 		synthesisService = NewSynthesisService(apiService, auditLogger, logger, config.SynthesisModel)
 	}
-
 	return &Orchestrator{
-		apiService:        apiService,
-		contextGatherer:   contextGatherer,
-		fileWriter:        fileWriter,
-		auditLogger:       auditLogger,
-		rateLimiter:       rateLimiter,
-		config:            config,
-		logger:            logger,
-		consoleWriter:     consoleWriter,
-		synthesisService:  synthesisService,
-		outputWriter:      outputWriter,
-		summaryWriter:     summaryWriter,
-		modelRateLimiters: make(map[string]*ratelimit.RateLimiter),
+		apiService:           apiService,
+		contextGatherer:      contextGatherer,
+		fileWriter:           fileWriter,
+		auditLogger:          auditLogger,
+		rateLimiter:          rateLimiter,
+		config:               config,
+		logger:               logger,
+		consoleWriter:        consoleWriter,
+		synthesisService:     synthesisService,
+		outputWriter:         outputWriter,
+		summaryWriter:        summaryWriter,
+		tokenCountingService: tokenCountingService,
+		modelRateLimiters:    make(map[string]*ratelimit.RateLimiter),
 	}
 }
 
@@ -98,7 +98,6 @@ func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateL
 	if modelInfo.MaxConcurrentRequests == nil {
 		return o.rateLimiter
 	}
-
 	// Check if we already have a rate limiter for this model
 	o.rateLimiterMutex.RLock()
 	if limiter, exists := o.modelRateLimiters[modelName]; exists {
@@ -106,19 +105,15 @@ func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateL
 		return limiter
 	}
 	o.rateLimiterMutex.RUnlock()
-
 	// Create a new model-specific rate limiter
 	o.rateLimiterMutex.Lock()
 	defer o.rateLimiterMutex.Unlock()
-
 	// Double-check in case another goroutine created it while we were waiting for the lock
 	if limiter, exists := o.modelRateLimiters[modelName]; exists {
 		return limiter
 	}
-
 	// Create new rate limiter with model-specific concurrency limit
 	// Use provider-aware rate limiting for RPM
-
 	// Determine the effective rate limit for this model
 	// Priority: model-specific > provider-specific config > provider default
 	var effectiveRateLimit int
@@ -138,12 +133,10 @@ func (o *Orchestrator) getRateLimiterForModel(modelName string) *ratelimit.RateL
 			o.logger.DebugContext(context.Background(), "Using provider default rate limit for %s (%s): %d RPM", modelName, modelInfo.Provider, effectiveRateLimit)
 		}
 	}
-
 	modelRateLimiter := ratelimit.NewRateLimiter(
 		*modelInfo.MaxConcurrentRequests,
 		effectiveRateLimit,
 	)
-
 	o.modelRateLimiters[modelName] = modelRateLimiter
 	return modelRateLimiter
 }
@@ -172,37 +165,30 @@ func (o *Orchestrator) Run(ctx context.Context, instructions string) error {
 
 	// Welcome message to the user
 	o.consoleWriter.StatusMessage("Starting thinktank processing...")
-
 	// Step 1: Gather file context for the prompt
 	contextFiles, contextStats, err := o.gatherProjectContext(ctx)
 	if err != nil {
 		contextLogger.ErrorContext(ctx, "Failed to gather project context: %v", err)
 		return err
 	}
-
 	// Step 2: Handle dry run mode (short-circuit if enabled)
 	if dryRunExecuted, err := o.runDryRunFlow(ctx, contextStats); err != nil {
 		return err
 	} else if dryRunExecuted {
 		return nil
 	}
-
 	// Step 3: Build the complete prompt
 	stitchedPrompt := o.buildPrompt(ctx, instructions, contextFiles)
-
 	// Step 4: Process all models and handle errors
 	modelOutputs, processingErr, criticalErr := o.processModelsWithErrorHandling(ctx, stitchedPrompt, contextLogger)
 	if criticalErr != nil {
 		return criticalErr
 	}
-
 	// Step 5: Save outputs (via synthesis or individually)
 	outputInfo, fileSaveErr := o.handleOutputFlow(ctx, instructions, modelOutputs)
-
 	// Step 6: Generate and display the execution summary
 	summary := o.generateResultsSummary(modelOutputs, outputInfo, processingErr)
 	o.summaryWriter.DisplaySummary(ctx, summary)
-
 	// Step 7: Final error processing and return
 	return o.handleProcessingOutcome(ctx, processingErr, fileSaveErr, contextLogger)
 }
@@ -245,19 +231,16 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 	if !o.config.DryRun {
 		return false, nil
 	}
-
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
 
 	// Log that we're in dry run mode
 	contextLogger.InfoContext(ctx, "Running in dry-run mode")
-
 	// Call the existing handleDryRun method
 	err := o.handleDryRun(ctx, contextStats)
 	if err != nil {
 		return true, err
 	}
-
 	// Indicate dry run was handled successfully
 	return true, nil
 }
@@ -268,11 +251,9 @@ func (o *Orchestrator) runDryRunFlow(ctx context.Context, contextStats *interfac
 func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs map[string]string) (map[string]string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
-
 	// Log that individual outputs are being saved
 	contextLogger.InfoContext(ctx, "Processing completed, saving individual model outputs")
 	contextLogger.DebugContext(ctx, "Collected %d model outputs", len(modelOutputs))
-
 	// Notify user that individual outputs are being saved
 	o.consoleWriter.ShowFileOperations("Saving individual outputs...")
 
@@ -283,9 +264,7 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 			savedCount, len(modelOutputs)-savedCount)
 		return filePaths, err
 	}
-
 	contextLogger.InfoContext(ctx, "All %d model outputs saved successfully", savedCount)
-
 	// Notify user that individual outputs are complete
 	o.consoleWriter.ShowFileOperations(fmt.Sprintf("● Outputs saved to: %s", o.config.OutputDir))
 
@@ -298,20 +277,16 @@ func (o *Orchestrator) runIndividualOutputFlow(ctx context.Context, modelOutputs
 func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string, modelOutputs map[string]string) (string, error) {
 	// Get logger with context
 	contextLogger := o.logger.WithContext(ctx)
-
 	// Log that we're starting synthesis
 	contextLogger.InfoContext(ctx, "Processing completed, synthesizing results with model: %s", o.config.SynthesisModel)
 	contextLogger.DebugContext(ctx, "Synthesizing %d model outputs", len(modelOutputs))
-
 	// Only proceed with synthesis if we have model outputs to synthesize
 	if len(modelOutputs) == 0 {
 		contextLogger.WarnContext(ctx, "No model outputs available for synthesis")
 		return "", nil
 	}
-
 	// Report synthesis started
 	o.consoleWriter.SynthesisStarted()
-
 	// Attempt to synthesize results using the SynthesisService
 	contextLogger.InfoContext(ctx, "Starting synthesis with model: %s", o.config.SynthesisModel)
 	synthesisContent, err := o.synthesisService.SynthesizeResults(ctx, instructions, modelOutputs)
@@ -320,7 +295,6 @@ func (o *Orchestrator) runSynthesisFlow(ctx context.Context, instructions string
 		contextLogger.ErrorContext(ctx, "Synthesis failed: %v", err)
 		return "", err
 	}
-
 	// Log synthesis success
 	contextLogger.InfoContext(ctx, "Successfully synthesized results from %d model outputs", len(modelOutputs))
 	contextLogger.DebugContext(ctx, "Synthesis output length: %d characters", len(synthesisContent))
@@ -655,6 +629,52 @@ func (o *Orchestrator) setupContext(ctx context.Context) (context.Context, logut
 func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitchedPrompt string, contextLogger logutil.LoggerInterface) (map[string]string, error, error) {
 	// Start model processing
 	contextLogger.InfoContext(ctx, "Beginning model processing")
+
+	// Calculate token metrics for processing summary
+	tokenReq := interfaces.TokenCountingRequest{
+		Instructions: stitchedPrompt,
+		Files:        []interfaces.FileContent{}, // Files are already included in stitchedPrompt
+	}
+
+	tokenResult, err := o.tokenCountingService.CountTokens(ctx, tokenReq)
+	if err != nil {
+		// Log error but continue with processing - don't fail due to token counting
+		contextLogger.WarnContext(ctx, "Failed to calculate token metrics: %v", err)
+	} else {
+		// Determine accuracy method - we'll check the first model to determine the primary method
+		accuracyMethod := "estimation" // Default fallback
+		if len(o.config.ModelNames) > 0 {
+			modelTokenResult, modelErr := o.tokenCountingService.CountTokensForModel(ctx, tokenReq, o.config.ModelNames[0])
+			if modelErr == nil {
+				accuracyMethod = modelTokenResult.TokenizerUsed
+			}
+		}
+
+		// Log processing summary with token context
+		contextLogger.InfoContext(ctx, "Processing %d models with %d total input tokens (accuracy: %s)",
+			len(o.config.ModelNames), tokenResult.TotalTokens, accuracyMethod)
+
+		// Log per-model attempt information
+		for i, modelName := range o.config.ModelNames {
+			modelTokenResult, modelErr := o.tokenCountingService.CountTokensForModel(ctx, tokenReq, modelName)
+			if modelErr == nil {
+				// Get model info for context window
+				modelInfo, infoErr := models.GetModelInfo(modelName)
+				if infoErr == nil {
+					utilization := float64(modelTokenResult.TotalTokens) / float64(modelInfo.ContextWindow) * 100
+					contextLogger.InfoContext(ctx, "Attempting model %s (%d/%d) - context: %d tokens, input: %d tokens, utilization: %.1f%%",
+						modelName, i+1, len(o.config.ModelNames), modelInfo.ContextWindow, modelTokenResult.TotalTokens, utilization)
+				} else {
+					contextLogger.InfoContext(ctx, "Attempting model %s (%d/%d) - input: %d tokens",
+						modelName, i+1, len(o.config.ModelNames), modelTokenResult.TotalTokens)
+				}
+			} else {
+				contextLogger.InfoContext(ctx, "Attempting model %s (%d/%d)",
+					modelName, i+1, len(o.config.ModelNames))
+			}
+		}
+	}
+
 	o.logRateLimitingConfiguration(ctx)
 	modelOutputs, modelErrors := o.processModels(ctx, stitchedPrompt)
 

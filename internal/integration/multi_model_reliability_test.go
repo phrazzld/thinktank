@@ -602,6 +602,8 @@ func setupMultiModelTestEnvWithConfig(t *testing.T, logger logutil.LoggerInterfa
 		CloseFunc:     func() error { return nil },
 	}
 
+	tokenCountingService := &MockTokenCountingService{}
+
 	rateLimiter := ratelimit.NewRateLimiter(cfg.MaxConcurrentRequests, cfg.RateLimitRequestsPerMinute)
 
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
@@ -617,6 +619,7 @@ func setupMultiModelTestEnvWithConfig(t *testing.T, logger logutil.LoggerInterfa
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	return &multiModelTestEnv{

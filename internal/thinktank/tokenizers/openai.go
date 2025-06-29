@@ -1,19 +1,21 @@
+// Package tokenizers provides accurate token counting implementations for various LLM providers.
 package tokenizers
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/pkoukk/tiktoken-go"
 )
 
 // OpenAITokenizer provides accurate token counting for OpenAI models using tiktoken.
+// Supports cl100k_base encoding (GPT-4) and o200k_base encoding (GPT-4o family).
 type OpenAITokenizer struct {
-	// encoderCache stores initialized tiktoken encoders by encoding name
+	// encoderCache stores initialized tiktoken encoders by encoding name for reuse
 	encoderCache sync.Map
 
 	// modelEncodings maps OpenAI model names to their tiktoken encoding names
+	// This mapping ensures correct tokenization for each model variant
 	modelEncodings map[string]string
 }
 
@@ -44,12 +46,12 @@ func (t *OpenAITokenizer) CountTokens(ctx context.Context, text string, modelNam
 
 	encoding, err := t.GetEncoding(modelName)
 	if err != nil {
-		return 0, NewTokenizerError("openai", modelName, "failed to get encoding", err)
+		return 0, NewTokenizerErrorWithDetails("openai", modelName, "failed to get encoding", err, "tiktoken")
 	}
 
 	encoder, err := t.getEncoder(encoding)
 	if err != nil {
-		return 0, NewTokenizerError("openai", modelName, "failed to get encoder", err)
+		return 0, NewTokenizerErrorWithDetails("openai", modelName, "failed to get encoder", err, "tiktoken")
 	}
 
 	// Use tiktoken to get accurate token count
@@ -67,7 +69,7 @@ func (t *OpenAITokenizer) SupportsModel(modelName string) bool {
 func (t *OpenAITokenizer) GetEncoding(modelName string) (string, error) {
 	encoding, ok := t.modelEncodings[modelName]
 	if !ok {
-		return "", fmt.Errorf("unsupported OpenAI model: %s", modelName)
+		return "", NewTokenizerErrorWithDetails("openai", modelName, "unsupported model", nil, "tiktoken")
 	}
 	return encoding, nil
 }
@@ -83,7 +85,7 @@ func (t *OpenAITokenizer) getEncoder(encoding string) (*tiktoken.Tiktoken, error
 	// Create new encoder with lazy loading
 	encoder, err := tiktoken.GetEncoding(encoding)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize tiktoken encoding %s: %w", encoding, err)
+		return nil, NewTokenizerErrorWithDetails("openai", "", "failed to initialize encoding", err, "tiktoken")
 	}
 
 	// Cache the encoder for future use

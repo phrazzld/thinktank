@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -43,6 +44,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	var instructionsFile string
 	var targetPaths []string
 	flags := uint8(0)
+	safetyMargin := uint8(20) // Default 20% safety margin
 
 	// Track if we've seen the instructions file
 	seenInstructions := false
@@ -91,6 +93,19 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			}
 			i++ // Skip the output dir value - we use smart default in ToCliConfig()
 
+		case arg == "--token-safety-margin":
+			// --token-safety-margin flag requires a value
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--token-safety-margin flag requires a value")
+			}
+			i++ // Move to next argument
+			marginValue := args[i]
+			parsedMargin, err := parseAndValidateSafetyMargin(marginValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid --token-safety-margin value: %w", err)
+			}
+			safetyMargin = parsedMargin
+
 		case strings.HasPrefix(arg, "--model="):
 			// Handle --model=value format
 			value := strings.TrimPrefix(arg, "--model=")
@@ -104,6 +119,18 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			if value == "" {
 				return nil, fmt.Errorf("--output-dir flag requires a non-empty value")
 			}
+
+		case strings.HasPrefix(arg, "--token-safety-margin="):
+			// Handle --token-safety-margin=value format
+			value := strings.TrimPrefix(arg, "--token-safety-margin=")
+			if value == "" {
+				return nil, fmt.Errorf("--token-safety-margin flag requires a non-empty value")
+			}
+			parsedMargin, err := parseAndValidateSafetyMargin(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid --token-safety-margin value: %w", err)
+			}
+			safetyMargin = parsedMargin
 
 		case strings.HasPrefix(arg, "--"):
 			// Unknown flag - fail fast with clear error message
@@ -143,6 +170,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 		InstructionsFile: instructionsFile,
 		TargetPath:       targetPath,
 		Flags:            flags,
+		SafetyMargin:     safetyMargin,
 	}
 
 	// Skip validation if help is requested
@@ -184,4 +212,23 @@ func (r *SimpleParseResult) MustConfig() *SimplifiedConfig {
 		panic(fmt.Sprintf("parsing failed: %v", r.Error))
 	}
 	return r.Config
+}
+
+// parseAndValidateSafetyMargin parses and validates a safety margin value.
+// The safety margin represents the percentage of context window reserved for output tokens.
+// Valid range: 0-50% (0 = no safety margin, 50 = half context reserved for output).
+// This prevents token overflow and ensures models have adequate output space.
+func parseAndValidateSafetyMargin(value string) (uint8, error) {
+	// Parse the string as an integer
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid syntax: %w", err)
+	}
+
+	// Validate range (0% to 50%)
+	if parsed < 0 || parsed > 50 {
+		return 0, fmt.Errorf("safety margin must be between 0%% and 50%%, got %d%%", parsed)
+	}
+
+	return uint8(parsed), nil
 }

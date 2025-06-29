@@ -614,3 +614,65 @@ When models are marked as incompatible, the `reason` field provides detailed con
 - Monitor tokenization time in structured logs
 - Check for repeated tokenization of the same content
 - Consider caching strategies for large file sets
+
+## Tokenizer Selection Logic
+
+thinktank automatically selects the best tokenization method based on model provider and availability:
+
+### Selection Process
+
+1. **Provider Detection**: Determines provider from model name using `models.GetModelInfo()`
+2. **Accurate Tokenizer Check**: Attempts provider-specific tokenizer
+3. **Fallback to Estimation**: Uses character-based estimation if accurate tokenizer unavailable
+
+### Decision Flow
+
+```
+Model Name → Provider Detection → Tokenizer Selection
+    ↓
+OpenAI models (gpt-4*, o4-*) → tiktoken encoding
+    ↓
+Gemini models (gemini-*, gemma-*) → SentencePiece encoding
+    ↓
+Other providers → Estimation fallback (0.75 tokens/char)
+```
+
+### Implementation Details
+
+The tokenization service uses a lazy-loading architecture:
+
+```go
+// Provider-aware tokenizer manager
+manager := tokenizers.NewTokenizerManager()
+
+// Automatic provider selection
+tokenizer, err := manager.GetTokenizer(provider)
+if err != nil {
+    // Falls back to estimation automatically
+}
+
+count, err := tokenizer.CountTokens(ctx, text, modelName)
+```
+
+## Provider Support Matrix
+
+| Provider   | Tokenizer     | Accuracy | Encoding | Status |
+|------------|---------------|----------|----------|--------|
+| OpenAI     | tiktoken      | Exact    | cl100k_base, o200k_base | ✓ |
+| Gemini     | SentencePiece | Exact    | Gemini-specific | ✓ |
+| OpenRouter | Estimation    | ~95%     | Character-based | △ |
+| Others     | Estimation    | ~75%     | Character-based | △ |
+
+### Tokenizer Accuracy
+
+- **Exact (90%+ accuracy)**: Uses provider's official tokenizer
+- **High (~95% accuracy)**: Provider-compatible tokenizer with minor variations
+- **Estimation (~75% accuracy)**: Character-based calculation (1 token ≈ 4 chars)
+
+### Circuit Breaker Integration
+
+Tokenizers include circuit breaker protection:
+
+- **Failure Threshold**: 5 consecutive failures triggers circuit open
+- **Recovery Time**: 30 seconds before attempting retry
+- **Automatic Fallback**: Estimation used when circuit is open

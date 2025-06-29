@@ -14,6 +14,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // TestBoundarySynthesisFlowNew tests the complete flow with synthesis model using boundary mocks
@@ -132,6 +133,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a mock token counting service for integration testing
+	tokenCountingService := &MockTokenCountingService{}
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -141,6 +144,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Run the orchestrator
@@ -322,6 +326,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a mock token counting service for integration testing
+	tokenCountingService := &MockTokenCountingService{}
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -331,6 +337,7 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Run the orchestrator (expecting partial failure)
@@ -374,4 +381,22 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	} else {
 		t.Logf("Correctly verified that failed model2 has no output file")
 	}
+}
+
+// MockTokenCountingService is a simple mock for integration testing
+type MockTokenCountingService struct{}
+
+func (m *MockTokenCountingService) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	return interfaces.TokenCountingResult{TotalTokens: 100}, nil
+}
+
+func (m *MockTokenCountingService) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{TotalTokens: 100},
+		ModelName:           modelName,
+	}, nil
+}
+
+func (m *MockTokenCountingService) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	return []interfaces.ModelCompatibility{}, nil
 }

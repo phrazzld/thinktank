@@ -9,105 +9,27 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 	"github.com/phrazzld/thinktank/internal/thinktank/tokenizers"
 )
 
-// TokenCountingService provides accurate token counting and model filtering capabilities.
-// It replaces estimation-based model selection with precise token counting from
-// instructions and file content, enabling better model compatibility decisions.
-type TokenCountingService interface {
-	// CountTokens calculates total tokens for instructions and file content.
-	// Returns detailed breakdown of token usage for audit and logging purposes.
-	CountTokens(ctx context.Context, req TokenCountingRequest) (TokenCountingResult, error)
+// TokenCountingService alias to avoid import cycles.
+type TokenCountingService = interfaces.TokenCountingService
 
-	// CountTokensForModel calculates tokens using accurate tokenization for the specific model.
-	// Falls back to estimation if accurate tokenization is not available for the model.
-	CountTokensForModel(ctx context.Context, req TokenCountingRequest, modelName string) (ModelTokenCountingResult, error)
+// TokenCountingRequest alias to avoid import cycles.
+type TokenCountingRequest = interfaces.TokenCountingRequest
 
-	// GetCompatibleModels returns models that can handle the input with detailed compatibility information.
-	// Uses accurate token counting to determine which models can process the given request.
-	GetCompatibleModels(ctx context.Context, req TokenCountingRequest, availableProviders []string) ([]ModelCompatibility, error)
-}
+// FileContent alias to avoid import cycles.
+type FileContent = interfaces.FileContent
 
-// TokenCountingRequest contains all inputs needed for token counting.
-type TokenCountingRequest struct {
-	// Instructions text to be sent to the model
-	Instructions string
+// TokenCountingResult alias to avoid import cycles.
+type TokenCountingResult = interfaces.TokenCountingResult
 
-	// Files contains all file content to be processed
-	Files []FileContent
-}
+// ModelTokenCountingResult alias to avoid import cycles.
+type ModelTokenCountingResult = interfaces.ModelTokenCountingResult
 
-// FileContent represents a single file's content for token counting.
-type FileContent struct {
-	// Path is the file path for identification and logging
-	Path string
-
-	// Content is the actual file content to count tokens for
-	Content string
-}
-
-// TokenCountingResult provides detailed breakdown of token usage.
-type TokenCountingResult struct {
-	// TotalTokens is the sum of all token counts
-	TotalTokens int
-
-	// InstructionTokens is tokens used by instructions
-	InstructionTokens int
-
-	// FileTokens is tokens used by file content
-	FileTokens int
-
-	// Overhead includes formatting and structural tokens
-	Overhead int
-}
-
-// ModelTokenCountingResult provides model-specific token counting results.
-type ModelTokenCountingResult struct {
-	TokenCountingResult
-
-	// ModelName is the model this count was calculated for
-	ModelName string
-
-	// TokenizerUsed indicates which tokenization method was used
-	TokenizerUsed string // "tiktoken", "sentencepiece", "estimation"
-
-	// Provider is the LLM provider for the model
-	Provider string
-
-	// IsAccurate indicates if accurate tokenization was used (vs estimation)
-	IsAccurate bool
-}
-
-// ModelCompatibility provides detailed compatibility information for a model.
-type ModelCompatibility struct {
-	// ModelName is the name of the model being evaluated
-	ModelName string
-
-	// IsCompatible indicates if the model can handle the input
-	IsCompatible bool
-
-	// TokenCount is the actual token count for this model
-	TokenCount int
-
-	// ContextWindow is the model's maximum context size
-	ContextWindow int
-
-	// UsableContext is the context available after safety margin
-	UsableContext int
-
-	// Provider is the LLM provider for this model
-	Provider string
-
-	// TokenizerUsed indicates which tokenization method was used
-	TokenizerUsed string
-
-	// IsAccurate indicates if accurate tokenization was used
-	IsAccurate bool
-
-	// Reason explains why the model is incompatible (if applicable)
-	Reason string
-}
+// ModelCompatibility alias to avoid import cycles.
+type ModelCompatibility = interfaces.ModelCompatibility
 
 // tokenCountingServiceImpl implements the TokenCountingService interface.
 type tokenCountingServiceImpl struct {
@@ -117,7 +39,7 @@ type tokenCountingServiceImpl struct {
 
 // NewTokenCountingService creates a new token counting service instance.
 // Uses constructor pattern for dependency injection.
-func NewTokenCountingService() TokenCountingService {
+func NewTokenCountingService() interfaces.TokenCountingService {
 	return &tokenCountingServiceImpl{
 		tokenizerManager: tokenizers.NewTokenizerManager(),
 		logger:           nil, // No logging for default constructor
@@ -126,7 +48,7 @@ func NewTokenCountingService() TokenCountingService {
 
 // NewTokenCountingServiceWithLogger creates a new service instance with logging.
 // Uses dependency injection pattern for testability.
-func NewTokenCountingServiceWithLogger(logger logutil.LoggerInterface) TokenCountingService {
+func NewTokenCountingServiceWithLogger(logger logutil.LoggerInterface) interfaces.TokenCountingService {
 	return &tokenCountingServiceImpl{
 		tokenizerManager: tokenizers.NewTokenizerManager(),
 		logger:           logger,
@@ -135,18 +57,28 @@ func NewTokenCountingServiceWithLogger(logger logutil.LoggerInterface) TokenCoun
 
 // NewTokenCountingServiceWithManager creates a service with custom tokenizer manager.
 // Useful for testing with mocked dependencies.
-func NewTokenCountingServiceWithManager(manager tokenizers.TokenizerManager) TokenCountingService {
+func NewTokenCountingServiceWithManager(manager tokenizers.TokenizerManager) interfaces.TokenCountingService {
 	return &tokenCountingServiceImpl{
 		tokenizerManager: manager,
+		logger:           nil, // No logging for basic constructor
+	}
+}
+
+// NewTokenCountingServiceWithManagerAndLogger creates a service with custom tokenizer manager and logger.
+// Useful for testing with mocked dependencies and logging.
+func NewTokenCountingServiceWithManagerAndLogger(manager tokenizers.TokenizerManager, logger logutil.LoggerInterface) interfaces.TokenCountingService {
+	return &tokenCountingServiceImpl{
+		tokenizerManager: manager,
+		logger:           logger,
 	}
 }
 
 // CountTokens implements the TokenCountingService interface.
 // Uses existing token estimation from models package for consistency.
-func (s *tokenCountingServiceImpl) CountTokens(ctx context.Context, req TokenCountingRequest) (TokenCountingResult, error) {
+func (s *tokenCountingServiceImpl) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
 	// Handle empty context case
 	if req.Instructions == "" && len(req.Files) == 0 {
-		return TokenCountingResult{
+		return interfaces.TokenCountingResult{
 			TotalTokens: 0,
 		}, nil
 	}
@@ -156,7 +88,7 @@ func (s *tokenCountingServiceImpl) CountTokens(ctx context.Context, req TokenCou
 	fileTokens := s.countFileTokens(req.Files)
 	overhead := s.calculateOverhead()
 
-	result := TokenCountingResult{
+	result := interfaces.TokenCountingResult{
 		InstructionTokens: instructionTokens,
 		FileTokens:        fileTokens,
 		Overhead:          overhead,
@@ -167,7 +99,7 @@ func (s *tokenCountingServiceImpl) CountTokens(ctx context.Context, req TokenCou
 }
 
 // CountTokensForModel implements model-specific accurate token counting.
-func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req TokenCountingRequest, modelName string) (ModelTokenCountingResult, error) {
+func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
 	// Get model info to determine provider
 	modelInfo, err := models.GetModelInfo(modelName)
 	if err != nil {
@@ -186,6 +118,13 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 			instructionTokens, err = s.countInstructionTokensAccurate(ctx, req.Instructions, modelName, tokenizer)
 			if err != nil {
 				// Fall back to estimation on error
+				if s.logger != nil {
+					s.logger.WarnContext(ctx, "Instruction tokenization failed, falling back to estimation",
+						"model", modelName,
+						"provider", modelInfo.Provider,
+						"error", err.Error(),
+						"fallback_method", "estimation")
+				}
 				instructionTokens = s.countInstructionTokens(req.Instructions)
 				tokenizerUsed = "estimation"
 				isAccurate = false
@@ -193,6 +132,14 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 				fileTokens, err = s.countFileTokensAccurate(ctx, req.Files, modelName, tokenizer)
 				if err != nil {
 					// Fall back to estimation on error
+					if s.logger != nil {
+						s.logger.WarnContext(ctx, "File tokenization failed, falling back to estimation",
+							"model", modelName,
+							"provider", modelInfo.Provider,
+							"file_count", len(req.Files),
+							"error", err.Error(),
+							"fallback_method", "estimation")
+					}
 					fileTokens = s.countFileTokens(req.Files)
 					tokenizerUsed = "estimation"
 					isAccurate = false
@@ -210,7 +157,21 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 				}
 			}
 		} else {
-			// Fall back to estimation if model not supported
+			// Fall back to estimation if model not supported or tokenizer initialization failed
+			if s.logger != nil {
+				if err != nil {
+					s.logger.WarnContext(ctx, "Tokenizer initialization failed, falling back to estimation",
+						"model", modelName,
+						"provider", modelInfo.Provider,
+						"error", err.Error(),
+						"fallback_method", "estimation")
+				} else {
+					s.logger.WarnContext(ctx, "Model not supported by tokenizer, falling back to estimation",
+						"model", modelName,
+						"provider", modelInfo.Provider,
+						"fallback_method", "estimation")
+				}
+			}
 			instructionTokens = s.countInstructionTokens(req.Instructions)
 			fileTokens = s.countFileTokens(req.Files)
 			tokenizerUsed = "estimation"
@@ -218,6 +179,12 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 		}
 	} else {
 		// Fall back to estimation if provider not supported
+		if s.logger != nil {
+			s.logger.WarnContext(ctx, "Provider not supported by tokenizer manager, falling back to estimation",
+				"model", modelName,
+				"provider", modelInfo.Provider,
+				"fallback_method", "estimation")
+		}
 		instructionTokens = s.countInstructionTokens(req.Instructions)
 		fileTokens = s.countFileTokens(req.Files)
 		tokenizerUsed = "estimation"
@@ -226,8 +193,8 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 
 	// Handle empty context case
 	if req.Instructions == "" && len(req.Files) == 0 {
-		return ModelTokenCountingResult{
-			TokenCountingResult: TokenCountingResult{TotalTokens: 0},
+		return interfaces.ModelTokenCountingResult{
+			TokenCountingResult: interfaces.TokenCountingResult{TotalTokens: 0},
 			ModelName:           modelName,
 			TokenizerUsed:       tokenizerUsed,
 			Provider:            modelInfo.Provider,
@@ -238,8 +205,8 @@ func (s *tokenCountingServiceImpl) CountTokensForModel(ctx context.Context, req 
 	overhead := s.calculateOverhead()
 	totalTokens := instructionTokens + fileTokens + overhead
 
-	result := ModelTokenCountingResult{
-		TokenCountingResult: TokenCountingResult{
+	result := interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{
 			TotalTokens:       totalTokens,
 			InstructionTokens: instructionTokens,
 			FileTokens:        fileTokens,
@@ -263,7 +230,7 @@ func (s *tokenCountingServiceImpl) countInstructionTokens(instructions string) i
 }
 
 // countFileTokens calculates tokens for all file content combined.
-func (s *tokenCountingServiceImpl) countFileTokens(files []FileContent) int {
+func (s *tokenCountingServiceImpl) countFileTokens(files []interfaces.FileContent) int {
 	var totalFileContent string
 	for _, file := range files {
 		totalFileContent += file.Content
@@ -293,7 +260,7 @@ func (s *tokenCountingServiceImpl) countInstructionTokensAccurate(ctx context.Co
 }
 
 // countFileTokensAccurate calculates file tokens using accurate tokenizer.
-func (s *tokenCountingServiceImpl) countFileTokensAccurate(ctx context.Context, files []FileContent, modelName string, tokenizer tokenizers.AccurateTokenCounter) (int, error) {
+func (s *tokenCountingServiceImpl) countFileTokensAccurate(ctx context.Context, files []interfaces.FileContent, modelName string, tokenizer tokenizers.AccurateTokenCounter) (int, error) {
 	var totalFileContent string
 	for _, file := range files {
 		totalFileContent += file.Content
@@ -307,7 +274,7 @@ func (s *tokenCountingServiceImpl) countFileTokensAccurate(ctx context.Context, 
 }
 
 // GetCompatibleModels implements model filtering based on accurate token counting.
-func (s *tokenCountingServiceImpl) GetCompatibleModels(ctx context.Context, req TokenCountingRequest, availableProviders []string) ([]ModelCompatibility, error) {
+func (s *tokenCountingServiceImpl) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
 	// Add enhanced logging with context information per TODO.md requirements
 	if s.logger != nil {
 		s.logger.InfoContext(ctx, "Starting model compatibility check",
@@ -318,15 +285,15 @@ func (s *tokenCountingServiceImpl) GetCompatibleModels(ctx context.Context, req 
 
 	// Handle empty input case - return empty result
 	if len(availableProviders) == 0 {
-		return []ModelCompatibility{}, nil
+		return []interfaces.ModelCompatibility{}, nil
 	}
 
 	// If empty request (no instructions, no files), return empty result
 	if req.Instructions == "" && len(req.Files) == 0 {
-		return []ModelCompatibility{}, nil
+		return []interfaces.ModelCompatibility{}, nil
 	}
 
-	var results []ModelCompatibility
+	var results []interfaces.ModelCompatibility
 
 	// Get models for each available provider
 	for _, provider := range availableProviders {
@@ -389,21 +356,25 @@ func (s *tokenCountingServiceImpl) GetCompatibleModels(ctx context.Context, req 
 }
 
 // checkModelCompatibility evaluates a single model's compatibility with the request.
-func (s *tokenCountingServiceImpl) checkModelCompatibility(ctx context.Context, req TokenCountingRequest, modelName string) (ModelCompatibility, error) {
+func (s *tokenCountingServiceImpl) checkModelCompatibility(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelCompatibility, error) {
 	// Get model info
 	modelInfo, err := models.GetModelInfo(modelName)
 	if err != nil {
-		return ModelCompatibility{}, fmt.Errorf("failed to get model info for %s: %w", modelName, err)
+		return interfaces.ModelCompatibility{}, fmt.Errorf("failed to get model info for %s: %w", modelName, err)
 	}
 
 	// Get accurate token count for this model
 	tokenResult, err := s.CountTokensForModel(ctx, req, modelName)
 	if err != nil {
-		return ModelCompatibility{}, fmt.Errorf("failed to count tokens for %s: %w", modelName, err)
+		return interfaces.ModelCompatibility{}, fmt.Errorf("failed to count tokens for %s: %w", modelName, err)
 	}
 
-	// Calculate safety margin (20% for output buffer)
-	safetyMargin := int(float64(modelInfo.ContextWindow) * 0.2)
+	// Calculate safety margin using configurable percentage (default 20% if not specified)
+	safetyMarginPercent := req.SafetyMarginPercent
+	if safetyMarginPercent == 0 {
+		safetyMarginPercent = 20 // Default 20% safety margin
+	}
+	safetyMargin := int(float64(modelInfo.ContextWindow) * float64(safetyMarginPercent) / 100.0)
 	usableContext := modelInfo.ContextWindow - safetyMargin
 
 	// Determine compatibility
@@ -414,7 +385,7 @@ func (s *tokenCountingServiceImpl) checkModelCompatibility(ctx context.Context, 
 			tokenResult.TotalTokens, usableContext, modelInfo.ContextWindow, safetyMargin)
 	}
 
-	return ModelCompatibility{
+	return interfaces.ModelCompatibility{
 		ModelName:     modelName,
 		IsCompatible:  isCompatible,
 		TokenCount:    tokenResult.TotalTokens,
@@ -428,7 +399,7 @@ func (s *tokenCountingServiceImpl) checkModelCompatibility(ctx context.Context, 
 }
 
 // sortModelCompatibility sorts results with compatible models first, then by context window size.
-func sortModelCompatibility(results []ModelCompatibility) {
+func sortModelCompatibility(results []interfaces.ModelCompatibility) {
 	// Simple insertion sort for small lists - keep it simple
 	for i := 1; i < len(results); i++ {
 		current := results[i]
@@ -444,7 +415,7 @@ func sortModelCompatibility(results []ModelCompatibility) {
 }
 
 // shouldSwap returns true if a should come after b in sort order.
-func shouldSwap(a, b ModelCompatibility) bool {
+func shouldSwap(a, b interfaces.ModelCompatibility) bool {
 	// Compatible models come first
 	if a.IsCompatible != b.IsCompatible {
 		return !a.IsCompatible // a comes after b if a is not compatible but b is

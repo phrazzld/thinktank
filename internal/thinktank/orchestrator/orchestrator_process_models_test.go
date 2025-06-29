@@ -7,6 +7,8 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
+	"github.com/stretchr/testify/assert"
 )
 
 // TestProcessModelsEmptyOutputs tests that processModels does not include empty outputs for failed models
@@ -175,4 +177,61 @@ func (m *MockOrchestratorProcessor) Process(ctx context.Context, modelName strin
 	return "", errors.New("unexpected model name in test")
 }
 
-// This function was unused and removed to fix linting issues
+// RED: First failing test for token context logging
+func TestProcessModelsWithErrorHandling_LogsTokenContext(t *testing.T) {
+	t.Parallel()
+
+	// Create mock logger that captures log messages
+	mockLogger := &MockLogger{}
+
+	// Create mock token counting service
+	mockTokenService := &MockTokenCountingService{
+		CountTokensResult: interfaces.TokenCountingResult{
+			TotalTokens:       1500,
+			InstructionTokens: 1000,
+			FileTokens:        400,
+			Overhead:          100,
+		},
+	}
+
+	// Create config with model names
+	cfg := &config.CliConfig{
+		ModelNames: []string{"gpt-4", "claude-3"},
+	}
+
+	// Create orchestrator with token counting service
+	orch := createTestOrchestrator(cfg, mockLogger, mockTokenService)
+
+	// Call processModelsWithErrorHandling
+	ctx := context.Background()
+	_, _, _ = orch.processModelsWithErrorHandling(ctx, "test prompt", mockLogger)
+
+	// Verify processing summary log is present
+	assert.Contains(t, mockLogger.Messages, "Processing 2 models with 1500 total input tokens (accuracy: tiktoken)")
+
+	// Verify per-model attempt logs are present
+	assert.Contains(t, mockLogger.Messages, "Attempting model gpt-4 (1/2) - input: 1500 tokens")
+	assert.Contains(t, mockLogger.Messages, "Attempting model claude-3 (2/2) - input: 1500 tokens")
+}
+
+// Helper function to create test orchestrator with dependencies
+func createTestOrchestrator(cfg *config.CliConfig, logger *MockLogger, tokenService interfaces.TokenCountingService) *Orchestrator {
+	mockAPIService := &MockAPIService{}
+	mockFileWriter := &MockFileWriter{}
+	mockContextGatherer := &MockContextGatherer{}
+	mockAuditLogger := &MockAuditLogger{}
+	rateLimiter := ratelimit.NewRateLimiter(0, 0)
+	mockConsoleWriter := &MockConsoleWriter{}
+
+	return NewOrchestrator(
+		mockAPIService,
+		mockContextGatherer,
+		mockFileWriter,
+		mockAuditLogger,
+		rateLimiter,
+		cfg,
+		logger,
+		mockConsoleWriter,
+		tokenService,
+	)
+}

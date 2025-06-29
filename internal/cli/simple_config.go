@@ -10,19 +10,21 @@ import (
 	"github.com/phrazzld/thinktank/internal/models"
 )
 
-// SimplifiedConfig represents the essential configuration in exactly 33 bytes.
+// SimplifiedConfig represents the essential configuration in exactly 34 bytes.
 // Following Go's principle of "less is more", this struct contains only the
 // absolutely necessary fields with smart defaults for everything else.
 //
-// Memory layout (33 bytes total on 64-bit systems):
+// Memory layout (34 bytes total on 64-bit systems):
 // - InstructionsFile: 16 bytes (string header: ptr+len)
 // - TargetPath: 16 bytes (string header: ptr+len)
 // - Flags: 1 byte (bitfield for DryRun|Verbose|Synthesis)
+// - SafetyMargin: 1 byte (percentage 0-100)
 type SimplifiedConfig struct {
 	InstructionsFile string // 16 bytes (pointer + length on 64-bit)
 	TargetPath       string // 16 bytes (pointer + length on 64-bit)
 	Flags            uint8  // 1 byte bitfield
-	// Note: Actual struct size may include padding. The 33-byte target
+	SafetyMargin     uint8  // 1 byte - safety margin percentage (0-50%)
+	// Note: Actual struct size may include padding. The 34-byte target
 	// refers to the logical data size, not the Go struct alignment.
 }
 
@@ -40,8 +42,9 @@ const (
 
 // Smart defaults - applied during parsing/conversion
 const (
-	DefaultModel     = "gemini-2.5-pro"
-	DefaultOutputDir = "."
+	DefaultModel        = "gemini-2.5-pro"
+	DefaultOutputDir    = "."
+	DefaultSafetyMargin = 20 // 20% safety margin for token calculations
 )
 
 // HasFlag checks if a flag is set using bitwise AND - O(1) operation
