@@ -21,7 +21,7 @@ type streamingTokenizerManagerImpl struct {
 func NewStreamingTokenizerManager() StreamingTokenizerManager {
 	return &streamingTokenizerManagerImpl{
 		tokenizerManagerImpl: &tokenizerManagerImpl{},
-		chunkSize:            64 * 1024, // 64KB default chunk size
+		chunkSize:            8 * 1024, // 8KB chunks for better cancellation responsiveness
 	}
 }
 
@@ -65,6 +65,7 @@ func (s *streamingTokenizerImpl) CountTokensStreaming(ctx context.Context, reade
 	buffer := make([]byte, s.chunkSize)
 
 	for {
+		// Check for cancellation before each chunk read
 		select {
 		case <-ctx.Done():
 			return 0, ctx.Err()
@@ -73,13 +74,41 @@ func (s *streamingTokenizerImpl) CountTokensStreaming(ctx context.Context, reade
 
 		n, err := reader.Read(buffer)
 		if n > 0 {
-			// Convert chunk to string and tokenize
-			chunk := string(buffer[:n])
-			tokens, tokenErr := s.underlying.CountTokens(ctx, chunk, modelName)
-			if tokenErr != nil {
-				return 0, NewTokenizerErrorWithDetails("streaming", modelName, "chunk tokenization failed", tokenErr, "streaming")
+			// Check for cancellation before tokenization (expensive operation)
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			default:
 			}
-			totalTokens += tokens
+
+			// Convert chunk to string and tokenize with timeout protection
+			chunk := string(buffer[:n])
+
+			// Create a channel to receive tokenization result
+			resultChan := make(chan struct {
+				tokens int
+				err    error
+			}, 1)
+
+			// Run tokenization in a goroutine to enable cancellation
+			go func() {
+				tokens, tokenErr := s.underlying.CountTokens(ctx, chunk, modelName)
+				resultChan <- struct {
+					tokens int
+					err    error
+				}{tokens, tokenErr}
+			}()
+
+			// Wait for either completion or cancellation
+			select {
+			case <-ctx.Done():
+				return 0, ctx.Err()
+			case result := <-resultChan:
+				if result.err != nil {
+					return 0, NewTokenizerErrorWithDetails("streaming", modelName, "chunk tokenization failed", result.err, "streaming")
+				}
+				totalTokens += result.tokens
+			}
 		}
 
 		if err == io.EOF {

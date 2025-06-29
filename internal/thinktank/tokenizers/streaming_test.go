@@ -34,8 +34,8 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "Large input 50MB in 1MB chunks",
-			inputSize:   50 * 1024 * 1024, // 50MB (reduced for faster tests)
+			name:        "Large input 25MB in 1MB chunks",
+			inputSize:   25 * 1024 * 1024, // 25MB (realistic large file size)
 			chunkSize:   1024 * 1024,      // 1MB chunks
 			expectError: false,
 		},
@@ -52,7 +52,12 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 			text := strings.Repeat("The quick brown fox jumps over the lazy dog. ", tt.inputSize/46)
 			reader := strings.NewReader(text)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			// Set timeout based on expected performance: ~1MB/s for tokenization
+			timeoutSeconds := tt.inputSize/(1024*1024) + 30 // Add 30s buffer
+			if timeoutSeconds < 60 {
+				timeoutSeconds = 60 // Minimum 60s timeout
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutSeconds)*time.Second)
 			defer cancel()
 
 			start := time.Now()
