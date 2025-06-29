@@ -27,14 +27,14 @@ import (
 	"github.com/phrazzld/thinktank/internal/thinktank/orchestrator"
 )
 
-// TestMultiModelReliability_AllModelsBasic tests basic functionality with all 15 supported models
+// TestMultiModelReliability_AllModelsBasic tests basic functionality with all 19 supported models
 func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
-	// Get all 15 supported models
+	// Get all 19 supported models
 	allModels := models.ListAllModels()
-	if len(allModels) != 15 {
-		t.Fatalf("Expected 15 models, got %d", len(allModels))
+	if len(allModels) != 19 {
+		t.Fatalf("Expected 19 models, got %d", len(allModels))
 	}
 
 	// Create test environment
@@ -243,8 +243,8 @@ func TestMultiModelReliability_PartialFailureResilience(t *testing.T) {
 	testModels := []string{
 		"gpt-4.1",        // Should succeed
 		"gemini-2.5-pro", // Should succeed
-		"error-model-1",  // Should fail
-		"error-model-2",  // Should fail
+		"model1",         // Should fail (we'll mock it to fail)
+		"model2",         // Should fail (we'll mock it to fail)
 		"openrouter/deepseek/deepseek-chat-v3-0324", // Should succeed
 	}
 
@@ -257,7 +257,7 @@ func TestMultiModelReliability_PartialFailureResilience(t *testing.T) {
 	var statusMutex sync.Mutex
 
 	env.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-		if modelName == "error-model-1" || modelName == "error-model-2" {
+		if modelName == "model1" || modelName == "model2" {
 			// Simulate failing models
 			statusMutex.Lock()
 			failedModels[modelName] = true
@@ -300,7 +300,7 @@ func TestMultiModelReliability_PartialFailureResilience(t *testing.T) {
 		}
 	}
 
-	expectedFailed := []string{"error-model-1", "error-model-2"}
+	expectedFailed := []string{"model1", "model2"}
 	for _, model := range expectedFailed {
 		if !failedModels[model] {
 			t.Errorf("Expected model %s to fail, but it didn't", model)

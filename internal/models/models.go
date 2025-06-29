@@ -351,8 +351,8 @@ var modelDefinitions = map[string]ModelInfo{
 	"model1": {
 		Provider:        "test",
 		APIModelID:      "test-model-1",
-		ContextWindow:   1000,
-		MaxOutputTokens: 500,
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       1.0,
@@ -360,14 +360,14 @@ var modelDefinitions = map[string]ModelInfo{
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 500),
+			"max_tokens":  intConstraint(1, 5000),
 		},
 	},
 	"model2": {
 		Provider:        "test",
 		APIModelID:      "test-model-2",
-		ContextWindow:   1000,
-		MaxOutputTokens: 500,
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       1.0,
@@ -375,14 +375,14 @@ var modelDefinitions = map[string]ModelInfo{
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 500),
+			"max_tokens":  intConstraint(1, 5000),
 		},
 	},
 	"model3": {
 		Provider:        "test",
 		APIModelID:      "test-model-3",
-		ContextWindow:   1000,
-		MaxOutputTokens: 500,
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       1.0,
@@ -390,7 +390,7 @@ var modelDefinitions = map[string]ModelInfo{
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 500),
+			"max_tokens":  intConstraint(1, 5000),
 		},
 	},
 	"synthesis-model": {
