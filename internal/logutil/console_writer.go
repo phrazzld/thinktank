@@ -808,7 +808,6 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 
 	// Add whitespace before summary section
 	fmt.Println() // Phase separation whitespace
-	fmt.Println() // Extra space for visual clarity
 
 	// Display UPPERCASE header with separator line
 	headerText := "SUMMARY"
