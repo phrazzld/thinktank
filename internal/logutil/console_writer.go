@@ -52,6 +52,27 @@ type ConsoleWriter interface {
 	// to establish the total count for subsequent progress updates.
 	StartProcessing(modelCount int)
 
+	// Status Tracking Methods (NEW)
+	// These methods enable in-place status updates for cleaner output
+
+	// StartStatusTracking initializes status tracking for the given models.
+	// This enables in-place status updates instead of multiple status lines.
+	StartStatusTracking(modelNames []string)
+
+	// UpdateModelStatus updates the status of a specific model in-place.
+	// This replaces the need for separate ModelStarted/ModelCompleted calls.
+	UpdateModelStatus(modelName string, status ModelStatus, duration time.Duration, errorMsg string)
+
+	// UpdateModelRateLimited updates a model's status to show rate limiting.
+	UpdateModelRateLimited(modelName string, retryAfter time.Duration)
+
+	// RefreshStatusDisplay forces a refresh of the status display.
+	// Useful for periodic updates in long-running operations.
+	RefreshStatusDisplay()
+
+	// FinishStatusTracking completes status tracking and cleans up the display.
+	FinishStatusTracking()
+
 	// ModelQueued reports that a model has been added to the processing queue.
 	// The index parameter indicates the model's position in the processing order (1-based).
 	//
@@ -220,6 +241,11 @@ type consoleWriter struct {
 	colors        *ColorScheme    // Color scheme for semantic coloring
 	symbols       *SymbolProvider // Unicode/ASCII symbol provider with fallback detection
 
+	// Status tracking support (NEW)
+	statusTracker *ModelStatusTracker // Tracks model processing states
+	statusDisplay *StatusDisplay      // Handles status rendering
+	usingStatus   bool                // Whether status tracking is active
+
 	// Dependency injection for testing
 	isTerminalFunc  func() bool
 	getTermSizeFunc func() (int, int, error)
@@ -356,11 +382,6 @@ func (c *consoleWriter) ModelStarted(modelIndex, totalModels int, modelName stri
 		return
 	}
 
-	// Add whitespace before first model processing
-	if modelIndex == 1 {
-		fmt.Println() // Phase separation whitespace
-	}
-
 	coloredModelName := c.colors.ColorModelName(modelName)
 	if c.isInteractive {
 		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
@@ -451,11 +472,7 @@ func (c *consoleWriter) SynthesisStarted() {
 		return
 	}
 
-	if c.isInteractive {
-		fmt.Println("📄 Synthesizing results...")
-	} else {
-		fmt.Println("Starting synthesis")
-	}
+	fmt.Println("Synthesizing results...")
 }
 
 // SynthesisCompleted reports that synthesis has finished successfully
@@ -469,12 +486,7 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 
 	coloredOutputPath := c.colors.ColorFilePath(outputPath)
 
-	if c.isInteractive {
-		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Sparkles)
-		fmt.Printf("%s Done! Output saved to: %s\n", successSymbol, coloredOutputPath)
-	} else {
-		fmt.Printf("Synthesis complete. Output: %s\n", coloredOutputPath)
-	}
+	fmt.Printf("Done! Output saved to: %s\n", coloredOutputPath)
 }
 
 // StatusMessage displays a general status update to the user
@@ -796,7 +808,6 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 
 	// Add whitespace before summary section
 	fmt.Println() // Phase separation whitespace
-	fmt.Println() // Extra space for visual clarity
 
 	// Display UPPERCASE header with separator line
 	headerText := "SUMMARY"
@@ -974,3 +985,5 @@ type ConsoleWriterOptions struct {
 	// GetEnvFunc allows injecting custom environment variable reading for testing
 	GetEnvFunc func(string) string
 }
+
+// Status tracking methods are implemented in console_writer_status.go

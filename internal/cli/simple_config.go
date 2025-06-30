@@ -10,19 +10,21 @@ import (
 	"github.com/phrazzld/thinktank/internal/models"
 )
 
-// SimplifiedConfig represents the essential configuration in exactly 33 bytes.
+// SimplifiedConfig represents the essential configuration in exactly 34 bytes.
 // Following Go's principle of "less is more", this struct contains only the
 // absolutely necessary fields with smart defaults for everything else.
 //
-// Memory layout (33 bytes total on 64-bit systems):
+// Memory layout (34 bytes total on 64-bit systems):
 // - InstructionsFile: 16 bytes (string header: ptr+len)
 // - TargetPath: 16 bytes (string header: ptr+len)
 // - Flags: 1 byte (bitfield for DryRun|Verbose|Synthesis)
+// - SafetyMargin: 1 byte (percentage 0-100)
 type SimplifiedConfig struct {
 	InstructionsFile string // 16 bytes (pointer + length on 64-bit)
 	TargetPath       string // 16 bytes (pointer + length on 64-bit)
 	Flags            uint8  // 1 byte bitfield
-	// Note: Actual struct size may include padding. The 33-byte target
+	SafetyMargin     uint8  // 1 byte - safety margin percentage (0-50%)
+	// Note: Actual struct size may include padding. The 34-byte target
 	// refers to the logical data size, not the Go struct alignment.
 }
 
@@ -35,13 +37,14 @@ const (
 	FlagQuiet                        // 0x10
 	FlagJsonLogs                     // 0x20
 	FlagNoProgress                   // 0x40
-	// 1 bit remaining for future expansion
+	FlagHelp                         // 0x80 - Last available bit
 )
 
 // Smart defaults - applied during parsing/conversion
 const (
-	DefaultModel     = "gemini-2.5-pro"
-	DefaultOutputDir = "."
+	DefaultModel        = "gemini-2.5-pro"
+	DefaultOutputDir    = "."
+	DefaultSafetyMargin = 20 // 20% safety margin for token calculations
 )
 
 // HasFlag checks if a flag is set using bitwise AND - O(1) operation
@@ -59,15 +62,23 @@ func (s *SimplifiedConfig) ClearFlag(flag uint8) {
 	s.Flags &^= flag
 }
 
+// HelpRequested returns true if the help flag is set
+func (s *SimplifiedConfig) HelpRequested() bool {
+	return s.HasFlag(FlagHelp)
+}
+
 // Validate performs essential validation with fail-fast behavior.
 // Target: <1ms for typical inputs, ordered by likelihood of failure.
 // Uses lazy evaluation to minimize syscalls and API key checks.
 func (s *SimplifiedConfig) Validate() error {
 	// 1. Path length validation first - O(1) check to prevent filesystem errors (~0.001ms)
-	// Use 255 as a conservative limit that works across all filesystems
+	// Check individual paths, not the combined string
 	const maxPathLength = 255
-	if len(s.TargetPath) > maxPathLength {
-		return fmt.Errorf("target path too long (max %d characters): %d characters", maxPathLength, len(s.TargetPath))
+	targetPaths := strings.Fields(s.TargetPath)
+	for _, path := range targetPaths {
+		if len(path) > maxPathLength {
+			return fmt.Errorf("target path too long (max %d characters): %s (%d characters)", maxPathLength, path, len(path))
+		}
 	}
 
 	if s.InstructionsFile != "" && len(s.InstructionsFile) > maxPathLength {
@@ -197,6 +208,8 @@ func parseOptionalFlags(args []string, config *SimplifiedConfig) ([]string, erro
 				i++ // Skip the model value - ignored in SimplifiedConfig
 			case "-v":
 				config.SetFlag(FlagVerbose)
+			case "-h":
+				config.SetFlag(FlagHelp)
 			default:
 				return nil, fmt.Errorf("unknown flag: %s", arg)
 			}
@@ -306,9 +319,17 @@ func validatePositionalArgs(instructionsFile, targetPath string) error {
 		return fmt.Errorf("instructions file required: specify a .txt or .md file with analysis instructions")
 	}
 
-	// 2. Target path validation - filesystem checks first
-	if err := validateTargetPathAccess(targetPath); err != nil {
-		return err
+	// 2. Target path validation - validate each path if multiple
+	targetPaths := strings.Fields(targetPath)
+	if len(targetPaths) == 0 {
+		return fmt.Errorf("no target paths found after parsing")
+	}
+
+	// Validate each target path
+	for _, path := range targetPaths {
+		if err := validateTargetPathAccess(path); err != nil {
+			return err
+		}
 	}
 
 	// 3. Instructions file validation - filesystem checks first (directory check before extension)

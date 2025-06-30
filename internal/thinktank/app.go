@@ -180,6 +180,10 @@ func Execute(
 	contextGathererAdapter := &ContextGathererAdapter{ContextGatherer: contextGatherer}
 	fileWriterAdapter := &FileWriterAdapter{FileWriter: fileWriter}
 
+	// Create token counting service for orchestrator
+	tokenCountingServiceImpl := NewTokenCountingService()
+	tokenCountingService := &TokenCountingServiceAdapter{TokenCountingService: tokenCountingServiceImpl}
+
 	orch := orchestratorConstructor(
 		apiServiceAdapter,
 		contextGathererAdapter,
@@ -189,6 +193,7 @@ func Execute(
 		cliConfig,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Run the orchestrator and handle error conversion
@@ -250,6 +255,7 @@ var orchestratorConstructor = func(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 	consoleWriter logutil.ConsoleWriter,
+	tokenCountingService interfaces.TokenCountingService,
 ) Orchestrator {
 	return orchestrator.NewOrchestrator(
 		apiService,
@@ -260,6 +266,7 @@ var orchestratorConstructor = func(
 		config,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 }
 
@@ -274,6 +281,7 @@ func GetOrchestratorConstructor() func(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 	consoleWriter logutil.ConsoleWriter,
+	tokenCountingService interfaces.TokenCountingService,
 ) Orchestrator {
 	return orchestratorConstructor
 }
@@ -289,6 +297,7 @@ func SetOrchestratorConstructor(constructor func(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 	consoleWriter logutil.ConsoleWriter,
+	tokenCountingService interfaces.TokenCountingService,
 ) Orchestrator) {
 	orchestratorConstructor = constructor
 }

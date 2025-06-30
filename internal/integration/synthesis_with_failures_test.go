@@ -238,6 +238,9 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 	// Create rate limiter
 	rateLimiter := ratelimit.NewRateLimiter(cfg.MaxConcurrentRequests, cfg.RateLimitRequestsPerMinute)
 
+	// Create token counting service
+	tokenCountingService := &MockTokenCountingService{}
+
 	// Create orchestrator
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
@@ -251,6 +254,7 @@ func TestSynthesisWithModelFailuresFlow(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Execute the orchestrator

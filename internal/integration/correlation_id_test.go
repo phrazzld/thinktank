@@ -28,7 +28,7 @@ func TestCorrelationIDPropagation(t *testing.T) {
 		// === SETUP TEST SCENARIO ===
 
 		// Simple test with one model to focus on correlation ID propagation
-		modelNames := []string{"test-model"}
+		modelNames := []string{"model1"}
 		instructions := "Test correlation ID propagation across components"
 
 		// Setup source files for context gathering
@@ -36,7 +36,7 @@ func TestCorrelationIDPropagation(t *testing.T) {
 
 		// Setup mock response
 		expectedResponse := "# Test Output\n\nThis is a test response for correlation ID verification."
-		env.SetupModelResponse("test-model", expectedResponse)
+		env.SetupModelResponse("model1", expectedResponse)
 
 		// Configure test environment
 		env.SetupModels(modelNames, "") // No synthesis model to keep it simple

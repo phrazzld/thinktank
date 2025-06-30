@@ -25,8 +25,8 @@ func TestCLIValidatesAllSupportedModels(t *testing.T) {
 
 	// Get all supported models
 	supportedModels := models.ListAllModels()
-	if len(supportedModels) != 15 {
-		t.Fatalf("Expected 15 supported models, got %d", len(supportedModels))
+	if len(supportedModels) != 19 {
+		t.Fatalf("Expected 19 supported models (15 production + 4 test), got %d", len(supportedModels))
 	}
 
 	// Create a mock logger
@@ -419,6 +419,10 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 			case "openrouter":
 				expectedEnvVar = "OPENROUTER_API_KEY"
 				expectedError = "openRouter API key not set"
+			case "test":
+				// Test provider doesn't require API keys
+				expectedEnvVar = ""
+				expectedError = ""
 			}
 
 			// Test with missing API key
@@ -439,12 +443,20 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 						// Create logger
 						logger := logutil.NewBufferLogger(logutil.DebugLevel)
 
-						// Validate - should fail with missing API key error
+						// Validate - should fail with missing API key error (except for test provider)
 						err := ValidateInputsWithEnv(cfg, logger, mockGetenv)
-						if err == nil {
-							t.Error("Expected validation to fail due to missing API key")
-						} else if !strings.Contains(err.Error(), expectedError) {
-							t.Errorf("Expected error '%s', got: %v", expectedError, err)
+						if provider == "test" {
+							// Test provider should succeed without API keys
+							if err != nil {
+								t.Errorf("Test provider should not require API key, but got error: %v", err)
+							}
+						} else {
+							// Production providers should fail without API keys
+							if err == nil {
+								t.Error("Expected validation to fail due to missing API key")
+							} else if !strings.Contains(err.Error(), expectedError) {
+								t.Errorf("Expected error '%s', got: %v", expectedError, err)
+							}
 						}
 					})
 				}
@@ -515,12 +527,20 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 						// Create logger
 						logger := logutil.NewBufferLogger(logutil.DebugLevel)
 
-						// Validate - should fail
+						// Validate - should fail (except for test provider)
 						err := ValidateInputsWithEnv(cfg, logger, mockGetenv)
-						if err == nil {
-							t.Error("Expected validation to fail with wrong provider API key")
-						} else if !strings.Contains(err.Error(), expectedError) {
-							t.Errorf("Expected error '%s', got: %v", expectedError, err)
+						if provider == "test" {
+							// Test provider should succeed regardless of API keys
+							if err != nil {
+								t.Errorf("Test provider should not require API key, but got error: %v", err)
+							}
+						} else {
+							// Production providers should fail with wrong API keys
+							if err == nil {
+								t.Error("Expected validation to fail with wrong provider API key")
+							} else if !strings.Contains(err.Error(), expectedError) {
+								t.Errorf("Expected error '%s', got: %v", expectedError, err)
+							}
 						}
 					})
 				}

@@ -345,6 +345,69 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":  intConstraint(1, 8192),
 		},
 	},
+
+	// Test models for integration testing only
+	// These models are used by integration tests to simulate various scenarios
+	"model1": {
+		Provider:        "test",
+		APIModelID:      "test-model-1",
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 5000),
+		},
+	},
+	"model2": {
+		Provider:        "test",
+		APIModelID:      "test-model-2",
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 5000),
+		},
+	},
+	"model3": {
+		Provider:        "test",
+		APIModelID:      "test-model-3",
+		ContextWindow:   10000,
+		MaxOutputTokens: 5000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 5000),
+		},
+	},
+	"synthesis-model": {
+		Provider:        "test",
+		APIModelID:      "test-synthesis-model",
+		ContextWindow:   2000,
+		MaxOutputTokens: 1000,
+		DefaultParams: map[string]interface{}{
+			"temperature": 0.7,
+			"top_p":       1.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"max_tokens":  intConstraint(1, 1000),
+		},
+	},
 }
 
 // GetModelInfo returns model metadata for the given model name.
@@ -438,8 +501,12 @@ func GetModelsWithMinContextWindow(minTokens int) []string {
 		}
 	}
 
-	// Sort by context window size (largest first)
+	// Sort by context window size (largest first), then by name for deterministic ordering
 	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].contextWindow == candidates[j].contextWindow {
+			// Secondary sort by name for deterministic ordering when context windows are equal
+			return candidates[i].name < candidates[j].name
+		}
 		return candidates[i].contextWindow > candidates[j].contextWindow
 	})
 
@@ -454,18 +521,23 @@ func GetModelsWithMinContextWindow(minTokens int) []string {
 
 // GetAvailableProviders returns a list of providers for which API keys are available.
 // Checks environment variables for each provider's API key.
+// Returns providers in a deterministic order.
 func GetAvailableProviders() []string {
 	var providers []string
 
-	providerEnvVars := map[string]string{
-		"openai":     "OPENAI_API_KEY",
-		"gemini":     "GEMINI_API_KEY",
-		"openrouter": "OPENROUTER_API_KEY",
+	// Define providers in deterministic order to ensure consistent results
+	providerChecks := []struct {
+		name   string
+		envVar string
+	}{
+		{"gemini", "GEMINI_API_KEY"},
+		{"openai", "OPENAI_API_KEY"},
+		{"openrouter", "OPENROUTER_API_KEY"},
 	}
 
-	for provider, envVar := range providerEnvVars {
-		if os.Getenv(envVar) != "" {
-			providers = append(providers, provider)
+	for _, check := range providerChecks {
+		if os.Getenv(check.envVar) != "" {
+			providers = append(providers, check.name)
 		}
 	}
 
@@ -525,6 +597,7 @@ func GetLargestContextModel(modelNames []string) string {
 
 // GetAPIKeyEnvVar returns the environment variable name for the given provider's API key.
 // Returns an empty string for unknown providers.
+// The "test" provider is used for integration testing and doesn't require an API key.
 func GetAPIKeyEnvVar(provider string) string {
 	switch provider {
 	case "openai":
@@ -533,6 +606,8 @@ func GetAPIKeyEnvVar(provider string) string {
 		return "GEMINI_API_KEY"
 	case "openrouter":
 		return "OPENROUTER_API_KEY"
+	case "test":
+		return "" // Test provider doesn't require API key
 	default:
 		return ""
 	}

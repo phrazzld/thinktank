@@ -42,24 +42,30 @@ func (m *MockConsoleWriter) ModelFailed(modelIndex, totalModels int, modelName s
 }
 func (m *MockConsoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName string, retryAfter time.Duration) {
 }
-func (m *MockConsoleWriter) ShowProcessingLine(modelName string)                    {}
-func (m *MockConsoleWriter) UpdateProcessingLine(modelName string, status string)   {}
-func (m *MockConsoleWriter) ShowFileOperations(message string)                      {}
-func (m *MockConsoleWriter) ShowSummarySection(summary logutil.SummaryData)         {}
-func (m *MockConsoleWriter) ShowOutputFiles(files []logutil.OutputFile)             {}
-func (m *MockConsoleWriter) ShowFailedModels(failed []logutil.FailedModel)          {}
-func (m *MockConsoleWriter) SynthesisStarted()                                      {}
-func (m *MockConsoleWriter) SynthesisCompleted(outputPath string)                   {}
-func (m *MockConsoleWriter) StatusMessage(message string)                           {}
-func (m *MockConsoleWriter) SetQuiet(quiet bool)                                    {}
-func (m *MockConsoleWriter) SetNoProgress(noProgress bool)                          {}
-func (m *MockConsoleWriter) IsInteractive() bool                                    { return false }
-func (m *MockConsoleWriter) GetTerminalWidth() int                                  { return 80 }
-func (m *MockConsoleWriter) FormatMessage(message string) string                    { return message }
-func (m *MockConsoleWriter) ErrorMessage(message string)                            {}
-func (m *MockConsoleWriter) WarningMessage(message string)                          {}
-func (m *MockConsoleWriter) SuccessMessage(message string)                          {}
-func (l *SimpleTestLogger) WithContext(ctx context.Context) logutil.LoggerInterface { return l }
+func (m *MockConsoleWriter) ShowProcessingLine(modelName string)                  {}
+func (m *MockConsoleWriter) UpdateProcessingLine(modelName string, status string) {}
+func (m *MockConsoleWriter) ShowFileOperations(message string)                    {}
+func (m *MockConsoleWriter) ShowSummarySection(summary logutil.SummaryData)       {}
+func (m *MockConsoleWriter) ShowOutputFiles(files []logutil.OutputFile)           {}
+func (m *MockConsoleWriter) ShowFailedModels(failed []logutil.FailedModel)        {}
+func (m *MockConsoleWriter) SynthesisStarted()                                    {}
+func (m *MockConsoleWriter) SynthesisCompleted(outputPath string)                 {}
+func (m *MockConsoleWriter) StatusMessage(message string)                         {}
+func (m *MockConsoleWriter) SetQuiet(quiet bool)                                  {}
+func (m *MockConsoleWriter) SetNoProgress(noProgress bool)                        {}
+func (m *MockConsoleWriter) IsInteractive() bool                                  { return false }
+func (m *MockConsoleWriter) GetTerminalWidth() int                                { return 80 }
+func (m *MockConsoleWriter) FormatMessage(message string) string                  { return message }
+func (m *MockConsoleWriter) ErrorMessage(message string)                          {}
+func (m *MockConsoleWriter) WarningMessage(message string)                        {}
+func (m *MockConsoleWriter) SuccessMessage(message string)                        {}
+func (m *MockConsoleWriter) StartStatusTracking(modelNames []string)              {}
+func (m *MockConsoleWriter) UpdateModelStatus(modelName string, status logutil.ModelStatus, duration time.Duration, errorMsg string) {
+}
+func (m *MockConsoleWriter) UpdateModelRateLimited(modelName string, retryAfter time.Duration) {}
+func (m *MockConsoleWriter) RefreshStatusDisplay()                                             {}
+func (m *MockConsoleWriter) FinishStatusTracking()                                             {}
+func (l *SimpleTestLogger) WithContext(ctx context.Context) logutil.LoggerInterface            { return l }
 
 // stripAnsiColors removes ANSI color codes from a string
 func stripAnsiColors(s string) string {
