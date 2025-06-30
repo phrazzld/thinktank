@@ -92,8 +92,10 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			},
 			verbose: false,
 			expectedOut: []string{
-				"✅ 3/3 models compatible",
-				"Context usage: 45.2% - 65.8% (best: gpt-4o-mini, worst: claude-3-opus)",
+				"3/3 models compatible",
+				"Context usage range: 45.2% - 65.8%",
+				"Best efficiency: gpt-4o-mini (45.2%)",
+				"Worst efficiency: claude-3-opus (65.8%)",
 			},
 		},
 		{
@@ -111,7 +113,7 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			},
 			verbose: false,
 			expectedOut: []string{
-				"⚠️  No compatible models (2/2 exceed 80% context usage)",
+				"No compatible models (2/2 exceed 80% context usage)",
 				"💡 Try reducing input size:",
 				"• thinktank instructions.txt ./src",
 				"• --exclude \"docs/,*.md,build/\"",
@@ -150,8 +152,10 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			},
 			verbose: true,
 			expectedOut: []string{
-				"✅ 2/3 models compatible (1 skipped)",
-				"Context usage: 45.2% - 95.8%",
+				"2/3 models compatible (1 skipped)",
+				"Context usage range: 45.2% - 95.8%",
+				"Best efficiency: gpt-4o-mini (45.2%)",
+				"Worst efficiency: claude-3-opus (95.8%)",
 				"gpt-4o-mini",
 				"gpt-4o",
 				"claude-3-opus",
@@ -171,7 +175,7 @@ func TestDisplayCompatibilityCard(t *testing.T) {
 			},
 			verbose: false,
 			expectedOut: []string{
-				"✅ 1/1 models compatible",
+				"1/1 models compatible",
 				"Context usage: 52.1% (gpt-4o)",
 			},
 		},

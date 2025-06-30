@@ -52,6 +52,12 @@ func (m *mockConsoleWriter) WarningMessage(message string) {
 func (m *mockConsoleWriter) SuccessMessage(message string) {
 	m.messages = append(m.messages, "SUCCESS: "+message)
 }
+func (m *mockConsoleWriter) StartStatusTracking(modelNames []string) {}
+func (m *mockConsoleWriter) UpdateModelStatus(modelName string, status logutil.ModelStatus, duration time.Duration, errorMsg string) {
+}
+func (m *mockConsoleWriter) UpdateModelRateLimited(modelName string, retryAfter time.Duration) {}
+func (m *mockConsoleWriter) RefreshStatusDisplay()                                             {}
+func (m *mockConsoleWriter) FinishStatusTracking()                                             {}
 
 func TestGatherContext(t *testing.T) {
 	tests := []struct {

@@ -39,25 +39,25 @@ func (o *Orchestrator) displayCompatibilityCard(analysis CompatibilityAnalysis) 
 
 	// Main status line - clean and prominent
 	if analysis.CompatibleModels == 0 {
-		fmt.Printf("⚠️  No compatible models (%d/%d exceed %.0f%% context usage)\n",
+		fmt.Printf("No compatible models (%d/%d exceed %.0f%% context usage)\n",
 			analysis.SkippedModels, analysis.TotalModels, analysis.SafetyThreshold)
 	} else {
-		fmt.Printf("✅ %d/%d models compatible", analysis.CompatibleModels, analysis.TotalModels)
+		fmt.Printf("%d/%d models compatible", analysis.CompatibleModels, analysis.TotalModels)
 		if analysis.SkippedModels > 0 {
 			fmt.Printf(" (%d skipped)", analysis.SkippedModels)
 		}
 		fmt.Println()
 	}
 
-	// Usage statistics - concise and informative
+	// Usage statistics - clean and readable
 	if analysis.TotalModels > 1 {
-		fmt.Printf("   Context usage: %.1f%% - %.1f%%", analysis.MinUtilization, analysis.MaxUtilization)
+		fmt.Printf("   Context usage range: %.1f%% - %.1f%%\n", analysis.MinUtilization, analysis.MaxUtilization)
 
 		// Show extremes only if there's meaningful difference
 		if analysis.MaxUtilization-analysis.MinUtilization > 10.0 {
-			fmt.Printf(" (best: %s, worst: %s)", analysis.BestModel.ModelName, analysis.WorstModel.ModelName)
+			fmt.Printf("   Best efficiency: %s (%.1f%%)\n", analysis.BestModel.ModelName, analysis.MinUtilization)
+			fmt.Printf("   Worst efficiency: %s (%.1f%%)\n", analysis.WorstModel.ModelName, analysis.MaxUtilization)
 		}
-		fmt.Println()
 	} else if len(analysis.AllModels) == 1 {
 		model := analysis.AllModels[0]
 		if model.ContextWindow > 0 {
@@ -97,8 +97,6 @@ func (o *Orchestrator) displayCompatibilityCard(analysis CompatibilityAnalysis) 
 	} else if analysis.SkippedModels > 0 && !o.config.Verbose {
 		fmt.Printf("   Use --verbose to see all %d models\n", analysis.TotalModels)
 	}
-
-	fmt.Println()
 }
 
 // formatWithCommas formats an integer with comma separators for better readability.

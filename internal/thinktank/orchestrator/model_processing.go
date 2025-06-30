@@ -4,6 +4,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -59,8 +60,13 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 		// Safety margin calculation
 		safetyMarginPercent := 100.0 - float64(tokenReq.SafetyMarginPercent)
 
+		// Sort model names alphabetically for consistent display order
+		sortedModelNamesForCompat := make([]string, len(o.config.ModelNames))
+		copy(sortedModelNamesForCompat, o.config.ModelNames)
+		sort.Strings(sortedModelNamesForCompat)
+
 		// Collect compatibility data for all models
-		for i, modelName := range o.config.ModelNames {
+		for i, modelName := range sortedModelNamesForCompat {
 			modelInfo := ModelCompatibilityInfo{
 				ModelName: modelName,
 			}
@@ -81,14 +87,14 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 						compatibleModels = append(compatibleModels, modelName)
 
 						contextLogger.InfoContext(ctx, "Model %s (%d/%d) compatible - context: %d tokens, input: %d tokens, utilization: %.1f%%",
-							modelName, i+1, len(o.config.ModelNames), modelDef.ContextWindow, modelTokenResult.TotalTokens, utilization)
+							modelName, i+1, len(sortedModelNamesForCompat), modelDef.ContextWindow, modelTokenResult.TotalTokens, utilization)
 					} else {
 						modelInfo.IsCompatible = false
 						modelInfo.FailureReason = "input too large"
 						skippedModels = append(skippedModels, modelName)
 
 						contextLogger.InfoContext(ctx, "Skipping model %s (%d/%d) - input too large for context window: %d tokens > %.1f%% of %d tokens",
-							modelName, i+1, len(o.config.ModelNames), modelTokenResult.TotalTokens, safetyMarginPercent, modelDef.ContextWindow)
+							modelName, i+1, len(sortedModelNamesForCompat), modelTokenResult.TotalTokens, safetyMarginPercent, modelDef.ContextWindow)
 					}
 				} else {
 					// Can't get model info, assume incompatible for safety
@@ -96,7 +102,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 					modelInfo.FailureReason = "unable to determine context window"
 					skippedModels = append(skippedModels, modelName)
 					contextLogger.WarnContext(ctx, "Skipping model %s (%d/%d) - unable to get model info: %v",
-						modelName, i+1, len(o.config.ModelNames), infoErr)
+						modelName, i+1, len(sortedModelNamesForCompat), infoErr)
 				}
 			} else {
 				// Can't count tokens for this model, assume incompatible for safety
@@ -104,7 +110,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 				modelInfo.FailureReason = "unable to count tokens"
 				skippedModels = append(skippedModels, modelName)
 				contextLogger.WarnContext(ctx, "Skipping model %s (%d/%d) - unable to count tokens: %v",
-					modelName, i+1, len(o.config.ModelNames), modelErr)
+					modelName, i+1, len(sortedModelNamesForCompat), modelErr)
 			}
 
 			allModelInfo = append(allModelInfo, modelInfo)
@@ -112,7 +118,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 
 		// Calculate statistics for display
 		analysis := CompatibilityAnalysis{
-			TotalModels:      len(o.config.ModelNames),
+			TotalModels:      len(sortedModelNamesForCompat),
 			CompatibleModels: len(compatibleModels),
 			SkippedModels:    len(skippedModels),
 			TotalTokens:      tokenResult.TotalTokens,
@@ -173,8 +179,6 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 			// Restore original model list after processing
 			o.config.ModelNames = originalModelNames
 		}()
-
-		fmt.Printf("\nProcessing %d compatible models...\n", len(compatibleModels))
 
 		// Store these counts in the context for later access in error handling
 		type contextKey string
@@ -278,12 +282,21 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 	var wg sync.WaitGroup
 	resultChan := make(chan modelResult, len(o.config.ModelNames))
 
-	// Start progress tracking
-	fmt.Println() // Extra space before processing starts
-	o.consoleWriter.StartProcessing(len(o.config.ModelNames))
+	// Sort model names alphabetically for consistent, predictable display order
+	sortedModelNames := make([]string, len(o.config.ModelNames))
+	copy(sortedModelNames, o.config.ModelNames)
+	sort.Strings(sortedModelNames)
+
+	// Start status tracking for in-place updates
+	o.consoleWriter.StartStatusTracking(sortedModelNames)
+
+	// Initialize all models to starting state
+	for _, modelName := range sortedModelNames {
+		o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusStarting, 0, "")
+	}
 
 	// Launch a goroutine for each model, passing the index for progress tracking
-	for i, modelName := range o.config.ModelNames {
+	for i, modelName := range sortedModelNames {
 		wg.Add(1)
 		// Pass 1-based index for user-friendly display
 		go o.processModelWithRateLimit(ctx, modelName, stitchedPrompt, i+1, &wg, resultChan)
@@ -299,14 +312,16 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 
 	// We're processing a channel that's already closed, so there's no race condition here
 	for result := range resultChan {
-		// Only store output for successful models
+		// Store outputs and errors for return
 		if result.err == nil {
 			modelOutputs[result.modelName] = result.content
 		} else {
-			// Collect errors
 			modelErrors = append(modelErrors, result.err)
 		}
 	}
+
+	// Finish status tracking and clean up display
+	o.consoleWriter.FinishStatusTracking()
 
 	return modelOutputs, modelErrors
 }
@@ -316,9 +331,10 @@ func (o *Orchestrator) processModels(ctx context.Context, stitchedPrompt string)
 // This struct is crucial for the synthesis feature as it captures outputs
 // from multiple models so they can be combined by a synthesis model.
 type modelResult struct {
-	modelName string // Name of the processed model
-	content   string // Generated content from the model, which may be used for synthesis
-	err       error  // Any error encountered during processing
+	modelName string        // Name of the processed model
+	content   string        // Generated content from the model, which may be used for synthesis
+	err       error         // Any error encountered during processing
+	duration  time.Duration // Time taken to process this model
 }
 
 // processModelWithRateLimit processes a single model with rate limiting.
@@ -341,6 +357,9 @@ func (o *Orchestrator) processModelWithRateLimit(
 	var result modelResult
 	result.modelName = modelName
 
+	// Track total time including rate limiting
+	totalStart := time.Now()
+
 	// Get the appropriate rate limiter for this model (model-specific or global)
 	rateLimiter := o.getRateLimiterForModel(modelName)
 
@@ -352,6 +371,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 		result.err = llm.Wrap(err, "orchestrator",
 			fmt.Sprintf("failed to acquire rate limiter for model %s", modelName),
 			llm.CategoryRateLimit)
+		result.duration = time.Since(totalStart)
 		resultChan <- result
 		return
 	}
@@ -360,7 +380,7 @@ func (o *Orchestrator) processModelWithRateLimit(
 
 	// Report rate limiting delay if significant
 	if acquireDuration > 100*time.Millisecond {
-		o.consoleWriter.ModelRateLimited(index, len(o.config.ModelNames), modelName, acquireDuration)
+		o.consoleWriter.UpdateModelRateLimited(modelName, acquireDuration)
 	}
 
 	// Release rate limiter when done
@@ -369,8 +389,8 @@ func (o *Orchestrator) processModelWithRateLimit(
 		rateLimiter.Release()
 	}()
 
-	// Report model processing started
-	o.consoleWriter.ModelStarted(index, len(o.config.ModelNames), modelName)
+	// Update status to processing
+	o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusProcessing, 0, "")
 
 	// Create API service adapter and model processor
 	apiServiceAdapter := &APIServiceAdapter{APIService: o.apiService}
@@ -391,36 +411,11 @@ func (o *Orchestrator) processModelWithRateLimit(
 
 		// Preserve the detailed error instead of wrapping with generic message
 		result.err = err
+		result.duration = time.Since(totalStart)
 
-		// Show user-friendly error with suggestions if it's an LLMError
-		var errorMessage string
-		if llmErr, ok := err.(*llm.LLMError); ok {
-			// Create enhanced error message with suggestions for certain error types
-			switch llmErr.Category() {
-			case llm.CategoryAuth:
-				errorMessage = fmt.Sprintf("authentication failed\nTry: export %s=your_api_key", getAPIKeyEnvVarName(modelName))
-			case llm.CategoryRateLimit:
-				errorMessage = "rate limited\nTry: reduce concurrency with --max-concurrent=1"
-			case llm.CategoryInvalidRequest:
-				if strings.Contains(strings.ToLower(llmErr.Error()), "context") ||
-					strings.Contains(strings.ToLower(llmErr.Error()), "token") ||
-					strings.Contains(strings.ToLower(llmErr.Error()), "length") {
-					errorMessage = "input too large\nTry: --exclude \"docs/,*.md\" or focus on specific files"
-				} else {
-					errorMessage = "invalid request\nTry: check model name or reduce input size"
-				}
-			case llm.CategoryInsufficientCredits:
-				errorMessage = "insufficient credits\nTry: check your account balance or use a different model"
-			default:
-				errorMessage = llmErr.UserFacingError()
-			}
-		} else {
-			// Generic error message for non-LLM errors
-			errorMessage = err.Error()
-		}
-
-		// Report failed model to user
-		o.consoleWriter.ModelFailed(index, len(o.config.ModelNames), modelName, errorMessage)
+		// Update status to failed
+		errorMsg := o.getUserFriendlyErrorMessage(err, modelName)
+		o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusFailed, result.duration, errorMsg)
 
 		// Send result to channel
 		resultChan <- result
@@ -430,31 +425,38 @@ func (o *Orchestrator) processModelWithRateLimit(
 	// Log success
 	contextLogger.DebugContext(ctx, "Processing model %s completed successfully in %v", modelName, processingDuration)
 
-	// Store content
+	// Store content and duration
 	result.content = content
+	result.duration = time.Since(totalStart)
 
-	// Report success
-	o.consoleWriter.ModelCompleted(index, len(o.config.ModelNames), modelName, processingDuration)
+	// Update status to completed
+	o.consoleWriter.UpdateModelStatus(modelName, logutil.StatusCompleted, result.duration, "")
 
 	// Send result to channel
 	resultChan <- result
 }
 
-// getAPIKeyEnvVarName returns the environment variable name for the API key for a given model
-func getAPIKeyEnvVarName(modelName string) string {
-	modelInfo, err := models.GetModelInfo(modelName)
-	if err != nil {
-		return "API_KEY" // Generic fallback
+// getUserFriendlyErrorMessage creates a user-friendly error message with suggestions
+func (o *Orchestrator) getUserFriendlyErrorMessage(err error, modelName string) string {
+	if llmErr, ok := err.(*llm.LLMError); ok {
+		// Create enhanced error message with suggestions for certain error types
+		switch llmErr.Category() {
+		case llm.CategoryAuth:
+			return "authentication failed"
+		case llm.CategoryRateLimit:
+			return "rate limited"
+		case llm.CategoryInvalidRequest:
+			if strings.Contains(strings.ToLower(llmErr.Error()), "context") ||
+				strings.Contains(strings.ToLower(llmErr.Error()), "token") ||
+				strings.Contains(strings.ToLower(llmErr.Error()), "length") {
+				return "input too large"
+			}
+			return "invalid request"
+		case llm.CategoryInsufficientCredits:
+			return "insufficient credits"
+		default:
+			return "error"
+		}
 	}
-
-	switch modelInfo.Provider {
-	case "openai":
-		return "OPENAI_API_KEY"
-	case "gemini":
-		return "GEMINI_API_KEY"
-	case "openrouter":
-		return "OPENROUTER_API_KEY"
-	default:
-		return "API_KEY"
-	}
+	return "error"
 }

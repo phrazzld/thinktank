@@ -210,11 +210,12 @@ func TestProcessModelsWithErrorHandling_LogsTokenContext(t *testing.T) {
 	assert.Contains(t, mockLogger.Messages, "Analyzing 2 models with 1500 total input tokens (accuracy: tiktoken)")
 
 	// Verify that models with unknown info are skipped (new safety behavior)
-	assert.Contains(t, mockLogger.Messages, "Skipping model gpt-4 (1/2) - unable to get model info: unknown model: gpt-4")
-	assert.Contains(t, mockLogger.Messages, "Skipping model claude-3 (2/2) - unable to get model info: unknown model: claude-3")
+	// Note: models are now processed in alphabetical order, so claude-3 comes first
+	assert.Contains(t, mockLogger.Messages, "Skipping model claude-3 (1/2) - unable to get model info: unknown model: claude-3")
+	assert.Contains(t, mockLogger.Messages, "Skipping model gpt-4 (2/2) - unable to get model info: unknown model: gpt-4")
 
-	// Verify that incompatible models are properly logged
-	assert.Contains(t, mockLogger.Messages, "Skipped 2 incompatible models: [gpt-4 claude-3]")
+	// Verify that incompatible models are properly logged (in alphabetical order)
+	assert.Contains(t, mockLogger.Messages, "Skipped 2 incompatible models: [claude-3 gpt-4]")
 
 	// Verify that no compatible models results in appropriate error
 	assert.Contains(t, mockLogger.Messages, "no models are compatible with input size of 1,500 tokens")
