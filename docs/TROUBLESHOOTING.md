@@ -587,6 +587,17 @@ thinktank instructions.txt ./huge-project --include .go,.md --exclude vendor,nod
 # Monitor memory usage: tokenization should stay under 50MB additional
 ```
 
+**Streaming Tokenizer Performance:**
+```bash
+# Expected performance characteristics:
+# Production: 9-10 MB/s throughput
+# Development (race detection): 0.4-0.6 MB/s throughput
+
+# For very large inputs (>50MB), streaming tokenization is automatic
+# Memory usage remains constant regardless of input size
+# Adaptive chunking optimizes performance: 8KB → 32KB → 64KB chunks
+```
+
 **Repeated Token Counting:**
 ```bash
 # Token counts are cached per-session

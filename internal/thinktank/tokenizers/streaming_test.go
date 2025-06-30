@@ -186,6 +186,48 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 	}
 }
 
+// TestCalculateStreamingTimeout_ReflectsCIPerformance validates that timeout calculations
+// reflect realistic CI performance expectations based on empirical evidence
+func TestCalculateStreamingTimeout_ReflectsCIPerformance(t *testing.T) {
+	// Based on actual CI measurements with race detection:
+	// - 1MB in 2.29s = 0.44 MB/s
+	// - 10MB in 20.83s = 0.48 MB/s
+	// - 20MB in 39.79s = 0.50 MB/s
+	// Average performance is ~0.47 MB/s, so 0.5 MB/s is a realistic expectation
+
+	tests := []struct {
+		name               string
+		inputSizeBytes     int
+		maxExpectedTimeout time.Duration
+		reason             string
+	}{
+		{
+			name:               "20MB_should_use_realistic_0.5_MBps",
+			inputSizeBytes:     20 * 1024 * 1024,
+			maxExpectedTimeout: 75 * time.Second, // 20MB ÷ 0.5MB/s = 40s + 30s buffer = 70s (allow 75s)
+			reason:             "With 0.5 MB/s realistic performance, 20MB should timeout at ~70s, not 80s+",
+		},
+		{
+			name:               "50MB_should_use_realistic_0.5_MBps",
+			inputSizeBytes:     50 * 1024 * 1024,
+			maxExpectedTimeout: 135 * time.Second, // 50MB ÷ 0.5MB/s = 100s + 30s buffer = 130s (allow 135s)
+			reason:             "With 0.5 MB/s realistic performance, 50MB should timeout at ~130s, not 155s+",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			timeout := calculateStreamingTimeout(tt.inputSizeBytes)
+
+			assert.LessOrEqual(t, timeout, tt.maxExpectedTimeout,
+				"Timeout %v should be <= %v. %s", timeout, tt.maxExpectedTimeout, tt.reason)
+
+			t.Logf("Input: %d bytes, Timeout: %v, Reason: %s",
+				tt.inputSizeBytes, timeout, tt.reason)
+		})
+	}
+}
+
 // TestCalculateStreamingTimeout validates timeout calculation for various input sizes
 func TestCalculateStreamingTimeout(t *testing.T) {
 	tests := []struct {
@@ -209,14 +251,14 @@ func TestCalculateStreamingTimeout(t *testing.T) {
 		{
 			name:            "Large_20MB",
 			inputSizeBytes:  20 * 1024 * 1024,
-			expectedMinimum: 75 * time.Second, // Should be ~80s (50s + 30s buffer)
-			expectedMaximum: 85 * time.Second,
+			expectedMinimum: 65 * time.Second, // Should be ~70s (40s + 30s buffer)
+			expectedMaximum: 75 * time.Second,
 		},
 		{
 			name:            "Very_Large_50MB",
 			inputSizeBytes:  50 * 1024 * 1024,
-			expectedMinimum: 155 * time.Second, // Should be ~158s (125s + 30s buffer)
-			expectedMaximum: 165 * time.Second,
+			expectedMinimum: 125 * time.Second, // Should be ~130s (100s + 30s buffer)
+			expectedMaximum: 135 * time.Second,
 		},
 	}
 
@@ -240,11 +282,11 @@ func TestCalculateStreamingTimeout(t *testing.T) {
 // calculateStreamingTimeout calculates realistic timeout for streaming tokenization
 // Based on empirical performance data from CI with race detection enabled
 func calculateStreamingTimeout(inputSizeBytes int) time.Duration {
-	// Conservative performance expectation based on CI evidence:
+	// Realistic performance expectation based on CI evidence:
 	// - Local without race: ~0.5 MB/s
-	// - CI with race detection: ~0.4 MB/s
-	// Using 0.4 MB/s to handle worst-case CI environment
-	const bytesPerSecond = 400 * 1024 // 0.4 MB/s (empirical CI performance)
+	// - CI with race detection: ~0.5 MB/s (measured 0.44-0.50 MB/s actual)
+	// Using 0.5 MB/s based on empirical CI measurements
+	const bytesPerSecond = 512 * 1024 // 0.5 MB/s (empirical CI performance)
 	const bufferSeconds = 30          // Additional safety buffer
 	const minTimeoutSeconds = 60      // Minimum timeout regardless of size
 

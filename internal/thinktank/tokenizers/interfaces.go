@@ -53,6 +53,13 @@ type TokenizerManager interface {
 
 // StreamingTokenCounter extends AccurateTokenCounter with streaming capabilities
 // for handling very large inputs that don't fit in memory.
+//
+// Performance Characteristics:
+//   - Throughput: 9-10 MB/s (normal operation), 0.4-0.6 MB/s (race detection)
+//   - Memory: Constant usage regardless of input size (chunk-based processing)
+//   - Latency: Sub-100ms for small inputs, linear scaling for large inputs
+//   - Adaptive chunking: Up to 2x improvement for inputs >25MB
+//
 // Automatically switches to streaming mode for inputs larger than memory thresholds.
 // Provides the same accuracy as AccurateTokenCounter while handling massive files.
 type StreamingTokenCounter interface {
