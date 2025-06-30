@@ -2,6 +2,7 @@ package tokenizers
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -257,10 +258,197 @@ func calculateStreamingTimeout(inputSizeBytes int) time.Duration {
 	return time.Duration(timeoutSeconds) * time.Second
 }
 
+// TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize tests that the streaming tokenizer
+// uses appropriate chunk sizes based on input size for optimal performance
+func TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		inputSizeBytes int
+		expectedChunk  int
+	}{
+		{
+			name:           "Small_input_1MB_uses_8KB_chunks",
+			inputSizeBytes: 1024 * 1024, // 1MB
+			expectedChunk:  8 * 1024,    // 8KB
+		},
+		{
+			name:           "Medium_input_10MB_uses_32KB_chunks",
+			inputSizeBytes: 10 * 1024 * 1024, // 10MB
+			expectedChunk:  32 * 1024,        // 32KB
+		},
+		{
+			name:           "Large_input_50MB_uses_64KB_chunks",
+			inputSizeBytes: 50 * 1024 * 1024, // 50MB
+			expectedChunk:  64 * 1024,        // 64KB
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// This will FAIL initially (RED phase) - need GetChunkSizeForInput method
+			manager := NewStreamingTokenizerManager()
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			require.NoError(t, err)
+
+			// Cast to implementation to access chunk size method
+			if adaptiveTokenizer, ok := streamingTokenizer.(interface {
+				GetChunkSizeForInput(inputSizeBytes int) int
+			}); ok {
+				actualChunk := adaptiveTokenizer.GetChunkSizeForInput(tt.inputSizeBytes)
+				assert.Equal(t, tt.expectedChunk, actualChunk,
+					"Input size %d bytes should use %d byte chunks, got %d",
+					tt.inputSizeBytes, tt.expectedChunk, actualChunk)
+			} else {
+				t.Fatal("Streaming tokenizer does not implement adaptive chunking interface")
+			}
+		})
+	}
+}
+
+// TestStreamingTokenization_UsesBetterPerformanceWithAdaptiveChunking tests that
+// adaptive chunking provides better performance for large inputs
+func TestStreamingTokenization_UsesBetterPerformanceWithAdaptiveChunking(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name           string
+		inputSize      int
+		expectedFaster bool // Whether adaptive chunking should be faster
+	}{
+		{
+			name:           "Large_input_20MB_benefits_from_adaptive_chunking",
+			inputSize:      20 * 1024 * 1024, // 20MB
+			expectedFaster: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			manager := NewStreamingTokenizerManager()
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			require.NoError(t, err)
+
+			// Create large text for testing
+			text := strings.Repeat("The quick brown fox jumps over the lazy dog. ", tt.inputSize/46)
+
+			// Test regular streaming tokenization
+			reader1 := strings.NewReader(text)
+			ctx1, cancel1 := context.WithTimeout(context.Background(), calculateStreamingTimeout(tt.inputSize))
+			defer cancel1()
+
+			start1 := time.Now()
+			tokens1, err := streamingTokenizer.CountTokensStreaming(ctx1, reader1, "gpt-4")
+			duration1 := time.Since(start1)
+			require.NoError(t, err)
+
+			// Test adaptive chunking method
+			if adaptiveTokenizer, ok := streamingTokenizer.(interface {
+				CountTokensStreamingWithAdaptiveChunking(ctx context.Context, reader io.Reader, modelName string, inputSizeBytes int) (int, error)
+			}); ok {
+				reader2 := strings.NewReader(text)
+				ctx2, cancel2 := context.WithTimeout(context.Background(), calculateStreamingTimeout(tt.inputSize))
+				defer cancel2()
+
+				start2 := time.Now()
+				tokens2, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(ctx2, reader2, "gpt-4", tt.inputSize)
+				duration2 := time.Since(start2)
+				require.NoError(t, err)
+
+				// Verify token counts are reasonably close (chunking boundaries may cause small differences)
+				// Allow up to 1% difference due to tokenization boundary effects
+				tokenDiff := float64(abs(tokens1-tokens2)) / float64(tokens1)
+				assert.LessOrEqual(t, tokenDiff, 0.01,
+					"Token counts should be within 1%% (got %d vs %d, diff: %.2f%%)",
+					tokens1, tokens2, tokenDiff*100)
+				t.Logf("Token counts: regular=%d, adaptive=%d, diff=%.2f%%", tokens1, tokens2, tokenDiff*100)
+
+				// Log performance comparison
+				t.Logf("Regular streaming: %v (%.2f MB/s)", duration1, float64(tt.inputSize)/(1024*1024)/duration1.Seconds())
+				t.Logf("Adaptive chunking: %v (%.2f MB/s)", duration2, float64(tt.inputSize)/(1024*1024)/duration2.Seconds())
+
+				if tt.expectedFaster {
+					// Adaptive chunking should be faster or at least not significantly slower
+					// Allow for some variance in timing, but adaptive should be within 120% of regular
+					performanceRatio := float64(duration2) / float64(duration1)
+					assert.LessOrEqual(t, performanceRatio, 1.2,
+						"Adaptive chunking should not be significantly slower (ratio: %.2f)", performanceRatio)
+					t.Logf("Performance ratio (adaptive/regular): %.2f", performanceRatio)
+				}
+			} else {
+				t.Fatal("Streaming tokenizer does not implement adaptive chunking interface")
+			}
+		})
+	}
+}
+
+// BenchmarkAdaptiveChunkingPerformance benchmarks adaptive chunking vs regular streaming
+func BenchmarkAdaptiveChunkingPerformance(b *testing.B) {
+	sizes := []struct {
+		name string
+		size int
+	}{
+		{"5MB", 5 * 1024 * 1024},
+		{"20MB", 20 * 1024 * 1024},
+		{"50MB", 50 * 1024 * 1024},
+	}
+
+	for _, size := range sizes {
+		text := strings.Repeat("Benchmark content for adaptive chunking performance testing. ", size.size/64)
+
+		b.Run("Regular_"+size.name, func(b *testing.B) {
+			manager := NewStreamingTokenizerManager()
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			require.NoError(b, err)
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader := strings.NewReader(text)
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+
+		b.Run("Adaptive_"+size.name, func(b *testing.B) {
+			manager := NewStreamingTokenizerManager()
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			require.NoError(b, err)
+
+			adaptiveTokenizer := streamingTokenizer.(interface {
+				CountTokensStreamingWithAdaptiveChunking(ctx context.Context, reader io.Reader, modelName string, inputSizeBytes int) (int, error)
+			})
+
+			b.ResetTimer()
+			b.ReportAllocs()
+
+			for i := 0; i < b.N; i++ {
+				reader := strings.NewReader(text)
+				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4", size.size)
+				if err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+}
+
 // Helper function to format byte sizes for benchmark names
 func formatSize(bytes int) string {
 	if bytes >= 1024*1024 {
 		return string(rune('0'+bytes/(1024*1024))) + "MB"
 	}
 	return string(rune('0'+bytes/1024)) + "KB"
+}
+
+// Helper function to calculate absolute difference
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

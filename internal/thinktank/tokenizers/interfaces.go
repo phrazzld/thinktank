@@ -61,6 +61,17 @@ type StreamingTokenCounter interface {
 	// Useful for files too large to fit in memory (>50MB).
 	// Provides same accuracy as CountTokens but with streaming processing.
 	CountTokensStreaming(ctx context.Context, reader io.Reader, modelName string) (int, error)
+
+	// CountTokensStreamingWithAdaptiveChunking tokenizes content using adaptive chunk sizing.
+	// Uses input size to determine optimal chunk size for better performance:
+	// - Small inputs (<5MB): 8KB chunks for responsiveness
+	// - Medium inputs (5-25MB): 32KB chunks for balanced performance
+	// - Large inputs (>25MB): 64KB chunks for maximum throughput
+	CountTokensStreamingWithAdaptiveChunking(ctx context.Context, reader io.Reader, modelName string, inputSizeBytes int) (int, error)
+
+	// GetChunkSizeForInput returns the optimal chunk size based on input size.
+	// Implements adaptive chunking algorithm for performance optimization.
+	GetChunkSizeForInput(inputSizeBytes int) int
 }
 
 // TokenizerError represents errors from tokenization operations with enhanced categorization.
