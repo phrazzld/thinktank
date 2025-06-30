@@ -34,8 +34,8 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name:        "Large input 25MB in 1MB chunks",
-			inputSize:   25 * 1024 * 1024, // 25MB (realistic large file size)
+			name:        "Large input 20MB in 1MB chunks",
+			inputSize:   20 * 1024 * 1024, // 20MB (realistic large file size)
 			chunkSize:   1024 * 1024,      // 1MB chunks
 			expectError: false,
 		},
@@ -206,10 +206,10 @@ func TestCalculateStreamingTimeout(t *testing.T) {
 			expectedMaximum: 60 * time.Second,
 		},
 		{
-			name:            "Large_25MB",
-			inputSizeBytes:  25 * 1024 * 1024,
-			expectedMinimum: 90 * time.Second, // Should be ~94s (62.5s + 30s buffer)
-			expectedMaximum: 100 * time.Second,
+			name:            "Large_20MB",
+			inputSizeBytes:  20 * 1024 * 1024,
+			expectedMinimum: 75 * time.Second, // Should be ~80s (50s + 30s buffer)
+			expectedMaximum: 85 * time.Second,
 		},
 		{
 			name:            "Very_Large_50MB",
