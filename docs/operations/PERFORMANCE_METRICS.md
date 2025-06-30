@@ -194,10 +194,10 @@ The streaming tokenizer implements adaptive chunk sizing for optimal performance
 | Input Size Range | Chunk Size | Optimization Focus |
 |------------------|------------|-------------------|
 | **< 5MB** | 8KB | Responsiveness and quick cancellation |
-| **5MB - 25MB** | 32KB | Balanced performance and memory efficiency |
-| **> 25MB** | 64KB | Maximum throughput for large files |
+| **5MB - 20MB** | 32KB | Balanced performance and memory efficiency |
+| **> 20MB** | 64KB | Maximum throughput for large files |
 
-**Performance Improvement**: Up to 2x throughput improvement for inputs >25MB compared to fixed 8KB chunking.
+**Performance Improvement**: Up to 2x throughput improvement for inputs >20MB compared to fixed 8KB chunking.
 
 ### Memory Efficiency
 

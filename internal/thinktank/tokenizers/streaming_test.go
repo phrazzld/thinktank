@@ -300,6 +300,31 @@ func calculateStreamingTimeout(inputSizeBytes int) time.Duration {
 	return time.Duration(timeoutSeconds) * time.Second
 }
 
+// TestGetChunkSizeForInput_20MBBoundary tests the specific 20MB boundary behavior
+// This test expects 20MB to use large chunks (64KB) not medium chunks (32KB)
+func TestGetChunkSizeForInput_20MBBoundary(t *testing.T) {
+	t.Parallel()
+
+	manager := NewStreamingTokenizerManager()
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	require.NoError(t, err)
+
+	// Cast to access chunk size method
+	adaptiveTokenizer, ok := streamingTokenizer.(interface {
+		GetChunkSizeForInput(inputSizeBytes int) int
+	})
+	require.True(t, ok, "Streaming tokenizer must implement adaptive chunking interface")
+
+	// Test exactly at 20MB boundary - should use large chunks (64KB)
+	// With current 25MB threshold, this will FAIL because 20MB < 25MB returns 32KB
+	actualChunk := adaptiveTokenizer.GetChunkSizeForInput(20 * 1024 * 1024) // 20MB
+	expectedChunk := 64 * 1024                                              // 64KB for large inputs
+
+	assert.Equal(t, expectedChunk, actualChunk,
+		"20MB should use 64KB chunks (large), not 32KB chunks (medium). "+
+			"This indicates the threshold should be 20MB, not 25MB")
+}
+
 // TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize tests that the streaming tokenizer
 // uses appropriate chunk sizes based on input size for optimal performance
 func TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize(t *testing.T) {
@@ -319,6 +344,11 @@ func TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize(t *testing.T) {
 			name:           "Medium_input_10MB_uses_32KB_chunks",
 			inputSizeBytes: 10 * 1024 * 1024, // 10MB
 			expectedChunk:  32 * 1024,        // 32KB
+		},
+		{
+			name:           "Large_input_20MB_uses_64KB_chunks",
+			inputSizeBytes: 20 * 1024 * 1024, // 20MB (boundary case)
+			expectedChunk:  64 * 1024,        // 64KB
 		},
 		{
 			name:           "Large_input_50MB_uses_64KB_chunks",

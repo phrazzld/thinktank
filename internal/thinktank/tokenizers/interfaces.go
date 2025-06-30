@@ -58,7 +58,7 @@ type TokenizerManager interface {
 //   - Throughput: 9-10 MB/s (normal operation), 0.4-0.6 MB/s (race detection)
 //   - Memory: Constant usage regardless of input size (chunk-based processing)
 //   - Latency: Sub-100ms for small inputs, linear scaling for large inputs
-//   - Adaptive chunking: Up to 2x improvement for inputs >25MB
+//   - Adaptive chunking: Up to 2x improvement for inputs >20MB
 //
 // Automatically switches to streaming mode for inputs larger than memory thresholds.
 // Provides the same accuracy as AccurateTokenCounter while handling massive files.
@@ -72,8 +72,8 @@ type StreamingTokenCounter interface {
 	// CountTokensStreamingWithAdaptiveChunking tokenizes content using adaptive chunk sizing.
 	// Uses input size to determine optimal chunk size for better performance:
 	// - Small inputs (<5MB): 8KB chunks for responsiveness
-	// - Medium inputs (5-25MB): 32KB chunks for balanced performance
-	// - Large inputs (>25MB): 64KB chunks for maximum throughput
+	// - Medium inputs (5-20MB): 32KB chunks for balanced performance
+	// - Large inputs (>20MB): 64KB chunks for maximum throughput
 	CountTokensStreamingWithAdaptiveChunking(ctx context.Context, reader io.Reader, modelName string, inputSizeBytes int) (int, error)
 
 	// GetChunkSizeForInput returns the optimal chunk size based on input size.

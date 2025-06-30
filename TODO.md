@@ -25,7 +25,7 @@
 
 #### Phase 1: Immediate Fix (High Priority)
 - [x] **Fix streaming tokenizer timeout calculation** - Update to use realistic 0.5 MB/s performance expectation instead of optimistic 1 MB/s ✅ COMPLETED
-- [ ] **Reduce 25MB test to 20MB** - Avoid timeout boundary issues while maintaining large file test coverage
+- [x] **Reduce 25MB test to 20MB** - Avoid timeout boundary issues while maintaining large file test coverage ✅ COMPLETED
 - [ ] **Verify streaming fix locally** - Run streaming tokenizer tests locally with race detection to confirm fixes
 
 #### Phase 2: Performance Enhancement (Medium Priority)

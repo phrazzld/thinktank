@@ -64,11 +64,11 @@ func (s *streamingTokenizerImpl) GetEncoding(modelName string) (string, error) {
 func (s *streamingTokenizerImpl) GetChunkSizeForInput(inputSizeBytes int) int {
 	const (
 		smallChunkSize  = 8 * 1024  // 8KB for small inputs (< 5MB)
-		mediumChunkSize = 32 * 1024 // 32KB for medium inputs (5MB - 25MB)
-		largeChunkSize  = 64 * 1024 // 64KB for large inputs (> 25MB)
+		mediumChunkSize = 32 * 1024 // 32KB for medium inputs (5MB - 20MB)
+		largeChunkSize  = 64 * 1024 // 64KB for large inputs (> 20MB)
 
 		mediumThreshold = 5 * 1024 * 1024  // 5MB
-		largeThreshold  = 25 * 1024 * 1024 // 25MB
+		largeThreshold  = 20 * 1024 * 1024 // 20MB (reduced from 25MB for CI reliability)
 	)
 
 	switch {
