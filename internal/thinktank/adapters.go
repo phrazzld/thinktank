@@ -157,3 +157,108 @@ type FileWriterAdapter struct {
 func (f *FileWriterAdapter) SaveToFile(ctx context.Context, content, outputFile string) error {
 	return f.FileWriter.SaveToFile(ctx, content, outputFile)
 }
+
+// TokenCountingServiceAdapter adapts thinktank.TokenCountingService to interfaces.TokenCountingService
+// This allows the orchestrator to use the concrete TokenCountingService implementation
+// while depending only on the interface package.
+type TokenCountingServiceAdapter struct {
+	// The underlying TokenCountingService implementation
+	TokenCountingService TokenCountingService
+}
+
+// CountTokens adapts thinktank types to interfaces types and delegates to the underlying service
+func (t *TokenCountingServiceAdapter) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	// Convert interfaces types to thinktank types
+	thinktankReq := TokenCountingRequest{
+		Instructions:        req.Instructions,
+		Files:               convertFileContent(req.Files),
+		SafetyMarginPercent: req.SafetyMarginPercent,
+	}
+
+	// Call underlying service
+	result, err := t.TokenCountingService.CountTokens(ctx, thinktankReq)
+	if err != nil {
+		return interfaces.TokenCountingResult{}, err
+	}
+
+	// Convert result back to interfaces types
+	return interfaces.TokenCountingResult{
+		TotalTokens:       result.TotalTokens,
+		InstructionTokens: result.InstructionTokens,
+		FileTokens:        result.FileTokens,
+		Overhead:          result.Overhead,
+	}, nil
+}
+
+// CountTokensForModel adapts types and delegates to the underlying service
+func (t *TokenCountingServiceAdapter) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	// Convert interfaces types to thinktank types
+	thinktankReq := TokenCountingRequest{
+		Instructions:        req.Instructions,
+		Files:               convertFileContent(req.Files),
+		SafetyMarginPercent: req.SafetyMarginPercent,
+	}
+
+	// Call underlying service
+	result, err := t.TokenCountingService.CountTokensForModel(ctx, thinktankReq, modelName)
+	if err != nil {
+		return interfaces.ModelTokenCountingResult{}, err
+	}
+
+	// Convert result back to interfaces types
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{
+			TotalTokens:       result.TotalTokens,
+			InstructionTokens: result.InstructionTokens,
+			FileTokens:        result.FileTokens,
+			Overhead:          result.Overhead,
+		},
+		ModelName:     result.ModelName,
+		TokenizerUsed: result.TokenizerUsed,
+		Provider:      result.Provider,
+		IsAccurate:    result.IsAccurate,
+	}, nil
+}
+
+// GetCompatibleModels adapts types and delegates to the underlying service
+func (t *TokenCountingServiceAdapter) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	// Convert interfaces types to thinktank types
+	thinktankReq := TokenCountingRequest{
+		Instructions:        req.Instructions,
+		Files:               convertFileContent(req.Files),
+		SafetyMarginPercent: req.SafetyMarginPercent,
+	}
+
+	// Call underlying service
+	results, err := t.TokenCountingService.GetCompatibleModels(ctx, thinktankReq, availableProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert results back to interfaces types
+	interfaceResults := make([]interfaces.ModelCompatibility, len(results))
+	for i, result := range results {
+		interfaceResults[i] = interfaces.ModelCompatibility{
+			ModelName:     result.ModelName,
+			IsCompatible:  result.IsCompatible,
+			TokenCount:    result.TokenCount,
+			ContextWindow: result.ContextWindow,
+			UsableContext: result.UsableContext,
+			Provider:      result.Provider,
+			TokenizerUsed: result.TokenizerUsed,
+			IsAccurate:    result.IsAccurate,
+			Reason:        result.Reason,
+		}
+	}
+
+	return interfaceResults, nil
+}
+
+// convertFileContent converts interfaces.FileContent slice to thinktank.FileContent slice
+func convertFileContent(interfaceFiles []interfaces.FileContent) []FileContent {
+	thinktankFiles := make([]FileContent, len(interfaceFiles))
+	for i, file := range interfaceFiles {
+		thinktankFiles[i] = FileContent(file)
+	}
+	return thinktankFiles
+}

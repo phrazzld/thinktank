@@ -141,3 +141,104 @@ type AuditLogger interface {
 	// Close closes the audit logger
 	Close() error
 }
+
+// FileContent represents a single file's content for token counting.
+type FileContent struct {
+	// Path is the file path for identification and logging
+	Path string
+
+	// Content is the actual file content to count tokens for
+	Content string
+}
+
+// TokenCountingRequest contains all inputs needed for token counting.
+type TokenCountingRequest struct {
+	// Instructions text to be sent to the model
+	Instructions string
+
+	// Files contains all file content to be processed
+	Files []FileContent
+
+	// SafetyMarginPercent is the percentage of context window to reserve for output (0-50%)
+	// Default: 20% if not specified (0 value)
+	SafetyMarginPercent uint8
+}
+
+// TokenCountingResult provides detailed breakdown of token usage.
+type TokenCountingResult struct {
+	// TotalTokens is the sum of all token counts
+	TotalTokens int
+
+	// InstructionTokens is tokens used by instructions
+	InstructionTokens int
+
+	// FileTokens is tokens used by file content
+	FileTokens int
+
+	// Overhead includes formatting and structural tokens
+	Overhead int
+}
+
+// ModelTokenCountingResult provides model-specific token counting results.
+type ModelTokenCountingResult struct {
+	TokenCountingResult
+
+	// ModelName is the model this count was calculated for
+	ModelName string
+
+	// TokenizerUsed indicates which tokenization method was used
+	TokenizerUsed string // "tiktoken", "sentencepiece", "estimation"
+
+	// Provider is the LLM provider for the model
+	Provider string
+
+	// IsAccurate indicates if accurate tokenization was used (vs estimation)
+	IsAccurate bool
+}
+
+// ModelCompatibility provides detailed compatibility information for a model.
+type ModelCompatibility struct {
+	// ModelName is the name of the model being evaluated
+	ModelName string
+
+	// IsCompatible indicates if the model can handle the input
+	IsCompatible bool
+
+	// TokenCount is the actual token count for this model
+	TokenCount int
+
+	// ContextWindow is the model's maximum context size
+	ContextWindow int
+
+	// UsableContext is the context available after safety margin
+	UsableContext int
+
+	// Provider is the LLM provider for this model
+	Provider string
+
+	// TokenizerUsed indicates which tokenization method was used
+	TokenizerUsed string
+
+	// IsAccurate indicates if accurate tokenization was used
+	IsAccurate bool
+
+	// Reason explains why the model is incompatible (if applicable)
+	Reason string
+}
+
+// TokenCountingService provides accurate token counting and model filtering capabilities.
+// It replaces estimation-based model selection with precise token counting from
+// instructions and file content, enabling better model compatibility decisions.
+type TokenCountingService interface {
+	// CountTokens calculates total tokens for instructions and file content.
+	// Returns detailed breakdown of token usage for audit and logging purposes.
+	CountTokens(ctx context.Context, req TokenCountingRequest) (TokenCountingResult, error)
+
+	// CountTokensForModel calculates tokens using accurate tokenization for the specific model.
+	// Falls back to estimation if accurate tokenization is not available for the model.
+	CountTokensForModel(ctx context.Context, req TokenCountingRequest, modelName string) (ModelTokenCountingResult, error)
+
+	// GetCompatibleModels returns models that can handle the input with detailed compatibility information.
+	// Uses accurate token counting to determine which models can process the given request.
+	GetCompatibleModels(ctx context.Context, req TokenCountingRequest, availableProviders []string) ([]ModelCompatibility, error)
+}

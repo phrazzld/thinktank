@@ -14,6 +14,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
 	"github.com/phrazzld/thinktank/internal/thinktank"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // TestBoundarySynthesisFlowNew tests the complete flow with synthesis model using boundary mocks
@@ -40,8 +41,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	instructions := "Test instructions for synthesis"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"model1", "model2", "model3"}
-	synthesisModel := "synthesis-model"
+	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
+	synthesisModel := "gpt-4.1"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -67,9 +68,9 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"model1": "# Output from Model 1\n\nThis is test output from model1.",
-		"model2": "# Output from Model 2\n\nThis is test output from model2.",
-		"model3": "# Output from Model 3\n\nThis is test output from model3.",
+		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gpt-4.1":        "# Output from Model 2\n\nThis is test output from gpt-4o.",
+		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
 	}
 
 	// Expected synthesis output
@@ -77,15 +78,18 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 
 	// Configure mock API caller to return appropriate responses
 	mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// For synthesis model
-		if modelName == synthesisModel {
+		// Check if this is a synthesis call by looking for synthesis prompt structure
+		isSynthesisCall := strings.Contains(prompt, "<instructions>") && strings.Contains(prompt, "<model_outputs>")
+
+		// For synthesis calls (regardless of model name)
+		if isSynthesisCall {
 			return &llm.ProviderResult{
 				Content:      synthesisOutput,
 				FinishReason: "stop",
 			}, nil
 		}
 
-		// For regular models
+		// For regular individual model calls
 		if content, ok := mockOutputs[modelName]; ok {
 			return &llm.ProviderResult{
 				Content:      content,
@@ -132,6 +136,8 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a mock token counting service for integration testing
+	tokenCountingService := &MockTokenCountingService{}
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -141,6 +147,7 @@ func TestBoundarySynthesisFlowNew(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Run the orchestrator
@@ -215,8 +222,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	instructions := "Test instructions for synthesis with failures"
 
 	// Set up multiple model names and synthesis model
-	modelNames := []string{"model1", "model2", "model3"}
-	synthesisModel := "synthesis-model"
+	modelNames := []string{"o4-mini", "gpt-4.1", "gemini-2.5-pro"}
+	synthesisModel := "gpt-4.1"
 
 	// Parse log level
 	logLevel, _ := logutil.ParseLogLevel("debug")
@@ -237,11 +244,11 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	// Create logger
 	logger := logutil.NewTestLogger(t)
 
-	// Declare expected error patterns for model2 failure (this is part of the test scenario)
-	logger.ExpectError("Generation failed for model model2")
-	logger.ExpectError("Error generating content with model model2")
-	logger.ExpectError("Processing model model2 failed")
-	logger.ExpectError("model model2 processing failed")
+	// Declare expected error patterns for gpt-4.1 failure (this is part of the test scenario)
+	logger.ExpectError("Generation failed for model gpt-4.1")
+	logger.ExpectError("Error generating content with model gpt-4.1")
+	logger.ExpectError("Processing model gpt-4.1 failed")
+	logger.ExpectError("model gpt-4.1 processing failed")
 	logger.ExpectError("Completed with model errors")
 	logger.ExpectError("API rate limit exceeded")
 
@@ -250,8 +257,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Expected model outputs
 	mockOutputs := map[string]string{
-		"model1": "# Output from Model 1\n\nThis is test output from model1.",
-		"model3": "# Output from Model 3\n\nThis is test output from model3.",
+		"o4-mini":        "# Output from Model 1\n\nThis is test output from gpt-4o-mini.",
+		"gemini-2.5-pro": "# Output from Model 3\n\nThis is test output from gemini-2.5-pro.",
 	}
 
 	// Expected synthesis output
@@ -259,20 +266,23 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 
 	// Configure mock API caller to return appropriate responses
 	mockAPICaller.CallLLMAPIFunc = func(ctx context.Context, modelName, prompt string, params map[string]interface{}) (*llm.ProviderResult, error) {
-		// Simulate model2 failing
-		if modelName == "model2" {
-			return nil, &llm.MockError{
-				Message:       "API rate limit exceeded",
-				ErrorCategory: llm.CategoryRateLimit,
-			}
-		}
+		// Check if this is a synthesis call by looking for synthesis prompt structure
+		isSynthesisCall := strings.Contains(prompt, "<instructions>") && strings.Contains(prompt, "<model_outputs>")
 
-		// For synthesis model
-		if modelName == synthesisModel {
+		// For synthesis calls (regardless of model name)
+		if isSynthesisCall {
 			return &llm.ProviderResult{
 				Content:      synthesisOutput,
 				FinishReason: "stop",
 			}, nil
+		}
+
+		// Simulate gpt-4.1 failing for individual model calls only
+		if modelName == "gpt-4.1" {
+			return nil, &llm.MockError{
+				Message:       "API rate limit exceeded",
+				ErrorCategory: llm.CategoryRateLimit,
+			}
 		}
 
 		// For regular models
@@ -322,6 +332,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a mock token counting service for integration testing
+	tokenCountingService := &MockTokenCountingService{}
 	orch := thinktank.NewOrchestrator(
 		apiService,
 		contextGatherer,
@@ -331,6 +343,7 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 
 	// Run the orchestrator (expecting partial failure)
@@ -354,8 +367,8 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		t.Logf("Synthesis file was correctly created despite the failure")
 	}
 
-	// Verify that model1 and model3 output files were created
-	successfulModels := []string{"model1", "model3"}
+	// Verify that o4-mini and gemini-2.5-pro output files were created
+	successfulModels := []string{"o4-mini", "gemini-2.5-pro"}
 	for _, modelName := range successfulModels {
 		expectedFilePath := filepath.Join(outputDir, modelName+".md")
 		_, modelStatErr := os.Stat(expectedFilePath)
@@ -366,12 +379,30 @@ func TestBoundarySynthesisWithFailures(t *testing.T) {
 		}
 	}
 
-	// Verify model2 file was NOT created
-	failedModelPath := filepath.Join(outputDir, "model2.md")
+	// Verify gpt-4.1 file was NOT created
+	failedModelPath := filepath.Join(outputDir, "gpt-4.1.md")
 	_, modelStatErr := os.Stat(failedModelPath)
 	if !os.IsNotExist(modelStatErr) {
-		t.Errorf("File for failed model2 should not exist, but it does")
+		t.Errorf("File for failed gpt-4.1 should not exist, but it does")
 	} else {
-		t.Logf("Correctly verified that failed model2 has no output file")
+		t.Logf("Correctly verified that failed gpt-4.1 has no output file")
 	}
+}
+
+// MockTokenCountingService is a simple mock for integration testing
+type MockTokenCountingService struct{}
+
+func (m *MockTokenCountingService) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	return interfaces.TokenCountingResult{TotalTokens: 100}, nil
+}
+
+func (m *MockTokenCountingService) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: interfaces.TokenCountingResult{TotalTokens: 100},
+		ModelName:           modelName,
+	}, nil
+}
+
+func (m *MockTokenCountingService) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	return []interfaces.ModelCompatibility{}, nil
 }

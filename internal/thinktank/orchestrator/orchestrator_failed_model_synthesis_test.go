@@ -9,6 +9,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // TestSynthesizeResultsWithFailedModels verifies that the orchestrator
@@ -131,25 +132,25 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 	}{
 		{
 			name:                  "All models succeed, synthesis succeeds",
-			modelNames:            []string{"model1", "model2", "model3"},
+			modelNames:            []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"},
 			failingModels:         []string{},
-			synthesisModel:        "synthesis-model",
+			synthesisModel:        "gpt-4.1",
 			expectedModelCount:    3,
 			expectSynthesisCalled: true,
 		},
 		{
 			name:                  "Some models fail, synthesis proceeds with available outputs",
-			modelNames:            []string{"model1", "model2", "model3", "model4"},
-			failingModels:         []string{"model2", "model4"},
-			synthesisModel:        "synthesis-model",
+			modelNames:            []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro", "gemini-2.5-flash"},
+			failingModels:         []string{"o4-mini", "gemini-2.5-flash"},
+			synthesisModel:        "gpt-4.1",
 			expectedModelCount:    2,
 			expectSynthesisCalled: true,
 		},
 		{
 			name:                  "Most models fail, synthesis still proceeds with available output",
-			modelNames:            []string{"model1", "model2", "model3"},
-			failingModels:         []string{"model1", "model3"},
-			synthesisModel:        "synthesis-model",
+			modelNames:            []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"},
+			failingModels:         []string{"gpt-4.1", "gemini-2.5-pro"},
+			synthesisModel:        "o4-mini",
 			expectedModelCount:    1,
 			expectSynthesisCalled: true,
 		},
@@ -179,6 +180,12 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 				IsTerminalFunc: func() bool { return false }, // CI mode for tests
 			})
+			// Create a mock token counting service that reports models as compatible
+			// Use very low token count to ensure all models pass compatibility check
+			mockTokenService := &MockTokenCountingService{
+				CountTokensResult: interfaces.TokenCountingResult{TotalTokens: 10},
+			}
+
 			orch := NewOrchestrator(
 				mockAPIService,
 				mockContextGatherer,
@@ -188,6 +195,7 @@ func TestProcessModelsToSynthesis(t *testing.T) {
 				cfg,
 				logger,
 				consoleWriter,
+				mockTokenService,
 			)
 
 			// Create a custom mock synthesis service that tracks calls

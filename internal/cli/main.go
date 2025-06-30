@@ -46,16 +46,24 @@ func Main() {
 	simplifiedConfig, err := ParseSimpleArgs()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %s\n", err.Error())
+		fmt.Fprintln(os.Stderr, "\nRun 'thinktank --help' for usage information.")
 		osExit(ExitCodeInvalidRequest)
 	}
 
-	// Determine model selection strategy
-	modelNames, synthesisModel := selectModelsForConfig(simplifiedConfig)
+	// Handle help request
+	if simplifiedConfig.HelpRequested() {
+		PrintHelpToStdout()
+		osExit(ExitCodeSuccess)
+	}
+
+	// Determine model selection strategy using accurate tokenization
+	tokenService := thinktank.NewTokenCountingService()
+	modelNames, synthesisModel := selectModelsForConfigWithService(simplifiedConfig, tokenService)
 
 	// Convert to MinimalConfig
 	minimalConfig := &config.MinimalConfig{
 		InstructionsFile: simplifiedConfig.InstructionsFile,
-		TargetPaths:      []string{simplifiedConfig.TargetPath},
+		TargetPaths:      strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
 		ModelNames:       modelNames,
 		OutputDir:        "", // Will be set by output manager
 		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
@@ -117,8 +125,15 @@ func Main() {
 		contextLogger = logger.WithContext(ctx)
 	}
 
+	// Re-run model selection with audit logging now that we have context and audit logger
+	err = auditModelSelection(ctx, minimalConfig, contextLogger, simplifiedConfig, tokenService)
+	if err != nil {
+		contextLogger.WarnContext(ctx, "Model selection audit logging failed: %v", err)
+		// Continue with execution even if audit logging fails
+	}
+
 	// Run the application
-	err = runApplication(ctx, minimalConfig, contextLogger)
+	err = runApplication(ctx, minimalConfig, contextLogger, tokenService)
 	if err != nil {
 		handleError(ctx, err, contextLogger)
 	}
@@ -155,7 +170,7 @@ func setupGracefulShutdown(ctx context.Context, logger logutil.LoggerInterface) 
 }
 
 // runApplication executes the core application logic with MinimalConfig
-func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface) error {
+func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface, tokenService thinktank.TokenCountingService) error {
 	// Validate configuration
 	if err := validateConfig(cfg); err != nil {
 		return err
@@ -227,6 +242,7 @@ func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logut
 		adapterConfig,
 		logger,
 		consoleWriter,
+		tokenService,
 	)
 
 	// Run orchestrator
@@ -332,6 +348,27 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 		fmt.Printf("Target paths: %v\n", cfg.TargetPaths)
 		fmt.Printf("Models: %v\n", cfg.ModelNames)
 		fmt.Printf("Output directory: %s\n", cfg.OutputDir)
+
+		// Show tokenizer status as requested in TODO Phase 6.1
+		availableProviders := models.GetAvailableProviders()
+		var tokenizerStatus []string
+		for _, provider := range availableProviders {
+			switch provider {
+			case "openai":
+				tokenizerStatus = append(tokenizerStatus, "OpenAI (tiktoken)")
+			case "gemini":
+				tokenizerStatus = append(tokenizerStatus, "Gemini (sentencepiece)")
+			case "openrouter":
+				tokenizerStatus = append(tokenizerStatus, "OpenRouter (tiktoken-o200k)")
+			default:
+				tokenizerStatus = append(tokenizerStatus, fmt.Sprintf("%s (estimation)", provider))
+			}
+		}
+		if len(tokenizerStatus) > 0 {
+			fmt.Printf("Using accurate tokenization: %s\n", strings.Join(tokenizerStatus, ", "))
+		} else {
+			fmt.Println("Using accurate tokenization: none (no API keys available)")
+		}
 	}
 
 	if !cfg.IsQuiet() && cfg.SynthesisModel != "" {
@@ -582,6 +619,77 @@ func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string
 	// If no models were selected (shouldn't happen with safety margins), fall back to default
 	if len(selectedModels) == 0 {
 		return []string{config.DefaultModel}, ""
+	}
+
+	// If only one model and no forced synthesis, use single model mode
+	if len(selectedModels) == 1 && !forceSynthesis {
+		return selectedModels, ""
+	}
+
+	return selectedModels, synthesisModel
+}
+
+// selectModelsForConfigWithService intelligently selects models using TokenCountingService for accurate tokenization.
+// This replaces estimation-based model selection with accurate provider-aware tokenization.
+func selectModelsForConfigWithService(simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) ([]string, string) {
+	// Check if synthesis flag is explicitly set
+	forceSynthesis := simplifiedConfig.HasFlag(FlagSynthesis)
+
+	// Get available providers (those with API keys set)
+	availableProviders := models.GetAvailableProviders()
+	if len(availableProviders) == 0 {
+		// No API keys available, fall back to default model
+		return []string{config.DefaultModel}, ""
+	}
+
+	// Read instructions content for TokenCountingService
+	var instructionsContent string
+	if content, err := os.ReadFile(simplifiedConfig.InstructionsFile); err == nil {
+		instructionsContent = string(content)
+	} else {
+		// Fallback to empty instructions if file read fails
+		instructionsContent = ""
+	}
+
+	// For now, we can't read the actual target files without duplicating the context gathering logic
+	// So we'll use TokenCountingService with just instructions for accurate tokenization
+	// TODO: In future iterations, integrate with actual file content gathering
+	tokenReq := thinktank.TokenCountingRequest{
+		Instructions:        instructionsContent,
+		Files:               []thinktank.FileContent{}, // Empty for now - will be enhanced later
+		SafetyMarginPercent: simplifiedConfig.SafetyMargin,
+	}
+
+	// Use TokenCountingService to get compatible models with accurate tokenization
+	ctx := context.Background()
+	compatibleModels, err := tokenService.GetCompatibleModels(ctx, tokenReq, availableProviders)
+	if err != nil {
+		// Fallback to estimation-based approach if TokenCountingService fails
+		return selectModelsForConfig(simplifiedConfig)
+	}
+
+	// Extract compatible model names
+	var selectedModels []string
+	for _, model := range compatibleModels {
+		if model.IsCompatible {
+			selectedModels = append(selectedModels, model.ModelName)
+		}
+	}
+
+	// If no compatible models found, fallback to estimation approach
+	if len(selectedModels) == 0 {
+		return selectModelsForConfig(simplifiedConfig)
+	}
+
+	// Determine synthesis behavior
+	var synthesisModel string
+
+	// Use synthesis if:
+	// 1. Multiple models are selected, OR
+	// 2. --synthesis flag is explicitly set
+	if len(selectedModels) > 1 || forceSynthesis {
+		// Always use gemini-2.5-pro as the default synthesis model for predictable behavior
+		synthesisModel = "gemini-2.5-pro"
 	}
 
 	// If only one model and no forced synthesis, use single model mode

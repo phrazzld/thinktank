@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -18,46 +19,65 @@ func ParseSimpleArgs() (*SimplifiedConfig, error) {
 
 // ParseSimpleArgsWithArgs parses arguments with dependency injection for testing.
 // This enables comprehensive testing of the parsing logic without subprocess execution.
+// Supports multiple target paths: thinktank instructions.txt path1 path2 [flags...]
 func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
+	// Check for help flag early (handle empty args gracefully)
+	if len(args) > 1 {
+		for _, arg := range args[1:] {
+			if arg == "--help" || arg == "-h" {
+				return &SimplifiedConfig{
+					Flags: FlagHelp,
+				}, nil
+			}
+		}
+	}
+
 	if len(args) < 3 {
 		binary := "thinktank"
 		if len(args) > 0 {
 			binary = args[0]
 		}
-		return nil, fmt.Errorf("usage: %s instructions.txt target_path [flags...]", binary)
+		return nil, fmt.Errorf("usage: %s instructions.txt target_path... [flags...]", binary)
 	}
 
-	config := &SimplifiedConfig{
-		InstructionsFile: args[1],
-		TargetPath:       args[2],
-		Flags:            0,
-	}
+	// First pass: separate positional args from flags
+	var instructionsFile string
+	var targetPaths []string
+	flags := uint8(0)
+	safetyMargin := uint8(20) // Default 20% safety margin
 
-	// Single pass through remaining arguments - O(n) time complexity
-	for i := 3; i < len(args); i++ {
+	// Track if we've seen the instructions file
+	seenInstructions := false
+
+	// Single pass through all arguments - O(n) time complexity
+	for i := 1; i < len(args); i++ {
 		arg := args[i]
 
+		// Check if this is a flag
 		switch {
+		case arg == "--help" || arg == "-h":
+			flags |= FlagHelp
+
 		case arg == "--dry-run":
-			config.SetFlag(FlagDryRun)
+			flags |= FlagDryRun
 
 		case arg == "--verbose":
-			config.SetFlag(FlagVerbose)
+			flags |= FlagVerbose
 
 		case arg == "--synthesis":
-			config.SetFlag(FlagSynthesis)
+			flags |= FlagSynthesis
 
 		case arg == "--debug":
-			config.SetFlag(FlagDebug)
+			flags |= FlagDebug
 
 		case arg == "--quiet":
-			config.SetFlag(FlagQuiet)
+			flags |= FlagQuiet
 
 		case arg == "--json-logs":
-			config.SetFlag(FlagJsonLogs)
+			flags |= FlagJsonLogs
 
 		case arg == "--no-progress":
-			config.SetFlag(FlagNoProgress)
+			flags |= FlagNoProgress
 
 		case arg == "--model":
 			// --model flag requires a value
@@ -65,8 +85,6 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 				return nil, fmt.Errorf("--model flag requires a value")
 			}
 			i++ // Skip the model value - we use smart default in ToCliConfig()
-			// Note: The specific model is handled by ToCliConfig() for now
-			// This maintains the 33-byte SimplifiedConfig constraint
 
 		case arg == "--output-dir":
 			// --output-dir flag requires a value
@@ -74,7 +92,19 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 				return nil, fmt.Errorf("--output-dir flag requires a value")
 			}
 			i++ // Skip the output dir value - we use smart default in ToCliConfig()
-			// Note: The specific output dir is handled by ToCliConfig() for now
+
+		case arg == "--token-safety-margin":
+			// --token-safety-margin flag requires a value
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--token-safety-margin flag requires a value")
+			}
+			i++ // Move to next argument
+			marginValue := args[i]
+			parsedMargin, err := parseAndValidateSafetyMargin(marginValue)
+			if err != nil {
+				return nil, fmt.Errorf("invalid --token-safety-margin value: %w", err)
+			}
+			safetyMargin = parsedMargin
 
 		case strings.HasPrefix(arg, "--model="):
 			// Handle --model=value format
@@ -82,7 +112,6 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			if value == "" {
 				return nil, fmt.Errorf("--model flag requires a non-empty value")
 			}
-			// Value stored implicitly - handled by ToCliConfig()
 
 		case strings.HasPrefix(arg, "--output-dir="):
 			// Handle --output-dir=value format
@@ -90,17 +119,66 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 			if value == "" {
 				return nil, fmt.Errorf("--output-dir flag requires a non-empty value")
 			}
-			// Value stored implicitly - handled by ToCliConfig()
 
-		default:
+		case strings.HasPrefix(arg, "--token-safety-margin="):
+			// Handle --token-safety-margin=value format
+			value := strings.TrimPrefix(arg, "--token-safety-margin=")
+			if value == "" {
+				return nil, fmt.Errorf("--token-safety-margin flag requires a non-empty value")
+			}
+			parsedMargin, err := parseAndValidateSafetyMargin(value)
+			if err != nil {
+				return nil, fmt.Errorf("invalid --token-safety-margin value: %w", err)
+			}
+			safetyMargin = parsedMargin
+
+		case strings.HasPrefix(arg, "--"):
 			// Unknown flag - fail fast with clear error message
 			return nil, fmt.Errorf("unknown flag: %s", arg)
+
+		default:
+			// This is a positional argument
+			if !seenInstructions {
+				instructionsFile = arg
+				seenInstructions = true
+			} else {
+				targetPaths = append(targetPaths, arg)
+			}
 		}
 	}
 
-	// Validate the parsed configuration
-	if err := config.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+	// If help is requested, bypass validation
+	if flags&FlagHelp != 0 {
+		return &SimplifiedConfig{
+			Flags: flags,
+		}, nil
+	}
+
+	// Validate we have the required positional arguments
+	if instructionsFile == "" {
+		return nil, fmt.Errorf("instructions file required")
+	}
+	if len(targetPaths) == 0 {
+		return nil, fmt.Errorf("at least one target path required")
+	}
+
+	// Join multiple paths with spaces for SimplifiedConfig
+	// This maintains the 33-byte struct while supporting multiple paths
+	targetPath := strings.Join(targetPaths, " ")
+
+	config := &SimplifiedConfig{
+		InstructionsFile: instructionsFile,
+		TargetPath:       targetPath,
+		Flags:            flags,
+		SafetyMargin:     safetyMargin,
+	}
+
+	// Skip validation if help is requested
+	if !config.HelpRequested() {
+		// Validate the parsed configuration
+		if err := config.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid configuration: %w", err)
+		}
 	}
 
 	return config, nil
@@ -134,4 +212,23 @@ func (r *SimpleParseResult) MustConfig() *SimplifiedConfig {
 		panic(fmt.Sprintf("parsing failed: %v", r.Error))
 	}
 	return r.Config
+}
+
+// parseAndValidateSafetyMargin parses and validates a safety margin value.
+// The safety margin represents the percentage of context window reserved for output tokens.
+// Valid range: 0-50% (0 = no safety margin, 50 = half context reserved for output).
+// This prevents token overflow and ensures models have adequate output space.
+func parseAndValidateSafetyMargin(value string) (uint8, error) {
+	// Parse the string as an integer
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid syntax: %w", err)
+	}
+
+	// Validate range (0% to 50%)
+	if parsed < 0 || parsed > 50 {
+		return 0, fmt.Errorf("safety margin must be between 0%% and 50%%, got %d%%", parsed)
+	}
+
+	return uint8(parsed), nil
 }

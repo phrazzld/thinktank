@@ -22,6 +22,7 @@ func NewOrchestrator(
 	config *config.CliConfig,
 	logger logutil.LoggerInterface,
 	consoleWriter logutil.ConsoleWriter,
+	tokenCountingService interfaces.TokenCountingService,
 ) Orchestrator {
 	return orchestrator.NewOrchestrator(
 		apiService,
@@ -32,5 +33,6 @@ func NewOrchestrator(
 		config,
 		logger,
 		consoleWriter,
+		tokenCountingService,
 	)
 }

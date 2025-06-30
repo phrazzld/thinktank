@@ -141,7 +141,11 @@ func TestHandleOutputFlow(t *testing.T) {
 			},
 			synthesisFlowError: nil,
 			expectedSynthesis:  "/test/synthesis.md",
-			expectError:        false,
+			expectedIndividual: map[string]string{
+				"model1": "/test/output1.md",
+				"model2": "/test/output2.md",
+			},
+			expectError: false,
 		},
 		{
 			name:           "synthesis model - synthesis fails, fallback to individual",
@@ -242,6 +246,245 @@ func TestHandleOutputFlow(t *testing.T) {
 						t.Errorf("handleOutputFlow() missing IndividualFilePaths[%q]", model)
 					} else if actualPath != expectedPath {
 						t.Errorf("handleOutputFlow() IndividualFilePaths[%q] = %q, want %q", model, actualPath, expectedPath)
+					}
+				}
+			}
+		})
+	}
+}
+
+// TestHandleOutputFlow_DualRoleModel tests the critical edge case where a model
+// serves as both an individual processor AND the synthesis model. This test
+// prevents regression where the same model name could cause routing confusion.
+func TestHandleOutputFlow_DualRoleModel(t *testing.T) {
+	tests := []struct {
+		name                string
+		modelOutputs        map[string]string
+		synthesisModel      string
+		individualFlowError error
+		synthesisFlowError  error
+		expectedIndividual  map[string]string
+		expectedSynthesis   string
+		expectError         bool
+		expectedErrorType   string
+	}{
+		{
+			name: "dual role model - both individual and synthesis succeed",
+			modelOutputs: map[string]string{
+				"gpt-4.1":        "Individual analysis from gpt-4.1",
+				"claude-3":       "Analysis from claude-3",
+				"gemini-2.5-pro": "Analysis from gemini-2.5-pro",
+			},
+			synthesisModel: "gpt-4.1", // Same model serves dual role
+			expectedIndividual: map[string]string{
+				"gpt-4.1":        "/test/gpt-4.1.md",
+				"claude-3":       "/test/claude-3.md",
+				"gemini-2.5-pro": "/test/gemini-2.5-pro.md",
+			},
+			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectError:       false,
+		},
+		{
+			name: "dual role model - individual succeeds, synthesis fails",
+			modelOutputs: map[string]string{
+				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"claude-3": "Analysis from claude-3",
+			},
+			synthesisModel:      "gpt-4.1",
+			synthesisFlowError:  errors.New("synthesis rate limit exceeded"),
+			individualFlowError: nil,
+			expectedIndividual: map[string]string{
+				"gpt-4.1":  "/test/gpt-4.1.md",
+				"claude-3": "/test/claude-3.md",
+			},
+			expectedSynthesis: "",
+			expectError:       true,
+			expectedErrorType: "synthesis",
+		},
+		{
+			name: "dual role model - individual fails, synthesis succeeds",
+			modelOutputs: map[string]string{
+				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"claude-3": "Analysis from claude-3",
+			},
+			synthesisModel:      "gpt-4.1",
+			individualFlowError: errors.New("individual save failed"),
+			synthesisFlowError:  nil,
+			expectedSynthesis:   "/test/gpt-4.1-synthesis.md",
+			expectError:         true,
+			expectedErrorType:   "individual",
+		},
+		{
+			name: "single model serves dual role",
+			modelOutputs: map[string]string{
+				"gpt-4.1": "Analysis from gpt-4.1",
+			},
+			synthesisModel: "gpt-4.1",
+			expectedIndividual: map[string]string{
+				"gpt-4.1": "/test/gpt-4.1.md",
+			},
+			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectError:       false,
+		},
+		{
+			name: "dual role model - both individual and synthesis fail",
+			modelOutputs: map[string]string{
+				"gpt-4.1":  "Individual analysis from gpt-4.1",
+				"claude-3": "Analysis from claude-3",
+			},
+			synthesisModel:      "gpt-4.1",
+			individualFlowError: errors.New("individual save failed"),
+			synthesisFlowError:  errors.New("synthesis failed"),
+			expectError:         true,
+			expectedErrorType:   "synthesis", // synthesis error takes precedence
+		},
+		{
+			name: "synthesis model not in individual outputs",
+			modelOutputs: map[string]string{
+				"claude-3":       "Analysis from claude-3",
+				"gemini-2.5-pro": "Analysis from gemini-2.5-pro",
+			},
+			synthesisModel: "gpt-4.1", // Different from individual models
+			expectedIndividual: map[string]string{
+				"claude-3":       "/test/claude-3.md",
+				"gemini-2.5-pro": "/test/gemini-2.5-pro.md",
+			},
+			expectedSynthesis: "/test/gpt-4.1-synthesis.md",
+			expectError:       false,
+		},
+		{
+			name:              "empty model outputs with synthesis model",
+			modelOutputs:      map[string]string{}, // Empty
+			synthesisModel:    "gpt-4.1",
+			expectedSynthesis: "", // No synthesis when no model outputs
+			expectError:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create orchestrator with test dependencies
+			ctx := context.Background()
+			logger := testutil.NewMockLogger()
+			auditLogger := NewMockAuditLogger()
+			config := &config.CliConfig{
+				SynthesisModel: tt.synthesisModel,
+				OutputDir:      "/test",
+			}
+
+			// Create enhanced mock output writer
+			mockOutputWriter := &TestOutputWriter{
+				saveIndividualCount: len(tt.expectedIndividual),
+				saveIndividualPaths: tt.expectedIndividual,
+				saveIndividualError: tt.individualFlowError,
+				saveSynthesisPath:   tt.expectedSynthesis,
+				saveSynthesisError:  tt.synthesisFlowError,
+			}
+
+			// Create mock synthesis service
+			var mockSynthesisService SynthesisService
+			if tt.synthesisModel != "" {
+				mockSynthesisService = &MockSynthesisService{
+					synthesizeContent: "Synthesized content combining all model outputs",
+					synthesizeError:   tt.synthesisFlowError,
+				}
+			}
+
+			consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+				IsTerminalFunc: func() bool { return false }, // CI mode for tests
+			})
+
+			orchestrator := &Orchestrator{
+				logger:           logger,
+				auditLogger:      auditLogger,
+				config:           config,
+				consoleWriter:    consoleWriter,
+				outputWriter:     mockOutputWriter,
+				synthesisService: mockSynthesisService,
+			}
+
+			// Execute the method under test
+			instructions := "Analyze the provided data"
+			outputInfo, err := orchestrator.handleOutputFlow(ctx, instructions, tt.modelOutputs)
+
+			// Verify error expectations
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("handleOutputFlow() expected error but got nil")
+				} else {
+					// Verify error type if specified
+					if tt.expectedErrorType != "" {
+						if tt.expectedErrorType == "synthesis" && !strings.Contains(err.Error(), "synthesis") {
+							t.Errorf("Expected synthesis error, got: %v", err)
+						}
+						if tt.expectedErrorType == "individual" && !strings.Contains(err.Error(), "individual") {
+							t.Errorf("Expected individual error, got: %v", err)
+						}
+					}
+				}
+			} else {
+				if err != nil {
+					t.Errorf("handleOutputFlow() unexpected error: %v", err)
+				}
+			}
+
+			// Verify outputInfo is not nil
+			if outputInfo == nil {
+				t.Fatalf("handleOutputFlow() outputInfo = nil, want non-nil")
+			}
+
+			// Verify individual file paths
+			if tt.expectedIndividual != nil {
+				if len(outputInfo.IndividualFilePaths) != len(tt.expectedIndividual) {
+					t.Errorf("IndividualFilePaths length = %d, want %d",
+						len(outputInfo.IndividualFilePaths), len(tt.expectedIndividual))
+				}
+
+				for modelName, expectedPath := range tt.expectedIndividual {
+					if actualPath, exists := outputInfo.IndividualFilePaths[modelName]; !exists {
+						t.Errorf("Missing IndividualFilePaths[%q]", modelName)
+					} else if actualPath != expectedPath {
+						t.Errorf("IndividualFilePaths[%q] = %q, want %q",
+							modelName, actualPath, expectedPath)
+					}
+				}
+
+				// CRITICAL: Verify dual-role model appears in individual outputs
+				if tt.synthesisModel != "" {
+					if _, exists := tt.expectedIndividual[tt.synthesisModel]; exists {
+						if _, actualExists := outputInfo.IndividualFilePaths[tt.synthesisModel]; !actualExists {
+							t.Errorf("Dual-role model %q missing from IndividualFilePaths", tt.synthesisModel)
+						}
+					}
+				}
+			}
+
+			// Verify synthesis file path
+			if tt.expectedSynthesis != "" {
+				if outputInfo.SynthesisFilePath != tt.expectedSynthesis {
+					t.Errorf("SynthesisFilePath = %q, want %q",
+						outputInfo.SynthesisFilePath, tt.expectedSynthesis)
+				}
+			} else {
+				if outputInfo.SynthesisFilePath != "" {
+					t.Errorf("SynthesisFilePath = %q, want empty", outputInfo.SynthesisFilePath)
+				}
+			}
+
+			// CRITICAL: For dual-role scenarios, verify both outputs exist
+			if tt.synthesisModel != "" && tt.expectedSynthesis != "" {
+				// Check that synthesis model has both individual AND synthesis outputs
+				if individualPath, exists := outputInfo.IndividualFilePaths[tt.synthesisModel]; exists {
+					synthesisPath := outputInfo.SynthesisFilePath
+					if individualPath == synthesisPath {
+						t.Errorf("Dual-role model %q has same path for individual and synthesis: %q",
+							tt.synthesisModel, individualPath)
+					}
+
+					// Verify different file extensions/naming
+					if !strings.Contains(synthesisPath, "synthesis") {
+						t.Errorf("Synthesis path %q should contain 'synthesis' to distinguish from individual path %q",
+							synthesisPath, individualPath)
 					}
 				}
 			}

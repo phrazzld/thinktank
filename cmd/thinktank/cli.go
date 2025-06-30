@@ -97,6 +97,9 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 			modelNeedsOpenRouterKey = true
 		case "gemini":
 			modelNeedsGeminiKey = true
+		case "test":
+			// Test provider doesn't require API keys
+			logger.Debug("Test model %s doesn't require API key", model)
 		default:
 			logger.Warn("Unknown provider %s for model %s", provider, model)
 		}

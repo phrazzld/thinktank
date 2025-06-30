@@ -19,8 +19,12 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
 				"openrouter/meta-llama/llama-4-scout",
+				"synthesis-model",
 				"gemini-2.5-pro",
 				"gpt-4.1",
+				"model1",
+				"model2",
+				"model3",
 				"gemini-2.5-flash",
 				"o3",
 				"o4-mini",

@@ -325,9 +325,9 @@ func TestValidateParameter(t *testing.T) {
 }
 
 func TestParameterConstraints(t *testing.T) {
-	t.Parallel(
-	// Test that all models have parameter constraints defined
-	)
+	t.Parallel()
+	// Test that all production models have parameter constraints defined
+	// Skip test models used by integration tests
 
 	allModels := ListAllModels()
 
@@ -336,6 +336,11 @@ func TestParameterConstraints(t *testing.T) {
 			info, err := GetModelInfo(modelName)
 			if err != nil {
 				t.Fatalf("GetModelInfo(%s) failed: %v", modelName, err)
+			}
+
+			// Skip validation for test models
+			if info.Provider == "test" {
+				t.Skipf("Skipping parameter validation for test model %s", modelName)
 			}
 
 			// All models should have parameter constraints

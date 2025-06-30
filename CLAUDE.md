@@ -49,6 +49,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 * **Test Coverage:** Maintain 90% or higher code coverage for all packages
   * CI will fail if overall coverage drops below 90%
   * Use coverage scripts to identify coverage gaps before committing
+  * **Token Counting Testing:** Comprehensive testing for accurate tokenization
+    * Test both accurate tokenization (tiktoken for OpenAI) and estimation fallbacks
+    * Include performance benchmarks for large file sets (>100 files, >1MB total)
+    * Validate accuracy against OpenAI tokenizer playground for OpenAI models
+    * Test error paths and model compatibility edge cases
 * **Do not add your signature to commit messages**
 
 ## Testing Patterns and Guidelines

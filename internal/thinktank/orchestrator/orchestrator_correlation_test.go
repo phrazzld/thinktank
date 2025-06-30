@@ -8,6 +8,7 @@ import (
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/ratelimit"
+	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
 
 // TestCorrelationIDPropagation verifies that correlation IDs are properly
@@ -36,6 +37,11 @@ func TestCorrelationIDPropagation(t *testing.T) {
 	consoleWriter := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return false }, // CI mode for tests
 	})
+	// Create a simple mock token counting service
+	mockTokenService := &MockTokenCountingService{
+		CountTokensResult: interfaces.TokenCountingResult{TotalTokens: 100},
+	}
+
 	orchestrator := NewOrchestrator(
 		mockAPIService,
 		mockContextGatherer,
@@ -45,6 +51,7 @@ func TestCorrelationIDPropagation(t *testing.T) {
 		cfg,
 		logger,
 		consoleWriter,
+		mockTokenService,
 	)
 
 	// Run the orchestrator with an empty context

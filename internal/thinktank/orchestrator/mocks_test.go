@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/phrazzld/thinktank/internal/auditlog"
@@ -15,22 +16,40 @@ import (
 
 // Mock implementations needed for testing
 
-// MockLogger implements a minimal logger for testing
-type MockLogger struct{}
+// MockLogger implements a logger that captures messages for testing
+type MockLogger struct {
+	Messages []string
+	mu       sync.Mutex
+}
+
+func (m *MockLogger) captureMessage(format string, args ...interface{}) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.Messages == nil {
+		m.Messages = make([]string, 0)
+	}
+	m.Messages = append(m.Messages, fmt.Sprintf(format, args...))
+}
 
 func (m *MockLogger) Println(v ...interface{})                 {}
 func (m *MockLogger) Printf(format string, v ...interface{})   {}
 func (m *MockLogger) Debug(format string, args ...interface{}) {}
-func (m *MockLogger) Info(format string, args ...interface{})  {}
-func (m *MockLogger) Warn(format string, args ...interface{})  {}
-func (m *MockLogger) Error(format string, args ...interface{}) {}
+func (m *MockLogger) Info(format string, args ...interface{})  { m.captureMessage(format, args...) }
+func (m *MockLogger) Warn(format string, args ...interface{})  { m.captureMessage(format, args...) }
+func (m *MockLogger) Error(format string, args ...interface{}) { m.captureMessage(format, args...) }
 func (m *MockLogger) Fatal(format string, args ...interface{}) {}
 
 // Context-aware logging methods
 func (m *MockLogger) DebugContext(ctx context.Context, format string, args ...interface{}) {}
-func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{})  {}
-func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{})  {}
-func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {}
+func (m *MockLogger) InfoContext(ctx context.Context, format string, args ...interface{}) {
+	m.captureMessage(format, args...)
+}
+func (m *MockLogger) WarnContext(ctx context.Context, format string, args ...interface{}) {
+	m.captureMessage(format, args...)
+}
+func (m *MockLogger) ErrorContext(ctx context.Context, format string, args ...interface{}) {
+	m.captureMessage(format, args...)
+}
 func (m *MockLogger) FatalContext(ctx context.Context, format string, args ...interface{}) {}
 
 // WithContext returns the logger with context information
@@ -267,4 +286,31 @@ func (t *TestOutputWriter) SaveSynthesisOutput(ctx context.Context, content stri
 		return "", t.saveSynthesisError
 	}
 	return t.saveSynthesisPath, nil
+}
+
+// MockTokenCountingService implements TokenCountingService for testing
+type MockTokenCountingService struct {
+	CountTokensResult interfaces.TokenCountingResult
+	CountTokensError  error
+}
+
+func (m *MockTokenCountingService) CountTokens(ctx context.Context, req interfaces.TokenCountingRequest) (interfaces.TokenCountingResult, error) {
+	if m.CountTokensError != nil {
+		return interfaces.TokenCountingResult{}, m.CountTokensError
+	}
+	return m.CountTokensResult, nil
+}
+
+func (m *MockTokenCountingService) CountTokensForModel(ctx context.Context, req interfaces.TokenCountingRequest, modelName string) (interfaces.ModelTokenCountingResult, error) {
+	return interfaces.ModelTokenCountingResult{
+		TokenCountingResult: m.CountTokensResult,
+		ModelName:           modelName,
+		TokenizerUsed:       "tiktoken",
+		Provider:            "openai",
+		IsAccurate:          true,
+	}, m.CountTokensError
+}
+
+func (m *MockTokenCountingService) GetCompatibleModels(ctx context.Context, req interfaces.TokenCountingRequest, availableProviders []string) ([]interfaces.ModelCompatibility, error) {
+	return []interfaces.ModelCompatibility{}, nil
 }

@@ -69,6 +69,20 @@ repos:
         language: script
         files: ^\.github/workflows/.*\.(yml|yaml)$
         pass_filenames: false
+    -   id: go-build-check
+        name: Go Build Verification
+        entry: sh -c 'go build ./... >/dev/null 2>&1 || { echo "❌ Build failed - fix compilation errors before committing"; exit 1; }'
+        language: system
+        types: [go]
+        pass_filenames: false
+        description: Verify code compiles successfully before commit
+    -   id: fast-tokenizer-tests
+        name: Fast Tokenizer Performance Tests
+        entry: sh -c 'go test -short -timeout=30s ./internal/thinktank/tokenizers/... -run "TestStreamingTokenization_RespectsContextCancellation|TestOpenAITokenizer_CountTokens|TestGeminiTokenizer_CountTokens" || { echo "❌ Fast tokenizer tests failed - check for performance regressions"; exit 1; }'
+        language: system
+        types: [go]
+        pass_filenames: false
+        description: Run fast tokenizer tests to catch performance regressions early
     -   id: go-coverage-check
         name: Go Coverage Regression Check
         entry: scripts/check-coverage-cached.sh 80

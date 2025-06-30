@@ -138,3 +138,9 @@ AI_MODEL_SYNTHESIS.md
 main
 *.tmp
 .artifacts/
+internal/cli/testdata/
+
+# Task and TODO temporary files
+task.md
+TODO-*.md
+TASK-*.md

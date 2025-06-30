@@ -20,11 +20,11 @@ func TestComprehensiveE2EWorkflow(t *testing.T) {
 
 		// Test with multiple models from different providers
 		modelNames := []string{
-			"gpt-4o",          // OpenAI model
-			"gemini-1.5-pro",  // Google model
-			"claude-3-sonnet", // Anthropic model
+			"gpt-4.1",        // OpenAI model
+			"gemini-2.5-pro", // Google model
+			"o4-mini",        // OpenAI model
 		}
-		synthesisModel := "gpt-4o-mini" // Different model for synthesis
+		synthesisModel := "gpt-4.1" // Different model for synthesis
 
 		instructions := `# Comprehensive Test Instructions
 
@@ -43,7 +43,7 @@ Focus on providing practical, actionable insights for the development team.`
 
 		// === SETUP MODEL RESPONSES ===
 		modelResponses := map[string]string{
-			"gpt-4o": `# Architecture Analysis (GPT-4O)
+			"gpt-4.1": `# Architecture Analysis (GPT-4.1)
 
 ## System Design
 The codebase demonstrates a well-structured layered architecture with clear separation of concerns:
@@ -59,7 +59,7 @@ The codebase demonstrates a well-structured layered architecture with clear sepa
 - Provider-agnostic design enabling multi-LLM support
 - Clear dependency injection patterns`,
 
-			"gemini-1.5-pro": `# Code Quality Assessment (Gemini 1.5 Pro)
+			"gemini-2.5-pro": `# Code Quality Assessment (Gemini 2.5 Pro)
 
 ## Maintainability Score: A-
 
@@ -79,7 +79,7 @@ The codebase demonstrates a well-structured layered architecture with clear sepa
 - Code duplication: Minimal, good use of shared utilities
 - Naming conventions: Consistent and descriptive`,
 
-			"claude-3-sonnet": `# Security & Performance Analysis (Claude 3 Sonnet)
+			"o4-mini": `# Security & Performance Analysis (O4-Mini)
 
 ## Security Assessment
 
@@ -206,7 +206,7 @@ This analysis provides a clear foundation for continued development, balancing i
 func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 	IntegrationTestWithBoundaries(t, func(env *BoundaryTestEnv) {
 		// Test individual output workflow (no synthesis)
-		modelNames := []string{"gpt-4o", "claude-3-sonnet", "gemini-1.5-pro"}
+		modelNames := []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"}
 
 		instructions := "Generate individual technical analyses for each model."
 
@@ -214,9 +214,9 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		setupSourceFiles(t, env)
 
 		modelResponses := map[string]string{
-			"gpt-4o":          "# Individual Analysis - GPT-4O\n\nDetailed technical analysis from GPT-4O perspective.",
-			"claude-3-sonnet": "# Individual Analysis - Claude\n\nDetailed technical analysis from Claude perspective.",
-			"gemini-1.5-pro":  "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
+			"gpt-4.1":        "# Individual Analysis - GPT-4.1\n\nDetailed technical analysis from GPT-4.1 perspective.",
+			"o4-mini":        "# Individual Analysis - O4-Mini\n\nDetailed technical analysis from O4-Mini perspective.",
+			"gemini-2.5-pro": "# Individual Analysis - Gemini\n\nDetailed technical analysis from Gemini perspective.",
 		}
 
 		for model, response := range modelResponses {
@@ -244,8 +244,8 @@ func TestComprehensiveE2EWorkflowIndividualOutput(t *testing.T) {
 		// Verify no synthesis file was created
 		synthesisFiles := []string{
 			filepath.Join(outputDir, "synthesis.md"),
-			filepath.Join(outputDir, "gpt-4o-synthesis.md"),
-			filepath.Join(outputDir, "claude-3-sonnet-synthesis.md"),
+			filepath.Join(outputDir, "gpt-4.1-synthesis.md"),
+			filepath.Join(outputDir, "o4-mini-synthesis.md"),
 		}
 
 		for _, synthesisFile := range synthesisFiles {
@@ -270,8 +270,8 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 		env.ExpectError("Simulated model failure for rate limit testing")    // Part of detailed error chain
 		env.ExpectError("Completed with model errors")                       // Final error summary
 
-		modelNames := []string{"gpt-4o", "failing-model", "claude-3-sonnet"}
-		synthesisModel := "gpt-4o-mini"
+		modelNames := []string{"gpt-4.1", "failing-model", "o4-mini"}
+		synthesisModel := "gemini-2.5-pro"
 
 		instructions := "Test partial success handling with some model failures."
 
@@ -280,10 +280,12 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 
 		// Configure successful models
 		successfulResponses := map[string]string{
-			"gpt-4o":          "# Successful Analysis - GPT-4O\n\nThis model succeeded.",
-			"claude-3-sonnet": "# Successful Analysis - Claude\n\nThis model succeeded.",
-			"gpt-4o-mini":     "# Synthesis from Partial Success\n\nSynthesis from available models.",
+			"gpt-4.1": "# Successful Analysis - GPT-4.1\n\nThis model succeeded.",
+			"o4-mini": "# Successful Analysis - O4-Mini\n\nThis model succeeded.",
 		}
+
+		// Synthesis response
+		synthResponse := "# Synthesis from Partial Success\n\nSynthesis from available models."
 
 		// Configure models manually (don't use SetupModels to avoid default responses)
 		env.Config.ModelNames = modelNames
@@ -297,6 +299,13 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 					Message:       "Simulated model failure for rate limit testing",
 					ErrorCategory: llm.CategoryRateLimit,
 				}
+			}
+			// Return success for synthesis model
+			if modelName == synthesisModel {
+				return &llm.ProviderResult{
+					Content:      synthResponse,
+					FinishReason: "stop",
+				}, nil
 			}
 			// Return success for other models
 			if content, ok := successfulResponses[modelName]; ok {
@@ -329,14 +338,13 @@ func TestComprehensiveE2EWorkflowPartialSuccess(t *testing.T) {
 		// Verify successful models created output files
 		outputDir := env.Config.OutputDir
 		for model, expectedContent := range successfulResponses {
-			var expectedFilePath string
-			if model == synthesisModel {
-				expectedFilePath = filepath.Join(outputDir, model+"-synthesis.md")
-			} else {
-				expectedFilePath = filepath.Join(outputDir, model+".md")
-			}
+			expectedFilePath := filepath.Join(outputDir, model+".md")
 			VerifyFileContent(t, env, expectedFilePath, expectedContent)
 		}
+
+		// Verify synthesis file was created with correct content
+		synthesisFilePath := filepath.Join(outputDir, synthesisModel+"-synthesis.md")
+		VerifyFileContent(t, env, synthesisFilePath, synthResponse)
 
 		// Verify failed model did not create output file
 		failedModelFile := filepath.Join(outputDir, "failing-model.md")
