@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -351,6 +352,45 @@ func generatePredictableContent(sizeBytes int) string {
 	return result
 }
 
+// raceDetectionEnabled detects if Go race detection is enabled
+// This helps provide better context in test logging for CI debugging
+func raceDetectionEnabled() bool {
+	// Detection strategy: Use safe methods that don't create races
+
+	// Method 1: Environment variable check (can be set by CI)
+	if val, exists := os.LookupEnv("RACE_ENABLED"); exists && val == "true" {
+		return true
+	}
+
+	// Method 2: Check command line arguments
+	for _, arg := range os.Args {
+		if arg == "-test.race" || arg == "-race" {
+			return true
+		}
+	}
+
+	// Method 3: Simple performance heuristic without creating actual races
+	// Race detection typically slows down all operations significantly
+	start := time.Now()
+
+	// Perform CPU-intensive work that race detector will slow down
+	sum := 0
+	for i := 0; i < 100000; i++ {
+		sum += i * i
+	}
+
+	duration := time.Since(start)
+
+	// Race detector typically makes operations 2-10x slower
+	// This is a conservative threshold based on empirical observation
+	isUnusuallySlowExecution := duration > 50*time.Millisecond
+
+	// Method 4: Check for race-specific environment hints
+	_, hasGoRaceEnv := os.LookupEnv("GORACE")
+
+	return isUnusuallySlowExecution || hasGoRaceEnv
+}
+
 // TestStreamingTokenizer_PerformanceEnvelope validates that streaming tokenizer
 // performance stays within acceptable bounds for regression detection
 func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
@@ -361,24 +401,22 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 	require.NoError(t, err)
 
 	// Define performance envelope - minimum acceptable performance levels
+	// Uses environment-aware timeouts to account for race detection overhead
 	tests := []struct {
 		name              string
 		size              int
-		maxDuration       time.Duration
 		minThroughputKBps float64 // KB/s
 		maxMemoryMB       int64   // MB
 	}{
 		{
 			name:              "1MB_performance_envelope",
 			size:              1024 * 1024,
-			maxDuration:       5 * time.Second,
 			minThroughputKBps: 100, // 100 KB/s minimum
 			maxMemoryMB:       200, // 200MB max memory
 		},
 		{
 			name:              "10MB_performance_envelope",
 			size:              10 * 1024 * 1024,
-			maxDuration:       20 * time.Second,
 			minThroughputKBps: 200, // 200 KB/s minimum
 			maxMemoryMB:       500, // 500MB max memory
 		},
@@ -392,6 +430,14 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 
 			text := generatePredictableContent(tt.size)
 			reader := strings.NewReader(text)
+
+			// Use environment-aware timeout that accounts for race detection overhead
+			// This replaces the hardcoded timeouts that were causing CI failures
+			maxDuration := calculateStreamingTimeout(tt.size)
+			isRaceDetectionEnabled := raceDetectionEnabled()
+
+			t.Logf("Environment context: race_detection=%v, max_duration=%v, input_size=%s",
+				isRaceDetectionEnabled, maxDuration, formatSizeString(tt.size))
 
 			start := time.Now()
 			tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
@@ -407,9 +453,10 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 			throughputKBps := float64(tt.size) / 1024 / duration.Seconds()
 			memoryUsageMB := int64(m2.Alloc-m1.Alloc) / (1024 * 1024)
 
-			// Duration check
-			assert.LessOrEqual(t, duration, tt.maxDuration,
-				"Processing took %v, exceeded max %v", duration, tt.maxDuration)
+			// Duration check - now uses realistic environment-aware timeout
+			assert.LessOrEqual(t, duration, maxDuration,
+				"Processing took %v, exceeded environment-aware max %v (race_detection=%v)",
+				duration, maxDuration, isRaceDetectionEnabled)
 
 			// Throughput check
 			assert.GreaterOrEqual(t, throughputKBps, tt.minThroughputKBps,
@@ -421,8 +468,8 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 				"Memory usage %d MB exceeded max %d MB",
 				memoryUsageMB, tt.maxMemoryMB)
 
-			t.Logf("✅ Performance within envelope: %.2f KB/s, %v duration, %d MB memory",
-				throughputKBps, duration, memoryUsageMB)
+			t.Logf("✅ Performance within envelope: %.2f KB/s, %v duration, %d MB memory (expected max: %v)",
+				throughputKBps, duration, memoryUsageMB, maxDuration)
 		})
 	}
 }
