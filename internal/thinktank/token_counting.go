@@ -450,5 +450,9 @@ func shouldSwap(a, b interfaces.ModelCompatibility) bool {
 		return !a.IsCompatible // a comes after b if a is not compatible but b is
 	}
 	// Within same compatibility, larger context windows come first
-	return a.ContextWindow < b.ContextWindow
+	if a.ContextWindow != b.ContextWindow {
+		return a.ContextWindow < b.ContextWindow
+	}
+	// For models with same compatibility and context window, sort by name for deterministic ordering
+	return a.ModelName > b.ModelName
 }
