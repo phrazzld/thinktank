@@ -128,7 +128,7 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Fix streaming tokenization tests
 - [x] Fix remaining tokenizer manager tests for OpenRouter-only architecture
 - [ ] Fix streaming test compatibility issues (streaming_test.go:101)
-- [ ] Fix token counting compatibility tests for OpenRouter-only providers  
+- [ ] Fix token counting compatibility tests for OpenRouter-only providers
 - [ ] Restore pre-commit hook compliance (blocked on above test fixes)
 - [ ] Update coverage expectations for removed provider code
 
