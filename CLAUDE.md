@@ -54,9 +54,9 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 ```
 
 ### Token Counting Testing
-* Test both tiktoken (OpenAI) and estimation fallbacks
+* Test tiktoken (OpenRouter uses tiktoken-o200k for all models)
 * Include performance benchmarks for >100 files, >1MB
-* Validate against OpenAI tokenizer playground
+* Validate against OpenAI tokenizer playground for reference
 
 ## Critical Constraints
 

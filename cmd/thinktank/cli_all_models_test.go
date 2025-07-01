@@ -418,7 +418,7 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 				expectedError = "openAI API key not set"
 			case "openrouter":
 				expectedEnvVar = "OPENROUTER_API_KEY"
-				expectedError = "openRouter API key not set"
+				expectedError = "OpenRouter API key not set - get your key at https://openrouter.ai/keys"
 			case "test":
 				// Test provider doesn't require API keys
 				expectedEnvVar = ""
@@ -613,7 +613,7 @@ func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 			models:        []string{openRouterModel, geminiModel},
 			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
 		},
 		{
 			name:          "Missing multiple keys",

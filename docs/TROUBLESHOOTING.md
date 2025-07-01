@@ -31,25 +31,7 @@ thinktank --dry-run --instructions task.txt ./your-project
 
 ### Quick Solutions
 
-#### OpenAI Authentication
-```bash
-# Check if API key is set
-echo $OPENAI_API_KEY
-
-# Key should start with 'sk-' and be ~51 characters
-# If missing or incorrect:
-export OPENAI_API_KEY="sk-your-actual-openai-key-here"
-```
-
-#### Gemini Authentication
-```bash
-# Check if API key is set
-echo $GEMINI_API_KEY
-
-# Key should be ~40 characters long
-# If missing or incorrect:
-export GEMINI_API_KEY="your-actual-gemini-key-here"
-```
+All models now use OpenRouter for unified API access.
 
 #### OpenRouter Authentication
 ```bash
@@ -59,34 +41,29 @@ echo $OPENROUTER_API_KEY
 # Key should start with 'sk-or-' and be ~64 characters
 # If missing or incorrect:
 export OPENROUTER_API_KEY="sk-or-your-actual-openrouter-key-here"
+
+# Get your key at: https://openrouter.ai/keys
 ```
+
+**Migration Note**: If you have old `OPENAI_API_KEY` or `GEMINI_API_KEY` environment variables set, the tool will display helpful migration messages guiding you to use `OPENROUTER_API_KEY` instead.
 
 ### Advanced Diagnostics
 
 #### Check API Key Validity
 ```bash
-# Test OpenAI key
-curl -H "Authorization: Bearer $OPENAI_API_KEY" \
-  https://api.openai.com/v1/models
-
-# Test Gemini key
-curl "https://generativelanguage.googleapis.com/v1/models?key=$GEMINI_API_KEY"
-
-# Test OpenRouter key
+# Test OpenRouter key (all models now use this)
 curl -H "Authorization: Bearer $OPENROUTER_API_KEY" \
   https://openrouter.ai/api/v1/models
 ```
 
 #### Common Auth Issues
 
-| Provider | Issue | Solution |
-|----------|-------|----------|
-| OpenAI | Key expired/invalid | Visit [OpenAI Platform](https://platform.openai.com/account/api-keys) to regenerate |
-| OpenAI | Account suspended | Check [usage dashboard](https://platform.openai.com/account/usage) for account status |
-| Gemini | Key restrictions | Verify API restrictions in [Google AI Studio](https://makersuite.google.com/) |
-| Gemini | Wrong project | Ensure key is from correct Google Cloud project |
-| OpenRouter | Wrong key format | OpenRouter keys start with 'sk-or-', not 'sk-' |
-| OpenRouter | Account not activated | Check [OpenRouter account](https://openrouter.ai/account) status |
+| Issue | Solution |
+|-------|----------|
+| Key expired/invalid | Visit [OpenRouter](https://openrouter.ai/keys) to regenerate |
+| Wrong key format | OpenRouter keys start with 'sk-or-', not 'sk-' |
+| Account not activated | Check [OpenRouter account](https://openrouter.ai/account) status |
+| Insufficient credits | Add credits to your [OpenRouter account](https://openrouter.ai/account) |
 
 ---
 
@@ -650,8 +627,6 @@ When reporting issues, include:
    uname -a
 
    # API key status (DO NOT include actual keys)
-   echo "OpenAI key set: $([ -n "$OPENAI_API_KEY" ] && echo "YES" || echo "NO")"
-   echo "Gemini key set: $([ -n "$GEMINI_API_KEY" ] && echo "YES" || echo "NO")"
    echo "OpenRouter key set: $([ -n "$OPENROUTER_API_KEY" ] && echo "YES" || echo "NO")"
    ```
 

@@ -4,7 +4,7 @@ This document explains how thinktank integrates with OpenRouter, a unified gatew
 
 ## Overview
 
-thinktank supports OpenRouter as a first-class provider alongside OpenAI and Gemini. OpenRouter allows you to access a wide range of models from providers like DeepSeek, Anthropic, xAI (Grok), and others through a single API with a consistent interface.
+thinktank now uses OpenRouter exclusively as its unified provider. OpenRouter provides access to models from OpenAI, Google (Gemini), DeepSeek, Anthropic, xAI (Grok), and other providers through a single API with a consistent interface.
 
 The OpenRouter integration in thinktank includes:
 - Hardcoded model definitions for reliability and simplicity
@@ -31,15 +31,25 @@ The key can also be passed programmatically when creating a new client, but the 
 
 ### Model Configuration
 
-OpenRouter models are hardcoded in `internal/models/models.go` for reliability and simplicity. The current supported OpenRouter models include:
+All models are now defined in `internal/models/models.go` and use OpenRouter for access. The current supported models include:
 
+**OpenAI Models (via OpenRouter):**
+- `gpt-4.1` (openai/gpt-4.1) - GPT-4.1 model
+- `o4-mini` (openai/o4-mini) - O4 Mini model  
+- `o3` (openai/o3) - O3 model
+
+**Google Models (via OpenRouter):**
+- `gemini-2.5-flash` (google/gemini-2.5-flash) - Gemini 2.5 Flash model
+- `gemini-2.5-pro` (google/gemini-2.5-pro) - Gemini 2.5 Pro model
+
+**Native OpenRouter Models:**
 - `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek Chat model with 65k context
 - `openrouter/deepseek/deepseek-r1` - DeepSeek R1 model with 131k context
 - `openrouter/x-ai/grok-3-beta` - xAI's Grok model with 131k context
 
 Each model is defined with:
-- Provider set to `openrouter`
-- API model ID for the actual OpenRouter API calls (e.g., `deepseek/deepseek-r1`)
+- Provider always set to `openrouter` (unified architecture)
+- API model ID for OpenRouter API calls (e.g., `openai/gpt-4.1`, `google/gemini-2.5-pro`, `deepseek/deepseek-r1`)
 - Context window and max output token limits
 - Default parameters like temperature and top_p
 
@@ -50,39 +60,44 @@ To add new OpenRouter models, edit the `ModelDefinitions` map in `internal/model
 ### Basic Usage
 
 ```bash
-# Use an OpenRouter model
-thinktank --instructions task.txt --model openrouter/deepseek/deepseek-r1 ./src
+# Use any model (all models now use OpenRouter)
+thinktank task.txt ./src --model gpt-4.1
+thinktank task.txt ./src --model gemini-2.5-pro
+thinktank task.txt ./src --model openrouter/deepseek/deepseek-r1
 
-# Compare outputs from multiple providers
-thinktank --instructions task.txt \
-  --model gemini-2.5-pro \
-  --model gpt-4-turbo \
-  --model openrouter/x-ai/grok-3-beta \
-  ./src
+# Simplified interface with automatic model selection
+thinktank task.txt ./src
+
+# Force synthesis mode for multi-model analysis
+thinktank task.txt ./src --synthesis
 ```
 
 ### Model Selection
 
-OpenRouter provides access to many models. Here are some examples included in the default configuration:
+All models are now accessed through OpenRouter's unified API:
 
-- `openrouter/deepseek/deepseek-chat-v3-0324` - DeepSeek Chat model with 64k context
-- `openrouter/deepseek/deepseek-r1` - DeepSeek R1 model with 128k context
-- `openrouter/x-ai/grok-3-beta` - xAI's Grok model with 131k context
+**Popular Models:**
+- `gpt-4.1` - OpenAI's GPT-4.1 model via OpenRouter
+- `gemini-2.5-pro` - Google's Gemini 2.5 Pro via OpenRouter  
+- `openrouter/deepseek/deepseek-r1` - DeepSeek R1 with reasoning capabilities
+- `openrouter/x-ai/grok-3-beta` - xAI's Grok model
 
-You can add more models by editing the `ModelDefinitions` map in `internal/models/models.go`.
+**Adding New Models:**
+Edit the `ModelDefinitions` map in `internal/models/models.go` with `Provider: "openrouter"` and the appropriate OpenRouter model ID.
 
 ## Implementation Details
 
 ### Provider Implementation
 
-The OpenRouter provider is implemented in `internal/providers/openrouter/provider.go`. It:
-1. Implements the `Provider` interface from `internal/providers/provider.go`
-2. Creates OpenRouter clients configured with appropriate API keys and endpoints
-3. Validates model IDs to ensure they follow the required format
+The OpenRouter provider is the sole provider implementation. It:
+1. Implements the unified Provider interface 
+2. Creates OpenRouter clients configured with the `OPENROUTER_API_KEY`
+3. Handles all model access through OpenRouter's API endpoints
+4. Validates model IDs for all supported models
 
 ### Client Implementation
 
-The OpenRouter client is implemented in `internal/providers/openrouter/client.go`. Key features:
+The unified OpenRouter client handles all model requests. Key features:
 
 1. **Request Parameters**: Local parameter handling for thread safety during concurrent requests
 2. **API Mapping**: Maps thinktank's parameter format to OpenRouter's API format
@@ -105,7 +120,7 @@ Parameters are defined in the default configuration in `internal/models/models.g
 
 ## Error Handling
 
-The OpenRouter integration includes sophisticated error handling in `internal/providers/openrouter/errors.go` that:
+The unified error handling system provides:
 
 1. Categorizes errors into standard types (auth, rate limit, invalid request, etc.)
 2. Provides detailed error messages with context about what went wrong

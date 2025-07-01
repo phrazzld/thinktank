@@ -19,9 +19,9 @@ const (
 	// Default values
 	DefaultOutputFile      = "PLAN.md"
 	DefaultModel           = "gemini-2.5-pro"
-	APIKeyEnvVar           = "GEMINI_API_KEY"
-	APIEndpointEnvVar      = "GEMINI_API_URL"
-	OpenAIAPIKeyEnvVar     = "OPENAI_API_KEY"
+	APIKeyEnvVar           = "GEMINI_API_KEY" // Deprecated: kept for backward compatibility only
+	APIEndpointEnvVar      = "GEMINI_API_URL" // Deprecated: kept for backward compatibility only
+	OpenAIAPIKeyEnvVar     = "OPENAI_API_KEY" // Deprecated: kept for backward compatibility only
 	OpenRouterAPIKeyEnvVar = "OPENROUTER_API_KEY"
 	DefaultFormat          = "<{path}>\n```\n{content}\n```\n</{path}>\n\n"
 
@@ -201,17 +201,19 @@ func NewDefaultCliConfig() *CliConfig {
 func (c *CliConfig) GetProviderRateLimit(provider string) int {
 	// Check provider-specific override first
 	switch provider {
-	case "openai":
-		if c.OpenAIRateLimit > 0 {
-			return c.OpenAIRateLimit
-		}
-	case "gemini":
-		if c.GeminiRateLimit > 0 {
-			return c.GeminiRateLimit
-		}
 	case "openrouter":
 		if c.OpenRouterRateLimit > 0 {
 			return c.OpenRouterRateLimit
+		}
+	case "test":
+		// Test provider always uses global settings
+	default:
+		// Obsolete providers (openai, gemini) - check legacy overrides for backward compatibility
+		if provider == "openai" && c.OpenAIRateLimit > 0 {
+			return c.OpenAIRateLimit
+		}
+		if provider == "gemini" && c.GeminiRateLimit > 0 {
+			return c.GeminiRateLimit
 		}
 	}
 
@@ -232,31 +234,10 @@ func ValidateConfig(config *CliConfig, logger logutil.LoggerInterface) error {
 	return ValidateConfigWithEnv(config, logger, os.Getenv)
 }
 
-// isStandardOpenAIModel checks if a model name corresponds to a standard OpenAI model
-// that requires an OpenAI API key, as opposed to custom models with similar prefixes
+// isStandardOpenAIModel is deprecated - all models now use OpenRouter after consolidation.
+// This function is kept for backward compatibility only and always returns false.
 func isStandardOpenAIModel(model string) bool {
-	lowerModel := strings.ToLower(model)
-
-	// Standard OpenAI models
-	standardModels := []string{
-		"gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini", "gpt-4.1",
-		"gpt-3.5-turbo", "text-davinci-003", "text-davinci-002",
-		"davinci", "curie", "babbage", "ada",
-		"o3", "o4-mini",
-	}
-
-	// Check for exact matches or standard model patterns
-	for _, standard := range standardModels {
-		if lowerModel == standard || strings.HasPrefix(lowerModel, standard+"-") {
-			return true
-		}
-	}
-
-	// Also check for explicit openai references
-	if strings.Contains(lowerModel, "openai") {
-		return true
-	}
-
+	// All OpenAI models now use OpenRouter provider after consolidation
 	return false
 }
 
@@ -301,56 +282,28 @@ func ValidateConfigWithEnv(config *CliConfig, logger logutil.LoggerInterface, ge
 		return fmt.Errorf("missing required --instructions flag")
 	}
 
-	// Check for API key based on model configuration
-	modelNeedsOpenAIKey := false
-	modelNeedsGeminiKey := false
+	// All models now use OpenRouter after consolidation, except test models
 	modelNeedsOpenRouterKey := false
 
-	// Check if any model is OpenAI, Gemini, or OpenRouter
+	// Check if any non-test model is being used
 	for _, model := range config.ModelNames {
-		if isStandardOpenAIModel(model) {
-			modelNeedsOpenAIKey = true
-		} else if strings.Contains(strings.ToLower(model), "openrouter") {
+		if !strings.Contains(strings.ToLower(model), "test") {
 			modelNeedsOpenRouterKey = true
-		} else {
-			// Default to Gemini for any other model
-			modelNeedsGeminiKey = true
+			break
 		}
 	}
 
 	// Also check synthesis model if specified
-	if config.SynthesisModel != "" {
-		if isStandardOpenAIModel(config.SynthesisModel) {
-			modelNeedsOpenAIKey = true
-		} else if strings.Contains(strings.ToLower(config.SynthesisModel), "openrouter") {
-			modelNeedsOpenRouterKey = true
-		} else {
-			// Default to Gemini for any other model
-			modelNeedsGeminiKey = true
-		}
+	if config.SynthesisModel != "" && !strings.Contains(strings.ToLower(config.SynthesisModel), "test") {
+		modelNeedsOpenRouterKey = true
 	}
 
-	// API key validation based on model requirements (skip in dry run mode)
-	if config.APIKey == "" && modelNeedsGeminiKey && !config.DryRun {
-		logError("%s environment variable not set.", APIKeyEnvVar)
-		return fmt.Errorf("gemini API key not set")
-	}
-
-	// If any OpenAI model is used, check for OpenAI API key (skip in dry run mode)
-	if modelNeedsOpenAIKey && !config.DryRun {
-		openAIKey := getenv(OpenAIAPIKeyEnvVar)
-		if openAIKey == "" {
-			logError("%s environment variable not set.", OpenAIAPIKeyEnvVar)
-			return fmt.Errorf("openAI API key not set")
-		}
-	}
-
-	// If any OpenRouter model is used, check for OpenRouter API key (skip in dry run mode)
+	// API key validation - only check for OpenRouter key (skip in dry run mode)
 	if modelNeedsOpenRouterKey && !config.DryRun {
 		openRouterKey := getenv(OpenRouterAPIKeyEnvVar)
 		if openRouterKey == "" {
 			logError("%s environment variable not set.", OpenRouterAPIKeyEnvVar)
-			return fmt.Errorf("openRouter API key not set")
+			return fmt.Errorf("API key not set: please set %s", OpenRouterAPIKeyEnvVar)
 		}
 	}
 

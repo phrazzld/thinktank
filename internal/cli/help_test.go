@@ -92,9 +92,8 @@ func TestPrintHelp_ContainsEssentialInformation(t *testing.T) {
 		// Examples
 		"EXAMPLES:",
 		"thinktank instructions.md ./src",
-		// Environment variables
-		"GEMINI_API_KEY",
-		"OPENAI_API_KEY",
+		// Environment variables (OpenRouter only after consolidation)
+		"OPENROUTER_API_KEY",
 		// Troubleshooting
 		"TROUBLESHOOTING:",
 	}
@@ -129,7 +128,41 @@ func TestPrintHelp_ProperFormatting(t *testing.T) {
 	assert.True(t, strings.HasSuffix(helpText, "\n"))
 }
 
-// Test 6: Integration - Main handles help correctly
+// Test 6: Help text should not reference obsolete provider-specific tokenization
+func TestPrintHelp_NoObsoleteProviderReferences(t *testing.T) {
+	t.Parallel()
+
+	var buf bytes.Buffer
+	PrintHelp(&buf)
+	helpText := buf.String()
+
+	// Should not contain references to provider-specific tokenization
+	obsoleteReferences := []string{
+		"tiktoken for OpenAI",
+		"SentencePiece for Gemini",
+		"OpenAI models: tiktoken",
+		"Gemini models: SentencePiece",
+	}
+
+	for _, reference := range obsoleteReferences {
+		assert.NotContains(t, helpText, reference,
+			"Help text should not contain obsolete provider reference: %s", reference)
+	}
+
+	// Should contain updated OpenRouter-focused language
+	shouldContain := []string{
+		"OPENROUTER_API_KEY",
+		"All models now use OpenRouter",
+		"https://openrouter.ai/keys",
+	}
+
+	for _, content := range shouldContain {
+		assert.Contains(t, helpText, content,
+			"Help text should contain OpenRouter reference: %s", content)
+	}
+}
+
+// Test 7: Integration - Main handles help correctly
 func TestMain_HelpFlagExitsWithZero(t *testing.T) {
 	// Save original values
 	oldArgs := os.Args

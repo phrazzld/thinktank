@@ -44,14 +44,10 @@ func (m *tokenizerManagerImpl) GetTokenizer(provider string) (AccurateTokenCount
 	// Create new tokenizer based on provider
 	var tokenizer AccurateTokenCounter
 	switch provider {
-	case "openai":
-		tokenizer = NewOpenAITokenizer()
-	case "gemini":
-		tokenizer = NewGeminiTokenizer()
 	case "openrouter":
 		tokenizer = NewOpenRouterTokenizer()
 	default:
-		return nil, NewTokenizerErrorWithDetails(provider, "", "unsupported provider", nil, "unknown")
+		return nil, NewTokenizerErrorWithDetails(provider, "", "unsupported provider (only OpenRouter is supported after consolidation)", nil, "unknown")
 	}
 
 	// Cache the tokenizer for future use
@@ -62,26 +58,18 @@ func (m *tokenizerManagerImpl) GetTokenizer(provider string) (AccurateTokenCount
 // SupportsProvider returns true if accurate tokenization is available for the provider.
 func (m *tokenizerManagerImpl) SupportsProvider(provider string) bool {
 	switch provider {
-	case "openai":
-		return true
-	case "gemini":
-		return true // Adding SentencePiece support
 	case "openrouter":
 		return true
 	default:
-		return false
+		return false // Only OpenRouter is supported after provider consolidation
 	}
 }
 
 // ClearCache clears all cached tokenizers to free memory.
 func (m *tokenizerManagerImpl) ClearCache() {
 	m.tokenizerCache.Range(func(key, value interface{}) bool {
-		// Clear individual tokenizer caches if they support it
-		if tokenizer, ok := value.(*OpenAITokenizer); ok {
-			tokenizer.ClearCache()
-		} else if tokenizer, ok := value.(*GeminiTokenizer); ok {
-			tokenizer.ClearCache()
-		}
+		// Note: OpenRouter tokenizer wraps OpenAI tokenizer internally
+		// The internal tokenizer will be garbage collected when the wrapper is deleted
 		m.tokenizerCache.Delete(key)
 		return true
 	})

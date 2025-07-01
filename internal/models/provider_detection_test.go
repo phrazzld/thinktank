@@ -18,41 +18,41 @@ func TestGetAvailableProviders(t *testing.T) {
 		{
 			name:        "no API keys set",
 			envVars:     map[string]string{},
-			expected:    []string{},
-			description: "Should return empty list when no API keys are set",
+			expected:    []string{"test"},
+			description: "Should return only test provider when no API keys are set",
 		},
 		{
-			name: "only OpenAI API key set",
+			name: "only obsolete OpenAI API key set",
 			envVars: map[string]string{
 				"OPENAI_API_KEY": "sk-test123",
 			},
-			expected:    []string{"openai"},
-			description: "Should return only openai when only OPENAI_API_KEY is set",
+			expected:    []string{"test"},
+			description: "Should return only test provider when obsolete OPENAI_API_KEY is set",
 		},
 		{
-			name: "only Gemini API key set",
+			name: "only obsolete Gemini API key set",
 			envVars: map[string]string{
 				"GEMINI_API_KEY": "gemini-test-key",
 			},
-			expected:    []string{"gemini"},
-			description: "Should return only gemini when only GEMINI_API_KEY is set",
+			expected:    []string{"test"},
+			description: "Should return only test provider when obsolete GEMINI_API_KEY is set",
 		},
 		{
 			name: "only OpenRouter API key set",
 			envVars: map[string]string{
 				"OPENROUTER_API_KEY": "sk-or-test",
 			},
-			expected:    []string{"openrouter"},
-			description: "Should return only openrouter when only OPENROUTER_API_KEY is set",
+			expected:    []string{"openrouter", "test"},
+			description: "Should return openrouter and test when only OPENROUTER_API_KEY is set",
 		},
 		{
-			name: "OpenAI and Gemini keys set",
+			name: "obsolete OpenAI and Gemini keys set",
 			envVars: map[string]string{
 				"OPENAI_API_KEY": "sk-test123",
 				"GEMINI_API_KEY": "gemini-test",
 			},
-			expected:    []string{"openai", "gemini"},
-			description: "Should return both openai and gemini when both keys are set",
+			expected:    []string{"test"},
+			description: "Should return only test when obsolete openai and gemini keys are set",
 		},
 		{
 			name: "all three API keys set",
@@ -61,8 +61,8 @@ func TestGetAvailableProviders(t *testing.T) {
 				"GEMINI_API_KEY":     "gemini-test",
 				"OPENROUTER_API_KEY": "sk-or-test",
 			},
-			expected:    []string{"openai", "gemini", "openrouter"},
-			description: "Should return all three providers when all keys are set",
+			expected:    []string{"openrouter", "test"},
+			description: "Should return openrouter and test when all keys are set (obsolete keys ignored)",
 		},
 		{
 			name: "empty string API key should be ignored",
@@ -70,8 +70,8 @@ func TestGetAvailableProviders(t *testing.T) {
 				"OPENAI_API_KEY": "",
 				"GEMINI_API_KEY": "valid-key",
 			},
-			expected:    []string{"gemini"},
-			description: "Should ignore empty string API keys",
+			expected:    []string{"test"},
+			description: "Should return only test when empty and obsolete API keys are set",
 		},
 		{
 			name: "whitespace-only API key should not be ignored",
@@ -79,8 +79,8 @@ func TestGetAvailableProviders(t *testing.T) {
 				"OPENAI_API_KEY": "  ",
 				"GEMINI_API_KEY": "valid-key",
 			},
-			expected:    []string{"openai", "gemini"},
-			description: "Should count whitespace-only API keys as valid (per implementation)",
+			expected:    []string{"test"},
+			description: "Should return only test when obsolete API keys are set (even whitespace)",
 		},
 		{
 			name: "unknown environment variables ignored",
@@ -89,8 +89,8 @@ func TestGetAvailableProviders(t *testing.T) {
 				"OPENROUTER_API_KEY": "sk-or-test",
 				"UNKNOWN_API_KEY":    "should-be-ignored",
 			},
-			expected:    []string{"openai", "openrouter"},
-			description: "Should only return providers with valid keys, ignoring unknown env vars",
+			expected:    []string{"openrouter", "test"},
+			description: "Should return openrouter and test, ignoring obsolete and unknown env vars",
 		},
 		{
 			name: "case sensitivity test",
@@ -100,8 +100,8 @@ func TestGetAvailableProviders(t *testing.T) {
 				"Gemini_Api_Key": "mixed-case-ignored",
 				"GEMINI_API_KEY": "gemini-correct",
 			},
-			expected:    []string{"openai", "gemini"},
-			description: "Should only recognize exact case environment variable names",
+			expected:    []string{"test"},
+			description: "Should return only test when obsolete API keys are set (case sensitivity doesn't matter for obsolete)",
 		},
 	}
 
@@ -177,6 +177,12 @@ func TestGetAvailableProviders(t *testing.T) {
 			// Verify all returned providers have valid API keys (consistent with implementation)
 			for _, provider := range result {
 				envVar := GetAPIKeyEnvVar(provider)
+
+				// Special case: "test" provider doesn't require an API key
+				if provider == "test" && envVar == "" {
+					continue // This is expected behavior for test provider
+				}
+
 				if envVar == "" {
 					t.Errorf("GetAvailableProviders() returned provider %s but GetAPIKeyEnvVar() returned empty string", provider)
 					continue
@@ -201,14 +207,14 @@ func TestGetAPIKeyEnvVar(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "openai provider",
+			name:     "openai provider (obsolete)",
 			provider: "openai",
-			expected: "OPENAI_API_KEY",
+			expected: "", // Obsolete provider returns empty string
 		},
 		{
-			name:     "gemini provider",
+			name:     "gemini provider (obsolete)",
 			provider: "gemini",
-			expected: "GEMINI_API_KEY",
+			expected: "", // Obsolete provider returns empty string
 		},
 		{
 			name:     "openrouter provider",
@@ -258,29 +264,29 @@ func TestGetProviderForModel(t *testing.T) {
 		errorMessage string
 	}{
 		{
-			name:      "openai model gpt-4.1",
+			name:      "openai model gpt-4.1 (migrated to openrouter)",
 			modelName: "gpt-4.1",
-			expected:  "openai",
+			expected:  "openrouter",
 		},
 		{
-			name:      "openai model o3",
+			name:      "openai model o3 (migrated to openrouter)",
 			modelName: "o3",
-			expected:  "openai",
+			expected:  "openrouter",
 		},
 		{
-			name:      "openai model o4-mini",
+			name:      "openai model o4-mini (migrated to openrouter)",
 			modelName: "o4-mini",
-			expected:  "openai",
+			expected:  "openrouter",
 		},
 		{
-			name:      "gemini model",
+			name:      "gemini model (migrated to openrouter)",
 			modelName: "gemini-2.5-pro",
-			expected:  "gemini",
+			expected:  "openrouter",
 		},
 		{
-			name:      "gemini flash model",
+			name:      "gemini flash model (migrated to openrouter)",
 			modelName: "gemini-2.5-flash",
-			expected:  "gemini",
+			expected:  "openrouter",
 		},
 		{
 			name:      "openrouter model",

@@ -81,8 +81,11 @@ openaiModels := models.ListModelsForProvider("openai")
 Returns the environment variable name for a provider's API key.
 
 ```go
-envVar := models.GetAPIKeyEnvVar("openai")
-// "OPENAI_API_KEY"
+envVar := models.GetAPIKeyEnvVar("openrouter")
+// "OPENROUTER_API_KEY"
+
+envVar := models.GetAPIKeyEnvVar("openai")  // Obsolete provider
+// "" (empty string - provider no longer supported)
 ```
 
 #### `IsModelSupported(name string) bool`
