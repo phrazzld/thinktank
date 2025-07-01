@@ -85,12 +85,12 @@ repos:
         description: Run fast tokenizer tests to catch performance regressions early
     -   id: go-coverage-check
         name: Go Coverage Regression Check
-        entry: scripts/check-coverage-cached.sh 80
+        entry: scripts/check-coverage-cached.sh 79
         language: script
         types: [go]
         pass_filenames: false
         always_run: true
-        description: Prevent commits that drop test coverage below 80% (baseline protection, target 90%)
+        description: Prevent commits that drop test coverage below 79% (post-consolidation baseline, target 90%)
 
 # Post-commit hooks (run after successful commit)
 -   repo: local

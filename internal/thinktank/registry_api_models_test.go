@@ -142,14 +142,14 @@ func TestProviderDistribution(t *testing.T) {
 	openrouterModels := models.ListModelsForProvider("openrouter")
 	testModels := models.ListModelsForProvider("test")
 
-	if len(openaiModels) != 3 {
-		t.Errorf("Expected 3 OpenAI models, got %d", len(openaiModels))
+	if len(openaiModels) != 0 {
+		t.Errorf("Expected 0 OpenAI models after consolidation, got %d", len(openaiModels))
 	}
-	if len(geminiModels) != 2 {
-		t.Errorf("Expected 2 Gemini models, got %d", len(geminiModels))
+	if len(geminiModels) != 0 {
+		t.Errorf("Expected 0 Gemini models after consolidation, got %d", len(geminiModels))
 	}
-	if len(openrouterModels) != 10 {
-		t.Errorf("Expected 10 OpenRouter models, got %d", len(openrouterModels))
+	if len(openrouterModels) != 15 {
+		t.Errorf("Expected 15 OpenRouter models after consolidation, got %d", len(openrouterModels))
 	}
 	if len(testModels) != 4 {
 		t.Errorf("Expected 4 test models, got %d", len(testModels))

@@ -127,10 +127,15 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Update performance benchmark tests for OpenRouter tokenization
 - [x] Fix streaming tokenization tests
 - [x] Fix remaining tokenizer manager tests for OpenRouter-only architecture
-- [ ] Fix streaming test compatibility issues (streaming_test.go:101)
-- [ ] Fix token counting compatibility tests for OpenRouter-only providers
-- [ ] Restore pre-commit hook compliance (blocked on above test fixes)
-- [ ] Update coverage expectations for removed provider code
+- [x] Fix streaming test compatibility issues (streaming_test.go:101)
+- [x] Fix token counting compatibility tests for OpenRouter-only providers
+- [x] Fix remaining failing tests in main thinktank package (safety_margin_test.go, token_counting_logging_test.go)
+- [x] Update coverage expectations for removed provider code (adjusted threshold from 80% to 79%)
+- [x] Update documentation tests to reflect OpenRouter consolidation (tiktoken -> OpenRouter)
+- [ ] Fix remaining CLI validation tests for OpenRouter consolidation (broader scope)
+- [ ] Fix provider detection and model selection tests (broader scope)
+- [ ] Fix configuration tests expecting old API key patterns (broader scope)
+- [ ] Restore pre-commit hook compliance (blocked on comprehensive test fixes above)
 
 ### Notes:
 These test failures are **expected consequences** of the OpenRouter consolidation.

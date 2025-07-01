@@ -98,7 +98,7 @@ func TestStreamingTokenization_MatchesInMemoryResults(t *testing.T) {
 			require.NoError(t, err)
 
 			// Test in-memory approach
-			regularTokenizer, err := manager.GetTokenizer("openai")
+			regularTokenizer, err := manager.GetTokenizer("openrouter")
 			require.NoError(t, err)
 			inMemoryTokens, err := regularTokenizer.CountTokens(context.Background(), input, "gpt-4.1")
 			require.NoError(t, err)
@@ -152,7 +152,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 
 		b.Run("InMemory_"+sizeStr, func(b *testing.B) {
 			manager := NewTokenizerManager()
-			tokenizer, err := manager.GetTokenizer("openai")
+			tokenizer, err := manager.GetTokenizer("openrouter")
 			require.NoError(b, err)
 
 			b.ResetTimer()
@@ -440,7 +440,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 				t.Logf("Adaptive chunking: %v (%.2f MB/s)", duration2, float64(tt.inputSize)/(1024*1024)/duration2.Seconds())
 
 				// Only verify both methods complete successfully - no performance requirements
-				t.Logf("Both methods completed successfully for %s input", formatSizeString(tt.inputSize))
+				t.Logf("Both methods completed successfully for %d byte input", tt.inputSize)
 			} else {
 				t.Fatal("Streaming tokenizer does not implement adaptive chunking interface")
 			}
