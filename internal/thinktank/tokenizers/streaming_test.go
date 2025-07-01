@@ -46,7 +46,7 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create streaming tokenizer manager - this will FAIL (RED phase)
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(t, err)
 
 			// Create a large text stream
@@ -59,7 +59,7 @@ func TestStreamingTokenization_HandlesLargeInputs(t *testing.T) {
 			defer cancel()
 
 			start := time.Now()
-			tokens, err := streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4")
+			tokens, err := streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4.1")
 			duration := time.Since(start)
 
 			if tt.expectError {
@@ -89,18 +89,18 @@ func TestStreamingTokenization_MatchesInMemoryResults(t *testing.T) {
 		t.Run(string(rune('A'+i)), func(t *testing.T) {
 			// This will FAIL initially (RED phase) - need streaming implementation
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(t, err)
 
 			// Test streaming approach
 			reader := strings.NewReader(input)
-			streamingTokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+			streamingTokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 			require.NoError(t, err)
 
 			// Test in-memory approach
 			regularTokenizer, err := manager.GetTokenizer("openai")
 			require.NoError(t, err)
-			inMemoryTokens, err := regularTokenizer.CountTokens(context.Background(), input, "gpt-4")
+			inMemoryTokens, err := regularTokenizer.CountTokens(context.Background(), input, "gpt-4.1")
 			require.NoError(t, err)
 
 			// Results should match
@@ -117,7 +117,7 @@ func TestStreamingTokenization_RespectsContextCancellation(t *testing.T) {
 
 	// This will FAIL initially (RED phase) - need streaming implementation
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Create a large text stream that would take a while to process
@@ -129,7 +129,7 @@ func TestStreamingTokenization_RespectsContextCancellation(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	_, err = streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4")
+	_, err = streamingTokenizer.CountTokensStreaming(ctx, reader, "gpt-4.1")
 	duration := time.Since(start)
 
 	assert.Error(t, err, "Should return error when context is cancelled")
@@ -159,7 +159,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				_, err := tokenizer.CountTokens(context.Background(), text, "gpt-4")
+				_, err := tokenizer.CountTokens(context.Background(), text, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -169,7 +169,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 		b.Run("Streaming_"+sizeStr, func(b *testing.B) {
 			// This will FAIL initially (RED phase) - need streaming implementation
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			b.ResetTimer()
@@ -177,7 +177,7 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -306,7 +306,7 @@ func TestGetChunkSizeForInput_20MBBoundary(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Cast to access chunk size method
@@ -361,7 +361,7 @@ func TestStreamingTokenizer_AdaptsChunkSizeBasedOnInputSize(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// This will FAIL initially (RED phase) - need GetChunkSizeForInput method
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(t, err)
 
 			// Cast to implementation to access chunk size method
@@ -398,7 +398,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(t, err)
 
 			// Create realistic text for testing
@@ -410,7 +410,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 			defer cancel1()
 
 			start1 := time.Now()
-			tokens1, err := streamingTokenizer.CountTokensStreaming(ctx1, reader1, "gpt-4")
+			tokens1, err := streamingTokenizer.CountTokensStreaming(ctx1, reader1, "gpt-4.1")
 			duration1 := time.Since(start1)
 			require.NoError(t, err)
 
@@ -423,7 +423,7 @@ func TestStreamingTokenization_CorrectTokenCountsWithDifferentMethods(t *testing
 				defer cancel2()
 
 				start2 := time.Now()
-				tokens2, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(ctx2, reader2, "gpt-4", tt.inputSize)
+				tokens2, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(ctx2, reader2, "gpt-4.1", tt.inputSize)
 				duration2 := time.Since(start2)
 				require.NoError(t, err)
 
@@ -464,7 +464,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 
 		b.Run("Regular_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			b.ResetTimer()
@@ -472,7 +472,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -481,7 +481,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 
 		b.Run("Adaptive_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			adaptiveTokenizer := streamingTokenizer.(interface {
@@ -493,7 +493,7 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4", size.size)
+				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4.1", size.size)
 				if err != nil {
 					b.Fatal(err)
 				}

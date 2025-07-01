@@ -35,7 +35,7 @@ All models are now defined in `internal/models/models.go` and use OpenRouter for
 
 **OpenAI Models (via OpenRouter):**
 - `gpt-4.1` (openai/gpt-4.1) - GPT-4.1 model
-- `o4-mini` (openai/o4-mini) - O4 Mini model  
+- `o4-mini` (openai/o4-mini) - O4 Mini model
 - `o3` (openai/o3) - O3 model
 
 **Google Models (via OpenRouter):**
@@ -78,7 +78,7 @@ All models are now accessed through OpenRouter's unified API:
 
 **Popular Models:**
 - `gpt-4.1` - OpenAI's GPT-4.1 model via OpenRouter
-- `gemini-2.5-pro` - Google's Gemini 2.5 Pro via OpenRouter  
+- `gemini-2.5-pro` - Google's Gemini 2.5 Pro via OpenRouter
 - `openrouter/deepseek/deepseek-r1` - DeepSeek R1 with reasoning capabilities
 - `openrouter/x-ai/grok-3-beta` - xAI's Grok model
 
@@ -90,7 +90,7 @@ Edit the `ModelDefinitions` map in `internal/models/models.go` with `Provider: "
 ### Provider Implementation
 
 The OpenRouter provider is the sole provider implementation. It:
-1. Implements the unified Provider interface 
+1. Implements the unified Provider interface
 2. Creates OpenRouter clients configured with the `OPENROUTER_API_KEY`
 3. Handles all model access through OpenRouter's API endpoints
 4. Validates model IDs for all supported models

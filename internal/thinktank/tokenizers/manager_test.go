@@ -124,14 +124,14 @@ func BenchmarkTokenizerManager_GetTokenizer(b *testing.B) {
 	manager := NewTokenizerManager()
 
 	// Warm up
-	_, err := manager.GetTokenizer("openai")
+	_, err := manager.GetTokenizer("openrouter")
 	require.NoError(b, err)
 
 	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		_, err := manager.GetTokenizer("openai")
+		_, err := manager.GetTokenizer("openrouter")
 		if err != nil {
 			b.Fatal(err)
 		}
