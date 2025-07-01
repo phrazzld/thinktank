@@ -126,9 +126,9 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 ### Medium Priority:
 - [x] Update performance benchmark tests for OpenRouter tokenization
 - [x] Fix streaming tokenization tests
-- [ ] Fix remaining tokenizer manager tests for OpenRouter-only architecture
-- [ ] Fix streaming test compatibility issues (manager_test.go:19-30, streaming_test.go:101)
-- [ ] Fix token counting compatibility tests for OpenRouter-only providers
+- [x] Fix remaining tokenizer manager tests for OpenRouter-only architecture
+- [ ] Fix streaming test compatibility issues (streaming_test.go:101)
+- [ ] Fix token counting compatibility tests for OpenRouter-only providers  
 - [ ] Restore pre-commit hook compliance (blocked on above test fixes)
 - [ ] Update coverage expectations for removed provider code
 

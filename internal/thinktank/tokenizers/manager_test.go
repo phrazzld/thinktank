@@ -16,10 +16,10 @@ func TestTokenizerManager_SupportsProvider(t *testing.T) {
 		provider  string
 		supported bool
 	}{
-		{"openai", true},
-		{"gemini", true},     // Adding SentencePiece support
-		{"openrouter", true}, // OpenRouter normalization to o200k_base
-		{"unknown", false},
+		{"openrouter", true}, // Only supported provider after consolidation
+		{"openai", false},    // No longer supported after OpenRouter consolidation
+		{"gemini", false},    // No longer supported after OpenRouter consolidation
+		{"unknown", false},   // Never supported
 	}
 
 	for _, tt := range tests {
@@ -35,28 +35,27 @@ func TestTokenizerManager_GetTokenizer(t *testing.T) {
 
 	manager := NewTokenizerManager()
 
-	// Test supported provider
-	tokenizer, err := manager.GetTokenizer("openai")
+	// Test supported provider (OpenRouter only after consolidation)
+	tokenizer, err := manager.GetTokenizer("openrouter")
 	require.NoError(t, err)
 	assert.NotNil(t, tokenizer)
-	assert.IsType(t, &OpenAITokenizer{}, tokenizer)
+	assert.IsType(t, &OpenRouterTokenizer{}, tokenizer)
 
 	// Test that same tokenizer is returned (caching)
-	tokenizer2, err := manager.GetTokenizer("openai")
+	tokenizer2, err := manager.GetTokenizer("openrouter")
 	require.NoError(t, err)
 	assert.Same(t, tokenizer, tokenizer2, "Should return cached tokenizer")
 
-	// Test Gemini provider (now supported)
-	geminiTokenizer, err := manager.GetTokenizer("gemini")
-	require.NoError(t, err)
-	assert.NotNil(t, geminiTokenizer)
-	assert.IsType(t, &GeminiTokenizer{}, geminiTokenizer)
-
-	// Test OpenRouter provider (should return OpenRouter tokenizer)
-	openrouterTokenizer, err := manager.GetTokenizer("openrouter")
-	require.NoError(t, err)
-	assert.NotNil(t, openrouterTokenizer)
-	assert.IsType(t, &OpenRouterTokenizer{}, openrouterTokenizer)
+	// Test legacy providers are no longer supported
+	legacyProviders := []string{"openai", "gemini"}
+	for _, provider := range legacyProviders {
+		t.Run("legacy_"+provider, func(t *testing.T) {
+			_, err := manager.GetTokenizer(provider)
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "unsupported provider")
+			assert.Contains(t, err.Error(), "only OpenRouter is supported")
+		})
+	}
 
 	// Test unknown provider
 	_, err = manager.GetTokenizer("unknown")
@@ -69,15 +68,15 @@ func TestTokenizerManager_ClearCache(t *testing.T) {
 
 	manager := NewTokenizerManager()
 
-	// Get tokenizer to populate cache
-	tokenizer1, err := manager.GetTokenizer("openai")
+	// Get tokenizer to populate cache (using OpenRouter after consolidation)
+	tokenizer1, err := manager.GetTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Clear cache
 	manager.ClearCache()
 
 	// Get tokenizer again - should be new instance
-	tokenizer2, err := manager.GetTokenizer("openai")
+	tokenizer2, err := manager.GetTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Should be different instances after cache clear
@@ -88,6 +87,10 @@ func TestTokenizerManager_ConcurrentAccess(t *testing.T) {
 	// Test that concurrent access to tokenizer manager is safe
 	manager := NewTokenizerManager()
 
+	// Use supported provider after OpenRouter consolidation
+	const testProvider = "openrouter"
+	require.True(t, manager.SupportsProvider(testProvider), "Test setup error: %s should be supported", testProvider)
+
 	// Run multiple goroutines trying to get the same tokenizer
 	const numGoroutines = 10
 	tokenizers := make([]AccurateTokenCounter, numGoroutines)
@@ -97,7 +100,7 @@ func TestTokenizerManager_ConcurrentAccess(t *testing.T) {
 
 	for i := 0; i < numGoroutines; i++ {
 		go func(index int) {
-			tokenizers[index], errors[index] = manager.GetTokenizer("openai")
+			tokenizers[index], errors[index] = manager.GetTokenizer(testProvider)
 			done <- index
 		}(i)
 	}
