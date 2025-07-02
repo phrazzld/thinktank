@@ -136,9 +136,9 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Update documentation tests to reflect OpenRouter consolidation (tiktoken -> OpenRouter)
 - [x] Fix remaining CLI validation tests for OpenRouter consolidation (broader scope)
 - [x] Fix provider detection and model selection tests (broader scope)
-- [ ] Fix configuration tests expecting old API key patterns (broader scope)
-- [ ] Update model selection test expectations to match unified behavior (all models available with single API key)
-- [ ] Document architectural change: single API key now provides access to all model families
+- [x] Fix configuration tests expecting old API key patterns (broader scope)
+- [x] Update model selection test expectations to match unified behavior (all models available with single API key)
+- [x] Document architectural change: single API key now provides access to all model families
 - [ ] Restore pre-commit hook compliance (blocked on comprehensive test fixes above)
 
 ### Notes:
