@@ -133,7 +133,7 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Update coverage expectations for removed provider code (adjusted threshold from 80% to 79%)
 - [x] Update documentation tests to reflect OpenRouter consolidation (tiktoken -> OpenRouter)
 - [x] Fix remaining CLI validation tests for OpenRouter consolidation (broader scope)
-- [ ] Fix provider detection and model selection tests (broader scope)
+- [x] Fix provider detection and model selection tests (broader scope)
 - [ ] Fix configuration tests expecting old API key patterns (broader scope)
 - [ ] Update model selection test expectations to match unified behavior (all models available with single API key)
 - [ ] Document architectural change: single API key now provides access to all model families
