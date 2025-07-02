@@ -139,7 +139,7 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Fix configuration tests expecting old API key patterns (broader scope)
 - [x] Update model selection test expectations to match unified behavior (all models available with single API key)
 - [x] Document architectural change: single API key now provides access to all model families
-- [ ] Restore pre-commit hook compliance (blocked on comprehensive test fixes above)
+- [x] Restore pre-commit hook compliance (blocked on comprehensive test fixes above)
 
 ### Notes:
 These test failures are **expected consequences** of the OpenRouter consolidation.
