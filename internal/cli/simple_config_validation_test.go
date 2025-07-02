@@ -21,8 +21,8 @@ func TestValidatePerformance(t *testing.T) {
 	require.NoError(t, os.Mkdir(targetDir, 0755))
 
 	// Set up environment
-	_ = os.Setenv("GEMINI_API_KEY", "test-key")
-	defer func() { _ = os.Unsetenv("GEMINI_API_KEY") }()
+	_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
+	defer func() { _ = os.Unsetenv("OPENROUTER_API_KEY") }()
 
 	config := SimplifiedConfig{
 		InstructionsFile: instFile,
@@ -161,7 +161,7 @@ func TestValidateAPIKeyHelper(t *testing.T) {
 				_ = os.Unsetenv("GEMINI_API_KEY")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set GEMINI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
 			name:      "unknown model",
@@ -251,7 +251,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 				_ = os.Setenv("OPENAI_API_KEY", "test-key")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set GEMINI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
 			name:       "missing key for second provider",
@@ -261,7 +261,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 				_ = os.Unsetenv("OPENAI_API_KEY")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set OPENAI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
 			name:       "unknown model in list",

@@ -455,7 +455,7 @@ func TestSelectModelsForConfig_EdgeCases(t *testing.T) {
 	t.Run("empty instructions file", func(t *testing.T) {
 		// Note: Not using t.Parallel() due to environment variable isolation issues
 
-		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		cleanup := setupTestEnvironment(t, map[string]string{"OPENROUTER_API_KEY": "test-key"})
 		defer cleanup()
 
 		tempDir := t.TempDir()
@@ -482,7 +482,7 @@ func TestSelectModelsForConfig_EdgeCases(t *testing.T) {
 	t.Run("all flags set", func(t *testing.T) {
 		// Note: Not using t.Parallel() due to environment variable isolation issues
 
-		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		cleanup := setupTestEnvironment(t, map[string]string{"OPENROUTER_API_KEY": "test-key"})
 		defer cleanup()
 
 		tempDir := t.TempDir()
@@ -508,7 +508,7 @@ func TestSelectModelsForConfig_EdgeCases(t *testing.T) {
 	t.Run("unicode content in instructions", func(t *testing.T) {
 		// Note: Not using t.Parallel() due to environment variable isolation issues
 
-		cleanup := setupTestEnvironment(t, map[string]string{"GEMINI_API_KEY": "test-key"})
+		cleanup := setupTestEnvironment(t, map[string]string{"OPENROUTER_API_KEY": "test-key"})
 		defer cleanup()
 
 		tempDir := t.TempDir()

@@ -288,10 +288,10 @@ func TestValidate(t *testing.T) {
 				Flags:            0x00,
 			},
 			setup: func() {
-				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set GEMINI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
 			name: "synthesis mode requires multiple API keys",
@@ -347,7 +347,7 @@ func TestValidate(t *testing.T) {
 			err := tt.config.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
-				if tt.errMsg != "" {
+				if tt.errMsg != "" && err != nil {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {

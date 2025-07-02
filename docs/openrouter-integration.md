@@ -55,6 +55,57 @@ Each model is defined with:
 
 To add new OpenRouter models, edit the `ModelDefinitions` map in `internal/models/models.go`. See [CLAUDE.md](./CLAUDE.md#adding-new-models) for detailed instructions.
 
+## Migration from Multi-Provider Architecture
+
+### What Changed
+
+Previously, thinktank used separate providers for different model families:
+- OpenAI models required `OPENAI_API_KEY`
+- Google Gemini models required `GEMINI_API_KEY`
+- OpenRouter models required `OPENROUTER_API_KEY`
+
+**After the consolidation, all models now use OpenRouter exclusively and require only `OPENROUTER_API_KEY`.**
+
+### Migration Steps
+
+1. **Set up OpenRouter API Key:**
+   ```bash
+   export OPENROUTER_API_KEY="your-openrouter-api-key"
+   ```
+
+2. **Remove old API keys (optional but recommended):**
+   ```bash
+   unset OPENAI_API_KEY
+   unset GEMINI_API_KEY
+   ```
+
+3. **Update your scripts or CI/CD:** Replace any references to the old environment variables with `OPENROUTER_API_KEY`.
+
+### Backward Compatibility
+
+The system automatically detects old API keys and provides helpful migration messages:
+
+```
+Warning: OPENAI_API_KEY detected but no longer used.
+Please set OPENROUTER_API_KEY instead.
+Get your key at: https://openrouter.ai/keys
+```
+
+### What Stays the Same
+
+- **CLI Commands:** All existing commands work identically
+- **Model Names:** Model names remain the same (e.g., `gpt-4.1`, `gemini-2.5-pro`)
+- **Features:** All functionality is preserved
+- **Configuration:** All flags and options work the same way
+
+### Benefits of the New Architecture
+
+- **Simplified Setup:** Only one API key needed
+- **Unified Billing:** All model usage through a single OpenRouter account
+- **Consistent Interface:** All models use the same API format
+- **Access to More Models:** OpenRouter provides access to additional models like DeepSeek, xAI Grok, etc.
+- **Better Rate Limiting:** Unified rate limiting across all models
+
 ## Usage Examples
 
 ### Basic Usage
