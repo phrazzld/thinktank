@@ -139,26 +139,26 @@ func TestValidateAPIKeyHelper(t *testing.T) {
 		errMsg    string
 	}{
 		{
-			name:      "valid gemini model with key",
+			name:      "valid gemini model with OPENROUTER_API_KEY",
 			modelName: "gemini-2.5-pro",
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
 		{
-			name:      "valid openai model with key",
+			name:      "valid openai model with OPENROUTER_API_KEY",
 			modelName: "gpt-4.1",
 			setup: func() {
-				_ = os.Setenv("OPENAI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
 		{
-			name:      "missing API key",
+			name:      "missing OPENROUTER_API_KEY",
 			modelName: "gemini-2.5-pro",
 			setup: func() {
-				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: true,
 			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
@@ -213,7 +213,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 			name:       "single model with key",
 			modelNames: []string{"gemini-2.5-pro"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
@@ -221,16 +221,15 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 			name:       "multiple models, same provider",
 			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
 		{
-			name:       "multiple models, different providers",
+			name:       "multiple models, unified provider",
 			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
-				_ = os.Setenv("OPENAI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
@@ -238,27 +237,15 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 			name:       "synthesis mode models (typical use case)",
 			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
-				_ = os.Setenv("OPENAI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
 		{
-			name:       "missing key for first provider",
+			name:       "missing OPENROUTER_API_KEY",
 			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
 			setup: func() {
-				_ = os.Unsetenv("GEMINI_API_KEY")
-				_ = os.Setenv("OPENAI_API_KEY", "test-key")
-			},
-			wantErr: true,
-			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
-		},
-		{
-			name:       "missing key for second provider",
-			modelNames: []string{"gemini-2.5-pro", "gpt-4.1"},
-			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
-				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: true,
 			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
@@ -267,7 +254,7 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 			name:       "unknown model in list",
 			modelNames: []string{"gemini-2.5-pro", "invalid-model"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: true,
 			errMsg:  "unknown model invalid-model",
@@ -278,12 +265,12 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 			wantErr:    false, // Should succeed with no models to check
 		},
 		{
-			name:       "duplicate providers optimization test",
+			name:       "duplicate models optimization test",
 			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-pro"},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
-			wantErr: false, // Should only check GEMINI_API_KEY once
+			wantErr: false, // Should only check OPENROUTER_API_KEY once
 		},
 	}
 
@@ -309,12 +296,8 @@ func TestValidateAPIKeysForModels(t *testing.T) {
 // TestValidateAPIKeysPerformance measures batch validation performance
 func TestValidateAPIKeysPerformance(t *testing.T) {
 	// Set up environment
-	_ = os.Setenv("GEMINI_API_KEY", "test-key")
-	_ = os.Setenv("OPENAI_API_KEY", "test-key")
 	_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 	defer func() {
-		_ = os.Unsetenv("GEMINI_API_KEY")
-		_ = os.Unsetenv("OPENAI_API_KEY")
 		_ = os.Unsetenv("OPENROUTER_API_KEY")
 	}()
 
