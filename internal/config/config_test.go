@@ -746,17 +746,17 @@ func TestIsStandardOpenAIModel(t *testing.T) {
 		model    string
 		expected bool
 	}{
-		{"gpt-4", "gpt-4", true},
-		{"gpt-4-turbo", "gpt-4-turbo", true},
-		{"gpt-4o", "gpt-4o", true},
-		{"gpt-4o-mini", "gpt-4o-mini", true},
-		{"gpt-4.1", "gpt-4.1", true},
-		{"gpt-3.5-turbo", "gpt-3.5-turbo", true},
-		{"o3", "o3", true},
-		{"o4-mini", "o4-mini", true},
-		{"case insensitive", "GPT-4", true},
-		{"case insensitive 2", "O3", true},
-		{"prefix match", "gpt-4-custom", true},
+		{"gpt-4", "gpt-4", false}, // All models use OpenRouter after consolidation
+		{"gpt-4-turbo", "gpt-4-turbo", false},
+		{"gpt-4o", "gpt-4o", false},
+		{"gpt-4o-mini", "gpt-4o-mini", false},
+		{"gpt-4.1", "gpt-4.1", false},
+		{"gpt-3.5-turbo", "gpt-3.5-turbo", false},
+		{"o3", "o3", false},
+		{"o4-mini", "o4-mini", false},
+		{"case insensitive", "GPT-4", false},
+		{"case insensitive 2", "O3", false},
+		{"prefix match", "gpt-4-custom", false},
 		{"gemini model", "gemini-1.5-pro", false},
 		{"openrouter model", "openrouter/gpt-4", false},
 		{"custom model", "custom-model", false},

@@ -51,7 +51,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				return "some-other-key"
 			},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 			description:   "OpenRouter models should fail when OpenRouter API key is missing",
 		},
 		{
@@ -94,7 +94,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				}
 			},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 			description:   "Multi-provider should fail when any required API key is missing",
 		},
 		{

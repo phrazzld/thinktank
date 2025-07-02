@@ -132,15 +132,46 @@ ALL current models have exact matches on OpenRouter with the same identifiers:
 - [x] Fix remaining failing tests in main thinktank package (safety_margin_test.go, token_counting_logging_test.go)
 - [x] Update coverage expectations for removed provider code (adjusted threshold from 80% to 79%)
 - [x] Update documentation tests to reflect OpenRouter consolidation (tiktoken -> OpenRouter)
-- [ ] Fix remaining CLI validation tests for OpenRouter consolidation (broader scope)
+- [x] Fix remaining CLI validation tests for OpenRouter consolidation (broader scope)
 - [ ] Fix provider detection and model selection tests (broader scope)
 - [ ] Fix configuration tests expecting old API key patterns (broader scope)
+- [ ] Update model selection test expectations to match unified behavior (all models available with single API key)
+- [ ] Document architectural change: single API key now provides access to all model families
 - [ ] Restore pre-commit hook compliance (blocked on comprehensive test fixes above)
 
 ### Notes:
 These test failures are **expected consequences** of the OpenRouter consolidation.
 The failing tests were designed for the old multi-provider architecture and need
 to be updated to match the new unified OpenRouter-only system.
+
+### Critical Architectural Changes Discovered During Phase 5
+
+**Model Selection Behavior Changed Fundamentally:**
+After OpenRouter consolidation, model selection logic works differently:
+
+1. **Old Behavior (Multi-Provider)**:
+   - `GEMINI_API_KEY` → Returns only Gemini models (`["gemini-2.5-flash", "gemini-2.5-pro"]`)
+   - `OPENAI_API_KEY` → Returns only OpenAI models (`["gpt-4.1", "o3", "o4-mini"]`)
+   - `OPENROUTER_API_KEY` → Returns only OpenRouter-specific models
+
+2. **New Behavior (Unified OpenRouter)**:
+   - `OPENROUTER_API_KEY` → Returns **ALL available models** from all families:
+     ```
+     [openrouter/meta-llama/llama-4-maverick, openrouter/meta-llama/llama-4-scout,
+      gemini-2.5-flash, gemini-2.5-pro, gpt-4.1, o3, o4-mini,
+      openrouter/deepseek/deepseek-r1-0528:free, openrouter/meta-llama/llama-3.3-70b-instruct,
+      openrouter/x-ai/grok-3-beta, openrouter/x-ai/grok-3-mini-beta, ...]
+     ```
+
+**Impact on Tests:**
+- Tests expecting provider-specific model subsets now fail
+- Model selection tests need complete rewrite to match unified behavior
+- Test expectations must be updated to reflect that single API key = all models
+
+**User Experience Impact:**
+- **POSITIVE**: Users get access to many more models with single API key
+- **BEHAVIORAL CHANGE**: Setting `OPENROUTER_API_KEY` now enables all models, not just OpenRouter-branded ones
+- **MIGRATION**: Users with old API keys get warning messages guiding them to `OPENROUTER_API_KEY`
 
 ## Success Metrics
 - [x] All existing CLI commands work identically ✅
