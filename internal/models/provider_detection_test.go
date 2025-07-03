@@ -108,7 +108,7 @@ func TestGetAvailableProviders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Save original environment
-			expectedKeys := []string{"OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"}
+			expectedKeys := []string{"OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY", "THINKTANK_ENABLE_TEST_MODELS"}
 			originalEnv := make(map[string]string)
 			for _, key := range expectedKeys {
 				originalEnv[key] = os.Getenv(key)
@@ -129,6 +129,9 @@ func TestGetAvailableProviders(t *testing.T) {
 			for _, key := range expectedKeys {
 				_ = os.Unsetenv(key)
 			}
+
+			// Enable test models for all provider detection tests
+			_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
 
 			// Set up test environment
 			for key, value := range tt.envVars {

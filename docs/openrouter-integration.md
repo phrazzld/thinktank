@@ -190,12 +190,48 @@ Common error types and their resolution:
 | Server | Issues with OpenRouter or model provider | Wait and try again later |
 | Network | Connection issues | Check your internet connection |
 
+## BYOK (Bring Your Own Key) Models
+
+Some models on OpenRouter require you to bring your own API key from the original provider. These models are marked with `RequiresBYOK: true` in the model definitions.
+
+### Currently Supported BYOK Models
+
+- `o3` (openai/o3) - OpenAI's O3 model requires an OpenAI API key
+
+### How to Use BYOK Models
+
+1. **Add your provider API key to OpenRouter:**
+   - Go to [OpenRouter Settings > Integrations](https://openrouter.ai/settings/integrations)
+   - Add your provider's API key (e.g., OpenAI API key)
+   - OpenRouter will automatically use your key when you request BYOK models
+
+2. **Use the model normally in thinktank:**
+   ```bash
+   # Once your key is added to OpenRouter, use BYOK models like any other
+   thinktank task.txt ./src --model o3
+   ```
+
+### BYOK Error Messages
+
+If you try to use a BYOK model without adding your provider key to OpenRouter, you'll see:
+```
+Model openai/o3 requires you to add your own API key to OpenRouter
+Please add your OpenAI API key at https://openrouter.ai/settings/integrations to use this model
+```
+
+### Benefits of BYOK
+
+- Access to premium models without OpenRouter markup
+- Use your existing provider relationships and pricing
+- OpenRouter handles the unified interface while you maintain direct billing
+
 ## Limitations
 
 - OpenRouter may have different rate limits and pricing for different models
 - Some advanced features may not be available for all models
 - Performance can vary based on the underlying model provider's infrastructure
 - Each model has its own context window limitations
+- BYOK models require additional setup through OpenRouter's website
 
 ## Troubleshooting
 

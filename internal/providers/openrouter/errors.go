@@ -101,7 +101,10 @@ func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) 
 	// Try to categorize error from specific OpenRouter error types
 	category := llm.CategoryUnknown
 
-	if errorType != "" {
+	// Check for BYOK-specific error
+	if errorType == "custom_auth_missing" || strings.Contains(errorMessage, "requires you to use your own") {
+		category = llm.CategoryInvalidRequest
+	} else if errorType != "" {
 		if strings.Contains(errorType, "auth") ||
 			strings.Contains(errorType, "authentication") ||
 			strings.Contains(errorType, "unauthorized") {
@@ -138,6 +141,11 @@ func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) 
 		llmError.Suggestion = "This is typically a temporary issue with OpenRouter or the underlying model provider. Wait a few moments and try again."
 	case llm.CategoryNetwork:
 		llmError.Suggestion = "Check your internet connection and try again. If persistent, there may be connectivity issues to OpenRouter's servers."
+	case llm.CategoryInvalidRequest:
+		// Check if this is a BYOK error
+		if strings.Contains(errorMessage, "requires you to use your own") || errorType == "custom_auth_missing" {
+			llmError.Suggestion = "This model requires you to bring your own API key. Please add your provider's API key at https://openrouter.ai/settings/integrations to use this model"
+		}
 	}
 
 	return llmError

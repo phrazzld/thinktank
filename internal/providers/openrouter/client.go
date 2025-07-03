@@ -14,6 +14,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // openrouterClient implements the llm.LLMClient interface for OpenRouter
@@ -281,6 +282,22 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 		PresencePenalty:  presencePenalty,
 		MaxTokens:        maxTokens,
 		Stream:           false, // Non-streaming implementation for initial version
+	}
+
+	// Check if the model requires BYOK
+	// Extract the base model name from the OpenRouter model ID (e.g., "openai/o3" -> "o3")
+	modelParts := strings.Split(c.modelID, "/")
+	baseModelName := modelParts[len(modelParts)-1]
+
+	// Try to get model info to check BYOK requirements
+	if modelInfo, err := models.GetModelInfo(baseModelName); err == nil && modelInfo.RequiresBYOK {
+		// This model requires BYOK - provide helpful error message
+		return nil, CreateAPIError(
+			llm.CategoryInvalidRequest,
+			fmt.Sprintf("Model %s requires you to add your own API key to OpenRouter", c.modelID),
+			nil,
+			"Please add your OpenAI API key at https://openrouter.ai/settings/integrations to use this model",
+		)
 	}
 
 	// Convert request to JSON

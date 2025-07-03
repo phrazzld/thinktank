@@ -818,6 +818,7 @@ func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
 	originalOpenRouter := os.Getenv("OPENROUTER_API_KEY")
 	originalOpenAI := os.Getenv("OPENAI_API_KEY")
 	originalGemini := os.Getenv("GEMINI_API_KEY")
+	originalTestModels := os.Getenv("THINKTANK_ENABLE_TEST_MODELS")
 
 	// Clean up after test
 	defer func() {
@@ -836,6 +837,11 @@ func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
 		} else {
 			_ = os.Unsetenv("GEMINI_API_KEY")
 		}
+		if originalTestModels != "" {
+			_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", originalTestModels)
+		} else {
+			_ = os.Unsetenv("THINKTANK_ENABLE_TEST_MODELS")
+		}
 	}()
 
 	t.Run("should log helpful message when old OPENAI_API_KEY is detected", func(t *testing.T) {
@@ -843,6 +849,9 @@ func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
 		_ = os.Unsetenv("OPENROUTER_API_KEY")
 		_ = os.Unsetenv("OPENAI_API_KEY")
 		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
 
 		// Set only old OPENAI_API_KEY
 		_ = os.Setenv("OPENAI_API_KEY", "sk-test123")
@@ -886,6 +895,9 @@ func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
 		_ = os.Unsetenv("OPENROUTER_API_KEY")
 		_ = os.Unsetenv("OPENAI_API_KEY")
 		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
 
 		// Set only old GEMINI_API_KEY
 		_ = os.Setenv("GEMINI_API_KEY", "test-gemini-key")
@@ -932,6 +944,9 @@ func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
 		_ = os.Unsetenv("OPENROUTER_API_KEY")
 		_ = os.Unsetenv("OPENAI_API_KEY")
 		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
 
 		// Set proper OPENROUTER_API_KEY
 		_ = os.Setenv("OPENROUTER_API_KEY", "or-test-key")

@@ -49,6 +49,10 @@ type ModelInfo struct {
 	// RateLimitRPM overrides the provider-specific default rate limit for this model (optional)
 	// If nil, uses provider-specific default rate limits. If set, enforces per-model rate limit.
 	RateLimitRPM *int `json:"rate_limit_rpm,omitempty"`
+
+	// RequiresBYOK indicates if this model requires users to bring their own API key
+	// When true, users must provide their provider-specific API key (e.g., OpenAI key for o3)
+	RequiresBYOK bool `json:"requires_byok,omitempty"`
 }
 
 // Helper functions for creating parameter constraints
@@ -171,6 +175,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
 			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
 		},
+		RequiresBYOK: true, // o3 requires users to bring their own OpenAI API key
 	},
 
 	// OpenRouter Models
@@ -526,26 +531,29 @@ func GetModelsWithMinContextWindow(minTokens int) []string {
 func GetAvailableProviders() []string {
 	var providers []string
 
-	// Only check for OpenRouter API key - obsolete providers removed
-	if os.Getenv("OPENROUTER_API_KEY") != "" {
+	// Check for OpenRouter API key first
+	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
+	if openRouterKey != "" {
 		providers = append(providers, "openrouter")
+	} else {
+		// Only show migration warnings if OpenRouter key is not set
+		if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
+			fmt.Fprintf(os.Stderr, "Warning: OPENAI_API_KEY detected but no longer used.\n")
+			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
+			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
+		}
+
+		if geminiKey := os.Getenv("GEMINI_API_KEY"); geminiKey != "" {
+			fmt.Fprintf(os.Stderr, "Warning: GEMINI_API_KEY detected but no longer used.\n")
+			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
+			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
+		}
 	}
 
-	// Check for obsolete API keys and provide helpful messages
-	if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
-		fmt.Fprintf(os.Stderr, "Warning: OPENAI_API_KEY detected but no longer used.\n")
-		fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
-		fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
+	// Test provider is only available when explicitly enabled for development/testing
+	if os.Getenv("THINKTANK_ENABLE_TEST_MODELS") == "true" {
+		providers = append(providers, "test")
 	}
-
-	if geminiKey := os.Getenv("GEMINI_API_KEY"); geminiKey != "" {
-		fmt.Fprintf(os.Stderr, "Warning: GEMINI_API_KEY detected but no longer used.\n")
-		fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
-		fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
-	}
-
-	// Test provider is always available (doesn't require API key)
-	providers = append(providers, "test")
 
 	return providers
 }
