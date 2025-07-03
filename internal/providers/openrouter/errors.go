@@ -17,10 +17,11 @@ type APIErrorResponse struct {
 
 // APIErrorDetail contains the details of an API error returned by OpenRouter
 type APIErrorDetail struct {
-	Code    interface{} `json:"code"` // Can be string or int
-	Message string      `json:"message"`
-	Type    string      `json:"type,omitempty"`
-	Param   string      `json:"param,omitempty"`
+	Code     interface{}            `json:"code"` // Can be string or int
+	Message  string                 `json:"message"`
+	Type     string                 `json:"type,omitempty"`
+	Param    string                 `json:"param,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // IsOpenRouterError checks if an error is an llm.LLMError originating from OpenRouter
@@ -50,11 +51,37 @@ func ParseErrorResponse(responseBody []byte) (string, string, string) {
 		errorMessage = apiErrorResp.Error.Message
 	}
 
-	if apiErrorResp.Error.Type != "" {
+	// Check if there's a raw error message in metadata (common for provider errors)
+	if apiErrorResp.Error.Metadata != nil {
+		if rawError, ok := apiErrorResp.Error.Metadata["raw"].(string); ok && rawError != "" {
+			// Try to parse the raw error JSON to get the actual provider error
+			var providerError struct {
+				Error struct {
+					Message string `json:"message"`
+					Type    string `json:"type"`
+					Param   string `json:"param"`
+				} `json:"error"`
+			}
+			if err := json.Unmarshal([]byte(rawError), &providerError); err == nil {
+				if providerError.Error.Message != "" {
+					// Use the provider's error message as it's more specific
+					errorMessage = providerError.Error.Message
+				}
+				if providerError.Error.Type != "" && errorType == "" {
+					errorType = providerError.Error.Type
+				}
+				if providerError.Error.Param != "" && errorParam == "" {
+					errorParam = providerError.Error.Param
+				}
+			}
+		}
+	}
+
+	if apiErrorResp.Error.Type != "" && errorType == "" {
 		errorType = apiErrorResp.Error.Type
 	}
 
-	if apiErrorResp.Error.Param != "" {
+	if apiErrorResp.Error.Param != "" && errorParam == "" {
 		errorParam = apiErrorResp.Error.Param
 	}
 
@@ -101,8 +128,12 @@ func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) 
 	// Try to categorize error from specific OpenRouter error types
 	category := llm.CategoryUnknown
 
-	// Check for BYOK-specific error
-	if errorType == "custom_auth_missing" || strings.Contains(errorMessage, "requires you to use your own") {
+	// Check for BYOK-specific errors or misleading streaming errors
+	if errorType == "custom_auth_missing" ||
+		strings.Contains(errorMessage, "requires you to use your own") ||
+		(strings.Contains(errorMessage, "Organization not authorized to use streaming") ||
+			strings.Contains(errorMessage, "organization must be verified to stream")) {
+		// The streaming error is misleading - it's actually a BYOK authentication issue
 		category = llm.CategoryInvalidRequest
 	} else if errorType != "" {
 		if strings.Contains(errorType, "auth") ||
@@ -142,9 +173,17 @@ func FormatAPIErrorFromResponse(err error, statusCode int, responseBody []byte) 
 	case llm.CategoryNetwork:
 		llmError.Suggestion = "Check your internet connection and try again. If persistent, there may be connectivity issues to OpenRouter's servers."
 	case llm.CategoryInvalidRequest:
-		// Check if this is a BYOK error
-		if strings.Contains(errorMessage, "requires you to use your own") || errorType == "custom_auth_missing" {
-			llmError.Suggestion = "This model requires you to bring your own API key. Please add your provider's API key at https://openrouter.ai/settings/integrations to use this model"
+		// Check if this is a BYOK error or misleading streaming error
+		if strings.Contains(errorMessage, "requires you to use your own") ||
+			errorType == "custom_auth_missing" ||
+			strings.Contains(errorMessage, "Organization not authorized to use streaming") ||
+			strings.Contains(errorMessage, "organization must be verified to stream") {
+			// Special handling for o3 organization verification errors
+			if strings.Contains(errorMessage, "organization must be verified") {
+				llmError.Suggestion = "The o3 model requires an OpenAI organization-verified account. Personal API keys cannot access o3. You need to: 1) Verify your OpenAI organization at https://platform.openai.com/settings/organization/general, or 2) Use o4-mini instead, which works with personal accounts."
+			} else {
+				llmError.Suggestion = "This model requires you to bring your own API key (BYOK). Please add your provider's API key at https://openrouter.ai/settings/integrations to use this model. Note: The 'streaming' error is misleading - the actual issue is missing BYOK configuration."
+			}
 		}
 	}
 
