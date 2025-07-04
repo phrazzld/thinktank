@@ -206,7 +206,7 @@ After OpenRouter consolidation, model selection logic works differently:
 
 ## [CI FIX] Phase 3: Race Condition Investigation
 
-### 6. [CI FIX] Run Race Detection Locally
+### 6. [~] [CI FIX] Run Race Detection Locally
 - Execute `go test -race -count=10 ./internal/integration/...` locally
 - Priority: Medium
 

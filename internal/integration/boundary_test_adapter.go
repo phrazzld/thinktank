@@ -46,6 +46,10 @@ type BoundaryTestEnv struct {
 	// In-memory state for tests
 	ModelOutputs map[string]string
 	FileContents map[string][]byte
+
+	// Cleanup state
+	tempDir   string
+	outputDir string
 }
 
 // NewBoundaryTestEnv creates a new test environment with mocked external boundaries
@@ -133,6 +137,38 @@ func NewBoundaryTestEnv(t testing.TB) *BoundaryTestEnv {
 		RateLimiter:     rateLimiter,
 		ModelOutputs:    make(map[string]string),
 		FileContents:    make(map[string][]byte),
+		tempDir:         tempDir,
+		outputDir:       outputDir,
+	}
+}
+
+// Cleanup removes temporary directories and files created during the test
+func (env *BoundaryTestEnv) Cleanup() {
+	if env.tempDir != "" {
+		// First try to clean up using the mock filesystem
+		if err := env.Filesystem.RemoveAll(env.tempDir); err != nil {
+			// Log the error but don't fail the test
+			if logger, ok := env.Logger.(*logutil.TestLogger); ok {
+				logger.Debug("Failed to clean up temp directory via mock filesystem: %v", err)
+			}
+		}
+
+		// Also clean up the real filesystem directory (created in SetupInstructionsFile)
+		if err := os.RemoveAll(env.tempDir); err != nil {
+			// Log the error but don't fail the test
+			if logger, ok := env.Logger.(*logutil.TestLogger); ok {
+				logger.Debug("Failed to clean up real temp directory: %v", err)
+			}
+		}
+	}
+
+	// Close audit logger if it implements io.Closer
+	if closer, ok := env.AuditLogger.(interface{ Close() error }); ok {
+		if err := closer.Close(); err != nil {
+			if logger, ok := env.Logger.(*logutil.TestLogger); ok {
+				logger.Debug("Failed to close audit logger: %v", err)
+			}
+		}
 	}
 }
 

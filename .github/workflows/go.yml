@@ -343,6 +343,13 @@ jobs:
         df -h . 2>/dev/null || echo "df command not available"
         echo ""
 
+        # Configure race detection logging
+        echo "=== Configuring Race Detection Logging ==="
+        export GORACE="log_path=./unit-race.log halt_on_error=0"
+        echo "GORACE environment variable set: $GORACE"
+        echo "Race condition logs will be written to: ./unit-race.log.*"
+        echo ""
+
         # Get list of packages excluding integration and e2e
         PACKAGES=$(go list ./... | grep -v "/internal/integration" | grep -v "/internal/e2e" | grep -v "/disabled/" | grep -v "/internal/testutil")
 
@@ -381,6 +388,23 @@ jobs:
           echo "unit_test_status=SUCCESS" >> exit_codes.log
         fi
 
+        # Check for race condition logs
+        echo ""
+        echo "=== Race Condition Analysis (Unit Tests) ==="
+        if ls unit-race.log.* 1> /dev/null 2>&1; then
+          echo "⚠️  Race condition logs detected:"
+          for logfile in unit-race.log.*; do
+            echo "  - $logfile ($(wc -l < "$logfile") lines)"
+          done
+          echo ""
+          echo "First race condition log content:"
+          head -50 unit-race.log.* | head -100
+          echo "unit_test_race_logs=DETECTED" >> exit_codes.log
+        else
+          echo "✅ No race conditions detected in unit tests"
+          echo "unit_test_race_logs=NONE" >> exit_codes.log
+        fi
+
     - name: Integration Tests (Verbose)
       run: |
         echo "=== Running Integration Tests (Verbose) ==="
@@ -395,6 +419,13 @@ jobs:
         echo "Memory and disk space:"
         free -h 2>/dev/null || echo "free command not available"
         df -h . 2>/dev/null || echo "df command not available"
+        echo ""
+
+        # Configure race detection logging for integration tests
+        echo "=== Configuring Race Detection Logging ==="
+        export GORACE="log_path=./integration-race.log halt_on_error=0"
+        echo "GORACE environment variable set: $GORACE"
+        echo "Race condition logs will be written to: ./integration-race.log.*"
         echo ""
 
         # Run integration tests with verbose output, separate stdout/stderr
@@ -426,6 +457,23 @@ jobs:
         else
           echo "✅ Integration tests passed"
           echo "integration_test_status=SUCCESS" >> exit_codes.log
+        fi
+
+        # Check for race condition logs in integration tests
+        echo ""
+        echo "=== Race Condition Analysis (Integration Tests) ==="
+        if ls integration-race.log.* 1> /dev/null 2>&1; then
+          echo "⚠️  Race condition logs detected:"
+          for logfile in integration-race.log.*; do
+            echo "  - $logfile ($(wc -l < "$logfile") lines)"
+          done
+          echo ""
+          echo "First race condition log content:"
+          head -50 integration-race.log.* | head -100
+          echo "integration_test_race_logs=DETECTED" >> exit_codes.log
+        else
+          echo "✅ No race conditions detected in integration tests"
+          echo "integration_test_race_logs=NONE" >> exit_codes.log
         fi
 
     - name: E2E Tests (Verbose)
@@ -561,6 +609,8 @@ jobs:
         name: test-artifacts
         path: |
           *.log
+          unit-race.log.*
+          integration-race.log.*
           exit_codes.log
           coverage.out
           thinktank
@@ -635,6 +685,25 @@ jobs:
               echo "Direct dependencies: $DIRECT_DEPS"
               echo "Dependency verification failures: $DEPS_FAILURES"
             fi
+
+            # Race condition analysis summary
+            echo ""
+            echo "=== Race Condition Summary ==="
+            UNIT_RACE_STATUS=$(grep "unit_test_race_logs=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "UNKNOWN")
+            INTEGRATION_RACE_STATUS=$(grep "integration_test_race_logs=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "UNKNOWN")
+
+            echo "Unit test race conditions: $UNIT_RACE_STATUS"
+            echo "Integration test race conditions: $INTEGRATION_RACE_STATUS"
+
+            if [ "$UNIT_RACE_STATUS" = "DETECTED" ] || [ "$INTEGRATION_RACE_STATUS" = "DETECTED" ]; then
+              echo ""
+              echo "🔍 RACE CONDITION ANALYSIS:"
+              echo "Race condition logs have been captured and uploaded as artifacts."
+              echo "Review the race log files for detailed race condition information:"
+              ls -la *-race.log.* 2>/dev/null || echo "No race log files found in current directory"
+            else
+              echo "✅ No race conditions detected in this CI run"
+            fi
           fi
         else
           echo "❌ Exit codes log file not found"
@@ -647,4 +716,5 @@ jobs:
         echo "All steps completed. Check individual step outputs for details."
         echo "Test artifacts have been uploaded for analysis."
         echo "Exit codes and verbose output captured for debugging."
+        echo "Race condition logging enabled with GORACE environment variable."
         echo "Comprehensive exit code analysis available above."

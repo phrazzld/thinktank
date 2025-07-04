@@ -12,6 +12,11 @@ func IntegrationTestWithBoundaries(t *testing.T, testFunc func(env *BoundaryTest
 	// Create test environment with mocked boundaries
 	env := NewBoundaryTestEnv(t)
 
+	// Register cleanup function to run when test completes
+	t.Cleanup(func() {
+		env.Cleanup()
+	})
+
 	// Run the test function with the environment
 	testFunc(env)
 }
