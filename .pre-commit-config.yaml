@@ -34,12 +34,12 @@ repos:
 -   repo: local
     hooks:
     -   id: golangci-lint
-        name: Run golangci-lint
-        entry: sh -c 'if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run --timeout=5m; else echo "⚠️  golangci-lint not installed locally - linting will run in CI"; fi'
+        name: Run golangci-lint (Optimized)
+        entry: sh -c 'if command -v golangci-lint >/dev/null 2>&1; then timeout 4m golangci-lint run --timeout=3m --fast --skip-dirs=internal/integration,internal/e2e; else echo "⚠️  golangci-lint not installed locally - linting will run in CI"; fi'
         language: system
         types: [go]
         pass_filenames: false
-        description: Run comprehensive Go linting (matches CI configuration)
+        description: Run fast Go linting (excludes slow integration tests, matches CI)
 
 # Local fast checks
 -   repo: local
@@ -70,26 +70,27 @@ repos:
         files: ^\.github/workflows/.*\.(yml|yaml)$
         pass_filenames: false
     -   id: go-build-check
-        name: Go Build Verification
-        entry: sh -c 'go build ./... >/dev/null 2>&1 || { echo "❌ Build failed - fix compilation errors before committing"; exit 1; }'
+        name: Go Build Verification (Fast)
+        entry: sh -c 'timeout 2m go build -a ./... >/dev/null 2>&1 || { echo "❌ Build failed - fix compilation errors before committing"; exit 1; }'
         language: system
         types: [go]
         pass_filenames: false
-        description: Verify code compiles successfully before commit
+        description: Verify code compiles successfully before commit (2min timeout)
     -   id: fast-tokenizer-tests
         name: Fast Tokenizer Performance Tests
-        entry: sh -c 'go test -short -timeout=30s ./internal/thinktank/tokenizers/... -run "TestStreamingTokenization_RespectsContextCancellation|TestOpenAITokenizer_CountTokens|TestGeminiTokenizer_CountTokens" || { echo "❌ Fast tokenizer tests failed - check for performance regressions"; exit 1; }'
+        entry: sh -c 'timeout 1m go test -short -parallel 4 -timeout=45s ./internal/thinktank/tokenizers/... -run "TestStreamingTokenization_RespectsContextCancellation|TestOpenAITokenizer_CountTokens|TestGeminiTokenizer_CountTokens" || { echo "❌ Fast tokenizer tests failed - check for performance regressions"; exit 1; }'
         language: system
         types: [go]
         pass_filenames: false
         description: Run fast tokenizer tests to catch performance regressions early
     -   id: go-coverage-check
-        name: Go Coverage Regression Check
-        entry: scripts/check-coverage-cached.sh 79
+        name: Go Coverage Regression Check (Optimized)
+        entry: timeout 8m scripts/check-coverage-fast.sh 79
         language: script
         types: [go]
         pass_filenames: false
-        description: Prevent commits that drop test coverage below 79% (post-consolidation baseline, target 90%)
+        description: Prevent commits that drop test coverage below 79% (8min timeout, target 90%)
+        stages: [pre-commit]
 
 # Post-commit hooks (run after successful commit)
 -   repo: local

@@ -65,6 +65,22 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 * **Security:** `govulncheck` hard-fails on ANY vulnerability
 * **Structured Results:** Return `RunResult` from main logic, not `os.Exit()`
 
+## Pre-commit Hooks
+
+* **Installation:** `pre-commit install` (required for development)
+* **Timeout Limits:** Hooks have aggressive timeouts to prevent hanging
+  - golangci-lint: 4 minutes (with --fast flag)
+  - go-build-check: 2 minutes
+  - go-coverage-check: 8 minutes (with intelligent caching)
+  - fast-tokenizer-tests: 1 minute
+* **Performance Features:**
+  - Documentation-only changes skip coverage checks automatically
+  - Aggressive caching based on content hashes
+  - Parallel test execution where possible
+  - Timeout recovery with cached fallbacks
+* **Troubleshooting:** `./scripts/precommit-troubleshoot.sh` for performance issues
+* **Emergency Skip:** `git commit --no-verify` (use sparingly)
+
 ## Reference
 
 * Architecture: `docs/leyline/` for development philosophy

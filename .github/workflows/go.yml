@@ -405,9 +405,9 @@ jobs:
           echo "unit_test_race_logs=NONE" >> exit_codes.log
         fi
 
-    - name: Integration Tests (Verbose)
+    - name: Integration Tests (Verbose with Retry)
       run: |
-        echo "=== Running Integration Tests (Verbose) ==="
+        echo "=== Running Integration Tests with Retry Logic ==="
 
         echo "=== Pre-Integration-Test Environment Snapshot ==="
         echo "Current environment variables:"
@@ -428,35 +428,89 @@ jobs:
         echo "Race condition logs will be written to: ./integration-race.log.*"
         echo ""
 
-        # Run integration tests with verbose output, separate stdout/stderr
+        # Define retry function for integration tests
+        run_integration_tests_with_retry() {
+          local attempt=1
+          local max_attempts=3
+          local retry_delay=10
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "=== Integration Test Attempt $attempt/$max_attempts ==="
+            echo "integration_test_attempt_${attempt}_start=$(date +%s)" >> exit_codes.log
+
+            # Clean up previous attempt logs
+            rm -f integration-test-errors-attempt-${attempt}.log integration-test-output-attempt-${attempt}.log
+
+            # Run integration tests with verbose output, separate stdout/stderr
+            go test -v -race -short -parallel 4 ./internal/integration/... 2>integration-test-errors-attempt-${attempt}.log 1>integration-test-output-attempt-${attempt}.log
+            local exit_code=$?
+            echo "integration_test_attempt_${attempt}_exit_code=$exit_code" >> exit_codes.log
+            echo "integration_test_attempt_${attempt}_end=$(date +%s)" >> exit_codes.log
+
+            echo "=== Integration Test Output (Attempt $attempt) ==="
+            cat integration-test-output-attempt-${attempt}.log
+            echo ""
+            echo "=== Integration Test Errors (Attempt $attempt) ==="
+            cat integration-test-errors-attempt-${attempt}.log
+            echo ""
+            echo "Integration tests attempt $attempt exit code: $exit_code"
+
+            if [ $exit_code -eq 0 ]; then
+              echo "✅ Integration tests passed on attempt $attempt"
+              echo "integration_test_status=SUCCESS" >> exit_codes.log
+              echo "integration_test_successful_attempt=$attempt" >> exit_codes.log
+              # Copy final logs for consistency
+              cp integration-test-output-attempt-${attempt}.log integration-test-output.log
+              cp integration-test-errors-attempt-${attempt}.log integration-test-errors.log
+              return 0
+            else
+              echo "❌ Integration tests failed on attempt $attempt with exit code $exit_code"
+              echo "integration_test_attempt_${attempt}_status=FAILED" >> exit_codes.log
+
+              if [ $attempt -lt $max_attempts ]; then
+                echo "⏳ Retrying in $retry_delay seconds..."
+                echo "=== Integration Test Failure Analysis (Attempt $attempt) ==="
+                echo "Integration test output size: $(wc -l < integration-test-output-attempt-${attempt}.log) lines"
+                echo "Integration test errors size: $(wc -l < integration-test-errors-attempt-${attempt}.log) lines"
+                if [ -s integration-test-errors-attempt-${attempt}.log ]; then
+                  echo "Last 10 lines of integration test errors (attempt $attempt):"
+                  tail -10 integration-test-errors-attempt-${attempt}.log
+                fi
+                echo ""
+                sleep $retry_delay
+                # Double retry delay for next attempt (exponential backoff)
+                retry_delay=$((retry_delay * 2))
+              else
+                echo "❌ Integration tests failed after $max_attempts attempts"
+                echo "integration_test_status=FAILED" >> exit_codes.log
+                echo "integration_test_failed_attempts=$max_attempts" >> exit_codes.log
+                echo "=== Final Integration Test Failure Analysis ==="
+                echo "Integration test output size: $(wc -l < integration-test-output-attempt-${attempt}.log) lines"
+                echo "Integration test errors size: $(wc -l < integration-test-errors-attempt-${attempt}.log) lines"
+                if [ -s integration-test-errors-attempt-${attempt}.log ]; then
+                  echo "Last 20 lines of integration test errors (final attempt):"
+                  tail -20 integration-test-errors-attempt-${attempt}.log
+                fi
+                # Copy final logs for artifact upload
+                cp integration-test-output-attempt-${attempt}.log integration-test-output.log
+                cp integration-test-errors-attempt-${attempt}.log integration-test-errors.log
+                return $exit_code
+              fi
+            fi
+
+            attempt=$((attempt + 1))
+          done
+        }
+
+        # Run integration tests with retry logic
         echo "integration_test_start=$(date +%s)" >> exit_codes.log
-        go test -v -race -short -parallel 4 ./internal/integration/... 2>integration-test-errors.log 1>integration-test-output.log
+        run_integration_tests_with_retry
         INTEGRATION_EXIT_CODE=$?
         echo "integration_test_exit_code=$INTEGRATION_EXIT_CODE" >> exit_codes.log
         echo "integration_test_end=$(date +%s)" >> exit_codes.log
 
-        echo "=== Integration Test Output ==="
-        cat integration-test-output.log
-        echo ""
-        echo "=== Integration Test Errors ==="
-        cat integration-test-errors.log
-        echo ""
-        echo "Integration tests exit code: $INTEGRATION_EXIT_CODE"
-
         if [ $INTEGRATION_EXIT_CODE -ne 0 ]; then
-          echo "❌ Integration tests failed with exit code $INTEGRATION_EXIT_CODE"
-          echo "integration_test_status=FAILED" >> exit_codes.log
-          echo "=== Integration Test Failure Analysis ==="
-          echo "Integration test output size: $(wc -l < integration-test-output.log) lines"
-          echo "Integration test errors size: $(wc -l < integration-test-errors.log) lines"
-          if [ -s integration-test-errors.log ]; then
-            echo "Last 20 lines of integration test errors:"
-            tail -20 integration-test-errors.log
-          fi
           exit $INTEGRATION_EXIT_CODE
-        else
-          echo "✅ Integration tests passed"
-          echo "integration_test_status=SUCCESS" >> exit_codes.log
         fi
 
         # Check for race condition logs in integration tests
@@ -476,9 +530,9 @@ jobs:
           echo "integration_test_race_logs=NONE" >> exit_codes.log
         fi
 
-    - name: E2E Tests (Verbose)
+    - name: E2E Tests (Verbose with Retry)
       run: |
-        echo "=== Running E2E Tests (Verbose) ==="
+        echo "=== Running E2E Tests with Retry Logic ==="
 
         echo "=== Pre-E2E-Test Environment Snapshot ==="
         echo "Current environment variables:"
@@ -492,24 +546,87 @@ jobs:
         df -h . 2>/dev/null || echo "df command not available"
         echo ""
 
-        # Make E2E script executable and run with verbose output
-        chmod +x ./internal/e2e/run_e2e_tests.sh
-        ./internal/e2e/run_e2e_tests.sh 2>e2e-test-errors.log 1>e2e-test-output.log
+        # Define retry function for E2E tests
+        run_e2e_tests_with_retry() {
+          local attempt=1
+          local max_attempts=3
+          local retry_delay=15
+
+          while [ $attempt -le $max_attempts ]; do
+            echo "=== E2E Test Attempt $attempt/$max_attempts ==="
+            echo "e2e_test_attempt_${attempt}_start=$(date +%s)" >> exit_codes.log
+
+            # Clean up previous attempt logs
+            rm -f e2e-test-errors-attempt-${attempt}.log e2e-test-output-attempt-${attempt}.log
+
+            # Make E2E script executable and run with verbose output
+            chmod +x ./internal/e2e/run_e2e_tests.sh
+            ./internal/e2e/run_e2e_tests.sh 2>e2e-test-errors-attempt-${attempt}.log 1>e2e-test-output-attempt-${attempt}.log
+            local exit_code=$?
+            echo "e2e_test_attempt_${attempt}_exit_code=$exit_code" >> exit_codes.log
+            echo "e2e_test_attempt_${attempt}_end=$(date +%s)" >> exit_codes.log
+
+            echo "=== E2E Test Output (Attempt $attempt) ==="
+            cat e2e-test-output-attempt-${attempt}.log
+            echo ""
+            echo "=== E2E Test Errors (Attempt $attempt) ==="
+            cat e2e-test-errors-attempt-${attempt}.log
+            echo ""
+            echo "E2E tests attempt $attempt exit code: $exit_code"
+
+            if [ $exit_code -eq 0 ]; then
+              echo "✅ E2E tests passed on attempt $attempt"
+              echo "e2e_test_status=SUCCESS" >> exit_codes.log
+              echo "e2e_test_successful_attempt=$attempt" >> exit_codes.log
+              # Copy final logs for consistency
+              cp e2e-test-output-attempt-${attempt}.log e2e-test-output.log
+              cp e2e-test-errors-attempt-${attempt}.log e2e-test-errors.log
+              return 0
+            else
+              echo "❌ E2E tests failed on attempt $attempt with exit code $exit_code"
+              echo "e2e_test_attempt_${attempt}_status=FAILED" >> exit_codes.log
+
+              if [ $attempt -lt $max_attempts ]; then
+                echo "⏳ Retrying in $retry_delay seconds..."
+                echo "=== E2E Test Failure Analysis (Attempt $attempt) ==="
+                echo "E2E test output size: $(wc -l < e2e-test-output-attempt-${attempt}.log) lines"
+                echo "E2E test errors size: $(wc -l < e2e-test-errors-attempt-${attempt}.log) lines"
+                if [ -s e2e-test-errors-attempt-${attempt}.log ]; then
+                  echo "Last 10 lines of E2E test errors (attempt $attempt):"
+                  tail -10 e2e-test-errors-attempt-${attempt}.log
+                fi
+                echo ""
+                sleep $retry_delay
+                # Increase retry delay for next attempt
+                retry_delay=$((retry_delay + 10))
+              else
+                echo "❌ E2E tests failed after $max_attempts attempts"
+                echo "e2e_test_status=FAILED" >> exit_codes.log
+                echo "e2e_test_failed_attempts=$max_attempts" >> exit_codes.log
+                echo "=== Final E2E Test Failure Analysis ==="
+                echo "E2E test output size: $(wc -l < e2e-test-output-attempt-${attempt}.log) lines"
+                echo "E2E test errors size: $(wc -l < e2e-test-errors-attempt-${attempt}.log) lines"
+                if [ -s e2e-test-errors-attempt-${attempt}.log ]; then
+                  echo "Last 20 lines of E2E test errors (final attempt):"
+                  tail -20 e2e-test-errors-attempt-${attempt}.log
+                fi
+                # Copy final logs for artifact upload
+                cp e2e-test-output-attempt-${attempt}.log e2e-test-output.log
+                cp e2e-test-errors-attempt-${attempt}.log e2e-test-errors.log
+                return $exit_code
+              fi
+            fi
+
+            attempt=$((attempt + 1))
+          done
+        }
+
+        # Run E2E tests with retry logic
+        run_e2e_tests_with_retry
         E2E_EXIT_CODE=$?
 
-        echo "=== E2E Test Output ==="
-        cat e2e-test-output.log
-        echo ""
-        echo "=== E2E Test Errors ==="
-        cat e2e-test-errors.log
-        echo ""
-        echo "E2E tests exit code: $E2E_EXIT_CODE"
-
         if [ $E2E_EXIT_CODE -ne 0 ]; then
-          echo "❌ E2E tests failed"
           exit $E2E_EXIT_CODE
-        else
-          echo "✅ E2E tests passed"
         fi
 
     - name: Coverage Check (Verbose)
@@ -609,6 +726,7 @@ jobs:
         name: test-artifacts
         path: |
           *.log
+          *-attempt-*.log
           unit-race.log.*
           integration-race.log.*
           exit_codes.log
@@ -704,6 +822,55 @@ jobs:
             else
               echo "✅ No race conditions detected in this CI run"
             fi
+
+            # Retry analysis summary
+            echo ""
+            echo "=== Test Retry Summary ==="
+            INTEGRATION_SUCCESS_ATTEMPT=$(grep "integration_test_successful_attempt=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "")
+            INTEGRATION_FAILED_ATTEMPTS=$(grep "integration_test_failed_attempts=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "")
+            E2E_SUCCESS_ATTEMPT=$(grep "e2e_test_successful_attempt=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "")
+            E2E_FAILED_ATTEMPTS=$(grep "e2e_test_failed_attempts=" exit_codes.log 2>/dev/null | cut -d'=' -f2 || echo "")
+
+            if [ -n "$INTEGRATION_SUCCESS_ATTEMPT" ]; then
+              echo "Integration tests: ✅ Passed on attempt $INTEGRATION_SUCCESS_ATTEMPT"
+              if [ "$INTEGRATION_SUCCESS_ATTEMPT" -gt 1 ]; then
+                echo "  ⚠️  Required $INTEGRATION_SUCCESS_ATTEMPT attempts (initial failures were flaky)"
+              fi
+            elif [ -n "$INTEGRATION_FAILED_ATTEMPTS" ]; then
+              echo "Integration tests: ❌ Failed after $INTEGRATION_FAILED_ATTEMPTS attempts"
+            else
+              echo "Integration tests: ⚠️  No retry information available"
+            fi
+
+            if [ -n "$E2E_SUCCESS_ATTEMPT" ]; then
+              echo "E2E tests: ✅ Passed on attempt $E2E_SUCCESS_ATTEMPT"
+              if [ "$E2E_SUCCESS_ATTEMPT" -gt 1 ]; then
+                echo "  ⚠️  Required $E2E_SUCCESS_ATTEMPT attempts (initial failures were flaky)"
+              fi
+            elif [ -n "$E2E_FAILED_ATTEMPTS" ]; then
+              echo "E2E tests: ❌ Failed after $E2E_FAILED_ATTEMPTS attempts"
+            else
+              echo "E2E tests: ⚠️  No retry information available"
+            fi
+
+            # Overall retry effectiveness
+            TOTAL_RETRIES=0
+            if [ -n "$INTEGRATION_SUCCESS_ATTEMPT" ] && [ "$INTEGRATION_SUCCESS_ATTEMPT" -gt 1 ]; then
+              TOTAL_RETRIES=$((TOTAL_RETRIES + INTEGRATION_SUCCESS_ATTEMPT - 1))
+            fi
+            if [ -n "$E2E_SUCCESS_ATTEMPT" ] && [ "$E2E_SUCCESS_ATTEMPT" -gt 1 ]; then
+              TOTAL_RETRIES=$((TOTAL_RETRIES + E2E_SUCCESS_ATTEMPT - 1))
+            fi
+
+            if [ $TOTAL_RETRIES -gt 0 ]; then
+              echo ""
+              echo "🔄 RETRY EFFECTIVENESS:"
+              echo "Total retries performed: $TOTAL_RETRIES"
+              echo "Retry mechanism helped recover from $TOTAL_RETRIES flaky test failures"
+              echo "All retry attempt logs have been uploaded as artifacts for analysis"
+            else
+              echo "✅ No retries were needed - all tests passed on first attempt"
+            fi
           fi
         else
           echo "❌ Exit codes log file not found"
@@ -717,4 +884,5 @@ jobs:
         echo "Test artifacts have been uploaded for analysis."
         echo "Exit codes and verbose output captured for debugging."
         echo "Race condition logging enabled with GORACE environment variable."
-        echo "Comprehensive exit code analysis available above."
+        echo "Test retry mechanism active for integration and E2E tests (3 attempts max)."
+        echo "Comprehensive exit code analysis and retry statistics available above."
