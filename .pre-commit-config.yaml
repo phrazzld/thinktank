@@ -89,7 +89,6 @@ repos:
         language: script
         types: [go]
         pass_filenames: false
-        always_run: true
         description: Prevent commits that drop test coverage below 79% (post-consolidation baseline, target 90%)
 
 # Post-commit hooks (run after successful commit)

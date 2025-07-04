@@ -1,0 +1,650 @@
+name: Go CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Initialize Exit Code Tracking
+      run: |
+        echo "=== Initializing Exit Code Tracking ==="
+        # Create exit code tracking file
+        echo "# CI Pipeline Exit Code Tracking" > exit_codes.log
+        echo "timestamp=$(date -Iseconds)" >> exit_codes.log
+        echo "pipeline_start=$(date +%s)" >> exit_codes.log
+        echo "" >> exit_codes.log
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24'
+
+    - name: Environment Debug Information
+      run: |
+        echo "=== Environment Variables ==="
+        env | sort
+        echo ""
+        echo "=== Go Environment ==="
+        go env
+        echo ""
+        echo "=== System Information ==="
+        uname -a
+        echo ""
+        echo "=== Go Version Verification ==="
+        go version
+        echo ""
+
+        # Verify Go version consistency
+        echo "=== Go Version Consistency Check ==="
+        GO_MOD_VERSION=$(grep "^go " go.mod | awk '{print $2}')
+        GO_RUNTIME_VERSION=$(go version | awk '{print $3}' | sed 's/go//')
+        echo "go.mod requires: $GO_MOD_VERSION"
+        echo "Runtime version: $GO_RUNTIME_VERSION"
+
+        # Check if runtime version meets go.mod requirement
+        if [ "$(printf '%s\n' "$GO_MOD_VERSION" "$GO_RUNTIME_VERSION" | sort -V | head -n1)" = "$GO_MOD_VERSION" ]; then
+          echo "✅ Go version consistency check passed"
+        else
+          echo "⚠️  Go runtime version may be older than go.mod requirement"
+        fi
+        echo ""
+        echo "=== Working Directory ==="
+        pwd
+        ls -la
+        echo ""
+        echo "=== Go Module Information ==="
+        go mod verify
+        MOD_VERIFY_EXIT_CODE=$?
+        echo "go_mod_verify_exit_code=$MOD_VERIFY_EXIT_CODE" >> exit_codes.log
+        echo "Go mod verify exit code: $MOD_VERIFY_EXIT_CODE"
+
+        go list -m all
+        MOD_LIST_EXIT_CODE=$?
+        echo "go_mod_list_exit_code=$MOD_LIST_EXIT_CODE" >> exit_codes.log
+        echo "Go mod list exit code: $MOD_LIST_EXIT_CODE"
+        echo ""
+
+    - name: Comprehensive Dependencies Verification
+      run: |
+        echo "=== Comprehensive Go Module Dependencies Verification ==="
+        echo "deps_verification_start=$(date +%s)" >> exit_codes.log
+
+        # 1. Basic module verification
+        echo "1. Verifying module integrity..."
+        go mod verify
+        DEPS_VERIFY_EXIT_CODE=$?
+        echo "deps_verify_exit_code=$DEPS_VERIFY_EXIT_CODE" >> exit_codes.log
+        echo "Dependencies verify exit code: $DEPS_VERIFY_EXIT_CODE"
+
+        if [ $DEPS_VERIFY_EXIT_CODE -ne 0 ]; then
+          echo "❌ Module integrity verification failed"
+          echo "deps_verify_status=FAILED" >> exit_codes.log
+        else
+          echo "✅ Module integrity verified"
+          echo "deps_verify_status=SUCCESS" >> exit_codes.log
+        fi
+        echo ""
+
+        # 2. Module tidiness check
+        echo "2. Checking module tidiness..."
+        go mod tidy
+        DEPS_TIDY_EXIT_CODE=$?
+        echo "deps_tidy_exit_code=$DEPS_TIDY_EXIT_CODE" >> exit_codes.log
+        echo "Dependencies tidy exit code: $DEPS_TIDY_EXIT_CODE"
+
+        # Check if go mod tidy made any changes
+        if git diff --quiet go.mod go.sum; then
+          echo "✅ Go modules are tidy"
+          echo "deps_tidy_status=SUCCESS" >> exit_codes.log
+        else
+          echo "⚠️  Go mod tidy made changes - dependencies may be out of sync"
+          echo "deps_tidy_status=WARNING" >> exit_codes.log
+          echo "Changes made by go mod tidy:"
+          git diff go.mod go.sum
+        fi
+        echo ""
+
+        # 3. Dependency listing and analysis
+        echo "3. Analyzing dependency tree..."
+        go list -m all > deps_list.txt
+        DEPS_LIST_EXIT_CODE=$?
+        echo "deps_list_exit_code=$DEPS_LIST_EXIT_CODE" >> exit_codes.log
+        echo "Dependencies list exit code: $DEPS_LIST_EXIT_CODE"
+
+        if [ $DEPS_LIST_EXIT_CODE -eq 0 ]; then
+          TOTAL_DEPS=$(wc -l < deps_list.txt)
+          DIRECT_DEPS=$(grep -v "// indirect" go.mod | grep -c "^\s*github\|^\s*golang\|^\s*gopkg" || echo "0")
+          echo "✅ Dependency analysis completed"
+          echo "Total dependencies: $TOTAL_DEPS"
+          echo "Direct dependencies: $DIRECT_DEPS"
+          echo "deps_list_status=SUCCESS" >> exit_codes.log
+          echo "total_dependencies=$TOTAL_DEPS" >> exit_codes.log
+          echo "direct_dependencies=$DIRECT_DEPS" >> exit_codes.log
+        else
+          echo "❌ Failed to list dependencies"
+          echo "deps_list_status=FAILED" >> exit_codes.log
+        fi
+        echo ""
+
+        # 4. Test dependencies verification
+        echo "4. Verifying test dependencies..."
+        # Try to load test packages to ensure all test dependencies are available
+        go list -test ./... > test_packages.txt 2>test_deps_errors.txt
+        TEST_DEPS_EXIT_CODE=$?
+        echo "test_deps_exit_code=$TEST_DEPS_EXIT_CODE" >> exit_codes.log
+        echo "Test dependencies exit code: $TEST_DEPS_EXIT_CODE"
+
+        if [ $TEST_DEPS_EXIT_CODE -eq 0 ]; then
+          TEST_PACKAGES=$(wc -l < test_packages.txt)
+          echo "✅ Test dependencies verified"
+          echo "Test packages loadable: $TEST_PACKAGES"
+          echo "test_deps_status=SUCCESS" >> exit_codes.log
+          echo "test_packages_count=$TEST_PACKAGES" >> exit_codes.log
+        else
+          echo "❌ Test dependencies verification failed"
+          echo "test_deps_status=FAILED" >> exit_codes.log
+          if [ -s test_deps_errors.txt ]; then
+            echo "Test dependency errors:"
+            cat test_deps_errors.txt
+          fi
+        fi
+        echo ""
+
+        # 5. Download verification
+        echo "5. Verifying dependency downloads..."
+        go mod download
+        DEPS_DOWNLOAD_EXIT_CODE=$?
+        echo "deps_download_exit_code=$DEPS_DOWNLOAD_EXIT_CODE" >> exit_codes.log
+        echo "Dependencies download exit code: $DEPS_DOWNLOAD_EXIT_CODE"
+
+        if [ $DEPS_DOWNLOAD_EXIT_CODE -eq 0 ]; then
+          echo "✅ All dependencies downloaded successfully"
+          echo "deps_download_status=SUCCESS" >> exit_codes.log
+        else
+          echo "❌ Failed to download some dependencies"
+          echo "deps_download_status=FAILED" >> exit_codes.log
+        fi
+        echo ""
+
+        # 6. Module cache verification
+        echo "6. Verifying module cache consistency..."
+        go clean -modcache 2>/dev/null || true
+        go mod download -x > modcache_rebuild.log 2>&1
+        MODCACHE_EXIT_CODE=$?
+        echo "modcache_rebuild_exit_code=$MODCACHE_EXIT_CODE" >> exit_codes.log
+        echo "Module cache rebuild exit code: $MODCACHE_EXIT_CODE"
+
+        if [ $MODCACHE_EXIT_CODE -eq 0 ]; then
+          echo "✅ Module cache rebuilt successfully"
+          echo "modcache_status=SUCCESS" >> exit_codes.log
+        else
+          echo "❌ Failed to rebuild module cache"
+          echo "modcache_status=FAILED" >> exit_codes.log
+          echo "Last 10 lines of modcache rebuild log:"
+          tail -10 modcache_rebuild.log
+        fi
+        echo ""
+
+        echo "deps_verification_end=$(date +%s)" >> exit_codes.log
+        echo "=== Dependencies Verification Summary ==="
+
+        # Count failures
+        DEPS_FAILURES=0
+        if [ $DEPS_VERIFY_EXIT_CODE -ne 0 ]; then DEPS_FAILURES=$((DEPS_FAILURES + 1)); fi
+        if [ $DEPS_LIST_EXIT_CODE -ne 0 ]; then DEPS_FAILURES=$((DEPS_FAILURES + 1)); fi
+        if [ $TEST_DEPS_EXIT_CODE -ne 0 ]; then DEPS_FAILURES=$((DEPS_FAILURES + 1)); fi
+        if [ $DEPS_DOWNLOAD_EXIT_CODE -ne 0 ]; then DEPS_FAILURES=$((DEPS_FAILURES + 1)); fi
+        if [ $MODCACHE_EXIT_CODE -ne 0 ]; then DEPS_FAILURES=$((DEPS_FAILURES + 1)); fi
+
+        echo "dependency_failures_count=$DEPS_FAILURES" >> exit_codes.log
+
+        if [ $DEPS_FAILURES -eq 0 ]; then
+          echo "✅ All dependency verifications passed"
+          echo "deps_overall_status=SUCCESS" >> exit_codes.log
+        else
+          echo "❌ $DEPS_FAILURES dependency verification(s) failed"
+          echo "deps_overall_status=FAILED" >> exit_codes.log
+          exit 1
+        fi
+
+    - name: Build Check
+      run: |
+        echo "=== Building Project ==="
+        echo "build_start=$(date +%s)" >> exit_codes.log
+        go build -v ./... 2>&1 | tee build.log
+        BUILD_EXIT_CODE=$?
+        echo "build_exit_code=$BUILD_EXIT_CODE" >> exit_codes.log
+        echo "build_end=$(date +%s)" >> exit_codes.log
+        echo "Build exit code: $BUILD_EXIT_CODE"
+
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo "❌ Build failed with exit code $BUILD_EXIT_CODE"
+          echo "=== Build Error Analysis ==="
+          echo "Build log size: $(wc -l < build.log) lines"
+          echo "Last 20 lines of build log:"
+          tail -20 build.log
+          echo "build_status=FAILED" >> exit_codes.log
+          exit $BUILD_EXIT_CODE
+        else
+          echo "✅ Build successful"
+          echo "build_status=SUCCESS" >> exit_codes.log
+        fi
+
+    - name: Linting Checks
+      run: |
+        echo "=== Running Linting Checks ==="
+        echo "lint_start=$(date +%s)" >> exit_codes.log
+
+        echo "Checking Go formatting..."
+        go fmt ./... > fmt_output.txt 2>&1
+        FMT_EXIT_CODE=$?
+        echo "fmt_exit_code=$FMT_EXIT_CODE" >> exit_codes.log
+        echo "Go fmt exit code: $FMT_EXIT_CODE"
+        if [ -s fmt_output.txt ]; then
+          echo "❌ Code formatting issues found"
+          echo "fmt_status=FAILED" >> exit_codes.log
+          echo "Formatting issues:"
+          cat fmt_output.txt
+          exit 1
+        else
+          echo "fmt_status=SUCCESS" >> exit_codes.log
+        fi
+
+        echo "Running go vet..."
+        go vet ./... 2>&1 | tee vet.log
+        VET_EXIT_CODE=$?
+        echo "vet_exit_code=$VET_EXIT_CODE" >> exit_codes.log
+        echo "Go vet exit code: $VET_EXIT_CODE"
+        if [ $VET_EXIT_CODE -ne 0 ]; then
+          echo "❌ Go vet failed with exit code $VET_EXIT_CODE"
+          echo "vet_status=FAILED" >> exit_codes.log
+          echo "=== Vet Error Analysis ==="
+          echo "Last 20 lines of vet log:"
+          tail -20 vet.log
+          exit $VET_EXIT_CODE
+        else
+          echo "vet_status=SUCCESS" >> exit_codes.log
+        fi
+
+        echo "Installing golangci-lint..."
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+        LINT_INSTALL_EXIT_CODE=$?
+        echo "lint_install_exit_code=$LINT_INSTALL_EXIT_CODE" >> exit_codes.log
+        echo "Golangci-lint install exit code: $LINT_INSTALL_EXIT_CODE"
+
+        echo "Running golangci-lint..."
+        $(go env GOPATH)/bin/golangci-lint run --timeout=5m --verbose 2>&1 | tee golangci-lint.log
+        LINT_EXIT_CODE=$?
+        echo "lint_exit_code=$LINT_EXIT_CODE" >> exit_codes.log
+        echo "lint_end=$(date +%s)" >> exit_codes.log
+        echo "Golangci-lint exit code: $LINT_EXIT_CODE"
+        if [ $LINT_EXIT_CODE -ne 0 ]; then
+          echo "❌ Golangci-lint failed with exit code $LINT_EXIT_CODE"
+          echo "lint_status=FAILED" >> exit_codes.log
+          echo "=== Lint Error Analysis ==="
+          echo "Last 30 lines of lint log:"
+          tail -30 golangci-lint.log
+          exit $LINT_EXIT_CODE
+        else
+          echo "lint_status=SUCCESS" >> exit_codes.log
+        fi
+
+        echo "✅ All linting checks passed"
+
+    - name: Security Scanning
+      run: |
+        echo "=== Running Security Scans ==="
+
+        echo "Checking license compliance..."
+        ./scripts/check-licenses.sh 2>&1 | tee license-check.log
+        LICENSE_EXIT_CODE=$?
+        echo "License check exit code: $LICENSE_EXIT_CODE"
+
+        echo "Installing TruffleHog..."
+        curl -sSfL https://github.com/trufflesecurity/trufflehog/releases/download/v3.89.0/trufflehog_3.89.0_linux_amd64.tar.gz | tar -xzf -
+
+        echo "Running secret detection..."
+        ./trufflehog git file://. --since-commit HEAD --only-verified --fail 2>&1 | tee trufflehog.log
+        SECRET_EXIT_CODE=$?
+        echo "Secret detection exit code: $SECRET_EXIT_CODE"
+
+        if [ $LICENSE_EXIT_CODE -ne 0 ] || [ $SECRET_EXIT_CODE -ne 0 ]; then
+          echo "❌ Security scan failed"
+          exit 1
+        fi
+
+        echo "✅ Security scans completed"
+
+    - name: Unit Tests (Verbose)
+      run: |
+        echo "=== Running Unit Tests (Verbose) ==="
+
+        echo "=== Pre-Test Environment Snapshot ==="
+        echo "Current environment variables:"
+        env | sort | grep -E "(GO|TEST|CI|PATH|HOME|USER|GITHUB)" || true
+        echo ""
+        echo "Go environment status:"
+        go env GOPATH GOROOT GOCACHE GOMOD GOWORK
+        echo ""
+        echo "Current working directory:"
+        pwd
+        ls -la
+        echo ""
+        echo "Memory and disk space:"
+        free -h 2>/dev/null || echo "free command not available"
+        df -h . 2>/dev/null || echo "df command not available"
+        echo ""
+
+        # Get list of packages excluding integration and e2e
+        PACKAGES=$(go list ./... | grep -v "/internal/integration" | grep -v "/internal/e2e" | grep -v "/disabled/" | grep -v "/internal/testutil")
+
+        echo "Testing packages:"
+        echo "$PACKAGES"
+        echo ""
+
+        # Run unit tests with verbose output, separate stdout/stderr
+        echo "unit_test_start=$(date +%s)" >> exit_codes.log
+        go test -v -race -short -parallel 4 $PACKAGES 2>unit-test-errors.log 1>unit-test-output.log
+        UNIT_EXIT_CODE=$?
+        echo "unit_test_exit_code=$UNIT_EXIT_CODE" >> exit_codes.log
+        echo "unit_test_end=$(date +%s)" >> exit_codes.log
+
+        echo "=== Unit Test Output ==="
+        cat unit-test-output.log
+        echo ""
+        echo "=== Unit Test Errors ==="
+        cat unit-test-errors.log
+        echo ""
+        echo "Unit tests exit code: $UNIT_EXIT_CODE"
+
+        if [ $UNIT_EXIT_CODE -ne 0 ]; then
+          echo "❌ Unit tests failed with exit code $UNIT_EXIT_CODE"
+          echo "unit_test_status=FAILED" >> exit_codes.log
+          echo "=== Unit Test Failure Analysis ==="
+          echo "Unit test output size: $(wc -l < unit-test-output.log) lines"
+          echo "Unit test errors size: $(wc -l < unit-test-errors.log) lines"
+          if [ -s unit-test-errors.log ]; then
+            echo "Last 20 lines of unit test errors:"
+            tail -20 unit-test-errors.log
+          fi
+          exit $UNIT_EXIT_CODE
+        else
+          echo "✅ Unit tests passed"
+          echo "unit_test_status=SUCCESS" >> exit_codes.log
+        fi
+
+    - name: Integration Tests (Verbose)
+      run: |
+        echo "=== Running Integration Tests (Verbose) ==="
+
+        echo "=== Pre-Integration-Test Environment Snapshot ==="
+        echo "Current environment variables:"
+        env | sort | grep -E "(GO|TEST|CI|PATH|HOME|USER|GITHUB)" || true
+        echo ""
+        echo "Go environment status:"
+        go env GOPATH GOROOT GOCACHE GOMOD GOWORK
+        echo ""
+        echo "Memory and disk space:"
+        free -h 2>/dev/null || echo "free command not available"
+        df -h . 2>/dev/null || echo "df command not available"
+        echo ""
+
+        # Run integration tests with verbose output, separate stdout/stderr
+        echo "integration_test_start=$(date +%s)" >> exit_codes.log
+        go test -v -race -short -parallel 4 ./internal/integration/... 2>integration-test-errors.log 1>integration-test-output.log
+        INTEGRATION_EXIT_CODE=$?
+        echo "integration_test_exit_code=$INTEGRATION_EXIT_CODE" >> exit_codes.log
+        echo "integration_test_end=$(date +%s)" >> exit_codes.log
+
+        echo "=== Integration Test Output ==="
+        cat integration-test-output.log
+        echo ""
+        echo "=== Integration Test Errors ==="
+        cat integration-test-errors.log
+        echo ""
+        echo "Integration tests exit code: $INTEGRATION_EXIT_CODE"
+
+        if [ $INTEGRATION_EXIT_CODE -ne 0 ]; then
+          echo "❌ Integration tests failed with exit code $INTEGRATION_EXIT_CODE"
+          echo "integration_test_status=FAILED" >> exit_codes.log
+          echo "=== Integration Test Failure Analysis ==="
+          echo "Integration test output size: $(wc -l < integration-test-output.log) lines"
+          echo "Integration test errors size: $(wc -l < integration-test-errors.log) lines"
+          if [ -s integration-test-errors.log ]; then
+            echo "Last 20 lines of integration test errors:"
+            tail -20 integration-test-errors.log
+          fi
+          exit $INTEGRATION_EXIT_CODE
+        else
+          echo "✅ Integration tests passed"
+          echo "integration_test_status=SUCCESS" >> exit_codes.log
+        fi
+
+    - name: E2E Tests (Verbose)
+      run: |
+        echo "=== Running E2E Tests (Verbose) ==="
+
+        echo "=== Pre-E2E-Test Environment Snapshot ==="
+        echo "Current environment variables:"
+        env | sort | grep -E "(GO|TEST|CI|PATH|HOME|USER|GITHUB)" || true
+        echo ""
+        echo "Go environment status:"
+        go env GOPATH GOROOT GOCACHE GOMOD GOWORK
+        echo ""
+        echo "Memory and disk space:"
+        free -h 2>/dev/null || echo "free command not available"
+        df -h . 2>/dev/null || echo "df command not available"
+        echo ""
+
+        # Make E2E script executable and run with verbose output
+        chmod +x ./internal/e2e/run_e2e_tests.sh
+        ./internal/e2e/run_e2e_tests.sh 2>e2e-test-errors.log 1>e2e-test-output.log
+        E2E_EXIT_CODE=$?
+
+        echo "=== E2E Test Output ==="
+        cat e2e-test-output.log
+        echo ""
+        echo "=== E2E Test Errors ==="
+        cat e2e-test-errors.log
+        echo ""
+        echo "E2E tests exit code: $E2E_EXIT_CODE"
+
+        if [ $E2E_EXIT_CODE -ne 0 ]; then
+          echo "❌ E2E tests failed"
+          exit $E2E_EXIT_CODE
+        else
+          echo "✅ E2E tests passed"
+        fi
+
+    - name: Coverage Check (Verbose)
+      run: |
+        echo "=== Running Coverage Check (Verbose) ==="
+
+        echo "=== Pre-Coverage-Check Environment Snapshot ==="
+        echo "Current environment variables:"
+        env | sort | grep -E "(GO|TEST|CI|PATH|HOME|USER|GITHUB)" || true
+        echo ""
+        echo "Go environment status:"
+        go env GOPATH GOROOT GOCACHE GOMOD GOWORK
+        echo ""
+        echo "Memory and disk space:"
+        free -h 2>/dev/null || echo "free command not available"
+        df -h . 2>/dev/null || echo "df command not available"
+        echo ""
+
+        # Generate coverage report
+        PACKAGES=$(go list ./... | grep -v "/internal/integration" | grep -v "/internal/e2e" | grep -v "/disabled/" | grep -v "/internal/testutil")
+
+        echo "Generating coverage report..."
+        go test -short -coverprofile=coverage.out -covermode=atomic $PACKAGES 2>coverage-errors.log 1>coverage-output.log
+        COVERAGE_EXIT_CODE=$?
+
+        echo "=== Coverage Generation Output ==="
+        cat coverage-output.log
+        echo ""
+        echo "=== Coverage Generation Errors ==="
+        cat coverage-errors.log
+        echo ""
+        echo "Coverage generation exit code: $COVERAGE_EXIT_CODE"
+
+        if [ $COVERAGE_EXIT_CODE -ne 0 ]; then
+          echo "❌ Coverage generation failed"
+          exit $COVERAGE_EXIT_CODE
+        fi
+
+        echo "Checking overall coverage threshold..."
+        ./scripts/check-coverage.sh 79 2>coverage-check-errors.log 1>coverage-check-output.log
+        COVERAGE_CHECK_EXIT_CODE=$?
+
+        echo "=== Coverage Check Output ==="
+        cat coverage-check-output.log
+        echo ""
+        echo "=== Coverage Check Errors ==="
+        cat coverage-check-errors.log
+        echo ""
+        echo "Coverage check exit code: $COVERAGE_CHECK_EXIT_CODE"
+
+        echo "Checking package-specific coverage..."
+        ./scripts/ci/check-package-specific-coverage.sh 2>package-coverage-errors.log 1>package-coverage-output.log
+        PACKAGE_COVERAGE_EXIT_CODE=$?
+
+        echo "=== Package Coverage Check Output ==="
+        cat package-coverage-output.log
+        echo ""
+        echo "=== Package Coverage Check Errors ==="
+        cat package-coverage-errors.log
+        echo ""
+        echo "Package coverage check exit code: $PACKAGE_COVERAGE_EXIT_CODE"
+
+        if [ $COVERAGE_CHECK_EXIT_CODE -ne 0 ] || [ $PACKAGE_COVERAGE_EXIT_CODE -ne 0 ]; then
+          echo "❌ Coverage check failed"
+          exit 1
+        else
+          echo "✅ Coverage checks passed"
+        fi
+
+    - name: Final Build Verification
+      run: |
+        echo "=== Final Build Verification ==="
+
+        go build -v -ldflags="-s -w" -o thinktank ./cmd/thinktank 2>final-build-errors.log 1>final-build-output.log
+        FINAL_BUILD_EXIT_CODE=$?
+
+        echo "=== Final Build Output ==="
+        cat final-build-output.log
+        echo ""
+        echo "=== Final Build Errors ==="
+        cat final-build-errors.log
+        echo ""
+        echo "Final build exit code: $FINAL_BUILD_EXIT_CODE"
+
+        if [ $FINAL_BUILD_EXIT_CODE -ne 0 ]; then
+          echo "❌ Final build failed"
+          exit $FINAL_BUILD_EXIT_CODE
+        else
+          echo "✅ Final build successful"
+          ls -la thinktank
+        fi
+
+    - name: Upload Test Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-artifacts
+        path: |
+          *.log
+          exit_codes.log
+          coverage.out
+          thinktank
+          fmt_output.txt
+          deps_list.txt
+          test_packages.txt
+          test_deps_errors.txt
+          modcache_rebuild.log
+        retention-days: 7
+
+    - name: Exit Code Analysis Summary
+      if: always()
+      run: |
+        echo "=== Comprehensive Exit Code Analysis ==="
+        echo "pipeline_end=$(date +%s)" >> exit_codes.log
+
+        echo "=== Exit Code Summary Report ==="
+        if [ -f exit_codes.log ]; then
+          cat exit_codes.log
+          echo ""
+          echo "=== Exit Code Analysis ==="
+
+          # Count failures and successes
+          FAILED_STEPS=$(grep -c "=FAILED" exit_codes.log 2>/dev/null || echo "0")
+          SUCCESSFUL_STEPS=$(grep -c "=SUCCESS" exit_codes.log 2>/dev/null || echo "0")
+          NON_ZERO_EXITS=$(grep -E "_exit_code=[^0]" exit_codes.log | wc -l || echo "0")
+
+          echo "Total failed steps: $FAILED_STEPS"
+          echo "Total successful steps: $SUCCESSFUL_STEPS"
+          echo "Non-zero exit codes detected: $NON_ZERO_EXITS"
+
+          if [ $FAILED_STEPS -gt 0 ] || [ $NON_ZERO_EXITS -gt 0 ]; then
+            echo ""
+            echo "🔍 FAILURE ANALYSIS:"
+            echo "Failed operations:"
+            grep "=FAILED" exit_codes.log 2>/dev/null || echo "None found via status"
+            echo ""
+            echo "Non-zero exit codes:"
+            grep -E "_exit_code=[^0]" exit_codes.log 2>/dev/null || echo "None found"
+          else
+            echo ""
+            echo "✅ All exit codes were 0 (success)"
+          fi
+
+          # Calculate timing information
+          if grep -q "pipeline_start=" exit_codes.log && grep -q "pipeline_end=" exit_codes.log; then
+            START_TIME=$(grep "pipeline_start=" exit_codes.log | cut -d'=' -f2)
+            END_TIME=$(grep "pipeline_end=" exit_codes.log | cut -d'=' -f2)
+            DURATION=$((END_TIME - START_TIME))
+            echo ""
+            echo "=== Timing Analysis ==="
+            echo "Total pipeline duration: ${DURATION} seconds"
+
+            # Show timing for major steps
+            for step in deps_verification build lint unit_test integration_test; do
+              if grep -q "${step}_start=" exit_codes.log && grep -q "${step}_end=" exit_codes.log; then
+                STEP_START=$(grep "${step}_start=" exit_codes.log | cut -d'=' -f2)
+                STEP_END=$(grep "${step}_end=" exit_codes.log | cut -d'=' -f2)
+                STEP_DURATION=$((STEP_END - STEP_START))
+                echo "$step duration: ${STEP_DURATION} seconds"
+              fi
+            done
+
+            # Show dependency metrics if available
+            if grep -q "total_dependencies=" exit_codes.log; then
+              TOTAL_DEPS=$(grep "total_dependencies=" exit_codes.log | cut -d'=' -f2)
+              DIRECT_DEPS=$(grep "direct_dependencies=" exit_codes.log | cut -d'=' -f2)
+              DEPS_FAILURES=$(grep "dependency_failures_count=" exit_codes.log | cut -d'=' -f2)
+              echo ""
+              echo "=== Dependency Analysis ==="
+              echo "Total dependencies: $TOTAL_DEPS"
+              echo "Direct dependencies: $DIRECT_DEPS"
+              echo "Dependency verification failures: $DEPS_FAILURES"
+            fi
+          fi
+        else
+          echo "❌ Exit codes log file not found"
+        fi
+
+    - name: CI Summary
+      if: always()
+      run: |
+        echo "=== CI Pipeline Summary ==="
+        echo "All steps completed. Check individual step outputs for details."
+        echo "Test artifacts have been uploaded for analysis."
+        echo "Exit codes and verbose output captured for debugging."
+        echo "Comprehensive exit code analysis available above."

@@ -175,6 +175,77 @@ After OpenRouter consolidation, model selection logic works differently:
 - **BEHAVIORAL CHANGE**: Setting `OPENROUTER_API_KEY` now enables all models, not just OpenRouter-branded ones
 - **MIGRATION**: Users with old API keys get warning messages guiding them to `OPENROUTER_API_KEY`
 
+# TODO: CI Integration Test Failure Resolution
+
+## [CI FIX] Phase 1: Immediate Diagnostics
+
+### 1. [x] [CI FIX] Add Verbose Test Logging
+- Modify `.github/workflows/go.yml` to add verbose flags and output capture
+- Add `-v` flag and capture stderr/stdout separately
+- Priority: High
+
+### 2. [x] [CI FIX] Add Environment Variable Debugging
+- Add step to dump environment variables before test execution
+- Add `env | sort` and `go env` commands to CI workflow
+- Priority: High
+
+### 3. [x] [CI FIX] Capture Test Exit Code Analysis
+- Add explicit exit code capture and logging
+- Modify test step to capture and log $? after test execution
+- Priority: High
+
+## [CI FIX] Phase 2: Environment Parity
+
+### 4. [x] [CI FIX] Verify Go Version Consistency
+- Check `.github/workflows/go.yml` Go version matches local `go version`
+- Priority: Medium
+
+### 5. [x] [CI FIX] Add Test Dependencies Verification
+- Add `go mod verify` and `go list -m all` to CI workflow
+- Priority: Medium
+
+## [CI FIX] Phase 3: Race Condition Investigation
+
+### 6. [CI FIX] Run Race Detection Locally
+- Execute `go test -race -count=10 ./internal/integration/...` locally
+- Priority: Medium
+
+### 7. [CI FIX] Add Race Condition Logging
+- Add `GORACE=log_path=./race.log` environment variable to CI
+- Priority: Medium
+
+## [CI FIX] Phase 4: Test Infrastructure Improvements
+
+### 8. [CI FIX] Improve Test Cleanup
+- Review integration tests for resource leaks or cleanup issues
+- Priority: Low
+
+### 9. [CI FIX] Add Test Retry Mechanism
+- Implement retry logic for flaky tests in CI
+- Priority: Low
+
+### 10. [CI FIX] Validate Fix Effectiveness
+- Run CI pipeline multiple times after implementing fixes
+- Priority: High
+
+## [CI FIX] Phase 5: Local Development Experience
+
+### 11. [CI FIX] Fix Pre-commit Hook Timeout Issues
+- Investigate and fix pre-commit hooks timing out after 10 minutes
+- Likely caused by `go-coverage-check` with `always_run: true` being too slow
+- Consider making coverage check conditional or faster
+- Priority: High
+
+### 12. [CI FIX] Optimize Pre-commit Hook Performance
+- Review all pre-commit hooks for performance bottlenecks
+- Consider caching strategies for expensive operations
+- Add timeout configurations where appropriate
+- Priority: Medium
+
+---
+
+## OpenRouter Consolidation Status (COMPLETED)
+
 ## Success Metrics
 - [x] All existing CLI commands work identically ✅
 - [ ] All tests pass (Phase 5 follow-up work)
