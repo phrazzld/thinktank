@@ -146,7 +146,7 @@ func TestTokenCountingService_GetCompatibleModels_EmptyInput(t *testing.T) {
 	models, err := service.GetCompatibleModels(context.Background(), TokenCountingRequest{
 		Instructions: "",
 		Files:        []FileContent{},
-	}, []string{"openai", "gemini"})
+	}, []string{"openrouter"})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, models, "Should return some models even for empty input")
@@ -162,7 +162,7 @@ func TestTokenCountingService_GetCompatibleModels_SingleCompatibleModel(t *testi
 		Files: []FileContent{
 			{Path: "test.txt", Content: "Small content"},
 		},
-	}, []string{"openai"})
+	}, []string{"openrouter"})
 
 	require.NoError(t, err)
 	assert.NotEmpty(t, models, "Should return compatible models")
@@ -192,25 +192,25 @@ func TestTokenCountingService_GetCompatibleModels_TableDriven(t *testing.T) {
 		expectTokenCount   bool
 	}{
 		{
-			name:               "Empty input with OpenAI",
+			name:               "Empty input with OpenRouter",
 			instructions:       "",
 			files:              []FileContent{},
-			availableProviders: []string{"openai"},
+			availableProviders: []string{"openrouter"},
 			expectCompatible:   true,
 			expectTokenCount:   false,
 		},
 		{
-			name:         "Small input with multiple providers",
+			name:         "Small input with OpenRouter",
 			instructions: "Analyze this code",
 			files: []FileContent{
 				{Path: "test.go", Content: "package main\nfunc main() {}"},
 			},
-			availableProviders: []string{"openai", "gemini"},
+			availableProviders: []string{"openrouter"},
 			expectCompatible:   true,
 			expectTokenCount:   true,
 		},
 		{
-			name:         "Large input with Gemini",
+			name:         "Large input with OpenRouter",
 			instructions: "Process this large dataset",
 			files: func() []FileContent {
 				// Create larger content
@@ -222,19 +222,19 @@ func TestTokenCountingService_GetCompatibleModels_TableDriven(t *testing.T) {
 					{Path: "large.txt", Content: content},
 				}
 			}(),
-			availableProviders: []string{"gemini"},
+			availableProviders: []string{"openrouter"},
 			expectCompatible:   true,
 			expectTokenCount:   true,
 		},
 		{
-			name:         "Multiple files with multiple providers",
+			name:         "Multiple files with OpenRouter",
 			instructions: "Refactor these files for better performance",
 			files: []FileContent{
 				{Path: "server.go", Content: "package main\n\ntype Server struct {}"},
 				{Path: "client.go", Content: "package main\n\ntype Client struct {}"},
 				{Path: "utils.go", Content: "package main\n\nfunc Helper() string { return \"help\" }"},
 			},
-			availableProviders: []string{"openai", "gemini"},
+			availableProviders: []string{"openrouter"},
 			expectCompatible:   true,
 			expectTokenCount:   true,
 		},

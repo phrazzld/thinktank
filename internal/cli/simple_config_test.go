@@ -288,35 +288,33 @@ func TestValidate(t *testing.T) {
 				Flags:            0x00,
 			},
 			setup: func() {
-				_ = os.Unsetenv("GEMINI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set GEMINI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
-			name: "synthesis mode requires multiple API keys",
+			name: "synthesis mode requires OPENROUTER_API_KEY",
 			config: SimplifiedConfig{
 				InstructionsFile: validInstFile,
 				TargetPath:       validTargetDir,
 				Flags:            FlagSynthesis,
 			},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
-				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: true,
-			errMsg:  "API key not set: please set OPENAI_API_KEY",
+			errMsg:  "API key not set: please set OPENROUTER_API_KEY",
 		},
 		{
-			name: "synthesis mode with all required keys",
+			name: "synthesis mode works with OPENROUTER_API_KEY",
 			config: SimplifiedConfig{
 				InstructionsFile: validInstFile,
 				TargetPath:       validTargetDir,
 				Flags:            FlagSynthesis,
 			},
 			setup: func() {
-				_ = os.Setenv("GEMINI_API_KEY", "test-key")
-				_ = os.Setenv("OPENAI_API_KEY", "test-key")
+				_ = os.Setenv("OPENROUTER_API_KEY", "test-key")
 			},
 			wantErr: false,
 		},
@@ -328,8 +326,7 @@ func TestValidate(t *testing.T) {
 				Flags:            FlagDryRun,
 			},
 			setup: func() {
-				_ = os.Unsetenv("GEMINI_API_KEY")
-				_ = os.Unsetenv("OPENAI_API_KEY")
+				_ = os.Unsetenv("OPENROUTER_API_KEY")
 			},
 			wantErr: false,
 		},
@@ -347,7 +344,7 @@ func TestValidate(t *testing.T) {
 			err := tt.config.Validate()
 			if tt.wantErr {
 				assert.Error(t, err)
-				if tt.errMsg != "" {
+				if tt.errMsg != "" && err != nil {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
 			} else {

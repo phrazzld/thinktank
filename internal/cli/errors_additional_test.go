@@ -12,43 +12,43 @@ func TestNewNoAPIKeyErrorAllProviders(t *testing.T) {
 	tests := []struct {
 		name               string
 		provider           string
-		expectedEnvVar     string
+		expectedMessage    string
 		expectedLLMWrapped bool
 	}{
 		{
 			name:               "openai provider",
 			provider:           "openai",
-			expectedEnvVar:     "OPENAI_API_KEY",
+			expectedMessage:    "Provider 'openai' is no longer supported. All models now use OpenRouter",
 			expectedLLMWrapped: true,
 		},
 		{
 			name:               "gemini provider",
 			provider:           "gemini",
-			expectedEnvVar:     "GEMINI_API_KEY",
+			expectedMessage:    "Provider 'gemini' is no longer supported. All models now use OpenRouter",
 			expectedLLMWrapped: true,
 		},
 		{
 			name:               "openrouter provider",
 			provider:           "openrouter",
-			expectedEnvVar:     "OPENROUTER_API_KEY",
+			expectedMessage:    "OPENROUTER_API_KEY",
 			expectedLLMWrapped: true,
 		},
 		{
 			name:               "unknown provider",
 			provider:           "unknown-provider",
-			expectedEnvVar:     "API_KEY",
+			expectedMessage:    "Provider 'unknown-provider' is no longer supported. All models now use OpenRouter",
 			expectedLLMWrapped: true,
 		},
 		{
 			name:               "empty provider",
 			provider:           "",
-			expectedEnvVar:     "API_KEY",
+			expectedMessage:    "Provider '' is no longer supported. All models now use OpenRouter",
 			expectedLLMWrapped: true,
 		},
 		{
 			name:               "special characters provider",
 			provider:           "test@provider#123",
-			expectedEnvVar:     "API_KEY",
+			expectedMessage:    "Provider 'test@provider#123' is no longer supported. All models now use OpenRouter",
 			expectedLLMWrapped: true,
 		},
 	}
@@ -68,14 +68,9 @@ func TestNewNoAPIKeyErrorAllProviders(t *testing.T) {
 				}
 			}
 
-			// Check error message contains provider
-			if !strings.Contains(err.Error(), tt.provider) && tt.provider != "" {
-				t.Errorf("Error message should contain provider %q, got: %s", tt.provider, err.Error())
-			}
-
-			// Check error message contains expected environment variable
-			if !strings.Contains(err.Error(), tt.expectedEnvVar) {
-				t.Errorf("Error message should contain env var %q, got: %s", tt.expectedEnvVar, err.Error())
+			// Check error message contains expected content
+			if !strings.Contains(err.Error(), tt.expectedMessage) {
+				t.Errorf("Error message should contain %q, got: %s", tt.expectedMessage, err.Error())
 			}
 
 			// Verify the underlying CLI error
@@ -89,8 +84,8 @@ func TestNewNoAPIKeyErrorAllProviders(t *testing.T) {
 			}
 
 			msg := cliErr.UserFacingMessage()
-			if !strings.Contains(msg, "API key") {
-				t.Errorf("User message should mention API key, got: %s", msg)
+			if !strings.Contains(msg, "OPENROUTER_API_KEY") {
+				t.Errorf("User message should mention OPENROUTER_API_KEY, got: %s", msg)
 			}
 		})
 	}

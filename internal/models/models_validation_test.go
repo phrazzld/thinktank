@@ -420,9 +420,9 @@ func TestGetProviderDefaultRateLimit(t *testing.T) {
 		expectedRate int
 	}{
 		{
-			name:         "OpenAI provider",
+			name:         "OpenAI provider (obsolete)",
 			provider:     "openai",
-			expectedRate: 3000,
+			expectedRate: 60, // Obsolete provider returns default rate limit
 		},
 		{
 			name:         "Gemini provider",
@@ -465,15 +465,15 @@ func TestGetModelRateLimit(t *testing.T) {
 	}{
 		// Models without specific rate limit override - use provider defaults
 		{
-			name:         "Known model without specific rate limit uses provider default",
+			name:         "Known model migrated to OpenRouter uses provider default",
 			modelName:    "gemini-2.5-pro",
-			expectedRate: 60, // Should use gemini provider default
+			expectedRate: 20, // Should use openrouter provider default
 			expectError:  false,
 		},
 		{
-			name:         "Known OpenAI model uses provider default",
+			name:         "Known OpenAI model migrated to OpenRouter",
 			modelName:    "gpt-4.1",
-			expectedRate: 3000, // Should use openai provider default
+			expectedRate: 20, // Should use openrouter provider default
 			expectError:  false,
 		},
 		{
@@ -483,21 +483,21 @@ func TestGetModelRateLimit(t *testing.T) {
 			expectError:  false,
 		},
 		{
-			name:         "Gemini flash model uses provider default",
+			name:         "Gemini flash model migrated to OpenRouter",
 			modelName:    "gemini-2.5-flash",
-			expectedRate: 60, // Should use gemini provider default
+			expectedRate: 20, // Should use openrouter provider default
 			expectError:  false,
 		},
 		{
-			name:         "OpenAI o4-mini model uses provider default",
+			name:         "OpenAI o4-mini model migrated to OpenRouter",
 			modelName:    "o4-mini",
-			expectedRate: 3000, // Should use openai provider default
+			expectedRate: 20, // Should use openrouter provider default
 			expectError:  false,
 		},
 		{
-			name:         "OpenAI o3 model uses provider default",
+			name:         "OpenAI o3 model migrated to OpenRouter",
 			modelName:    "o3",
-			expectedRate: 3000, // Should use openai provider default
+			expectedRate: 20, // Should use openrouter provider default
 			expectError:  false,
 		},
 

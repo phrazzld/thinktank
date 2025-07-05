@@ -28,9 +28,7 @@ The following models are built into thinktank:
 No configuration files need to be installed. Simply set the required API keys as environment variables:
 
 ```bash
-export OPENAI_API_KEY="your-openai-api-key"
-export GEMINI_API_KEY="your-gemini-api-key"
-export OPENROUTER_API_KEY="your-openrouter-api-key"
+export OPENROUTER_API_KEY="your-openrouter-api-key"  # All models now use OpenRouter
 ```
 
 ## Adding New Models

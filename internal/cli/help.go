@@ -44,7 +44,7 @@ FLAGS:
 
     --dry-run          Preview what would be processed without making API calls
                        Shows file list, accurate token count, and model selection
-                       Uses tiktoken for OpenAI, SentencePiece for Gemini models
+                       Uses accurate tokenization for all models via OpenRouter
 
     --verbose          Enable detailed output and debug logging
                        Includes API responses and processing details
@@ -90,12 +90,10 @@ EXAMPLES:
     thinktank task.md ./src --quiet --output-dir ./results
 
 ENVIRONMENT VARIABLES:
-    GEMINI_API_KEY         API key for Google Gemini models
-    OPENAI_API_KEY         API key for OpenAI models (GPT-4, etc.)
-    OPENROUTER_API_KEY     API key for OpenRouter models
+    OPENROUTER_API_KEY     API key for all models (required)
 
-    At least one API key must be set. The tool will automatically
-    select compatible models based on available API keys.
+    All models now use OpenRouter for unified API access.
+    Get your key at: https://openrouter.ai/keys
 
 FILE FORMATS:
     Supports most text-based file formats including:
@@ -111,17 +109,16 @@ TOKEN MANAGEMENT:
     compatibility. Large codebases may require filtering to fit
     within model context limits.
 
-    Token counting uses accurate tokenization when available:
-    - OpenAI models: tiktoken (exact)
-    - Gemini models: SentencePiece (exact)
-    - Others: estimation (~95% accurate)
+    Token counting uses accurate tokenization via OpenRouter:
+    - All models: Exact tokenization through OpenRouter gateway
+    - Fallback: Estimation (~95% accurate) when exact counting unavailable
 
     Use --dry-run to preview token usage without API calls.
 
 TROUBLESHOOTING:
     "API key not set" error:
-        Set the appropriate environment variable for your chosen provider.
-        Example: export GEMINI_API_KEY="your-key-here"
+        Set the OPENROUTER_API_KEY environment variable.
+        Example: export OPENROUTER_API_KEY="your-key-here"
 
     "Target path not found" error:
         Verify the file or directory exists and you have read permissions.

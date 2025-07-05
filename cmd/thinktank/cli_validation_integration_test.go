@@ -50,25 +50,31 @@ func TestValidateInputsIntegration(t *testing.T) {
 	// Use buffer logger instead of test logger to avoid failing on expected error logs
 	logger := logutil.NewBufferLogger(logutil.InfoLevel)
 
-	// Get actual supported models for testing
+	// Use specific model names directly - all production models now use OpenRouter
+	// After OpenRouter consolidation, all models use "openrouter" provider
+	geminiModel := "gemini-2.5-pro"                                // Former Gemini model, now uses OpenRouter
+	openAIModel := "gpt-4.1"                                       // Former OpenAI model, now uses OpenRouter
+	openRouterModel := "openrouter/deepseek/deepseek-chat-v3-0324" // Explicit OpenRouter model
+
+	// Verify these models actually exist
 	supportedModels := models.ListAllModels()
-	var geminiModel, openAIModel, openRouterModel string
-	for _, model := range supportedModels {
-		provider, _ := models.GetProviderForModel(model)
-		switch provider {
-		case "gemini":
-			if geminiModel == "" {
-				geminiModel = model
-			}
-		case "openai":
-			if openAIModel == "" {
-				openAIModel = model
-			}
-		case "openrouter":
-			if openRouterModel == "" {
-				openRouterModel = model
+	modelExists := func(modelName string) bool {
+		for _, model := range supportedModels {
+			if model == modelName {
+				return true
 			}
 		}
+		return false
+	}
+
+	if !modelExists(geminiModel) {
+		t.Fatalf("Test model %s not found in supported models", geminiModel)
+	}
+	if !modelExists(openAIModel) {
+		t.Fatalf("Test model %s not found in supported models", openAIModel)
+	}
+	if !modelExists(openRouterModel) {
+		t.Fatalf("Test model %s not found in supported models", openRouterModel)
 	}
 
 	tests := []struct {
@@ -86,7 +92,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 				ModelNames:       []string{geminiModel},
 			},
 			envVars: map[string]string{
-				apiKeyEnvVar: "test-gemini-api-key",
+				"OPENROUTER_API_KEY": "test-openrouter-api-key",
 			},
 			expectError: false,
 		},
@@ -98,7 +104,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 				ModelNames:       []string{openAIModel},
 			},
 			envVars: map[string]string{
-				openaiAPIKeyEnvVar: "test-openai-api-key",
+				"OPENROUTER_API_KEY": "test-openrouter-api-key",
 			},
 			expectError: false,
 		},
@@ -115,7 +121,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "Missing Gemini API key",
+			name: "Missing API key for Gemini model",
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
@@ -123,10 +129,10 @@ func TestValidateInputsIntegration(t *testing.T) {
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
-			errorContains: "gemini API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		{
-			name: "Missing OpenAI API key",
+			name: "Missing API key for OpenAI model",
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
@@ -134,7 +140,7 @@ func TestValidateInputsIntegration(t *testing.T) {
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
-			errorContains: "openAI API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		{
 			name: "Missing OpenRouter API key",
@@ -145,18 +151,17 @@ func TestValidateInputsIntegration(t *testing.T) {
 			},
 			envVars:       map[string]string{}, // No API key set
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		{
-			name: "Multiple models with mixed providers",
+			name: "Multiple models with unified OpenRouter provider",
 			config: &config.CliConfig{
 				InstructionsFile: instructionsFile,
 				Paths:            []string{"src/"},
 				ModelNames:       []string{openAIModel, geminiModel},
 			},
 			envVars: map[string]string{
-				apiKeyEnvVar:       "test-gemini-api-key",
-				openaiAPIKeyEnvVar: "test-openai-api-key",
+				"OPENROUTER_API_KEY": "test-openrouter-api-key",
 			},
 			expectError: false,
 		},
@@ -273,8 +278,8 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		}
 
 		getenv := func(key string) string {
-			if key == apiKeyEnvVar {
-				return "test-gemini-key"
+			if key == "OPENROUTER_API_KEY" {
+				return "test-openrouter-key"
 			}
 			return ""
 		}
@@ -297,11 +302,8 @@ func TestValidateInputsEdgeCases(t *testing.T) {
 		}
 
 		getenv := func(key string) string {
-			if key == apiKeyEnvVar {
-				return "test-gemini-key"
-			}
-			if key == openaiAPIKeyEnvVar {
-				return "test-openai-key"
+			if key == "OPENROUTER_API_KEY" {
+				return "test-openrouter-key"
 			}
 			return ""
 		}

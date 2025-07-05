@@ -20,7 +20,7 @@ func TestStreamingTokenizer_MeasuresBasicThroughput(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test the smallest meaningful performance unit
@@ -28,7 +28,7 @@ func TestStreamingTokenizer_MeasuresBasicThroughput(t *testing.T) {
 	reader := strings.NewReader(text)
 
 	start := time.Now()
-	tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+	tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 	duration := time.Since(start)
 
 	require.NoError(t, err)
@@ -64,7 +64,7 @@ func TestStreamingTokenizer_ScalesLinearlyWithInputSize(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test with progressively larger inputs to understand scaling behavior
@@ -87,7 +87,7 @@ func TestStreamingTokenizer_ScalesLinearlyWithInputSize(t *testing.T) {
 		reader := strings.NewReader(text)
 
 		start := time.Now()
-		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 		duration := time.Since(start)
 		require.NoError(t, err)
 
@@ -135,7 +135,7 @@ func TestStreamingTokenizer_ConstantMemoryUsage(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test with increasingly large inputs to check memory scaling
@@ -155,7 +155,7 @@ func TestStreamingTokenizer_ConstantMemoryUsage(t *testing.T) {
 		text := strings.Repeat("content ", size/8)
 		reader := strings.NewReader(text)
 
-		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 		require.NoError(t, err)
 
 		runtime.GC()
@@ -209,7 +209,7 @@ func BenchmarkStreamingTokenizer_ThroughputByInputSize(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			// Generate predictable test content
@@ -221,7 +221,7 @@ func BenchmarkStreamingTokenizer_ThroughputByInputSize(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -245,7 +245,7 @@ func BenchmarkStreamingTokenizer_MemoryAllocation(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			text := generatePredictableContent(size.size)
@@ -255,7 +255,7 @@ func BenchmarkStreamingTokenizer_MemoryAllocation(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -280,7 +280,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 		// Regular streaming benchmark
 		b.Run("Regular_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			text := generatePredictableContent(size.size)
@@ -291,7 +291,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -301,7 +301,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 		// Adaptive chunking benchmark
 		b.Run("Adaptive_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			// Cast to access adaptive chunking functionality
@@ -321,7 +321,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
 				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(
-					context.Background(), reader, "gpt-4", size.size)
+					context.Background(), reader, "gpt-4.1", size.size)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -397,7 +397,7 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Define performance envelope - minimum acceptable performance levels
@@ -440,7 +440,7 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 				isRaceDetectionEnabled, maxDuration, formatSizeString(tt.size))
 
 			start := time.Now()
-			tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+			tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 			duration := time.Since(start)
 
 			runtime.GC()

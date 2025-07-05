@@ -103,6 +103,7 @@ type ChatCompletionRequest struct {
 	PresencePenalty  *float32                `json:"presence_penalty,omitempty"`
 	MaxTokens        *int32                  `json:"max_tokens,omitempty"`
 	Stream           bool                    `json:"stream,omitempty"`
+	ReasoningEffort  *string                 `json:"reasoning_effort,omitempty"` // For o3 model
 }
 
 // ChatCompletionChoice represents a choice in the OpenRouter chat completion response
@@ -149,6 +150,7 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Create local variables for request parameters instead of modifying receiver fields
 	var temperature, topP, presencePenalty, frequencyPenalty *float32
 	var maxTokens *int32
+	var reasoningEffort *string
 
 	// Copy receiver defaults to local variables if they exist
 	if c.temperature != nil {
@@ -261,6 +263,14 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 				maxTokens = &maxInt32
 			}
 		}
+
+		// Reasoning Effort - for o3 model
+		if re, ok := params["reasoning_effort"]; ok {
+			switch v := re.(type) {
+			case string:
+				reasoningEffort = &v
+			}
+		}
 	}
 
 	// Create chat completion request
@@ -280,8 +290,13 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 		FrequencyPenalty: frequencyPenalty,
 		PresencePenalty:  presencePenalty,
 		MaxTokens:        maxTokens,
+		ReasoningEffort:  reasoningEffort,
 		Stream:           false, // Non-streaming implementation for initial version
 	}
+
+	// Note: BYOK models are handled by OpenRouter automatically
+	// If the user has configured their provider API key on OpenRouter's website,
+	// the request will succeed. If not, OpenRouter will return an appropriate error.
 
 	// Convert request to JSON
 	jsonData, err := json.Marshal(requestBody)
@@ -313,6 +328,10 @@ func (c *openrouterClient) GenerateContent(ctx context.Context, prompt string, p
 	// Set headers
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.apiKey))
+
+	// Set optional headers recommended by OpenRouter for better routing and visibility
+	req.Header.Set("HTTP-Referer", "https://github.com/phrazzld/thinktank")
+	req.Header.Set("X-Title", "thinktank")
 
 	// Execute the request
 	if c.logger != nil {

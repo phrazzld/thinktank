@@ -36,20 +36,20 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 			expectedMethod: "tiktoken",
 		},
 		{
-			name:           "openai model uses tiktoken",
+			name:           "openai model via openrouter uses tiktoken-o200k",
 			text:           "Hello world, this is a test message",
 			modelName:      "gpt-4.1",
-			expectedTokens: 9, // Approximate expected tokens for this text
+			expectedTokens: 8, // Expected tokens with tiktoken-o200k
 			expectError:    false,
-			expectedMethod: "tiktoken",
+			expectedMethod: "tiktoken-o200k",
 		},
 		{
-			name:           "gemini model uses sentencepiece",
+			name:           "gemini model via openrouter uses tiktoken-o200k",
 			text:           "Hello world, this is a test message",
 			modelName:      "gemini-2.5-pro",
-			expectedTokens: 13, // Approximate expected tokens (different tokenization)
+			expectedTokens: 8, // Expected tokens with tiktoken-o200k
 			expectError:    false,
-			expectedMethod: "sentencepiece",
+			expectedMethod: "tiktoken-o200k",
 		},
 		{
 			name:           "openrouter model uses tiktoken-o200k",
@@ -68,20 +68,20 @@ func TestProviderTokenCounter_CountTokens(t *testing.T) {
 			expectedMethod: "estimation",
 		},
 		{
-			name:           "o3 model uses tiktoken",
+			name:           "o3 model via openrouter uses tiktoken-o200k",
 			text:           "Hello world",
 			modelName:      "o3",
 			expectedTokens: 2, // "Hello" and "world" as separate tokens
 			expectError:    false,
-			expectedMethod: "tiktoken",
+			expectedMethod: "tiktoken-o200k",
 		},
 		{
-			name:           "o4-mini model uses tiktoken",
+			name:           "o4-mini model via openrouter uses tiktoken-o200k",
 			text:           "Hello world",
 			modelName:      "o4-mini",
 			expectedTokens: 2, // "Hello" and "world" as separate tokens
 			expectError:    false,
-			expectedMethod: "tiktoken",
+			expectedMethod: "tiktoken-o200k",
 		},
 	}
 
@@ -170,14 +170,14 @@ func TestProviderTokenCounter_GetEncoding(t *testing.T) {
 		expectedStart string // Check prefix since exact encoding may vary
 	}{
 		{
-			name:          "openai model returns tiktoken encoding",
+			name:          "openai model via openrouter returns o200k_base",
 			modelName:     "gpt-4.1",
-			expectedStart: "tiktoken:",
+			expectedStart: "o200k_base",
 		},
 		{
-			name:          "gemini model returns sentencepiece encoding",
+			name:          "gemini model via openrouter returns o200k_base",
 			modelName:     "gemini-2.5-pro",
-			expectedStart: "sentencepiece:",
+			expectedStart: "o200k_base",
 		},
 		{
 			name:          "openrouter model returns o200k_base",
@@ -213,14 +213,14 @@ func TestProviderTokenCounter_GetTokenizerType(t *testing.T) {
 		expectedType string
 	}{
 		{
-			name:         "openai model returns tiktoken",
+			name:         "openai model via openrouter returns tiktoken-o200k",
 			modelName:    "gpt-4.1",
-			expectedType: "tiktoken",
+			expectedType: "tiktoken-o200k",
 		},
 		{
-			name:         "gemini model returns sentencepiece",
+			name:         "gemini model via openrouter returns tiktoken-o200k",
 			modelName:    "gemini-2.5-pro",
-			expectedType: "sentencepiece",
+			expectedType: "tiktoken-o200k",
 		},
 		{
 			name:         "openrouter model returns tiktoken-o200k",
@@ -233,9 +233,9 @@ func TestProviderTokenCounter_GetTokenizerType(t *testing.T) {
 			expectedType: "estimation",
 		},
 		{
-			name:         "o3 model returns tiktoken",
+			name:         "o3 model via openrouter returns tiktoken-o200k",
 			modelName:    "o3",
-			expectedType: "tiktoken",
+			expectedType: "tiktoken-o200k",
 		},
 	}
 
@@ -297,22 +297,19 @@ func TestProviderTokenCounter_LazyLoading(t *testing.T) {
 	logger := newNoOpLogger()
 	counter := NewProviderTokenCounter(logger)
 
-	// Initially, tokenizers should be nil (lazy loading)
-	assert.Nil(t, counter.tiktoken)
-	assert.Nil(t, counter.sentencePiece)
+	// Initially, openrouter tokenizer should be nil (lazy loading)
+	assert.Nil(t, counter.openrouter)
 	assert.NotNil(t, counter.fallback)
 
-	// After using OpenAI model, tiktoken should be initialized
+	// After using any OpenRouter model, openrouter tokenizer should be initialized
 	_, err := counter.CountTokens(context.Background(), "test", "gpt-4.1")
 	require.NoError(t, err)
-	assert.NotNil(t, counter.tiktoken)
-	assert.Nil(t, counter.sentencePiece) // Still not initialized
+	assert.NotNil(t, counter.openrouter) // Now initialized
 
-	// After using Gemini model, sentencepiece should be initialized
+	// Using another model should reuse the same tokenizer
 	_, err = counter.CountTokens(context.Background(), "test", "gemini-2.5-pro")
 	require.NoError(t, err)
-	assert.NotNil(t, counter.tiktoken)
-	assert.NotNil(t, counter.sentencePiece) // Now initialized
+	assert.NotNil(t, counter.openrouter) // Still initialized
 }
 
 func TestProviderTokenCounter_ClearCache(t *testing.T) {
@@ -321,22 +318,19 @@ func TestProviderTokenCounter_ClearCache(t *testing.T) {
 	logger := newNoOpLogger()
 	counter := NewProviderTokenCounter(logger)
 
-	// Initialize tokenizers by using them
+	// Initialize openrouter tokenizer by using it
 	_, err := counter.CountTokens(context.Background(), "test", "gpt-4.1")
 	require.NoError(t, err)
-	_, err = counter.CountTokens(context.Background(), "test", "gemini-2.5-pro")
-	require.NoError(t, err)
 
-	// Verify tokenizers are initialized
-	assert.NotNil(t, counter.tiktoken)
-	assert.NotNil(t, counter.sentencePiece)
+	// Verify openrouter tokenizer is initialized
+	assert.NotNil(t, counter.openrouter)
 
 	// Clear cache
 	counter.ClearCache()
 
-	// Verify tokenizers are cleared
-	assert.Nil(t, counter.tiktoken)
-	assert.Nil(t, counter.sentencePiece)
+	// Verify openrouter tokenizer is cleared
+	assert.Nil(t, counter.openrouter)
+	assert.NotNil(t, counter.fallback) // Fallback should remain initialized
 }
 
 func TestEstimationTokenCounter(t *testing.T) {

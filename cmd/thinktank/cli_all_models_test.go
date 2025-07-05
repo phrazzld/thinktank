@@ -91,23 +91,12 @@ func TestCLIValidatesMultipleModels(t *testing.T) {
 		t.Fatalf("Failed to create test instructions file: %v", err)
 	}
 
-	// Get models from different providers
-	var geminiModel, openAIModel, openRouterModel string
+	// Get OpenRouter production models (all production models now use OpenRouter)
+	var openRouterModels []string
 	for _, model := range models.ListAllModels() {
 		provider, _ := models.GetProviderForModel(model)
-		switch provider {
-		case "gemini":
-			if geminiModel == "" {
-				geminiModel = model
-			}
-		case "openai":
-			if openAIModel == "" {
-				openAIModel = model
-			}
-		case "openrouter":
-			if openRouterModel == "" {
-				openRouterModel = model
-			}
+		if provider == "openrouter" {
+			openRouterModels = append(openRouterModels, model)
 		}
 	}
 
@@ -118,17 +107,27 @@ func TestCLIValidatesMultipleModels(t *testing.T) {
 		desc       string
 	}{
 		{
-			name:       "All providers",
-			modelNames: []string{geminiModel, openAIModel, openRouterModel},
-			desc:       "one model from each provider",
+			name:       "Multiple OpenRouter models",
+			modelNames: []string{"gpt-4.1", "o4-mini", "gemini-2.5-pro"},
+			desc:       "multiple models from OpenRouter",
 		},
 		{
-			name:       "Multiple OpenAI",
-			modelNames: []string{"gpt-4.1", "o4-mini"},
-			desc:       "multiple models from same provider",
+			name:       "OpenAI family via OpenRouter",
+			modelNames: []string{"gpt-4.1", "o4-mini", "o3"},
+			desc:       "OpenAI models via OpenRouter",
 		},
 		{
-			name:       "All 7 models",
+			name:       "Gemini family via OpenRouter",
+			modelNames: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			desc:       "Gemini models via OpenRouter",
+		},
+		{
+			name:       "All production models",
+			modelNames: openRouterModels,
+			desc:       "all OpenRouter production models",
+		},
+		{
+			name:       "All models including test",
 			modelNames: models.ListAllModels(),
 			desc:       "all supported models",
 		},
@@ -143,13 +142,9 @@ func TestCLIValidatesMultipleModels(t *testing.T) {
 				ModelNames:       tc.modelNames,
 			}
 
-			// Mock environment with all API keys
+			// Mock environment with OpenRouter API key (only key needed for production models)
 			mockGetenv := func(key string) string {
 				switch key {
-				case "GEMINI_API_KEY":
-					return "test-gemini-key"
-				case "OPENAI_API_KEY":
-					return "test-openai-key"
 				case "OPENROUTER_API_KEY":
 					return "test-openrouter-key"
 				default:
@@ -418,7 +413,7 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 				expectedError = "openAI API key not set"
 			case "openrouter":
 				expectedEnvVar = "OPENROUTER_API_KEY"
-				expectedError = "openRouter API key not set"
+				expectedError = "OpenRouter API key not set - get your key at https://openrouter.ai/keys"
 			case "test":
 				// Test provider doesn't require API keys
 				expectedEnvVar = ""
@@ -549,7 +544,7 @@ func TestCLIAPIKeyValidation(t *testing.T) {
 	}
 }
 
-// TestCLIMultiProviderAPIKeyValidation tests API key validation with models from multiple providers
+// TestCLIMultiProviderAPIKeyValidation tests API key validation for OpenRouter models
 func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 	// Removed t.Parallel() - uses filesystem operations and env variables
 	// Create a temporary instructions file
@@ -560,22 +555,14 @@ func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 		t.Fatalf("Failed to create test instructions file: %v", err)
 	}
 
-	// Get one model from each provider
-	var geminiModel, openAIModel, openRouterModel string
+	// Get some OpenRouter models for testing
+	var openRouterModels []string
 	for _, model := range models.ListAllModels() {
 		provider, _ := models.GetProviderForModel(model)
-		switch provider {
-		case "gemini":
-			if geminiModel == "" {
-				geminiModel = model
-			}
-		case "openai":
-			if openAIModel == "" {
-				openAIModel = model
-			}
-		case "openrouter":
-			if openRouterModel == "" {
-				openRouterModel = model
+		if provider == "openrouter" {
+			openRouterModels = append(openRouterModels, model)
+			if len(openRouterModels) >= 3 {
+				break // We only need a few models for testing
 			}
 		}
 	}
@@ -588,39 +575,39 @@ func TestCLIMultiProviderAPIKeyValidation(t *testing.T) {
 		errorContains string
 	}{
 		{
-			name:          "All API keys present",
-			models:        []string{geminiModel, openAIModel, openRouterModel},
+			name:          "OpenRouter API key present",
+			models:        openRouterModels,
 			missingKeys:   []string{},
 			expectError:   false,
 			errorContains: "",
 		},
 		{
-			name:          "Missing Gemini key only",
-			models:        []string{geminiModel, openAIModel},
-			missingKeys:   []string{"GEMINI_API_KEY"},
-			expectError:   true,
-			errorContains: "gemini API key not set",
-		},
-		{
-			name:          "Missing OpenAI key only",
-			models:        []string{openAIModel, geminiModel},
-			missingKeys:   []string{"OPENAI_API_KEY"},
-			expectError:   true,
-			errorContains: "openAI API key not set",
-		},
-		{
-			name:          "Missing OpenRouter key only",
-			models:        []string{openRouterModel, geminiModel},
+			name:          "Missing OpenRouter API key",
+			models:        []string{"gpt-4.1", "gemini-2.5-pro"},
 			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
 		},
 		{
-			name:          "Missing multiple keys",
-			models:        []string{geminiModel, openAIModel, openRouterModel},
-			missingKeys:   []string{"GEMINI_API_KEY", "OPENAI_API_KEY"},
+			name:          "Old API keys present but not needed",
+			models:        []string{"gpt-4.1", "o4-mini"},
+			missingKeys:   []string{"OPENROUTER_API_KEY"},
 			expectError:   true,
-			errorContains: "API key not set", // Could be either one
+			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
+		},
+		{
+			name:          "Single model without API key",
+			models:        []string{"gemini-2.5-flash"},
+			missingKeys:   []string{"OPENROUTER_API_KEY"},
+			expectError:   true,
+			errorContains: "OpenRouter API key not set - get your key at https://openrouter.ai/keys",
+		},
+		{
+			name:          "All models with API key",
+			models:        models.ListAllModels(),
+			missingKeys:   []string{},
+			expectError:   false,
+			errorContains: "",
 		},
 	}
 
@@ -672,9 +659,8 @@ func TestCLIAPIKeyEnvironmentVariableNames(t *testing.T) {
 		provider string
 		expected string
 	}{
-		{provider: "gemini", expected: "GEMINI_API_KEY"},
-		{provider: "openai", expected: "OPENAI_API_KEY"},
 		{provider: "openrouter", expected: "OPENROUTER_API_KEY"},
+		{provider: "test", expected: ""}, // Test provider doesn't require API key
 	}
 
 	for _, tc := range testCases {
@@ -686,6 +672,17 @@ func TestCLIAPIKeyEnvironmentVariableNames(t *testing.T) {
 			}
 		})
 	}
+
+	// Test obsolete providers return empty string
+	t.Run("Obsolete_Providers", func(t *testing.T) {
+		obsoleteProviders := []string{"openai", "gemini", "anthropic"}
+		for _, provider := range obsoleteProviders {
+			result := models.GetAPIKeyEnvVar(provider)
+			if result != "" {
+				t.Errorf("Expected empty string for obsolete provider '%s', got '%s'", provider, result)
+			}
+		}
+	})
 
 	// Test unknown provider
 	t.Run("Unknown_Provider", func(t *testing.T) {

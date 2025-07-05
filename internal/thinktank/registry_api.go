@@ -8,14 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/phrazzld/thinktank/internal/gemini"
 	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
-	"github.com/phrazzld/thinktank/internal/openai"
 	"github.com/phrazzld/thinktank/internal/providers"
-	geminiprovider "github.com/phrazzld/thinktank/internal/providers/gemini"
-	openaiprovider "github.com/phrazzld/thinktank/internal/providers/openai"
 	openrouterprovider "github.com/phrazzld/thinktank/internal/providers/openrouter"
 	"github.com/phrazzld/thinktank/internal/thinktank/interfaces"
 )
@@ -82,17 +78,13 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// Get the provider implementation directly
 	var providerImpl providers.Provider
 	switch providerName {
-	case "openai":
-		providerImpl = openaiprovider.NewProvider(s.logger)
-	case "gemini":
-		providerImpl = geminiprovider.NewProvider(s.logger)
 	case "openrouter":
 		providerImpl = openrouterprovider.NewProvider(s.logger)
 	default:
 		return nil, llm.Wrap(
 			fmt.Errorf("unsupported provider: %s", providerName),
 			"",
-			fmt.Sprintf("provider '%s' is not supported", providerName),
+			fmt.Sprintf("provider '%s' is not supported - only OpenRouter is supported after consolidation", providerName),
 			llm.CategoryInvalidRequest,
 		)
 	}
@@ -101,15 +93,11 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// ------------------------
 	// The system follows this precedence order for API keys:
 	// 1. Environment variables specific to each provider (highest priority)
-	//    - For OpenAI: OPENAI_API_KEY
-	//    - For Gemini: GEMINI_API_KEY
-	//    - For OpenRouter: OPENROUTER_API_KEY
-	//    These mappings are defined in ~/.config/thinktank/models.yaml
+	//    - For OpenRouter: OPENROUTER_API_KEY (only supported provider)
 	// 2. Explicitly provided API key parameter (fallback only)
 	//
-	// This ensures proper isolation of API keys between different providers,
-	// preventing issues like using an OpenAI key for OpenRouter requests.
-	// Each provider requires its own specific API key format.
+	// After provider consolidation, only OpenRouter is supported. All models
+	// (previously OpenAI and Gemini) now route through OpenRouter API.
 
 	// Start with an empty key, which we'll populate from environment or passed parameter
 	effectiveApiKey := ""
@@ -159,22 +147,12 @@ func (s *registryAPIService) InitLLMClient(ctx context.Context, apiKey, modelNam
 	// a type assertion to get the CreateClient method - it's already part of the interface
 	client, err := providerImpl.CreateClient(ctx, effectiveApiKey, modelInfo.APIModelID, effectiveEndpoint)
 	if err != nil {
-		// Check for OpenRouter errors first (most sophisticated error handling)
+		// Check for OpenRouter errors (only supported provider after consolidation)
 		if apiErr, ok := openrouterprovider.IsOpenRouterError(err); ok {
 			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
 		}
 
-		// Check if it's already an API error with enhanced details from Gemini
-		if apiErr, ok := gemini.IsAPIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
-		}
-
-		// Check if it's an OpenAI API error
-		if apiErr, ok := openai.IsOpenAIError(err); ok {
-			return nil, fmt.Errorf("%w: %s", llm.ErrClientInitialization, apiErr.UserFacingError())
-		}
-
-		// Wrap the original error
+		// Wrap the original error for any non-OpenRouter provider errors
 		return nil, fmt.Errorf("%w: %v", llm.ErrClientInitialization, err)
 	}
 
@@ -383,18 +361,8 @@ func (s *registryAPIService) GetErrorDetails(err error) string {
 		return "no error"
 	}
 
-	// Check for OpenRouter errors first (most sophisticated error handling)
+	// Check for OpenRouter errors (only supported provider after consolidation)
 	if apiErr, ok := openrouterprovider.IsOpenRouterError(err); ok {
-		return apiErr.UserFacingError()
-	}
-
-	// Check if it's a Gemini API error with enhanced details
-	if apiErr, ok := gemini.IsAPIError(err); ok {
-		return apiErr.UserFacingError()
-	}
-
-	// Check if it's an OpenAI API error with enhanced details
-	if apiErr, ok := openai.IsOpenAIError(err); ok {
 		return apiErr.UserFacingError()
 	}
 

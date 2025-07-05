@@ -189,18 +189,6 @@ func (p *ProviderTokenCounter) detectProvider(modelName string) (string, error) 
 // Implements lazy loading to avoid initialization overhead at startup.
 func (p *ProviderTokenCounter) getTokenizerForProvider(provider string) (AccurateTokenCounter, string, error) {
 	switch provider {
-	case "openai":
-		if p.tiktoken == nil {
-			p.tiktoken = NewOpenAITokenizer()
-		}
-		return p.tiktoken, "tiktoken", nil
-
-	case "gemini":
-		if p.sentencePiece == nil {
-			p.sentencePiece = NewGeminiTokenizer()
-		}
-		return p.sentencePiece, "sentencepiece", nil
-
 	case "openrouter":
 		if p.openrouter == nil {
 			p.openrouter = NewOpenRouterTokenizer()
@@ -208,7 +196,7 @@ func (p *ProviderTokenCounter) getTokenizerForProvider(provider string) (Accurat
 		return p.openrouter, "tiktoken-o200k", nil
 
 	default:
-		return nil, "", fmt.Errorf("unsupported provider: %s", provider)
+		return nil, "", fmt.Errorf("unsupported provider: %s (only OpenRouter is supported after provider consolidation)", provider)
 	}
 }
 
@@ -221,10 +209,6 @@ func (p *ProviderTokenCounter) GetTokenizerType(modelName string) string {
 	}
 
 	switch provider {
-	case "openai":
-		return "tiktoken"
-	case "gemini":
-		return "sentencepiece"
 	case "openrouter":
 		return "tiktoken-o200k"
 	default:
@@ -240,8 +224,8 @@ func (p *ProviderTokenCounter) IsAccurate(modelName string) bool {
 		return false
 	}
 
-	// OpenAI, Gemini, and OpenRouter providers have accurate tokenization
-	return provider == "openai" || provider == "gemini" || provider == "openrouter"
+	// Only OpenRouter provider is supported after consolidation
+	return provider == "openrouter"
 }
 
 // ClearCache clears all cached tokenizers to free memory.

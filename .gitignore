@@ -145,3 +145,5 @@ task.md
 TODO-*.md
 TASK-*.md
 BACKLOG.md
+
+.env

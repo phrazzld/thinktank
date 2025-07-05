@@ -64,24 +64,24 @@ func TestGetProviderForModel(t *testing.T) {
 		expected string
 	}{
 		{
-			name:     "known gemini model",
-			model:    "gemini-1.5-flash",
-			expected: "gemini",
+			name:     "known gemini model (migrated to openrouter)",
+			model:    "gemini-2.5-pro",
+			expected: "openrouter",
 		},
 		{
 			name:     "unknown model with gpt in name",
 			model:    "gpt-unknown",
-			expected: "openai",
-		},
-		{
-			name:     "unknown model with openrouter in name",
-			model:    "openrouter/test",
 			expected: "openrouter",
 		},
 		{
-			name:     "completely unknown model",
+			name:     "test model with openrouter prefix",
+			model:    "openrouter/test",
+			expected: "test",
+		},
+		{
+			name:     "completely unknown model (defaults to openrouter)",
 			model:    "unknown-model",
-			expected: "gemini", // Default
+			expected: "openrouter",
 		},
 	}
 

@@ -287,14 +287,11 @@ func validateConfig(cfg *config.MinimalConfig) error {
 func getProviderForModel(model string) string {
 	modelInfo, err := models.GetModelInfo(model)
 	if err != nil {
-		// Default to gemini for unknown models
-		if strings.Contains(strings.ToLower(model), "gpt") || strings.Contains(strings.ToLower(model), "o3") {
-			return "openai"
+		// Default to openrouter for unknown models since all models are now consolidated there
+		if strings.Contains(strings.ToLower(model), "test") || strings.Contains(strings.ToLower(model), "synthesis") {
+			return "test"
 		}
-		if strings.Contains(strings.ToLower(model), "openrouter") {
-			return "openrouter"
-		}
-		return "gemini"
+		return "openrouter"
 	}
 	return modelInfo.Provider
 }
@@ -302,14 +299,12 @@ func getProviderForModel(model string) string {
 // getAPIKeyForProvider returns the API key for a given provider
 func getAPIKeyForProvider(provider string) string {
 	switch provider {
-	case "openai":
-		return os.Getenv(config.OpenAIAPIKeyEnvVar)
 	case "openrouter":
 		return os.Getenv(config.OpenRouterAPIKeyEnvVar)
-	case "gemini":
-		return os.Getenv(config.APIKeyEnvVar)
+	case "test":
+		return "" // Test provider doesn't require an API key
 	default:
-		return os.Getenv(config.APIKeyEnvVar)
+		return "" // Obsolete providers (openai, gemini) no longer supported
 	}
 }
 
@@ -330,10 +325,10 @@ func createRateLimiter(cfg *config.MinimalConfig) *ratelimit.RateLimiter {
 	// Use provider-specific defaults
 	rpm := 60 // Default
 	switch modelInfo.Provider {
-	case "openai":
-		rpm = 3000
 	case "openrouter":
 		rpm = 20
+	case "test":
+		rpm = 1000 // Test provider has high limits for testing
 	}
 
 	return ratelimit.NewRateLimiter(5, rpm)
@@ -354,12 +349,10 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 		var tokenizerStatus []string
 		for _, provider := range availableProviders {
 			switch provider {
-			case "openai":
-				tokenizerStatus = append(tokenizerStatus, "OpenAI (tiktoken)")
-			case "gemini":
-				tokenizerStatus = append(tokenizerStatus, "Gemini (sentencepiece)")
 			case "openrouter":
 				tokenizerStatus = append(tokenizerStatus, "OpenRouter (tiktoken-o200k)")
+			case "test":
+				tokenizerStatus = append(tokenizerStatus, "Test (estimation)")
 			default:
 				tokenizerStatus = append(tokenizerStatus, fmt.Sprintf("%s (estimation)", provider))
 			}

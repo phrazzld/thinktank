@@ -1,5 +1,12 @@
 // Package integration provides comprehensive multi-model integration tests
 // These tests ensure reliability and catch regressions in multi-model processing scenarios
+//
+// ARCHITECTURE NOTE: OpenRouter Consolidation (2024)
+// All models now use the unified OpenRouter provider architecture:
+// - Previously: Multiple providers (OpenAI, Gemini, OpenRouter)
+// - Now: Single OpenRouter provider for all models
+// - Impact: All models accessible via single OPENROUTER_API_KEY
+// - Benefits: Simplified authentication, reduced codebase complexity
 package integration
 
 import (
@@ -78,14 +85,27 @@ func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 	t.Logf("Successfully processed all %d models concurrently", len(allModels))
 }
 
-// TestMultiModelReliability_CrossProviderConcurrency tests concurrent execution across different providers
-func TestMultiModelReliability_CrossProviderConcurrency(t *testing.T) {
+// TestMultiModelReliability_OpenRouterConcurrency tests concurrent execution with OpenRouter consolidation
+//
+// ARCHITECTURAL CHANGE: This test validates the unified OpenRouter provider architecture.
+// Prior to consolidation, different models used different providers:
+// - OpenAI models → openai provider
+// - Gemini models → gemini provider
+// - OpenRouter models → openrouter provider
+//
+// Post-consolidation, ALL models use the openrouter provider:
+// - gpt-4.1 → openrouter provider (via openai/gpt-4.1)
+// - gemini-2.5-pro → openrouter provider (via google/gemini-2.5-pro)
+// - All other models → openrouter provider
+//
+// This simplifies authentication (single API key) and reduces code complexity.
+func TestMultiModelReliability_OpenRouterConcurrency(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
-	// Select models from each provider for comprehensive testing
+	// Select diverse models - all now go through OpenRouter
 	testModels := []string{
-		"gpt-4.1",        // OpenAI
-		"gemini-2.5-pro", // Gemini
+		"gpt-4.1",        // OpenAI model via OpenRouter
+		"gemini-2.5-pro", // Gemini model via OpenRouter
 		"openrouter/deepseek/deepseek-chat-v3-0324",    // OpenRouter - normal
 		"openrouter/deepseek/deepseek-r1-0528",         // OpenRouter - rate limited (5 RPM)
 		"openrouter/meta-llama/llama-3.3-70b-instruct", // OpenRouter - standard
@@ -94,46 +114,48 @@ func TestMultiModelReliability_CrossProviderConcurrency(t *testing.T) {
 	env := setupMultiModelTestEnv(t, logger, testModels, nil)
 	defer env.cleanup()
 
-	// Track concurrent execution and provider distribution
+	// Track concurrent execution
 	executionTimes := make(map[string]time.Time)
-	providers := make(map[string]string)
+	processedModels := make(map[string]bool)
 	var executionMutex sync.Mutex
 
 	env.apiService.InitLLMClientFunc = func(ctx context.Context, apiKey, modelName, apiEndpoint string) (llm.LLMClient, error) {
-		// Record execution time and provider
+		// Record execution time
 		executionMutex.Lock()
 		executionTimes[modelName] = time.Now()
-		if provider, err := models.GetProviderForModel(modelName); err == nil {
-			providers[modelName] = provider
-		}
+		processedModels[modelName] = true
 		executionMutex.Unlock()
 
 		return createSuccessfulMockClient(modelName, nil, nil), nil
 	}
 
 	start := time.Now()
-	err := env.orchestrator.Run(context.Background(), "Test cross-provider concurrency")
+	err := env.orchestrator.Run(context.Background(), "Test OpenRouter unified concurrency")
 	duration := time.Since(start)
 
 	if err != nil {
-		t.Fatalf("Expected success with cross-provider models, got: %v", err)
+		t.Fatalf("Expected success with OpenRouter consolidation, got: %v", err)
 	}
 
-	// Verify models from all three providers were processed
+	// Verify all models were processed through OpenRouter
 	executionMutex.Lock()
 	defer executionMutex.Unlock()
 
-	providerCounts := make(map[string]int)
-	for modelName, provider := range providers {
-		providerCounts[provider]++
-		t.Logf("Processed model %s (provider: %s)", modelName, provider)
-	}
-
-	expectedProviders := []string{"openai", "gemini", "openrouter"}
-	for _, provider := range expectedProviders {
-		if providerCounts[provider] == 0 {
-			t.Errorf("No models from provider %s were processed", provider)
+	// Check that all models were processed
+	for _, modelName := range testModels {
+		if !processedModels[modelName] {
+			t.Errorf("Model %s was not processed", modelName)
 		}
+
+		// Verify all models now use OpenRouter provider
+		provider, err := models.GetProviderForModel(modelName)
+		if err != nil {
+			t.Errorf("Failed to get provider for model %s: %v", modelName, err)
+		} else if provider != "openrouter" {
+			t.Errorf("Expected model %s to use openrouter provider, got %s", modelName, provider)
+		}
+
+		t.Logf("Processed model %s (provider: openrouter)", modelName)
 	}
 
 	// Verify concurrent execution (should be much faster than sequential)
@@ -142,7 +164,7 @@ func TestMultiModelReliability_CrossProviderConcurrency(t *testing.T) {
 		t.Errorf("Execution took too long (%v), suggesting sequential rather than concurrent processing", duration)
 	}
 
-	t.Logf("Successfully processed %d models from %d providers in %v", len(testModels), len(providerCounts), duration)
+	t.Logf("Successfully processed %d models through unified OpenRouter provider in %v", len(testModels), duration)
 }
 
 // TestMultiModelReliability_RateLimitingBehavior tests provider-specific rate limiting behavior
@@ -327,14 +349,24 @@ func TestMultiModelReliability_PartialFailureResilience(t *testing.T) {
 	t.Logf("Verified partial failure resilience: %d successful, %d failed", len(successfulModels), len(failedModels))
 }
 
-// TestMultiModelReliability_SynthesisWithMultipleProviders tests synthesis with models from multiple providers
-func TestMultiModelReliability_SynthesisWithMultipleProviders(t *testing.T) {
+// TestMultiModelReliability_SynthesisWithUnifiedProvider tests synthesis with models all via OpenRouter
+//
+// UNIFIED PROVIDER ARCHITECTURE: This test validates synthesis functionality after
+// the OpenRouter consolidation. Previously, synthesis would coordinate across
+// multiple providers (OpenAI, Gemini, OpenRouter). Now all models are accessed
+// through the single OpenRouter provider, simplifying the synthesis process:
+//
+// - Authentication: Single OPENROUTER_API_KEY for all models
+// - Rate limiting: Unified rate limiting across all model families
+// - Error handling: Consistent error patterns across all models
+// - Model selection: All models available with single API key
+func TestMultiModelReliability_SynthesisWithUnifiedProvider(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
 	testModels := []string{
-		"gpt-4.1",        // OpenAI
-		"gemini-2.5-pro", // Gemini
-		"openrouter/deepseek/deepseek-chat-v3-0324", // OpenRouter
+		"gpt-4.1",        // OpenAI model via OpenRouter
+		"gemini-2.5-pro", // Gemini model via OpenRouter
+		"openrouter/deepseek/deepseek-chat-v3-0324", // OpenRouter native
 	}
 	synthesisModel := "gemini-2.5-flash"
 
@@ -372,9 +404,9 @@ func TestMultiModelReliability_SynthesisWithMultipleProviders(t *testing.T) {
 		return createSuccessfulMockClient(modelName, nil, nil), nil
 	}
 
-	err := env.orchestrator.Run(context.Background(), "Test multi-provider synthesis")
+	err := env.orchestrator.Run(context.Background(), "Test unified provider synthesis")
 	if err != nil {
-		t.Fatalf("Expected success with multi-provider synthesis, got: %v", err)
+		t.Fatalf("Expected success with unified provider synthesis, got: %v", err)
 	}
 
 	// Verify all models and synthesis model were called
@@ -408,7 +440,7 @@ func TestMultiModelReliability_SynthesisWithMultipleProviders(t *testing.T) {
 		t.Error("Synthesis output file was not created")
 	}
 
-	t.Logf("Successfully completed multi-provider synthesis with %d models", len(testModels))
+	t.Logf("Successfully completed unified OpenRouter synthesis with %d models", len(testModels))
 }
 
 // TestMultiModelReliability_ResourceUsage tests resource consumption patterns

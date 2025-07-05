@@ -100,7 +100,7 @@ func TestDocumentationQuality(t *testing.T) {
 		requiredContent := []string{
 			"token count", // Some reference to token counting
 			"dry-run",     // Must mention dry-run for token checking
-			"tiktoken",    // Should mention accurate tokenization
+			"OpenRouter",  // Should mention OpenRouter for unified tokenization
 		}
 
 		for _, content := range requiredContent {

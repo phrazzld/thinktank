@@ -179,21 +179,33 @@ func NewInvalidModelError(modelName string) error {
 // NewNoAPIKeyError creates an error for missing API key with provider-specific guidance
 func NewNoAPIKeyError(provider string) error {
 	var envVar string
+	var message string
+
 	switch provider {
-	case "openai":
-		envVar = "OPENAI_API_KEY"
-	case "gemini":
-		envVar = "GEMINI_API_KEY"
 	case "openrouter":
 		envVar = "OPENROUTER_API_KEY"
+		message = "API key not set"
+	case "test":
+		// Test provider doesn't require an API key - this shouldn't happen
+		message = "test provider doesn't require an API key"
+		envVar = ""
 	default:
-		envVar = "API_KEY"
+		// Obsolete providers (openai, gemini) - provide helpful migration message
+		envVar = "OPENROUTER_API_KEY"
+		message = fmt.Sprintf("Provider '%s' is no longer supported. All models now use OpenRouter.", provider)
+	}
+
+	var suggestion string
+	if envVar != "" {
+		suggestion = fmt.Sprintf("Set the %s environment variable. Get your key at: https://openrouter.ai/keys", envVar)
+	} else {
+		suggestion = "This should not happen - please report this issue"
 	}
 
 	cliErr := NewCLIErrorWithContext(
 		CLIErrorAuthentication,
-		fmt.Sprintf("no API key available for %s provider", provider),
-		fmt.Sprintf("set the %s environment variable with your API key", envVar),
+		message,
+		suggestion,
 		"API key validation",
 	)
 	return WrapAsLLMError(cliErr)

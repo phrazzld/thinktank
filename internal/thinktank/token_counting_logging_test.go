@@ -25,7 +25,7 @@ func TestTokenCountingService_LogsModelSelectionStart(t *testing.T) {
 		Files:        []FileContent{},
 	}
 
-	_, err := service.GetCompatibleModels(ctx, req, []string{"openai"})
+	_, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 
 	require.NoError(t, err)
 	assert.True(t, mockLogger.ContainsMessage("Starting model compatibility check"))
@@ -46,7 +46,7 @@ func TestTokenCountingService_LogsWithCorrelationID(t *testing.T) {
 		Files:        []FileContent{},
 	}
 
-	_, err := service.GetCompatibleModels(ctx, req, []string{"openai"})
+	_, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 
 	require.NoError(t, err)
 	entries := mockLogger.GetLogEntriesByCorrelationID(correlationID)
@@ -68,7 +68,7 @@ func TestTokenCountingService_LogsModelEvaluationDetails(t *testing.T) {
 		},
 	}
 
-	_, err := service.GetCompatibleModels(ctx, req, []string{"openai"})
+	_, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 
 	require.NoError(t, err)
 
@@ -99,7 +99,7 @@ func TestTokenCountingService_LogsDetailedStartContext(t *testing.T) {
 		},
 	}
 
-	_, err := service.GetCompatibleModels(ctx, req, []string{"openai", "gemini"})
+	_, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 
 	require.NoError(t, err)
 

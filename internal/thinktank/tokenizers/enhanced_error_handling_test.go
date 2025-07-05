@@ -21,16 +21,16 @@ func TestEnhancedErrorHandling_ProviderContextInErrors(t *testing.T) {
 		expectedFields []string
 	}{
 		{
-			name:           "OpenAI provider error includes provider context",
-			provider:       "openai",
-			model:          "gpt-4",
-			expectedFields: []string{"provider=openai", "model=gpt-4"},
+			name:           "OpenRouter provider error includes provider context",
+			provider:       "openrouter",
+			model:          "gpt-4.1",
+			expectedFields: []string{"provider=openrouter", "model=gpt-4.1"},
 		},
 		{
-			name:           "Gemini provider error includes provider context",
-			provider:       "gemini",
+			name:           "OpenRouter Gemini model error includes provider context",
+			provider:       "openrouter",
 			model:          "gemini-2.5-pro",
-			expectedFields: []string{"provider=gemini", "model=gemini-2.5-pro"},
+			expectedFields: []string{"provider=openrouter", "model=gemini-2.5-pro"},
 		},
 		{
 			name:           "Unknown provider error includes context",
@@ -105,16 +105,22 @@ func TestEnhancedErrorHandling_TokenizerTypeInErrors(t *testing.T) {
 		expectedTokenizer string
 	}{
 		{
-			name:              "OpenAI errors include tiktoken type",
-			provider:          "openai",
-			model:             "gpt-4",
-			expectedTokenizer: "tiktoken",
+			name:              "OpenRouter errors include tiktoken-o200k type",
+			provider:          "openrouter",
+			model:             "gpt-4.1",
+			expectedTokenizer: "tiktoken-o200k",
 		},
 		{
-			name:              "Gemini errors include sentencepiece type",
-			provider:          "gemini",
+			name:              "OpenRouter Gemini model errors include tiktoken-o200k type",
+			provider:          "openrouter",
 			model:             "gemini-2.5-pro",
-			expectedTokenizer: "sentencepiece",
+			expectedTokenizer: "tiktoken-o200k",
+		},
+		{
+			name:              "Unknown provider errors include unknown type",
+			provider:          "unknown",
+			model:             "unknown-model",
+			expectedTokenizer: "unknown",
 		},
 	}
 
@@ -173,15 +179,15 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 			name: "Tokenizer initialization failure falls back gracefully",
 			setupFunc: func() TokenizerManager {
 				manager := NewTokenizerManagerWithCircuitBreaker()
-				// Mock a failing OpenAI tokenizer
-				manager.SetMockTokenizer("openai", &MockFailingTokenCounter{
+				// Mock a failing OpenRouter tokenizer
+				manager.SetMockTokenizer("openrouter", &MockFailingTokenCounter{
 					ShouldFail:   true,
 					FailureError: errors.New("tiktoken initialization failed"),
-					Provider:     "openai",
+					Provider:     "openrouter",
 				})
 				return manager
 			},
-			model:             "gpt-4",
+			model:             "gpt-4.1",
 			expectedFallback:  true,
 			expectedTokenizer: "estimation",
 			shouldSucceed:     true, // Should fall back to estimation and succeed
@@ -190,12 +196,12 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 			name: "Encoding failure falls back gracefully",
 			setupFunc: func() TokenizerManager {
 				manager := NewTokenizerManagerWithCircuitBreaker()
-				manager.SetMockTokenizer("openai", &MockEncodingFailureTokenCounter{
+				manager.SetMockTokenizer("openrouter", &MockEncodingFailureTokenCounter{
 					ShouldFailEncoding: true,
 				})
 				return manager
 			},
-			model:             "unsupported-gpt-model",
+			model:             "unsupported-openrouter-model",
 			expectedFallback:  true,
 			expectedTokenizer: "estimation",
 			shouldSucceed:     true,
@@ -207,17 +213,17 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 				failingTokenizer := &MockFailingTokenCounter{
 					ShouldFail:   true,
 					FailureError: errors.New("repeated failure"),
-					Provider:     "openai",
+					Provider:     "openrouter",
 				}
-				manager.SetMockTokenizer("openai", failingTokenizer)
+				manager.SetMockTokenizer("openrouter", failingTokenizer)
 
 				// Trigger circuit breaker by causing multiple failures
 				for i := 0; i < 6; i++ {
-					_, _ = manager.GetTokenizer("openai") // Ignore errors to trigger circuit breaker
+					_, _ = manager.GetTokenizer("openrouter") // Ignore errors to trigger circuit breaker
 				}
 				return manager
 			},
-			model:             "gpt-4",
+			model:             "gpt-4.1",
 			expectedFallback:  true,
 			expectedTokenizer: "estimation",
 			shouldSucceed:     false, // Circuit breaker should prevent execution
@@ -241,7 +247,7 @@ func TestEnhancedErrorHandling_ComprehensiveFallbackScenarios(t *testing.T) {
 			manager := scenario.setupFunc()
 
 			// Try to get tokenizer
-			tokenizer, err := manager.GetTokenizer("openai") // Test with OpenAI for most scenarios
+			tokenizer, err := manager.GetTokenizer("openrouter") // Test with OpenRouter for most scenarios
 
 			if scenario.shouldSucceed {
 				if err != nil {
@@ -288,23 +294,23 @@ func TestEnhancedErrorHandling_ModelSelectionRobustness(t *testing.T) {
 	// This test simulates the integration with TokenCountingService
 	// to ensure model selection remains robust
 
-	// Try to get tokenizer for OpenAI (should fail)
-	_, err := failingManager.GetTokenizer("openai")
-	require.Error(t, err, "Should fail to get OpenAI tokenizer")
-
-	// Try to get tokenizer for Gemini (should fail)
-	_, err = failingManager.GetTokenizer("gemini")
-	require.Error(t, err, "Should fail to get Gemini tokenizer")
-
-	// Try to get tokenizer for unsupported provider (should fail)
-	_, err = failingManager.GetTokenizer("openrouter")
+	// Try to get tokenizer for OpenRouter (should fail)
+	_, err := failingManager.GetTokenizer("openrouter")
 	require.Error(t, err, "Should fail to get OpenRouter tokenizer")
+
+	// Try to get tokenizer for unknown provider (should fail)
+	_, err = failingManager.GetTokenizer("unknown")
+	require.Error(t, err, "Should fail to get unknown provider tokenizer")
+
+	// Try to get tokenizer for test provider (should fail)
+	_, err = failingManager.GetTokenizer("test")
+	require.Error(t, err, "Should fail to get test provider tokenizer")
 
 	// The key test: all errors should have enhanced context
 	// This will fail in RED phase because enhanced error handling is not implemented
 
 	// Test that provider context is included in all failures
-	tokenizerProviders := []string{"openai", "gemini", "openrouter"}
+	tokenizerProviders := []string{"openrouter", "unknown", "test"}
 	for _, provider := range tokenizerProviders {
 		_, err := failingManager.GetTokenizer(provider)
 		require.Error(t, err)

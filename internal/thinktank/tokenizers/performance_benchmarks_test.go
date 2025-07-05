@@ -22,14 +22,9 @@ func TestTokenizerInitializationTime_MeetsPerformanceTargets(t *testing.T) {
 		targetDuration time.Duration
 	}{
 		{
-			name:           "OpenAI tiktoken initialization under 100ms",
-			provider:       "openai",
+			name:           "OpenRouter tiktoken-o200k initialization under 100ms",
+			provider:       "openrouter",
 			targetDuration: 100 * time.Millisecond,
-		},
-		{
-			name:           "Gemini SentencePiece initialization under 50ms",
-			provider:       "gemini",
-			targetDuration: 50 * time.Millisecond,
 		},
 	}
 
@@ -62,14 +57,9 @@ func TestTokenizerMemoryUsage_StaysWithinLimits(t *testing.T) {
 		memoryTarget int64 // bytes
 	}{
 		{
-			name:         "OpenAI tiktoken under 20MB",
-			provider:     "openai",
-			memoryTarget: 20 * 1024 * 1024, // 20MB
-		},
-		{
-			name:         "Gemini SentencePiece under 20MB",
-			provider:     "gemini",
-			memoryTarget: 20 * 1024 * 1024, // 20MB
+			name:         "OpenRouter tiktoken-o200k under 80MB",
+			provider:     "openrouter",
+			memoryTarget: 80 * 1024 * 1024, // 80MB (adjusted for OpenRouter tiktoken-o200k)
 		},
 	}
 
@@ -145,15 +135,15 @@ func TestLargeInputHandling_RespectsTimeouts(t *testing.T) {
 			mockTokenizer := &MockInputSizeAwareTokenCounter{
 				BaseLatencyMs: 1, // 1ms per KB
 			}
-			manager.SetMockTokenizer("openai", mockTokenizer)
+			manager.SetMockTokenizer("openrouter", mockTokenizer)
 
-			tokenizer, err := manager.GetTokenizer("openai")
+			tokenizer, err := manager.GetTokenizer("openrouter")
 			require.NoError(t, err)
 
 			largeText := strings.Repeat("a", tt.textSize)
 
 			start := time.Now()
-			_, err = tokenizer.CountTokens(context.Background(), largeText, "gpt-4")
+			_, err = tokenizer.CountTokens(context.Background(), largeText, "gpt-4.1")
 			elapsed := time.Since(start)
 
 			if tt.shouldFail {
@@ -174,8 +164,7 @@ func BenchmarkTokenizerInitialization(b *testing.B) {
 		provider string
 		target   time.Duration
 	}{
-		{"TikToken", "openai", 100 * time.Millisecond},
-		{"SentencePiece", "gemini", 50 * time.Millisecond},
+		{"OpenRouter_TikToken_o200k", "openrouter", 100 * time.Millisecond},
 	}
 
 	for _, bm := range benchmarks {
@@ -210,7 +199,7 @@ func BenchmarkTokenizerInitialization(b *testing.B) {
 
 // BenchmarkTokenizerMemoryUsage benchmarks memory usage during initialization
 func BenchmarkTokenizerMemoryUsage(b *testing.B) {
-	providers := []string{"openai", "gemini"}
+	providers := []string{"openrouter"}
 
 	for _, provider := range providers {
 		b.Run(provider, func(b *testing.B) {

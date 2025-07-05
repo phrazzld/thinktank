@@ -75,12 +75,10 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 		return fmt.Errorf("no paths specified")
 	}
 
-	// Check for API key based on model configuration
-	modelNeedsOpenAIKey := false
-	modelNeedsGeminiKey := false
-	modelNeedsOpenRouterKey := false
+	// Check for API key - all models now use OpenRouter exclusively
+	needsAPIKey := false
 
-	// Use models package for provider detection
+	// Use models package for model validation
 	for _, model := range config.ModelNames {
 		provider, err := models.GetProviderForModel(model)
 		if err != nil {
@@ -89,46 +87,26 @@ func ValidateInputsWithEnv(config *config.CliConfig, logger logutil.LoggerInterf
 			return fmt.Errorf("unknown model: %s", model)
 		}
 
-		// Set flag based on provider
+		// All models except test models require OpenRouter API key
 		switch provider {
-		case "openai":
-			modelNeedsOpenAIKey = true
 		case "openrouter":
-			modelNeedsOpenRouterKey = true
-		case "gemini":
-			modelNeedsGeminiKey = true
+			needsAPIKey = true
 		case "test":
 			// Test provider doesn't require API keys
 			logger.Debug("Test model %s doesn't require API key", model)
 		default:
-			logger.Warn("Unknown provider %s for model %s", provider, model)
+			// Obsolete providers - provide helpful migration message
+			logger.Error("Provider '%s' for model '%s' is no longer supported. All models now use OpenRouter.", provider, model)
+			return fmt.Errorf("obsolete provider '%s' - all models now use OpenRouter. Set OPENROUTER_API_KEY environment variable", provider)
 		}
 	}
 
-	// API key validation based on model requirements
-	if modelNeedsGeminiKey {
-		geminiKey := getenv(apiKeyEnvVar)
-		if geminiKey == "" {
-			logger.Error("%s environment variable not set.", apiKeyEnvVar)
-			return fmt.Errorf("gemini API key not set")
-		}
-	}
-
-	// If any OpenAI model is used, check for OpenAI API key
-	if modelNeedsOpenAIKey {
-		openAIKey := getenv(openaiAPIKeyEnvVar)
-		if openAIKey == "" {
-			logger.Error("%s environment variable not set.", openaiAPIKeyEnvVar)
-			return fmt.Errorf("openAI API key not set")
-		}
-	}
-
-	// If any OpenRouter model is used, check for OpenRouter API key
-	if modelNeedsOpenRouterKey {
+	// API key validation - single OpenRouter key for all models
+	if needsAPIKey {
 		openRouterKey := getenv("OPENROUTER_API_KEY")
 		if openRouterKey == "" {
 			logger.Error("OPENROUTER_API_KEY environment variable not set.")
-			return fmt.Errorf("openRouter API key not set")
+			return fmt.Errorf("OpenRouter API key not set - get your key at https://openrouter.ai/keys")
 		}
 	}
 
@@ -199,7 +177,7 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 
 	// Define the model flag using our custom stringSliceFlag type to support multiple values
 	modelFlag := &stringSliceFlag{}
-	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). Can be Gemini (e.g., %s) or OpenAI (e.g., gpt-4) models. Default: %s", defaultModel, defaultModel))
+	flagSet.Var(modelFlag, "model", fmt.Sprintf("Model to use for generation (repeatable). All models use OpenRouter (e.g., %s, gpt-4.1, o4-mini). Default: %s", defaultModel, defaultModel))
 
 	// Set custom usage message
 	flagSet.Usage = func() {
@@ -221,9 +199,8 @@ func ParseFlagsWithEnv(flagSet *flag.FlagSet, args []string, getenv func(string)
 		flagSet.PrintDefaults()
 
 		fmt.Fprintf(os.Stderr, "\nEnvironment Variables:\n")
-		fmt.Fprintf(os.Stderr, "  %s: Required for Gemini models. Your Google AI Gemini API key.\n", apiKeyEnvVar)
-		fmt.Fprintf(os.Stderr, "  %s: Required for OpenAI models. Your OpenAI API key.\n", openaiAPIKeyEnvVar)
-		fmt.Fprintf(os.Stderr, "  OPENROUTER_API_KEY: Required for OpenRouter models. Your OpenRouter API key.\n")
+		fmt.Fprintf(os.Stderr, "  OPENROUTER_API_KEY: Required for all models. Your OpenRouter API key.\n")
+		fmt.Fprintf(os.Stderr, "                      Get your key at: https://openrouter.ai/keys\n")
 	}
 
 	// Parse the flags
