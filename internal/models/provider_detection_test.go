@@ -1,4 +1,17 @@
 // Package models provides model configuration and selection functionality
+//
+// OPENROUTER CONSOLIDATION: This test file validates provider detection logic after
+// the architectural consolidation from multi-provider to single-provider (OpenRouter).
+//
+// Historical Context:
+// - Before: Multiple providers (OpenAI, Gemini, OpenRouter) with separate API keys
+// - After: Single OpenRouter provider with unified OPENROUTER_API_KEY
+//
+// Key Changes:
+// - OPENAI_API_KEY and GEMINI_API_KEY are now obsolete/ignored
+// - Only OPENROUTER_API_KEY is recognized for authentication
+// - All models (OpenAI, Gemini, OpenRouter) now use the openrouter provider
+// - Provider detection logic simplified to OpenRouter-only architecture
 package models
 
 import (

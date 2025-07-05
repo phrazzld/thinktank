@@ -376,6 +376,62 @@ After OpenRouter consolidation, model selection logic works differently:
 
 ---
 
+# TODO - CI Resolution Tasks
+
+## CI Infrastructure Fixes
+
+### [x] [CI FIX] Remove invalid --fast flag from golangci-lint
+- **File**: `.pre-commit-config.yaml:38`
+- **Action**: Remove `--fast` from `golangci-lint run --timeout=3m --fast`
+- **Priority**: High
+- **Verification**: Run `pre-commit run golangci-lint --all-files` locally
+
+### [x] [CI FIX] Fix timeout command path in coverage check
+- **File**: `.pre-commit-config.yaml:88`
+- **Action**: Update timeout command reference to use system command properly
+- **Priority**: High
+- **Verification**: Run `pre-commit run go-coverage-check --all-files` locally
+
+## Code Fixes
+
+### [x] [CODE FIX] Update TestMultiModelReliability_CrossProviderConcurrency for OpenRouter consolidation
+- **File**: `internal/integration/multi_model_reliability_test.go`
+- **Action**: Update test to reflect single-provider (OpenRouter) architecture
+- **Options**:
+  1. Rename test to `TestMultiModelReliability_OpenRouterConcurrency` ✅
+  2. Update assertions to expect all models via OpenRouter ✅
+  3. Remove provider diversity checks ✅
+- **Priority**: High
+- **Verification**: Run `go test -v ./internal/integration -run TestMultiModelReliability_OpenRouterConcurrency` ✅
+- **Additional**: Also updated `TestMultiModelReliability_SynthesisWithUnifiedProvider` to match single-provider architecture
+
+## Verification Tasks
+
+### [x] [CI FIX] Validate all pre-commit hooks locally
+- **Action**: Run `pre-commit run --all-files` to ensure all hooks pass
+- **Priority**: Medium
+- **Success Criteria**: All hooks pass without errors
+- **Result**: ✅ All hooks passed successfully (minor trailing whitespace auto-fixed)
+
+### [x] [CODE FIX] Run full test suite after fixes
+- **Action**: Execute `go test ./...` to ensure no other tests are affected
+- **Priority**: Medium
+- **Success Criteria**: All tests pass
+- **Result**: ✅ All tests passed successfully (22 packages tested)
+
+## Documentation Tasks
+
+### [x] [CODE FIX] Update test documentation for OpenRouter consolidation
+- **Action**: Add comments explaining the single-provider architecture in test files
+- **Priority**: Low
+- **Files**: Any test files that previously tested multi-provider scenarios
+- **Result**: ✅ Added comprehensive documentation to key test files:
+  - `internal/integration/multi_model_reliability_test.go` - OpenRouter consolidation architecture
+  - `internal/models/provider_detection_test.go` - Provider detection logic changes
+  - `internal/models/obsolete_providers_test.go` - Consolidation validation purpose
+
+---
+
 ## OpenRouter Consolidation Status (COMPLETED)
 
 ## Success Metrics

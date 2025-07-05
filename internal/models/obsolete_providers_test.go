@@ -6,7 +6,17 @@ import (
 
 // TestObsoleteProvidersRemoved ensures that OpenAI and Gemini providers
 // are no longer available after consolidation to OpenRouter.
-// This test should initially FAIL, driving the cleanup process.
+//
+// CONSOLIDATION VALIDATION: This test suite validates the complete removal
+// of obsolete providers after the OpenRouter consolidation project.
+//
+// Purpose:
+// - Ensures no models still reference 'openai' or 'gemini' providers
+// - Validates that API key environment variable mapping is updated
+// - Confirms all models now use the unified 'openrouter' provider
+//
+// This test was initially designed to FAIL during the consolidation process,
+// driving the cleanup and ensuring no obsolete provider references remain.
 func TestObsoleteProvidersRemoved(t *testing.T) {
 	t.Parallel()
 

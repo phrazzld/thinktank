@@ -35,7 +35,7 @@ repos:
     hooks:
     -   id: golangci-lint
         name: Run golangci-lint (Optimized)
-        entry: sh -c 'if command -v golangci-lint >/dev/null 2>&1; then timeout 4m golangci-lint run --timeout=3m --fast --skip-dirs=internal/integration,internal/e2e; else echo "⚠️  golangci-lint not installed locally - linting will run in CI"; fi'
+        entry: sh -c 'if command -v golangci-lint >/dev/null 2>&1; then timeout 4m golangci-lint run --timeout=3m --skip-dirs=internal/integration,internal/e2e; else echo "⚠️  golangci-lint not installed locally - linting will run in CI"; fi'
         language: system
         types: [go]
         pass_filenames: false
@@ -85,8 +85,8 @@ repos:
         description: Run fast tokenizer tests to catch performance regressions early
     -   id: go-coverage-check
         name: Go Coverage Regression Check (Optimized)
-        entry: timeout 8m scripts/check-coverage-fast.sh 79
-        language: script
+        entry: sh -c 'timeout 8m scripts/check-coverage-fast.sh 79'
+        language: system
         types: [go]
         pass_filenames: false
         description: Prevent commits that drop test coverage below 79% (8min timeout, target 90%)
