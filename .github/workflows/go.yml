@@ -324,6 +324,8 @@ jobs:
         echo "✅ Security scans completed"
 
     - name: Unit Tests (Verbose)
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       run: |
         echo "=== Running Unit Tests (Verbose) ==="
 
@@ -406,6 +408,8 @@ jobs:
         fi
 
     - name: Integration Tests (Verbose with Retry)
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       run: |
         echo "=== Running Integration Tests with Retry Logic ==="
 
@@ -531,6 +535,8 @@ jobs:
         fi
 
     - name: E2E Tests (Verbose with Retry)
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       run: |
         echo "=== Running E2E Tests with Retry Logic ==="
 
@@ -630,6 +636,8 @@ jobs:
         fi
 
     - name: Coverage Check (Verbose)
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       run: |
         echo "=== Running Coverage Check (Verbose) ==="
 
