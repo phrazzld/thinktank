@@ -398,37 +398,31 @@ For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/T
 
 The project maintains high test coverage standards to ensure reliability and maintainability:
 
-- **Target Coverage**: 90% overall code coverage
-- **Minimum Threshold**: 75% overall and per-package (enforced in CI)
-- **Core APIs**: Special focus on complete coverage for core API components
+Coverage is measured locally, not enforced in CI. Focus on writing good tests, not hitting arbitrary numbers.
 
-#### Coverage Tools
-
-Several scripts are available to check and validate test coverage:
-
-| Script | Description | Usage |
-|--------|-------------|-------|
-| `check-coverage.sh` | Checks overall coverage against threshold | `./scripts/check-coverage.sh [threshold]` |
-| `check-package-coverage.sh` | Validates per-package coverage | `./scripts/check-package-coverage.sh [threshold]` |
-| `check-registry-coverage.sh` | Reports coverage for models package components | `./scripts/check-registry-coverage.sh [threshold]` |
-| `pre-submit-coverage.sh` | Comprehensive pre-submission check | `./scripts/pre-submit-coverage.sh [options]` |
-
-#### Pre-Submission Coverage Validation
-
-Before submitting code, run the pre-submission coverage check script to ensure your changes maintain or improve coverage:
+#### Running Tests
 
 ```bash
-# Basic coverage check with default threshold (75%)
-./scripts/pre-submit-coverage.sh
+# Run full test suite locally
+./scripts/test-local.sh
 
-# With custom threshold and verbose output
-./scripts/pre-submit-coverage.sh --threshold 80 --verbose
+# Run specific package tests
+go test -race ./internal/models/...
 
-# Including models package specific checks
-./scripts/pre-submit-coverage.sh --registry --verbose
+# Generate coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 ```
 
-See `./scripts/pre-submit-coverage.sh --help` for additional options.
+#### CI Philosophy
+
+Following Carmack's approach: fast feedback, no flaky tests, simple configuration. CI runs in <2 minutes with:
+- Format verification (`go fmt`)
+- Linting (`go vet`)
+- Tests with race detection
+- Binary build
+
+See [CI Migration Guide](docs/carmack-ci-migration.md) for details.
 
 ### Testing Practices
 
