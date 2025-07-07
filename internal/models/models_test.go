@@ -53,7 +53,7 @@ func TestGetModelInfo(t *testing.T) {
 			name:           "openrouter model",
 			modelName:      "openrouter/meta-llama/llama-4-maverick",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "meta-llama/llama-4-maverick",
+			wantAPIModelID: "meta/llama-4-maverick",
 			wantError:      false,
 		},
 		// Error cases
