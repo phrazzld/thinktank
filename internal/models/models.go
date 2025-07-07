@@ -531,26 +531,19 @@ func GetModelsWithMinContextWindow(minTokens int) []string {
 func GetAvailableProviders() []string {
 	var providers []string
 
-	// DEBUG: Print environment variable access details
-	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
-	fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - OPENROUTER_API_KEY = '%s' (length: %d)\n", openRouterKey, len(openRouterKey))
-
 	// Check for OpenRouter API key first
+	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
 	if openRouterKey != "" {
 		providers = append(providers, "openrouter")
-		fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - Added 'openrouter' provider\n")
 	} else {
-		fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - OpenRouter key is empty, checking for obsolete keys\n")
 		// Only show migration warnings if OpenRouter key is not set
 		if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
-			fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - Found OPENAI_API_KEY (length: %d)\n", len(openaiKey))
 			fmt.Fprintf(os.Stderr, "Warning: OPENAI_API_KEY detected but no longer used.\n")
 			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
 			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
 		}
 
 		if geminiKey := os.Getenv("GEMINI_API_KEY"); geminiKey != "" {
-			fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - Found GEMINI_API_KEY (length: %d)\n", len(geminiKey))
 			fmt.Fprintf(os.Stderr, "Warning: GEMINI_API_KEY detected but no longer used.\n")
 			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
 			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
@@ -558,14 +551,10 @@ func GetAvailableProviders() []string {
 	}
 
 	// Test provider is only available when explicitly enabled for development/testing
-	testEnabled := os.Getenv("THINKTANK_ENABLE_TEST_MODELS")
-	fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - THINKTANK_ENABLE_TEST_MODELS = '%s'\n", testEnabled)
-	if testEnabled == "true" {
+	if os.Getenv("THINKTANK_ENABLE_TEST_MODELS") == "true" {
 		providers = append(providers, "test")
-		fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - Added 'test' provider\n")
 	}
 
-	fmt.Fprintf(os.Stderr, "DEBUG: GetAvailableProviders - Final providers: %v\n", providers)
 	return providers
 }
 

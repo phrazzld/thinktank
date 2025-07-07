@@ -76,7 +76,7 @@ echo $OPENROUTER_API_KEY | gh secret set OPENROUTER_API_KEY
 - **Priority**: HIGH (blocks all other diagnosis)
 - **Results**: ✅ Debug logging implemented and committed. CI build triggered to capture diagnostic information.
 
-### [CI FIX] Test Secret Accessibility in Different CI Contexts [~]
+### [CI FIX] Test Secret Accessibility in Different CI Contexts [x]
 - **Task**: Verify GitHub secret propagates to Go test subprocesses
 - **Action**:
   - Add temporary CI step before tests that explicitly echoes `$OPENROUTER_API_KEY`
@@ -85,8 +85,9 @@ echo $OPENROUTER_API_KEY | gh secret set OPENROUTER_API_KEY
 - **Verification**: Confirm secret is available in shell vs Go test context
 - **File**: `.github/workflows/ci.yml`
 - **Priority**: HIGH (isolates CI vs test context)
+- **Results**: ✅ CI debugging steps added and committed. CI build triggered to capture environment comparison data.
 
-### [CODE FIX] Investigate Test Parallel Execution Impact
+### [CODE FIX] Investigate Test Parallel Execution Impact [~]
 - **Task**: Check if `t.Parallel()` affects environment variable access
 - **Action**:
   - Temporarily remove `t.Parallel()` from `TestObsoleteProvidersRemoved`
