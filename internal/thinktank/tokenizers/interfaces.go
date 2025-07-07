@@ -279,13 +279,9 @@ func buildEnhancedErrorDetails(provider, model, message string, cause error, tok
 // Returns "unknown" for unrecognized providers.
 func getTokenizerType(provider string) string {
 	switch provider {
-	case "openai":
-		return "tiktoken"
-	case "gemini":
-		return "sentencepiece"
 	case "openrouter":
 		return "tiktoken-o200k"
 	default:
-		return "unknown"
+		return "unknown" // Only OpenRouter is supported after provider consolidation
 	}
 }

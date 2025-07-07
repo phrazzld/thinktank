@@ -1,6 +1,6 @@
 # thinktank
 
-A context-aware LLM tool that analyzes codebases and generates responses to your instructions using Gemini, OpenAI, or OpenRouter models.
+A context-aware LLM tool that analyzes codebases and generates responses to your instructions using AI models through OpenRouter's unified API.
 
 ## Quick Start
 
@@ -10,10 +10,8 @@ git clone https://github.com/phrazzld/thinktank.git
 cd thinktank
 go install
 
-# Set API key for your preferred model
-export GEMINI_API_KEY="your-key"     # For Gemini models (recommended)
-export OPENAI_API_KEY="your-key"     # For OpenAI models
-export OPENROUTER_API_KEY="your-key" # For OpenRouter models
+# Set API key (all models now use OpenRouter)
+export OPENROUTER_API_KEY="your-key" # Get your key at https://openrouter.ai/keys
 
 # Create instructions file
 echo "Analyze this codebase and suggest improvements" > instructions.txt
@@ -33,7 +31,7 @@ thinktank instructions.txt ./my-project --synthesis
 
 ## Key Features
 
-- **Multiple LLM Providers**: Supports Gemini, OpenAI, and OpenRouter models
+- **Multiple AI Models**: Access to various AI models through OpenRouter's unified API
 - **Smart Filtering**: Include/exclude specific files or directories
 - **Concurrent Processing**: Compare responses from multiple models in parallel
 - **Result Synthesis**: Combine outputs from multiple models using a synthesis model
@@ -75,7 +73,7 @@ The simplified interface supports these flags:
 
 ### Required
 - **Instructions File**: Text file with your analysis request (first argument in simplified interface)
-- **API Keys**: Environment variables for each model provider you use
+- **API Key**: Single environment variable `OPENROUTER_API_KEY` for all models
 
 ### Model Selection
 
@@ -102,24 +100,13 @@ thinktank provides intelligent rate limiting with provider-specific optimization
 
 Rate limits are applied in this priority order:
 1. **Model-specific overrides** (for special models like DeepSeek R1)
-2. **Provider-specific settings** (`--openai-rate-limit`, `--gemini-rate-limit`, `--openrouter-rate-limit`)
+2. **OpenRouter rate limiting** (`--openrouter-rate-limit`)
 3. **Global rate limit** (`--rate-limit`)
-4. **Provider defaults** (automatic based on typical API capabilities)
+4. **Default settings** (20 RPM for conservative mixed model usage)
 
-### Provider-Specific Defaults & Recommendations
+### OpenRouter Rate Limiting
 
-#### OpenAI
-- **Default**: 3000 RPM (optimized for paid accounts)
-- **Free tier**: Use `--openai-rate-limit 20` for Tier 1 accounts
-- **Production**: Most paid accounts can handle the 3000 RPM default
-- **High-volume**: Tier 4+ accounts can use `--openai-rate-limit 10000` or higher
-
-#### Google Gemini
-- **Default**: 60 RPM (balanced for free and paid tiers)
-- **Free tier**: Use `--gemini-rate-limit 15` (aligns with Gemini 1.5 Flash free limit)
-- **Paid tier**: Use `--gemini-rate-limit 1000` for significantly faster processing
-
-#### OpenRouter
+#### Default Settings
 - **Default**: 20 RPM (conservative for mixed model usage)
 - **Free models**: Automatic limit of 20 RPM (cannot be increased)
 - **With $10+ balance**: Most models support higher rates; try `--openrouter-rate-limit 100`
@@ -157,20 +144,11 @@ thinktank task.txt ./src --dry-run
 
 #### Solutions by Provider
 
-**OpenAI 429 Errors:**
-- Reduce `--openai-rate-limit` (try 100-500 for lower tiers)
-- Check your usage tier at [OpenAI Platform](https://platform.openai.com/usage)
-- Consider upgrading your account tier for higher limits
-
-**Gemini Rate Limiting:**
-- Free tier: Reduce `--gemini-rate-limit` to 10-15
-- Paid tier: Check quota at [Google AI Studio](https://makersuite.google.com/)
-- For persistent issues, try `--max-concurrent 3`
-
-**OpenRouter Issues:**
+**OpenRouter Rate Limiting:**
 - Ensure account balance > $10 for higher daily limits
 - Use `--openrouter-rate-limit 10` for conservative usage
 - Check model-specific limits at [OpenRouter Models](https://openrouter.ai/models)
+- Free tier models are automatically limited to 20 RPM
 
 #### General Optimization Tips
 - Start conservative and increase gradually
@@ -182,15 +160,18 @@ thinktank task.txt ./src --dry-run
 
 thinktank supports the following LLM models out of the box:
 
-**OpenAI Models:**
-  - gpt-4.1
-  - o4-mini
+All models are now accessed through OpenRouter for unified API management:
 
-**Gemini Models:**
-  - gemini-2.5-flash
-  - gemini-2.5-pro
+**OpenAI Models (via OpenRouter):**
+  - gpt-4.1 (openai/gpt-4.1)
+  - o4-mini (openai/o4-mini)
+  - o3 (openai/o3)
 
-**OpenRouter Models:**
+**Google Models (via OpenRouter):**
+  - gemini-2.5-flash (google/gemini-2.5-flash)
+  - gemini-2.5-pro (google/gemini-2.5-pro)
+
+**Native OpenRouter Models:**
   - openrouter/deepseek/deepseek-chat-v3-0324
   - openrouter/deepseek/deepseek-r1
   - openrouter/x-ai/grok-3-beta
@@ -203,19 +184,19 @@ To add a new model, edit `internal/models/models.go` directly:
 
 1. Add a new entry to the `ModelDefinitions` map with the model name as key
 2. Provide the required `ModelInfo` struct with:
-   - `Provider`: The provider name (openai, gemini, or openrouter)
-   - `APIModelID`: The actual model ID used in API calls
+   - `Provider`: Always "openrouter" (unified provider)
+   - `APIModelID`: The OpenRouter model ID (e.g., "openai/gpt-5", "google/new-model")
    - `ContextWindow`: Maximum input + output tokens
    - `MaxOutputTokens`: Maximum output tokens
-   - `DefaultParams`: Provider-specific parameters (temperature, top_p, etc.)
+   - `DefaultParams`: Model-specific parameters (temperature, top_p, etc.)
 3. Run tests: `go test ./internal/models`
 4. Submit a pull request with your changes
 
 Example:
 ```go
 "new-model-name": {
-    Provider:        "openai",
-    APIModelID:      "gpt-5",
+    Provider:        "openrouter",
+    APIModelID:      "openai/gpt-5",
     ContextWindow:   200000,
     MaxOutputTokens: 50000,
     DefaultParams: map[string]interface{}{
@@ -391,8 +372,8 @@ This tolerant mode is particularly useful when using multiple models for redunda
 
 ```bash
 # Authentication Error
-echo $GEMINI_API_KEY  # Check if API key is set
-export GEMINI_API_KEY="your-key-here"  # Set it if missing
+echo $OPENROUTER_API_KEY  # Check if API key is set
+export OPENROUTER_API_KEY="your-key-here"  # Set it if missing
 
 # Instructions file not found
 ls instructions.txt  # Check file exists
@@ -417,37 +398,31 @@ For comprehensive troubleshooting guidance, see **[Troubleshooting Guide](docs/T
 
 The project maintains high test coverage standards to ensure reliability and maintainability:
 
-- **Target Coverage**: 90% overall code coverage
-- **Minimum Threshold**: 75% overall and per-package (enforced in CI)
-- **Core APIs**: Special focus on complete coverage for core API components
+Coverage is measured locally, not enforced in CI. Focus on writing good tests, not hitting arbitrary numbers.
 
-#### Coverage Tools
-
-Several scripts are available to check and validate test coverage:
-
-| Script | Description | Usage |
-|--------|-------------|-------|
-| `check-coverage.sh` | Checks overall coverage against threshold | `./scripts/check-coverage.sh [threshold]` |
-| `check-package-coverage.sh` | Validates per-package coverage | `./scripts/check-package-coverage.sh [threshold]` |
-| `check-registry-coverage.sh` | Reports coverage for models package components | `./scripts/check-registry-coverage.sh [threshold]` |
-| `pre-submit-coverage.sh` | Comprehensive pre-submission check | `./scripts/pre-submit-coverage.sh [options]` |
-
-#### Pre-Submission Coverage Validation
-
-Before submitting code, run the pre-submission coverage check script to ensure your changes maintain or improve coverage:
+#### Running Tests
 
 ```bash
-# Basic coverage check with default threshold (75%)
-./scripts/pre-submit-coverage.sh
+# Run full test suite locally
+./scripts/test-local.sh
 
-# With custom threshold and verbose output
-./scripts/pre-submit-coverage.sh --threshold 80 --verbose
+# Run specific package tests
+go test -race ./internal/models/...
 
-# Including models package specific checks
-./scripts/pre-submit-coverage.sh --registry --verbose
+# Generate coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out
 ```
 
-See `./scripts/pre-submit-coverage.sh --help` for additional options.
+#### CI Philosophy
+
+Following Carmack's approach: fast feedback, no flaky tests, simple configuration. CI runs in <2 minutes with:
+- Format verification (`go fmt`)
+- Linting (`go vet`)
+- Tests with race detection
+- Binary build
+
+See [CI Migration Guide](docs/carmack-ci-migration.md) for details.
 
 ### Testing Practices
 

@@ -59,7 +59,7 @@ func TestTokenCountingService_ConfigurableSafetyMargin(t *testing.T) {
 			}
 
 			// Get compatible models - we should see different usable context values
-			compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openai"})
+			compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 			require.NoError(t, err)
 
 			// Find a model that reports its usable context (looking for gpt-4.1 which has ~100K context)
@@ -111,7 +111,7 @@ func TestTokenCountingService_DefaultSafetyMargin(t *testing.T) {
 		// SafetyMarginPercent: 0, // Explicitly test zero value
 	}
 
-	compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openai"})
+	compatibleModels, err := service.GetCompatibleModels(ctx, req, []string{"openrouter"})
 	require.NoError(t, err)
 
 	// Find gpt-4.1 model

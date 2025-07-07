@@ -1035,6 +1035,118 @@ func (mfs *MockFileSystem) FileExists(filename string) bool {
 }
 ```
 
+## API Key Testing (Post-OpenRouter Consolidation)
+
+### Overview
+
+After the OpenRouter consolidation, all API interactions go through a single provider using `OPENROUTER_API_KEY`. This section documents the testing patterns to ensure consistent API key handling across the test suite.
+
+### Core Patterns
+
+#### 1. Environment Setup Helper
+
+```go
+// Standard test environment setup function
+func setupTestEnvironment(t *testing.T, envVars map[string]string) func() {
+    // Save original environment
+    originalEnv := make(map[string]string)
+    allKeys := []string{"OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"}
+
+    for _, key := range allKeys {
+        originalEnv[key] = os.Getenv(key)
+        _ = os.Unsetenv(key) // Clear all first for clean state
+    }
+
+    // Set test environment variables
+    for key, value := range envVars {
+        _ = os.Setenv(key, value)
+    }
+
+    // Return cleanup function
+    return func() {
+        // Restore original environment
+        for key, value := range originalEnv {
+            if value != "" {
+                _ = os.Setenv(key, value)
+            } else {
+                _ = os.Unsetenv(key)
+            }
+        }
+    }
+}
+```
+
+#### 2. Test API Key Values
+
+```go
+// Standard test API key formats
+const (
+    TestOpenRouterKey = "test-openrouter-key"
+    TestOpenRouterKeyWithPrefix = "sk-or-test-key"
+    TestOpenRouterKeyFull = "sk-or-test_openrouter_key_1234567890abcdefghijklmnopqrstuvwxyz"
+)
+```
+
+#### 3. Skip Pattern for Integration Tests
+
+```go
+func TestIntegrationWithRealAPI(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test in short mode")
+    }
+
+    apiKey := os.Getenv("OPENROUTER_API_KEY")
+    if apiKey == "" {
+        t.Skip("OPENROUTER_API_KEY not set - skipping integration test")
+    }
+
+    // Test with real API...
+}
+```
+
+#### 4. Mock Pattern for Unit Tests
+
+```go
+func TestBusinessLogic(t *testing.T) {
+    cleanup := setupTestEnvironment(t, map[string]string{
+        "OPENROUTER_API_KEY": TestOpenRouterKey,
+    })
+    defer cleanup()
+
+    // Mock HTTP client
+    mockClient := testutil.NewMockHTTPClient()
+    mockClient.On("Do", mock.Anything).Return(&http.Response{
+        StatusCode: 200,
+        Body:       io.NopCloser(strings.NewReader(`{"choices": [...]}`)),
+    }, nil)
+
+    // Test business logic with mock
+}
+```
+
+### Test Categories
+
+1. **Unit Tests**: Use mock API keys (`test-*` prefix) and mock HTTP clients
+2. **Integration Tests**: Use real API keys with skip pattern, tagged with `//go:build integration`
+3. **E2E Tests**: Use dedicated test API keys (separate from production)
+
+### Security Considerations
+
+1. **Never hardcode real API keys** in test files
+2. **Use test-prefixed keys** to prevent accidental production use
+3. **Store real test keys** in CI secrets, not in code
+4. **Validate key format** in tests to catch configuration errors early
+
+### Migration Checklist
+
+When updating tests for OpenRouter consolidation:
+
+- [ ] Remove references to `OPENAI_API_KEY` and `GEMINI_API_KEY`
+- [ ] Update environment setup to use only `OPENROUTER_API_KEY`
+- [ ] Replace provider-specific mock responses with OpenRouter format
+- [ ] Update error messages to reference OpenRouter
+- [ ] Ensure test helpers properly isolate environment variables
+
 ### Guidelines for Maintaining Testability
 
 #### 1. Architecture Principles

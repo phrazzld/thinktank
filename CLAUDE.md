@@ -54,9 +54,17 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 ```
 
 ### Token Counting Testing
-* Test both tiktoken (OpenAI) and estimation fallbacks
+* Test tiktoken (OpenRouter uses tiktoken-o200k for all models)
 * Include performance benchmarks for >100 files, >1MB
-* Validate against OpenAI tokenizer playground
+* Validate against OpenAI tokenizer playground for reference
+
+### API Key Testing (Post-OpenRouter Consolidation)
+* **Single API Key**: All tests use `OPENROUTER_API_KEY` only
+* **Environment Isolation**: Always save/restore original API keys in tests
+* **Test Helpers**: Use `setupTestEnvironment()` for consistent env management
+* **Mock Keys**: Use `"test-openrouter-key"` or `"sk-or-test-key"` format
+* **Skip Pattern**: `t.Skip("OPENROUTER_API_KEY not set")` for integration tests
+* **Security**: Never use production keys in tests - use test-prefixed keys
 
 ## Critical Constraints
 
@@ -64,6 +72,22 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 * **No Secrets:** Use env vars only
 * **Security:** `govulncheck` hard-fails on ANY vulnerability
 * **Structured Results:** Return `RunResult` from main logic, not `os.Exit()`
+
+## Pre-commit Hooks
+
+* **Installation:** `pre-commit install` (required for development)
+* **Timeout Limits:** Hooks have aggressive timeouts to prevent hanging
+  - golangci-lint: 4 minutes (with --fast flag)
+  - go-build-check: 2 minutes
+  - go-coverage-check: 8 minutes (with intelligent caching)
+  - fast-tokenizer-tests: 1 minute
+* **Performance Features:**
+  - Documentation-only changes skip coverage checks automatically
+  - Aggressive caching based on content hashes
+  - Parallel test execution where possible
+  - Timeout recovery with cached fallbacks
+* **Troubleshooting:** `./scripts/precommit-troubleshoot.sh` for performance issues
+* **Emergency Skip:** `git commit --no-verify` (use sparingly)
 
 ## Reference
 

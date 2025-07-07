@@ -49,6 +49,10 @@ type ModelInfo struct {
 	// RateLimitRPM overrides the provider-specific default rate limit for this model (optional)
 	// If nil, uses provider-specific default rate limits. If set, enforces per-model rate limit.
 	RateLimitRPM *int `json:"rate_limit_rpm,omitempty"`
+
+	// RequiresBYOK indicates if this model requires users to bring their own API key
+	// When true, users must provide their provider-specific API key (e.g., OpenAI key for o3)
+	RequiresBYOK bool `json:"requires_byok,omitempty"`
 }
 
 // Helper functions for creating parameter constraints
@@ -75,8 +79,8 @@ func intConstraint(min, max float64) ParameterConstraint {
 var modelDefinitions = map[string]ModelInfo{
 	// OpenAI Models
 	"gpt-4.1": {
-		Provider:        "openai",
-		APIModelID:      "gpt-4.1",
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-4.1",
 		ContextWindow:   1000000,
 		MaxOutputTokens: 200000,
 		DefaultParams: map[string]interface{}{
@@ -94,8 +98,8 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 	"o4-mini": {
-		Provider:        "openai",
-		APIModelID:      "o4-mini",
+		Provider:        "openrouter",
+		APIModelID:      "openai/o4-mini",
 		ContextWindow:   200000,
 		MaxOutputTokens: 200000,
 		DefaultParams: map[string]interface{}{
@@ -117,8 +121,8 @@ var modelDefinitions = map[string]ModelInfo{
 
 	// Gemini Models
 	"gemini-2.5-pro": {
-		Provider:        "gemini",
-		APIModelID:      "gemini-2.5-pro",
+		Provider:        "openrouter",
+		APIModelID:      "google/gemini-2.5-pro",
 		ContextWindow:   1000000,
 		MaxOutputTokens: 65000,
 		DefaultParams: map[string]interface{}{
@@ -127,15 +131,15 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_k":       40,
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"top_k":             intConstraint(1, 100),
-			"max_output_tokens": intConstraint(1, 65000),
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"top_k":       intConstraint(1, 100),
+			"max_tokens":  intConstraint(1, 65000),
 		},
 	},
 	"gemini-2.5-flash": {
-		Provider:        "gemini",
-		APIModelID:      "gemini-2.5-flash",
+		Provider:        "openrouter",
+		APIModelID:      "google/gemini-2.5-flash",
 		ContextWindow:   1000000,
 		MaxOutputTokens: 65000,
 		DefaultParams: map[string]interface{}{
@@ -144,16 +148,16 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_k":       40,
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":       floatConstraint(0.0, 2.0),
-			"top_p":             floatConstraint(0.0, 1.0),
-			"top_k":             intConstraint(1, 100),
-			"max_output_tokens": intConstraint(1, 65000),
+			"temperature": floatConstraint(0.0, 2.0),
+			"top_p":       floatConstraint(0.0, 1.0),
+			"top_k":       intConstraint(1, 100),
+			"max_tokens":  intConstraint(1, 65000),
 		},
 	},
 
 	"o3": {
-		Provider:        "openai",
-		APIModelID:      "o3",
+		Provider:        "openrouter",
+		APIModelID:      "openai/o3",
 		ContextWindow:   200000,
 		MaxOutputTokens: 200000,
 		DefaultParams: map[string]interface{}{
@@ -161,7 +165,7 @@ var modelDefinitions = map[string]ModelInfo{
 			"top_p":             1.0,
 			"frequency_penalty": 0.0,
 			"presence_penalty":  0.0,
-			"reasoning_effort":  "high",
+			"reasoning_effort":  "high", // Maximum reasoning effort for complex tasks
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -169,8 +173,9 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":        intConstraint(1, 200000),
 			"frequency_penalty": floatConstraint(-2.0, 2.0),
 			"presence_penalty":  floatConstraint(-2.0, 2.0),
-			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}}, // String enum values
 		},
+		RequiresBYOK: true, // o3 requires users to bring their own OpenAI API key
 	},
 
 	// OpenRouter Models
@@ -522,23 +527,32 @@ func GetModelsWithMinContextWindow(minTokens int) []string {
 // GetAvailableProviders returns a list of providers for which API keys are available.
 // Checks environment variables for each provider's API key.
 // Returns providers in a deterministic order.
+// Also provides helpful error messages if obsolete API keys are detected.
 func GetAvailableProviders() []string {
 	var providers []string
 
-	// Define providers in deterministic order to ensure consistent results
-	providerChecks := []struct {
-		name   string
-		envVar string
-	}{
-		{"gemini", "GEMINI_API_KEY"},
-		{"openai", "OPENAI_API_KEY"},
-		{"openrouter", "OPENROUTER_API_KEY"},
+	// Check for OpenRouter API key first
+	openRouterKey := os.Getenv("OPENROUTER_API_KEY")
+	if openRouterKey != "" {
+		providers = append(providers, "openrouter")
+	} else {
+		// Only show migration warnings if OpenRouter key is not set
+		if openaiKey := os.Getenv("OPENAI_API_KEY"); openaiKey != "" {
+			fmt.Fprintf(os.Stderr, "Warning: OPENAI_API_KEY detected but no longer used.\n")
+			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
+			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
+		}
+
+		if geminiKey := os.Getenv("GEMINI_API_KEY"); geminiKey != "" {
+			fmt.Fprintf(os.Stderr, "Warning: GEMINI_API_KEY detected but no longer used.\n")
+			fmt.Fprintf(os.Stderr, "Please set OPENROUTER_API_KEY instead.\n")
+			fmt.Fprintf(os.Stderr, "Get your key at: https://openrouter.ai/keys\n")
+		}
 	}
 
-	for _, check := range providerChecks {
-		if os.Getenv(check.envVar) != "" {
-			providers = append(providers, check.name)
-		}
+	// Test provider is only available when explicitly enabled for development/testing
+	if os.Getenv("THINKTANK_ENABLE_TEST_MODELS") == "true" {
+		providers = append(providers, "test")
 	}
 
 	return providers
@@ -600,16 +614,12 @@ func GetLargestContextModel(modelNames []string) string {
 // The "test" provider is used for integration testing and doesn't require an API key.
 func GetAPIKeyEnvVar(provider string) string {
 	switch provider {
-	case "openai":
-		return "OPENAI_API_KEY"
-	case "gemini":
-		return "GEMINI_API_KEY"
 	case "openrouter":
 		return "OPENROUTER_API_KEY"
 	case "test":
 		return "" // Test provider doesn't require API key
 	default:
-		return ""
+		return "" // Obsolete providers (openai, gemini) no longer supported
 	}
 }
 
@@ -617,12 +627,10 @@ func GetAPIKeyEnvVar(provider string) string {
 // These defaults are based on typical provider capabilities and can be overridden via CLI flags.
 func GetProviderDefaultRateLimit(provider string) int {
 	switch provider {
-	case "openai":
-		return 3000 // OpenAI has high rate limits for paid accounts
-	case "gemini":
-		return 60 // Gemini has moderate rate limits
 	case "openrouter":
 		return 20 // OpenRouter varies by model, conservative default
+	case "test":
+		return 1000 // Test provider has high limits for testing
 	default:
 		return 60 // Conservative fallback for unknown providers
 	}

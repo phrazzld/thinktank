@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -109,13 +110,12 @@ func BenchmarkGeminiTokenizer_GetEncoding(b *testing.B) {
 	tokenizer := NewGeminiTokenizer()
 	model := "gemini-2.5-pro"
 
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
-		_, err := tokenizer.GetEncoding(model)
-		if err != nil {
-			b.Fatal(err)
+	perftest.RunBenchmark(b, "GeminiTokenizer_GetEncoding", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := tokenizer.GetEncoding(model)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }

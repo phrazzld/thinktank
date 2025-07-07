@@ -76,7 +76,7 @@ func TestValidateInputs(t *testing.T) {
 				ModelNames:       []string{"gemini-2.5-pro"}, // Gemini model requires Gemini API key
 			},
 			expectError:   true,
-			errorContains: "gemini API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		{
 			name: "Dry run allows missing instructions file",
@@ -109,7 +109,7 @@ func TestValidateInputs(t *testing.T) {
 				DryRun:           true,
 			},
 			expectError:   true,
-			errorContains: "gemini API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		{
 			name: "Missing models",
@@ -134,15 +134,15 @@ func TestValidateInputs(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "OpenAI model requires OpenAI API key",
+			name: "OpenAI model requires OpenRouter API key",
 			config: &config.CliConfig{
 				InstructionsFile: tempFile.Name(),
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",          // Gemini key set
-				ModelNames:       []string{"gpt-4.1"}, // OpenAI model
+				APIKey:           "test-key",          // Legacy API key field
+				ModelNames:       []string{"gpt-4.1"}, // OpenAI model (now uses OpenRouter)
 			},
 			expectError:   true,
-			errorContains: "openAI API key not set",
+			errorContains: "OpenRouter API key not set",
 		},
 		// Synthesis model validation is tested in cli_synthesis_test.go and cli_pattern_test.go
 	}
@@ -150,13 +150,10 @@ func TestValidateInputs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := &errorTrackingLogger{}
-			// Create a mock getenv function
+			// Create a mock getenv function for unified OpenRouter provider
 			mockGetenv := func(key string) string {
-				if key == openaiAPIKeyEnvVar && tt.name == "OpenAI model requires OpenAI API key" {
-					return "" // Return empty string for OpenAI API key
-				}
-				if key == apiKeyEnvVar && (tt.name == "Missing API key" || tt.name == "Dry run still requires API key") {
-					return "" // Return empty string for Gemini API key
+				if key == "OPENROUTER_API_KEY" && (tt.name == "OpenAI model requires OpenRouter API key" || tt.name == "Missing API key" || tt.name == "Dry run still requires API key") {
+					return "" // Return empty string for OpenRouter API key when testing error cases
 				}
 				return "mock-value" // Return a valid value for any other key
 			}

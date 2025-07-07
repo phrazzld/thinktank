@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 // TestParseSimpleArgsWithArgs_Basic tests the core functionality with minimal valid cases
@@ -522,14 +524,15 @@ func BenchmarkParseSimpleArgsWithArgs(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_, err := ParseSimpleArgsWithArgs(bm.args)
-				if err != nil {
-					// Skip validation errors in benchmarks
-					continue
+			perftest.RunBenchmark(b, "ParseSimpleArgsWithArgs_"+bm.name, func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					_, err := ParseSimpleArgsWithArgs(bm.args)
+					if err != nil {
+						// Skip validation errors in benchmarks
+						continue
+					}
 				}
-			}
+			})
 		})
 	}
 }
@@ -538,17 +541,16 @@ func BenchmarkParseSimpleArgsWithArgs(b *testing.B) {
 func BenchmarkParseSimpleArgsWithArgs_Allocs(b *testing.B) {
 	args := []string{"thinktank", "test.txt", "./src", "--verbose"}
 
-	b.ReportAllocs()
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		config, err := ParseSimpleArgsWithArgs(args)
-		if err != nil {
-			// Skip validation errors in benchmarks
-			continue
+	perftest.RunBenchmark(b, "ParseSimpleArgsWithArgs_Allocs", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			config, err := ParseSimpleArgsWithArgs(args)
+			if err != nil {
+				// Skip validation errors in benchmarks
+				continue
+			}
+			_ = config // Prevent optimization
 		}
-		_ = config // Prevent optimization
-	}
+	})
 }
 
 // TestParseSimpleArgs tests the main entry point function

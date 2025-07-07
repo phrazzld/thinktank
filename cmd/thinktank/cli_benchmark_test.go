@@ -9,6 +9,7 @@ import (
 
 	"github.com/phrazzld/thinktank/internal/config"
 	"github.com/phrazzld/thinktank/internal/logutil"
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 // BenchmarkParseFlags benchmarks the CLI flag parsing functionality
@@ -59,14 +60,16 @@ func BenchmarkParseFlags(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				flagSet := flag.NewFlagSet("thinktank", flag.ContinueOnError)
-				_, err := ParseFlagsWithEnv(flagSet, bm.args, os.Getenv)
-				if err != nil {
-					b.Fatalf("ParseFlagsWithEnv failed: %v", err)
+			perftest.RunBenchmark(b, "ParseFlags_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					flagSet := flag.NewFlagSet("thinktank", flag.ContinueOnError)
+					_, err := ParseFlagsWithEnv(flagSet, bm.args, os.Getenv)
+					if err != nil {
+						b.Fatalf("ParseFlagsWithEnv failed: %v", err)
+					}
 				}
-			}
+			})
 		})
 	}
 }
@@ -119,10 +122,12 @@ func BenchmarkValidateInputs(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = ValidateInputs(bm.config, logger)
-			}
+			perftest.RunBenchmark(b, "ValidateInputs_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = ValidateInputs(bm.config, logger)
+				}
+			})
 		})
 	}
 }
@@ -158,10 +163,12 @@ func BenchmarkSetupLogging(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = SetupLogging(bm.config)
-			}
+			perftest.RunBenchmark(b, "SetupLogging_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = SetupLogging(bm.config)
+				}
+			})
 		})
 	}
 }
@@ -192,7 +199,7 @@ func runBenchmark(b *testing.B, isInteractive, noProgress bool) {
 	})
 	cw.SetNoProgress(noProgress)
 
-	b.ReportAllocs()
+	perftest.ReportAllocs(b)
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
@@ -213,25 +220,33 @@ func runBenchmark(b *testing.B, isInteractive, noProgress bool) {
 // BenchmarkConsoleWriterLifecycle benchmarks the full ConsoleWriter lifecycle
 func BenchmarkConsoleWriterLifecycle(b *testing.B) {
 	b.Run("Interactive-WithProgress", func(b *testing.B) {
-		runBenchmark(b, true, false)
+		perftest.RunBenchmark(b, "ConsoleWriterLifecycle_Interactive_WithProgress", func(b *testing.B) {
+			runBenchmark(b, true, false)
+		})
 	})
 	b.Run("Interactive-NoProgress", func(b *testing.B) {
-		runBenchmark(b, true, true)
+		perftest.RunBenchmark(b, "ConsoleWriterLifecycle_Interactive_NoProgress", func(b *testing.B) {
+			runBenchmark(b, true, true)
+		})
 	})
 	b.Run("CI_Mode", func(b *testing.B) {
-		runBenchmark(b, false, false) // NoProgress is implicit in CI
+		perftest.RunBenchmark(b, "ConsoleWriterLifecycle_CI_Mode", func(b *testing.B) {
+			runBenchmark(b, false, false) // NoProgress is implicit in CI
+		})
 	})
 }
 
 // BenchmarkConsoleWriterConcurrent benchmarks concurrent ConsoleWriter operations
 func BenchmarkConsoleWriterConcurrent(b *testing.B) {
-	cw := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
-		IsTerminalFunc: func() bool { return true },
-	})
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			cw.ModelCompleted(1, 1, "concurrent-model", 1*time.Second)
-		}
+	perftest.RunBenchmark(b, "ConsoleWriterConcurrent", func(b *testing.B) {
+		cw := logutil.NewConsoleWriterWithOptions(logutil.ConsoleWriterOptions{
+			IsTerminalFunc: func() bool { return true },
+		})
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				cw.ModelCompleted(1, 1, "concurrent-model", 1*time.Second)
+			}
+		})
 	})
 }
 
@@ -270,10 +285,12 @@ func BenchmarkSetupLoggingNew(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = SetupLogging(bm.config)
-			}
+			perftest.RunBenchmark(b, "SetupLoggingNew_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = SetupLogging(bm.config)
+				}
+			})
 		})
 	}
 }
@@ -285,30 +302,38 @@ func BenchmarkConsoleWriterMethods(b *testing.B) {
 	})
 
 	b.Run("StartProcessing", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			cw.StartProcessing(10)
-		}
+		perftest.RunBenchmark(b, "ConsoleWriterMethods_StartProcessing", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				cw.StartProcessing(10)
+			}
+		})
 	})
 
 	b.Run("ModelCompleted_Success", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			cw.ModelCompleted(1, 1, "test-model", 500*time.Millisecond)
-		}
+		perftest.RunBenchmark(b, "ConsoleWriterMethods_ModelCompleted_Success", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				cw.ModelCompleted(1, 1, "test-model", 500*time.Millisecond)
+			}
+		})
 	})
 
 	b.Run("ModelFailed_Error", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			cw.ModelFailed(1, 1, "test-model", "benchmark error")
-		}
+		perftest.RunBenchmark(b, "ConsoleWriterMethods_ModelFailed_Error", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				cw.ModelFailed(1, 1, "test-model", "benchmark error")
+			}
+		})
 	})
 
 	b.Run("StatusMessage", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			cw.StatusMessage("Processing files...")
-		}
+		perftest.RunBenchmark(b, "ConsoleWriterMethods_StatusMessage", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				cw.StatusMessage("Processing files...")
+			}
+		})
 	})
 }

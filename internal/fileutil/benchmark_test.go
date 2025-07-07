@@ -3,6 +3,8 @@ package fileutil
 import (
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 // BenchmarkEstimateTokenCount benchmarks the estimateTokenCount function
@@ -27,10 +29,12 @@ func BenchmarkEstimateTokenCount(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = estimateTokenCount(bm.text)
-			}
+			perftest.RunBenchmark(b, "EstimateTokenCount_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = estimateTokenCount(bm.text)
+				}
+			})
 		})
 	}
 }
@@ -80,10 +84,12 @@ func BenchmarkShouldProcess(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = shouldProcess(bm.path, bm.config)
-			}
+			perftest.RunBenchmark(b, "ShouldProcess_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = shouldProcess(bm.path, bm.config)
+				}
+			})
 		})
 	}
 }
@@ -114,10 +120,12 @@ func BenchmarkIsBinaryFile(b *testing.B) {
 
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				_ = isBinaryFile(bm.content)
-			}
+			perftest.RunBenchmark(b, "IsBinaryFile_"+bm.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					_ = isBinaryFile(bm.content)
+				}
+			})
 		})
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,42 +21,34 @@ func TestStreamingTokenizer_MeasuresBasicThroughput(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test the smallest meaningful performance unit
 	text := strings.Repeat("word ", 1000) // 5KB of predictable content
-	reader := strings.NewReader(text)
 
-	start := time.Now()
-	tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
-	duration := time.Since(start)
+	// Use the performance testing framework to measure throughput
+	measurement := perftest.MeasureThroughput(t, "StreamingTokenization", func() (int64, error) {
+		reader := strings.NewReader(text)
+		tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+		if err != nil {
+			return 0, err
+		}
+		require.Greater(t, tokens, 0, "Should return positive token count")
+		return int64(len(text)), nil
+	})
 
-	require.NoError(t, err)
-	require.Greater(t, tokens, 0, "Should return positive token count")
+	// Assert minimum throughput using framework (10KB/s baseline, adjusted for environment)
+	perftest.AssertThroughput(t, measurement, 10*1024)
 
-	// The behavior we're driving: streaming should be measurably fast
-	throughputBytesPerSec := float64(len(text)) / duration.Seconds()
-
-	// This establishes our performance contract - streaming should be reasonably fast
-	// Use a conservative threshold that works with and without race detection
-	minThroughput := 10 * 1024.0 // 10KB/s minimum (conservative for all environments)
-
-	assert.Greater(t, throughputBytesPerSec, minThroughput,
-		"Streaming tokenizer should process at least %.0f KB/s, got %.2f bytes/s",
-		minThroughput/1024, throughputBytesPerSec)
-
-	// If we're achieving good performance already, ensure it's meaningfully fast
-	if throughputBytesPerSec > 1024*1024.0 { // 1MB/s
-		t.Logf("✅ Excellent performance: %.2f MB/s", throughputBytesPerSec/(1024*1024))
-	} else if throughputBytesPerSec > 512*1024.0 { // 512KB/s
-		t.Logf("✅ Good performance: %.2f KB/s", throughputBytesPerSec/1024)
+	// Log performance tier for visibility
+	if measurement.BytesPerSecond > 1024*1024.0 { // 1MB/s
+		t.Logf("✅ Excellent performance: %.2f MB/s", measurement.BytesPerSecond/(1024*1024))
+	} else if measurement.BytesPerSecond > 512*1024.0 { // 512KB/s
+		t.Logf("✅ Good performance: %.2f KB/s", measurement.BytesPerSecond/1024)
 	} else {
-		t.Logf("⚠️  Performance needs improvement: %.2f KB/s", throughputBytesPerSec/1024)
+		t.Logf("⚠️  Performance needs improvement: %.2f KB/s", measurement.BytesPerSecond/1024)
 	}
-
-	t.Logf("Throughput: %.2f MB/s for %d bytes",
-		throughputBytesPerSec/(1024*1024), len(text))
 }
 
 // TestStreamingTokenizer_ScalesLinearlyWithInputSize tests that streaming
@@ -64,7 +57,7 @@ func TestStreamingTokenizer_ScalesLinearlyWithInputSize(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test with progressively larger inputs to understand scaling behavior
@@ -87,7 +80,7 @@ func TestStreamingTokenizer_ScalesLinearlyWithInputSize(t *testing.T) {
 		reader := strings.NewReader(text)
 
 		start := time.Now()
-		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 		duration := time.Since(start)
 		require.NoError(t, err)
 
@@ -135,7 +128,7 @@ func TestStreamingTokenizer_ConstantMemoryUsage(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Test with increasingly large inputs to check memory scaling
@@ -155,7 +148,7 @@ func TestStreamingTokenizer_ConstantMemoryUsage(t *testing.T) {
 		text := strings.Repeat("content ", size/8)
 		reader := strings.NewReader(text)
 
-		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+		_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 		require.NoError(t, err)
 
 		runtime.GC()
@@ -209,7 +202,7 @@ func BenchmarkStreamingTokenizer_ThroughputByInputSize(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			// Generate predictable test content
@@ -221,7 +214,7 @@ func BenchmarkStreamingTokenizer_ThroughputByInputSize(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -245,7 +238,7 @@ func BenchmarkStreamingTokenizer_MemoryAllocation(b *testing.B) {
 	for _, size := range sizes {
 		b.Run(size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			text := generatePredictableContent(size.size)
@@ -255,7 +248,7 @@ func BenchmarkStreamingTokenizer_MemoryAllocation(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -280,7 +273,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 		// Regular streaming benchmark
 		b.Run("Regular_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			text := generatePredictableContent(size.size)
@@ -291,7 +284,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -301,7 +294,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 		// Adaptive chunking benchmark
 		b.Run("Adaptive_"+size.name, func(b *testing.B) {
 			manager := NewStreamingTokenizerManager()
-			streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
 			// Cast to access adaptive chunking functionality
@@ -321,7 +314,7 @@ func BenchmarkStreamingTokenizer_AdaptiveVsRegular(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				reader := strings.NewReader(text)
 				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(
-					context.Background(), reader, "gpt-4", size.size)
+					context.Background(), reader, "gpt-4.1", size.size)
 				if err != nil {
 					b.Fatal(err)
 				}
@@ -397,7 +390,7 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 	t.Parallel()
 
 	manager := NewStreamingTokenizerManager()
-	streamingTokenizer, err := manager.GetStreamingTokenizer("openai")
+	streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 	require.NoError(t, err)
 
 	// Define performance envelope - minimum acceptable performance levels
@@ -440,7 +433,7 @@ func TestStreamingTokenizer_PerformanceEnvelope(t *testing.T) {
 				isRaceDetectionEnabled, maxDuration, formatSizeString(tt.size))
 
 			start := time.Now()
-			tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4")
+			tokens, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
 			duration := time.Since(start)
 
 			runtime.GC()

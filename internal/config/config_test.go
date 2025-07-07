@@ -267,16 +267,16 @@ func TestValidateConfig(t *testing.T) {
 			errorContains: "no paths specified",
 		},
 		{
-			name: "Missing API key",
+			name: "Missing API key for production model",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "", // Missing
-				ModelNames:       []string{"model1"},
+				APIKey:           "",                           // Missing
+				ModelNames:       []string{"production-model"}, // Non-test model needing API key
 			},
 			logger:        &MockLogger{},
 			expectError:   true,
-			errorContains: "API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 		},
 		{
 			name: "Missing models",
@@ -471,6 +471,35 @@ func TestValidateConfig(t *testing.T) {
 				return
 			}
 
+			// Special case for API key test - use controlled environment
+			if tt.name == "Missing API key for production model" {
+				// Use ValidateConfigWithEnv with mock that returns empty for API key
+				mockGetenv := func(key string) string {
+					return "" // No environment variables set
+				}
+				err := ValidateConfigWithEnv(tt.config, tt.logger, mockGetenv)
+
+				// Check if error matches expectation
+				if (err != nil) != tt.expectError {
+					t.Errorf("ValidateConfigWithEnv() error = %v, expectError %v", err, tt.expectError)
+				}
+
+				// Verify error contains expected text
+				if tt.expectError && err != nil && tt.errorContains != "" {
+					if !strings.Contains(err.Error(), tt.errorContains) {
+						t.Errorf("Error message %q doesn't contain expected text %q", err.Error(), tt.errorContains)
+					}
+				}
+
+				// Verify logger recorded errors for error cases
+				if mockLogger, ok := tt.logger.(*MockLogger); ok {
+					if tt.expectError && !mockLogger.ErrorCalled {
+						t.Error("Expected error to be logged, but no error was logged")
+					}
+				}
+				return
+			}
+
 			// Get logger for error tracking
 			var mockLogger *MockLogger
 			if ml, ok := tt.logger.(*MockLogger); ok {
@@ -516,74 +545,74 @@ func TestValidateConfigWithEnv(t *testing.T) {
 		errorContains string
 	}{
 		{
-			name: "OpenAI model requires OpenAI API key",
+			name: "OpenAI model requires OpenRouter API key",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",        // Gemini key set
-				ModelNames:       []string{"gpt-4"}, // OpenAI model
+				APIKey:           "",
+				ModelNames:       []string{"gpt-4.1"}, // OpenAI model via OpenRouter
 			},
 			mockGetenv: func(key string) string {
-				// Return empty string for OpenAI API key
-				if key == OpenAIAPIKeyEnvVar {
+				// Return empty string for OpenRouter API key
+				if key == OpenRouterAPIKeyEnvVar {
 					return ""
 				}
 				return "mock-value"
 			},
 			expectError:   true,
-			errorContains: "openAI API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 		},
 		{
-			name: "OpenAI model with valid OpenAI API key",
+			name: "OpenAI model with valid OpenRouter API key",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",        // Gemini key set
-				ModelNames:       []string{"gpt-4"}, // OpenAI model
+				APIKey:           "",
+				ModelNames:       []string{"gpt-4.1"}, // OpenAI model via OpenRouter
 			},
 			mockGetenv: func(key string) string {
-				// Return valid OpenAI API key
-				if key == OpenAIAPIKeyEnvVar {
-					return "valid-openai-key"
+				// Return valid OpenRouter API key
+				if key == OpenRouterAPIKeyEnvVar {
+					return "valid-openrouter-key"
 				}
 				return "mock-value"
 			},
 			expectError: false,
 		},
 		{
-			name: "Multiple models requiring both API keys",
+			name: "Multiple models requiring OpenRouter API key",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",                          // Gemini key set
-				ModelNames:       []string{"gemini-1.5-pro", "gpt-4"}, // Both models
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"}, // Both models via OpenRouter
 			},
 			mockGetenv: func(key string) string {
-				// Return valid OpenAI API key
-				if key == OpenAIAPIKeyEnvVar {
-					return "valid-openai-key"
+				// Return valid OpenRouter API key
+				if key == OpenRouterAPIKeyEnvVar {
+					return "valid-openrouter-key"
 				}
 				return "mock-value"
 			},
 			expectError: false,
 		},
 		{
-			name: "Multiple models with missing OpenAI key",
+			name: "Multiple models with missing OpenRouter key",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",                          // Gemini key set
-				ModelNames:       []string{"gemini-1.5-pro", "gpt-4"}, // Both models
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"}, // Both models via OpenRouter
 			},
 			mockGetenv: func(key string) string {
-				// Return empty OpenAI API key
-				if key == OpenAIAPIKeyEnvVar {
+				// Return empty OpenRouter API key
+				if key == OpenRouterAPIKeyEnvVar {
 					return ""
 				}
 				return "mock-value"
 			},
 			expectError:   true,
-			errorContains: "openAI API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 		},
 	}
 
@@ -746,17 +775,17 @@ func TestIsStandardOpenAIModel(t *testing.T) {
 		model    string
 		expected bool
 	}{
-		{"gpt-4", "gpt-4", true},
-		{"gpt-4-turbo", "gpt-4-turbo", true},
-		{"gpt-4o", "gpt-4o", true},
-		{"gpt-4o-mini", "gpt-4o-mini", true},
-		{"gpt-4.1", "gpt-4.1", true},
-		{"gpt-3.5-turbo", "gpt-3.5-turbo", true},
-		{"o3", "o3", true},
-		{"o4-mini", "o4-mini", true},
-		{"case insensitive", "GPT-4", true},
-		{"case insensitive 2", "O3", true},
-		{"prefix match", "gpt-4-custom", true},
+		{"gpt-4", "gpt-4", false}, // All models use OpenRouter after consolidation
+		{"gpt-4-turbo", "gpt-4-turbo", false},
+		{"gpt-4o", "gpt-4o", false},
+		{"gpt-4o-mini", "gpt-4o-mini", false},
+		{"gpt-4.1", "gpt-4.1", false},
+		{"gpt-3.5-turbo", "gpt-3.5-turbo", false},
+		{"o3", "o3", false},
+		{"o4-mini", "o4-mini", false},
+		{"case insensitive", "GPT-4", false},
+		{"case insensitive 2", "O3", false},
+		{"prefix match", "gpt-4-custom", false},
 		{"gemini model", "gemini-1.5-pro", false},
 		{"openrouter model", "openrouter/gpt-4", false},
 		{"custom model", "custom-model", false},

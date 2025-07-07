@@ -51,7 +51,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				return "some-other-key"
 			},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 			description:   "OpenRouter models should fail when OpenRouter API key is missing",
 		},
 		{
@@ -94,7 +94,7 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				}
 			},
 			expectError:   true,
-			errorContains: "openRouter API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 			description:   "Multi-provider should fail when any required API key is missing",
 		},
 		{
@@ -102,27 +102,30 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "custom-key",
+				APIKey:           "",
 				ModelNames:       []string{"gpt-custom-model"},
 			},
 			mockGetenv: func(key string) string {
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
+				}
 				return ""
 			},
 			expectError: false,
-			description: "Models with gpt- prefix but not standard OpenAI models should use Gemini key",
+			description: "Models with custom names should work with OpenRouter API key",
 		},
 		{
 			name: "Synthesis model configuration",
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "gemini-key",
-				ModelNames:       []string{"gemini-1.5-pro"},
-				SynthesisModel:   "gpt-4",
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro"},
+				SynthesisModel:   "gpt-4.1",
 			},
 			mockGetenv: func(key string) string {
-				if key == OpenAIAPIKeyEnvVar {
-					return "sk-openai-key"
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
 				}
 				return ""
 			},
@@ -134,31 +137,34 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "gemini-key",
-				ModelNames:       []string{"gemini-1.5-pro"},
-				SynthesisModel:   "gpt-4",
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro"},
+				SynthesisModel:   "gpt-4.1",
 			},
 			mockGetenv: func(key string) string {
-				if key == OpenAIAPIKeyEnvVar {
-					return "" // Missing OpenAI key for synthesis
+				if key == OpenRouterAPIKeyEnvVar {
+					return "" // Missing OpenRouter key for synthesis
 				}
 				return ""
 			},
 			expectError:   true,
-			errorContains: "openAI API key not set",
-			description:   "Synthesis model should fail when its required API key is missing",
+			errorContains: "please set OPENROUTER_API_KEY",
+			description:   "Synthesis model should fail when OpenRouter API key is missing",
 		},
 		{
 			name: "Rate limiting edge values",
 			config: &CliConfig{
 				InstructionsFile:           "instructions.md",
 				Paths:                      []string{"testfile"},
-				APIKey:                     "test-key",
-				ModelNames:                 []string{"gemini-1.5-pro"},
+				APIKey:                     "",
+				ModelNames:                 []string{"gemini-2.5-pro"},
 				MaxConcurrentRequests:      1000,
 				RateLimitRequestsPerMinute: 10000,
 			},
 			mockGetenv: func(key string) string {
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
+				}
 				return ""
 			},
 			expectError: false,
@@ -169,11 +175,14 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",
-				ModelNames:       []string{"gemini-1.5-pro"},
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro"},
 				Timeout:          1 * time.Hour, // Very long timeout
 			},
 			mockGetenv: func(key string) string {
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
+				}
 				return ""
 			},
 			expectError: false,
@@ -187,14 +196,17 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 				Include:          "*.go,*.js,*.ts",
 				Exclude:          "*.test.*,node_modules",
 				ExcludeNames:     ".git,vendor,target",
-				APIKey:           "test-key",
-				ModelNames:       []string{"gemini-1.5-pro"},
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro"},
 				DirPermissions:   0755,
 				FilePermissions:  0644,
 				Verbose:          true,
 				DryRun:           false,
 			},
 			mockGetenv: func(key string) string {
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
+				}
 				return ""
 			},
 			expectError: false,
@@ -205,16 +217,16 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",
-				ModelNames:       []string{"gemini-1.5-pro", "gpt-4"},
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro", "gpt-4.1"},
 				PartialSuccessOk: true,
 			},
 			mockGetenv: func(key string) string {
-				// Missing OpenAI key, but partial success is OK
+				// Missing OpenRouter key, but partial success is OK
 				return ""
 			},
 			expectError:   true, // Should still fail during validation
-			errorContains: "openAI API key not set",
+			errorContains: "please set OPENROUTER_API_KEY",
 			description:   "Partial success flag doesn't bypass validation requirements",
 		},
 		{
@@ -222,12 +234,15 @@ func TestCliConfigValidationScenarios(t *testing.T) {
 			config: &CliConfig{
 				InstructionsFile: "instructions.md",
 				Paths:            []string{"testfile"},
-				APIKey:           "test-key",
-				ModelNames:       []string{"gemini-1.5-pro"},
+				APIKey:           "",
+				ModelNames:       []string{"gemini-2.5-pro"},
 				AuditLogFile:     "/var/log/thinktank-audit.jsonl",
 				SplitLogs:        true,
 			},
 			mockGetenv: func(key string) string {
+				if key == OpenRouterAPIKeyEnvVar {
+					return "sk-openrouter-key"
+				}
 				return ""
 			},
 			expectError: false,

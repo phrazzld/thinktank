@@ -4,6 +4,8 @@ package models
 import (
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 func TestEstimateTokensFromText(t *testing.T) {
@@ -217,10 +219,12 @@ func BenchmarkEstimateTokensFromText(b *testing.B) {
 
 	for _, tt := range tests {
 		b.Run(tt.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				EstimateTokensFromText(tt.text)
-			}
+			perftest.RunBenchmark(b, "EstimateTokensFromText_"+tt.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					EstimateTokensFromText(tt.text)
+				}
+			})
 		})
 	}
 }
@@ -239,10 +243,12 @@ func BenchmarkEstimateTokensFromStats(b *testing.B) {
 
 	for _, tt := range tests {
 		b.Run(tt.name, func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				EstimateTokensFromStats(tt.charCount, instructions)
-			}
+			perftest.RunBenchmark(b, "EstimateTokensFromStats_"+tt.name, func(b *testing.B) {
+				perftest.ReportAllocs(b)
+				for i := 0; i < b.N; i++ {
+					EstimateTokensFromStats(tt.charCount, instructions)
+				}
+			})
 		})
 	}
 }

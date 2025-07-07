@@ -16,7 +16,7 @@ func TestSafetyMarginCLIFlag_SimplestFailingTest(t *testing.T) {
 		"thinktank",
 		"--token-safety-margin", "30",
 		"--dry-run",
-		"../../TODO.md",
+		"../../README.md",
 		".",
 	}
 
@@ -34,7 +34,7 @@ func TestSafetyMarginDefault(t *testing.T) {
 	args := []string{
 		"thinktank",
 		"--dry-run",
-		"../../TODO.md",
+		"../../README.md",
 		".",
 	}
 
@@ -102,7 +102,7 @@ func TestSafetyMarginValidation(t *testing.T) {
 				"thinktank",
 				"--token-safety-margin", tt.margin,
 				"--dry-run",
-				"../../TODO.md",
+				"../../README.md",
 				".",
 			}
 
@@ -127,7 +127,7 @@ func TestSafetyMarginEqualsFormat(t *testing.T) {
 		"thinktank",
 		"--token-safety-margin=25",
 		"--dry-run",
-		"../../TODO.md",
+		"../../README.md",
 		".",
 	}
 

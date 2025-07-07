@@ -1,8 +1,11 @@
 package models
 
 import (
+	"os"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 func TestGetModelInfo(t *testing.T) {
@@ -15,34 +18,34 @@ func TestGetModelInfo(t *testing.T) {
 		wantError      bool
 		errorContains  string
 	}{
-		// Valid models - OpenAI
+		// Valid models - OpenAI (migrated to OpenRouter)
 		{
 			name:           "gpt-4.1 valid model",
 			modelName:      "gpt-4.1",
-			wantProvider:   "openai",
-			wantAPIModelID: "gpt-4.1",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/gpt-4.1",
 			wantError:      false,
 		},
 		{
 			name:           "o4-mini valid model",
 			modelName:      "o4-mini",
-			wantProvider:   "openai",
-			wantAPIModelID: "o4-mini",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/o4-mini",
 			wantError:      false,
 		},
-		// Valid models - Gemini
+		// Valid models - Gemini (migrated to OpenRouter)
 		{
 			name:           "gemini-2.5-pro valid model",
 			modelName:      "gemini-2.5-pro",
-			wantProvider:   "gemini",
-			wantAPIModelID: "gemini-2.5-pro",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "google/gemini-2.5-pro",
 			wantError:      false,
 		},
 		{
 			name:           "gemini-2.5-flash valid model",
 			modelName:      "gemini-2.5-flash",
-			wantProvider:   "gemini",
-			wantAPIModelID: "gemini-2.5-flash",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "google/gemini-2.5-flash",
 			wantError:      false,
 		},
 		// Valid models - OpenRouter
@@ -117,9 +120,9 @@ func TestGetProviderDefaultRateLimitCore(t *testing.T) {
 		expected int
 	}{
 		{
-			name:     "openai provider",
+			name:     "openai provider (obsolete)",
 			provider: "openai",
-			expected: 3000,
+			expected: 60, // Obsolete provider returns default rate limit
 		},
 		{
 			name:     "gemini provider",
@@ -163,17 +166,22 @@ func TestListModelsForProvider(t *testing.T) {
 		{
 			name:     "openai provider",
 			provider: "openai",
-			expected: []string{"gpt-4.1", "o3", "o4-mini"},
+			expected: []string{},
 		},
 		{
 			name:     "gemini provider",
 			provider: "gemini",
-			expected: []string{"gemini-2.5-pro", "gemini-2.5-flash"},
+			expected: []string{},
 		},
 		{
 			name:     "openrouter provider",
 			provider: "openrouter",
 			expected: []string{
+				"gemini-2.5-flash",
+				"gemini-2.5-pro",
+				"gpt-4.1",
+				"o3",
+				"o4-mini",
 				"openrouter/deepseek/deepseek-chat-v3-0324",
 				"openrouter/deepseek/deepseek-chat-v3-0324:free",
 				"openrouter/deepseek/deepseek-r1-0528",
@@ -244,29 +252,35 @@ func TestListModelsForProvider(t *testing.T) {
 // Test benchmarks to verify performance
 func BenchmarkGetModelInfo(b *testing.B) {
 	modelName := "gpt-4.1"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := GetModelInfo(modelName)
-		if err != nil {
-			b.Fatal(err)
+
+	perftest.RunBenchmark(b, "GetModelInfo", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := GetModelInfo(modelName)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }
 
 func BenchmarkGetProviderDefaultRateLimit(b *testing.B) {
 	provider := "openai"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GetProviderDefaultRateLimit(provider)
-	}
+
+	perftest.RunBenchmark(b, "GetProviderDefaultRateLimit", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			GetProviderDefaultRateLimit(provider)
+		}
+	})
 }
 
 func BenchmarkListModelsForProvider(b *testing.B) {
 	provider := "openai"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		ListModelsForProvider(provider)
-	}
+
+	perftest.RunBenchmark(b, "ListModelsForProvider", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			ListModelsForProvider(provider)
+		}
+	})
 }
 
 func TestIsModelSupported(t *testing.T) {
@@ -649,6 +663,100 @@ func TestValidateStringParameter(t *testing.T) {
 
 // TestTestModelsExist verifies that test models required by integration tests are supported
 // This test drives the requirement to add test models to the ModelDefinitions map
+// TestOpenRouterConsolidation tests the migration of OpenAI and Gemini models to OpenRouter
+// This test will initially fail, driving the implementation of the migration
+func TestOpenRouterConsolidation(t *testing.T) {
+	t.Parallel()
+	migratedModels := []struct {
+		name               string
+		modelName          string
+		expectedProvider   string
+		expectedAPIModelID string
+		// Fields that must be preserved during migration
+		minContextWindow int
+		minOutputTokens  int
+	}{
+		{
+			name:               "gpt-4.1 migrated to OpenRouter",
+			modelName:          "gpt-4.1",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "openai/gpt-4.1",
+			minContextWindow:   1000000,
+			minOutputTokens:    200000,
+		},
+		{
+			name:               "o4-mini migrated to OpenRouter",
+			modelName:          "o4-mini",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "openai/o4-mini",
+			minContextWindow:   200000,
+			minOutputTokens:    200000,
+		},
+		{
+			name:               "o3 migrated to OpenRouter",
+			modelName:          "o3",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "openai/o3",
+			minContextWindow:   200000,
+			minOutputTokens:    200000,
+		},
+		{
+			name:               "gemini-2.5-pro migrated to OpenRouter",
+			modelName:          "gemini-2.5-pro",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "google/gemini-2.5-pro",
+			minContextWindow:   1000000,
+			minOutputTokens:    65000,
+		},
+		{
+			name:               "gemini-2.5-flash migrated to OpenRouter",
+			modelName:          "gemini-2.5-flash",
+			expectedProvider:   "openrouter",
+			expectedAPIModelID: "google/gemini-2.5-flash",
+			minContextWindow:   1000000,
+			minOutputTokens:    65000,
+		},
+	}
+
+	for _, tt := range migratedModels {
+		t.Run(tt.name, func(t *testing.T) {
+			info, err := GetModelInfo(tt.modelName)
+			if err != nil {
+				t.Errorf("GetModelInfo(%s) failed: %v", tt.modelName, err)
+				return
+			}
+
+			// Test the core migration requirements
+			if info.Provider != tt.expectedProvider {
+				t.Errorf("GetModelInfo(%s).Provider = %s, want %s", tt.modelName, info.Provider, tt.expectedProvider)
+			}
+
+			if info.APIModelID != tt.expectedAPIModelID {
+				t.Errorf("GetModelInfo(%s).APIModelID = %s, want %s", tt.modelName, info.APIModelID, tt.expectedAPIModelID)
+			}
+
+			// Ensure migration preserves critical functionality
+			if info.ContextWindow < tt.minContextWindow {
+				t.Errorf("GetModelInfo(%s).ContextWindow = %d, want >= %d", tt.modelName, info.ContextWindow, tt.minContextWindow)
+			}
+
+			if info.MaxOutputTokens < tt.minOutputTokens {
+				t.Errorf("GetModelInfo(%s).MaxOutputTokens = %d, want >= %d", tt.modelName, info.MaxOutputTokens, tt.minOutputTokens)
+			}
+
+			// Ensure default parameters are preserved
+			if len(info.DefaultParams) == 0 {
+				t.Errorf("GetModelInfo(%s).DefaultParams should not be empty after migration", tt.modelName)
+			}
+
+			// Ensure parameter constraints are preserved
+			if len(info.ParameterConstraints) == 0 {
+				t.Errorf("GetModelInfo(%s).ParameterConstraints should not be empty after migration", tt.modelName)
+			}
+		})
+	}
+}
+
 func TestTestModelsExist(t *testing.T) {
 	t.Parallel()
 	testModels := []struct {
@@ -709,4 +817,173 @@ func TestTestModelsExist(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetAvailableProvidersWithHelpfulMessages(t *testing.T) {
+	// Don't run in parallel to avoid environment variable interference
+
+	// Save original environment variables
+	originalOpenRouter := os.Getenv("OPENROUTER_API_KEY")
+	originalOpenAI := os.Getenv("OPENAI_API_KEY")
+	originalGemini := os.Getenv("GEMINI_API_KEY")
+	originalTestModels := os.Getenv("THINKTANK_ENABLE_TEST_MODELS")
+
+	// Clean up after test
+	defer func() {
+		if originalOpenRouter != "" {
+			_ = os.Setenv("OPENROUTER_API_KEY", originalOpenRouter)
+		} else {
+			_ = os.Unsetenv("OPENROUTER_API_KEY")
+		}
+		if originalOpenAI != "" {
+			_ = os.Setenv("OPENAI_API_KEY", originalOpenAI)
+		} else {
+			_ = os.Unsetenv("OPENAI_API_KEY")
+		}
+		if originalGemini != "" {
+			_ = os.Setenv("GEMINI_API_KEY", originalGemini)
+		} else {
+			_ = os.Unsetenv("GEMINI_API_KEY")
+		}
+		if originalTestModels != "" {
+			_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", originalTestModels)
+		} else {
+			_ = os.Unsetenv("THINKTANK_ENABLE_TEST_MODELS")
+		}
+	}()
+
+	t.Run("should log helpful message when old OPENAI_API_KEY is detected", func(t *testing.T) {
+		// Clear all API keys first
+		_ = os.Unsetenv("OPENROUTER_API_KEY")
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
+
+		// Set only old OPENAI_API_KEY
+		_ = os.Setenv("OPENAI_API_KEY", "sk-test123")
+
+		// Capture stderr output to check for helpful message
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		providers := GetAvailableProviders()
+
+		// Restore stderr
+		_ = w.Close()
+		os.Stderr = oldStderr
+
+		// Read captured output
+		buf := make([]byte, 1024)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		// Should return only test provider (no openrouter since no API key)
+		expectedProviders := []string{"test"}
+		if len(providers) != len(expectedProviders) || providers[0] != expectedProviders[0] {
+			t.Errorf("GetAvailableProviders() with OPENAI_API_KEY = %v, want %v", providers, expectedProviders)
+		}
+
+		// Should contain helpful message about old API key
+		if !strings.Contains(output, "OPENAI_API_KEY detected but no longer used") {
+			t.Errorf("Expected helpful message about OPENAI_API_KEY, got output: %q", output)
+		}
+		if !strings.Contains(output, "OPENROUTER_API_KEY") {
+			t.Errorf("Expected mention of OPENROUTER_API_KEY, got output: %q", output)
+		}
+		if !strings.Contains(output, "https://openrouter.ai/keys") {
+			t.Errorf("Expected OpenRouter URL, got output: %q", output)
+		}
+	})
+
+	t.Run("should log helpful message when old GEMINI_API_KEY is detected", func(t *testing.T) {
+		// Clear all API keys first
+		_ = os.Unsetenv("OPENROUTER_API_KEY")
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
+
+		// Set only old GEMINI_API_KEY
+		_ = os.Setenv("GEMINI_API_KEY", "test-gemini-key")
+
+		// Capture stderr output to check for helpful message
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		providers := GetAvailableProviders()
+
+		// Restore stderr
+		_ = w.Close()
+		os.Stderr = oldStderr
+
+		// Read captured output
+		buf := make([]byte, 1024)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		// Should return only test provider (no openrouter since no API key)
+		expectedProviders := []string{"test"}
+		if len(providers) != len(expectedProviders) || providers[0] != expectedProviders[0] {
+			t.Errorf("GetAvailableProviders() with GEMINI_API_KEY = %v, want %v", providers, expectedProviders)
+		}
+
+		// Should contain helpful message about old API key but NOT about OPENAI_API_KEY
+		if !strings.Contains(output, "GEMINI_API_KEY detected but no longer used") {
+			t.Errorf("Expected helpful message about GEMINI_API_KEY, got output: %q", output)
+		}
+		if strings.Contains(output, "OPENAI_API_KEY") {
+			t.Errorf("Should not contain OPENAI_API_KEY message when only GEMINI_API_KEY is set, got output: %q", output)
+		}
+		if !strings.Contains(output, "OPENROUTER_API_KEY") {
+			t.Errorf("Expected mention of OPENROUTER_API_KEY, got output: %q", output)
+		}
+		if !strings.Contains(output, "https://openrouter.ai/keys") {
+			t.Errorf("Expected OpenRouter URL, got output: %q", output)
+		}
+	})
+
+	t.Run("should not show message when OPENROUTER_API_KEY is properly set", func(t *testing.T) {
+		// Clear all API keys first
+		_ = os.Unsetenv("OPENROUTER_API_KEY")
+		_ = os.Unsetenv("OPENAI_API_KEY")
+		_ = os.Unsetenv("GEMINI_API_KEY")
+
+		// Enable test models for the test
+		_ = os.Setenv("THINKTANK_ENABLE_TEST_MODELS", "true")
+
+		// Set proper OPENROUTER_API_KEY
+		_ = os.Setenv("OPENROUTER_API_KEY", "or-test-key")
+
+		// Capture stderr output to check for helpful message
+		oldStderr := os.Stderr
+		r, w, _ := os.Pipe()
+		os.Stderr = w
+
+		providers := GetAvailableProviders()
+
+		// Restore stderr
+		_ = w.Close()
+		os.Stderr = oldStderr
+
+		// Read captured output
+		buf := make([]byte, 1024)
+		n, _ := r.Read(buf)
+		output := string(buf[:n])
+
+		// Should return openrouter and test providers
+		expectedProviders := []string{"openrouter", "test"}
+		if len(providers) != 2 || providers[0] != "openrouter" || providers[1] != "test" {
+			t.Errorf("GetAvailableProviders() with OPENROUTER_API_KEY = %v, want %v", providers, expectedProviders)
+		}
+
+		// Should NOT contain any helpful messages since API key is properly set
+		if strings.Contains(output, "detected but no longer used") {
+			t.Errorf("Should not show helpful message when OPENROUTER_API_KEY is set, got output: %q", output)
+		}
+	})
 }
