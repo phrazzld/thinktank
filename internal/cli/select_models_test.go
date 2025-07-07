@@ -562,7 +562,22 @@ func TestSelectModelsForConfig_AcceptsTokenCountingService(t *testing.T) {
 	assert.Contains(t, []string{"", "gemini-2.5-pro"}, synthesis, "Synthesis model should be empty or gemini-2.5-pro")
 }
 
-// TDD Test Phase 2: RED - Test that TokenCountingService produces different results than estimation
+// TestSelectModelsForConfig_UsesAccurateTokenization verifies that the model selection system
+// works correctly with both estimation-based and accurate tokenization approaches.
+//
+// ENVIRONMENT REQUIREMENTS:
+// - Requires OPENROUTER_API_KEY to be set for meaningful testing
+// - Without API key, the two approaches behave differently and test would fail
+// - Test gracefully skips when environment requirements aren't met
+//
+// PURPOSE:
+// - Compares synthesis model selection between estimation vs accurate tokenization
+// - Ensures both approaches work correctly when providers are available
+// - Uses non-English text to demonstrate tokenization differences
+//
+// CI BEHAVIOR:
+// - PR workflows: Runs normally (API key available)
+// - Push workflows: Skips gracefully (API key not available)
 func TestSelectModelsForConfig_UsesAccurateTokenization(t *testing.T) {
 	t.Parallel()
 
