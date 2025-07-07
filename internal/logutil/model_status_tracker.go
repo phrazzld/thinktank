@@ -19,14 +19,15 @@ const (
 
 // ModelState holds the complete state information for a model
 type ModelState struct {
-	Name       string
-	Index      int
-	Status     ModelStatus
-	Duration   time.Duration
-	RetryAfter time.Duration
-	ErrorMsg   string
-	StartTime  time.Time
-	UpdateTime time.Time
+	Name        string // Internal model key for lookups and operations
+	DisplayName string // User-facing display name (e.g., "provider/model")
+	Index       int
+	Status      ModelStatus
+	Duration    time.Duration
+	RetryAfter  time.Duration
+	ErrorMsg    string
+	StartTime   time.Time
+	UpdateTime  time.Time
 }
 
 // ModelStatusTracker provides thread-safe tracking of multiple model processing states
@@ -38,25 +39,32 @@ type ModelStatusTracker struct {
 	startTime   time.Time
 }
 
-// NewModelStatusTracker creates a new status tracker for the given model names
-func NewModelStatusTracker(modelNames []string) *ModelStatusTracker {
+// ModelDisplayInfo holds both internal name and display name for a model
+type ModelDisplayInfo struct {
+	InternalName string // Model key used for internal operations
+	DisplayName  string // User-facing display name (e.g., "provider/model")
+}
+
+// NewModelStatusTracker creates a new status tracker for the given model information
+func NewModelStatusTracker(modelInfos []ModelDisplayInfo) *ModelStatusTracker {
 	tracker := &ModelStatusTracker{
 		models:      make(map[string]*ModelState),
-		modelOrder:  make([]string, len(modelNames)),
-		totalModels: len(modelNames),
+		modelOrder:  make([]string, len(modelInfos)),
+		totalModels: len(modelInfos),
 		startTime:   time.Now(),
 	}
 
 	// Initialize all models in queued state
-	for i, modelName := range modelNames {
-		tracker.models[modelName] = &ModelState{
-			Name:       modelName,
-			Index:      i + 1, // 1-based indexing for display
-			Status:     StatusQueued,
-			StartTime:  time.Now(),
-			UpdateTime: time.Now(),
+	for i, modelInfo := range modelInfos {
+		tracker.models[modelInfo.InternalName] = &ModelState{
+			Name:        modelInfo.InternalName,
+			DisplayName: modelInfo.DisplayName,
+			Index:       i + 1, // 1-based indexing for display
+			Status:      StatusQueued,
+			StartTime:   time.Now(),
+			UpdateTime:  time.Now(),
 		}
-		tracker.modelOrder[i] = modelName
+		tracker.modelOrder[i] = modelInfo.InternalName
 	}
 
 	return tracker
@@ -97,14 +105,15 @@ func (t *ModelStatusTracker) GetAllStates() []*ModelState {
 		// Create a copy to avoid race conditions
 		original := t.models[modelName]
 		states[i] = &ModelState{
-			Name:       original.Name,
-			Index:      original.Index,
-			Status:     original.Status,
-			Duration:   original.Duration,
-			RetryAfter: original.RetryAfter,
-			ErrorMsg:   original.ErrorMsg,
-			StartTime:  original.StartTime,
-			UpdateTime: original.UpdateTime,
+			Name:        original.Name,
+			DisplayName: original.DisplayName,
+			Index:       original.Index,
+			Status:      original.Status,
+			Duration:    original.Duration,
+			RetryAfter:  original.RetryAfter,
+			ErrorMsg:    original.ErrorMsg,
+			StartTime:   original.StartTime,
+			UpdateTime:  original.UpdateTime,
 		}
 	}
 	return states

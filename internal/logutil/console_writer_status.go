@@ -2,6 +2,8 @@ package logutil
 
 import (
 	"time"
+
+	"github.com/phrazzld/thinktank/internal/models"
 )
 
 // Status Tracking Implementation
@@ -16,8 +18,24 @@ func (c *consoleWriter) StartStatusTracking(modelNames []string) {
 		return
 	}
 
+	// Create model display information with APIModelID as display name
+	modelInfos := make([]ModelDisplayInfo, len(modelNames))
+	for i, modelName := range modelNames {
+		// Look up the model's APIModelID for display
+		modelDef, err := models.GetModelInfo(modelName)
+		displayName := modelName // Fallback to internal name if lookup fails
+		if err == nil {
+			displayName = modelDef.APIModelID
+		}
+
+		modelInfos[i] = ModelDisplayInfo{
+			InternalName: modelName,
+			DisplayName:  displayName,
+		}
+	}
+
 	// Initialize tracking components
-	c.statusTracker = NewModelStatusTracker(modelNames)
+	c.statusTracker = NewModelStatusTracker(modelInfos)
 	c.statusDisplay = NewStatusDisplay(c.isInteractive)
 	c.usingStatus = true
 

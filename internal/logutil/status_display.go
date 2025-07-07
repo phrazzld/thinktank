@@ -74,8 +74,8 @@ func (d *StatusDisplay) formatModelLine(state *ModelState, totalModels int) stri
 	statusDisplayWidth := d.getDisplayWidth(status)
 	maxNameWidth := d.terminalWidth - len(modelId) - statusDisplayWidth - 3 // 3 for spacing
 
-	// Truncate model name if too long
-	modelName := state.Name
+	// Truncate model name if too long - use DisplayName for user-facing output
+	modelName := state.DisplayName
 	if len(modelName) > maxNameWidth {
 		if maxNameWidth > 3 {
 			modelName = modelName[:maxNameWidth-3] + "..."

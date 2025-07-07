@@ -6,8 +6,12 @@ import (
 )
 
 func TestModelStatusTracker(t *testing.T) {
-	modelNames := []string{"model1", "model2", "model3"}
-	tracker := NewModelStatusTracker(modelNames)
+	modelInfos := []ModelDisplayInfo{
+		{InternalName: "model1", DisplayName: "test/model1"},
+		{InternalName: "model2", DisplayName: "test/model2"},
+		{InternalName: "model3", DisplayName: "test/model3"},
+	}
+	tracker := NewModelStatusTracker(modelInfos)
 
 	// Test initial state
 	if tracker.totalModels != 3 {
@@ -24,8 +28,11 @@ func TestModelStatusTracker(t *testing.T) {
 		if state.Status != StatusQueued {
 			t.Errorf("Expected status queued for model %d, got %s", i, state.Status)
 		}
-		if state.Name != modelNames[i] {
-			t.Errorf("Expected model name %s, got %s", modelNames[i], state.Name)
+		if state.Name != modelInfos[i].InternalName {
+			t.Errorf("Expected internal name %s, got %s", modelInfos[i].InternalName, state.Name)
+		}
+		if state.DisplayName != modelInfos[i].DisplayName {
+			t.Errorf("Expected display name %s, got %s", modelInfos[i].DisplayName, state.DisplayName)
 		}
 		if state.Index != i+1 {
 			t.Errorf("Expected index %d, got %d", i+1, state.Index)
