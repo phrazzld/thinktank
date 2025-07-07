@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -236,39 +237,43 @@ func TestOpenAITokenizer_ClearCache(t *testing.T) {
 
 // Benchmark tests for performance validation
 func BenchmarkOpenAITokenizer_CountTokens(b *testing.B) {
-	tokenizer := NewOpenAITokenizer()
-	ctx := context.Background()
-	text := "The quick brown fox jumps over the lazy dog."
-	model := "gpt-4.1"
+	perftest.RunBenchmark(b, "OpenAITokenizer_CountTokens", func(b *testing.B) {
+		tokenizer := NewOpenAITokenizer()
+		ctx := context.Background()
+		text := "The quick brown fox jumps over the lazy dog."
+		model := "gpt-4.1"
 
-	// Warm up the tokenizer
-	_, err := tokenizer.CountTokens(ctx, text, model)
-	require.NoError(b, err)
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
+		// Warm up the tokenizer
 		_, err := tokenizer.CountTokens(ctx, text, model)
-		if err != nil {
-			b.Fatal(err)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+		perftest.ReportAllocs(b)
+
+		for i := 0; i < b.N; i++ {
+			_, err := tokenizer.CountTokens(ctx, text, model)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }
 
 func BenchmarkOpenAITokenizer_InitializationCost(b *testing.B) {
-	ctx := context.Background()
-	text := "test"
-	model := "gpt-4.1"
+	perftest.RunBenchmark(b, "OpenAITokenizer_InitializationCost", func(b *testing.B) {
+		ctx := context.Background()
+		text := "test"
+		model := "gpt-4.1"
 
-	b.ReportAllocs()
+		perftest.ReportAllocs(b)
 
-	for i := 0; i < b.N; i++ {
-		// Create new tokenizer each time to measure initialization cost
-		tokenizer := NewOpenAITokenizer()
-		_, err := tokenizer.CountTokens(ctx, text, model)
-		if err != nil {
-			b.Fatal(err)
+		for i := 0; i < b.N; i++ {
+			// Create new tokenizer each time to measure initialization cost
+			tokenizer := NewOpenAITokenizer()
+			_, err := tokenizer.CountTokens(ctx, text, model)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }

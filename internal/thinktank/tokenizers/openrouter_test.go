@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -167,24 +168,26 @@ func TestOpenRouterTokenizer_ConsistencyWithOpenAI(t *testing.T) {
 
 // Benchmark tests to validate performance characteristics
 func BenchmarkOpenRouterTokenizer_CountTokens(b *testing.B) {
-	tokenizer := NewOpenRouterTokenizer()
-	ctx := context.Background()
-	text := "The quick brown fox jumps over the lazy dog. This is a performance test for OpenRouter tokenization."
-	model := "openrouter/anthropic/claude-3-sonnet"
+	perftest.RunBenchmark(b, "OpenRouterTokenizer_CountTokens", func(b *testing.B) {
+		tokenizer := NewOpenRouterTokenizer()
+		ctx := context.Background()
+		text := "The quick brown fox jumps over the lazy dog. This is a performance test for OpenRouter tokenization."
+		model := "openrouter/anthropic/claude-3-sonnet"
 
-	// Warm up
-	_, err := tokenizer.CountTokens(ctx, text, model)
-	require.NoError(b, err)
-
-	b.ResetTimer()
-	b.ReportAllocs()
-
-	for i := 0; i < b.N; i++ {
+		// Warm up
 		_, err := tokenizer.CountTokens(ctx, text, model)
-		if err != nil {
-			b.Fatal(err)
+		require.NoError(b, err)
+
+		b.ResetTimer()
+		perftest.ReportAllocs(b)
+
+		for i := 0; i < b.N; i++ {
+			_, err := tokenizer.CountTokens(ctx, text, model)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }
 
 func BenchmarkOpenRouterTokenizer_vs_OpenAI(b *testing.B) {
@@ -196,22 +199,26 @@ func BenchmarkOpenRouterTokenizer_vs_OpenAI(b *testing.B) {
 	ctx := context.Background()
 
 	b.Run("Direct_OpenAI", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			_, err := openaiTokenizer.CountTokens(ctx, text, "o4-mini")
-			if err != nil {
-				b.Fatal(err)
+		perftest.RunBenchmark(b, "OpenRouterTokenizer_vs_OpenAI_Direct", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				_, err := openaiTokenizer.CountTokens(ctx, text, "o4-mini")
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
-		}
+		})
 	})
 
 	b.Run("OpenRouter_Wrapper", func(b *testing.B) {
-		b.ReportAllocs()
-		for i := 0; i < b.N; i++ {
-			_, err := openrouterTokenizer.CountTokens(ctx, text, "openrouter/openai/gpt-4o")
-			if err != nil {
-				b.Fatal(err)
+		perftest.RunBenchmark(b, "OpenRouterTokenizer_vs_OpenAI_Wrapper", func(b *testing.B) {
+			perftest.ReportAllocs(b)
+			for i := 0; i < b.N; i++ {
+				_, err := openrouterTokenizer.CountTokens(ctx, text, "openrouter/openai/gpt-4o")
+				if err != nil {
+					b.Fatal(err)
+				}
 			}
-		}
+		})
 	})
 }
