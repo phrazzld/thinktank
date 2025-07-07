@@ -351,6 +351,27 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 
+	// Inception Models
+	"mercury": {
+		Provider:        "openrouter",
+		APIModelID:      "inception/mercury",
+		ContextWindow:   32000,
+		MaxOutputTokens: 16000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 16000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
 	// Test models for integration testing only
 	// These models are used by integration tests to simulate various scenarios
 	"model1": {

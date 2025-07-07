@@ -40,8 +40,8 @@ func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 
 	// Get all 19 supported models
 	allModels := models.ListAllModels()
-	if len(allModels) != 19 {
-		t.Fatalf("Expected 19 models, got %d", len(allModels))
+	if len(allModels) != 20 {
+		t.Fatalf("Expected 20 models, got %d", len(allModels))
 	}
 
 	// Create test environment
