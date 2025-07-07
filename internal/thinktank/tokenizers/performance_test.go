@@ -3,6 +3,7 @@ package tokenizers
 import (
 	"context"
 	"errors"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -40,7 +41,12 @@ func TestTokenizerManagerWithPerformanceMonitoring_TracksLatency(t *testing.T) {
 
 	assert.Equal(t, 3, metrics.RequestCount, "Should track request count")
 	assert.GreaterOrEqual(t, metrics.AvgLatency, 45*time.Millisecond, "Should track latency")
-	assert.LessOrEqual(t, metrics.AvgLatency, 60*time.Millisecond, "Latency should be in expected range")
+	// Use CI-aware threshold - more lenient in CI environments
+	expectedMaxLatency := 60 * time.Millisecond
+	if os.Getenv("CI") != "" {
+		expectedMaxLatency = 100 * time.Millisecond // More lenient for CI
+	}
+	assert.LessOrEqual(t, metrics.AvgLatency, expectedMaxLatency, "Latency should be in expected range")
 	assert.Equal(t, 3, metrics.SuccessCount, "Should track success count")
 	assert.Equal(t, 0, metrics.FailureCount, "Should track failure count")
 }

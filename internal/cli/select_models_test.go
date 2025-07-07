@@ -585,7 +585,7 @@ func TestSelectModelsForConfig_UsesAccurateTokenization(t *testing.T) {
 	config := &SimplifiedConfig{
 		InstructionsFile: instructionsFile,
 		TargetPath:       tempDir,
-		Flags:            0,
+		Flags:            FlagSynthesis,
 	}
 
 	// Get results from old estimation-based approach
@@ -614,4 +614,102 @@ func TestSelectModelsForConfig_UsesAccurateTokenization(t *testing.T) {
 	require.NotEmpty(t, accurateModels, "Accurate tokenization should find models")
 
 	// ✅ Success: We've successfully integrated TokenCountingService for accurate tokenization!
+}
+
+// TestSynthesisFlagBehaviorConsistency ensures both model selection approaches
+// behave identically when the synthesis flag is explicitly set, documenting
+// expected behavior differences between estimation and accurate tokenization.
+func TestSynthesisFlagBehaviorConsistency(t *testing.T) {
+	// Note: Not using t.Parallel() due to environment variable isolation issues
+
+	// Setup test environment with OpenRouter API key
+	cleanup := setupTestEnvironment(t, map[string]string{
+		"OPENROUTER_API_KEY": "test-key",
+	})
+	defer cleanup()
+
+	tempDir := t.TempDir()
+
+	// Test scenarios with different input sizes to verify synthesis flag behavior
+	tests := []struct {
+		name                string
+		instructionsContent string
+		withSynthesisFlag   bool
+		expectedSynthesis   string
+		behaviorDescription string
+	}{
+		{
+			name:                "small_input_with_synthesis_flag",
+			instructionsContent: "Simple analysis task",
+			withSynthesisFlag:   true,
+			expectedSynthesis:   "gemini-2.5-pro", // Should force synthesis even for small input
+			behaviorDescription: "With synthesis flag, both approaches should enable synthesis regardless of input size",
+		},
+		{
+			name:                "small_input_without_synthesis_flag",
+			instructionsContent: "Simple analysis task",
+			withSynthesisFlag:   false,
+			expectedSynthesis:   "gemini-2.5-pro", // Auto-enabled due to multiple models
+			behaviorDescription: "Without synthesis flag, both approaches use automatic synthesis logic based on model count",
+		},
+		{
+			name:                "medium_input_with_synthesis_flag",
+			instructionsContent: strings.Repeat("Medium complexity analysis task. ", 50), // ~1.5K chars
+			withSynthesisFlag:   true,
+			expectedSynthesis:   "gemini-2.5-pro",
+			behaviorDescription: "With synthesis flag, both approaches should consistently enable synthesis",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			instructionsFile := createTempInstructionsFile(t, tempDir, tt.instructionsContent)
+
+			config := &SimplifiedConfig{
+				InstructionsFile: instructionsFile,
+				TargetPath:       tempDir,
+				Flags:            0, // Start with no flags
+			}
+
+			// Set synthesis flag if requested
+			if tt.withSynthesisFlag {
+				config.SetFlag(FlagSynthesis)
+			}
+
+			// Get results from estimation-based approach
+			estimationModels, estimationSynthesis := selectModelsForConfig(config)
+
+			// Get results from accurate tokenization approach
+			tokenService := thinktank.NewTokenCountingService()
+			accurateModels, accurateSynthesis := selectModelsForConfigWithService(config, tokenService)
+
+			// Log results for visibility
+			t.Logf("Scenario: %s", tt.behaviorDescription)
+			t.Logf("Synthesis flag set: %v", tt.withSynthesisFlag)
+			t.Logf("Estimation - Models: %d, Synthesis: %s", len(estimationModels), estimationSynthesis)
+			t.Logf("Accurate - Models: %d, Synthesis: %s", len(accurateModels), accurateSynthesis)
+
+			// Core assertion: Both approaches should return the same synthesis model
+			// when synthesis flag is explicitly set
+			assert.Equal(t, estimationSynthesis, accurateSynthesis,
+				"Both approaches should use identical synthesis logic with flag=%v", tt.withSynthesisFlag)
+
+			// Both approaches should return the expected synthesis model
+			assert.Equal(t, tt.expectedSynthesis, estimationSynthesis,
+				"Estimation approach should return expected synthesis model")
+			assert.Equal(t, tt.expectedSynthesis, accurateSynthesis,
+				"Accurate approach should return expected synthesis model")
+
+			// Both approaches should return models (basic sanity check)
+			require.NotEmpty(t, estimationModels, "Estimation should return models")
+			require.NotEmpty(t, accurateModels, "Accurate tokenization should return models")
+
+			// Document expected behavior: Model selection may differ between approaches
+			// due to different tokenization accuracy, but synthesis logic should be identical
+			if len(estimationModels) != len(accurateModels) {
+				t.Logf("INFO: Model counts differ (estimation=%d, accurate=%d) - this is expected due to tokenization differences",
+					len(estimationModels), len(accurateModels))
+			}
+		})
+	}
 }

@@ -4,6 +4,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 )
 
 func TestGetModelInfo(t *testing.T) {
@@ -250,29 +252,35 @@ func TestListModelsForProvider(t *testing.T) {
 // Test benchmarks to verify performance
 func BenchmarkGetModelInfo(b *testing.B) {
 	modelName := "gpt-4.1"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := GetModelInfo(modelName)
-		if err != nil {
-			b.Fatal(err)
+
+	perftest.RunBenchmark(b, "GetModelInfo", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, err := GetModelInfo(modelName)
+			if err != nil {
+				b.Fatal(err)
+			}
 		}
-	}
+	})
 }
 
 func BenchmarkGetProviderDefaultRateLimit(b *testing.B) {
 	provider := "openai"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		GetProviderDefaultRateLimit(provider)
-	}
+
+	perftest.RunBenchmark(b, "GetProviderDefaultRateLimit", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			GetProviderDefaultRateLimit(provider)
+		}
+	})
 }
 
 func BenchmarkListModelsForProvider(b *testing.B) {
 	provider := "openai"
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		ListModelsForProvider(provider)
-	}
+
+	perftest.RunBenchmark(b, "ListModelsForProvider", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			ListModelsForProvider(provider)
+		}
+	})
 }
 
 func TestIsModelSupported(t *testing.T) {

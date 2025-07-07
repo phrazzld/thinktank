@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -155,15 +156,14 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 			tokenizer, err := manager.GetTokenizer("openrouter")
 			require.NoError(b, err)
 
-			b.ResetTimer()
-			b.ReportAllocs()
-
-			for i := 0; i < b.N; i++ {
-				_, err := tokenizer.CountTokens(context.Background(), text, "gpt-4.1")
-				if err != nil {
-					b.Fatal(err)
+			perftest.RunBenchmark(b, "StreamingVsInMemory_InMemory_"+sizeStr, func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					_, err := tokenizer.CountTokens(context.Background(), text, "gpt-4.1")
+					if err != nil {
+						b.Fatal(err)
+					}
 				}
-			}
+			})
 		})
 
 		b.Run("Streaming_"+sizeStr, func(b *testing.B) {
@@ -172,16 +172,15 @@ func BenchmarkStreamingVsInMemory(b *testing.B) {
 			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
-			b.ResetTimer()
-			b.ReportAllocs()
-
-			for i := 0; i < b.N; i++ {
-				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
-				if err != nil {
-					b.Fatal(err)
+			perftest.RunBenchmark(b, "StreamingVsInMemory_Streaming_"+sizeStr, func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					reader := strings.NewReader(text)
+					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+					if err != nil {
+						b.Fatal(err)
+					}
 				}
-			}
+			})
 		})
 	}
 }
@@ -467,16 +466,15 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 			streamingTokenizer, err := manager.GetStreamingTokenizer("openrouter")
 			require.NoError(b, err)
 
-			b.ResetTimer()
-			b.ReportAllocs()
-
-			for i := 0; i < b.N; i++ {
-				reader := strings.NewReader(text)
-				_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
-				if err != nil {
-					b.Fatal(err)
+			perftest.RunBenchmark(b, "RealisticTokenizationPerformance_Regular_"+size.name, func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					reader := strings.NewReader(text)
+					_, err := streamingTokenizer.CountTokensStreaming(context.Background(), reader, "gpt-4.1")
+					if err != nil {
+						b.Fatal(err)
+					}
 				}
-			}
+			})
 		})
 
 		b.Run("Adaptive_"+size.name, func(b *testing.B) {
@@ -488,16 +486,15 @@ func BenchmarkRealisticTokenizationPerformance(b *testing.B) {
 				CountTokensStreamingWithAdaptiveChunking(ctx context.Context, reader io.Reader, modelName string, inputSizeBytes int) (int, error)
 			})
 
-			b.ResetTimer()
-			b.ReportAllocs()
-
-			for i := 0; i < b.N; i++ {
-				reader := strings.NewReader(text)
-				_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4.1", size.size)
-				if err != nil {
-					b.Fatal(err)
+			perftest.RunBenchmark(b, "RealisticTokenizationPerformance_Adaptive_"+size.name, func(b *testing.B) {
+				for i := 0; i < b.N; i++ {
+					reader := strings.NewReader(text)
+					_, err := adaptiveTokenizer.CountTokensStreamingWithAdaptiveChunking(context.Background(), reader, "gpt-4.1", size.size)
+					if err != nil {
+						b.Fatal(err)
+					}
 				}
-			}
+			})
 		})
 	}
 }

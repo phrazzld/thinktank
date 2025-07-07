@@ -168,20 +168,113 @@ func TestIntegration(t *testing.T) {
 
 ### Post-OpenRouter Consolidation Pattern
 
-All tests now use a single API key pattern:
+After the OpenRouter consolidation, all tests use a single API key (`OPENROUTER_API_KEY`). The following patterns ensure consistent and secure API key handling across the test suite.
+
+### Test Environment Setup
+
+#### 1. Basic Skip Pattern
+For tests that require a real API key:
 
 ```go
 func TestOpenRouterIntegration(t *testing.T) {
     apiKey := os.Getenv("OPENROUTER_API_KEY")
     if apiKey == "" {
-        t.Skip("OPENROUTER_API_KEY not set")
+        t.Skip("OPENROUTER_API_KEY not set - skipping integration test")
     }
     // Use API key for testing
 }
 ```
 
+#### 2. Environment Isolation Pattern
+Always save and restore environment variables to prevent test pollution:
+
+```go
+func TestWithAPIKey(t *testing.T) {
+    // Save original environment
+    originalKey := os.Getenv("OPENROUTER_API_KEY")
+    defer func() {
+        if originalKey != "" {
+            os.Setenv("OPENROUTER_API_KEY", originalKey)
+        } else {
+            os.Unsetenv("OPENROUTER_API_KEY")
+        }
+    }()
+
+    // Set test API key
+    os.Setenv("OPENROUTER_API_KEY", "test-openrouter-key")
+
+    // Run test...
+}
+```
+
+#### 3. Test Helper Pattern
+Use the `setupTestEnvironment` helper for comprehensive environment management:
+
+```go
+func TestMultipleConfigurations(t *testing.T) {
+    tests := []struct {
+        name    string
+        envVars map[string]string
+        // ... other fields
+    }{
+        {
+            name: "with OpenRouter key",
+            envVars: map[string]string{
+                "OPENROUTER_API_KEY": "test-openrouter-key",
+            },
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            cleanup := setupTestEnvironment(t, tt.envVars)
+            defer cleanup()
+
+            // Test implementation...
+        })
+    }
+}
+```
+
+#### 4. Security Test Utilities
+Use `testutil` package functions for secure API key handling:
+
+```go
+import "github.com/phrazzld/thinktank/internal/testutil"
+
+func TestWithSecureKey(t *testing.T) {
+    // Skips test if no test API key provided
+    apiKey := testutil.GetTestAPIKey(t, "OPENROUTER_API_KEY")
+
+    // Optional API key (returns empty string if not set)
+    optionalKey := testutil.GetTestAPIKeyOptional(t, "OPENROUTER_API_KEY")
+}
+```
+
+### Test API Key Formats
+
+Use consistent test API key formats:
+- **Simple**: `"test-openrouter-key"`
+- **OpenRouter Format**: `"sk-or-test-key"`
+- **Full Format**: `"sk-or-test_openrouter_key_1234567890abcdefghijklmnopqrstuvwxyz"`
+
+### Migration from Multi-Provider Pattern
+
+When updating tests from the old multi-provider pattern:
+
+```go
+// Old pattern (pre-consolidation)
+originalOpenAI := os.Getenv("OPENAI_API_KEY")
+originalGemini := os.Getenv("GEMINI_API_KEY")
+originalOpenRouter := os.Getenv("OPENROUTER_API_KEY")
+
+// New pattern (post-consolidation)
+originalKey := os.Getenv("OPENROUTER_API_KEY")
+```
+
 ### CI Configuration
 
+#### GitHub Actions Setup
 Ensure CI workflow exposes required secrets:
 
 ```yaml
@@ -190,7 +283,92 @@ Ensure CI workflow exposes required secrets:
   env:
     OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
   run: go test ./...
+
+- name: Run Integration Tests
+  env:
+    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+  run: go test -tags=integration ./...
 ```
+
+#### Secret Configuration Guidelines
+1. Use a dedicated test API key with limited permissions
+2. Set rate limits appropriate for CI usage
+3. Monitor usage to detect anomalies
+4. Rotate keys periodically
+
+### Error Handling Patterns
+
+Test both success and failure scenarios:
+
+```go
+func TestAPIKeyValidation(t *testing.T) {
+    tests := []struct {
+        name          string
+        apiKey        string
+        expectError   bool
+        errorContains string
+    }{
+        {
+            name:        "valid key",
+            apiKey:      "sk-or-test-key",
+            expectError: false,
+        },
+        {
+            name:          "missing key",
+            apiKey:        "",
+            expectError:   true,
+            errorContains: "OPENROUTER_API_KEY not set",
+        },
+        {
+            name:          "invalid format",
+            apiKey:        "invalid-key",
+            expectError:   true,
+            errorContains: "invalid API key format",
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            cleanup := setupTestEnvironment(t, map[string]string{
+                "OPENROUTER_API_KEY": tt.apiKey,
+            })
+            defer cleanup()
+
+            // Test validation logic...
+        })
+    }
+}
+```
+
+### Integration Test Patterns
+
+For tests that require real API calls:
+
+```go
+func TestRealAPIIntegration(t *testing.T) {
+    if testing.Short() {
+        t.Skip("Skipping integration test in short mode")
+    }
+
+    apiKey := os.Getenv("OPENROUTER_TEST_API_KEY")
+    if apiKey == "" {
+        t.Skip("OPENROUTER_TEST_API_KEY not set - skipping real API test")
+    }
+
+    // Note: Use separate test API key for integration tests
+    // to avoid affecting production quotas
+}
+```
+
+### Best Practices
+
+1. **Never commit real API keys** - Use environment variables or CI secrets
+2. **Use test-prefixed keys** in test code to prevent accidental production use
+3. **Clean up environment** after each test to prevent pollution
+4. **Skip gracefully** when API keys aren't available
+5. **Test error cases** including missing and invalid API keys
+6. **Use mock servers** for most tests, real API only for integration tests
+7. **Monitor test API usage** to detect issues early
 
 ## Test Categories
 

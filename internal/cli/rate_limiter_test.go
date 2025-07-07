@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phrazzld/thinktank/internal/testutil/perftest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -423,14 +424,15 @@ func BenchmarkProviderRateLimiter_Acquire(b *testing.B) {
 	prl := NewProviderRateLimiter(1000, nil) // High concurrency for benchmarking
 	ctx := context.Background()
 
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			err := prl.Acquire(ctx, "openai", "gpt-4.1")
-			if err == nil {
-				prl.Release("openai")
+	perftest.RunBenchmark(b, "ProviderRateLimiter_Acquire", func(b *testing.B) {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				err := prl.Acquire(ctx, "openai", "gpt-4.1")
+				if err == nil {
+					prl.Release("openai")
+				}
 			}
-		}
+		})
 	})
 }
 
@@ -438,10 +440,11 @@ func BenchmarkProviderRateLimiter_Acquire(b *testing.B) {
 func BenchmarkCircuitBreaker_CanExecute(b *testing.B) {
 	cb := NewCircuitBreaker()
 
-	b.ResetTimer()
-	b.RunParallel(func(pb *testing.PB) {
-		for pb.Next() {
-			_ = cb.CanExecute()
-		}
+	perftest.RunBenchmark(b, "CircuitBreaker_CanExecute", func(b *testing.B) {
+		b.RunParallel(func(pb *testing.PB) {
+			for pb.Next() {
+				_ = cb.CanExecute()
+			}
+		})
 	})
 }

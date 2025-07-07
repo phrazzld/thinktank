@@ -58,6 +58,14 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 * Include performance benchmarks for >100 files, >1MB
 * Validate against OpenAI tokenizer playground for reference
 
+### API Key Testing (Post-OpenRouter Consolidation)
+* **Single API Key**: All tests use `OPENROUTER_API_KEY` only
+* **Environment Isolation**: Always save/restore original API keys in tests
+* **Test Helpers**: Use `setupTestEnvironment()` for consistent env management
+* **Mock Keys**: Use `"test-openrouter-key"` or `"sk-or-test-key"` format
+* **Skip Pattern**: `t.Skip("OPENROUTER_API_KEY not set")` for integration tests
+* **Security**: Never use production keys in tests - use test-prefixed keys
+
 ## Critical Constraints
 
 * **Conventional Commits:** Required for automated versioning
