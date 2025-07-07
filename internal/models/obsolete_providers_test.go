@@ -1,6 +1,8 @@
 package models
 
 import (
+	"os"
+	"strings"
 	"testing"
 )
 
@@ -60,7 +62,26 @@ func TestObsoleteProvidersRemoved(t *testing.T) {
 	})
 
 	t.Run("GetAvailableProviders should not include obsolete providers", func(t *testing.T) {
+		// DEBUG: Print environment variables at test runtime
+		envVars := []string{"OPENROUTER_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "THINKTANK_ENABLE_TEST_MODELS"}
+		for _, envVar := range envVars {
+			value := os.Getenv(envVar)
+			if value != "" {
+				t.Logf("DEBUG: Environment variable %s = %s (length: %d)", envVar, value, len(value))
+			} else {
+				t.Logf("DEBUG: Environment variable %s is empty or not set", envVar)
+			}
+		}
+
+		// DEBUG: Print all environment variables with relevant prefixes
+		for _, env := range os.Environ() {
+			if strings.Contains(env, "OPENROUTER") || strings.Contains(env, "OPENAI") || strings.Contains(env, "GEMINI") || strings.Contains(env, "THINKTANK") {
+				t.Logf("DEBUG: Found relevant env var: %s", env)
+			}
+		}
+
 		providers := GetAvailableProviders()
+		t.Logf("DEBUG: GetAvailableProviders returned: %v", providers)
 		for _, provider := range providers {
 			if provider == "openai" {
 				t.Error("GetAvailableProviders should not include 'openai' - models migrated to OpenRouter")
