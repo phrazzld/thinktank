@@ -1,3 +1,47 @@
+# CI Test Failure Resolution
+
+## 🚨 Active CI Issue: TestSelectModelsForConfig_UsesAccurateTokenization
+
+### Problem Summary
+The test fails in push workflows (without OPENROUTER_API_KEY) because model selection approaches return different synthesis models:
+- Estimation approach: Returns empty synthesis model ("")
+- Accurate tokenization approach: Returns "gemini-2.5-pro"
+
+PR tests pass ✅ (with API key), only push tests fail ❌ (without API key).
+
+### Resolution Tasks
+
+#### [CI FIX] Skip Test When No API Key Available
+- **Task**: Add environment check to skip test when OPENROUTER_API_KEY is not available
+- **Action**:
+  - Check for OPENROUTER_API_KEY at test start
+  - Skip with clear message if not available
+  - Follow same pattern as TestObsoleteProvidersRemoved fix
+- **Verification**: Test skips in push workflows, passes in PR workflows
+- **File**: `internal/cli/select_models_test.go`
+- **Priority**: HIGH (unblocks CI)
+
+#### [CI FIX] Verify Fix Works in Both Scenarios
+- **Task**: Test the fix with and without API key
+- **Action**:
+  - Run test locally with API key - should pass
+  - Run test locally without API key - should skip
+  - Commit and verify CI behavior
+- **Verification**: Push and PR workflows both succeed
+- **Priority**: HIGH (validation step)
+
+#### [CODE FIX] Document Test Environment Requirements
+- **Task**: Add comment explaining why test requires API key
+- **Action**:
+  - Add detailed comment above test function
+  - Explain the dependency on provider availability
+  - Document the skip behavior
+- **Verification**: Future developers understand the requirement
+- **File**: `internal/cli/select_models_test.go`
+- **Priority**: MEDIUM (maintainability)
+
+---
+
 # OpenRouter Consolidation & CI Resolution
 
 ## 📊 OpenRouter Consolidation Status (✅ FULLY COMPLETED)
