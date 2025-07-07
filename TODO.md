@@ -64,7 +64,7 @@ echo $OPENROUTER_API_KEY | gh secret set OPENROUTER_API_KEY
 
 ## 🚨 Immediate Actions Required (CRITICAL)
 
-### [CODE FIX] Add Comprehensive Environment Variable Debug Logging [~]
+### [CODE FIX] Add Comprehensive Environment Variable Debug Logging [x]
 - **Task**: Insert detailed environment inspection directly in the failing test
 - **Action**:
   - Add debug logging in `TestObsoleteProvidersRemoved` to print `os.Getenv("OPENROUTER_API_KEY")` result
@@ -74,8 +74,9 @@ echo $OPENROUTER_API_KEY | gh secret set OPENROUTER_API_KEY
 - **Verification**: Debug output reveals what environment variables are actually accessible in test context
 - **File**: `internal/models/obsolete_providers_test.go`, `internal/models/models.go`
 - **Priority**: HIGH (blocks all other diagnosis)
+- **Results**: ✅ Debug logging implemented and committed. CI build triggered to capture diagnostic information.
 
-### [CI FIX] Test Secret Accessibility in Different CI Contexts
+### [CI FIX] Test Secret Accessibility in Different CI Contexts [~]
 - **Task**: Verify GitHub secret propagates to Go test subprocesses
 - **Action**:
   - Add temporary CI step before tests that explicitly echoes `$OPENROUTER_API_KEY`

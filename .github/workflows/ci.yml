@@ -21,6 +21,32 @@ jobs:
     - name: Lint
       run: go vet ./...
 
+    - name: Debug Environment Variables
+      env:
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      run: |
+        echo "=== Environment Variable Debug Information ==="
+        echo "Shell context:"
+        echo "OPENROUTER_API_KEY length: ${#OPENROUTER_API_KEY}"
+        echo "OPENROUTER_API_KEY set: $([ -n "$OPENROUTER_API_KEY" ] && echo 'YES' || echo 'NO')"
+        echo ""
+        echo "All relevant environment variables:"
+        env | grep -E "(OPENROUTER|OPENAI|GEMINI|THINKTANK)" || echo "No relevant env vars found"
+        echo ""
+        echo "Go environment:"
+        go env | grep -E "(OPENROUTER|OPENAI|GEMINI|THINKTANK)" || echo "No relevant Go env vars found"
+        echo ""
+        echo "Simple Go program test:"
+        cat > /tmp/env_test.go << 'EOF'
+        package main
+        import ("fmt"; "os")
+        func main() {
+            val := os.Getenv("OPENROUTER_API_KEY")
+            fmt.Printf("Go os.Getenv result: length=%d, set=%t\n", len(val), val != "")
+        }
+        EOF
+        go run /tmp/env_test.go
+
     - name: Test
       env:
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
