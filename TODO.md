@@ -11,7 +11,7 @@ PR tests pass ✅ (with API key), only push tests fail ❌ (without API key).
 
 ### Resolution Tasks
 
-#### [CI FIX] Skip Test When No API Key Available
+#### [CI FIX] Skip Test When No API Key Available [x]
 - **Task**: Add environment check to skip test when OPENROUTER_API_KEY is not available
 - **Action**:
   - Check for OPENROUTER_API_KEY at test start
@@ -20,8 +20,9 @@ PR tests pass ✅ (with API key), only push tests fail ❌ (without API key).
 - **Verification**: Test skips in push workflows, passes in PR workflows
 - **File**: `internal/cli/select_models_test.go`
 - **Priority**: HIGH (unblocks CI)
+- **Results**: ✅ Environment check added. Test skips correctly without API key, passes normally with API key.
 
-#### [CI FIX] Verify Fix Works in Both Scenarios
+#### [CI FIX] Verify Fix Works in Both Scenarios [~]
 - **Task**: Test the fix with and without API key
 - **Action**:
   - Run test locally with API key - should pass
