@@ -254,7 +254,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-3.3-70b-instruct": {
 		Provider:        "openrouter",
-		APIModelID:      "meta-llama/llama-3.3-70b-instruct",
+		APIModelID:      "meta/llama-3.3-70b-instruct",
 		ContextWindow:   131072,
 		MaxOutputTokens: 4096,
 		DefaultParams: map[string]interface{}{
@@ -269,7 +269,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-4-maverick": {
 		Provider:        "openrouter",
-		APIModelID:      "meta-llama/llama-4-maverick",
+		APIModelID:      "meta/llama-4-maverick",
 		ContextWindow:   1048576,
 		MaxOutputTokens: 16384,
 		DefaultParams: map[string]interface{}{
@@ -288,7 +288,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-4-scout": {
 		Provider:        "openrouter",
-		APIModelID:      "meta-llama/llama-4-scout",
+		APIModelID:      "meta/llama-4-scout",
 		ContextWindow:   1048576,
 		MaxOutputTokens: 4096,
 		DefaultParams: map[string]interface{}{
@@ -348,6 +348,27 @@ var modelDefinitions = map[string]ModelInfo{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
 			"max_tokens":  intConstraint(1, 8192),
+		},
+	},
+
+	// Inception Models
+	"mercury": {
+		Provider:        "openrouter",
+		APIModelID:      "inception/mercury",
+		ContextWindow:   32000,
+		MaxOutputTokens: 16000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 16000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
 		},
 	},
 

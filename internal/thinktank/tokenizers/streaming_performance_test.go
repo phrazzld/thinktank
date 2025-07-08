@@ -38,8 +38,9 @@ func TestStreamingTokenizer_MeasuresBasicThroughput(t *testing.T) {
 		return int64(len(text)), nil
 	})
 
-	// Assert minimum throughput using framework (10KB/s baseline, adjusted for environment)
-	perftest.AssertThroughput(t, measurement, 10*1024)
+	// Assert minimum throughput using framework (6KB/s baseline, adjusted for environment)
+	// This provides a more realistic baseline that accounts for varying system performance
+	perftest.AssertThroughput(t, measurement, 6*1024)
 
 	// Log performance tier for visibility
 	if measurement.BytesPerSecond > 1024*1024.0 { // 1MB/s

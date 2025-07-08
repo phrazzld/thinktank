@@ -142,6 +142,7 @@ internal/cli/testdata/
 
 # Task and TODO temporary files
 task.md
+TODO.md
 TODO-*.md
 TASK-*.md
 BACKLOG.md

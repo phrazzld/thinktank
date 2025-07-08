@@ -53,7 +53,7 @@ func TestGetModelInfo(t *testing.T) {
 			name:           "openrouter model",
 			modelName:      "openrouter/meta-llama/llama-4-maverick",
 			wantProvider:   "openrouter",
-			wantAPIModelID: "meta-llama/llama-4-maverick",
+			wantAPIModelID: "meta/llama-4-maverick",
 			wantError:      false,
 		},
 		// Error cases
@@ -180,6 +180,7 @@ func TestListModelsForProvider(t *testing.T) {
 				"gemini-2.5-flash",
 				"gemini-2.5-pro",
 				"gpt-4.1",
+				"mercury",
 				"o3",
 				"o4-mini",
 				"openrouter/deepseek/deepseek-chat-v3-0324",

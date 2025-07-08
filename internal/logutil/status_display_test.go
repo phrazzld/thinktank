@@ -75,9 +75,10 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 		{
 			name: "Processing state",
 			state: &ModelState{
-				Name:   "test-model",
-				Index:  1,
-				Status: StatusProcessing,
+				Name:        "test-model",
+				DisplayName: "test-model",
+				Index:       1,
+				Status:      StatusProcessing,
 			},
 			totalModels: 5,
 			expectParts: []string{"[1/5]", "test-model", "processing"},
@@ -85,10 +86,11 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 		{
 			name: "Completed state",
 			state: &ModelState{
-				Name:     "test-model",
-				Index:    2,
-				Status:   StatusCompleted,
-				Duration: 150 * time.Millisecond,
+				Name:        "test-model",
+				DisplayName: "test-model",
+				Index:       2,
+				Status:      StatusCompleted,
+				Duration:    150 * time.Millisecond,
 			},
 			totalModels: 5,
 			expectParts: []string{"[2/5]", "test-model", "completed", "150ms"},
@@ -96,10 +98,11 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 		{
 			name: "Failed state",
 			state: &ModelState{
-				Name:     "test-model",
-				Index:    3,
-				Status:   StatusFailed,
-				ErrorMsg: "timeout",
+				Name:        "test-model",
+				DisplayName: "test-model",
+				Index:       3,
+				Status:      StatusFailed,
+				ErrorMsg:    "timeout",
 			},
 			totalModels: 5,
 			expectParts: []string{"[3/5]", "test-model", "failed", "timeout"},
@@ -107,10 +110,11 @@ func TestStatusDisplay_FormatModelLine(t *testing.T) {
 		{
 			name: "Rate limited state",
 			state: &ModelState{
-				Name:       "test-model",
-				Index:      4,
-				Status:     StatusRateLimited,
-				RetryAfter: 2 * time.Second,
+				Name:        "test-model",
+				DisplayName: "test-model",
+				Index:       4,
+				Status:      StatusRateLimited,
+				RetryAfter:  2 * time.Second,
 			},
 			totalModels: 5,
 			expectParts: []string{"[4/5]", "test-model", "rate limited", "2.0s"},
@@ -147,9 +151,10 @@ func TestStatusDisplay_ZeroPadding(t *testing.T) {
 
 	for _, tc := range testCases {
 		state := &ModelState{
-			Name:   "test",
-			Index:  tc.index,
-			Status: StatusQueued,
+			Name:        "test",
+			DisplayName: "test",
+			Index:       tc.index,
+			Status:      StatusQueued,
 		}
 
 		line := display.formatModelLine(state, tc.totalModels)
