@@ -2,6 +2,8 @@
 package fileutil
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -519,4 +521,161 @@ func TestCalculateFileStatistics(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestIOOperations tests the extracted I/O functions
+func TestIOOperations(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+
+	// Create test files
+	testFile := filepath.Join(tempDir, "test.txt")
+	testContent := []byte("Hello, World!\nThis is a test file.")
+
+	err := os.WriteFile(testFile, testContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create test directory
+	testSubDir := filepath.Join(tempDir, "subdir")
+	err = os.Mkdir(testSubDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	t.Run("ReadFileContent", func(t *testing.T) {
+		content, err := ReadFileContent(testFile)
+		if err != nil {
+			t.Errorf("ReadFileContent() error = %v", err)
+			return
+		}
+
+		if string(content) != string(testContent) {
+			t.Errorf("ReadFileContent() = %q, want %q", string(content), string(testContent))
+		}
+
+		// Test non-existent file
+		_, err = ReadFileContent(filepath.Join(tempDir, "nonexistent.txt"))
+		if err == nil {
+			t.Error("ReadFileContent() should return error for non-existent file")
+		}
+	})
+
+	t.Run("StatPath", func(t *testing.T) {
+		// Test file
+		info, err := StatPath(testFile)
+		if err != nil {
+			t.Errorf("StatPath() error = %v", err)
+			return
+		}
+
+		if info.IsDir() {
+			t.Error("StatPath() should return file info, not directory info")
+		}
+
+		if info.Size() != int64(len(testContent)) {
+			t.Errorf("StatPath() size = %d, want %d", info.Size(), len(testContent))
+		}
+
+		// Test directory
+		info, err = StatPath(testSubDir)
+		if err != nil {
+			t.Errorf("StatPath() error = %v", err)
+			return
+		}
+
+		if !info.IsDir() {
+			t.Error("StatPath() should return directory info")
+		}
+
+		// Test non-existent path
+		_, err = StatPath(filepath.Join(tempDir, "nonexistent"))
+		if err == nil {
+			t.Error("StatPath() should return error for non-existent path")
+		}
+	})
+
+	t.Run("WalkDirectory", func(t *testing.T) {
+		var visitedPaths []string
+
+		err := WalkDirectory(tempDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			visitedPaths = append(visitedPaths, path)
+			return nil
+		})
+
+		if err != nil {
+			t.Errorf("WalkDirectory() error = %v", err)
+			return
+		}
+
+		// Should visit at least the root directory, test file, and subdirectory
+		if len(visitedPaths) < 3 {
+			t.Errorf("WalkDirectory() visited %d paths, want at least 3", len(visitedPaths))
+		}
+
+		// Check that our test file was visited
+		found := false
+		for _, path := range visitedPaths {
+			if path == testFile {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("WalkDirectory() did not visit test file")
+		}
+	})
+
+	t.Run("GetAbsolutePath", func(t *testing.T) {
+		// Test with relative path
+		absPath, err := GetAbsolutePath(".")
+		if err != nil {
+			t.Errorf("GetAbsolutePath() error = %v", err)
+			return
+		}
+
+		if !filepath.IsAbs(absPath) {
+			t.Errorf("GetAbsolutePath() = %q, should be absolute", absPath)
+		}
+
+		// Test with already absolute path
+		abs2, err := GetAbsolutePath(absPath)
+		if err != nil {
+			t.Errorf("GetAbsolutePath() error = %v", err)
+			return
+		}
+
+		if abs2 != absPath {
+			t.Errorf("GetAbsolutePath() = %q, want %q", abs2, absPath)
+		}
+	})
+
+	t.Run("CheckGitRepo", func(t *testing.T) {
+		// Test with non-git directory
+		isGitRepo := CheckGitRepo(tempDir)
+		if isGitRepo {
+			t.Error("CheckGitRepo() should return false for non-git directory")
+		}
+
+		// Test with current project directory (which should be a git repo)
+		currentDir, _ := os.Getwd()
+		_ = CheckGitRepo(currentDir)
+		// This test is environment-dependent, so we don't assert the result
+		// but just make sure it doesn't panic
+	})
+
+	t.Run("CheckGitIgnore", func(t *testing.T) {
+		// Test with non-git directory (should return error)
+		_, err := CheckGitIgnore(tempDir, "test.txt")
+		if err == nil {
+			t.Error("CheckGitIgnore() should return error for non-git directory")
+		}
+
+		// We don't test with actual git repo here as it would be environment-dependent
+		// and might interfere with the actual project's git state
+	})
 }

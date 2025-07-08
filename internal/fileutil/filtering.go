@@ -1,6 +1,8 @@
 package fileutil
 
 import (
+	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -392,4 +394,54 @@ func CreateFilteringOptions(config *Config) FilteringOptions {
 		IgnoreHidden:   true, // Default behavior
 		IgnoreGitFiles: true, // Default behavior
 	}
+}
+
+// I/O Operations - Pure functions for file system operations
+// These functions handle only the actual file system operations, keeping I/O
+// separate from business logic following Carmack's philosophy.
+
+// ReadFileContent reads the content of a file and returns it as bytes.
+// This is a pure I/O operation for file reading.
+func ReadFileContent(path string) ([]byte, error) {
+	return os.ReadFile(path)
+}
+
+// StatPath gets file or directory information.
+// This is a pure I/O operation for file system metadata access.
+func StatPath(path string) (os.FileInfo, error) {
+	return os.Stat(path)
+}
+
+// WalkDirectory walks a directory tree and calls the provided function for each entry.
+// This is a pure I/O operation for directory traversal.
+func WalkDirectory(root string, walkFunc func(path string, d os.DirEntry, err error) error) error {
+	return filepath.WalkDir(root, walkFunc)
+}
+
+// GetAbsolutePath converts a path to an absolute path.
+// This is a pure I/O operation for path resolution.
+func GetAbsolutePath(path string) (string, error) {
+	return filepath.Abs(path)
+}
+
+// CheckGitRepo checks if a directory is inside a git repository.
+// This is a pure I/O operation for git repository detection.
+func CheckGitRepo(dir string) bool {
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	return cmd.Run() == nil
+}
+
+// CheckGitIgnore checks if a file is ignored by git in the given directory.
+// Returns true if the file is ignored, false if not ignored, and error for other issues.
+// This is a pure I/O operation for git ignore checking.
+func CheckGitIgnore(dir, filename string) (bool, error) {
+	cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", filename)
+	err := cmd.Run()
+	if err == nil {
+		return true, nil // Exit code 0: file IS ignored
+	}
+	if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+		return false, nil // Exit code 1: file is NOT ignored
+	}
+	return false, err // Other error
 }

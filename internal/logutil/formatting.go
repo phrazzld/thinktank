@@ -3,6 +3,7 @@ package logutil
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 )
@@ -207,4 +208,44 @@ func FormatJSON(data interface{}, pretty bool) (string, error) {
 	}
 
 	return string(jsonBytes), nil
+}
+
+// I/O Operations - Pure functions for writing to the console
+// These functions handle only the actual writing operations, keeping I/O
+// separate from formatting logic following Carmack's philosophy.
+
+// WriteToConsole writes a formatted message to stdout.
+// This is a pure I/O operation that should be used for all console output.
+func WriteToConsole(message string) {
+	fmt.Println(message)
+}
+
+// WriteToConsoleF writes a formatted message to stdout using Printf.
+// This is a pure I/O operation for formatted output.
+func WriteToConsoleF(format string, args ...interface{}) {
+	fmt.Printf(format, args...)
+}
+
+// WriteLineToConsole writes a message to stdout with a newline.
+// Identical to WriteToConsole but more explicit about the newline behavior.
+func WriteLineToConsole(message string) {
+	fmt.Println(message)
+}
+
+// WriteEmptyLineToConsole writes an empty line to stdout.
+// Used for visual separation between sections.
+func WriteEmptyLineToConsole() {
+	fmt.Println()
+}
+
+// WriteToStderr writes a message to stderr for errors and warnings.
+// This ensures error messages don't interfere with structured stdout output.
+func WriteToStderr(message string) {
+	fmt.Fprintln(os.Stderr, message)
+}
+
+// WriteToStderrF writes a formatted message to stderr.
+// Used for error reporting that should not be captured with stdout.
+func WriteToStderrF(format string, args ...interface{}) {
+	fmt.Fprintf(os.Stderr, format, args...)
 }

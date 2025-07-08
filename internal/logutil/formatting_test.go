@@ -2,6 +2,8 @@ package logutil
 
 import (
 	"encoding/json"
+	"io"
+	"os"
 	"testing"
 	"time"
 )
@@ -521,6 +523,111 @@ func TestFormatJSON(t *testing.T) {
 				if err := json.Unmarshal([]byte(result), &parsed); err != nil {
 					t.Errorf("FormatJSON() produced invalid JSON: %v", err)
 				}
+			}
+		})
+	}
+}
+
+// TestIOOperations tests the extracted I/O functions
+func TestIOOperations(t *testing.T) {
+	tests := []struct {
+		name        string
+		testFunc    func()
+		expectedOut string
+		expectedErr string
+	}{
+		{
+			name: "WriteToConsole",
+			testFunc: func() {
+				WriteToConsole("test message")
+			},
+			expectedOut: "test message\n",
+		},
+		{
+			name: "WriteToConsoleF",
+			testFunc: func() {
+				WriteToConsoleF("test %s %d", "format", 42)
+			},
+			expectedOut: "test format 42",
+		},
+		{
+			name: "WriteLineToConsole",
+			testFunc: func() {
+				WriteLineToConsole("line message")
+			},
+			expectedOut: "line message\n",
+		},
+		{
+			name: "WriteEmptyLineToConsole",
+			testFunc: func() {
+				WriteEmptyLineToConsole()
+			},
+			expectedOut: "\n",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stdout
+			oldStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// Run the test function
+			tt.testFunc()
+
+			// Restore stdout and read captured output
+			_ = w.Close()
+			os.Stdout = oldStdout
+			captured, _ := io.ReadAll(r)
+
+			if string(captured) != tt.expectedOut {
+				t.Errorf("expected output %q, got %q", tt.expectedOut, string(captured))
+			}
+		})
+	}
+}
+
+// TestStderrOperations tests stderr I/O functions
+func TestStderrOperations(t *testing.T) {
+	tests := []struct {
+		name        string
+		testFunc    func()
+		expectedErr string
+	}{
+		{
+			name: "WriteToStderr",
+			testFunc: func() {
+				WriteToStderr("error message")
+			},
+			expectedErr: "error message\n",
+		},
+		{
+			name: "WriteToStderrF",
+			testFunc: func() {
+				WriteToStderrF("error %s %d", "format", 123)
+			},
+			expectedErr: "error format 123",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stderr
+			oldStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
+			// Run the test function
+			tt.testFunc()
+
+			// Restore stderr and read captured output
+			_ = w.Close()
+			os.Stderr = oldStderr
+			captured, _ := io.ReadAll(r)
+
+			if string(captured) != tt.expectedErr {
+				t.Errorf("expected stderr output %q, got %q", tt.expectedErr, string(captured))
 			}
 		})
 	}
