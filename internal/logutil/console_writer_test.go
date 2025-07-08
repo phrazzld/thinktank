@@ -255,71 +255,6 @@ func TestConsoleWriter_OutputFormatting(t *testing.T) {
 	}
 }
 
-func TestDetectInteractiveEnvironment(t *testing.T) {
-	ciVars := []string{"CI", "GITHUB_ACTIONS", "GITLAB_CI", "TRAVIS", "CIRCLECI", "JENKINS_URL", "CONTINUOUS_INTEGRATION", "BUILDKITE"}
-
-	for _, envVar := range ciVars {
-		t.Run("Terminal with "+envVar, func(t *testing.T) {
-			originalValue := os.Getenv(envVar)
-			defer func() {
-				if originalValue != "" {
-					_ = os.Setenv(envVar, originalValue)
-				} else {
-					_ = os.Unsetenv(envVar)
-				}
-			}()
-
-			_ = os.Setenv(envVar, "true")
-			result := detectInteractiveEnvironment(func() bool { return true })
-			if result {
-				t.Errorf("Expected interactive=false when %s is set, got true", envVar)
-			}
-		})
-	}
-
-	t.Run("Terminal without CI vars", func(t *testing.T) {
-		ciVars := []string{"CI", "GITHUB_ACTIONS", "GITLAB_CI", "TRAVIS", "CIRCLECI", "JENKINS_URL", "CONTINUOUS_INTEGRATION", "BUILDKITE"}
-		originalValues := make(map[string]string)
-		for _, envVar := range ciVars {
-			originalValues[envVar] = os.Getenv(envVar)
-			_ = os.Unsetenv(envVar)
-		}
-		defer func() {
-			for envVar, value := range originalValues {
-				if value != "" {
-					_ = os.Setenv(envVar, value)
-				}
-			}
-		}()
-
-		result := detectInteractiveEnvironment(func() bool { return true })
-		if !result {
-			t.Errorf("Expected interactive=true in a terminal with no CI vars, got false")
-		}
-	})
-
-	t.Run("Non-terminal without CI vars", func(t *testing.T) {
-		ciVars := []string{"CI", "GITHUB_ACTIONS", "GITLAB_CI", "TRAVIS", "CIRCLECI", "JENKINS_URL", "CONTINUOUS_INTEGRATION", "BUILDKITE"}
-		originalValues := make(map[string]string)
-		for _, envVar := range ciVars {
-			originalValues[envVar] = os.Getenv(envVar)
-			_ = os.Unsetenv(envVar)
-		}
-		defer func() {
-			for envVar, value := range originalValues {
-				if value != "" {
-					_ = os.Setenv(envVar, value)
-				}
-			}
-		}()
-
-		result := detectInteractiveEnvironment(func() bool { return false })
-		if result {
-			t.Errorf("Expected interactive=false for non-terminal, got true")
-		}
-	})
-}
-
 func TestConsoleWriter_ConcurrencySafety(t *testing.T) {
 	cw := NewConsoleWriterWithOptions(ConsoleWriterOptions{
 		IsTerminalFunc: func() bool { return true },
@@ -425,29 +360,6 @@ func TestConsoleWriter_NonInteractiveEnvironment(t *testing.T) {
 		if !strings.Contains(output, expected) {
 			t.Errorf("Expected CI output to contain %q, got: %q", expected, output)
 		}
-	}
-}
-
-func TestFormatDuration(t *testing.T) {
-	testCases := []struct {
-		duration time.Duration
-		expected string
-	}{
-		{500 * time.Millisecond, "500ms"},
-		{1 * time.Second, "1.0s"},
-		{1500 * time.Millisecond, "1.5s"},
-		{2200 * time.Millisecond, "2.2s"},
-		{100 * time.Millisecond, "100ms"},
-		{0, "0ms"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.expected, func(t *testing.T) {
-			result := formatDuration(tc.duration)
-			if result != tc.expected {
-				t.Errorf("formatDuration(%v) = %q, want %q", tc.duration, result, tc.expected)
-			}
-		})
 	}
 }
 

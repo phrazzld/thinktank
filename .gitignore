@@ -11,6 +11,9 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Test output directories
+**/thinktank_20*
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 *.html
@@ -26,6 +29,9 @@ go.work
 .vscode/
 *.swp
 *.swo
+
+# Application logs
+*.log
 
 # OS specific files
 .DS_Store

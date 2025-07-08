@@ -1,0 +1,65 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/phrazzld/thinktank/internal/fileutil
+cpu: Apple M3 Pro
+BenchmarkEstimateTokenCount/Small-11         	33622011	       657.7 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkEstimateTokenCount/Small-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkEstimateTokenCount/Medium-11        	 1000000	     12386 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkEstimateTokenCount/Medium-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkEstimateTokenCount/Large-11         	   72285	    521937 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkEstimateTokenCount/Large-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkShouldProcess/Simple_Path_No_Filters-11         	202545795	        52.98 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkShouldProcess/Simple_Path_No_Filters-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkShouldProcess/With_Include_Filters-11           	358101879	        32.33 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkShouldProcess/With_Include_Filters-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkShouldProcess/With_Exclude_Filters-11           	312695624	        42.79 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkShouldProcess/With_Exclude_Filters-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkShouldProcess/With_All_Filters-11               	166987066	        64.10 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkShouldProcess/With_All_Filters-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkIsBinaryFile/Small_Text-11                      	198631029	        61.61 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkIsBinaryFile/Small_Text-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkIsBinaryFile/Medium_Text-11

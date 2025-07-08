@@ -287,7 +287,7 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		getEnvFunc = os.Getenv
 	}
 
-	isInteractive := detectInteractiveEnvironmentWithEnv(isTerminalFunc, getEnvFunc)
+	isInteractive := DetectInteractiveEnvironment(isTerminalFunc, getEnvFunc)
 	return &consoleWriter{
 		isTerminalFunc:  isTerminalFunc,
 		getTermSizeFunc: getTermSizeFunc,
@@ -310,33 +310,7 @@ func defaultGetTermSize() (int, int, error) {
 // detectInteractiveEnvironment determines if we're running in an interactive
 // environment based on TTY detection and CI environment variables
 func detectInteractiveEnvironment(isTerminalFunc func() bool) bool {
-	return detectInteractiveEnvironmentWithEnv(isTerminalFunc, os.Getenv)
-}
-
-// detectInteractiveEnvironmentWithEnv determines if we're running in an interactive
-// environment based on TTY detection and CI environment variables with injectable env func
-func detectInteractiveEnvironmentWithEnv(isTerminalFunc func() bool, getEnvFunc func(string) string) bool {
-	// Check common CI environment variables
-	ciVars := []string{
-		"CI",
-		"GITHUB_ACTIONS",
-		"CONTINUOUS_INTEGRATION",
-		"GITLAB_CI",
-		"TRAVIS",
-		"CIRCLECI",
-		"JENKINS_URL",
-		"BUILDKITE",
-	}
-
-	for _, envVar := range ciVars {
-		value := getEnvFunc(envVar)
-		if value != "" && (value == "true" || envVar == "JENKINS_URL") {
-			return false
-		}
-	}
-
-	// If not in CI and stdout is a terminal, we're interactive
-	return isTerminalFunc()
+	return DetectInteractiveEnvironment(isTerminalFunc, os.Getenv)
 }
 
 // StartProcessing initiates progress reporting for a batch of models
@@ -400,7 +374,7 @@ func (c *consoleWriter) ModelCompleted(modelIndex, totalModels int, modelName st
 		return
 	}
 
-	durationStr := c.colors.ColorDuration(formatDuration(duration))
+	durationStr := c.colors.ColorDuration(FormatDuration(duration))
 	coloredModelName := c.colors.ColorModelName(modelName)
 	successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
 
@@ -452,7 +426,7 @@ func (c *consoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName 
 		return
 	}
 
-	retryStr := c.colors.ColorDuration(formatDuration(retryAfter))
+	retryStr := c.colors.ColorDuration(FormatDuration(retryAfter))
 	coloredModelName := c.colors.ColorModelName(modelName)
 	warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
 
@@ -637,21 +611,7 @@ func (c *consoleWriter) getLayoutLocked() LayoutConfig {
 
 // formatToWidth formats a message to fit within the specified width
 func (c *consoleWriter) formatToWidth(message string, width int) string {
-	// If message fits within terminal width, return as-is
-	if len(message) <= width {
-		return message
-	}
-
-	// In non-interactive mode, don't truncate messages
-	if !c.isInteractive {
-		return message
-	}
-
-	// Truncate message and add ellipsis
-	if width <= 3 {
-		return "..."
-	}
-	return message[:width-3] + "..."
+	return FormatToWidth(message, width, c.isInteractive)
 }
 
 // ErrorMessage displays an error message to the user with appropriate formatting
@@ -760,20 +720,7 @@ func (c *consoleWriter) UpdateProcessingLine(modelName string, status string) {
 
 // colorizeStatus applies appropriate colors to status text based on content
 func (c *consoleWriter) colorizeStatus(status string) string {
-	// Determine status type based on Unicode symbols and keywords
-	if strings.Contains(status, "✓") {
-		// Success status - apply success color to the entire status
-		return c.colors.ColorSuccess(status)
-	} else if strings.Contains(status, "✗") {
-		// Error status - apply error color to the entire status
-		return c.colors.ColorError(status)
-	} else if strings.Contains(status, "⚠") {
-		// Warning status (rate limited, etc.) - apply warning color
-		return c.colors.ColorWarning(status)
-	}
-
-	// Default status - no special coloring
-	return status
+	return ColorizeStatus(status, c.colors)
 }
 
 // ShowFileOperations displays clean, declarative file operation messages
@@ -964,15 +911,6 @@ func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
 		alignedOutput := layout.FormatAlignedText(coloredModelName, coloredReason)
 		fmt.Printf("  %s\n", alignedOutput)
 	}
-}
-
-// formatDuration formats a time.Duration into a human-readable string
-// like "1.2s", "850ms", etc.
-func formatDuration(d time.Duration) string {
-	if d >= time.Second {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	return fmt.Sprintf("%dms", d.Milliseconds())
 }
 
 // ConsoleWriterOptions provides configuration options for creating a ConsoleWriter

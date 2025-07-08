@@ -1,0 +1,105 @@
+=== DRY RUN MODE ===
+Instructions file: /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069/instructions.txt
+Target paths: [/var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069]
+Models: [gemini-1.5-flash]
+Output directory: /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069
+Using accurate tokenization: OpenRouter (tiktoken-o200k)
+{"time":"2025-07-07T20:00:28.541541-07:00","level":"INFO","msg":"Dry run mode: gathering files that would be included in context..."}
+{"time":"2025-07-07T20:00:28.563719-07:00","level":"INFO","msg":"Verbose: Processing file (1/1): /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069/instructions.txt (size: 17 bytes)\n"}
+{"time":"2025-07-07T20:00:28.572466-07:00","level":"INFO","msg":"Verbose: Processing file (2/2): /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069/test.go (size: 29 bytes)\n"}
+{"time":"2025-07-07T20:00:28.572496-07:00","level":"INFO","msg":"Calculating statistics for 2 processed files..."}
+{"time":"2025-07-07T20:00:28.572516-07:00","level":"INFO","msg":"Context gathered: 2 files, 6 lines, 48 chars"}
+
+Files that would be processed: 2
+Total characters: 48
+Total lines: 6
+
+Sample files:
+  - /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069/instructions.txt
+  - /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/test_dry_run4029419069/test.go
+{"time":"2025-07-07T20:00:28.573642-07:00","level":"ERROR","msg":"Application error: "}
+Error:
+{"time":"2025-07-07T20:00:28.573726-07:00","level":"ERROR","msg":"Application error: "}
+Error:
+{"time":"2025-07-07T20:00:28.573761-07:00","level":"ERROR","msg":"Application error: context canceled"}
+Error: Operation was cancelled
+{"time":"2025-07-07T20:00:28.573783-07:00","level":"ERROR","msg":"Application error: partial success: some models succeeded, others failed"}
+Error: Some model executions failed, but partial results were generated
+{"time":"2025-07-07T20:00:28.5738-07:00","level":"ERROR","msg":"Application error: generic error"}
+Error: generic error
+Warning: OPENAI_API_KEY detected but no longer used.
+Please set OPENROUTER_API_KEY instead.
+Get your key at: https://openrouter.ai/keys
+{"time":"2025-07-07T20:03:54.034997-07:00","level":"INFO","msg":"Starting thinktank - AI-assisted content generation tool"}
+=== DRY RUN MODE ===
+Instructions file: /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/TestRunApplicationDryRun860232017/001/instructions.txt
+Target paths: [/var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/TestRunApplicationDryRun860232017/001/target.txt]
+Models: [gpt-4.1]
+Output directory: /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/TestRunApplicationDryRun860232017/001
+Warning: OPENAI_API_KEY detected but no longer used.
+Please set OPENROUTER_API_KEY instead.
+Get your key at: https://openrouter.ai/keys
+Warning: GEMINI_API_KEY detected but no longer used.
+Please set OPENROUTER_API_KEY instead.
+Get your key at: https://openrouter.ai/keys
+Using accurate tokenization: none (no API keys available)
+{"time":"2025-07-07T20:03:54.035077-07:00","level":"INFO","msg":"Dry run mode: gathering files that would be included in context..."}
+{"time":"2025-07-07T20:03:54.045335-07:00","level":"INFO","msg":"Verbose: Processing file (1/1): /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/TestRunApplicationDryRun860232017/001/target.txt (size: 12 bytes)\n"}
+{"time":"2025-07-07T20:03:54.045392-07:00","level":"INFO","msg":"Calculating statistics for 1 processed files..."}
+{"time":"2025-07-07T20:03:54.045406-07:00","level":"INFO","msg":"Context gathered: 1 files, 2 lines, 13 chars"}
+
+Files that would be processed: 1
+Total characters: 13
+Total lines: 2
+
+Sample files:
+  - /var/folders/jr/0kj0xfdd4s1ggs921sr2d7f80000gn/T/TestRunApplicationDryRun860232017/001/target.txt
+goos: darwin
+goarch: arm64
+pkg: github.com/phrazzld/thinktank/internal/cli
+cpu: Apple M3 Pro
+BenchmarkProviderRateLimiter_Acquire-11       	     100	 990007607 ns/op	     380 B/op	       4 allocs/op
+--- BENCH: BenchmarkProviderRateLimiter_Acquire-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkCircuitBreaker_CanExecute-11         	418214787	        36.87 ns/op	       0 B/op	       0 allocs/op
+--- BENCH: BenchmarkCircuitBreaker_CanExecute-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkParseOptionalFlags-11                	228853808	        49.56 ns/op	      32 B/op	       1 allocs/op
+BenchmarkParseSimpleArgsWithArgs/minimal-11   	 9368890	      1279 ns/op	     600 B/op	      12 allocs/op
+--- BENCH: BenchmarkParseSimpleArgsWithArgs/minimal-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkParseSimpleArgsWithArgs/typical-11   	 9147205	      1312 ns/op	     600 B/op	      12 allocs/op
+--- BENCH: BenchmarkParseSimpleArgsWithArgs/typical-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkParseSimpleArgsWithArgs/complex-11   	 8114355	      1289 ns/op	     600 B/op	      12 allocs/op
+--- BENCH: BenchmarkParseSimpleArgsWithArgs/complex-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+BenchmarkParseSimpleArgsWithArgs_Allocs-11    	 9620619	      1437 ns/op	     600 B/op	      12 allocs/op
+--- BENCH: BenchmarkParseSimpleArgsWithArgs_Allocs-11
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+    benchmark.go:40: Running benchmark in local environment (CPU: 11, Race: false)
+PASS
+ok  	github.com/phrazzld/thinktank/internal/cli	414.345s
