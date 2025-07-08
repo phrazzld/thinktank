@@ -70,6 +70,21 @@ func Main() {
 		osExit(ExitCodeInvalidRequest)
 	}
 
+	// Execute the application
+	err = executeApplication(minimalConfig, simplifiedConfig, tokenService)
+	if err != nil {
+		// Handle error using the original error handling logic
+		exitCode := getExitCode(err)
+		userMessage := getUserMessage(err)
+
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage)
+		osExit(exitCode)
+	}
+}
+
+// executeApplication handles the execution orchestration phase following extracted configuration and validation
+// This function manages logger setup, context creation, output directory creation, and application execution
+func executeApplication(minimalConfig *config.MinimalConfig, simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) error {
 	// Create logger with proper routing based on flags
 	logger, loggerWrapper := createLoggerWithRouting(minimalConfig, "")
 	defer func() { _ = loggerWrapper.Close() }()
@@ -92,8 +107,7 @@ func Main() {
 		outputDir, err := outputManager.CreateOutputDirectory("", 0755)
 		if err != nil {
 			contextLogger.ErrorContext(ctx, "Failed to create output directory: %v", err)
-			fmt.Fprintf(os.Stderr, "Error: Failed to create output directory: %v\n", err)
-			osExit(ExitCodeGenericError)
+			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 		minimalConfig.OutputDir = outputDir
 
@@ -106,7 +120,7 @@ func Main() {
 	}
 
 	// Re-run model selection with audit logging now that we have context and audit logger
-	err = auditModelSelection(ctx, minimalConfig, contextLogger, simplifiedConfig, tokenService)
+	err := auditModelSelection(ctx, minimalConfig, contextLogger, simplifiedConfig, tokenService)
 	if err != nil {
 		contextLogger.WarnContext(ctx, "Model selection audit logging failed: %v", err)
 		// Continue with execution even if audit logging fails
@@ -115,8 +129,11 @@ func Main() {
 	// Run the application
 	err = runApplication(ctx, minimalConfig, contextLogger, tokenService)
 	if err != nil {
-		handleError(ctx, err, contextLogger)
+		contextLogger.ErrorContext(ctx, "Application error: %v", err)
+		return err
 	}
+
+	return nil
 }
 
 // setupConfiguration builds the MinimalConfig from simplified CLI configuration
