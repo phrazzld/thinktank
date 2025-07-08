@@ -156,32 +156,27 @@ func isCI() bool {
 }
 
 func raceDetectionEnabled() bool {
-	// Check environment variable
+	// Primary method: Use build tags (most reliable)
+	if raceDetectionEnabledByBuildTag() {
+		return true
+	}
+
+	// Fallback: Check environment variable for manual override
 	if os.Getenv("RACE_ENABLED") == "true" {
 		return true
 	}
 
-	// Check GORACE environment variable
+	// Fallback: Check GORACE environment variable (set when race detector is active)
 	if os.Getenv("GORACE") != "" {
 		return true
 	}
 
-	// Check command line arguments
+	// Fallback: Check command line arguments (may not work in all cases)
 	for _, arg := range os.Args {
 		if strings.Contains(arg, "-race") || strings.Contains(arg, "-test.race") {
 			return true
 		}
 	}
 
-	// Performance-based heuristic
-	start := time.Now()
-	sum := 0
-	for i := 0; i < 1000000; i++ {
-		sum += i
-	}
-	elapsed := time.Since(start)
-
-	// With race detector, this typically takes >1ms
-	// Without race detector, typically <200μs
-	return elapsed > time.Millisecond
+	return false
 }
