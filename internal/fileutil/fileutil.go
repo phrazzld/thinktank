@@ -154,6 +154,7 @@ func isWhitespace(b byte) bool {
 }
 
 // shouldProcess checks all filters for a given file path.
+// This function now uses the pure filtering logic and adds logging.
 func shouldProcess(path string, config *Config) bool {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))
@@ -315,11 +316,26 @@ func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, erro
 	return GatherProjectContextWithContext(ctx, paths, config)
 }
 
+// FilterProjectFiles applies pure filtering logic to a list of discovered file paths.
+// This function demonstrates the use of extracted pure functions and can be used
+// when you already have a list of file paths and want to apply filtering rules.
+func FilterProjectFiles(paths []string, config *Config) []string {
+	filterOpts := CreateFilteringOptions(config)
+	return FilterFiles(paths, filterOpts)
+}
+
+// AnalyzeFileContent provides detailed statistics about file content using pure functions.
+// This demonstrates the enhanced statistics calculation capabilities.
+func AnalyzeFileContent(content string) FileStatistics {
+	return CalculateFileStatistics(content)
+}
+
 // CalculateStatistics calculates basic string stats.
+// This function maintains backward compatibility with the original token counting algorithm.
 func CalculateStatistics(content string) (charCount, lineCount, tokenCount int) {
 	charCount = len(content)
 	lineCount = strings.Count(content, "\n") + 1
-	tokenCount = estimateTokenCount(content) // Fallback estimation
+	tokenCount = estimateTokenCount(content) // Use original algorithm for backward compatibility
 	return charCount, lineCount, tokenCount
 }
 
