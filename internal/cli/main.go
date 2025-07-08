@@ -56,38 +56,18 @@ func Main() {
 		osExit(ExitCodeSuccess)
 	}
 
-	// Determine model selection strategy using accurate tokenization
+	// Setup configuration using extracted function
 	tokenService := thinktank.NewTokenCountingService()
-	modelNames, synthesisModel := selectModelsForConfigWithService(simplifiedConfig, tokenService)
-
-	// Convert to MinimalConfig
-	minimalConfig := &config.MinimalConfig{
-		InstructionsFile: simplifiedConfig.InstructionsFile,
-		TargetPaths:      strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
-		ModelNames:       modelNames,
-		OutputDir:        "", // Will be set by output manager
-		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
-		Verbose:          simplifiedConfig.HasFlag(FlagVerbose),
-		SynthesisModel:   synthesisModel, // Set by intelligent selection
-		LogLevel:         logutil.InfoLevel,
-		Timeout:          config.DefaultTimeout,
-		Quiet:            simplifiedConfig.HasFlag(FlagQuiet),
-		NoProgress:       simplifiedConfig.HasFlag(FlagNoProgress),
-		JsonLogs:         simplifiedConfig.HasFlag(FlagJsonLogs),
-		Format:           config.DefaultFormat,
-		Exclude:          config.DefaultExcludes,
-		ExcludeNames:     config.DefaultExcludeNames,
-	}
-
-	// Apply environment variables
-	if err := applyEnvironmentVars(minimalConfig); err != nil {
+	minimalConfig, err := setupConfiguration(simplifiedConfig, tokenService)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		osExit(ExitCodeInvalidRequest)
 	}
 
-	// If verbose or debug flag is set, upgrade log level
-	if minimalConfig.Verbose || simplifiedConfig.HasFlag(FlagDebug) {
-		minimalConfig.LogLevel = logutil.DebugLevel
+	// Validate configuration early in the flow
+	if err := validateConfig(minimalConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		osExit(ExitCodeInvalidRequest)
 	}
 
 	// Create logger with proper routing based on flags
@@ -139,6 +119,44 @@ func Main() {
 	}
 }
 
+// setupConfiguration builds the MinimalConfig from simplified CLI configuration
+// This is a pure function that handles configuration setup logic without I/O operations
+func setupConfiguration(simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) (*config.MinimalConfig, error) {
+	// Determine model selection strategy using accurate tokenization
+	modelNames, synthesisModel := selectModelsForConfigWithService(simplifiedConfig, tokenService)
+
+	// Convert to MinimalConfig
+	minimalConfig := &config.MinimalConfig{
+		InstructionsFile: simplifiedConfig.InstructionsFile,
+		TargetPaths:      strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
+		ModelNames:       modelNames,
+		OutputDir:        "", // Will be set by output manager
+		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
+		Verbose:          simplifiedConfig.HasFlag(FlagVerbose),
+		SynthesisModel:   synthesisModel, // Set by intelligent selection
+		LogLevel:         logutil.InfoLevel,
+		Timeout:          config.DefaultTimeout,
+		Quiet:            simplifiedConfig.HasFlag(FlagQuiet),
+		NoProgress:       simplifiedConfig.HasFlag(FlagNoProgress),
+		JsonLogs:         simplifiedConfig.HasFlag(FlagJsonLogs),
+		Format:           config.DefaultFormat,
+		Exclude:          config.DefaultExcludes,
+		ExcludeNames:     config.DefaultExcludeNames,
+	}
+
+	// Apply environment variables
+	if err := applyEnvironmentVars(minimalConfig); err != nil {
+		return nil, fmt.Errorf("environment variable application failed: %w", err)
+	}
+
+	// If verbose or debug flag is set, upgrade log level
+	if minimalConfig.Verbose || simplifiedConfig.HasFlag(FlagDebug) {
+		minimalConfig.LogLevel = logutil.DebugLevel
+	}
+
+	return minimalConfig, nil
+}
+
 // applyEnvironmentVars applies environment variables to MinimalConfig
 // Only handles essential environment variables - API keys are handled elsewhere during validation
 func applyEnvironmentVars(cfg *config.MinimalConfig) error {
@@ -171,11 +189,6 @@ func setupGracefulShutdown(ctx context.Context, logger logutil.LoggerInterface) 
 
 // runApplication executes the core application logic with MinimalConfig
 func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface, tokenService thinktank.TokenCountingService) error {
-	// Validate configuration
-	if err := validateConfig(cfg); err != nil {
-		return err
-	}
-
 	// Create audit logger
 	var auditLogger auditlog.AuditLogger
 	if cfg.DryRun {
