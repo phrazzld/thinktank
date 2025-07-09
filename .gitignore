@@ -67,8 +67,11 @@ profile_data/
 # Generated analysis reports
 reports/
 
-# Generated benchmark data (keep baseline only)
-benchmarks/20250708_*/
+# Generated benchmark data
+benchmarks/*/
+# Keep benchmark documentation
+!benchmarks/README.md
+!benchmarks/*.sh
 
 # Build artifacts
 main

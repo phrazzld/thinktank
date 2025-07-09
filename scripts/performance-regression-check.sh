@@ -2,13 +2,17 @@
 
 # performance-regression-check.sh
 # Compares current performance against baseline benchmarks
-# Fails if performance regresses more than 5%
+# Fails if performance regresses more than threshold
+#
+# Environment variables:
+#   THINKTANK_BASELINE_DIR - Path to baseline benchmarks (default: benchmarks/baseline)
+#   THINKTANK_REGRESSION_THRESHOLD - Regression threshold percentage (default: 5)
 
 set -euo pipefail
 
 # Configuration
-BASELINE_DIR="benchmarks/20250707_200027"
-REGRESSION_THRESHOLD=5  # 5% regression threshold
+BASELINE_DIR="${THINKTANK_BASELINE_DIR:-benchmarks/baseline}"
+REGRESSION_THRESHOLD="${THINKTANK_REGRESSION_THRESHOLD:-5}"  # Default 5% regression threshold
 TEMP_DIR=$(mktemp -d)
 CURRENT_RESULTS_DIR="$TEMP_DIR/current"
 
