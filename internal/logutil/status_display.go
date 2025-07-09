@@ -112,12 +112,12 @@ func (d *StatusDisplay) formatStatus(state *ModelState) string {
 
 	case StatusRateLimited:
 		symbol := d.colors.ColorWarning(d.symbols.GetSymbols().Warning)
-		retryText := d.colors.ColorDuration(formatDuration(state.RetryAfter))
+		retryText := d.colors.ColorDuration(FormatDuration(state.RetryAfter))
 		return fmt.Sprintf("%s rate limited (retry in %s)", symbol, retryText)
 
 	case StatusCompleted:
 		symbol := d.colors.ColorSuccess(d.symbols.GetSymbols().Success)
-		duration := d.colors.ColorDuration(formatDuration(state.Duration))
+		duration := d.colors.ColorDuration(FormatDuration(state.Duration))
 		return fmt.Sprintf("%s completed (%s)", symbol, duration)
 
 	case StatusFailed:

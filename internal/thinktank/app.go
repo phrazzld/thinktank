@@ -25,32 +25,14 @@ import (
 // A better approach would be to inject a random generator instance
 var globalRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
-// Execute is the main entry point for the core application logic.
-// It handles initial setup, logging, dependency initialization, and orchestration.
-func Execute(
+// gatherProjectFiles handles setup and context gathering initialization.
+// It sets up the output directory and initializes logging for the execution.
+func gatherProjectFiles(
 	ctx context.Context,
 	cliConfig *config.CliConfig,
 	logger logutil.LoggerInterface,
 	auditLogger auditlog.AuditLogger,
-	apiService interfaces.APIService,
-	consoleWriter logutil.ConsoleWriter,
-) (err error) {
-	// Ensure the logger has the context attached
-	// This is important for correlation ID propagation
-	logger = logger.WithContext(ctx)
-	// Use a deferred function to ensure ExecuteEnd is always logged
-	defer func() {
-		status := "Success"
-		if err != nil {
-			status = "Failure"
-		}
-
-		// Log execution end with appropriate status and any error
-		if logErr := auditLogger.LogOp(ctx, "ExecuteEnd", status, nil, nil, err); logErr != nil {
-			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
-		}
-	}()
-
+) error {
 	// 1. Set up the output directory
 	if err := setupOutputDirectory(ctx, cliConfig, logger); err != nil {
 		return err
@@ -77,7 +59,18 @@ func Execute(
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
-	// 3. Read instructions from file (skip in dry-run mode if no instructions provided)
+	return nil
+}
+
+// processFiles handles instruction reading and audit logging.
+// It reads instructions from the file and prepares them for processing.
+func processFiles(
+	ctx context.Context,
+	cliConfig *config.CliConfig,
+	logger logutil.LoggerInterface,
+	auditLogger auditlog.AuditLogger,
+) (string, error) {
+	// Read instructions from file (skip in dry-run mode if no instructions provided)
 	var instructions string
 	if cliConfig.InstructionsFile != "" {
 		instructionsContent, err := os.ReadFile(cliConfig.InstructionsFile)
@@ -90,7 +83,7 @@ func Execute(
 				logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 			}
 
-			return fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
+			return "", fmt.Errorf("%w: failed to read instructions file %s: %v", ErrInvalidInstructions, cliConfig.InstructionsFile, err)
 		}
 		instructions = string(instructionsContent)
 		logger.InfoContext(ctx, "Successfully read instructions from %s", cliConfig.InstructionsFile)
@@ -100,7 +93,7 @@ func Execute(
 		logger.InfoContext(ctx, "Dry run mode: proceeding without instructions file")
 	} else {
 		// This case should not happen due to validation, but handle gracefully
-		return fmt.Errorf("%w: instructions file is required when not in dry-run mode", ErrInvalidInstructions)
+		return "", fmt.Errorf("%w: instructions file is required when not in dry-run mode", ErrInvalidInstructions)
 	}
 
 	// Log the successful reading of the instructions file to the audit log
@@ -119,9 +112,19 @@ func Execute(
 		logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
 	}
 
-	// 4. Use the injected APIService
-	// Note: Token-based model filtering is now handled in the CLI layer to avoid import cycles
+	return instructions, nil
+}
 
+// generateOutput handles client initialization and orchestrator creation.
+// It initializes LLM clients, creates dependencies, and returns a configured orchestrator.
+func generateOutput(
+	ctx context.Context,
+	cliConfig *config.CliConfig,
+	logger logutil.LoggerInterface,
+	auditLogger auditlog.AuditLogger,
+	apiService interfaces.APIService,
+	consoleWriter logutil.ConsoleWriter,
+) (Orchestrator, error) {
 	// Create a reference client for token counting in context gathering
 	// Skip LLM client initialization in dry-run mode since no API calls will be made
 	var referenceClientLLM llm.LLMClient
@@ -141,22 +144,22 @@ func Execute(
 				// Use error category to give more specific error messages
 				switch category {
 				case llm.CategoryAuth:
-					return fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
+					return nil, fmt.Errorf("%w: API authentication failed for model %s: %v", ErrInvalidAPIKey, cliConfig.ModelNames[0], err)
 				case llm.CategoryRateLimit:
-					return fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+					return nil, fmt.Errorf("%w: API rate limit exceeded for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 				case llm.CategoryNotFound:
-					return fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+					return nil, fmt.Errorf("%w: model %s not found or not available: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 				case llm.CategoryInputLimit:
-					return fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
+					return nil, fmt.Errorf("%w: input token limit exceeded for model %s: %v", ErrInvalidConfiguration, cliConfig.ModelNames[0], err)
 				case llm.CategoryContentFiltered:
-					return fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
+					return nil, fmt.Errorf("%w: content was filtered by safety settings: %v", ErrInvalidConfiguration, err)
 				default:
-					return fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
+					return nil, fmt.Errorf("%w: failed to initialize reference client for model %s: %v", ErrInvalidModelName, cliConfig.ModelNames[0], err)
 				}
 			} else {
 				// If not a categorized error, use the standard error handling
 				logger.ErrorContext(ctx, "Failed to initialize reference client for context gathering: %v", err)
-				return fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
+				return nil, fmt.Errorf("%w: failed to initialize reference client for context gathering: %v", ErrContextGatheringFailed, err)
 			}
 		}
 		referenceClientLLM = client
@@ -174,7 +177,6 @@ func Execute(
 		cliConfig.RateLimitRequestsPerMinute,
 	)
 
-	// 5. Create and run the orchestrator
 	// Create adapters for the interfaces
 	apiServiceAdapter := &APIServiceAdapter{APIService: apiService}
 	contextGathererAdapter := &ContextGathererAdapter{ContextGatherer: contextGatherer}
@@ -196,8 +198,14 @@ func Execute(
 		tokenCountingService,
 	)
 
+	return orch, nil
+}
+
+// writeResults handles orchestrator execution and error processing.
+// It runs the orchestrator and converts any errors to thinktank package errors.
+func writeResults(ctx context.Context, orch Orchestrator, instructions string) error {
 	// Run the orchestrator and handle error conversion
-	err = orch.Run(ctx, instructions)
+	err := orch.Run(ctx, instructions)
 
 	// Convert orchestrator errors to thinktank package errors if needed
 	if err != nil {
@@ -205,6 +213,53 @@ func Execute(
 	}
 
 	return err
+}
+
+// Execute is the main entry point for the core application logic.
+// It handles initial setup, logging, dependency initialization, and orchestration.
+func Execute(
+	ctx context.Context,
+	cliConfig *config.CliConfig,
+	logger logutil.LoggerInterface,
+	auditLogger auditlog.AuditLogger,
+	apiService interfaces.APIService,
+	consoleWriter logutil.ConsoleWriter,
+) (err error) {
+	// Ensure the logger has the context attached
+	// This is important for correlation ID propagation
+	logger = logger.WithContext(ctx)
+	// Use a deferred function to ensure ExecuteEnd is always logged
+	defer func() {
+		status := "Success"
+		if err != nil {
+			status = "Failure"
+		}
+
+		// Log execution end with appropriate status and any error
+		if logErr := auditLogger.LogOp(ctx, "ExecuteEnd", status, nil, nil, err); logErr != nil {
+			logger.ErrorContext(ctx, "Failed to write audit log: %v", logErr)
+		}
+	}()
+
+	// 1. Setup and context gathering initialization
+	if err := gatherProjectFiles(ctx, cliConfig, logger, auditLogger); err != nil {
+		return err
+	}
+
+	// 2. Read instructions and prepare for processing
+	instructions, err := processFiles(ctx, cliConfig, logger, auditLogger)
+	if err != nil {
+		return err
+	}
+
+	// 3. Initialize clients and create orchestrator
+	orch, err := generateOutput(ctx, cliConfig, logger, auditLogger, apiService, consoleWriter)
+	if err != nil {
+		return err
+	}
+
+	// 4. Execute orchestrator and handle results
+	return writeResults(ctx, orch, instructions)
 }
 
 // wrapOrchestratorErrors converts orchestrator-specific errors to thinktank package errors.

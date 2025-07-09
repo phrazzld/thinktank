@@ -101,18 +101,15 @@ func isGitIgnored(path string, config *Config) bool {
 	if config.GitAvailable {
 		dir := filepath.Dir(path)
 		// Check if the directory is actually a git repo first
-		gitRepoCheck := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
-		if gitRepoCheck.Run() == nil { // If it is a git repo
-			cmd := exec.Command("git", "-C", dir, "check-ignore", "-q", base)
-			err := cmd.Run()
-			if err == nil { // Exit code 0: file IS ignored
-				config.Logger.Printf("Verbose: Git ignored: %s\n", path)
-				return true
-			}
-			if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-				// Exit code 1: file is NOT ignored
-				// Continue to other checks like hidden files
-			} else if err != nil {
+		if CheckGitRepo(dir) { // If it is a git repo
+			isIgnored, err := CheckGitIgnore(dir, base)
+			if err == nil {
+				if isIgnored {
+					config.Logger.Printf("Verbose: Git ignored: %s\n", path)
+					return true
+				}
+				// File is not ignored, continue to other checks like hidden files
+			} else {
 				// Other errors running check-ignore, log it but fall back
 				config.Logger.Printf("Verbose: Error running git check-ignore for %s: %v. Falling back.\n", path, err)
 			}
@@ -154,6 +151,7 @@ func isWhitespace(b byte) bool {
 }
 
 // shouldProcess checks all filters for a given file path.
+// This function now uses the pure filtering logic and adds logging.
 func shouldProcess(path string, config *Config) bool {
 	base := filepath.Base(path)
 	ext := strings.ToLower(filepath.Ext(path))
@@ -206,7 +204,7 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 		return // Already logged why it was skipped
 	}
 
-	content, err := os.ReadFile(path)
+	content, err := ReadFileContent(path)
 	if err != nil {
 		config.Logger.Printf("Warning: Cannot read file %s: %v\n", path, err)
 		return
@@ -231,7 +229,7 @@ func processFile(path string, files *[]FileMeta, config *Config) {
 	absPath := path
 	if !filepath.IsAbs(path) {
 		// If this fails, just use the original path
-		if abs, err := filepath.Abs(path); err == nil {
+		if abs, err := GetAbsolutePath(path); err == nil {
 			absPath = abs
 		} else {
 			config.Logger.Printf("Warning: Could not convert %s to absolute path: %v\n", path, err)
@@ -265,7 +263,7 @@ func GatherProjectContextWithContext(ctx context.Context, paths []string, config
 	config.totalFiles = 0
 
 	for _, p := range paths {
-		info, err := os.Stat(p)
+		info, err := StatPath(p)
 		if err != nil {
 			config.Logger.Printf("Warning: Cannot stat path %s: %v. Skipping.\n", p, err)
 			continue
@@ -273,7 +271,7 @@ func GatherProjectContextWithContext(ctx context.Context, paths []string, config
 
 		if info.IsDir() {
 			// Walk the directory
-			err := filepath.WalkDir(p, func(subPath string, d os.DirEntry, err error) error {
+			err := WalkDirectory(p, func(subPath string, d os.DirEntry, err error) error {
 				if err != nil {
 					config.Logger.Printf("Warning: Error accessing path %s during walk: %v\n", subPath, err)
 					return err // Report error up
@@ -315,11 +313,26 @@ func GatherProjectContext(paths []string, config *Config) ([]FileMeta, int, erro
 	return GatherProjectContextWithContext(ctx, paths, config)
 }
 
+// FilterProjectFiles applies pure filtering logic to a list of discovered file paths.
+// This function demonstrates the use of extracted pure functions and can be used
+// when you already have a list of file paths and want to apply filtering rules.
+func FilterProjectFiles(paths []string, config *Config) []string {
+	filterOpts := CreateFilteringOptions(config)
+	return FilterFiles(paths, filterOpts)
+}
+
+// AnalyzeFileContent provides detailed statistics about file content using pure functions.
+// This demonstrates the enhanced statistics calculation capabilities.
+func AnalyzeFileContent(content string) FileStatistics {
+	return CalculateFileStatistics(content)
+}
+
 // CalculateStatistics calculates basic string stats.
+// This function maintains backward compatibility with the original token counting algorithm.
 func CalculateStatistics(content string) (charCount, lineCount, tokenCount int) {
 	charCount = len(content)
 	lineCount = strings.Count(content, "\n") + 1
-	tokenCount = estimateTokenCount(content) // Fallback estimation
+	tokenCount = estimateTokenCount(content) // Use original algorithm for backward compatibility
 	return charCount, lineCount, tokenCount
 }
 

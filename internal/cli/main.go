@@ -56,8 +56,90 @@ func Main() {
 		osExit(ExitCodeSuccess)
 	}
 
-	// Determine model selection strategy using accurate tokenization
+	// Setup configuration using extracted function
 	tokenService := thinktank.NewTokenCountingService()
+	minimalConfig, err := setupConfiguration(simplifiedConfig, tokenService)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		osExit(ExitCodeInvalidRequest)
+	}
+
+	// Validate configuration early in the flow
+	if err := validateConfig(minimalConfig); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		osExit(ExitCodeInvalidRequest)
+	}
+
+	// Execute the application
+	err = executeApplication(minimalConfig, simplifiedConfig, tokenService)
+	if err != nil {
+		// Handle error using the original error handling logic
+		exitCode := getExitCode(err)
+		userMessage := getUserMessage(err)
+
+		fmt.Fprintf(os.Stderr, "Error: %s\n", userMessage)
+		osExit(exitCode)
+	}
+}
+
+// executeApplication handles the execution orchestration phase following extracted configuration and validation
+// This function manages logger setup, context creation, output directory creation, and application execution
+func executeApplication(minimalConfig *config.MinimalConfig, simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) error {
+	// Create logger with proper routing based on flags
+	logger, loggerWrapper := createLoggerWithRouting(minimalConfig, "")
+	defer func() { _ = loggerWrapper.Close() }()
+
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), minimalConfig.Timeout)
+	defer cancel()
+
+	// Setup graceful shutdown
+	ctx = setupGracefulShutdown(ctx, logger)
+
+	// Add correlation ID
+	correlationID := uuid.New().String()
+	ctx = logutil.WithCorrelationID(ctx, correlationID)
+	contextLogger := logger.WithContext(ctx)
+
+	// Create output directory if not set
+	if minimalConfig.OutputDir == "" {
+		outputManager := NewOutputManager(contextLogger)
+		outputDir, err := outputManager.CreateOutputDirectory("", 0755)
+		if err != nil {
+			contextLogger.ErrorContext(ctx, "Failed to create output directory: %v", err)
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+		minimalConfig.OutputDir = outputDir
+
+		// Now that we have output directory, recreate logger with proper file routing
+		// Close the previous logger wrapper first
+		_ = loggerWrapper.Close()
+		logger, loggerWrapper = createLoggerWithRouting(minimalConfig, outputDir)
+		defer func() { _ = loggerWrapper.Close() }()
+		contextLogger = logger.WithContext(ctx)
+	}
+
+	// Re-run model selection with audit logging now that we have context and audit logger
+	err := auditModelSelection(ctx, minimalConfig, contextLogger, simplifiedConfig, tokenService)
+	if err != nil {
+		contextLogger.WarnContext(ctx, "Model selection audit logging failed: %v", err)
+		// Continue with execution even if audit logging fails
+	}
+
+	// Run the application
+	err = runApplication(ctx, minimalConfig, contextLogger, tokenService)
+	if err != nil {
+		contextLogger.ErrorContext(ctx, "Application error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+// setupConfiguration builds the MinimalConfig from simplified CLI configuration
+// This is a pure function that handles configuration setup logic without I/O operations
+func setupConfiguration(simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) (*config.MinimalConfig, error) {
+	// Determine model selection strategy using accurate tokenization
 	modelNames, synthesisModel := selectModelsForConfigWithService(simplifiedConfig, tokenService)
 
 	// Convert to MinimalConfig
@@ -81,8 +163,7 @@ func Main() {
 
 	// Apply environment variables
 	if err := applyEnvironmentVars(minimalConfig); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		osExit(ExitCodeInvalidRequest)
+		return nil, fmt.Errorf("environment variable application failed: %w", err)
 	}
 
 	// If verbose or debug flag is set, upgrade log level
@@ -90,53 +171,7 @@ func Main() {
 		minimalConfig.LogLevel = logutil.DebugLevel
 	}
 
-	// Create logger with proper routing based on flags
-	logger, loggerWrapper := createLoggerWithRouting(minimalConfig, "")
-	defer func() { _ = loggerWrapper.Close() }()
-
-	// Create context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), minimalConfig.Timeout)
-	defer cancel()
-
-	// Setup graceful shutdown
-	ctx = setupGracefulShutdown(ctx, logger)
-
-	// Add correlation ID
-	correlationID := uuid.New().String()
-	ctx = logutil.WithCorrelationID(ctx, correlationID)
-	contextLogger := logger.WithContext(ctx)
-
-	// Create output directory if not set
-	if minimalConfig.OutputDir == "" {
-		outputManager := NewOutputManager(contextLogger)
-		outputDir, err := outputManager.CreateOutputDirectory("", 0755)
-		if err != nil {
-			contextLogger.ErrorContext(ctx, "Failed to create output directory: %v", err)
-			fmt.Fprintf(os.Stderr, "Error: Failed to create output directory: %v\n", err)
-			osExit(ExitCodeGenericError)
-		}
-		minimalConfig.OutputDir = outputDir
-
-		// Now that we have output directory, recreate logger with proper file routing
-		// Close the previous logger wrapper first
-		_ = loggerWrapper.Close()
-		logger, loggerWrapper = createLoggerWithRouting(minimalConfig, outputDir)
-		defer func() { _ = loggerWrapper.Close() }()
-		contextLogger = logger.WithContext(ctx)
-	}
-
-	// Re-run model selection with audit logging now that we have context and audit logger
-	err = auditModelSelection(ctx, minimalConfig, contextLogger, simplifiedConfig, tokenService)
-	if err != nil {
-		contextLogger.WarnContext(ctx, "Model selection audit logging failed: %v", err)
-		// Continue with execution even if audit logging fails
-	}
-
-	// Run the application
-	err = runApplication(ctx, minimalConfig, contextLogger, tokenService)
-	if err != nil {
-		handleError(ctx, err, contextLogger)
-	}
+	return minimalConfig, nil
 }
 
 // applyEnvironmentVars applies environment variables to MinimalConfig
@@ -171,11 +206,6 @@ func setupGracefulShutdown(ctx context.Context, logger logutil.LoggerInterface) 
 
 // runApplication executes the core application logic with MinimalConfig
 func runApplication(ctx context.Context, cfg *config.MinimalConfig, logger logutil.LoggerInterface, tokenService thinktank.TokenCountingService) error {
-	// Validate configuration
-	if err := validateConfig(cfg); err != nil {
-		return err
-	}
-
 	// Create audit logger
 	var auditLogger auditlog.AuditLogger
 	if cfg.DryRun {

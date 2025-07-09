@@ -2,6 +2,8 @@
 package fileutil
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -262,4 +264,418 @@ func TestShouldProcess(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFilterFiles(t *testing.T) {
+	tests := []struct {
+		name     string
+		paths    []string
+		opts     FilteringOptions
+		expected []string
+	}{
+		{
+			name:     "no filters - all files pass",
+			paths:    []string{"main.go", "test.py", "readme.md"},
+			opts:     FilteringOptions{},
+			expected: []string{"main.go", "test.py", "readme.md"},
+		},
+		{
+			name:  "include extensions filter",
+			paths: []string{"main.go", "test.py", "readme.md", "config.json"},
+			opts: FilteringOptions{
+				IncludeExts: []string{".go", ".py"},
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+		{
+			name:  "exclude extensions filter",
+			paths: []string{"main.go", "test.py", "readme.md", "binary.exe"},
+			opts: FilteringOptions{
+				ExcludeExts: []string{".exe", ".md"},
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+		{
+			name:  "exclude names filter",
+			paths: []string{"main.go", "node_modules", "test.py", ".env"},
+			opts: FilteringOptions{
+				ExcludeNames: []string{"node_modules", ".env"},
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+		{
+			name:  "ignore hidden files",
+			paths: []string{"main.go", ".hidden", "test.py", ".git/config"},
+			opts: FilteringOptions{
+				IgnoreHidden: true,
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+		{
+			name:  "ignore git files",
+			paths: []string{"main.go", ".gitignore", "test.py", ".git/HEAD"},
+			opts: FilteringOptions{
+				IgnoreGitFiles: true,
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+		{
+			name:  "complex filtering",
+			paths: []string{"main.go", "test.py", ".hidden.go", "readme.md", "node_modules", ".gitignore"},
+			opts: FilteringOptions{
+				IncludeExts:    []string{".go", ".py"},
+				ExcludeNames:   []string{"node_modules"},
+				IgnoreHidden:   true,
+				IgnoreGitFiles: true,
+			},
+			expected: []string{"main.go", "test.py"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FilterFiles(tt.paths, tt.opts)
+			if len(result) != len(tt.expected) {
+				t.Errorf("FilterFiles() length = %d, want %d", len(result), len(tt.expected))
+				t.Errorf("FilterFiles() = %v, want %v", result, tt.expected)
+				return
+			}
+
+			// Check each expected file is in the result
+			for _, expected := range tt.expected {
+				found := false
+				for _, actual := range result {
+					if actual == expected {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("FilterFiles() missing expected file %q in result %v", expected, result)
+				}
+			}
+		})
+	}
+}
+
+func TestShouldProcessFilePure(t *testing.T) {
+	tests := []struct {
+		name             string
+		path             string
+		opts             FilteringOptions
+		expectedProcess  bool
+		expectedReason   string
+		expectedFileType string
+	}{
+		{
+			name:             "simple go file",
+			path:             "main.go",
+			opts:             FilteringOptions{},
+			expectedProcess:  true,
+			expectedReason:   "passed all filters",
+			expectedFileType: "go",
+		},
+		{
+			name: "excluded extension",
+			path: "binary.exe",
+			opts: FilteringOptions{
+				ExcludeExts: []string{".exe"},
+			},
+			expectedProcess:  false,
+			expectedReason:   "extension in exclude list",
+			expectedFileType: "other",
+		},
+		{
+			name: "not in include list",
+			path: "readme.md",
+			opts: FilteringOptions{
+				IncludeExts: []string{".go", ".py"},
+			},
+			expectedProcess:  false,
+			expectedReason:   "extension not in include list",
+			expectedFileType: "markdown",
+		},
+		{
+			name: "excluded by name",
+			path: "node_modules",
+			opts: FilteringOptions{
+				ExcludeNames: []string{"node_modules", "vendor"},
+			},
+			expectedProcess:  false,
+			expectedReason:   "excluded by name",
+			expectedFileType: "no_extension",
+		},
+		{
+			name: "hidden file",
+			path: ".hidden",
+			opts: FilteringOptions{
+				IgnoreHidden: true,
+			},
+			expectedProcess:  false,
+			expectedReason:   "hidden file or directory",
+			expectedFileType: "other", // .hidden is treated as an extension by filepath.Ext
+		},
+		{
+			name: "git file",
+			path: ".gitignore",
+			opts: FilteringOptions{
+				IgnoreGitFiles: true,
+			},
+			expectedProcess:  false,
+			expectedReason:   "git-related file",
+			expectedFileType: "other", // .gitignore is treated as an extension by filepath.Ext
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ShouldProcessFile(tt.path, tt.opts)
+
+			if result.ShouldProcess != tt.expectedProcess {
+				t.Errorf("ShouldProcessFile().ShouldProcess = %v, want %v", result.ShouldProcess, tt.expectedProcess)
+			}
+
+			if result.Reason != tt.expectedReason {
+				t.Errorf("ShouldProcessFile().Reason = %q, want %q", result.Reason, tt.expectedReason)
+			}
+
+			if result.FileType != tt.expectedFileType {
+				t.Errorf("ShouldProcessFile().FileType = %q, want %q", result.FileType, tt.expectedFileType)
+			}
+		})
+	}
+}
+
+func TestCalculateFileStatistics(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		expected FileStatistics
+	}{
+		{
+			name:    "empty content",
+			content: "",
+			expected: FileStatistics{
+				CharCount:         0,
+				LineCount:         0,
+				WordCount:         0,
+				TokenCount:        0,
+				BlankLineCount:    0,
+				NonBlankLines:     0,
+				AverageLineLength: 0,
+			},
+		},
+		{
+			name:    "single line",
+			content: "hello world",
+			expected: FileStatistics{
+				CharCount:         11,
+				LineCount:         1,
+				WordCount:         2,
+				TokenCount:        2,
+				BlankLineCount:    0,
+				NonBlankLines:     1,
+				AverageLineLength: 11.0,
+			},
+		},
+		{
+			name:    "multiple lines with blank line",
+			content: "line 1\n\nline 3",
+			expected: FileStatistics{
+				CharCount:      14, // "line 1" (6) + "\n" (1) + "\n" (1) + "line 3" (6) = 14
+				LineCount:      3,
+				WordCount:      4,
+				BlankLineCount: 1,
+				NonBlankLines:  2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CalculateFileStatistics(tt.content)
+
+			if result.CharCount != tt.expected.CharCount {
+				t.Errorf("CharCount = %d, want %d", result.CharCount, tt.expected.CharCount)
+			}
+
+			if result.LineCount != tt.expected.LineCount {
+				t.Errorf("LineCount = %d, want %d", result.LineCount, tt.expected.LineCount)
+			}
+
+			if result.WordCount != tt.expected.WordCount {
+				t.Errorf("WordCount = %d, want %d", result.WordCount, tt.expected.WordCount)
+			}
+
+			if result.BlankLineCount != tt.expected.BlankLineCount {
+				t.Errorf("BlankLineCount = %d, want %d", result.BlankLineCount, tt.expected.BlankLineCount)
+			}
+
+			if result.NonBlankLines != tt.expected.NonBlankLines {
+				t.Errorf("NonBlankLines = %d, want %d", result.NonBlankLines, tt.expected.NonBlankLines)
+			}
+
+			// Token count should be at least as many as words
+			if result.TokenCount < result.WordCount {
+				t.Errorf("TokenCount = %d should be at least as many as WordCount = %d", result.TokenCount, result.WordCount)
+			}
+		})
+	}
+}
+
+// TestIOOperations tests the extracted I/O functions
+func TestIOOperations(t *testing.T) {
+	// Create a temporary directory for testing
+	tempDir := t.TempDir()
+
+	// Create test files
+	testFile := filepath.Join(tempDir, "test.txt")
+	testContent := []byte("Hello, World!\nThis is a test file.")
+
+	err := os.WriteFile(testFile, testContent, 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Create test directory
+	testSubDir := filepath.Join(tempDir, "subdir")
+	err = os.Mkdir(testSubDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	t.Run("ReadFileContent", func(t *testing.T) {
+		content, err := ReadFileContent(testFile)
+		if err != nil {
+			t.Errorf("ReadFileContent() error = %v", err)
+			return
+		}
+
+		if string(content) != string(testContent) {
+			t.Errorf("ReadFileContent() = %q, want %q", string(content), string(testContent))
+		}
+
+		// Test non-existent file
+		_, err = ReadFileContent(filepath.Join(tempDir, "nonexistent.txt"))
+		if err == nil {
+			t.Error("ReadFileContent() should return error for non-existent file")
+		}
+	})
+
+	t.Run("StatPath", func(t *testing.T) {
+		// Test file
+		info, err := StatPath(testFile)
+		if err != nil {
+			t.Errorf("StatPath() error = %v", err)
+			return
+		}
+
+		if info.IsDir() {
+			t.Error("StatPath() should return file info, not directory info")
+		}
+
+		if info.Size() != int64(len(testContent)) {
+			t.Errorf("StatPath() size = %d, want %d", info.Size(), len(testContent))
+		}
+
+		// Test directory
+		info, err = StatPath(testSubDir)
+		if err != nil {
+			t.Errorf("StatPath() error = %v", err)
+			return
+		}
+
+		if !info.IsDir() {
+			t.Error("StatPath() should return directory info")
+		}
+
+		// Test non-existent path
+		_, err = StatPath(filepath.Join(tempDir, "nonexistent"))
+		if err == nil {
+			t.Error("StatPath() should return error for non-existent path")
+		}
+	})
+
+	t.Run("WalkDirectory", func(t *testing.T) {
+		var visitedPaths []string
+
+		err := WalkDirectory(tempDir, func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			visitedPaths = append(visitedPaths, path)
+			return nil
+		})
+
+		if err != nil {
+			t.Errorf("WalkDirectory() error = %v", err)
+			return
+		}
+
+		// Should visit at least the root directory, test file, and subdirectory
+		if len(visitedPaths) < 3 {
+			t.Errorf("WalkDirectory() visited %d paths, want at least 3", len(visitedPaths))
+		}
+
+		// Check that our test file was visited
+		found := false
+		for _, path := range visitedPaths {
+			if path == testFile {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("WalkDirectory() did not visit test file")
+		}
+	})
+
+	t.Run("GetAbsolutePath", func(t *testing.T) {
+		// Test with relative path
+		absPath, err := GetAbsolutePath(".")
+		if err != nil {
+			t.Errorf("GetAbsolutePath() error = %v", err)
+			return
+		}
+
+		if !filepath.IsAbs(absPath) {
+			t.Errorf("GetAbsolutePath() = %q, should be absolute", absPath)
+		}
+
+		// Test with already absolute path
+		abs2, err := GetAbsolutePath(absPath)
+		if err != nil {
+			t.Errorf("GetAbsolutePath() error = %v", err)
+			return
+		}
+
+		if abs2 != absPath {
+			t.Errorf("GetAbsolutePath() = %q, want %q", abs2, absPath)
+		}
+	})
+
+	t.Run("CheckGitRepo", func(t *testing.T) {
+		// Test with non-git directory
+		isGitRepo := CheckGitRepo(tempDir)
+		if isGitRepo {
+			t.Error("CheckGitRepo() should return false for non-git directory")
+		}
+
+		// Test with current project directory (which should be a git repo)
+		currentDir, _ := os.Getwd()
+		_ = CheckGitRepo(currentDir)
+		// This test is environment-dependent, so we don't assert the result
+		// but just make sure it doesn't panic
+	})
+
+	t.Run("CheckGitIgnore", func(t *testing.T) {
+		// Test with non-git directory (should return error)
+		_, err := CheckGitIgnore(tempDir, "test.txt")
+		if err == nil {
+			t.Error("CheckGitIgnore() should return error for non-git directory")
+		}
+
+		// We don't test with actual git repo here as it would be environment-dependent
+		// and might interfere with the actual project's git state
+	})
 }

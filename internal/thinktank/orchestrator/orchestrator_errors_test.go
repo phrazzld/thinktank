@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/phrazzld/thinktank/internal/config"
+	"github.com/phrazzld/thinktank/internal/llm"
 	"github.com/phrazzld/thinktank/internal/testutil"
 )
 
@@ -216,5 +217,170 @@ func TestAggregateErrorsWrappedErrors(t *testing.T) {
 	// Test that errors.Is works with the result
 	if !strings.Contains(result.Error(), "base error") {
 		t.Errorf("Expected wrapped error message to be included")
+	}
+}
+
+// TestGetUserFriendlyErrorMessage tests the getUserFriendlyErrorMessage method
+func TestGetUserFriendlyErrorMessage(t *testing.T) {
+	logger := testutil.NewMockLogger()
+	config := &config.CliConfig{}
+	o := &Orchestrator{
+		logger: logger,
+		config: config,
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		expected string
+	}{
+		{
+			name:     "LLMError with CategoryAuth",
+			err:      &llm.LLMError{Original: errors.New("auth failed"), ErrorCategory: llm.CategoryAuth},
+			expected: "authentication failed",
+		},
+		{
+			name:     "LLMError with CategoryRateLimit",
+			err:      &llm.LLMError{Original: errors.New("rate limit exceeded"), ErrorCategory: llm.CategoryRateLimit},
+			expected: "rate limited",
+		},
+		{
+			name:     "LLMError with CategoryInvalidRequest and context keyword",
+			err:      &llm.LLMError{Original: errors.New("context window exceeded"), ErrorCategory: llm.CategoryInvalidRequest},
+			expected: "input too large",
+		},
+		{
+			name:     "LLMError with CategoryInvalidRequest and token keyword",
+			err:      &llm.LLMError{Original: errors.New("token limit exceeded"), ErrorCategory: llm.CategoryInvalidRequest},
+			expected: "input too large",
+		},
+		{
+			name:     "LLMError with CategoryInvalidRequest and length keyword",
+			err:      &llm.LLMError{Original: errors.New("length too long"), ErrorCategory: llm.CategoryInvalidRequest},
+			expected: "input too large",
+		},
+		{
+			name:     "LLMError with CategoryInvalidRequest without size keywords",
+			err:      &llm.LLMError{Original: errors.New("invalid parameter"), ErrorCategory: llm.CategoryInvalidRequest},
+			expected: "invalid request",
+		},
+		{
+			name:     "LLMError with CategoryInsufficientCredits",
+			err:      &llm.LLMError{Original: errors.New("insufficient credits"), ErrorCategory: llm.CategoryInsufficientCredits},
+			expected: "insufficient credits",
+		},
+		{
+			name:     "LLMError with CategoryServer (default case)",
+			err:      &llm.LLMError{Original: errors.New("server error"), ErrorCategory: llm.CategoryServer},
+			expected: "error",
+		},
+		{
+			name:     "LLMError with CategoryUnknown (default case)",
+			err:      &llm.LLMError{Original: errors.New("unknown error"), ErrorCategory: llm.CategoryUnknown},
+			expected: "error",
+		},
+		{
+			name:     "Non-LLMError",
+			err:      errors.New("regular error"),
+			expected: "error",
+		},
+		{
+			name:     "Nil error",
+			err:      nil,
+			expected: "error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := o.getUserFriendlyErrorMessage(tt.err, "test-model")
+			if result != tt.expected {
+				t.Errorf("getUserFriendlyErrorMessage() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestCategorizeOrchestratorError tests the CategorizeOrchestratorError function
+func TestCategorizeOrchestratorError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected llm.ErrorCategory
+	}{
+		{
+			name:     "ErrInvalidSynthesisModel",
+			err:      ErrInvalidSynthesisModel,
+			expected: llm.CategoryInvalidRequest,
+		},
+		{
+			name:     "ErrNoValidModels",
+			err:      ErrNoValidModels,
+			expected: llm.CategoryInvalidRequest,
+		},
+		{
+			name:     "ErrPartialProcessingFailure",
+			err:      ErrPartialProcessingFailure,
+			expected: llm.CategoryServer,
+		},
+		{
+			name:     "ErrAllProcessingFailed",
+			err:      ErrAllProcessingFailed,
+			expected: llm.CategoryServer,
+		},
+		{
+			name:     "ErrSynthesisFailed",
+			err:      ErrSynthesisFailed,
+			expected: llm.CategoryServer,
+		},
+		{
+			name:     "ErrOutputFileSaveFailed",
+			err:      ErrOutputFileSaveFailed,
+			expected: llm.CategoryServer,
+		},
+		{
+			name:     "ErrModelProcessingCancelled",
+			err:      ErrModelProcessingCancelled,
+			expected: llm.CategoryCancelled,
+		},
+		{
+			name:     "Wrapped ErrInvalidSynthesisModel",
+			err:      fmt.Errorf("wrapper: %w", ErrInvalidSynthesisModel),
+			expected: llm.CategoryInvalidRequest,
+		},
+		{
+			name:     "Wrapped ErrPartialProcessingFailure",
+			err:      fmt.Errorf("wrapper: %w", ErrPartialProcessingFailure),
+			expected: llm.CategoryServer,
+		},
+		{
+			name:     "Already categorized LLMError",
+			err:      &llm.LLMError{Original: errors.New("auth failed"), ErrorCategory: llm.CategoryAuth},
+			expected: llm.CategoryAuth,
+		},
+		{
+			name:     "Already categorized LLMError with different category",
+			err:      &llm.LLMError{Original: errors.New("rate limit"), ErrorCategory: llm.CategoryRateLimit},
+			expected: llm.CategoryRateLimit,
+		},
+		{
+			name:     "Unknown error",
+			err:      errors.New("unknown error"),
+			expected: llm.CategoryUnknown,
+		},
+		{
+			name:     "Nil error",
+			err:      nil,
+			expected: llm.CategoryUnknown,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := CategorizeOrchestratorError(tt.err)
+			if result != tt.expected {
+				t.Errorf("CategorizeOrchestratorError() = %v, expected %v", result, tt.expected)
+			}
+		})
 	}
 }

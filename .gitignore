@@ -11,6 +11,9 @@
 # Test binary, built with `go test -c`
 *.test
 
+# Test output directories
+**/thinktank_20*
+
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 *.html
@@ -26,6 +29,9 @@ go.work
 .vscode/
 *.swp
 *.swo
+
+# Application logs
+*.log
 
 # OS specific files
 .DS_Store
@@ -58,6 +64,15 @@ thinktank_*/
 # Profiling data
 profile_data/
 
+# Generated analysis reports
+reports/
+
+# Generated benchmark data
+benchmarks/*/
+# Keep benchmark documentation
+!benchmarks/README.md
+!benchmarks/*.sh
+
 # Build artifacts
 main
 quality-gates
@@ -74,6 +89,10 @@ scripts/load-testing/config.sh
 # Log files
 *.log
 override-audit.log
+
+# Test binaries and coverage files
+*.test
+*coverage*.out
 
 # Dashboard temp files
 docs/quality-dashboard/workflow-runs.json

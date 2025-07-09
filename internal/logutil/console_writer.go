@@ -287,7 +287,7 @@ func NewConsoleWriterWithOptions(opts ConsoleWriterOptions) ConsoleWriter {
 		getEnvFunc = os.Getenv
 	}
 
-	isInteractive := detectInteractiveEnvironmentWithEnv(isTerminalFunc, getEnvFunc)
+	isInteractive := DetectInteractiveEnvironment(isTerminalFunc, getEnvFunc)
 	return &consoleWriter{
 		isTerminalFunc:  isTerminalFunc,
 		getTermSizeFunc: getTermSizeFunc,
@@ -310,33 +310,7 @@ func defaultGetTermSize() (int, int, error) {
 // detectInteractiveEnvironment determines if we're running in an interactive
 // environment based on TTY detection and CI environment variables
 func detectInteractiveEnvironment(isTerminalFunc func() bool) bool {
-	return detectInteractiveEnvironmentWithEnv(isTerminalFunc, os.Getenv)
-}
-
-// detectInteractiveEnvironmentWithEnv determines if we're running in an interactive
-// environment based on TTY detection and CI environment variables with injectable env func
-func detectInteractiveEnvironmentWithEnv(isTerminalFunc func() bool, getEnvFunc func(string) string) bool {
-	// Check common CI environment variables
-	ciVars := []string{
-		"CI",
-		"GITHUB_ACTIONS",
-		"CONTINUOUS_INTEGRATION",
-		"GITLAB_CI",
-		"TRAVIS",
-		"CIRCLECI",
-		"JENKINS_URL",
-		"BUILDKITE",
-	}
-
-	for _, envVar := range ciVars {
-		value := getEnvFunc(envVar)
-		if value != "" && (value == "true" || envVar == "JENKINS_URL") {
-			return false
-		}
-	}
-
-	// If not in CI and stdout is a terminal, we're interactive
-	return isTerminalFunc()
+	return DetectInteractiveEnvironment(isTerminalFunc, os.Getenv)
 }
 
 // StartProcessing initiates progress reporting for a batch of models
@@ -353,7 +327,7 @@ func (c *consoleWriter) StartProcessing(modelCount int) {
 
 	// Use clean, declarative messaging consistent across environments
 	message := fmt.Sprintf("Processing %d models...", modelCount)
-	fmt.Println(c.colors.ColorModelName(message))
+	WriteToConsole(c.colors.ColorModelName(message))
 }
 
 // ModelQueued reports that a model has been added to the processing queue
@@ -384,9 +358,9 @@ func (c *consoleWriter) ModelStarted(modelIndex, totalModels int, modelName stri
 
 	coloredModelName := c.colors.ColorModelName(modelName)
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
+		WriteToConsoleF("[%d/%d] %s: processing...\n", modelIndex, totalModels, coloredModelName)
 	} else {
-		fmt.Printf("Processing model %d/%d: %s\n", modelIndex, totalModels, coloredModelName)
+		WriteToConsoleF("Processing model %d/%d: %s\n", modelIndex, totalModels, coloredModelName)
 	}
 }
 
@@ -400,14 +374,14 @@ func (c *consoleWriter) ModelCompleted(modelIndex, totalModels int, modelName st
 		return
 	}
 
-	durationStr := c.colors.ColorDuration(formatDuration(duration))
+	durationStr := c.colors.ColorDuration(FormatDuration(duration))
 	coloredModelName := c.colors.ColorModelName(modelName)
 	successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: %s completed (%s)\n", modelIndex, totalModels, coloredModelName, successSymbol, durationStr)
+		WriteToConsoleF("[%d/%d] %s: %s completed (%s)\n", modelIndex, totalModels, coloredModelName, successSymbol, durationStr)
 	} else {
-		fmt.Printf("Completed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, durationStr)
+		WriteToConsoleF("Completed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, durationStr)
 	}
 }
 
@@ -426,9 +400,9 @@ func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName strin
 	coloredFirstLine := c.colors.ColorError(firstLine)
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredFirstLine)
+		WriteToConsoleF("[%d/%d] %s: %s failed (%s)\n", modelIndex, totalModels, coloredModelName, errorSymbol, coloredFirstLine)
 	} else {
-		fmt.Printf("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredFirstLine)
+		WriteToConsoleF("Failed model %d/%d: %s (%s)\n", modelIndex, totalModels, coloredModelName, coloredFirstLine)
 	}
 
 	// Print additional lines (like suggestions) with proper indentation
@@ -437,7 +411,7 @@ func (c *consoleWriter) ModelFailed(modelIndex, totalModels int, modelName strin
 			if strings.TrimSpace(line) != "" {
 				// Use warning color for suggestions to make them less prominent than errors
 				coloredLine := c.colors.ColorWarning(line)
-				fmt.Printf("  %s\n", coloredLine)
+				WriteToConsoleF("  %s\n", coloredLine)
 			}
 		}
 	}
@@ -452,14 +426,14 @@ func (c *consoleWriter) ModelRateLimited(modelIndex, totalModels int, modelName 
 		return
 	}
 
-	retryStr := c.colors.ColorDuration(formatDuration(retryAfter))
+	retryStr := c.colors.ColorDuration(FormatDuration(retryAfter))
 	coloredModelName := c.colors.ColorModelName(modelName)
 	warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
 
 	if c.isInteractive {
-		fmt.Printf("[%d/%d] %s: %s rate limited (retry in %s)\n", modelIndex, totalModels, coloredModelName, warningSymbol, retryStr)
+		WriteToConsoleF("[%d/%d] %s: %s rate limited (retry in %s)\n", modelIndex, totalModels, coloredModelName, warningSymbol, retryStr)
 	} else {
-		fmt.Printf("Rate limited for model %d/%d: %s (retry in %s)\n", modelIndex, totalModels, coloredModelName, retryStr)
+		WriteToConsoleF("Rate limited for model %d/%d: %s (retry in %s)\n", modelIndex, totalModels, coloredModelName, retryStr)
 	}
 }
 
@@ -472,7 +446,7 @@ func (c *consoleWriter) SynthesisStarted() {
 		return
 	}
 
-	fmt.Println("Synthesizing results...")
+	WriteToConsole("Synthesizing results...")
 }
 
 // SynthesisCompleted reports that synthesis has finished successfully
@@ -486,7 +460,7 @@ func (c *consoleWriter) SynthesisCompleted(outputPath string) {
 
 	coloredOutputPath := c.colors.ColorFilePath(outputPath)
 
-	fmt.Printf("Done! Output saved to: %s\n", coloredOutputPath)
+	WriteToConsoleF("Done! Output saved to: %s\n", coloredOutputPath)
 }
 
 // StatusMessage displays a general status update to the user
@@ -503,9 +477,9 @@ func (c *consoleWriter) StatusMessage(message string) {
 
 	if c.isInteractive {
 		bulletSymbol := c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet)
-		fmt.Printf("%s %s\n", bulletSymbol, formattedMessage)
+		WriteToConsoleF("%s %s\n", bulletSymbol, formattedMessage)
 	} else {
-		fmt.Println(formattedMessage)
+		WriteToConsole(formattedMessage)
 	}
 }
 
@@ -559,7 +533,7 @@ func (c *consoleWriter) GetTerminalWidth() int {
 			return width
 		} else if err != nil {
 			// Log terminal width detection failure to stderr
-			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
+			WriteToStderrF("Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
@@ -612,7 +586,7 @@ func (c *consoleWriter) getTerminalWidthLocked() int {
 			return width
 		} else if err != nil {
 			// Log terminal width detection failure to stderr
-			fmt.Fprintf(os.Stderr, "Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
+			WriteToStderrF("Warning: terminal width detection failed: %v, using default width %d\n", err, DefaultTerminalWidth)
 		}
 	}
 
@@ -637,21 +611,7 @@ func (c *consoleWriter) getLayoutLocked() LayoutConfig {
 
 // formatToWidth formats a message to fit within the specified width
 func (c *consoleWriter) formatToWidth(message string, width int) string {
-	// If message fits within terminal width, return as-is
-	if len(message) <= width {
-		return message
-	}
-
-	// In non-interactive mode, don't truncate messages
-	if !c.isInteractive {
-		return message
-	}
-
-	// Truncate message and add ellipsis
-	if width <= 3 {
-		return "..."
-	}
-	return message[:width-3] + "..."
+	return FormatToWidth(message, width, c.isInteractive)
 }
 
 // ErrorMessage displays an error message to the user with appropriate formatting
@@ -665,9 +625,9 @@ func (c *consoleWriter) ErrorMessage(message string) {
 
 	if c.isInteractive {
 		errorSymbol := c.colors.ColorError(c.symbols.GetSymbols().Error)
-		fmt.Printf("%s %s\n", errorSymbol, coloredMessage)
+		WriteToConsoleF("%s %s\n", errorSymbol, coloredMessage)
 	} else {
-		fmt.Printf("ERROR: %s\n", coloredMessage)
+		WriteToConsoleF("ERROR: %s\n", coloredMessage)
 	}
 }
 
@@ -682,9 +642,9 @@ func (c *consoleWriter) WarningMessage(message string) {
 
 	if c.isInteractive {
 		warningSymbol := c.colors.ColorWarning(c.symbols.GetSymbols().Warning)
-		fmt.Printf("%s %s\n", warningSymbol, coloredMessage)
+		WriteToConsoleF("%s %s\n", warningSymbol, coloredMessage)
 	} else {
-		fmt.Printf("WARNING: %s\n", coloredMessage)
+		WriteToConsoleF("WARNING: %s\n", coloredMessage)
 	}
 }
 
@@ -702,9 +662,9 @@ func (c *consoleWriter) SuccessMessage(message string) {
 
 	if c.isInteractive {
 		successSymbol := c.colors.ColorSuccess(c.symbols.GetSymbols().Success)
-		fmt.Printf("%s %s\n", successSymbol, coloredMessage)
+		WriteToConsoleF("%s %s\n", successSymbol, coloredMessage)
 	} else {
-		fmt.Printf("SUCCESS: %s\n", coloredMessage)
+		WriteToConsoleF("SUCCESS: %s\n", coloredMessage)
 	}
 }
 
@@ -732,7 +692,7 @@ func (c *consoleWriter) ShowProcessingLine(modelName string) {
 	// Format with proper alignment
 	alignedOutput := layout.FormatAlignedText(coloredModelName, processingStatus)
 
-	fmt.Println(alignedOutput)
+	WriteToConsole(alignedOutput)
 }
 
 // UpdateProcessingLine updates the processing line in-place with final status
@@ -755,25 +715,12 @@ func (c *consoleWriter) UpdateProcessingLine(modelName string, status string) {
 	// Format with proper alignment
 	alignedOutput := layout.FormatAlignedText(coloredModelName, coloredStatus)
 
-	fmt.Println(alignedOutput)
+	WriteToConsole(alignedOutput)
 }
 
 // colorizeStatus applies appropriate colors to status text based on content
 func (c *consoleWriter) colorizeStatus(status string) string {
-	// Determine status type based on Unicode symbols and keywords
-	if strings.Contains(status, "✓") {
-		// Success status - apply success color to the entire status
-		return c.colors.ColorSuccess(status)
-	} else if strings.Contains(status, "✗") {
-		// Error status - apply error color to the entire status
-		return c.colors.ColorError(status)
-	} else if strings.Contains(status, "⚠") {
-		// Warning status (rate limited, etc.) - apply warning color
-		return c.colors.ColorWarning(status)
-	}
-
-	// Default status - no special coloring
-	return status
+	return ColorizeStatus(status, c.colors)
 }
 
 // ShowFileOperations displays clean, declarative file operation messages
@@ -787,12 +734,12 @@ func (c *consoleWriter) ShowFileOperations(message string) {
 
 	// Add whitespace before saving operations
 	if strings.HasPrefix(message, "Saving") {
-		fmt.Println() // Phase separation whitespace
+		WriteEmptyLineToConsole() // Phase separation whitespace
 	}
 
 	// Clean, declarative file operation messaging
 	// No special formatting needed - just clear, direct communication
-	fmt.Println(message)
+	WriteToConsole(message)
 }
 
 // ShowSummarySection displays the main summary section with structured format
@@ -807,22 +754,22 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 	layout := c.getLayoutLocked()
 
 	// Add whitespace before summary section
-	fmt.Println() // Phase separation whitespace
+	WriteEmptyLineToConsole() // Phase separation whitespace
 
 	// Display UPPERCASE header with separator line
 	headerText := "SUMMARY"
 	separatorLength := len(headerText)
 	separatorLine := layout.GetSeparatorLine(separatorLength)
 
-	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
-	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+	WriteToConsoleF("%s\n", c.colors.ColorSectionHeader(headerText))
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(separatorLine))
 
 	// Display bullet point statistics
-	fmt.Printf("%s %d models processed\n",
+	WriteToConsoleF("%s %d models processed\n",
 		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		summary.ModelsProcessed)
 
-	fmt.Printf("%s %d successful, %d failed\n",
+	WriteToConsoleF("%s %d successful, %d failed\n",
 		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		summary.SuccessfulModels,
 		summary.FailedModels)
@@ -838,13 +785,13 @@ func (c *consoleWriter) ShowSummarySection(summary SummaryData) {
 		default:
 			statusText = summary.SynthesisStatus
 		}
-		fmt.Printf("%s Synthesis: %s\n",
+		WriteToConsoleF("%s Synthesis: %s\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 			statusText)
 	}
 
 	// Show output directory
-	fmt.Printf("%s Output directory: %s\n",
+	WriteToConsoleF("%s Output directory: %s\n",
 		c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 		c.colors.ColorFilePath(summary.OutputDirectory))
 
@@ -858,44 +805,44 @@ func (c *consoleWriter) displayScenarioGuidance(summary SummaryData) {
 	// Determine the scenario and provide appropriate guidance
 	if summary.SuccessfulModels == 0 && summary.FailedModels > 0 {
 		// All models failed scenario
-		fmt.Println()
-		fmt.Printf("%s %s\n",
+		WriteEmptyLineToConsole()
+		WriteToConsoleF("%s %s\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
 			c.colors.ColorWarning("All models failed to process"))
-		fmt.Printf("  %s Check your API keys and network connectivity\n",
+		WriteToConsoleF("  %s Check your API keys and network connectivity\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		fmt.Printf("  %s Review error details above for specific failure reasons\n",
+		WriteToConsoleF("  %s Review error details above for specific failure reasons\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		fmt.Printf("  %s Verify model names and rate limits with providers\n",
+		WriteToConsoleF("  %s Verify model names and rate limits with providers\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 	} else if summary.FailedModels > 0 && summary.SuccessfulModels > 0 {
 		// Partial success scenario
-		fmt.Println()
-		fmt.Printf("%s %s\n",
+		WriteEmptyLineToConsole()
+		WriteToConsoleF("%s %s\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Warning),
 			c.colors.ColorWarning("Partial success - some models failed"))
 
 		successRate := float64(summary.SuccessfulModels) / float64(summary.ModelsProcessed) * 100
-		fmt.Printf("  %s Success rate: %.0f%% (%d/%d models)\n",
+		WriteToConsoleF("  %s Success rate: %.0f%% (%d/%d models)\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet),
 			successRate,
 			summary.SuccessfulModels,
 			summary.ModelsProcessed)
-		fmt.Printf("  %s Check failed model details above for specific issues\n",
+		WriteToConsoleF("  %s Check failed model details above for specific issues\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
-		fmt.Printf("  %s Consider retrying failed models or adjusting configuration\n",
+		WriteToConsoleF("  %s Consider retrying failed models or adjusting configuration\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 	} else if summary.SuccessfulModels > 0 && summary.FailedModels == 0 {
 		// Complete success scenario
-		fmt.Println()
-		fmt.Printf("%s %s\n",
+		WriteEmptyLineToConsole()
+		WriteToConsoleF("%s %s\n",
 			c.colors.ColorSymbol(c.symbols.GetSymbols().Success),
 			c.colors.ColorSuccess("All models processed successfully"))
 		if summary.SynthesisStatus == "completed" {
-			fmt.Printf("  %s Synthesis completed - check the combined output above\n",
+			WriteToConsoleF("  %s Synthesis completed - check the combined output above\n",
 				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		} else if summary.ModelsProcessed > 1 {
-			fmt.Printf("  %s Individual model outputs saved - see file list above\n",
+			WriteToConsoleF("  %s Individual model outputs saved - see file list above\n",
 				c.colors.ColorSymbol(c.symbols.GetSymbols().Bullet))
 		}
 	}
@@ -917,8 +864,8 @@ func (c *consoleWriter) ShowOutputFiles(files []OutputFile) {
 	separatorLength := len(headerText)
 	separatorLine := layout.GetSeparatorLine(separatorLength)
 
-	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
-	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+	WriteToConsoleF("%s\n", c.colors.ColorSectionHeader(headerText))
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(separatorLine))
 
 	// Display files with right-aligned human-readable sizes
 	for _, file := range files {
@@ -931,7 +878,7 @@ func (c *consoleWriter) ShowOutputFiles(files []OutputFile) {
 
 		// Format with proper right alignment
 		alignedOutput := layout.FormatAlignedText(coloredFileName, coloredSize)
-		fmt.Printf("  %s\n", alignedOutput)
+		WriteToConsoleF("  %s\n", alignedOutput)
 	}
 }
 
@@ -951,8 +898,8 @@ func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
 	separatorLength := len(headerText)
 	separatorLine := layout.GetSeparatorLine(separatorLength)
 
-	fmt.Printf("%s\n", c.colors.ColorSectionHeader(headerText))
-	fmt.Printf("%s\n", c.colors.ColorSeparator(separatorLine))
+	WriteToConsoleF("%s\n", c.colors.ColorSectionHeader(headerText))
+	WriteToConsoleF("%s\n", c.colors.ColorSeparator(separatorLine))
 
 	// Display failed models with aligned reasons
 	for _, model := range failed {
@@ -962,17 +909,8 @@ func (c *consoleWriter) ShowFailedModels(failed []FailedModel) {
 
 		// Format with proper right alignment
 		alignedOutput := layout.FormatAlignedText(coloredModelName, coloredReason)
-		fmt.Printf("  %s\n", alignedOutput)
+		WriteToConsoleF("  %s\n", alignedOutput)
 	}
-}
-
-// formatDuration formats a time.Duration into a human-readable string
-// like "1.2s", "850ms", etc.
-func formatDuration(d time.Duration) string {
-	if d >= time.Second {
-		return fmt.Sprintf("%.1fs", d.Seconds())
-	}
-	return fmt.Sprintf("%dms", d.Milliseconds())
 }
 
 // ConsoleWriterOptions provides configuration options for creating a ConsoleWriter

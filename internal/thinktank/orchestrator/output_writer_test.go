@@ -300,3 +300,93 @@ func TestSanitizeFilename(t *testing.T) {
 		})
 	}
 }
+
+// TestLegacyOutputWriterAdapter tests the LegacyOutputWriterAdapter methods
+func TestLegacyOutputWriterAdapter(t *testing.T) {
+	// Create a mock OutputWriter using the test implementation
+	mockWriter := &TestOutputWriter{
+		saveIndividualCount: 5,
+		saveIndividualPaths: map[string]string{
+			"model1": "/path/to/model1.txt",
+			"model2": "/path/to/model2.txt",
+		},
+		saveSynthesisPath: "/path/to/synthesis.txt",
+	}
+
+	// Create the adapter
+	adapter := &LegacyOutputWriterAdapter{
+		outputWriter: mockWriter,
+	}
+
+	ctx := context.Background()
+	outputDir := "/output/dir"
+
+	// Test SaveIndividualOutputs
+	t.Run("SaveIndividualOutputs", func(t *testing.T) {
+		modelOutputs := map[string]string{
+			"model1": "output1",
+			"model2": "output2",
+		}
+
+		count, err := adapter.SaveIndividualOutputs(ctx, modelOutputs, outputDir)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+
+		// Should return the count from the underlying writer
+		if count != 5 {
+			t.Errorf("Expected count 5, got %d", count)
+		}
+	})
+
+	// Test SaveIndividualOutputs with error
+	t.Run("SaveIndividualOutputs_Error", func(t *testing.T) {
+		// Set error on mock
+		mockWriter.saveIndividualError = errors.New("save error")
+		defer func() { mockWriter.saveIndividualError = nil }()
+
+		modelOutputs := map[string]string{
+			"model1": "output1",
+		}
+
+		count, err := adapter.SaveIndividualOutputs(ctx, modelOutputs, outputDir)
+		if err == nil {
+			t.Error("Expected error, got nil")
+		}
+		if err.Error() != "save error" {
+			t.Errorf("Expected error 'save error', got %v", err)
+		}
+		if count != 0 {
+			t.Errorf("Expected count 0 on error, got %d", count)
+		}
+	})
+
+	// Test SaveSynthesisOutput
+	t.Run("SaveSynthesisOutput", func(t *testing.T) {
+		content := "synthesis content"
+		modelName := "synthesis-model"
+
+		err := adapter.SaveSynthesisOutput(ctx, content, modelName, outputDir)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+	})
+
+	// Test SaveSynthesisOutput with error
+	t.Run("SaveSynthesisOutput_Error", func(t *testing.T) {
+		// Set error on mock
+		mockWriter.saveSynthesisError = errors.New("synthesis error")
+		defer func() { mockWriter.saveSynthesisError = nil }()
+
+		content := "synthesis content"
+		modelName := "synthesis-model"
+
+		err := adapter.SaveSynthesisOutput(ctx, content, modelName, outputDir)
+		if err == nil {
+			t.Error("Expected error, got nil")
+		}
+		if err.Error() != "synthesis error" {
+			t.Errorf("Expected error 'synthesis error', got %v", err)
+		}
+	})
+}

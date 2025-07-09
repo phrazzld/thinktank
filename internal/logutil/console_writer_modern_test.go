@@ -515,3 +515,91 @@ func TestModernConsoleWriter_EnvironmentDetection(t *testing.T) {
 		})
 	}
 }
+
+// TestShowFileOperations tests the ShowFileOperations method for proper behavior
+func TestShowFileOperations(t *testing.T) {
+	tests := []struct {
+		name          string
+		message       string
+		quiet         bool
+		expectOutput  bool
+		expectNewline bool
+	}{
+		{
+			name:         "Normal file operation message",
+			message:      "Processing file.txt",
+			quiet:        false,
+			expectOutput: true,
+		},
+		{
+			name:          "Saving operation adds newline",
+			message:       "Saving output to result.json",
+			quiet:         false,
+			expectOutput:  true,
+			expectNewline: true,
+		},
+		{
+			name:         "Quiet mode suppresses output",
+			message:      "Processing file.txt",
+			quiet:        true,
+			expectOutput: false,
+		},
+		{
+			name:         "Quiet mode suppresses saving message too",
+			message:      "Saving output to result.json",
+			quiet:        true,
+			expectOutput: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Capture stdout
+			old := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// Create writer with quiet mode setting
+			writer := NewConsoleWriterWithOptions(ConsoleWriterOptions{
+				IsTerminalFunc:  func() bool { return true },
+				GetTermSizeFunc: func() (int, int, error) { return 80, 24, nil },
+				GetEnvFunc:      func(key string) string { return "" },
+			})
+
+			// Set quiet mode if needed
+			if tt.quiet {
+				writer.(*consoleWriter).quiet = true
+			}
+
+			// Call the method
+			writer.ShowFileOperations(tt.message)
+
+			// Restore stdout
+			_ = w.Close()
+			os.Stdout = old
+
+			buf := new(bytes.Buffer)
+			_, _ = buf.ReadFrom(r)
+			output := buf.String()
+
+			if tt.expectOutput {
+				if !strings.Contains(output, tt.message) {
+					t.Errorf("Expected output to contain %q, got %q", tt.message, output)
+				}
+
+				// Check for extra newline before "Saving" messages
+				if tt.expectNewline {
+					// Should have at least 2 newlines (one from WriteEmptyLineToConsole, one from WriteToConsole)
+					newlineCount := strings.Count(output, "\n")
+					if newlineCount < 2 {
+						t.Errorf("Expected at least 2 newlines for 'Saving' message, got %d in output: %q", newlineCount, output)
+					}
+				}
+			} else {
+				if output != "" {
+					t.Errorf("Expected no output in quiet mode, got %q", output)
+				}
+			}
+		})
+	}
+}

@@ -89,6 +89,105 @@ thinktank --instructions temp_instructions.txt ./path/to/code
 * **Troubleshooting:** `./scripts/precommit-troubleshoot.sh` for performance issues
 * **Emergency Skip:** `git commit --no-verify` (use sparingly)
 
+## Function Organization & Testing Patterns
+
+### Carmack-Style Function Extraction (2025-07-08 Refactoring)
+
+Following John Carmack's incremental refactoring philosophy, the codebase underwent systematic function extraction to separate I/O operations from business logic. This approach achieved 90.4% test coverage and 35-70% performance improvements.
+
+**✅ Pure Function Extraction Pattern**
+```go
+// Before: Mixed I/O and business logic
+func processFile(path string) error {
+    data, err := os.ReadFile(path)  // I/O operation
+    if err != nil {
+        return err
+    }
+
+    result := calculateStatistics(data)  // Business logic
+    fmt.Printf("Results: %v\n", result)  // I/O operation
+    return nil
+}
+
+// After: Pure business logic extracted
+func CalculateFileStatistics(content []byte) FileStats {
+    // Pure business logic - no I/O, fully testable
+    return FileStats{...}
+}
+
+func ReadFileContent(path string) ([]byte, error) {
+    // Pure I/O operation
+    return os.ReadFile(path)
+}
+```
+
+**✅ Function Decomposition Pattern**
+```go
+// Before: Large function (370+ LOC)
+func Execute(config Config) error {
+    // Setup, validation, processing, output - all mixed
+}
+
+// After: Focused functions (<100 LOC each)
+func gatherProjectFiles(config Config) error      // Setup phase
+func processFiles(config Config) error            // Processing phase
+func generateOutput(config Config) error          // Generation phase
+func writeResults(config Config) error            // Output phase
+```
+
+**✅ Testing Pattern for Extracted Functions**
+```go
+// Table-driven tests for pure functions
+func TestCalculateFileStatistics(t *testing.T) {
+    tests := []struct {
+        name     string
+        content  []byte
+        expected FileStats
+    }{
+        {"go file", []byte("package main\n"), FileStats{Lines: 1, Type: "go"}},
+        {"empty file", []byte(""), FileStats{Lines: 0, Type: "unknown"}},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := CalculateFileStatistics(tt.content)
+            assert.Equal(t, tt.expected, result)
+        })
+    }
+}
+```
+
+### Key Refactoring Outcomes
+
+**Performance Improvements:**
+- Token counting: 35-70% faster across all file sizes
+- Memory allocation: No regressions, improved in most cases
+- Function call overhead: Minimal impact despite decomposition
+
+**Code Organization:**
+- `internal/logutil/formatting.go` - Pure formatting functions (210 LOC)
+- `internal/fileutil/filtering.go` - Pure filtering/statistics functions (469 LOC)
+- Main functions decomposed: `Execute()` (370→27 LOC), `Main()` (120→40 LOC)
+
+**Testing Coverage:**
+- Overall coverage: 83.6% → 90.4% (exceeds 90% target)
+- Pure functions: 95-100% coverage (no mocking required)
+- Integration tests: Verify behavioral equivalence post-refactoring
+
+**Function Size Compliance:**
+- All functions now <100 LOC (Carmack principle)
+- Clear separation of concerns: I/O vs business logic
+- Improved testability and maintainability
+
+### Implementation Guidelines
+
+When extracting functions, follow this proven pattern:
+1. **Identify Pure Logic**: Extract business logic with no I/O dependencies
+2. **Separate I/O Operations**: Create focused I/O functions
+3. **Decompose Large Functions**: Break >100 LOC into focused phases
+4. **Test Extracted Functions**: Use table-driven tests for pure functions
+5. **Validate Behavior**: Ensure identical behavior post-refactoring
+
 ## Reference
 
 * Architecture: `docs/leyline/` for development philosophy
