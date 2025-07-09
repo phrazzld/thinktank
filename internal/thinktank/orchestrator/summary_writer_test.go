@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"reflect"
 	"regexp"
 	"strings"
 	"testing"
@@ -272,5 +273,262 @@ func TestTruncateHelpers(t *testing.T) {
 	shortResult := truncateList(items, 10)
 	if len(shortResult) > 10 {
 		t.Errorf("truncateList exceeded max length: got %d, expected ≤ 10", len(shortResult))
+	}
+}
+
+// TestConvertToSummaryData tests the convertToSummaryData function comprehensively
+func TestConvertToSummaryData(t *testing.T) {
+	logger := NewSimpleTestLogger()
+	consoleWriter := &MockConsoleWriter{}
+	summaryWriter := &DefaultSummaryWriter{
+		logger:        logger,
+		consoleWriter: consoleWriter,
+	}
+
+	tests := []struct {
+		name     string
+		summary  *ResultsSummary
+		expected logutil.SummaryData
+	}{
+		{
+			name: "With synthesis path",
+			summary: &ResultsSummary{
+				TotalModels:      3,
+				SuccessfulModels: 2,
+				FailedModels:     []string{"model3"},
+				SynthesisPath:    "/path/to/output/synthesis.md",
+			},
+			expected: logutil.SummaryData{
+				ModelsProcessed:  3,
+				SuccessfulModels: 2,
+				FailedModels:     1,
+				SynthesisStatus:  "completed",
+				OutputDirectory:  "/path/to/output/",
+			},
+		},
+		{
+			name: "Without synthesis path, with output paths",
+			summary: &ResultsSummary{
+				TotalModels:      2,
+				SuccessfulModels: 2,
+				FailedModels:     []string{},
+				OutputPaths:      []string{"/path/to/output/model1.md", "/path/to/output/model2.md"},
+			},
+			expected: logutil.SummaryData{
+				ModelsProcessed:  2,
+				SuccessfulModels: 2,
+				FailedModels:     0,
+				SynthesisStatus:  "skipped",
+				OutputDirectory:  "/path/to/output/",
+			},
+		},
+		{
+			name: "No synthesis path, no output paths",
+			summary: &ResultsSummary{
+				TotalModels:      1,
+				SuccessfulModels: 0,
+				FailedModels:     []string{"model1"},
+				SynthesisPath:    "",
+				OutputPaths:      []string{},
+			},
+			expected: logutil.SummaryData{
+				ModelsProcessed:  1,
+				SuccessfulModels: 0,
+				FailedModels:     1,
+				SynthesisStatus:  "skipped",
+				OutputDirectory:  "",
+			},
+		},
+		{
+			name: "Synthesis path without directory separator",
+			summary: &ResultsSummary{
+				TotalModels:      1,
+				SuccessfulModels: 1,
+				FailedModels:     []string{},
+				SynthesisPath:    "synthesis.md",
+				OutputPaths:      []string{},
+			},
+			expected: logutil.SummaryData{
+				ModelsProcessed:  1,
+				SuccessfulModels: 1,
+				FailedModels:     0,
+				SynthesisStatus:  "completed",
+				OutputDirectory:  "",
+			},
+		},
+		{
+			name: "Output path without directory separator",
+			summary: &ResultsSummary{
+				TotalModels:      1,
+				SuccessfulModels: 1,
+				FailedModels:     []string{},
+				SynthesisPath:    "",
+				OutputPaths:      []string{"model1.md"},
+			},
+			expected: logutil.SummaryData{
+				ModelsProcessed:  1,
+				SuccessfulModels: 1,
+				FailedModels:     0,
+				SynthesisStatus:  "skipped",
+				OutputDirectory:  "",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := summaryWriter.convertToSummaryData(tt.summary)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("convertToSummaryData() = %+v, expected %+v", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestTruncateListComprehensive tests the truncateList function with comprehensive edge cases
+func TestTruncateListComprehensive(t *testing.T) {
+	tests := []struct {
+		name     string
+		items    []string
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "Empty list",
+			items:    []string{},
+			maxLen:   50,
+			expected: "none",
+		},
+		{
+			name:     "Single item, short",
+			items:    []string{"model1"},
+			maxLen:   50,
+			expected: "model1",
+		},
+		{
+			name:     "Single item, needs truncation",
+			items:    []string{"very-long-model-name"},
+			maxLen:   10,
+			expected: "very-lo...",
+		},
+		{
+			name:     "Multiple items, fits in space",
+			items:    []string{"model1", "model2"},
+			maxLen:   50,
+			expected: "2 models (model1, model2)",
+		},
+		{
+			name:     "Multiple items, needs truncation",
+			items:    []string{"model1", "model2", "model3"},
+			maxLen:   20,
+			expected: "3 models (model1, ...)",
+		},
+		{
+			name:     "Very short max length",
+			items:    []string{"model1", "model2"},
+			maxLen:   8,
+			expected: "2 models",
+		},
+		{
+			name:     "Extremely short max length",
+			items:    []string{"model1", "model2", "model3"},
+			maxLen:   5,
+			expected: "3 models",
+		},
+		{
+			name:     "Single item can't fit even truncated",
+			items:    []string{"verylongmodelname"},
+			maxLen:   6,
+			expected: "ver...",
+		},
+		{
+			name:     "Multiple items with first name too long",
+			items:    []string{"verylongmodelname", "short"},
+			maxLen:   15,
+			expected: "2 models (v...)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncateList(tt.items, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("truncateList() = %q, expected %q", result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestTruncatePathComprehensive tests the truncatePath function with comprehensive edge cases
+func TestTruncatePathComprehensive(t *testing.T) {
+	tests := []struct {
+		name     string
+		path     string
+		maxLen   int
+		expected string
+	}{
+		{
+			name:     "Short path, no truncation needed",
+			path:     "/short/path.md",
+			maxLen:   20,
+			expected: "/short/path.md",
+		},
+		{
+			name:     "Path exactly at max length",
+			path:     "/exact/length.md",
+			maxLen:   17,
+			expected: "/exact/length.md",
+		},
+		{
+			name:     "Long path with directory separator",
+			path:     "/very/long/path/to/some/file.md",
+			maxLen:   15,
+			expected: "...some/file.md",
+		},
+		{
+			name:     "Path without directory separator",
+			path:     "verylongfilename.md",
+			maxLen:   15,
+			expected: "...gfilename.md",
+		},
+		{
+			name:     "Very short max length",
+			path:     "/path/to/file.md",
+			maxLen:   8,
+			expected: "...le.md",
+		},
+		{
+			name:     "Extremely short max length",
+			path:     "/path/to/file.md",
+			maxLen:   5,
+			expected: "...md",
+		},
+		{
+			name:     "Single character path",
+			path:     "a",
+			maxLen:   10,
+			expected: "a",
+		},
+		{
+			name:     "Empty path",
+			path:     "",
+			maxLen:   10,
+			expected: "",
+		},
+		{
+			name:     "Path with filename longer than available space",
+			path:     "/path/to/verylongfilename.md",
+			maxLen:   10,
+			expected: "...name.md",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := truncatePath(tt.path, tt.maxLen)
+			if result != tt.expected {
+				t.Errorf("truncatePath() = %q, expected %q", result, tt.expected)
+			}
+		})
 	}
 }

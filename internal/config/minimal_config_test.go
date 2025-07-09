@@ -178,3 +178,91 @@ func TestCliConfigInterface(t *testing.T) {
 		t.Error("ShouldShowProgress() = false, want true")
 	}
 }
+
+// TestCliConfigDirectMethods tests CliConfig methods directly (not through interface)
+func TestCliConfigDirectMethods(t *testing.T) {
+	t.Parallel()
+
+	cfg := &CliConfig{
+		InstructionsFile: "direct-test.md",
+		Paths:            []string{"src/", "test/"},
+		ModelNames:       []string{"model1", "model2", "model3"},
+		OutputDir:        "direct-output",
+		DryRun:           true,
+		Verbose:          true,
+		SynthesisModel:   "direct-synthesis",
+		LogLevel:         logutil.ErrorLevel,
+		Timeout:          15 * time.Minute,
+		Quiet:            true,
+		NoProgress:       false,
+		JsonLogs:         true,
+		Format:           "direct-format",
+		Exclude:          ".tmp,.bak",
+		ExcludeNames:     "vendor,node_modules",
+	}
+
+	// Test all CliConfig methods directly
+	if cfg.GetModelNames()[0] != "model1" {
+		t.Errorf("GetModelNames()[0] = %q, want %q", cfg.GetModelNames()[0], "model1")
+	}
+
+	if len(cfg.GetModelNames()) != 3 {
+		t.Errorf("len(GetModelNames()) = %d, want 3", len(cfg.GetModelNames()))
+	}
+
+	if cfg.GetOutputDir() != "direct-output" {
+		t.Errorf("GetOutputDir() = %q, want %q", cfg.GetOutputDir(), "direct-output")
+	}
+
+	if !cfg.IsVerbose() {
+		t.Error("IsVerbose() = false, want true")
+	}
+
+	if cfg.GetSynthesisModel() != "direct-synthesis" {
+		t.Errorf("GetSynthesisModel() = %q, want %q", cfg.GetSynthesisModel(), "direct-synthesis")
+	}
+
+	if cfg.GetLogLevel() != logutil.ErrorLevel {
+		t.Errorf("GetLogLevel() = %v, want %v", cfg.GetLogLevel(), logutil.ErrorLevel)
+	}
+
+	if cfg.GetTimeout() != 15*time.Minute {
+		t.Errorf("GetTimeout() = %v, want %v", cfg.GetTimeout(), 15*time.Minute)
+	}
+
+	if !cfg.IsQuiet() {
+		t.Error("IsQuiet() = false, want true")
+	}
+
+	if !cfg.ShouldShowJsonLogs() {
+		t.Error("ShouldShowJsonLogs() = false, want true")
+	}
+
+	if cfg.GetFormat() != "direct-format" {
+		t.Errorf("GetFormat() = %q, want %q", cfg.GetFormat(), "direct-format")
+	}
+
+	// Test different configurations
+	cfg2 := &CliConfig{
+		JsonLogs:   false,
+		NoProgress: true,
+		Quiet:      false,
+		Verbose:    false,
+	}
+
+	if cfg2.ShouldShowJsonLogs() {
+		t.Error("ShouldShowJsonLogs() = true, want false")
+	}
+
+	if cfg2.ShouldShowProgress() {
+		t.Error("ShouldShowProgress() = true, want false")
+	}
+
+	if cfg2.IsQuiet() {
+		t.Error("IsQuiet() = true, want false")
+	}
+
+	if cfg2.IsVerbose() {
+		t.Error("IsVerbose() = true, want false")
+	}
+}

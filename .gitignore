@@ -64,6 +64,12 @@ thinktank_*/
 # Profiling data
 profile_data/
 
+# Generated analysis reports
+reports/
+
+# Generated benchmark data (keep baseline only)
+benchmarks/20250708_*/
+
 # Build artifacts
 main
 quality-gates
@@ -80,6 +86,10 @@ scripts/load-testing/config.sh
 # Log files
 *.log
 override-audit.log
+
+# Test binaries and coverage files
+*.test
+*coverage*.out
 
 # Dashboard temp files
 docs/quality-dashboard/workflow-runs.json

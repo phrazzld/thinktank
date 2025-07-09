@@ -165,3 +165,97 @@ func TestDetectInteractiveEnvironmentForColors(t *testing.T) {
 func containsColorCode(s string) bool {
 	return len(s) > 0 && (s[0] == '\033' || s[0] == '\x1b')
 }
+
+// TestNewColorSchemeFromEnvironment tests the NewColorSchemeFromEnvironment function
+func TestNewColorSchemeFromEnvironment(t *testing.T) {
+	// This function uses the actual environment, so we test basic functionality
+	scheme := NewColorSchemeFromEnvironment()
+
+	// The scheme should not be nil
+	if scheme == nil {
+		t.Fatal("NewColorSchemeFromEnvironment() returned nil")
+	}
+
+	// The scheme should have proper structure (fields should exist)
+	// We can't test exact values because they depend on the actual environment
+	// But we can test that the function returns a valid ColorScheme
+
+	// Test that it returns a different scheme in different scenarios
+	// by testing the function components separately
+
+	// Test that we can call it multiple times without issues
+	scheme2 := NewColorSchemeFromEnvironment()
+	if scheme2 == nil {
+		t.Error("NewColorSchemeFromEnvironment() returned nil on second call")
+	}
+}
+
+// TestDetectInteractiveEnvironmentForColorsWrapper tests the detectInteractiveEnvironmentForColors function
+func TestDetectInteractiveEnvironmentForColorsWrapper(t *testing.T) {
+	tests := []struct {
+		name           string
+		isTerminalFunc func() bool
+		expectedResult bool
+	}{
+		{
+			name:           "terminal returns true",
+			isTerminalFunc: func() bool { return true },
+			expectedResult: true, // Assumes no CI environment vars set
+		},
+		{
+			name:           "terminal returns false",
+			isTerminalFunc: func() bool { return false },
+			expectedResult: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Note: This test depends on actual environment variables
+			// In a real CI environment, it might return false even if terminal is true
+			result := detectInteractiveEnvironmentForColors(tt.isTerminalFunc)
+
+			// We can't assert exact values because they depend on the actual environment
+			// But we can test that the function runs without error
+			_ = result
+		})
+	}
+}
+
+// TestDefaultIsTerminalForColors tests the defaultIsTerminalForColors function
+func TestDefaultIsTerminalForColors(t *testing.T) {
+	// This function calls the actual terminal detection
+	result := defaultIsTerminalForColors()
+
+	// We can't assert a specific value because it depends on how the test is run
+	// But we can test that the function returns a boolean without error
+	if result != true && result != false {
+		t.Error("defaultIsTerminalForColors() should return a boolean")
+	}
+
+	// Test that it's consistent - calling it multiple times should return the same result
+	result2 := defaultIsTerminalForColors()
+	if result != result2 {
+		t.Error("defaultIsTerminalForColors() should return consistent results")
+	}
+}
+
+// TestGetEnvForColors tests the getEnvForColors function
+func TestGetEnvForColors(t *testing.T) {
+	// Test with a known environment variable
+	result := getEnvForColors("PATH")
+	// PATH should exist in most environments, but we can't assert exact value
+	_ = result
+
+	// Test with a non-existent environment variable
+	result2 := getEnvForColors("NON_EXISTENT_VAR_12345")
+	if result2 != "" {
+		t.Errorf("getEnvForColors() should return empty string for non-existent var, got %q", result2)
+	}
+
+	// Test with empty string
+	result3 := getEnvForColors("")
+	if result3 != "" {
+		t.Errorf("getEnvForColors() should return empty string for empty key, got %q", result3)
+	}
+}

@@ -294,3 +294,245 @@ func TestSanitizingLoggerCustomRedaction(t *testing.T) {
 		t.Error("Expected output to contain logs")
 	}
 }
+
+// TestSanitizingLoggerWithContext tests the WithContext method
+func TestSanitizingLoggerWithContext(t *testing.T) {
+	// Create a buffer to capture logs
+	var buf bytes.Buffer
+	baseLogger := log.New(&buf, "", 0)
+	stdAdapter := NewStdLoggerAdapter(baseLogger)
+
+	// Create a sanitizing logger
+	logger := NewSanitizingLogger(stdAdapter)
+	logger.SetFailOnSecretDetect(false)
+
+	// Create context with correlation ID
+	ctx := WithCustomCorrelationID(context.Background(), "test-correlation-id")
+
+	// Create a new logger with context
+	ctxLogger := logger.WithContext(ctx)
+
+	// Type check to ensure it returns the correct type
+	_, ok := ctxLogger.(*SanitizingLogger)
+	if !ok {
+		t.Error("WithContext should return a *SanitizingLogger")
+	}
+
+	// Log a message with secret using the context logger
+	ctxLogger.Info("API key is sk-1234567890abcdef1234567890abcdef1234567890abcdef")
+
+	// Get the logged output
+	output := buf.String()
+
+	// Check that the API key is sanitized
+	if strings.Contains(output, "sk-1234567890abcdef") {
+		t.Error("SanitizingLogger with context failed to sanitize API key")
+	}
+
+	// Check that redaction was applied
+	if !strings.Contains(output, "[REDACTED]") {
+		t.Error("Expected output to contain [REDACTED]")
+	}
+}
+
+// TestSanitizingLoggerFatal tests the Fatal method
+func TestSanitizingLoggerFatal(t *testing.T) {
+	// Save original osExit and replace it
+	originalOsExit := osExit
+	defer func() { osExit = originalOsExit }()
+
+	// Mock os.Exit
+	exitCalled := false
+	exitCode := 0
+	osExit = func(code int) {
+		exitCalled = true
+		exitCode = code
+	}
+
+	// Create a buffer to capture logs
+	var buf bytes.Buffer
+	baseLogger := log.New(&buf, "", 0)
+	stdAdapter := NewStdLoggerAdapter(baseLogger)
+
+	// Create a sanitizing logger
+	logger := NewSanitizingLogger(stdAdapter)
+	logger.SetFailOnSecretDetect(false)
+
+	// Call Fatal with sensitive data
+	logger.Fatal("Fatal error with API key: sk-1234567890abcdef1234567890abcdef1234567890abcdef")
+
+	// Check that os.Exit was called
+	if !exitCalled {
+		t.Error("os.Exit was not called by Fatal method")
+	}
+
+	if exitCode != 1 {
+		t.Errorf("Expected exit code 1, got %d", exitCode)
+	}
+
+	// Get the logged output
+	output := buf.String()
+
+	// Check that the API key is sanitized
+	if strings.Contains(output, "sk-1234567890abcdef") {
+		t.Error("Fatal method failed to sanitize API key")
+	}
+
+	// Check for FATAL level
+	if !strings.Contains(output, "[FATAL]") {
+		t.Error("Expected output to contain [FATAL]")
+	}
+
+	// Check that redaction was applied
+	if !strings.Contains(output, "[REDACTED]") {
+		t.Error("Expected output to contain [REDACTED]")
+	}
+}
+
+// TestSanitizingLoggerPrintMethods tests Printf and Println methods
+func TestSanitizingLoggerPrintMethods(t *testing.T) {
+	// Create a buffer to capture logs
+	var buf bytes.Buffer
+	baseLogger := log.New(&buf, "", 0)
+	stdAdapter := NewStdLoggerAdapter(baseLogger)
+
+	// Create a sanitizing logger
+	logger := NewSanitizingLogger(stdAdapter)
+	logger.SetFailOnSecretDetect(false)
+
+	// Test Printf
+	t.Run("Printf", func(t *testing.T) {
+		buf.Reset()
+		logger.Printf("API key is %s", "sk-1234567890abcdef1234567890abcdef1234567890abcdef")
+
+		output := buf.String()
+		if strings.Contains(output, "sk-1234567890abcdef") {
+			t.Error("Printf failed to sanitize API key")
+		}
+		if !strings.Contains(output, "[REDACTED]") {
+			t.Error("Expected Printf output to contain [REDACTED]")
+		}
+	})
+
+	// Test Println
+	t.Run("Println", func(t *testing.T) {
+		buf.Reset()
+		logger.Println("Bearer token:", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")
+
+		output := buf.String()
+		if strings.Contains(output, "eyJhbGciOiJ") {
+			t.Error("Println failed to sanitize Bearer token")
+		}
+		if !strings.Contains(output, "[REDACTED]") {
+			t.Error("Expected Println output to contain [REDACTED]")
+		}
+	})
+}
+
+// TestSanitizingLoggerContextMethods tests the remaining context methods (DebugContext, WarnContext, ErrorContext, FatalContext)
+func TestSanitizingLoggerContextMethods(t *testing.T) {
+	// Create a buffer to capture logs
+	var buf bytes.Buffer
+	baseLogger := log.New(&buf, "", 0)
+	stdAdapter := NewStdLoggerAdapter(baseLogger)
+
+	// Create a sanitizing logger
+	logger := NewSanitizingLogger(stdAdapter)
+	logger.SetFailOnSecretDetect(false)
+
+	// Create context with correlation ID
+	ctx := WithCustomCorrelationID(context.Background(), "test-correlation-id")
+
+	testCases := []struct {
+		name    string
+		logFunc func(context.Context, string, ...interface{})
+		level   string
+		message string
+		secret  string
+	}{
+		{
+			name:    "DebugContext",
+			logFunc: logger.DebugContext,
+			level:   "[DEBUG]",
+			message: "Debug with API key: %s",
+			secret:  "sk-1234567890abcdef1234567890abcdef1234567890abcdef",
+		},
+		{
+			name:    "WarnContext",
+			logFunc: logger.WarnContext,
+			level:   "[WARN]",
+			message: "Warning with token: %s",
+			secret:  "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+		},
+		{
+			name:    "ErrorContext",
+			logFunc: logger.ErrorContext,
+			level:   "[ERROR]",
+			message: "Error with password: %s",
+			secret:  "password123secret",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf.Reset()
+			tc.logFunc(ctx, tc.message, tc.secret)
+
+			output := buf.String()
+
+			// Check that secret is sanitized
+			if strings.Contains(output, tc.secret) {
+				t.Errorf("%s failed to sanitize secret", tc.name)
+			}
+
+			// Check for redaction
+			if !strings.Contains(output, "[REDACTED]") {
+				t.Errorf("Expected %s output to contain [REDACTED]", tc.name)
+			}
+
+			// Check for log level
+			if !strings.Contains(output, tc.level) {
+				t.Errorf("Expected %s output to contain level %s", tc.name, tc.level)
+			}
+
+			// Check for correlation ID
+			if !strings.Contains(output, "test-correlation-id") {
+				t.Errorf("Expected %s output to contain correlation ID", tc.name)
+			}
+		})
+	}
+
+	// Test FatalContext separately due to os.Exit
+	t.Run("FatalContext", func(t *testing.T) {
+		// Save original osExit and replace it
+		originalOsExit := osExit
+		defer func() { osExit = originalOsExit }()
+
+		// Mock os.Exit
+		exitCalled := false
+		osExit = func(code int) {
+			exitCalled = true
+		}
+
+		buf.Reset()
+		logger.FatalContext(ctx, "Fatal with key: %s", "sk-1234567890abcdef1234567890abcdef1234567890abcdef")
+
+		output := buf.String()
+
+		if !exitCalled {
+			t.Error("FatalContext did not call os.Exit")
+		}
+
+		if strings.Contains(output, "sk-1234567890abcdef") {
+			t.Error("FatalContext failed to sanitize API key")
+		}
+
+		if !strings.Contains(output, "[REDACTED]") {
+			t.Error("Expected FatalContext output to contain [REDACTED]")
+		}
+
+		if !strings.Contains(output, "[FATAL]") {
+			t.Error("Expected FatalContext output to contain [FATAL]")
+		}
+	})
+}
