@@ -320,11 +320,11 @@ var modelDefinitions = map[string]ModelInfo{
 			"max_tokens":  intConstraint(1, 131072),
 		},
 	},
-	"openrouter/x-ai/grok-3-beta": {
+	"grok-4": {
 		Provider:        "openrouter",
-		APIModelID:      "x-ai/grok-3-beta",
-		ContextWindow:   131072,
-		MaxOutputTokens: 131072,
+		APIModelID:      "x-ai/grok-4",
+		ContextWindow:   256000,
+		MaxOutputTokens: 256000, // Using context window as max since OpenRouter page doesn't specify
 		DefaultParams: map[string]interface{}{
 			"temperature": 0.7,
 			"top_p":       0.95,
@@ -332,22 +332,7 @@ var modelDefinitions = map[string]ModelInfo{
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature": floatConstraint(0.0, 2.0),
 			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 131072),
-		},
-	},
-	"openrouter/google/gemma-3-27b-it": {
-		Provider:        "openrouter",
-		APIModelID:      "google/gemma-3-27b-it",
-		ContextWindow:   8192,
-		MaxOutputTokens: 8192,
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.95,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature": floatConstraint(0.0, 2.0),
-			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 8192),
+			"max_tokens":  intConstraint(1, 256000),
 		},
 	},
 
