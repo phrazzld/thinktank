@@ -181,6 +181,7 @@ func TestListModelsForProvider(t *testing.T) {
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"grok-4",
+				"kimi-k2",
 				"mercury",
 				"o3",
 				"o4-mini",
