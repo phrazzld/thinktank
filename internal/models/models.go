@@ -270,7 +270,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-3.3-70b-instruct": {
 		Provider:        "openrouter",
-		APIModelID:      "meta/llama-3.3-70b-instruct",
+		APIModelID:      "meta-llama/llama-3.3-70b-instruct",
 		ContextWindow:   131072,
 		MaxOutputTokens: 131072,
 		DefaultParams: map[string]interface{}{
@@ -285,7 +285,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-4-maverick": {
 		Provider:        "openrouter",
-		APIModelID:      "meta/llama-4-maverick",
+		APIModelID:      "meta-llama/llama-4-maverick",
 		ContextWindow:   1048576,
 		MaxOutputTokens: 100000,
 		DefaultParams: map[string]interface{}{
@@ -304,7 +304,7 @@ var modelDefinitions = map[string]ModelInfo{
 	},
 	"openrouter/meta-llama/llama-4-scout": {
 		Provider:        "openrouter",
-		APIModelID:      "meta/llama-4-scout",
+		APIModelID:      "meta-llama/llama-4-scout",
 		ContextWindow:   1048576,
 		MaxOutputTokens: 100000,
 		DefaultParams: map[string]interface{}{
