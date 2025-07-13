@@ -160,7 +160,7 @@ type TokenCountingRequest struct {
 	Files []FileContent
 
 	// SafetyMarginPercent is the percentage of context window to reserve for output (0-50%)
-	// Default: 20% if not specified (0 value)
+	// Default: 10% if not specified (0 value)
 	SafetyMarginPercent uint8
 }
 

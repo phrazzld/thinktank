@@ -168,6 +168,9 @@ type CliConfig struct {
 	// where they are not actionable. When true, warnings are logged to debug but not shown to stderr.
 	// Can be set via --no-deprecation-warnings flag or THINKTANK_SUPPRESS_DEPRECATION_WARNINGS env var.
 	SuppressDeprecationWarnings bool
+
+	// Token safety margin percentage (0-50%) - percentage of context window reserved for output
+	TokenSafetyMargin uint8
 }
 
 // NewDefaultCliConfig returns a CliConfig with default values.
@@ -192,6 +195,7 @@ func NewDefaultCliConfig() *CliConfig {
 		OpenAIRateLimit:     0,
 		GeminiRateLimit:     0,
 		OpenRouterRateLimit: 0,
+		TokenSafetyMargin:   10, // Default 10% safety margin
 	}
 }
 

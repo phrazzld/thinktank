@@ -26,8 +26,8 @@ func TestTokenCountingService_ConfigurableSafetyMargin(t *testing.T) {
 		{
 			name:                "0% safety margin",
 			safetyMarginPercent: 0,
-			expectedUsableMin:   950, // Should use default 20% = 800 tokens usable
-			expectedUsableMax:   850,
+			expectedUsableMin:   890, // Should use default 10% = 900 tokens usable
+			expectedUsableMax:   910,
 		},
 		{
 			name:                "10% safety margin",
@@ -75,14 +75,14 @@ func TestTokenCountingService_ConfigurableSafetyMargin(t *testing.T) {
 
 			// Verify that the usable context reflects our safety margin configuration
 			// For gpt-4.1 with ~100K context window:
-			// - 0% margin (default 20%) should give ~80K usable
+			// - 0% margin (default 10%) should give ~90K usable
 			// - 10% margin should give ~90K usable
 			// - 30% margin should give ~70K usable
 			// - 50% margin should give ~50K usable
 
 			expectedSafetyPercent := tt.safetyMarginPercent
 			if expectedSafetyPercent == 0 {
-				expectedSafetyPercent = 20 // Default
+				expectedSafetyPercent = 10 // Default
 			}
 
 			expectedUsable := foundModel.ContextWindow * (100 - int(expectedSafetyPercent)) / 100
@@ -125,12 +125,12 @@ func TestTokenCountingService_DefaultSafetyMargin(t *testing.T) {
 
 	require.NotNil(t, foundModel, "Should find gpt-4.1 model")
 
-	// Verify that default 20% safety margin is applied
-	expectedUsable := foundModel.ContextWindow * 80 / 100 // 80% usable (20% safety margin)
+	// Verify that default 10% safety margin is applied
+	expectedUsable := foundModel.ContextWindow * 90 / 100 // 90% usable (10% safety margin)
 	actualUsable := foundModel.UsableContext
 
 	tolerance := foundModel.ContextWindow / 100 // 1% tolerance
 	assert.InDelta(t, expectedUsable, actualUsable, float64(tolerance),
-		"Should use default 20%% safety margin. Expected ~%d, got %d (context: %d)",
+		"Should use default 10%% safety margin. Expected ~%d, got %d (context: %d)",
 		expectedUsable, actualUsable, foundModel.ContextWindow)
 }

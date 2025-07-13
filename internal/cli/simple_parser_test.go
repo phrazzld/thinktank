@@ -41,7 +41,7 @@ func TestParseSimpleArgsWithArgs_Basic(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -121,7 +121,7 @@ func TestParseSimpleArgsWithArgs_BooleanFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -131,7 +131,7 @@ func TestParseSimpleArgsWithArgs_BooleanFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagVerbose | FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -141,7 +141,7 @@ func TestParseSimpleArgsWithArgs_BooleanFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagSynthesis | FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -151,7 +151,7 @@ func TestParseSimpleArgsWithArgs_BooleanFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun | FlagVerbose | FlagSynthesis,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -161,7 +161,7 @@ func TestParseSimpleArgsWithArgs_BooleanFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun | FlagVerbose | FlagSynthesis,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -229,7 +229,7 @@ func TestParseSimpleArgsWithArgs_ValueFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -239,7 +239,7 @@ func TestParseSimpleArgsWithArgs_ValueFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -249,7 +249,7 @@ func TestParseSimpleArgsWithArgs_ValueFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -259,7 +259,7 @@ func TestParseSimpleArgsWithArgs_ValueFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -269,7 +269,7 @@ func TestParseSimpleArgsWithArgs_ValueFlags(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagVerbose | FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -357,7 +357,7 @@ func TestParseSimpleArgsWithArgs_EdgeCases(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -367,7 +367,7 @@ func TestParseSimpleArgsWithArgs_EdgeCases(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{
@@ -377,7 +377,7 @@ func TestParseSimpleArgsWithArgs_EdgeCases(t *testing.T) {
 				InstructionsFile: testInstructionsFile,
 				TargetPath:       testTargetDir,
 				Flags:            FlagDryRun | FlagVerbose | FlagSynthesis,
-				SafetyMargin:     20, // Default safety margin
+				SafetyMargin:     10, // Default safety margin
 			},
 		},
 		{

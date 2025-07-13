@@ -41,8 +41,8 @@ func TestSafetyMarginDefault(t *testing.T) {
 	config, err := ParseSimpleArgsWithArgs(args)
 	require.NoError(t, err)
 
-	// This will fail because SafetyMargin field doesn't exist yet
-	assert.Equal(t, uint8(20), config.SafetyMargin, "Default safety margin should be 20%")
+	// Verify default safety margin is 10%
+	assert.Equal(t, uint8(10), config.SafetyMargin, "Default safety margin should be 10%")
 }
 
 // TestSafetyMarginValidation tests that invalid safety margin values are rejected
