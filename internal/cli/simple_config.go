@@ -44,7 +44,7 @@ const (
 const (
 	DefaultModel        = "gemini-2.5-pro"
 	DefaultOutputDir    = "."
-	DefaultSafetyMargin = 20 // 20% safety margin for token calculations
+	DefaultSafetyMargin = 10 // 10% safety margin for token calculations
 )
 
 // HasFlag checks if a flag is set using bitwise AND - O(1) operation

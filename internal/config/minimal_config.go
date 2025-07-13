@@ -33,19 +33,23 @@ type MinimalConfig struct {
 	Format       string // Format string for file content
 	Exclude      string // File extensions to exclude
 	ExcludeNames string // File/dir names to exclude
+
+	// Token safety margin percentage (0-50%) - percentage of context window reserved for output
+	TokenSafetyMargin uint8
 }
 
 // NewDefaultMinimalConfig returns a MinimalConfig with sensible defaults.
 // Smart defaults are applied here rather than storing complex configuration.
 func NewDefaultMinimalConfig() *MinimalConfig {
 	return &MinimalConfig{
-		ModelNames:   []string{DefaultModel},
-		OutputDir:    "", // Will be set to timestamp-based dir by output manager
-		LogLevel:     logutil.InfoLevel,
-		Timeout:      DefaultTimeout,
-		Format:       DefaultFormat,
-		Exclude:      DefaultExcludes,
-		ExcludeNames: DefaultExcludeNames,
+		ModelNames:        []string{DefaultModel},
+		OutputDir:         "", // Will be set to timestamp-based dir by output manager
+		LogLevel:          logutil.InfoLevel,
+		Timeout:           DefaultTimeout,
+		Format:            DefaultFormat,
+		Exclude:           DefaultExcludes,
+		ExcludeNames:      DefaultExcludeNames,
+		TokenSafetyMargin: 10, // Default 10% safety margin
 	}
 }
 

@@ -398,10 +398,10 @@ func (s *tokenCountingServiceImpl) checkModelCompatibility(ctx context.Context, 
 		return interfaces.ModelCompatibility{}, fmt.Errorf("failed to count tokens for %s: %w", modelName, err)
 	}
 
-	// Calculate safety margin using configurable percentage (default 20% if not specified)
+	// Calculate safety margin using configurable percentage (default 10% if not specified)
 	safetyMarginPercent := req.SafetyMarginPercent
 	if safetyMarginPercent == 0 {
-		safetyMarginPercent = 20 // Default 20% safety margin
+		safetyMarginPercent = 10 // Default 10% safety margin
 	}
 	safetyMargin := int(float64(modelInfo.ContextWindow) * float64(safetyMarginPercent) / 100.0)
 	usableContext := modelInfo.ContextWindow - safetyMargin

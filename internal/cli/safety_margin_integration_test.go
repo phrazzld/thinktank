@@ -26,7 +26,7 @@ func TestSafetyMarginIntegration(t *testing.T) {
 				"../../README.md",
 				".",
 			},
-			expectedMargin: 20, // Default
+			expectedMargin: 10, // Default
 		},
 		{
 			name: "custom safety margin via separate flag",

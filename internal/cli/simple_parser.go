@@ -44,7 +44,7 @@ func ParseSimpleArgsWithArgs(args []string) (*SimplifiedConfig, error) {
 	var instructionsFile string
 	var targetPaths []string
 	flags := uint8(0)
-	safetyMargin := uint8(20) // Default 20% safety margin
+	safetyMargin := uint8(10) // Default 10% safety margin
 
 	// Track if we've seen the instructions file
 	seenInstructions := false

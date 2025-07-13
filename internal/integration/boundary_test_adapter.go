@@ -423,6 +423,8 @@ func (s *BoundaryAPIService) GetModelTokenLimits(ctx context.Context, modelName 
 		return 32768, 8192, nil
 	} else if strings.Contains(modelLower, "claude") {
 		return 100000, 4096, nil
+	} else if strings.Contains(modelLower, "kimi") {
+		return 131072, 131072, nil // Kimi K2 context window and max output tokens
 	}
 
 	// For integration test models (model1, model2, model3, synthesis-model), provide generous context windows

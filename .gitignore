@@ -159,11 +159,10 @@ main
 .artifacts/
 internal/cli/testdata/
 
-# Task and TODO temporary files
+# Task and TODO temporary files (but NOT the main project files)
 task.md
-TODO.md
 TODO-*.md
 TASK-*.md
-BACKLOG.md
+# Note: TODO.md and BACKLOG.md are legitimate project files and should NOT be ignored
 
 .env

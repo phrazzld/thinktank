@@ -144,21 +144,22 @@ func setupConfiguration(simplifiedConfig *SimplifiedConfig, tokenService thinkta
 
 	// Convert to MinimalConfig
 	minimalConfig := &config.MinimalConfig{
-		InstructionsFile: simplifiedConfig.InstructionsFile,
-		TargetPaths:      strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
-		ModelNames:       modelNames,
-		OutputDir:        "", // Will be set by output manager
-		DryRun:           simplifiedConfig.HasFlag(FlagDryRun),
-		Verbose:          simplifiedConfig.HasFlag(FlagVerbose),
-		SynthesisModel:   synthesisModel, // Set by intelligent selection
-		LogLevel:         logutil.InfoLevel,
-		Timeout:          config.DefaultTimeout,
-		Quiet:            simplifiedConfig.HasFlag(FlagQuiet),
-		NoProgress:       simplifiedConfig.HasFlag(FlagNoProgress),
-		JsonLogs:         simplifiedConfig.HasFlag(FlagJsonLogs),
-		Format:           config.DefaultFormat,
-		Exclude:          config.DefaultExcludes,
-		ExcludeNames:     config.DefaultExcludeNames,
+		InstructionsFile:  simplifiedConfig.InstructionsFile,
+		TargetPaths:       strings.Fields(simplifiedConfig.TargetPath), // Split space-joined paths
+		ModelNames:        modelNames,
+		OutputDir:         "", // Will be set by output manager
+		DryRun:            simplifiedConfig.HasFlag(FlagDryRun),
+		Verbose:           simplifiedConfig.HasFlag(FlagVerbose),
+		SynthesisModel:    synthesisModel, // Set by intelligent selection
+		LogLevel:          logutil.InfoLevel,
+		Timeout:           config.DefaultTimeout,
+		Quiet:             simplifiedConfig.HasFlag(FlagQuiet),
+		NoProgress:        simplifiedConfig.HasFlag(FlagNoProgress),
+		JsonLogs:          simplifiedConfig.HasFlag(FlagJsonLogs),
+		Format:            config.DefaultFormat,
+		Exclude:           config.DefaultExcludes,
+		ExcludeNames:      config.DefaultExcludeNames,
+		TokenSafetyMargin: simplifiedConfig.SafetyMargin,
 	}
 
 	// Apply environment variables
@@ -458,20 +459,21 @@ func runDryRun(ctx context.Context, cfg *config.MinimalConfig, instructions stri
 // This will be removed once orchestrator is updated to use ConfigInterface
 func createAdapterConfig(cfg *config.MinimalConfig) *config.CliConfig {
 	return &config.CliConfig{
-		InstructionsFile: cfg.InstructionsFile,
-		Paths:            cfg.TargetPaths,
-		ModelNames:       cfg.ModelNames,
-		OutputDir:        cfg.OutputDir,
-		DryRun:           cfg.DryRun,
-		Verbose:          cfg.Verbose,
-		SynthesisModel:   cfg.SynthesisModel,
-		LogLevel:         cfg.LogLevel,
-		Quiet:            cfg.Quiet,
-		NoProgress:       cfg.NoProgress,
-		Format:           cfg.Format,
-		Exclude:          cfg.Exclude,
-		ExcludeNames:     cfg.ExcludeNames,
-		Timeout:          cfg.Timeout,
+		InstructionsFile:  cfg.InstructionsFile,
+		Paths:             cfg.TargetPaths,
+		ModelNames:        cfg.ModelNames,
+		OutputDir:         cfg.OutputDir,
+		DryRun:            cfg.DryRun,
+		Verbose:           cfg.Verbose,
+		SynthesisModel:    cfg.SynthesisModel,
+		LogLevel:          cfg.LogLevel,
+		Quiet:             cfg.Quiet,
+		NoProgress:        cfg.NoProgress,
+		Format:            cfg.Format,
+		Exclude:           cfg.Exclude,
+		ExcludeNames:      cfg.ExcludeNames,
+		Timeout:           cfg.Timeout,
+		TokenSafetyMargin: cfg.TokenSafetyMargin,
 		// Set smart defaults for other fields
 		MaxConcurrentRequests:      5,
 		RateLimitRequestsPerMinute: 60,
