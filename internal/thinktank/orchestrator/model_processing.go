@@ -28,7 +28,7 @@ func (o *Orchestrator) processModelsWithErrorHandling(ctx context.Context, stitc
 	tokenReq := interfaces.TokenCountingRequest{
 		Instructions:        stitchedPrompt,
 		Files:               []interfaces.FileContent{}, // Files are already included in stitchedPrompt
-		SafetyMarginPercent: 20,                         // Default 20% safety margin - TODO: make this configurable via CLI
+		SafetyMarginPercent: o.config.TokenSafetyMargin,
 	}
 
 	tokenResult, err := o.tokenCountingService.CountTokens(ctx, tokenReq)
