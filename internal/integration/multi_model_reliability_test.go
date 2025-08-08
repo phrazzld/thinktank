@@ -38,10 +38,10 @@ import (
 func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
-    // Get all 24 supported models (20 production models + 4 test models = 24 total)
+	// Get all 24 supported models (20 production models + 4 test models = 24 total)
 	allModels := models.ListAllModels()
-    if len(allModels) != 24 {
-        t.Fatalf("Expected 24 models, got %d", len(allModels))
+	if len(allModels) != 24 {
+		t.Fatalf("Expected 24 models, got %d", len(allModels))
 	}
 
 	// Create test environment
