@@ -268,6 +268,66 @@ func TestValidateParameter(t *testing.T) {
 			wantError: false,
 		},
 
+		// GPT-5 models validation
+		{
+			name:      "gpt-5 valid temperature",
+			modelName: "gpt-5",
+			paramName: "temperature",
+			value:     0.7,
+			wantError: false,
+		},
+		{
+			name:      "gpt-5-mini valid max_tokens",
+			modelName: "gpt-5-mini",
+			paramName: "max_tokens",
+			value:     100000,
+			wantError: false,
+		},
+		{
+			name:      "gpt-5-nano valid reasoning_effort low",
+			modelName: "gpt-5-nano",
+			paramName: "reasoning_effort",
+			value:     "low",
+			wantError: false,
+		},
+		{
+			name:      "gpt-5 valid reasoning_effort high",
+			modelName: "gpt-5",
+			paramName: "reasoning_effort",
+			value:     "high",
+			wantError: false,
+		},
+		{
+			name:      "gpt-5-mini valid reasoning_effort medium",
+			modelName: "gpt-5-mini",
+			paramName: "reasoning_effort",
+			value:     "medium",
+			wantError: false,
+		},
+		{
+			name:          "gpt-5 invalid reasoning_effort",
+			modelName:     "gpt-5",
+			paramName:     "reasoning_effort",
+			value:         "ultra",
+			wantError:     true,
+			errorContains: "reasoning_effort",
+		},
+		{
+			name:          "gpt-5-nano max_tokens exceeds limit",
+			modelName:     "gpt-5-nano",
+			paramName:     "max_tokens",
+			value:         200000,
+			wantError:     true,
+			errorContains: "max_tokens",
+		},
+		{
+			name:      "gpt-5-chat-latest valid parameters",
+			modelName: "gpt-5-chat-latest",
+			paramName: "temperature",
+			value:     1.5,
+			wantError: false,
+		},
+
 		// Model validation errors
 		{
 			name:          "unknown model",

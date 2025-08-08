@@ -33,6 +33,35 @@ func TestGetModelInfo(t *testing.T) {
 			wantAPIModelID: "openai/o4-mini",
 			wantError:      false,
 		},
+		// Valid models - GPT-5
+		{
+			name:           "gpt-5 valid model",
+			modelName:      "gpt-5",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/gpt-5",
+			wantError:      false,
+		},
+		{
+			name:           "gpt-5-mini valid model",
+			modelName:      "gpt-5-mini",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/gpt-5-mini",
+			wantError:      false,
+		},
+		{
+			name:           "gpt-5-nano valid model",
+			modelName:      "gpt-5-nano",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/gpt-5-nano",
+			wantError:      false,
+		},
+		{
+			name:           "gpt-5-chat-latest valid model",
+			modelName:      "gpt-5-chat-latest",
+			wantProvider:   "openrouter",
+			wantAPIModelID: "openai/gpt-5-chat-latest",
+			wantError:      false,
+		},
 		// Valid models - Gemini (migrated to OpenRouter)
 		{
 			name:           "gemini-2.5-pro valid model",
@@ -180,6 +209,10 @@ func TestListModelsForProvider(t *testing.T) {
 				"gemini-2.5-flash",
 				"gemini-2.5-pro",
 				"gpt-4.1",
+				"gpt-5",
+				"gpt-5-chat-latest",
+				"gpt-5-mini",
+				"gpt-5-nano",
 				"grok-4",
 				"kimi-k2",
 				"mercury",

@@ -119,6 +119,90 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 
+	// GPT-5 Models
+	"gpt-5": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning_effort":  "high",
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+		},
+	},
+	"gpt-5-mini": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5-mini",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning_effort":  "medium",
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+		},
+	},
+	"gpt-5-nano": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5-nano",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning_effort":  "low",
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+		},
+	},
+	"gpt-5-chat-latest": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5-chat-latest",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+		},
+	},
+
 	// Gemini Models
 	"gemini-2.5-pro": {
 		Provider:        "openrouter",
