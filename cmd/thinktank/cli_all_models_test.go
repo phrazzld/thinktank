@@ -24,10 +24,10 @@ func TestCLIValidatesAllSupportedModels(t *testing.T) {
 	}
 
 	// Get all supported models
-	supportedModels := models.ListAllModels()
-	if len(supportedModels) != 20 {
-		t.Fatalf("Expected 20 supported models (16 production + 4 test), got %d", len(supportedModels))
-	}
+    supportedModels := models.ListAllModels()
+    if len(supportedModels) != 24 {
+        t.Fatalf("Expected 24 supported models (20 production + 4 test), got %d", len(supportedModels))
+    }
 
 	// Create a mock logger
 	logger := logutil.NewTestLogger(t)
@@ -237,11 +237,11 @@ func TestCLIRejectsInvalidModels(t *testing.T) {
 			modelNames:    []string{"invalid-model-name"},
 			errorContains: "unknown model",
 		},
-		{
-			name:          "GPT model that doesn't exist",
-			modelNames:    []string{"gpt-5"},
-			errorContains: "unknown model",
-		},
+        {
+            name:          "GPT model that doesn't exist",
+            modelNames:    []string{"gpt-6"},
+            errorContains: "unknown model",
+        },
 		{
 			name:          "Gemini model that doesn't exist",
 			modelNames:    []string{"gemini-ultra"},
