@@ -284,13 +284,6 @@ func TestValidateParameter(t *testing.T) {
 			wantError: false,
 		},
 		{
-			name:      "gpt-5-nano valid reasoning_effort low",
-			modelName: "gpt-5-nano",
-			paramName: "reasoning_effort",
-			value:     "low",
-			wantError: false,
-		},
-		{
 			name:      "gpt-5 valid reasoning_effort high",
 			modelName: "gpt-5",
 			paramName: "reasoning_effort",
@@ -311,21 +304,6 @@ func TestValidateParameter(t *testing.T) {
 			value:         "ultra",
 			wantError:     true,
 			errorContains: "reasoning_effort",
-		},
-		{
-			name:          "gpt-5-nano max_tokens exceeds limit",
-			modelName:     "gpt-5-nano",
-			paramName:     "max_tokens",
-			value:         200000,
-			wantError:     true,
-			errorContains: "max_tokens",
-		},
-		{
-			name:      "gpt-5-chat-latest valid parameters",
-			modelName: "gpt-5-chat-latest",
-			paramName: "temperature",
-			value:     1.5,
-			wantError: false,
 		},
 
 		// Model validation errors

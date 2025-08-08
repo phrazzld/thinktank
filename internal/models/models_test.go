@@ -48,20 +48,6 @@ func TestGetModelInfo(t *testing.T) {
 			wantAPIModelID: "openai/gpt-5-mini",
 			wantError:      false,
 		},
-		{
-			name:           "gpt-5-nano valid model",
-			modelName:      "gpt-5-nano",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/gpt-5-nano",
-			wantError:      false,
-		},
-		{
-			name:           "gpt-5-chat-latest valid model",
-			modelName:      "gpt-5-chat-latest",
-			wantProvider:   "openrouter",
-			wantAPIModelID: "openai/gpt-5-chat-latest",
-			wantError:      false,
-		},
 		// Valid models - Gemini (migrated to OpenRouter)
 		{
 			name:           "gemini-2.5-pro valid model",
@@ -210,9 +196,7 @@ func TestListModelsForProvider(t *testing.T) {
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gpt-5",
-				"gpt-5-chat-latest",
 				"gpt-5-mini",
-				"gpt-5-nano",
 				"grok-4",
 				"kimi-k2",
 				"mercury",
@@ -222,10 +206,7 @@ func TestListModelsForProvider(t *testing.T) {
 				"openrouter/deepseek/deepseek-chat-v3-0324:free",
 				"openrouter/deepseek/deepseek-r1-0528",
 				"openrouter/deepseek/deepseek-r1-0528:free",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
-				"openrouter/x-ai/grok-3-mini-beta",
 			},
 		},
 		{
