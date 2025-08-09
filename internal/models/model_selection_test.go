@@ -18,7 +18,6 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 1000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"synthesis-model",
 				"gemini-2.5-pro",
 				"gpt-4.1",
@@ -26,11 +25,11 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 				"model2",
 				"model3",
 				"gemini-2.5-flash",
+				"gpt-5",
+				"gpt-5-mini",
 				"grok-4",
 				"o3",
 				"o4-mini",
-				"openrouter/x-ai/grok-3-mini-beta",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
 				"openrouter/deepseek/deepseek-r1-0528",
 				"openrouter/deepseek/deepseek-r1-0528:free",
 				"kimi-k2",
@@ -45,16 +44,15 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 100000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
+				"gpt-5",
+				"gpt-5-mini",
 				"grok-4",
 				"o3",
 				"o4-mini",
 				"openrouter/deepseek/deepseek-r1-0528:free",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
-				"openrouter/x-ai/grok-3-mini-beta",
 				"kimi-k2",
 				"openrouter/deepseek/deepseek-r1-0528",
 			},
@@ -65,7 +63,6 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 500000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
@@ -77,7 +74,6 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 900000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
@@ -89,10 +85,11 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 300000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
+				"gpt-5",
+				"gpt-5-mini",
 			},
 			verifyOrder: true,
 		},
@@ -101,7 +98,6 @@ func TestGetModelsWithMinContextWindow(t *testing.T) {
 			minTokens: 1000000,
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
@@ -196,15 +192,14 @@ func TestSelectModelsForInput(t *testing.T) {
 			availableProviders: []string{"openai", "gemini", "openrouter"},
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-flash",
 				"gpt-4.1",
 				"gemini-2.5-pro",
+				"gpt-5",
+				"gpt-5-mini",
 				"grok-4",
 				"o3",
 				"o4-mini",
-				"openrouter/x-ai/grok-3-mini-beta",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
 				"openrouter/deepseek/deepseek-r1-0528",
 				"openrouter/deepseek/deepseek-r1-0528:free",
 				"kimi-k2",
@@ -227,7 +222,6 @@ func TestSelectModelsForInput(t *testing.T) {
 			availableProviders: []string{"openai", "gemini", "openrouter"},
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
@@ -268,7 +262,6 @@ func TestSelectModelsForInput(t *testing.T) {
 			availableProviders: []string{"openai", "gemini", "openrouter"},
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
@@ -281,16 +274,15 @@ func TestSelectModelsForInput(t *testing.T) {
 			availableProviders: []string{"openrouter"},
 			expectedModels: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 				"gemini-2.5-pro",
 				"gpt-4.1",
 				"gemini-2.5-flash",
+				"gpt-5",
+				"gpt-5-mini",
 				"grok-4",
 				"o3",
 				"o4-mini",
 				"openrouter/deepseek/deepseek-r1-0528:free",
-				"openrouter/meta-llama/llama-3.3-70b-instruct",
-				"openrouter/x-ai/grok-3-mini-beta",
 				"kimi-k2",
 				"openrouter/deepseek/deepseek-r1-0528",
 				"openrouter/deepseek/deepseek-chat-v3-0324",
@@ -462,21 +454,20 @@ func TestGetLargestContextModel(t *testing.T) {
 			name: "largest possible context models",
 			modelNames: []string{
 				"openrouter/meta-llama/llama-4-maverick",
-				"openrouter/meta-llama/llama-4-scout",
 			},
 			expectedModel: "openrouter/meta-llama/llama-4-maverick", // Both have same context, first wins
 		},
 		{
 			name: "comprehensive mix of all model types",
 			modelNames: []string{
-				"o4-mini",                              // 200k
-				"openrouter/google/gemma-3-27b-it",     // 8192
-				"gemini-2.5-flash",                     // 1M
-				"openrouter/deepseek/deepseek-r1-0528", // 128k
-				"openrouter/meta-llama/llama-4-scout",  // 1048576 (largest)
-				"openrouter/x-ai/grok-3-beta",          // 131072
+				"o4-mini",                                // 200k
+				"openrouter/google/gemma-3-27b-it",       // 8192
+				"gemini-2.5-flash",                       // 1M
+				"openrouter/deepseek/deepseek-r1-0528",   // 128k
+				"openrouter/meta-llama/llama-4-maverick", // 1048576 (largest)
+				"openrouter/x-ai/grok-3-beta",            // 131072
 			},
-			expectedModel: "openrouter/meta-llama/llama-4-scout", // 1048576 context window
+			expectedModel: "openrouter/meta-llama/llama-4-maverick", // 1048576 context window
 		},
 	}
 

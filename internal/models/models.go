@@ -119,6 +119,50 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 	},
 
+	// GPT-5 Models
+	"gpt-5": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning_effort":  "high",
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+		},
+	},
+	"gpt-5-mini": {
+		Provider:        "openrouter",
+		APIModelID:      "openai/gpt-5-mini",
+		ContextWindow:   400000, // 272K input + 128K output
+		MaxOutputTokens: 128000,
+		DefaultParams: map[string]interface{}{
+			"temperature":       0.7,
+			"top_p":             1.0,
+			"frequency_penalty": 0.0,
+			"presence_penalty":  0.0,
+			"reasoning_effort":  "medium",
+		},
+		ParameterConstraints: map[string]ParameterConstraint{
+			"temperature":       floatConstraint(0.0, 2.0),
+			"top_p":             floatConstraint(0.0, 1.0),
+			"max_tokens":        intConstraint(1, 128000),
+			"frequency_penalty": floatConstraint(-2.0, 2.0),
+			"presence_penalty":  floatConstraint(-2.0, 2.0),
+			"reasoning_effort":  {Type: "string", EnumValues: []string{"low", "medium", "high"}},
+		},
+	},
+
 	// Gemini Models
 	"gemini-2.5-pro": {
 		Provider:        "openrouter",
@@ -218,7 +262,7 @@ var modelDefinitions = map[string]ModelInfo{
 		DefaultParams: map[string]interface{}{
 			"temperature": 1.0,
 			"top_p":       1.0,
-			"stop":        []string{"<｜User｜>", "<｜end▁of▁sentence｜>"},
+			"stop":        []string{"<｜User｜>", "<｜end of sentence｜>"},
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":       floatConstraint(0.0, 2.0),
@@ -254,7 +298,7 @@ var modelDefinitions = map[string]ModelInfo{
 		DefaultParams: map[string]interface{}{
 			"temperature": 1.0,
 			"top_p":       1.0,
-			"stop":        []string{"<｜User｜>", "<｜end▁of▁sentence｜>"},
+			"stop":        []string{"<｜User｜>", "<｜end of sentence｜>"},
 		},
 		ParameterConstraints: map[string]ParameterConstraint{
 			"temperature":        floatConstraint(0.0, 2.0),
@@ -267,21 +311,6 @@ var modelDefinitions = map[string]ModelInfo{
 		},
 		MaxConcurrentRequests: &[]int{1}[0], // Force sequential processing to avoid concurrency conflicts
 		RateLimitRPM:          &[]int{3}[0], // Very low rate limit for free tier
-	},
-	"openrouter/meta-llama/llama-3.3-70b-instruct": {
-		Provider:        "openrouter",
-		APIModelID:      "meta-llama/llama-3.3-70b-instruct",
-		ContextWindow:   131072,
-		MaxOutputTokens: 131072,
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.95,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature": floatConstraint(0.0, 2.0),
-			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 131072),
-		},
 	},
 	"openrouter/meta-llama/llama-4-maverick": {
 		Provider:        "openrouter",
@@ -300,40 +329,6 @@ var modelDefinitions = map[string]ModelInfo{
 			"presence_penalty":   floatConstraint(-2.0, 2.0),
 			"repetition_penalty": floatConstraint(0.0, 2.0),
 			"top_k":              intConstraint(1, 100),
-		},
-	},
-	"openrouter/meta-llama/llama-4-scout": {
-		Provider:        "openrouter",
-		APIModelID:      "meta-llama/llama-4-scout",
-		ContextWindow:   1048576,
-		MaxOutputTokens: 100000,
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.9,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature":        floatConstraint(0.0, 2.0),
-			"top_p":              floatConstraint(0.0, 1.0),
-			"max_tokens":         intConstraint(1, 100000),
-			"frequency_penalty":  floatConstraint(-2.0, 2.0),
-			"presence_penalty":   floatConstraint(-2.0, 2.0),
-			"repetition_penalty": floatConstraint(0.0, 2.0),
-			"top_k":              intConstraint(1, 100),
-		},
-	},
-	"openrouter/x-ai/grok-3-mini-beta": {
-		Provider:        "openrouter",
-		APIModelID:      "x-ai/grok-3-mini-beta",
-		ContextWindow:   131072,
-		MaxOutputTokens: 131072,
-		DefaultParams: map[string]interface{}{
-			"temperature": 0.7,
-			"top_p":       0.95,
-		},
-		ParameterConstraints: map[string]ParameterConstraint{
-			"temperature": floatConstraint(0.0, 2.0),
-			"top_p":       floatConstraint(0.0, 1.0),
-			"max_tokens":  intConstraint(1, 131072),
 		},
 	},
 	"grok-4": {
