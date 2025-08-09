@@ -38,10 +38,10 @@ import (
 func TestMultiModelReliability_AllModelsBasic(t *testing.T) {
 	logger := logutil.NewTestLogger(t)
 
-	// Get all 24 supported models (20 production models + 4 test models = 24 total)
+	// Get all 19 supported models (15 production models + 4 test models = 19 total)
 	allModels := models.ListAllModels()
-	if len(allModels) != 24 {
-		t.Fatalf("Expected 24 models, got %d", len(allModels))
+	if len(allModels) != 19 {
+		t.Fatalf("Expected 19 models, got %d", len(allModels))
 	}
 
 	// Create test environment
@@ -106,9 +106,9 @@ func TestMultiModelReliability_OpenRouterConcurrency(t *testing.T) {
 	testModels := []string{
 		"gpt-4.1",        // OpenAI model via OpenRouter
 		"gemini-2.5-pro", // Gemini model via OpenRouter
-		"openrouter/deepseek/deepseek-chat-v3-0324",    // OpenRouter - normal
-		"openrouter/deepseek/deepseek-r1-0528",         // OpenRouter - rate limited (5 RPM)
-		"openrouter/meta-llama/llama-3.3-70b-instruct", // OpenRouter - standard
+		"openrouter/deepseek/deepseek-chat-v3-0324", // OpenRouter - normal
+		"openrouter/deepseek/deepseek-r1-0528",      // OpenRouter - rate limited (5 RPM)
+		"openrouter/meta-llama/llama-4-maverick",    // OpenRouter - standard
 	}
 
 	env := setupMultiModelTestEnv(t, logger, testModels, nil)
@@ -173,9 +173,9 @@ func TestMultiModelReliability_RateLimitingBehavior(t *testing.T) {
 
 	// Test models with different rate limit characteristics
 	testModels := []string{
-		"openrouter/deepseek/deepseek-r1-0528",         // Model-specific 5 RPM limit
-		"openrouter/deepseek/deepseek-r1-0528:free",    // Model-specific 3 RPM limit
-		"openrouter/meta-llama/llama-3.3-70b-instruct", // Provider default 20 RPM
+		"openrouter/deepseek/deepseek-r1-0528",      // Model-specific 5 RPM limit
+		"openrouter/deepseek/deepseek-r1-0528:free", // Model-specific 3 RPM limit
+		"openrouter/meta-llama/llama-4-maverick",    // Provider default 20 RPM
 	}
 
 	// Configure rate limiting for realistic testing
