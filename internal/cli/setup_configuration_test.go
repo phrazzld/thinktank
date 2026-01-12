@@ -63,14 +63,14 @@ func TestSetupConfiguration(t *testing.T) {
 		wantErr            bool
 	}{
 		{
-			name: "basic configuration with single model",
+			name: "basic configuration with core council models",
 			simplifiedConfig: &SimplifiedConfig{
 				InstructionsFile: "test.md",
 				TargetPath:       "src/",
 				Flags:            FlagDryRun,
 			},
-			tokenServiceModels: []string{"gemini-3-flash"},
-			expectedModelNames: []string{"gemini-3-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     true,
@@ -86,8 +86,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagVerbose,
 			},
-			tokenServiceModels: []string{"gemini-3-flash"},
-			expectedModelNames: []string{"gemini-3-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -103,8 +103,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/",
 				Flags:            FlagDebug,
 			},
-			tokenServiceModels: []string{"gemini-3-flash"},
-			expectedModelNames: []string{"gemini-3-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.DebugLevel,
 			expectedDryRun:     false,
@@ -120,8 +120,8 @@ func TestSetupConfiguration(t *testing.T) {
 				TargetPath:       "src/ tests/",
 				Flags:            FlagDryRun | FlagVerbose | FlagQuiet | FlagNoProgress | FlagJsonLogs | FlagDebug,
 			},
-			tokenServiceModels: []string{"gemini-3-flash"},
-			expectedModelNames: []string{"gemini-3-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    true,
 			expectedLogLevel:   logutil.DebugLevel, // Both verbose and debug set debug level
 			expectedDryRun:     true,
@@ -131,14 +131,14 @@ func TestSetupConfiguration(t *testing.T) {
 			wantErr:            false,
 		},
 		{
-			name: "multiple models from token service",
+			name: "core council models with no special flags",
 			simplifiedConfig: &SimplifiedConfig{
 				InstructionsFile: "test.md",
 				TargetPath:       "src/",
 				Flags:            0, // No flags
 			},
-			tokenServiceModels: []string{"gemini-3-flash", "gpt-5.2"},
-			expectedModelNames: []string{"gemini-3-flash", "gpt-5.2"},
+			tokenServiceModels: []string{"gemini-3-flash", "gpt-5.2"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,
@@ -148,14 +148,14 @@ func TestSetupConfiguration(t *testing.T) {
 			wantErr:            false,
 		},
 		{
-			name: "synthesis flag with single model",
+			name: "synthesis flag with core council",
 			simplifiedConfig: &SimplifiedConfig{
 				InstructionsFile: "test.md",
 				TargetPath:       "src/",
 				Flags:            FlagSynthesis,
 			},
-			tokenServiceModels: []string{"gemini-3-flash"},
-			expectedModelNames: []string{"gemini-3-flash"},
+			tokenServiceModels: []string{"gemini-3-flash"}, // Token service models are not used; core council is returned
+			expectedModelNames: []string{"gemini-3-pro", "claude-opus-4.5", "gpt-5.2", "grok-4.1-fast", "deepseek-v3.2"},
 			expectedVerbose:    false,
 			expectedLogLevel:   logutil.InfoLevel,
 			expectedDryRun:     false,

@@ -9,7 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestSafetyMarginIntegration tests end-to-end integration of CLI flag to model selection
+// TestSafetyMarginIntegration tests that safety margin CLI flag is parsed correctly.
+// Note: With the core council model selection, the safety margin is stored in config
+// for use during execution, but model selection uses a fixed set of core council models.
 func TestSafetyMarginIntegration(t *testing.T) {
 	// Note: Cannot use t.Parallel() when using t.Setenv()
 
@@ -77,7 +79,7 @@ func TestSafetyMarginIntegration(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Set a mock API key to ensure the function doesn't take the early return path
-			t.Setenv("OPENAI_API_KEY", "test-key")
+			t.Setenv("OPENROUTER_API_KEY", "test-key")
 
 			// Parse CLI arguments
 			config, err := ParseSimpleArgsWithArgs(tt.args)
@@ -88,17 +90,19 @@ func TestSafetyMarginIntegration(t *testing.T) {
 				"Safety margin should be correctly parsed from CLI arguments")
 
 			// Test model selection integration (basic validation that it doesn't crash)
-			// This exercises the selectModelsForConfigWithService path
+			// Note: selectModelsForConfigWithService now returns core council models
+			// and doesn't use the token service for model selection
 			tokenService := NewMockTokenService()
 			models, synthesis := selectModelsForConfigWithService(config, tokenService)
 
-			// Basic validation that model selection worked
+			// Basic validation that model selection worked - should return core council
 			assert.NotEmpty(t, models, "Should select at least one model")
+			assert.Len(t, models, 5, "Should return 5 core council models")
 			assert.NotEmpty(t, synthesis, "Should have a synthesis model")
 
-			// Verify the mock received the correct safety margin
-			assert.Equal(t, tt.expectedMargin, tokenService.LastSafetyMargin,
-				"TokenCountingService should receive the correct safety margin")
+			// Verify the safety margin is stored in config for later use during execution
+			assert.Equal(t, tt.expectedMargin, config.SafetyMargin,
+				"Safety margin should be preserved in config for execution phase")
 		})
 	}
 }

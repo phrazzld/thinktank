@@ -500,6 +500,32 @@ func ListModelsForProvider(provider string) []string {
 	return models
 }
 
+// coreCouncilModels defines the default set of top-performing models used when
+// no models are explicitly specified. These are the 5 most intelligent models
+// based on LMArena rankings and benchmark performance (January 2026):
+//   - gemini-3-pro: #1 LMArena overall, Google's flagship
+//   - claude-opus-4.5: Best coding (80.9% SWE-bench), Anthropic's flagship
+//   - gpt-5.2: Best math/logic (100% AIME), OpenAI's flagship
+//   - grok-4.1-fast: Strong Arena, largest context (2M), xAI's flagship
+//   - deepseek-v3.2: Frontier-class at great value, DeepSeek's flagship
+var coreCouncilModels = []string{
+	"gemini-3-pro",
+	"claude-opus-4.5",
+	"gpt-5.2",
+	"grok-4.1-fast",
+	"deepseek-v3.2",
+}
+
+// GetCoreCouncilModels returns the default set of top-performing models.
+// This curated list of 5 models represents the best-in-class for raw intelligence
+// across different providers, ensuring diverse perspectives for synthesis.
+func GetCoreCouncilModels() []string {
+	// Return a copy to prevent modification
+	result := make([]string, len(coreCouncilModels))
+	copy(result, coreCouncilModels)
+	return result
+}
+
 // EstimateTokensFromText provides a rough estimation of token count from text.
 // Uses a conservative approximation where 1 token ≈ 1.33 characters.
 // This estimation works reasonably well across different tokenizers.

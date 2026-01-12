@@ -598,27 +598,12 @@ func createLoggerWithRouting(cfg *config.MinimalConfig, outputDir string) (logut
 	}
 }
 
-// selectModelsForConfig intelligently selects models based on config flags and input size estimation.
+// selectModelsForConfig selects the default "core council" of top-performing models.
 // Returns the list of model names and an optional synthesis model.
+// When no models are specified, uses the curated core council (5 best models by intelligence).
 func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string) {
 	// Check if synthesis flag is explicitly set
 	forceSynthesis := simplifiedConfig.HasFlag(FlagSynthesis)
-
-	// Try to estimate input size by reading the instructions file
-	var estimatedTokens int
-	if instructionsContent, err := os.ReadFile(simplifiedConfig.InstructionsFile); err == nil {
-		// For initial estimation, use just the instructions file
-		// We'll refine this later when we have actual file content
-		estimatedTokens = models.EstimateTokensFromText(string(instructionsContent))
-
-		// Add a rough estimate for the target file(s)
-		// This is conservative - we'll get exact numbers during context gathering
-		const averageFileEstimate = 10000 // ~10K tokens for typical files
-		estimatedTokens += averageFileEstimate
-	} else {
-		// Fallback estimate if we can't read instructions
-		estimatedTokens = 15000 // Conservative fallback
-	}
 
 	// Get available providers (those with API keys set)
 	availableProviders := models.GetAvailableProviders()
@@ -627,8 +612,27 @@ func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string
 		return []string{config.DefaultModel}, ""
 	}
 
-	// Select models that can handle the estimated input size
-	selectedModels := models.SelectModelsForInput(estimatedTokens, availableProviders)
+	// Build set of available providers for fast lookup
+	providerSet := make(map[string]bool)
+	for _, p := range availableProviders {
+		providerSet[p] = true
+	}
+
+	// Use core council models, filtered by available providers
+	coreCouncil := models.GetCoreCouncilModels()
+	var selectedModels []string
+	for _, modelName := range coreCouncil {
+		if info, err := models.GetModelInfo(modelName); err == nil {
+			if providerSet[info.Provider] {
+				selectedModels = append(selectedModels, modelName)
+			}
+		}
+	}
+
+	// If no core council models available, fall back to default model
+	if len(selectedModels) == 0 {
+		return []string{config.DefaultModel}, ""
+	}
 
 	// Determine synthesis behavior
 	var synthesisModel string
@@ -641,11 +645,6 @@ func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string
 		synthesisModel = "gemini-3-pro"
 	}
 
-	// If no models were selected (shouldn't happen with safety margins), fall back to default
-	if len(selectedModels) == 0 {
-		return []string{config.DefaultModel}, ""
-	}
-
 	// If only one model and no forced synthesis, use single model mode
 	if len(selectedModels) == 1 && !forceSynthesis {
 		return selectedModels, ""
@@ -654,8 +653,8 @@ func selectModelsForConfig(simplifiedConfig *SimplifiedConfig) ([]string, string
 	return selectedModels, synthesisModel
 }
 
-// selectModelsForConfigWithService intelligently selects models using TokenCountingService for accurate tokenization.
-// This replaces estimation-based model selection with accurate provider-aware tokenization.
+// selectModelsForConfigWithService selects the default "core council" using TokenCountingService.
+// Uses accurate tokenization to verify core council models can handle the input.
 func selectModelsForConfigWithService(simplifiedConfig *SimplifiedConfig, tokenService thinktank.TokenCountingService) ([]string, string) {
 	// Check if synthesis flag is explicitly set
 	forceSynthesis := simplifiedConfig.HasFlag(FlagSynthesis)
@@ -667,43 +666,26 @@ func selectModelsForConfigWithService(simplifiedConfig *SimplifiedConfig, tokenS
 		return []string{config.DefaultModel}, ""
 	}
 
-	// Read instructions content for TokenCountingService
-	var instructionsContent string
-	if content, err := os.ReadFile(simplifiedConfig.InstructionsFile); err == nil {
-		instructionsContent = string(content)
-	} else {
-		// Fallback to empty instructions if file read fails
-		instructionsContent = ""
+	// Build set of available providers for fast lookup
+	providerSet := make(map[string]bool)
+	for _, p := range availableProviders {
+		providerSet[p] = true
 	}
 
-	// For now, we can't read the actual target files without duplicating the context gathering logic
-	// So we'll use TokenCountingService with just instructions for accurate tokenization
-	// TODO: In future iterations, integrate with actual file content gathering
-	tokenReq := thinktank.TokenCountingRequest{
-		Instructions:        instructionsContent,
-		Files:               []thinktank.FileContent{}, // Empty for now - will be enhanced later
-		SafetyMarginPercent: simplifiedConfig.SafetyMargin,
-	}
-
-	// Use TokenCountingService to get compatible models with accurate tokenization
-	ctx := context.Background()
-	compatibleModels, err := tokenService.GetCompatibleModels(ctx, tokenReq, availableProviders)
-	if err != nil {
-		// Fallback to estimation-based approach if TokenCountingService fails
-		return selectModelsForConfig(simplifiedConfig)
-	}
-
-	// Extract compatible model names
+	// Use core council models, filtered by available providers
+	coreCouncil := models.GetCoreCouncilModels()
 	var selectedModels []string
-	for _, model := range compatibleModels {
-		if model.IsCompatible {
-			selectedModels = append(selectedModels, model.ModelName)
+	for _, modelName := range coreCouncil {
+		if info, err := models.GetModelInfo(modelName); err == nil {
+			if providerSet[info.Provider] {
+				selectedModels = append(selectedModels, modelName)
+			}
 		}
 	}
 
-	// If no compatible models found, fallback to estimation approach
+	// If no core council models available, fall back to default model
 	if len(selectedModels) == 0 {
-		return selectModelsForConfig(simplifiedConfig)
+		return []string{config.DefaultModel}, ""
 	}
 
 	// Determine synthesis behavior
