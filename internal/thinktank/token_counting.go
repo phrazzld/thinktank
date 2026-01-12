@@ -6,6 +6,7 @@ package thinktank
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/phrazzld/thinktank/internal/logutil"
 	"github.com/phrazzld/thinktank/internal/models"
@@ -229,20 +230,37 @@ func (s *tokenCountingServiceImpl) countInstructionTokens(instructions string) i
 	return models.EstimateTokensFromText(instructions)
 }
 
-// countFileTokens calculates tokens for all file content combined.
-func (s *tokenCountingServiceImpl) countFileTokens(files []interfaces.FileContent) int {
-	var totalFileContent string
-	for _, file := range files {
-		totalFileContent += file.Content
+// concatenateFileContent builds a single string from file contents.
+// Uses strings.Builder with pre-allocated capacity for O(n) concatenation.
+// Returns empty string if no files or all files are empty.
+func concatenateFileContent(files []interfaces.FileContent) string {
+	if len(files) == 0 {
+		return ""
 	}
 
-	if totalFileContent == "" {
+	var totalSize int
+	for _, file := range files {
+		totalSize += len(file.Content)
+	}
+	if totalSize == 0 {
+		return ""
+	}
+
+	var builder strings.Builder
+	builder.Grow(totalSize)
+	for _, file := range files {
+		builder.WriteString(file.Content)
+	}
+	return builder.String()
+}
+
+// countFileTokens calculates tokens for all file content using estimation.
+func (s *tokenCountingServiceImpl) countFileTokens(files []interfaces.FileContent) int {
+	content := concatenateFileContent(files)
+	if content == "" {
 		return 0
 	}
-
-	// Use the core calculation from EstimateTokensFromText but without instruction overhead
-	charCount := len(totalFileContent)
-	return int(float64(charCount) * 0.75) // Same conversion factor as models package
+	return models.EstimateTokensFromText(content)
 }
 
 // calculateOverhead returns the formatting overhead for structure.
@@ -261,16 +279,11 @@ func (s *tokenCountingServiceImpl) countInstructionTokensAccurate(ctx context.Co
 
 // countFileTokensAccurate calculates file tokens using accurate tokenizer.
 func (s *tokenCountingServiceImpl) countFileTokensAccurate(ctx context.Context, files []interfaces.FileContent, modelName string, tokenizer tokenizers.AccurateTokenCounter) (int, error) {
-	var totalFileContent string
-	for _, file := range files {
-		totalFileContent += file.Content
-	}
-
-	if totalFileContent == "" {
+	content := concatenateFileContent(files)
+	if content == "" {
 		return 0, nil
 	}
-
-	return tokenizer.CountTokens(ctx, totalFileContent, modelName)
+	return tokenizer.CountTokens(ctx, content, modelName)
 }
 
 // GetCompatibleModels implements model filtering based on accurate token counting.

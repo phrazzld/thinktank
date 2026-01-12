@@ -96,3 +96,43 @@ func (m *MockTokenizer) GetEncoding(modelName string) (string, error) {
 	}
 	return "mock-encoding", nil
 }
+
+// BenchmarkCountFileTokens benchmarks the file token counting with various file counts.
+// This benchmark verifies O(n) performance after fixing O(n²) string concatenation.
+func BenchmarkCountFileTokens(b *testing.B) {
+	service := NewTokenCountingService().(*tokenCountingServiceImpl)
+
+	// Generate test files with realistic content sizes
+	generateFiles := func(count int) []interfaces.FileContent {
+		files := make([]interfaces.FileContent, count)
+		// Average file content ~1KB each
+		content := "package main\n\nfunc example() {\n\t// Sample code\n\treturn nil\n}\n"
+		for i := range files {
+			files[i] = interfaces.FileContent{
+				Path:    fmt.Sprintf("file%d.go", i),
+				Content: content,
+			}
+		}
+		return files
+	}
+
+	benchmarks := []struct {
+		name      string
+		fileCount int
+	}{
+		{"10_files", 10},
+		{"100_files", 100},
+		{"500_files", 500},
+		{"1000_files", 1000},
+	}
+
+	for _, bm := range benchmarks {
+		files := generateFiles(bm.fileCount)
+		b.Run(bm.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for i := 0; i < b.N; i++ {
+				_ = service.countFileTokens(files)
+			}
+		})
+	}
+}
